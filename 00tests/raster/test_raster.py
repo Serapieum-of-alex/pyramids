@@ -12,7 +12,7 @@ def test_GetRasterData(
         src: Dataset,
         src_no_data_value: float,
 ):
-    arr, nodataval = Raster.GetRasterData(src)
+    arr, nodataval = Raster.getRasterData(src)
     assert np.isclose(src_no_data_value, nodataval, rtol=0.001)
     assert isinstance(arr, np.ndarray)
 
@@ -22,7 +22,7 @@ def test_GetProjectionData(
         src_epsg: int,
         src_geotransform: tuple,
 ):
-    epsg, geo = Raster.GetProjectionData(src)
+    epsg, geo = Raster.getProjectionData(src)
     assert epsg == src_epsg
     assert geo == src_geotransform
 
@@ -33,7 +33,7 @@ def test_GetCellCoords(
         src_arr_last_4_rows: np.ndarray,
         cells_centerscoords: np.ndarray,
 ):
-    coords, centerscoords = Raster.GetCellCoords(src)
+    coords, centerscoords = Raster.getCellCoords(src)
     assert np.isclose(coords[:4, :], src_arr_first_4_rows, rtol=0.000001).all()
     assert np.isclose(coords[-4:, :], src_arr_last_4_rows, rtol = 0.000001).all()
     assert np.isclose(centerscoords[0][:3], cells_centerscoords, rtol=0.000001).all()
@@ -45,7 +45,7 @@ def test_create_raster(
         src_epsg: int,
         src_no_data_value: float,
 ):
-    src = Raster.CreateRaster(arr=src_arr,
+    src = Raster.createRaster(arr=src_arr,
                               geo=src_geotransform,
                               EPSG=src_epsg,
                               NoDataValue=src_no_data_value
@@ -61,7 +61,7 @@ def test_save_rasters(
         src: Dataset,
         save_raster_path: str,
 ):
-    Raster.SaveRaster(src, save_raster_path)
+    Raster.saveRaster(src, save_raster_path)
     assert os.path.exists(save_raster_path)
     os.remove(save_raster_path)
 
@@ -76,7 +76,7 @@ def test_raster_like(
     arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
     arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
 
-    Raster.RasterLike(src, arr2, raster_like_path)
+    Raster.rasterLike(src, arr2, raster_like_path)
     dst = gdal.Open(raster_like_path)
     arr = dst.ReadAsArray()
     assert arr.shape == src_arr.shape
@@ -88,7 +88,7 @@ def test_map_algebra(
         src: Dataset,
         mapalgebra_function,
 ):
-    dst = Raster.MapAlgebra(src, mapalgebra_function)
+    dst = Raster.mapAlgebra(src, mapalgebra_function)
     arr = dst.ReadAsArray()
     nodataval = dst.GetRasterBand(1).GetNoDataValue()
     vals = arr[~np.isclose(arr, nodataval, rtol=0.00000000000001)]
@@ -101,7 +101,7 @@ def test_fill_raster(
         fill_raster_path: str,
         fill_raster_value: int
 ):
-    Raster.RasterFill(src, fill_raster_value, SaveTo=fill_raster_path)
+    Raster.rasterFill(src, fill_raster_value, SaveTo=fill_raster_path)
     "now the resulted raster is saved to disk"
     dst = gdal.Open(fill_raster_path)
     arr = dst.ReadAsArray()
@@ -117,7 +117,7 @@ def test_resample_raster(
         resample_raster_resample_technique: str,
         resample_raster_result_dims: tuple
 ):
-    dst = Raster.ResampleRaster(src,
+    dst = Raster.resampleRaster(src,
                                 resample_raster_cell_size,
                                 resample_technique=resample_raster_resample_technique
                                 )
@@ -139,7 +139,7 @@ class TestProjectRaster:
             resample_raster_resample_technique: str,
             src_shape: tuple
     ):
-        dst = Raster.ProjectRaster(src, to_epsg=project_raster_to_epsg, Option=1)
+        dst = Raster.projectRaster(src, to_epsg=project_raster_to_epsg, Option=1)
 
         proj = dst.GetProjection()
         sr = osr.SpatialReference(wkt=proj)
@@ -156,7 +156,7 @@ class TestProjectRaster:
             resample_raster_resample_technique: str,
             src_shape: tuple
     ):
-        dst = Raster.ProjectRaster(src, to_epsg=project_raster_to_epsg, Option=2)
+        dst = Raster.projectRaster(src, to_epsg=project_raster_to_epsg, Option=2)
 
         proj = dst.GetProjection()
         sr = osr.SpatialReference(wkt=proj)
@@ -176,7 +176,7 @@ class TestCropAlligned:
             src_arr: np.ndarray,
             src_no_data_value: float,
     ):
-        dst_arr_cropped = Raster.CropAlligned(aligned_raster_arr, src)
+        dst_arr_cropped = Raster.cropAlligned(aligned_raster_arr, src)
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~ np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
         dst_arr_cropped[~ np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
@@ -189,7 +189,7 @@ class TestCropAlligned:
             src_arr: np.ndarray,
             src_no_data_value: float,
     ):
-        dst_cropped = Raster.CropAlligned(aligned_raster, src)
+        dst_cropped = Raster.cropAlligned(aligned_raster, src)
         dst_arr_cropped = dst_cropped.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~ np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -202,7 +202,7 @@ class TestCropAlligned:
             src_arr: np.ndarray,
             src_no_data_value: float,
     ):
-        dst_cropped = Raster.CropAlligned(aligned_raster, src_arr, mask_noval=src_no_data_value)
+        dst_cropped = Raster.cropAlligned(aligned_raster, src_arr, mask_noval=src_no_data_value)
         dst_arr_cropped = dst_cropped.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~ np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -215,7 +215,7 @@ class TestCropAlligned:
             crop_aligned_folder_path: str,
             crop_aligned_folder_saveto: str,
     ):
-        Raster.CropAlignedFolder(crop_aligned_folder_path, src, crop_aligned_folder_saveto)
+        Raster.cropAlignedFolder(crop_aligned_folder_path, src, crop_aligned_folder_saveto)
         assert len(os.listdir(crop_aligned_folder_saveto)) == 3
 
 
@@ -242,7 +242,7 @@ class TestASCII:
             ascii_shape: tuple,
             ascii_geotransform: tuple,
     ):
-        arr, details = Raster.ReadASCII(ascii_file_path, pixel_type=1)
+        arr, details = Raster.readASCII(ascii_file_path, pixel_type=1)
         assert arr.shape == ascii_shape
         assert details == ascii_geotransform
 
@@ -252,7 +252,7 @@ class TestASCII:
             ascii_file_save_to: str
     ):
         arr = np.ones(shape=(13,14))* 0.03
-        Raster.WriteASCII(ascii_file_save_to, ascii_geotransform, arr)
+        Raster.writeASCII(ascii_file_save_to, ascii_geotransform, arr)
         assert os.path.exists(ascii_file_save_to)
 
 
@@ -263,7 +263,7 @@ def test_match_raster_alignment(
         src_geotransform: tuple,
         soil_raster: Dataset,
 ):
-    soil_aligned = Raster.MatchRasterAlignment(src, soil_raster)
+    soil_aligned = Raster.matchRasterAlignment(src, soil_raster)
     assert soil_aligned.ReadAsArray().shape == src_shape
     nodataval = soil_aligned.GetRasterBand(1).GetNoDataValue()
     assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
@@ -279,7 +279,7 @@ class TestReadRastersFolder:
             rasters_folder_rasters_number: int,
             rasters_folder_dim: tuple
     ):
-        arr = Raster.ReadRastersFolder(rasters_folder_path, with_order=False)
+        arr = Raster.readRastersFolder(rasters_folder_path, with_order=False)
         assert np.shape(arr) == (rasters_folder_dim[0], rasters_folder_dim[1], rasters_folder_rasters_number)
 
 
@@ -289,7 +289,7 @@ class TestReadRastersFolder:
             rasters_folder_rasters_number: int,
             rasters_folder_dim: tuple
     ):
-        arr = Raster.ReadRastersFolder(rasters_folder_path, with_order=True)
+        arr = Raster.readRastersFolder(rasters_folder_path, with_order=True)
         assert np.shape(arr) == (rasters_folder_dim[0], rasters_folder_dim[1], rasters_folder_rasters_number)
 
 
@@ -302,7 +302,7 @@ class TestReadRastersFolder:
             rasters_folder_dim: tuple,
             rasters_folder_between_dates_raster_number: int
     ):
-        arr = Raster.ReadRastersFolder(rasters_folder_path, with_order=True, start=rasters_folder_start_date,
+        arr = Raster.readRastersFolder(rasters_folder_path, with_order=True, start=rasters_folder_start_date,
                                        end=rasters_folder_end_date, fmt=rasters_folder_date_fmt)
         assert np.shape(arr) == (rasters_folder_dim[0],
                                  rasters_folder_dim[1],
