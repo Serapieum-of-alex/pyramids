@@ -61,7 +61,7 @@ Outputs:
     2- no_val: [numeric]
         value stored in novalue cells
 """
-arr, nodataval = Raster.GetRasterData(src)
+arr, nodataval = Raster.getRasterData(src)
 # %%
 """GetProjectionData.
 
@@ -80,7 +80,7 @@ Returns:
         geotransform data (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation,
                             pixelsize). The default is ''.
 """
-epsg, geo = Raster.GetProjectionData(src)
+epsg, geo = Raster.getProjectionData(src)
 print("EPSG = " + str(epsg))
 print(geo)
 # %% GetCoords
@@ -103,7 +103,7 @@ mat_range : array
     Array with all the centres of cells in the domain of the DEM
 
 """
-coords, centerscoords = Raster.GetCellCoords(src)
+coords, centerscoords = Raster.getCellCoords(src)
 # %% SaveRaster
 """SaveRaster.
 
@@ -126,7 +126,7 @@ EX:
     SaveRaster(raster,output_path)
 """
 path = datapath + "/save_raster_test.tif"
-Raster.SaveRaster(src, path)
+Raster.saveRaster(src, path)
 # %%` CreateRaster
 """
 We will recreate the raster that we have already read using the 'GetRasterData' method at the
@@ -160,7 +160,7 @@ Returns
             a gdal.Dataset will be returned.
 """
 
-src = Raster.CreateRaster(arr=arr, geo=geo, EPSG=str(epsg), NoDataValue=nodataval)
+src = Raster.createRaster(arr=arr, geo=geo, EPSG=str(epsg), NoDataValue=nodataval)
 # Map.PlotArray(src, Title="Flow Accumulation")
 # %%` RasterLike
 """RasterLike.
@@ -207,7 +207,7 @@ arr2 = np.ones(shape=arr.shape, dtype=np.float64) * nodataval
 arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
 
 path = datapath + "/rasterlike.tif"
-Raster.RasterLike(src, arr2, path)
+Raster.rasterLike(src, arr2, path)
 dst = gdal.Open(path)
 # Map.PlotArray(dst, Title="Flow Accumulation", ColorScale=1)
 # %%
@@ -247,7 +247,7 @@ def func1(val):
     return val
 
 
-dst = Raster.MapAlgebra(src, func1)
+dst = Raster.mapAlgebra(src, func1)
 # Map.PlotArray(dst, Title="Classes", ColorScale=4, TicksSpacing=1)
 # %%
 """RasterFill.
@@ -271,7 +271,7 @@ Returns:
 """
 path = datapath + "/fillrasterexample.tif"
 value = 20
-Raster.RasterFill(src, value, SaveTo=path)
+Raster.rasterFill(src, value, SaveTo=path)
 
 "now the resulted raster is saved to disk"
 dst = gdal.Open(path)
@@ -303,10 +303,10 @@ Outputs:
 """
 print("Original Cell Size =" + str(geo[1]))
 cell_size = 100
-dst = Raster.ResampleRaster(src, cell_size, resample_technique="bilinear")
+dst = Raster.resampleRaster(src, cell_size, resample_technique="bilinear")
 
-dst_arr, _ = Raster.GetRasterData(dst)
-_, newgeo = Raster.GetProjectionData(dst)
+dst_arr, _ = Raster.getRasterData(dst)
+_, newgeo = Raster.getProjectionData(dst)
 print("New cell size is " + str(newgeo[1]))
 # Map.PlotArray(dst, Title="Flow Accumulation")
 # %%
@@ -342,14 +342,14 @@ Example :
 """
 print("current EPSG - " + str(epsg))
 to_epsg = 4326
-dst = Raster.ProjectRaster(src, to_epsg=to_epsg, Option=1)
-newepsg, newgeo = Raster.GetProjectionData(dst)
+dst = Raster.projectRaster(src, to_epsg=to_epsg, Option=1)
+newepsg, newgeo = Raster.getProjectionData(dst)
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
 """Option 2"""
 print("Option 2")
-dst = Raster.ProjectRaster(src, to_epsg=to_epsg, Option=2)
-newepsg, newgeo = Raster.GetProjectionData(dst)
+dst = Raster.projectRaster(src, to_epsg=to_epsg, Option=2)
+newepsg, newgeo = Raster.getProjectionData(dst)
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
 # %%
@@ -416,7 +416,7 @@ Outputs:
 """
 # crop array using a raster
 dst = gdal.Open(aligned_raster)
-dst_arr, dst_nodataval = Raster.GetRasterData(dst)
+dst_arr, dst_nodataval = Raster.getRasterData(dst)
 
 # Map.PlotArray(
 #     dst_arr,
@@ -425,7 +425,7 @@ dst_arr, dst_nodataval = Raster.GetRasterData(dst)
 #     ColorScale=1,
 #     TicksSpacing=0.01,
 # )
-dst_arr_cropped = Raster.CropAlligned(dst_arr, src)
+dst_arr_cropped = Raster.cropAlligned(dst_arr, src)
 # Map.PlotArray(
 #     dst_arr_cropped,
 #     nodataval=nodataval,
@@ -438,7 +438,7 @@ dst_arr_cropped = Raster.CropAlligned(dst_arr, src)
 cropping rasters may  change the alignment of the cells and to keep the alignment during cropping a raster
 we will crop the same previous raster but will give the input to the function as a gdal.dataset object
 """
-dst_cropped = Raster.CropAlligned(dst, src)
+dst_cropped = Raster.cropAlligned(dst, src)
 # Map.PlotArray(dst_cropped, Title="Cropped raster", ColorScale=1, TicksSpacing=0.01)
 # %% crop raster using array
 """
@@ -446,7 +446,7 @@ we can also crop a raster using an array in condition that we enter the value of
 array
 we can repeat the previous example but
 """
-dst_cropped = Raster.CropAlligned(dst, arr, mask_noval=nodataval)
+dst_cropped = Raster.cropAlligned(dst, arr, mask_noval=nodataval)
 # Map.PlotArray(dst_cropped, Title="Cropped array", ColorScale=1, TicksSpacing=0.01)
 # %% clip a folder of rasters using another raster while preserving the alignment
 """
@@ -487,7 +487,7 @@ Example:
 
 """
 saveto = datapath + "/crop_aligned_folder/"
-Raster.CropAlignedFolder(aligned_raster_folder, src, saveto)
+Raster.cropAlignedFolder(aligned_raster_folder, src, saveto)
 # %%
 """MatchRasterAlignment.
 
@@ -519,14 +519,14 @@ Example:
 """
 # we want to align the soil raster similar to the alignment in the src raster
 soil_raster = gdal.Open(soilmappath)
-epsg, geotransform = Raster.GetProjectionData(soil_raster)
+epsg, geotransform = Raster.getProjectionData(soil_raster)
 print("Before alignment EPSG = " + str(epsg))
 print("Before alignment Geotransform = " + str(geotransform))
 # cell_size = geotransform[1]
 # Map.PlotArray(soil_raster, Title="To be aligned", ColorScale=1, TicksSpacing=1)
 
-soil_aligned = Raster.MatchRasterAlignment(src, soil_raster)
-New_epsg, New_geotransform = Raster.GetProjectionData(soil_aligned)
+soil_aligned = Raster.matchRasterAlignment(src, soil_raster)
+New_epsg, New_geotransform = Raster.getProjectionData(soil_aligned)
 print("After alignment EPSG = " + str(New_epsg))
 print("After alignment Geotransform = " + str(New_geotransform))
 # Map.PlotArray(soil_aligned, Title="After alignment", ColorScale=1, TicksSpacing=1)
@@ -555,7 +555,7 @@ Output:
         directory.
 """
 RasterA = gdal.Open(aligned_raster)
-epsg, geotransform = Raster.GetProjectionData(RasterA)
+epsg, geotransform = Raster.getProjectionData(RasterA)
 print("Raster EPSG = " + str(epsg))
 print("Raster Geotransform = " + str(geotransform))
 # Map.PlotArray(RasterA, Title="Raster to be cropped", ColorScale=1, TicksSpacing=1)
@@ -564,8 +564,8 @@ We will use the soil raster from the previous example as a mask
 so the projection is different between the raster and the mask and the cell size is also different
 """
 
-dst = Raster.Crop(RasterA, soil_raster)
-dst_epsg, dst_geotransform = Raster.GetProjectionData(dst)
+dst = Raster.crop(RasterA, soil_raster)
+dst_epsg, dst_geotransform = Raster.getProjectionData(dst)
 print("resulted EPSG = " + str(dst_epsg))
 print("resulted Geotransform = " + str(dst_geotransform))
 # Map.PlotArray(dst, Title="Cropped Raster", ColorScale=1, TicksSpacing=1)
@@ -610,8 +610,8 @@ EX:
 shp = gpd.read_file(Basinshp)
 src = gdal.Open(aligned_raster)
 
-dst = Raster.ClipRasterWithPolygon(aligned_raster, Basinshp, save=False, output_path=None)
-dst = Raster.Clip2(aligned_raster, Basinshp, save=False, output_path=None)
+dst = Raster.clipRasterWithPolygon(aligned_raster, Basinshp, save=False, output_path=None)
+dst = Raster.clip2(aligned_raster, Basinshp, save=False, output_path=None)
 # Map.PlotArray(dst, Title="After Cropping-Evapotranspiration by a shapefile", ColorScale=1,
 #               TicksSpacing=0.01)
 # %% ReadASCII.
@@ -646,16 +646,16 @@ Example:
     Elevation_values,DEMSpatialDetails = ReadASCII("dem.asc",1)
 """
 path = datapath + r"/asci_example.asc"
-arr, geotransform = Raster.ReadASCII(path, pixel_type=1)
+arr, geotransform = Raster.readASCII(path, pixel_type=1)
 # Map.PlotArray(arr, geotransform[-1], Title="Cropped Raster", ColorScale=2, TicksSpacing=200)
 arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
 path2 = datapath + r"/roughness.asc"
-Raster.WriteASCII(path2, geotransform, arr)
+Raster.writeASCII(path2, geotransform, arr)
 # %% read the points
 points = pd.read_csv(pointsPath)
 points["row"] = np.nan
 points["col"] = np.nan
-points.loc[:, ["row", "col"]] = GC.NearestCell(src, points[["x", "y"]][:]).values
+points.loc[:, ["row", "col"]] = GC.nearestCell(src, points[["x", "y"]][:]).values
 # %%
 
 from osgeo import ogr, osr

@@ -25,7 +25,7 @@ RasterB = gdal.Open(RasterBpath)
 
 #%%
 # get the array and the nodatavalue in the raster
-RasterA_arr, nodataval = Raster.GetRasterData(RasterA, band="")
+RasterA_arr, nodataval = Raster.getRasterData(RasterA, band="")
 
 plt.imshow(RasterA_arr, cmap="CMRmap", vmax=RasterA_arr.max(), vmin=RasterA_arr.min())
 plt.colorbar()
@@ -36,7 +36,7 @@ RasterA_proj = RasterA.GetProjection()
 RasterA_epsg = osr.SpatialReference(wkt=RasterA_proj)
 
 to_epsg = int(RasterA_epsg.GetAttrValue("AUTHORITY", 1))
-RasterB_reprojected = Raster.ProjectRaster(
+RasterB_reprojected = Raster.projectRaster(
     RasterB, to_epsg, resample_technique="cubic", Option=1
 )
 
@@ -64,13 +64,13 @@ RasterB_reprojected_epsg = osr.SpatialReference(wkt=RasterB_reprojected_proj)
 RasterB_reprojected_array = RasterB_reprojected.ReadAsArray()
 
 #%% save the raster
-Raster.SaveRaster(RasterB_reprojected, SaveTo)
+Raster.saveRaster(RasterB_reprojected, SaveTo)
 #%%
-RasterB_reprojected = Raster.ProjectRaster(
+RasterB_reprojected = Raster.projectRaster(
     RasterB,
     int(RasterA_epsg.GetAttrValue("AUTHORITY", 1)),
     resample_technique="cubic",
     Option=2,
 )
 SaveTo = "data/GIS/MSWEP_1979010100_reprojected2.tif"
-Raster.SaveRaster(RasterB_reprojected, SaveTo)
+Raster.saveRaster(RasterB_reprojected, SaveTo)

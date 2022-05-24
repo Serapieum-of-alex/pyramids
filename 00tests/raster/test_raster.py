@@ -228,7 +228,7 @@ def test_crop(
     # Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
     # the aligned_raster has a epsg = 32618 and
     # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
-    dst = Raster.Crop(aligned_raster, soil_raster, Save=True, OutputPath=crop_saveto)
+    dst = Raster.crop(aligned_raster, soil_raster, Save=True, OutputPath=crop_saveto)
     assert os.path.exists(crop_saveto)
 
 # def test_ClipRasterWithPolygon():

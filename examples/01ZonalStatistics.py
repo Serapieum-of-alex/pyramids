@@ -20,7 +20,7 @@ ExcludedValue = 0
 Compressed = True
 OccupiedCellsOnly = False
 #%% one map
-ExtractedValues, NonZeroCells = R.OverlayMap(
+ExtractedValues, NonZeroCells = R.overlayMap(
     Path + "maps/Map1.zip",
     BaseMapF,
     ExcludedValue,
@@ -30,7 +30,7 @@ ExtractedValues, NonZeroCells = R.OverlayMap(
 
 MapPrefix = "Map"
 # several maps
-ExtractedValues, NonZeroCells = R.OverlayMaps(
+ExtractedValues, NonZeroCells = R.overlayMaps(
     Path + "maps",
     BaseMapF,
     MapPrefix,

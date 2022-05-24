@@ -389,7 +389,7 @@ class Catchment:
         return flow_direction_cell, elev_sinkless
 
     @staticmethod
-    def FlowDirectIndex(flow_direct):
+    def flowDirectionIndex(flow_direct):
         """
         this function takes flow firection raster and convert codes for the 8 directions
         (1,2,4,8,16,32,64,128) into indices of the Downstream cell
@@ -469,7 +469,7 @@ class Catchment:
         return fd_cell
 
     @staticmethod
-    def FlowDirecTable(flow_direct):
+    def flowDirectionTable(flow_direct):
         """
         this function takes flow direction indices created by FlowDirectِِIndex function
         and create a dictionary with the cells indices as a key and  indices of directly
@@ -493,7 +493,7 @@ class Catchment:
         """
         # input data validation
         # validation is inside FlowDirectِِIndex
-        FDI = Catchment.FlowDirectIndex(flow_direct)
+        FDI = Catchment.flowDirectionIndex(flow_direct)
 
         rows = flow_direct.RasterYSize
         cols = flow_direct.RasterXSize
@@ -528,7 +528,7 @@ class Catchment:
         return flow_acc_table
 
     @staticmethod
-    def DeleteBasins(basins, pathout):
+    def deleteBasins(basins, pathout):
         """
         this function deletes all the basins in a basin raster created when delineating
         a catchment and leave only the first basin which is the biggest basin in the raster
@@ -589,10 +589,10 @@ class Catchment:
                 if basins_A[i, j] != no_val and basins_A[i, j] != basins_val[0]:
                     basins_A[i, j] = no_val
 
-        raster.RasterLike(basins, basins_A, pathout)
+        raster.rasterLike(basins, basins_A, pathout)
 
     @staticmethod
-    def NearestCell(
+    def nearestCell(
             Raster: Dataset,
             StCoord: DataFrame,
     ) -> DataFrame:
@@ -621,7 +621,7 @@ class Catchment:
             >>> data = dict(id = [0,1,2,3], x = [1,2,3,6], y = [5,4,7,8])
             >>> stations = pd.DataFrame(data)
             >>> coordinates = stations[['id','x','y']][:]
-            >>> coordinates.loc[:,["cell_row","cell_col"]] = Catchment.NearestCell(Raster, StCoord).values
+            >>> coordinates.loc[:,["cell_row","cell_col"]] = Catchment.nearestCell(Raster, StCoord).values
         """
         if not isinstance(Raster, gdal.Dataset):
             raise TypeError ("raster should be read using gdal (gdal dataset please read it using gdal library) ")
@@ -675,7 +675,7 @@ class Catchment:
         return StCoord.loc[:, ["cell_row", "cell_col"]]
 
     @staticmethod
-    def GroupNeighbours(
+    def groupNeighbours(
         array, i, j, lowervalue, uppervalue, position, values, count, cluster
     ):
         # bottom cell
@@ -687,7 +687,7 @@ class Catchment:
             position.append([i + 1, j])
             values.append(array[i + 1, j])
             cluster[i + 1, j] = count
-            Catchment.GroupNeighbours(
+            Catchment.groupNeighbours(
                 array,
                 i + 1,
                 j,
@@ -708,7 +708,7 @@ class Catchment:
             position.append([i + 1, j + 1])
             values.append(array[i + 1, j + 1])
             cluster[i + 1, j + 1] = count
-            Catchment.GroupNeighbours(
+            Catchment.groupNeighbours(
                 array,
                 i + 1,
                 j + 1,
@@ -728,7 +728,7 @@ class Catchment:
             position.append([i, j + 1])
             values.append(array[i, j + 1])
             cluster[i, j + 1] = count
-            Catchment.GroupNeighbours(
+            Catchment.groupNeighbours(
                 array,
                 i,
                 j + 1,
@@ -749,7 +749,7 @@ class Catchment:
             position.append([i - 1, j + 1])
             values.append(array[i - 1, j + 1])
             cluster[i - 1, j + 1] = count
-            Catchment.GroupNeighbours(
+            Catchment.groupNeighbours(
                 array,
                 i - 1,
                 j + 1,
@@ -769,7 +769,7 @@ class Catchment:
             position.append([i - 1, j])
             values.append(array[i - 1, j])
             cluster[i - 1, j] = count
-            Catchment.GroupNeighbours(
+            Catchment.groupNeighbours(
                 array,
                 i - 1,
                 j,
@@ -790,7 +790,7 @@ class Catchment:
             position.append([i - 1, j - 1])
             values.append(array[i - 1, j - 1])
             cluster[i - 1, j - 1] = count
-            Catchment.GroupNeighbours(
+            Catchment.groupNeighbours(
                 array,
                 i - 1,
                 j - 1,
@@ -810,7 +810,7 @@ class Catchment:
             position.append([i, j - 1])
             values.append(array[i, j - 1])
             cluster[i, j - 1] = count
-            Catchment.GroupNeighbours(
+            Catchment.groupNeighbours(
                 array,
                 i,
                 j - 1,
@@ -831,7 +831,7 @@ class Catchment:
             position.append([i + 1, j - 1])
             values.append(array[i + 1, j - 1])
             cluster[i + 1, j - 1] = count
-            Catchment.GroupNeighbours(
+            Catchment.groupNeighbours(
                 array,
                 i + 1,
                 j - 1,
@@ -844,7 +844,7 @@ class Catchment:
             )
 
     @staticmethod
-    def Cluster(Data, LowerValue, UpperValue):
+    def cluster(Data, LowerValue, UpperValue):
         """
         Cluster method group all the connected values between two numbers in
         a raster in clusters
@@ -879,7 +879,7 @@ class Catchment:
             for j in range(Data.shape[1]):
 
                 if LowerValue <= Data[i, j] <= UpperValue and cluster[i, j] == 0:
-                    Catchment.GroupNeighbours(
+                    Catchment.groupNeighbours(
                         Data,
                         i,
                         j,
@@ -898,7 +898,7 @@ class Catchment:
 
         return cluster, count, position, values
 
-    def ListAttributes(self):
+    def listAttributes(self):
         """
         Print Attributes List
         """

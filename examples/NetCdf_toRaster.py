@@ -18,7 +18,7 @@ FileName = ParentPath + "/data/GIS/MSWEP_1979010100.nc"
 SaveTo = ParentPath + "/data/GIS/"
 VarName = None
 
-Raster.NCtoTiff(FileName, SaveTo, Separator="_")
+Raster.nctoTiff(FileName, SaveTo, Separator="_")
 
 # %plot
 
@@ -35,7 +35,7 @@ plt.show()
 FileName = ParentPath + "/data/GIS/precip.1979.nc"
 SaveTo = ParentPath + "/data/GIS/Save_prec_netcdf_multiple/"
 
-Raster.NCtoTiff(FileName, SaveTo, Separator=".")
+Raster.nctoTiff(FileName, SaveTo, Separator=".")
 # %% list of files
 Path = ParentPath + "/data/GIS/netcdf files/"
 SaveTo = ParentPath + "/data/GIS/Save_prec_netcdf_multiple/"
@@ -44,4 +44,4 @@ files = os.listdir(Path)
 Paths = [Path + i for i in files]
 for i in range(len(files)):
     FileName = Path + "/" + files[i]
-    Raster.NCtoTiff(FileName, SaveTo, Separator=".")
+    Raster.nctoTiff(FileName, SaveTo, Separator=".")

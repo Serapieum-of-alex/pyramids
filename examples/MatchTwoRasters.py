@@ -42,7 +42,7 @@ Dst_Array = dst.ReadAsArray()
 print("Shape of distnation raster Before matching = " + str(Dst_Array.shape))
 
 ### Match the alignment of both rasters
-NewRasterB = Raster.MatchRasterAlignment(src, dst)
+NewRasterB = Raster.matchRasterAlignment(src, dst)
 
 NewRasterB_array = NewRasterB.ReadAsArray()
 print("Shape of distnation  raster after matching = " + str(NewRasterB_array.shape))
@@ -69,4 +69,4 @@ assert (
 # g = src_Array[src_Array == NoDataValue]
 
 #%%
-Raster.SaveRaster(NewRasterB_ND, SaveTo)
+Raster.saveRaster(NewRasterB_ND, SaveTo)

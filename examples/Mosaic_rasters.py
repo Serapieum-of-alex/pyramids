@@ -25,7 +25,7 @@ print(filelist)
 # glob function can be used to list files from a directory with specific criteria
 dem_fps = glob.glob(filelist)
 
-dst, dst_meta = Raster.Mosaic(dem_fps, Save=True, Path=out_fp)
+dst, dst_meta = Raster.mosaic(dem_fps, Save=True, Path=out_fp)
 
 # Plot the result
 show(dst, cmap="terrain")
