@@ -187,15 +187,15 @@ def rasters_folder_between_dates_raster_number() -> int:
 
 @pytest.fixture(scope="module")
 def basin_polygon() -> gpd.GeoDataFrame:
-    return gpd.read_file("examples/data/basin.geojson")
+    return gpd.read_file("tests/data/basin.geojson")
 
 @pytest.fixture(scope="module")
 def ascii_file_path() -> str:
-    return "examples/data/asci_example.asc"
+    return "tests/data/asci_example.asc"
 
 @pytest.fixture(scope="module")
 def ascii_file_save_to() -> str:
-    return "examples/data/asci_write_test.asc"
+    return "tests/data/asci_write_test.asc"
 
 @pytest.fixture(scope="module")
 def ascii_shape() -> tuple:

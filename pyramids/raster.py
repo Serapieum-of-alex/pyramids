@@ -23,8 +23,8 @@ import numpy as np
 import pandas as pd
 import pyproj
 import rasterio
-import rasterio.mask
-import rasterio.merge
+# import rasterio.mask
+# import rasterio.merge
 # import glob
 import scipy.interpolate
 import scipy.misc as misc

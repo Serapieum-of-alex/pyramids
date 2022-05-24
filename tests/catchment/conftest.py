@@ -11,7 +11,7 @@ from pandas import DataFrame
 
 @pytest.fixture(scope="module")
 def points() -> DataFrame:
-    return pd.read_csv("examples/data/points.csv")
+    return pd.read_csv("tests/data/points.csv")
 
 
 @pytest.fixture(scope="module")
