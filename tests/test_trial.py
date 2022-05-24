@@ -3,7 +3,7 @@ import os
 import geopandas as gpd
 
 
-def basin_polygon():
+def test_basin_polygon():
     print(os.getcwd())
     print(os.listdir())
     print(os.listdir("tests/"))
