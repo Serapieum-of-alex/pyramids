@@ -18,6 +18,7 @@ import zipfile
 from typing import Any, Dict, List, Tuple, Union
 
 import geopandas as gpd
+from geopandas.geodataframe import GeoDataFrame
 import netCDF4
 import numpy as np
 import pandas as pd
@@ -299,11 +300,11 @@ class Raster:
 
     @staticmethod
     def createRaster(
-            Path: str="",
+            path: str = "",
             arr: Union[str, Dataset, np.ndarray] = "",
             geo: Union[str, tuple] = "",
-            EPSG: Union[str, int] = "",
-            NoDataValue: Any = -9999
+            epsg: Union[str, int] = "",
+            nodatavalue: Any = -9999
     ) -> Union[Dataset, None]:
         """CreateRaster.
 
@@ -312,33 +313,33 @@ class Raster:
 
         Parameters
         ----------
-        1- Path : [str], optional
+        path : [str], optional
             Path to save the Raster, if '' is given a memory raster will be returned. The default is ''.
-        2- arr : [array], optional
+        arr : [array], optional
             numpy array. The default is ''.
-        3- geo : [list], optional
+        geo : [list], optional
             geotransform list [minimum lon, pixelsize, rotation, maximum lat, rotation,
                 pixelsize]. The default is ''.
-        4- NoDataValue : TYPE, optional
+        nodatavalue : TYPE, optional
             DESCRIPTION. The default is -9999.
-        5- EPSG: [integer]
+        epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator )
 
         Returns
         -------
-        1- dst : [gdal.Dataset/save raster to drive].
+        dst : [gdal.Dataset/save raster to drive].
             if a path is given the created raster will be saved to drive, if not
             a gdal.Dataset will be returned.
         """
-        if np.isnan(NoDataValue):
-            NoDataValue = -9999
+        if np.isnan(nodatavalue):
+            nodatavalue = -9999
 
-        if Path == "":
+        if path == "":
             driver_type = "MEM"
             compress = []
         else:
-            if not isinstance(Path, str):
+            if not isinstance(path, str):
                 raise TypeError("first parameter Path should be string")
 
             driver_type = "GTiff"
@@ -346,40 +347,40 @@ class Raster:
 
         driver = gdal.GetDriverByName(driver_type)
         dst_ds = driver.Create(
-            Path, int(arr.shape[1]), int(arr.shape[0]), 1, gdal.GDT_Float32, compress
+            path, int(arr.shape[1]), int(arr.shape[0]), 1, gdal.GDT_Float32, compress
         )
         srse = osr.SpatialReference()
 
-        if EPSG == "":
+        if epsg == "":
             # if no epsg assume WGS 94 (4326)
             srse.SetWellKnownGeogCS("WGS84")
         else:
             try:
-                if not srse.SetWellKnownGeogCS(EPSG) == 6:
-                    srse.SetWellKnownGeogCS(EPSG)
+                if not srse.SetWellKnownGeogCS(epsg) == 6:
+                    srse.SetWellKnownGeogCS(epsg)
                 else:
                     try:
-                        srse.ImportFromEPSG(int(EPSG))
+                        srse.ImportFromEPSG(int(epsg))
                     except:
-                        srse.ImportFromWkt(EPSG)
+                        srse.ImportFromWkt(epsg)
             except:
                 try:
-                    srse.ImportFromEPSG(int(EPSG))
+                    srse.ImportFromEPSG(int(epsg))
                 except:
-                    srse.ImportFromWkt(EPSG)
+                    srse.ImportFromWkt(epsg)
 
         dst_ds.SetProjection(srse.ExportToWkt())
         try:
             # if the nodata value gives error because of the type.
-            dst_ds.GetRasterBand(1).SetNoDataValue(NoDataValue)
+            dst_ds.GetRasterBand(1).SetNoDataValue(nodatavalue)
         except TypeError:
             # TypeError: in method 'Band_SetNoDataValue', argument 2 of type 'double'
-            dst_ds.GetRasterBand(1).SetNoDataValue(np.float64(NoDataValue))
+            dst_ds.GetRasterBand(1).SetNoDataValue(np.float64(nodatavalue))
 
         dst_ds.SetGeoTransform(geo)
         dst_ds.GetRasterBand(1).WriteArray(arr)
 
-        if Path == "":
+        if path == "":
             return dst_ds
         else:
             dst_ds = None
@@ -391,7 +392,7 @@ class Raster:
             src: Dataset,
             array: np.ndarray,
             path: str,
-            pixel_type: int=1
+            pixel_type: int = 1
     ) -> None:
         """RasterLike.
 
@@ -402,32 +403,32 @@ class Raster:
 
         Parameters
         ----------
-            1- src : [gdal.dataset]
-                source raster to get the spatial information
-            2- array : [numpy array]
-                to store in the new raster
-            3- path : [String]
-                path to save the new raster including new raster name and extension (.tif)
-            4-pixel_type : [integer]
-                type of the data to be stored in the pixels,default is 1 (float32)
-                for example pixel type of flow direction raster is unsigned integer
-                1 for float32
-                2 for float64
-                3 for Unsigned integer 16
-                4 for Unsigned integer 32
-                5 for integer 16
-                6 for integer 32
+        src : [gdal.dataset]
+            source raster to get the spatial information
+        array : [numpy array]
+            to store in the new raster
+        path : [String]
+            path to save the new raster including new raster name and extension (.tif)
+        pixel_type : [integer]
+            type of the data to be stored in the pixels,default is 1 (float32)
+            for example pixel type of flow direction raster is unsigned integer
+            1 for float32
+            2 for float64
+            3 for Unsigned integer 16
+            4 for Unsigned integer 32
+            5 for integer 16
+            6 for integer 32
 
         Returns
         -------
-            1- save the new raster to the given path
+            save the new raster to the given path
 
         Example
         -------
-            >>> data = np.load("RAIN_5k.npy")
-            >>> src = gdal.Open("DEM.tif")
-            >>> name = "rain.tif"
-            >>> Raster.rasterLike(src,data,name)
+        >>> data = np.load("RAIN_5k.npy")
+        >>> src_raster = gdal.Open("DEM.tif")
+        >>> name = "rain.tif"
+        >>> Raster.rasterLike(src_raster, data, name)
         """
         if not isinstance(src, gdal.Dataset):
             raise TypeError("src should be read using gdal (gdal dataset please read it using gdal library) ")
@@ -506,20 +507,20 @@ class Raster:
 
         Parameters
         ----------
-            1-src : [gdal.dataset]
-                source raster to that you want to make some calculation on its values
-            3-function:
-                defined function that takes one input which is the cell value
+        src : [gdal.dataset]
+            source raster to that you want to make some calculation on its values
+        fun:
+            defined function that takes one input which is the cell value
 
         Returns
         -------
-            Dataset
+        Dataset
 
         Examples
         --------
-            >>> A=gdal.Open(evap.tif)
-            >>> func=np.abs
-            >>> new_raster=MapAlgebra(A,func)
+        >>> src_raster = gdal.Open("evap.tif")
+        >>> func = np.abs
+        >>> new_raster = Raster.mapAlgebra(src_raster, func)
         """
         # input data validation
         # data type
@@ -566,8 +567,8 @@ class Raster:
     @staticmethod
     def rasterFill(
             src: Dataset,
-            Val: Union[float, int],
-            SaveTo: str
+            val: Union[float, int],
+            save_to: str
     ) -> None:
         """RasterFill.
 
@@ -575,19 +576,18 @@ class Raster:
 
         Parameters
         ----------
-            1- src : [gdal.dataset]
-                source raster
-            2- Val: [numeric]
-                numeric value
-            3- SaveTo : [str]
-                path including the extension (.tif)
+        src : [gdal.dataset]
+            source raster
+        val: [numeric]
+            numeric value
+        save_to : [str]
+            path including the extension (.tif)
 
         Returns
         -------
-            1- raster : [saved on disk]
-                the raster will be saved directly to the path you provided.
+        raster : [saved on disk]
+            the raster will be saved directly to the path you provided.
         """
-
         assert isinstance(
             src, gdal.Dataset
         ), "src should be read using gdal (gdal dataset please read it using gdal library) "
@@ -599,12 +599,12 @@ class Raster:
             NoDataVal = np.nan
 
         if not np.isnan(NoDataVal):
-            src_array[~np.isclose(src_array, NoDataVal, rtol=0.001)] = Val
+            src_array[~np.isclose(src_array, NoDataVal, rtol=0.001)] = val
         else:
-            src_array[~np.isnan(src_array)] = Val
+            src_array[~np.isnan(src_array)] = val
         # TODO : make this function returns the resulted raster
-        #  if the SaveTo parameter is empty
-        Raster.rasterLike(src, src_array, SaveTo, pixel_type=1)
+        #  if the save_to parameter is empty
+        Raster.rasterLike(src, src_array, save_to, pixel_type=1)
 
 
     @staticmethod
@@ -705,9 +705,9 @@ class Raster:
     @staticmethod
     def projectRaster(
             src: Dataset,
-            to_epsg,
-            resample_technique="Nearest",
-            Option=2
+            to_epsg: int,
+            resample_technique = "Nearest",
+            option: int = 2
     ) -> Dataset:
         """ProjectRaster.
 
@@ -727,17 +727,17 @@ class Raster:
             https://gisgeography.com/raster-resampling/
             "Nearest" for nearest neighbour,"cubic" for cubic convolution,
             "bilinear" for bilinear
-        Option : [1 or 2]
+        option : [1 or 2]
             option 2 uses the gda.wrap function, option 1 uses the gda.ReprojectImage function
 
         Returns
         -------
-            1-raster:
-                gdal dataset (you can read it by ReadAsArray)
+        raster:
+            gdal dataset (you can read it by ReadAsArray)
 
-        Example :
-        ----------
-            projected_raster=project_dataset(src, to_epsg=3857)
+        Examples
+        --------
+        >>> projected_raster = Raster.projectRaster(src, to_epsg=3857)
         """
         # input data validation
         # data type
@@ -758,7 +758,7 @@ class Raster:
         elif resample_technique == "bilinear":
             resample_technique = gdal.GRA_Bilinear
 
-        if Option == 1:
+        if option == 1:
             # GET PROJECTION
             src_proj = src.GetProjection()
             # GET THE GEOTRANSFORM
@@ -868,9 +868,9 @@ class Raster:
     @staticmethod
     def reprojectDataset(
             src: Dataset,
-            to_epsg: int=3857,
-            cell_size=[],
-            resample_technique: str="Nearest"
+            to_epsg: int = 3857,
+            cell_size = [],
+            resample_technique: str = "Nearest"
     ):
         """ReprojectDataset.
 
@@ -1251,7 +1251,7 @@ class Raster:
     def cropAlligned(
             src: Union[Dataset, np.ndarray],
             mask: Union[Dataset, np.ndarray],
-            mask_noval: Union[int, float]=None
+            mask_noval: Union[int, float] = None
     ) -> Union[np.ndarray, Dataset]:
         """CropAlligned.
 
@@ -1262,20 +1262,20 @@ class Raster:
 
         Parameters
         ----------
-            1-src : [gdal.dataset/np.ndarray]
-                raster you want to clip/store NoDataValue in its cells
-                exactly the same like mask raster
-            2-mask : [gdal.dataset/np.ndarray]
-                mask raster to get the location of the NoDataValue and
-                where it is in the array
-            3-mask_noval : [numeric]
-                in case the mask is np.ndarray, the mask_noval have to be given.
+        src : [gdal.dataset/np.ndarray]
+            raster you want to clip/store NoDataValue in its cells
+            exactly the same like mask raster
+        mask : [gdal.dataset/np.ndarray]
+            mask raster to get the location of the NoDataValue and
+            where it is in the array
+        mask_noval : [numeric]
+            in case the mask is np.ndarray, the mask_noval have to be given.
 
         Returns
         -------
-            1- dst:
-                [gdal.dataset] the second raster with NoDataValue stored in its cells
-                exactly the same like src raster
+        dst:
+            [gdal.dataset] the second raster with NoDataValue stored in its cells
+            exactly the same like src raster
         """
         # if the mask object is raster
         if isinstance(mask, gdal.Dataset):
@@ -1403,7 +1403,7 @@ class Raster:
     @staticmethod
     def cropAlignedFolder(
             src_dir: str,
-            Mask: Union[Dataset, str],
+            mask: Union[Dataset, str],
             saveto: str,
     ) -> None:
         """CropAlignedFolder.
@@ -1419,7 +1419,7 @@ class Raster:
             path of the folder of the rasters you want to set Nodata Value
             on the same location of NodataValue of Raster A, the folder should
             not have any other files except the rasters
-        Mask : [String/gdal.Dataset]
+        mask : [String/gdal.Dataset]
             path/gdal.Dataset of the mask raster to crop the rasters (to get the NoData value
             and it location in the array) Mask should include the name of the raster and the
             extension like "data/dem.tif", or you can read the mask raster using gdal and use
@@ -1430,29 +1430,29 @@ class Raster:
 
         Returns
         -------
-        1- new rasters have the values from rasters in B_input_path with the NoDataValue in the same
+        new rasters have the values from rasters in B_input_path with the NoDataValue in the same
         locations like raster A
 
         Examples
         --------
-            >>> dem_path = "examples/GIS/data/acc4000.tif"
-            >>> src_path = "examples/GIS/data/aligned_rasters/"
-            >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-            >>> Raster.cropAlignedFolder(dem_path, src_path, out_path)
+        >>> dem_path = "examples/GIS/data/acc4000.tif"
+        >>> src_path = "examples/GIS/data/aligned_rasters/"
+        >>> out_path = "examples/GIS/data/crop_aligned_folder/"
+        >>> Raster.cropAlignedFolder(dem_path, src_path, out_path)
         """
         # if the mask is a string
-        if isinstance(Mask, str):
+        if isinstance(mask, str):
             # check wether the path exists or not
-            if not os.path.exists(Mask):
+            if not os.path.exists(mask):
                 raise FileNotFoundError("source raster you have provided does not exist")
 
-            ext = Mask[-4:]
+            ext = mask[-4:]
             if not ext == ".tif":
                 raise TypeError("Please add the extension '.tif' at the end of the mask input")
 
-            mask = gdal.Open(Mask)
+            mask = gdal.Open(mask)
         else:
-            mask = Mask
+            mask = mask
 
         # assert isinstance(Mask_path, str), "Mask_path input should be string type"
         if not isinstance(src_dir, str):
@@ -1487,9 +1487,9 @@ class Raster:
     @staticmethod
     def crop(
             src: Union[Dataset, str],
-            Mask: Union[Dataset, str],
-            OutputPath: str="",
-            Save: bool=False,
+            mask: Union[Dataset, str],
+            output_path: str="",
+            save: bool=False,
             # Resample: bool=True
     ):
         """Crop.
@@ -1500,27 +1500,27 @@ class Raster:
         -----------
         src: [string/gdal.Dataset]
             the raster you want to crop as a path or a gdal object
-        Mask : [string/gdal.Dataset]
+        mask : [string/gdal.Dataset]
             the raster you want to use as a mask to crop other raster,
             the mask can be also a path or a gdal object.
-        OutputPath : [string]
+        output_path : [string]
             if you want to save the cropped raster directly to disk
             enter the value of the OutputPath as the path.
-        Save : [boolen]
+        save : [boolen]
             True if you want to save the cropped raster directly to disk.
 
         Returns
         -------
-            1- dst : [gdal.Dataset]
-                the cropped raster will be returned, if the Save parameter was True,
-                the cropped raster will also be saved to disk in the OutputPath
-                directory.
+        dst : [gdal.Dataset]
+            the cropped raster will be returned, if the Save parameter was True,
+            the cropped raster will also be saved to disk in the OutputPath
+            directory.
         """
         # get information from the mask raster
-        if isinstance(Mask, str):
-            mask = gdal.Open(Mask)
-        elif isinstance(Mask, gdal.Dataset):
-            mask = Mask
+        if isinstance(mask, str):
+            mask = gdal.Open(mask)
+        elif isinstance(mask, gdal.Dataset):
+            mask = mask
         else:
             print("Second parameter has to be either path to the mask raster"
                 "or a gdal.Dataset object")
@@ -1573,18 +1573,18 @@ class Raster:
         #     gdal.ReprojectImage(Reprojected_src, dst, mask_epsg.ExportToWkt(), mask_epsg.ExportToWkt(),
         #                         resample_technique)
 
-        if Save:
-            Raster.saveRaster(dst, OutputPath)
+        if save:
+            Raster.saveRaster(dst, output_path)
 
         return dst
 
 
     @staticmethod
     def clipRasterWithPolygon(
-            raster_path,
-            shapefile_path,
-            save=False,
-            output_path=None
+            raster_path: str,
+            shapefile_path: str,
+            save: bool = False,
+            output_path: str = None
     ):
         """ClipRasterWithPolygon.
 
@@ -1732,9 +1732,9 @@ class Raster:
     @staticmethod
     def clip2(
             src,
-            poly,
-            save=False,
-            output_path="masked.tif"
+            poly: GeoDataFrame,
+            save: bool = False,
+            output_path: str = "masked.tif"
     ):
         """Clip2.
 
@@ -1826,7 +1826,10 @@ class Raster:
 
 
     @staticmethod
-    def changeNoDataValue(src, dst):
+    def changeNoDataValue(
+            src: Dataset,
+            dst: Dataset
+    ):
         """ChangeNoDataValue.
 
         ChangeNoDataValue changes the cells of nodata value in a dst raster to match
@@ -1834,18 +1837,18 @@ class Raster:
 
         Parameters
         ----------
-            1-src:
-                [gdal.dataset] source raster to get the location of the NoDataValue and
-                where it is in the array
-            1-dst:
-                [gdal.dataset] raster you want to store NoDataValue in its cells
-                exactly the same like src raster
+        src: [gdal.dataset]
+            source raster to get the location of the NoDataValue and
+            where it is in the array
+        dst: [gdal.dataset]
+            raster you want to store NoDataValue in its cells
+            exactly the same like src raster
 
         Returns
         -------
-            1- dst:
-                [gdal.dataset] the second raster with NoDataValue stored in its cells
-                exactly the same like src raster
+        dst: [gdal.dataset]
+            the second raster with NoDataValue stored in its cells
+            exactly the same like src raster
         """
         # input data validation
         # data type
@@ -1896,35 +1899,35 @@ class Raster:
     @staticmethod
     def matchRasterAlignment(
             alignment_src: Union[Dataset, str],
-            RasterB: Union[Dataset, str]
+            data_src: Union[Dataset, str]
     ) -> Dataset:
         """MatchRasterAlignment.
 
         MatchRasterAlignment method matches the coordinate system and the number of of rows & columns
         between two rasters
         alignment_src is the source of the coordinate system, number of rows, number of columns & cell size
-        RasterB is the source of data values in cells
+        data_src is the source of data values in cells
         the result will be a raster with the same structure like alignment_src but with
-        values from RasterB using Nearest Neighbour interpolation algorithm
+        values from data_src using Nearest Neighbour interpolation algorithm
 
         Parameters
         ----------
-            1- alignment_src : [gdal.dataset/string]
-                spatial information source raster to get the spatial information
-                (coordinate system, no of rows & columns)
-            2- RasterB : [gdal.dataset/string]
-                data values source raster to get the data (values of each cell)
+        alignment_src : [gdal.dataset/string]
+            spatial information source raster to get the spatial information
+            (coordinate system, no of rows & columns)
+        data_src : [gdal.dataset/string]
+            data values source raster to get the data (values of each cell)
 
         Returns
         -------
-            1- dst : [gdal.dataset]
-                result raster in memory
+        dst : [gdal.dataset]
+            result raster in memory
 
         Examples
         --------
-            >>> A = gdal.Open("examples/GIS/data/acc4000.tif")
-            >>> B = gdal.Open("examples/GIS/data/soil_raster.tif")
-            >>> RasterBMatched = Raster.matchRasterAlignment(A,B)
+        >>> A = gdal.Open("examples/GIS/data/acc4000.tif")
+        >>> B = gdal.Open("examples/GIS/data/soil_raster.tif")
+        >>> RasterBMatched = Raster.matchRasterAlignment(A,B)
         """
         if isinstance(alignment_src, gdal.Dataset):
             src = alignment_src
@@ -1934,13 +1937,13 @@ class Raster:
             raise TypeError("First parameter should be a raster read using gdal (gdal dataset please read it "
                             f"using gdal library) or a path to the raster, given {type(alignment_src)}")
 
-        if isinstance(RasterB, gdal.Dataset):
-            RasterB = RasterB
-        elif isinstance(RasterB, str):
-            RasterB = gdal.Open(RasterB)
+        if isinstance(data_src, gdal.Dataset):
+            RasterB = data_src
+        elif isinstance(data_src, str):
+            RasterB = gdal.Open(data_src)
         else:
             raise TypeError("Second parameter should be a raster read using gdal (gdal dataset please read it "
-                            f"using gdal library) or a path to the raster, given {type(RasterB)}")
+                            f"using gdal library) or a path to the raster, given {type(data_src)}")
 
         # we need number of rows and cols from src A and data from src B to store both in dst
         src_proj = src.GetProjection()
@@ -1984,7 +1987,12 @@ class Raster:
 
 
     @staticmethod
-    def nearestNeighbour(array, Noval, rows, cols):
+    def nearestNeighbour(
+            array: np.ndarray,
+            nodatavalue: Union[float, int],
+            rows: list,
+            cols: list
+    ):
         """
         this function filles cells of a given indices in rows and cols with
         the value of the nearest neighbour.
@@ -1995,28 +2003,28 @@ class Raster:
 
         Parameters
         ----------
-            1-array:
-                [numpy.array] Array to fill some of its cells with Nearest value.
-            2-Noval:
-                [float32] value stored in cells that is out of the domain
-            3-rows:
-                [List] list of the row index of the cells you want to fill it with
-                nearest neighbour.
-            4-cols:
-                [List] list of the column index of the cells you want to fill it with
-                nearest neighbour.
+        array: [numpy.array]
+            Array to fill some of its cells with Nearest value.
+        nodatavalue: [float32]
+            value stored in cells that is out of the domain
+        rows: [List]
+            list of the row index of the cells you want to fill it with
+            nearest neighbour.
+        cols: [List]
+            list of the column index of the cells you want to fill it with
+            nearest neighbour.
 
-        Output:
-        ----------
-            - array:
-                [numpy array] Cells of given indices will be filled with value of the Nearest neighbour
+        Returns
+        -------
+        array: [numpy array]
+            Cells of given indices will be filled with value of the Nearest neighbour
 
-        Example:
-        ----------
-            - raster=gdal.opne("dem.tif")
-              rows=[3,12]
-              cols=[9,2]
-              new_array=NearestNeighbour(rasters, rows, cols)
+        Examples
+        --------
+        >>> raster = gdal.Open("dem.tif")
+        >>> rows = [3,12]
+        >>> cols = [9,2]
+        >>> new_array = Raster.nearestNeighbour(raster, rows, cols)
         """
         # input data validation
         # data type
@@ -2027,7 +2035,7 @@ class Raster:
         assert type(cols) == list, "cols input has to be of type list"
 
         #    array=raster.ReadAsArray()
-        #    Noval=np.float32(raster.GetRasterBand(1).GetNoDataValue())
+        #    nodatavalue=np.float32(raster.GetRasterBand(1).GetNoDataValue())
         #    no_rows=raster.RasterYSize
         no_rows = np.shape(array)[0]
         #    no_cols=raster.RasterXSize
@@ -2035,23 +2043,23 @@ class Raster:
 
         for i in range(len(rows)):
             # give the cell the value of the cell that is at the right
-            if array[rows[i], cols[i] + 1] != Noval and cols[i] + 1 <= no_cols:
+            if array[rows[i], cols[i] + 1] != nodatavalue and cols[i] + 1 <= no_cols:
                 array[rows[i], cols[i]] = array[rows[i], cols[i] + 1]
 
-            elif array[rows[i], cols[i] - 1] != Noval and cols[i] - 1 > 0:
+            elif array[rows[i], cols[i] - 1] != nodatavalue and cols[i] - 1 > 0:
                 # give the cell the value of the cell that is at the left
                 array[rows[i], cols[i]] = array[rows[i], cols[i] - 1]
 
-            elif array[rows[i] - 1, cols[i]] != Noval and rows[i] - 1 > 0:
+            elif array[rows[i] - 1, cols[i]] != nodatavalue and rows[i] - 1 > 0:
                 # give the cell the value of the cell that is at the bottom
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i]]
 
-            elif array[rows[i] + 1, cols[i]] != Noval and rows[i] + 1 <= no_rows:
+            elif array[rows[i] + 1, cols[i]] != nodatavalue and rows[i] + 1 <= no_rows:
                 # give the cell the value of the cell that is at the Top
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i]]
 
             elif (
-                    array[rows[i] - 1, cols[i] + 1] != Noval
+                    array[rows[i] - 1, cols[i] + 1] != nodatavalue
                     and rows[i] - 1 > 0
                     and cols[i] + 1 <= no_cols
             ):
@@ -2059,7 +2067,7 @@ class Raster:
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i] + 1]
 
             elif (
-                    array[rows[i] - 1, cols[i] - 1] != Noval
+                    array[rows[i] - 1, cols[i] - 1] != nodatavalue
                     and rows[i] - 1 > 0
                     and cols[i] - 1 > 0
             ):
@@ -2067,7 +2075,7 @@ class Raster:
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i] - 1]
 
             elif (
-                    array[rows[i] + 1, cols[i] - 1] != Noval
+                    array[rows[i] + 1, cols[i] - 1] != nodatavalue
                     and rows[i] + 1 <= no_rows
                     and cols[i] - 1 > 0
             ):
@@ -2075,7 +2083,7 @@ class Raster:
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i] - 1]
 
             elif (
-                    array[rows[i] + 1, cols[i] + 1] != Noval
+                    array[rows[i] + 1, cols[i] + 1] != nodatavalue
                     and rows[i] + 1 <= no_rows
                     and cols[i] + 1 <= no_cols
             ):
@@ -2088,8 +2096,8 @@ class Raster:
 
     @staticmethod
     def readASCII(
-            ASCIIFile: str,
-            pixel_type: int=1
+            ascii_file: str,
+            pixel_type: int = 1
     ) -> Tuple[np.ndarray, tuple]:
         """ReadASCII.
 
@@ -2097,48 +2105,48 @@ class Raster:
 
         Parameters
         ----------
-            ASCIIFile: [str]
-                name of the ASCII file you want to convert and the name
-                should include the extension ".asc"
-            pixel_type: [Integer]
-                type of the data to be stored in the pixels,default is 1 (float32)
-                for example pixel type of flow direction raster is unsigned integer
-                1 for float32
-                2 for float64
-                3 for Unsigned integer 16
-                4 for Unsigned integer 32
-                5 for integer 16
-                6 for integer 32
+        ascii_file: [str]
+            name of the ASCII file you want to convert and the name
+            should include the extension ".asc"
+        pixel_type: [Integer]
+            type of the data to be stored in the pixels,default is 1 (float32)
+            for example pixel type of flow direction raster is unsigned integer
+            1 for float32
+            2 for float64
+            3 for Unsigned integer 16
+            4 for Unsigned integer 32
+            5 for integer 16
+            6 for integer 32
 
         Returns
         -------
-            ASCIIValues: [numpy array]
-                2D arrays containing the values stored in the ASCII file
-            ASCIIDetails: [List]
-                list of the six spatial information of the ASCII file
-                [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-                CellSize, NoValue]
+        ascii_values: [numpy array]
+            2D arrays containing the values stored in the ASCII file
+        ascii_details: [List]
+            list of the six spatial information of the ASCII file
+            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+            CellSize, NoValue]
 
         Examples
         --------
-            >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
+        >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
         """
-        if not isinstance(ASCIIFile, str):
-            raise TypeError("ASCIIFile input should be string type")
+        if not isinstance(ascii_file, str):
+            raise TypeError("ascii_file input should be string type")
 
         if not isinstance(pixel_type, int):
             raise TypeError("pixel type input should be integer type please check documentations")
 
         # input values
-        ASCIIExt = ASCIIFile[-4:]
+        ASCIIExt = ascii_file[-4:]
         if not ASCIIExt == ".asc":
             raise ValueError("please add the extension at the end of the path input")
 
-        if not os.path.exists(ASCIIFile):
+        if not os.path.exists(ascii_file):
             raise FileNotFoundError("ASCII file path you have provided does not exist")
 
         ### read the ASCII file
-        File = open(ASCIIFile)
+        File = open(ascii_file)
         Wholefile = File.readlines()
         File.close()
 
@@ -2169,13 +2177,13 @@ class Raster:
 
 
     @staticmethod
-    def stringSpace(Inp):
-        return str(Inp) + "  "
+    def stringSpace(inp):
+        return str(inp) + "  "
 
 
     @staticmethod
     def writeASCII(
-            ASCIIFile: str,
+            ascii_file: str,
             geotransform: tuple,
             arr: np.ndarray
     ):
@@ -2185,16 +2193,16 @@ class Raster:
 
         Parameters
         ----------
-            ASCIIFile: [str]
-                name of the ASCII file you want to convert and the name
-                should include the extension ".asc"
-            geotransform: [tuple]
-                list of the six spatial information of the ASCII file
-                [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-                CellSize, NoValue]
-            arr: [np.ndarray]
-                [numpy array] 2D arrays containing the values stored in the ASCII
-                file
+        ascii_file: [str]
+            name of the ASCII file you want to convert and the name
+            should include the extension ".asc"
+        geotransform: [tuple]
+            list of the six spatial information of the ASCII file
+            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+            CellSize, NoValue]
+        arr: [np.ndarray]
+            [numpy array] 2D arrays containing the values stored in the ASCII
+            file
 
         Returns
         -------
@@ -2202,20 +2210,20 @@ class Raster:
 
         Examples
         --------
-            >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
+        >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
         """
-        if not isinstance(ASCIIFile, str):
-            raise TypeError("ASCIIFile input should be string type")
+        if not isinstance(ascii_file, str):
+            raise TypeError("ascii_file input should be string type")
 
         # input values
-        ASCIIExt = ASCIIFile[-4:]
+        ASCIIExt = ascii_file[-4:]
         if not ASCIIExt == ".asc":
             raise ValueError("please add the extension at the end of the path input")
 
         try:
-            File = open(ASCIIFile, "w")
+            File = open(ascii_file, "w")
         except FileExistsError:
-            raise FileExistsError(f"path you have provided does not exist please check {ASCIIFile}")
+            raise FileExistsError(f"path you have provided does not exist please check {ascii_file}")
 
         # write the the ASCII file details
         File.write("ncols         " + str(geotransform[1]) + "\n")
@@ -2235,11 +2243,11 @@ class Raster:
 
     @staticmethod
     def asciiToRaster(
-            ASCIIFile: str,
-            savePath: str,
-            pixel_type: int=1,
-            RasterFile=None,
-            epsg=None
+            ascii_file: str,
+            save_path: str,
+            pixel_type: int = 1,
+            raster_file = None,
+            epsg = None
     ):
         """ASCIItoRaster.
 
@@ -2250,91 +2258,92 @@ class Raster:
 
         Parameters
         ----------
-            ASCIIFile: [str]
-                name of the ASCII file you want to convert and the name
-                should include the extension ".asc"
-            savePath: [str]
-                path to save the new raster including new raster name and extension (.tif)
-            pixel_type: [int]
-                type of the data to be stored in the pixels,default is 1 (float32)
-                for example pixel type of flow direction raster is unsigned integer
-                1 for float32
-                2 for float64
-                3 for Unsigned integer 16
-                4 for Unsigned integer 32
-                5 for integer 16
-                6 for integer 32
+        ascii_file: [str]
+            name of the ASCII file you want to convert and the name
+            should include the extension ".asc"
+        save_path: [str]
+            path to save the new raster including new raster name and extension (.tif)
+        pixel_type: [int]
+            type of the data to be stored in the pixels,default is 1 (float32)
+            for example pixel type of flow direction raster is unsigned integer
+            1 for float32
+            2 for float64
+            3 for Unsigned integer 16
+            4 for Unsigned integer 32
+            5 for integer 16
+            6 for integer 32
 
-            RasterFile: [str]
-                source raster to get the spatial information, both ASCII
-                file and source raster should have the same number of rows, and
-                same number of columns default value is [None].
-            epsg:
-                EPSG stands for European Petroleum Survey Group and is an organization
-                that maintains a geodetic parameter database with standard codes,
-                the EPSG codes, for coordinate systems, datums, spheroids, units
-                and such alike (https://epsg.io/) default value is [None].
+        raster_file: [str]
+            source raster to get the spatial information, both ASCII
+            file and source raster should have the same number of rows, and
+            same number of columns default value is [None].
+
+        epsg:
+            EPSG stands for European Petroleum Survey Group and is an organization
+            that maintains a geodetic parameter database with standard codes,
+            the EPSG codes, for coordinate systems, datums, spheroids, units
+            and such alike (https://epsg.io/) default value is [None].
 
         Returns
         -------
-            a New Raster will be saved in the savePath containing the values
-            of the ASCII file
+        a New Raster will be saved in the savePath containing the values
+        of the ASCII file
 
         Example
         -------
-            1- ASCII to raster given a raster file:
-            >>> asc_file = "soiltype.asc"
-            >>> raster_file = "DEM.tif"
-            >>> save_to = "Soil_raster.tif"
-            >>> pixeltype = 1
-            >>> Raster.asciiToRaster(asc_file,  save_to, pixeltype, raster_file)
-            2- ASCII to Raster given an EPSG number
-            >>> asc_file = "soiltype.asc"
-            >>> save_to = "Soil_raster.tif"
-            >>> pixeltype = 1
-            >>> epsg_number = 4647
-            >>> Raster.asciiToRaster(asc_file, save_to, pixeltype, epsg = epsg_number)
+        1- ASCII to raster given a raster file:
+        >>> asc_file = "soiltype.asc"
+        >>> raster_file = "DEM.tif"
+        >>> save_to = "Soil_raster.tif"
+        >>> pixeltype = 1
+        >>> Raster.asciiToRaster(asc_file,  save_to, pixeltype, raster_file)
+        2- ASCII to Raster given an EPSG number
+        >>> asc_file = "soiltype.asc"
+        >>> save_to = "Soil_raster.tif"
+        >>> pixeltype = 1
+        >>> epsg_number = 4647
+        >>> Raster.asciiToRaster(asc_file, save_to, pixeltype, epsg = epsg_number)
         """
-        if not isinstance(ASCIIFile, str):
-            raise TypeError(f"ASCIIFile input should be string type - given{type(ASCIIFile)}")
+        if not isinstance(ascii_file, str):
+            raise TypeError(f"ascii_file input should be string type - given{type(ascii_file)}")
 
-        if not isinstance(savePath, str):
-            raise TypeError(f"savePath input should be string type - given {type(savePath)}")
+        if not isinstance(save_path, str):
+            raise TypeError(f"save_path input should be string type - given {type(save_path)}")
 
         if not isinstance(pixel_type, int):
             raise TypeError(f"pixel type input should be integer type please check documentations "
                             f"- given {pixel_type}")
 
         # input values
-        ASCIIExt = ASCIIFile[-4:]
+        ASCIIExt = ascii_file[-4:]
         if not ASCIIExt == ".asc":
             raise ValueError("please add the extension at the end of the path input")
 
 
         message = """ you have to enter one of the following inputs
-        - RasterFile : if you have a raster with the same spatial information
+        - raster_file : if you have a raster with the same spatial information
             (projection, coordinate system), and have the same number of rows,
             and columns
         - epsg : if you have the EPSG number (https://epsg.io/) refering to
             the spatial information of the ASCII file
         """
-        assert RasterFile is not None or epsg is not None, message
+        assert raster_file is not None or epsg is not None, message
 
         ### read the ASCII file
-        ASCIIValues, ASCIIDetails = Raster.readASCII(ASCIIFile, pixel_type)
+        ASCIIValues, ASCIIDetails = Raster.readASCII(ascii_file, pixel_type)
         ASCIIRows = ASCIIDetails[0]
         ASCIIColumns = ASCIIDetails[1]
 
         # check the optional inputs
-        if RasterFile is not None:
-            assert type(RasterFile) == str, "RasterFile input should be string type"
+        if raster_file is not None:
+            assert type(raster_file) == str, "raster_file input should be string type"
 
-            RasterExt = RasterFile[-4:]
+            RasterExt = raster_file[-4:]
             assert (
                     RasterExt == ".tif"
             ), "please add the extension at the end of the path input"
             # read the raster file
-            src = gdal.Open(RasterFile)
+            src = gdal.Open(raster_file)
             RasterColumns = src.RasterXSize
             RasterRows = src.RasterYSize
 
@@ -2342,7 +2351,7 @@ class Raster:
                     ASCIIRows == RasterRows and ASCIIColumns == RasterColumns
             ), " Data in both ASCII file and Raster file should have the same number of row and columns"
 
-            Raster.rasterLike(src, ASCIIValues, savePath, pixel_type)
+            Raster.rasterLike(src, ASCIIValues, save_path, pixel_type)
         elif epsg is not None:
             assert (
                     type(epsg) == int
@@ -2362,27 +2371,27 @@ class Raster:
 
             if pixel_type == 1:
                 dst = gdal.GetDriverByName("GTiff").Create(
-                    savePath, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float32
+                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float32
                 )
             elif pixel_type == 2:
                 dst = gdal.GetDriverByName("GTiff").Create(
-                    savePath, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float64
+                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float64
                 )
             elif pixel_type == 3:
                 dst = gdal.GetDriverByName("GTiff").Create(
-                    savePath, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt16
+                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt16
                 )
             elif pixel_type == 4:
                 dst = gdal.GetDriverByName("GTiff").Create(
-                    savePath, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt32
+                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt32
                 )
             elif pixel_type == 5:
                 dst = gdal.GetDriverByName("GTiff").Create(
-                    savePath, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int16
+                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int16
                 )
             elif pixel_type == 6:
                 dst = gdal.GetDriverByName("GTiff").Create(
-                    savePath, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int32
+                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int32
                 )
 
             dst.SetGeoTransform(dst_gt)
@@ -2395,30 +2404,34 @@ class Raster:
 
 
     @staticmethod
-    def mosaic(RasterList: list, Save: bool = False, Path: str = "MosaicedRaster.tif"):
-        """
+    def mosaic(
+            raster_list: list,
+            save: bool = False,
+            path: str = "MosaicedRaster.tif"):
+        """mosaic.
+
         Parameters
         ----------
-        RasterList : [list]
+        raster_list : [list]
             list of the raster files to mosaic.
-        Save : [Bool], optional
+        save : [Bool], optional
             to save the clipped raster to your drive. The default is False.
-        Path : [String], optional
+        path : [String], optional
             Path iincluding the extention (.tif). The default is 'MosaicedRaster.tif'.
 
         Returns
         -------
-            1- Mosaiced raster: [Rasterio object]
-                the whole mosaiced raster
-            2-metadata : [dictionay]
-                dictionary containing number of bands, coordinate reference system crs
-                dtype, geotransform, height and width of the raster
+        Mosaiced raster: [Rasterio object]
+            the whole mosaiced raster
+        metadata : [dictionay]
+            dictionary containing number of bands, coordinate reference system crs
+            dtype, geotransform, height and width of the raster
         """
         # List for the source files
         RasterioObjects = []
 
         # Iterate over raster files and add them to source -list in 'read mode'
-        for file in RasterList:
+        for file in raster_list:
             src = rasterio.open(file)
             RasterioObjects.append(src)
 
@@ -2439,17 +2452,18 @@ class Raster:
             }
         )
 
-        if Save:
+        if save:
             # Write the mosaic raster to disk
-            with rasterio.open(Path, "w", **dst_meta) as dest:
+            with rasterio.open(path, "w", **dst_meta) as dest:
                 dest.write(dst)
 
         return dst, dst_meta
 
 
     @staticmethod
-    def readASCIIsFolder(path, pixel_type):
-        """
+    def readASCIIsFolder(path: str, pixel_type: int):
+        """readASCIIsFolder.
+
         this function reads rasters from a folder and creates a 3d arraywith the same
         2d dimensions of the first raster in the folder and len as the number of files
         inside the folder.
@@ -2458,27 +2472,27 @@ class Raster:
 
         Parameters
         ----------
-            1- path:
-                [String] path of the folder that contains all the rasters.
+        path: [String]
+            path of the folder that contains all the rasters.
+        pixel_type: [int]
 
         Returns
         -------
-            1- arr_3d:
-                [numpy.ndarray] 3d array contains arrays read from all rasters in the folder.
+        arr_3d: [numpy.ndarray]
+            3d array contains arrays read from all rasters in the folder.
 
-            2-ASCIIDetails:
-                [List] list of the six spatial information of the ASCII file
-                [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-                CellSize, NoValue]
-            3- files:
-                [list] list of names of all files inside the folder
+        ASCIIDetails: [List]
+            list of the six spatial information of the ASCII file
+            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+            CellSize, NoValue]
+        files: [list]
+            list of names of all files inside the folder
 
-        Example:
-        ----------
-            path = "ASCII folder/"
-            pixel_type = 1
-            ASCIIArray, ASCIIDetails, NameList = ReadASCIIsFolder(path, pixel_type)
-
+        Examples
+        --------
+        >>> raster_dir = "ASCII folder/"
+        >>> pixel_type = 1
+        >>> ASCIIArray, ASCIIDetails, NameList = Raster.readASCIIsFolder(raster_dir, pixel_type)
         """
         # input data validation
         # data type
@@ -2510,8 +2524,14 @@ class Raster:
 
         return arr_3d, ASCIIDetails, files
 
-
-    def asciiFoldertoRaster(path, savePath, pixel_type=1, RasterFile=None, epsg=None):
+    @staticmethod
+    def asciiFoldertoRaster(
+            path: str,
+            save_path: str,
+            pixel_type: int = 1,
+            Rraster_file = None,
+            epsg = None
+    ):
         """
         This function takes the path of a folder contains ASCII files and convert
         them into a raster format and in takes  all the spatial information
@@ -2519,58 +2539,52 @@ class Raster:
         and columns from raster file or you have to define the epsg corresponding
         to the you coordinate system and projection
 
-        Inputs:
-        =========
-            1-path:
-                [String] path to the folder containing the ASCII files
+        Parameters
+        ----------
+        path: [str]
+            [String] path to the folder containing the ASCII files
+        save_path:
+            [String] path to save the new raster including new raster name and extension (.tif)
+        pixel_type:
+            [Integer] type of the data to be stored in the pixels,default is 1 (float32)
+            for example pixel type of flow direction raster is unsigned integer
+            1 for float32
+            2 for float64
+            3 for Unsigned integer 16
+            4 for Unsigned integer 32
+            5 for integer 16
+            6 for integer 32
 
-            2-savePath:
-                [String] path to save the new raster including new raster name and extension (.tif)
+        Rraster_file:
+            [String] source raster to get the spatial information, both ASCII
+            file and source raster should have the same number of rows, and
+            same number of columns default value is [None].
 
-            3-pixel_type:
-                [Integer] type of the data to be stored in the pixels,default is 1 (float32)
-                for example pixel type of flow direction raster is unsigned integer
-                1 for float32
-                2 for float64
-                3 for Unsigned integer 16
-                4 for Unsigned integer 32
-                5 for integer 16
-                6 for integer 32
+        epsg:
+            EPSG stands for European Petroleum Survey Group and is an organization
+            that maintains a geodetic parameter database with standard codes,
+            the EPSG codes, for coordinate systems, datums, spheroids, units
+            and such alike (https://epsg.io/) default value is [None].
 
-            4-RasterFile:
-                [String] source raster to get the spatial information, both ASCII
-                file and source raster should have the same number of rows, and
-                same number of columns default value is [None].
+        Returns
+        -------
+        a New Raster will be saved in the savePath containing the values
+        of the ASCII file
 
-            5-epsg:
-                EPSG stands for European Petroleum Survey Group and is an organization
-                that maintains a geodetic parameter database with standard codes,
-                the EPSG codes, for coordinate systems, datums, spheroids, units
-                and such alike (https://epsg.io/) default value is [None].
-
-        Outputs:
-        =========
-            1- a New Raster will be saved in the savePath containing the values
-            of the ASCII file
-
-        Example:
-        =========
-            1- ASCII to raster given a raster file:
-                ASCIIFile = "soiltype.asc"
-                RasterFile = "DEM.tif"
-                savePath = "Soil_raster.tif"
-                pixel_type = 1
-                ASCIItoRaster(ASCIIFile,  savePath, pixel_type, RasterFile)
-            2- ASCII to Raster given an EPSG number
-                ASCIIFile = "soiltype.asc"
-                savePath = "Soil_raster.tif"
-                pixel_type = 1
-                epsg = 4647
-            ASCIIFoldertoRaster(path,savePath,pixel_type=5,epsg = epsg)
+        Examples
+        --------
+        ASCII to raster given a raster file:
+        >>> ascii_file = "soiltype.asc"
+        >>> RasterFile = "DEM.tif"
+        >>> savePath = "Soil_raster.tif"
+        >>> pixel_type = 1
+        >>> Raster.asciiFoldertoRaster(ascii_file,  savePath, pixel_type, RasterFile)
+        ASCII to Raster given an EPSG number
+        >>> ascii_file = "soiltype.asc"
+        >>> savePath = "Soil_raster.tif"
+        >>> pixel_type = 1
+        >>> Raster.asciiFoldertoRaster(path, savePath, pixel_type=5, epsg=4647)
         """
-
-        # input data validation
-        # data type
         assert type(path) == str, "A_path input should be string type"
         # input values
         # check wether the path exist or not
@@ -2590,14 +2604,18 @@ class Raster:
 
         for i in range(len(files)):
             ASCIIFile = path + "/" + files[i]
-            name = savePath + "/" + files[i].split(".")[0] + ".tif"
+            name = save_path + "/" + files[i].split(".")[0] + ".tif"
             Raster.asciiToRaster(
-                ASCIIFile, name, pixel_type, RasterFile=None, epsg=epsg
+                ASCIIFile, name, pixel_type, raster_file=None, epsg=epsg
             )
 
 
     @staticmethod
-    def rastersLike(src, array, path=None):
+    def rastersLike(
+            src: Dataset,
+            array: np.ndarray,
+            path: str=None
+    ):
         """
         this function creates a Geotiff raster like another input raster, new raster
         will have the same projection, coordinates or the top left corner of the original
@@ -2606,27 +2624,25 @@ class Raster:
 
         Parameters
         ----------
-            1- src:
-                [gdal.dataset] source raster to get the spatial information
-            2- array:
-                [numpy array] 3D array to be stores as a rasters, the dimensions should be
-                [rows, columns, timeseries length]
-            3- path:
-                [String] list of names to save the new rasters
-                like ["results/surfaceDischarge_2012_08_13_23.tif","results/surfaceDischarge_2012_08_14_00.tif"]
-                Default value is None
+        src: [gdal.dataset]
+            source raster to get the spatial information
+        array: [numpy array]
+            3D array to be stores as a rasters, the dimensions should be
+            [rows, columns, timeseries length]
+        path: [String]
+            list of names to save the new rasters
+            like ["results/surfaceDischarge_2012_08_13_23.tif","results/surfaceDischarge_2012_08_14_00.tif"]
+            Default value is None
 
         Returns
         -------
-            1- save the new raster to the given path
+            save the new raster to the given path
 
-        Ex:
-        ----------
-            data
-            src=gdal.Open("DEM.tif")
-            name=["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
-            RastersLike(src,data,name)
-
+        Examples
+        --------
+        >>> src_raster = gdal.Open("DEM.tif")
+        >>> name = ["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
+        >>> Raster.rastersLike(src_raster, data, name)
         """
         # input data validation
         # length of the 3rd dimension of the array
@@ -2661,58 +2677,63 @@ class Raster:
 
 
     @staticmethod
-    def matchDataAlignment(A_path, B_input_path, new_B_path):
-        """
+    def matchDataAlignment(
+            src_alignment: str,
+            rasters_dir: str,
+            save_to: str
+    ):
+        """matchDataAlignment.
+
         this function matches the coordinate system and the number of of rows & columns
         between two rasters
         Raster A is the source of the coordinate system, no of rows and no of columns & cell size
-        B_input_path is path to the folder where Raster B exist where  Raster B is
+        rasters_dir is path to the folder where Raster B exist where  Raster B is
         the source of data values in cells
         the result will be a raster with the same structure like RasterA but with
         values from RasterB using Nearest Neighbour interpolation algorithm
 
         Parameters
         ----------
-            1- A_path:
-                [String] path to the spatial information source raster to get the spatial information
-                (coordinate system, no of rows & columns) A_path should include the name of the raster
-                and the extension like "data/dem.tif"
-            2- B_input_path:
-                [String] path of the folder of the rasters (Raster B) you want to adjust their
-                no of rows, columns and resolution (alignment) like raster A
-                the folder should not have any other files except the rasters
-            3- new_B_path:
-                [String] [String] path where new rasters are going to be saved with exact
-                same old names
+        src_alignment: [String]
+            path to the spatial information source raster to get the spatial information
+            (coordinate system, no of rows & columns) src_alignment should include the name of the raster
+            and the extension like "data/dem.tif"
+        rasters_dir: [String]
+            path of the folder of the rasters (Raster B) you want to adjust their
+            no of rows, columns and resolution (alignment) like raster A
+            the folder should not have any other files except the rasters
+        save_to: [String]
+            path where new rasters are going to be saved with exact
+            same old names
 
         Returns
         -------
-            1- new rasters:
-                ٌRasters have the values from rasters in B_input_path with the same
+        new rasters:
+            ٌRasters have the values from rasters in rasters_dir with the same
             cell size, no of rows & columns, coordinate system and alignment like raster A
 
-        Example:
-        ----------
-            dem_path = "01GIS/inputs/4000/acc4000.tif"
-            prec_in_path = "02Precipitation/CHIRPS/Daily/"
-            prec_out_path = "02Precipitation/4km/"
-            MatchData(dem_path,prec_in_path,prec_out_path)
+        Examples
+        --------
+        >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
+        >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
+        >>> prec_out_path = "02Precipitation/4km/"
+        >>> Raster.matchDataAlignment(dem_path,prec_in_path,prec_out_path)
         """
         # input data validation
         # data type
-        assert type(A_path) == str, "A_path input should be string type"
-        assert type(B_input_path) == str, "B_input_path input should be string type"
-        assert type(new_B_path) == str, "new_B_path input should be string type"
+        assert type(src_alignment) == str, "src_alignment input should be string type"
+        assert type(rasters_dir) == str, "rasters_dir input should be string type"
+        assert type(save_to) == str, "save_to input should be string type"
         # input values
-        ext = A_path[-4:]
+        ext = src_alignment[-4:]
         assert ext == ".tif", "please add the extension at the end of the path input"
 
-        A = gdal.Open(A_path)
-        files_list = os.listdir(B_input_path)
+        A = gdal.Open(src_alignment)
+        files_list = os.listdir(rasters_dir)
         if "desktop.ini" in files_list:
             files_list.remove("desktop.ini")
 
-        print("New Path- " + new_B_path)
+        print("New Path- " + save_to)
         for i in range(len(files_list)):
             if files_list[i][-4:] == ".tif":
                 print(
@@ -2720,17 +2741,22 @@ class Raster:
                     + "/"
                     + str(len(files_list))
                     + " - "
-                    + new_B_path
+                    + save_to
                     + files_list[i]
                 )
-                B = gdal.Open(B_input_path + files_list[i])
+                B = gdal.Open(rasters_dir + files_list[i])
                 new_B = Raster.matchRasterAlignment(A, B)
-                Raster.saveRaster(new_B, new_B_path + files_list[i])
+                Raster.saveRaster(new_B, save_to + files_list[i])
 
 
     @staticmethod
-    def folderCalculator(folder_path, new_folder_path, function):
-        """
+    def folderCalculator(
+            rasters_dir: str,
+            save_to: str,
+            function
+    ):
+        """folderCalculator.
+
         this function matches the location of nodata value from src raster to dst
         raster
         Raster A is where the NoDatavalue will be taken and the location of this value
@@ -2739,46 +2765,46 @@ class Raster:
 
         Parameters
         ----------
-            1- folder_path:
-                [String] path of the folder of rasters you want to execute a certain function on all
-                of them
-            2- new_folder_path:
-                [String] path of the folder where resulted raster will be saved
-            3- function:
-                [function] callable function (builtin or user defined)
+        rasters_dir: [String]
+            path of the folder of rasters you want to execute a certain function on all
+            of them
+        save_to: [String]
+            path of the folder where resulted raster will be saved
+        function: [function]
+            callable function (builtin or user defined)
 
         Returns
         -------
-            1- new rasters will be saved to the new_folder_path
+        new rasters will be saved to the save_to
 
         Examples
         --------
-            def function(args):
-                A = args[0]
-                func=np.abs
-                path = args[1]
-                B=MapAlgebra(A,func)
-                SaveRaster(B,path)
+        >>> def func(args):
+        ...    A = args[0]
+        ...    funcion = np.abs
+        ...    path = args[1]
+        ...    B = Raster.mapAlgebra(A, funcion)
+        ...    Raster.saveRaster(B, path)
 
-            folder_path = "03Weather_Data/new/4km_f/evap/"
-            new_folder_path="03Weather_Data/new/4km_f/new_evap/"
-            FolderCalculator(folder_path,new_folder_path,function)
+        >>> rasters_dir = "03Weather_Data/new/4km_f/evap/"
+        >>> save_to = "03Weather_Data/new/4km_f/new_evap/"
+        >>> Raster.folderCalculator(rasters_dir, save_to, func)
         """
         # input data validation
         # data type
-        assert type(folder_path) == str, "A_path input should be string type"
-        assert type(new_folder_path) == str, "B_input_path input should be string type"
+        assert type(rasters_dir) == str, "A_path input should be string type"
+        assert type(save_to) == str, "B_input_path input should be string type"
         assert callable(function), "second argument should be a function"
 
-        assert os.path.exists(folder_path), (
-                folder_path + "the path you have provided does not exist"
+        assert os.path.exists(rasters_dir), (
+                rasters_dir + "the path you have provided does not exist"
         )
-        assert os.path.exists(new_folder_path), (
-                new_folder_path + "the path you have provided does not exist"
+        assert os.path.exists(save_to), (
+                save_to + "the path you have provided does not exist"
         )
         # check whether there are files or not inside the folder
-        assert os.listdir(folder_path) != "", (
-                folder_path + "the path you have provided is empty"
+        assert os.listdir(rasters_dir) != "", (
+                rasters_dir + "the path you have provided is empty"
         )
 
         # check if you can create the folder
@@ -2790,15 +2816,15 @@ class Raster:
         #     os.makedirs(os.path.join(os.environ['TEMP'],"AllignedRasters"))
 
         # get names of rasters
-        files_list = os.listdir(folder_path)
+        files_list = os.listdir(rasters_dir)
         if "desktop.ini" in files_list:
             files_list.remove("desktop.ini")
 
         # execute the function on each raster
         for i in range(len(files_list)):
             print(str(i + 1) + "/" + str(len(files_list)) + " - " + files_list[i])
-            B = gdal.Open(folder_path + files_list[i])
-            args = [B, new_folder_path + files_list[i]]
+            B = gdal.Open(rasters_dir + files_list[i])
+            args = [B, save_to + files_list[i]]
             function(args)
 
 
@@ -2810,7 +2836,7 @@ class Raster:
             end: str="",
             fmt: str="",
             freq: str="daily",
-            separator: str = "."
+            # separator: str = "."
     ):
         """ReadRastersFolder.
 
@@ -2845,13 +2871,13 @@ class Raster:
 
         Returns
         -------
-        1- arr_3d:
+        arr_3d:
             [numpy.ndarray] 3d array contains arrays read from all rasters in the folder.
 
         Example
         -------
-            >>> raster_folder = "examples/GIS/data/raster-folder"
-            >>> prec = Raster.readRastersFolder(raster_folder)
+        >>> raster_folder = "examples/GIS/data/raster-folder"
+        >>> prec = Raster.readRastersFolder(raster_folder)
         """
         # input data validation
         # data type
@@ -2950,42 +2976,52 @@ class Raster:
 
         return arr_3d
 
+    @staticmethod
+    def extractValues(
+            path: str,
+            exclude_value,
+            compressed: bool=True,
+            occupied_Cells_only: bool=True
+    ):
+        """extractValues.
 
-    def extractValues(Path, ExcludeValue, Compressed=True, OccupiedCellsOnly=True):
-        """
         this function is written to extract and return a list of all the values
         in a map
         #TODO (an ASCII for now to be extended later to read also raster)
-        Inputs:
-            1-Path
-                [String] a path includng the name of the ASCII and extention like
-                path="data/cropped.asc"
-            2-ExcludedValue:
-                [Numeric] values you want to exclude from exteacted values
-            3-Compressed:
-                [Bool] if the map you provided is compressed
+
+        Parameters
+        ----------
+        path: [String]
+            a path includng the name of the ASCII and extention like
+            path="data/cropped.asc"
+        exclude_value: [Numeric]
+            values you want to exclude from exteacted values
+        compressed: [Bool]
+             if the map you provided is compressed
+        occupied_Cells_only:
+
         """
         # input data validation
         # data type
-        assert type(Path) == str, "Path input should be string type" + str(Path)
-        assert type(Compressed) == bool, "Compressed input should be Boolen type"
+        assert type(path) == str, "path input should be string type" + str(path)
+        assert type(compressed) == bool, "compressed input should be Boolen type"
         # input values
         # check wether the path exist or not
-        assert os.path.exists(Path), "the path you have provided does not exist" + str(
-            Path
+        assert os.path.exists(path), "the path you have provided does not exist" + str(
+            path
         )
         # check wether the path has the extention or not
-        if Compressed:
-            assert Path.endswith(".zip"), "file" + Path + " should have .asc extension"
+        if compressed:
+            assert path.endswith(".zip"), "file" + path + " should have .asc extension"
         else:
-            assert Path.endswith(".asc"), "file" + Path + " should have .asc extension"
+            assert path.endswith(".asc"), "file" + path + " should have .asc extension"
 
         ExtractedValues = list()
 
         try:
             # open the zip file
-            if Compressed:
-                Compressedfile = zipfile.ZipFile(Path)
+            if compressed:
+                Compressedfile = zipfile.ZipFile(path)
                 # get the file name
                 fname = Compressedfile.infolist()[0]
                 # ASCIIF = Compressedfile.open(fname)
@@ -3001,18 +3037,18 @@ class Raster:
                     MapValues[i, :] = list(map(float, x))
 
             else:
-                MapValues, SpatialRef = Raster.readASCII(Path)
+                MapValues, SpatialRef = Raster.readASCII(path)
 
             # count nonzero cells
             NonZeroCells = np.count_nonzero(MapValues)
 
-            if OccupiedCellsOnly:
+            if occupied_Cells_only:
                 ExtractedValues = 0
                 return ExtractedValues, NonZeroCells
 
             # get the position of cells that is not zeros
-            rows = np.where(MapValues[:, :] != ExcludeValue)[0]
-            cols = np.where(MapValues[:, :] != ExcludeValue)[1]
+            rows = np.where(MapValues[:, :] != exclude_value)[0]
+            cols = np.where(MapValues[:, :] != exclude_value)[1]
 
         except:
             print("Error Opening the compressed file")

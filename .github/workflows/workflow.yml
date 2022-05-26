@@ -44,15 +44,22 @@ jobs:
           pwd
           $CONDA/bin/pytest --cov=pyramids --cov-report=xml
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+#      - name: Upload coverage to Codecov
+#        uses: codecov/codecov-action@v1
+#        with:
+#          token: ${{ secrets.CODECOV_TOKEN }}
+#          files: ./coverage1.xml,./coverage2.xml
+#          directory: ./coverage/reports/
+#          flags: unittests
+#          env_vars: OS,PYTHON
+#          name: codecov-umbrella
+#          fail_ci_if_error: true
+#          path_to_write_report: ./coverage/codecov_report.txt
+#          verbose: true
+
+      - name: Coveralls GitHub Action
+        uses: coverallsapp/github-action@1.1.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage1.xml,./coverage2.xml
           directory: ./coverage/reports/
-          flags: unittests
-          env_vars: OS,PYTHON
-          name: codecov-umbrella
-          fail_ci_if_error: true
-          path_to_write_report: ./coverage/codecov_report.txt
-          verbose: true

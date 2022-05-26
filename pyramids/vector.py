@@ -409,31 +409,31 @@ class Vector:
         return points
 
     @staticmethod
-    def combineGeometrics(Path1, Path2, Save=False, SavePath=None):
+    def combineGeometrics(path1, path2, save=False, save_path=None):
         """CombineGeometrics
 
         CombineGeometrics reads two shapefiles and combine them into one
         shapefile
 
-        inputs
+        Parameters
         ----------
-            1-Path1:
-                [String] a path includng the name of the shapefile and extention like
-                path="data/subbasins.shp"
+        path1:
+            [String] a path includng the name of the shapefile and extention like
+            path="data/subbasins.shp"
 
-            2-Path2:
-                [String] a path includng the name of the shapefile and extention like
-                path="data/subbasins.shp"
-            3-Save:
-                [Boolen] True if you want to save the result shapefile in a certain
-                path "SavePath"
-            3-SavePath:
-                [String] a path includng the name of the shapefile and extention like
-                path="data/subbasins.shp"
+        path2:
+            [String] a path includng the name of the shapefile and extention like
+            path="data/subbasins.shp"
+        save:
+            [Boolen] True if you want to save the result shapefile in a certain
+            path "SavePath"
+        save_path:
+            [String] a path includng the name of the shapefile and extention like
+            path="data/subbasins.shp"
 
-        Output:
-        ----------
-            1-SaveIng the shapefile or NewGeoDataFrame :
+        Returns
+        -------
+            SaveIng the shapefile or NewGeoDataFrame :
                 If you choose True in the "Save" input the function will save the
                 shapefile in the given "SavePath"
                 If you choose False in the "Save" input the function will return a
@@ -441,34 +441,34 @@ class Vector:
                 you can save it as a shapefile using
                 NewDataFrame.to_file("Anyname.shp")
 
-        Example:
-        ----------
-            1- Return a geodata frame
-                RIMSubPath = "Inputs/RIM_sub.shp"
-                AddSubsPath = "Inputs/addSubs.shp"
-                NewDataFrame = GIS.CombineGeometrics(RIMSubPath,AddSubsPath, Save=False)
-            2- Save a shapefile
-                RIMSubPath = "Inputs/RIM_sub.shp"
-                AddSubsPath = "Inputs/addSubs.shp"
-                GIS.CombineGeometrics(RIMSubPath,AddSubsPath, Save=True, SavePath = "AllBasins.shp")
+        Examples
+        --------
+        Return a geodata frame
+        >>> shape_file1 = "Inputs/RIM_sub.shp"
+        >>> shape_file2 = "Inputs/addSubs.shp"
+        >>> NewDataFrame = Vector.combineGeometrics(shape_file1, shape_file2, save=False)
+        Save a shapefile
+        >>> shape_file1 = "Inputs/RIM_sub.shp"
+        >>> shape_file2 = "Inputs/addSubs.shp"
+        >>> Vector.combineGeometrics(shape_file1, shape_file2, save=True, save_path="AllBasins.shp")
         """
-        assert type(Path1) == str, "Path1 input should be string type"
-        assert type(Path2) == str, "Path2 input should be string type"
-        assert type(Save) == bool, "SavePath input should be string type"
+        assert type(path1) == str, "path1 input should be string type"
+        assert type(path2) == str, "path2 input should be string type"
+        assert type(save) == bool, "SavePath input should be string type"
 
         # input values
-        ext = Path1[-4:]
-        assert ext == ".shp", "please add the extension at the end of the Path1"
-        ext = Path2[-4:]
-        assert ext == ".shp", "please add the extension at the end of the Path2"
-        if Save == True:
-            assert type(SavePath) == str, "SavePath input should be string type"
-            ext = SavePath[-4:]
+        ext = path1[-4:]
+        assert ext == ".shp", "please add the extension at the end of the path1"
+        ext = path2[-4:]
+        assert ext == ".shp", "please add the extension at the end of the path2"
+        if save:
+            assert type(save_path) == str, "SavePath input should be string type"
+            ext = save_path[-4:]
             assert ext == ".shp", "please add the extension at the end of the SavePath"
 
         # read shapefiles
-        GeoDataFrame1 = gpd.read_file(Path1)
-        GeoDataFrame2 = gpd.read_file(Path2)
+        GeoDataFrame1 = gpd.read_file(path1)
+        GeoDataFrame2 = gpd.read_file(path2)
 
         # concatenate the second shapefile into the first shapefile
         NewGeoDataFrame = gpd.GeoDataFrame(pd.concat([GeoDataFrame1, GeoDataFrame2]))
@@ -476,8 +476,8 @@ class Vector:
         NewGeoDataFrame.index = [i for i in range(len(NewGeoDataFrame))]
         # take the spatial reference of the first geodataframe
         NewGeoDataFrame.crs = GeoDataFrame1.crs
-        if Save == True:
-            NewGeoDataFrame.to_file(SavePath)
+        if save:
+            NewGeoDataFrame.to_file(save_path)
         else:
             return NewGeoDataFrame
 
@@ -518,31 +518,32 @@ class Vector:
         this function change the projection of the coordinates from a coordinate system
         to another (default from GCS to web mercator used by google maps)
 
-        inputs
+        Parameters
         ----------
-            1- lat: [list]
-                list of latitudes of the points
-            2- lon: [list]
-                list of longitude of the points
-            3- from_epsg: [integer]
-                reference number to the projection of the points (https://epsg.io/)
-            4- to_epsg: [integer]
-                reference number to the new projection of the points (https://epsg.io/)
-            5- precision: [integer]
-                number of decimal places
-        outputs:
-        ----------
-            1-y:
-                list of y coordinates of the points
-            2-x:
-                list of x coordinates of the points
+        lat: [list]
+            list of latitudes of the points
+        lon: [list]
+            list of longitude of the points
+        from_epsg: [integer]
+            reference number to the projection of the points (https://epsg.io/)
+        to_epsg: [integer]
+            reference number to the new projection of the points (https://epsg.io/)
+        precision: [integer]
+            number of decimal places
 
-        Ex:
-        ----------
+        Returns
+        -------
+        y:
+            list of y coordinates of the points
+        x:
+            list of x coordinates of the points
+
+        Examples
+        --------
             # from web mercator to GCS WGS64:
-            x=[-8418583.96378159, -8404716.499972705], y=[529374.3212213353, 529374.3212213353]
-            from_epsg = 3857, to_epsg = 4326
-            longs, lats=reproject_points(y,x,from_epsg="3857", to_epsg="4326")
+            >>> x_coords = [-8418583.96378159, -8404716.499972705]
+            >>> y_coords = [529374.3212213353, 529374.3212213353]
+            >>>  longs, lats = Vector.reprojectPoints(y_coords, x_coords, from_epsg="3857", to_epsg="4326")
         """
         # Proj gives a future warning however the from_epsg argument to the functiuon
         # is correct the following couple of code lines are to disable the warning
@@ -565,36 +566,36 @@ class Vector:
         return y, x
 
     @staticmethod
-    def reprojectPoints_2(lat, lng, from_epsg=4326, to_epsg=3857):
+    def reprojectPoints2(lat, lng, from_epsg=4326, to_epsg=3857):
         """reproject_points.
 
         this function change the projection of the coordinates from a coordinate system
         to another (default from GCS to web mercator used by google maps)
 
-        inputs
+        PArameters
         ----------
-            1- lat:
-                list of latitudes of the points
-            2- lng:
-                list of longitude of the points
-            3- from_epsg:
-                integer reference number to the projection of the points (https://epsg.io/)
-            4- to_epsg:
-                integer reference number to the new projection of the points (https://epsg.io/)
+        lat:
+            list of latitudes of the points
+        lng:
+            list of longitude of the points
+        from_epsg:
+            integer reference number to the projection of the points (https://epsg.io/)
+        to_epsg:
+            integer reference number to the new projection of the points (https://epsg.io/)
 
-        outputs:
-        ----------
-            1-x:
-                list of x coordinates of the points
-            2-y:
-                list of y coordinates of the points
+        Returns
+        -------
+        x:
+            list of x coordinates of the points
+        y:
+            list of y coordinates of the points
 
-        Ex:
-        ----------
-            # from web mercator to GCS WGS64:
-            x=[-8418583.96378159, -8404716.499972705], y=[529374.3212213353, 529374.3212213353]
-            from_epsg = 3857, to_epsg = 4326
-            longs, lats=reproject_points(y,x,from_epsg="3857", to_epsg="4326")
+        Examples
+        --------
+        # from web mercator to GCS WGS64:
+        >>> x_coords = [-8418583.96378159, -8404716.499972705]
+        >>> y_coords = [529374.3212213353, 529374.3212213353]
+        >>> longs, lats = Vector.reprojectPoints2(y_coords, x_coords, from_epsg="3857", to_epsg="4326")
         """
         source = osr.SpatialReference()
         source.ImportFromEPSG(from_epsg)
@@ -615,126 +616,130 @@ class Vector:
         return x, y
 
     @staticmethod
-    def addSpatialReference(GpdDF, epsg):
+    def addSpatialReference(gdf, epsg):
         """AddSpatialReference.
 
         AddSpatialReference takes GeoPandas DataFrame and set the coordinate system
         based on the given epsg input
 
-        inputs
-            1-GpdDF:
-                [geopandas.geodataframe.GeoDataFrame] geopandas dataframe
-            2-epsg:
-                [integer] EPSG stands for European Petroleum Survey Group and is an organization
-                that maintains a geodetic parameter database with standard codes,
-                the EPSG codes, for coordinate systems, datums, spheroids, units
-                and such alike (https://epsg.io/) default value is [None].
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            geopandas dataframe
+        epsg: [integer]
+            EPSG stands for European Petroleum Survey Group and is an organization
+            that maintains a geodetic parameter database with standard codes,
+            the EPSG codes, for coordinate systems, datums, spheroids, units
+            and such alike (https://epsg.io/) default value is [None].
 
-        Outputs:
-            1-GpdDF:
-                [geopandas.geodataframe.GeoDataFrame] the same input geopandas
-                dataframe but with spatial reference
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            the same input geopandas dataframe but with spatial reference
 
-        examples:
-            NewGeometry = gpd.GeoDataFrame()
-            coordinates = [(24.950899, 60.169158), (24.953492, 60.169158), (24.953510, 60.170104), (24.950958, 60.169990)]
-            NewGeometry.loc[0,'geometry'] = GIS.CreatePolygon(coordinates,2)
-            # adding spatial reference system
-            NewGeometry.crs = from_epsg(4326)
-            # to check the spatial reference
-            NewGeometry.crs
-            the you will get
-            {'init': 'epsg:4326', 'no_defs': True}
+        Examples
+        --------
+        >>> NewGeometry = gpd.GeoDataFrame()
+        >>> coordinates = [(24.950899, 60.169158), (24.953492, 60.169158),
+        >>>                 (24.953510, 60.170104), (24.950958, 60.169990)]
+        >>> NewGeometry.loc[0,'geometry'] = Vector.createPolygon(coordinates,2)
+        # adding spatial reference system
+        >>> NewGeometry.crs = from_epsg(4326)
+        # to check the spatial reference
+        >>> NewGeometry.crs
+        >>> {'init': 'epsg:4326', 'no_defs': True}
         """
 
-        GpdDF.crs = from_epsg(epsg)
+        gdf.crs = from_epsg(epsg)
 
-        return GpdDF
+        return gdf
 
     @staticmethod
-    def polygonCenterPoint(PolygonDataFrame, Save=False, SavePath=None):
+    def polygonCenterPoint(poly, save=False, save_path=None):
         """PolygonCenterPoint.
 
         PolygonCenterPoint function takes the a geodata frame of polygons and and
         returns the center of each polygon
 
-        inputs
-            1-PolygonDataFrame:
-                [geopandas.geodataframe.GeoDataFrame] GeoDataframe containing
-                all the polygons you want to get the center point
-            3-Save:
-                [Boolen] True if you want to save the result shapefile in a certain
-                path "SavePath"
-            3-SavePath:
-                [String] a path includng the name of the shapefile and extention like
-                path="data/subbasins.shp"
-        Outputs:
-            1-SaveIng the shapefile or CenterPointDataFrame :
-                If you choose True in the "Save" input the function will save the
-                shapefile in the given "SavePath"
-                If you choose False in the "Save" input the function will return a
-                [geodataframe] dataframe containing CenterPoint DataFrame
-                you can save it as a shapefile using
-                CenterPointDataFrame.to_file("Anyname.shp")
+        Parameters
+        ----------
+        poly:
+            [geopandas.geodataframe.GeoDataFrame] GeoDataframe containing
+            all the polygons you want to get the center point
+        save:
+            [Boolen] True if you want to save the result shapefile in a certain
+            path "savePath"
+        save_path:
+            [String] a path includng the name of the shapefile and extention like
+            path="data/subbasins.shp"
+
+        Returns
+        -------
+        saveIng the shapefile or CenterPointDataFrame :
+            If you choose True in the "save" input the function will save the
+            shapefile in the given "savePath"
+            If you choose False in the "save" input the function will return a
+            [geodataframe] dataframe containing CenterPoint DataFrame
+            you can save it as a shapefile using
+            CenterPointDataFrame.to_file("Anyname.shp")
 
 
-        Example:
-            1- Return a geodata frame
-                RIMSubPath = "Inputs/RIM_sub.shp"
-                RIMSub = gpd.read_file(RIMSubPath)
-                CenterPointDataFrame = GIS.PolygonCenterPoint(RIMSub, Save=False)
-            2- Save a shapefile
-                RIMSubPath = "Inputs/RIM_sub.shp"
-                RIMSub = gpd.read_file(RIMSubPath)
-                GIS.PolygonCenterPoint(RIMSub, Save=True, SavePath = "centerpoint.shp")
-
+        Examples
+        --------
+        Return a geodata frame
+        >>> RIMSub = gpd.read_file("Inputs/RIM_sub.shp")
+        >>> CenterPointDataFrame = Vector.polygonCenterPoint(RIMSub, save=False)
+        save a shapefile
+        >>> RIMSub = gpd.read_file("Inputs/RIM_sub.shp")
+        >>> Vector.polygonCenterPoint(RIMSub, save=True, save_path="centerpoint.shp")
         """
         assert (
-            type(PolygonDataFrame) == gpd.geopandas.geodataframe.GeoDataFrame
-        ), "PolygonDataFrame input should be GeoDataFrame type"
-        assert type(Save) == bool, "SavePath input should be string type"
+            type(poly) == gpd.geopandas.geodataframe.GeoDataFrame
+        ), "poly input should be GeoDataFrame type"
+        assert type(save) == bool, "savePath input should be string type"
 
         # input values
-        if Save == True:
-            assert type(SavePath) == str, "SavePath input should be string type"
-            ext = SavePath[-4:]
-            assert ext == ".shp", "please add the extension at the end of the SavePath"
+        if save:
+            assert type(save_path) == str, "savePath input should be string type"
+            ext = save_path[-4:]
+            assert ext == ".shp", "please add the extension at the end of the savePath"
 
         # get the X, Y coordinates of the points of the polygons and the multipolygons
-        PolygonDataFrame = Vector.XY(PolygonDataFrame)
+        poly = Vector.XY(poly)
 
         # re-index the data frame
-        PolygonDataFrame.index = [i for i in range(len(PolygonDataFrame))]
+        poly.index = [i for i in range(len(poly))]
         # calculate the average X & Y coordinate for each geometry in the shapefile
-        for i in range(len(PolygonDataFrame)):
-            PolygonDataFrame.loc[i, "AvgX"] = np.mean(PolygonDataFrame.loc[i, "x"])
-            PolygonDataFrame.loc[i, "AvgY"] = np.mean(PolygonDataFrame.loc[i, "y"])
+        for i in range(len(poly)):
+            poly.loc[i, "AvgX"] = np.mean(poly.loc[i, "x"])
+            poly.loc[i, "AvgY"] = np.mean(poly.loc[i, "y"])
 
         # create a new geopandas dataframe of points that is in the middle of each
         # sub-basin
-        PolygonDataFrame = PolygonDataFrame.drop(["geometry", "x", "y"], axis=1)
+        poly = poly.drop(["geometry", "x", "y"], axis=1)
 
         MiddlePointdf = gpd.GeoDataFrame()
-        #    MiddlePointdf = PolygonDataFrame
+        #    MiddlePointdf = poly
 
         MiddlePointdf["geometry"] = None
         # create a list of tuples of the coordinates (x,y) or (long, lat)
         # of the points
         CoordinatesList = zip(
-            PolygonDataFrame["AvgX"].tolist(), PolygonDataFrame["AvgY"].tolist()
+            poly["AvgX"].tolist(), poly["AvgY"].tolist()
         )
         PointsList = Vector.createPoint(CoordinatesList)
         # set the spatial reference
         MiddlePointdf["geometry"] = PointsList
-        MiddlePointdf.crs = PolygonDataFrame.crs
-        MiddlePointdf[PolygonDataFrame.columns.tolist()] = PolygonDataFrame[
-            PolygonDataFrame.columns.tolist()
+        MiddlePointdf.crs = poly.crs
+        MiddlePointdf[poly.columns.tolist()] = poly[
+            poly.columns.tolist()
         ]
 
-        if Save == True:
-            MiddlePointdf.to_file(SavePath)
+        if save:
+            MiddlePointdf.to_file(save_path)
         else:
             return MiddlePointdf
+
 
     @staticmethod
     def writeShapefile(poly, out_shp):

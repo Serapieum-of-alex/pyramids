@@ -47,8 +47,8 @@ def test_create_raster(
 ):
     src = Raster.createRaster(arr=src_arr,
                               geo=src_geotransform,
-                              EPSG=src_epsg,
-                              NoDataValue=src_no_data_value
+                              epsg=src_epsg,
+                              nodatavalue=src_no_data_value
                               )
     assert isinstance(src, Dataset)
     assert np.isclose(src.ReadAsArray(), src_arr, rtol=0.00001).all()
@@ -101,7 +101,7 @@ def test_fill_raster(
         fill_raster_path: str,
         fill_raster_value: int
 ):
-    Raster.rasterFill(src, fill_raster_value, SaveTo=fill_raster_path)
+    Raster.rasterFill(src, fill_raster_value, save_to=fill_raster_path)
     "now the resulted raster is saved to disk"
     dst = gdal.Open(fill_raster_path)
     arr = dst.ReadAsArray()
@@ -139,7 +139,7 @@ class TestProjectRaster:
             resample_raster_resample_technique: str,
             src_shape: tuple
     ):
-        dst = Raster.projectRaster(src, to_epsg=project_raster_to_epsg, Option=1)
+        dst = Raster.projectRaster(src, to_epsg=project_raster_to_epsg, option=1)
 
         proj = dst.GetProjection()
         sr = osr.SpatialReference(wkt=proj)
@@ -156,7 +156,7 @@ class TestProjectRaster:
             resample_raster_resample_technique: str,
             src_shape: tuple
     ):
-        dst = Raster.projectRaster(src, to_epsg=project_raster_to_epsg, Option=2)
+        dst = Raster.projectRaster(src, to_epsg=project_raster_to_epsg, option=2)
 
         proj = dst.GetProjection()
         sr = osr.SpatialReference(wkt=proj)
@@ -228,7 +228,7 @@ def test_crop(
     # Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
     # the aligned_raster has a epsg = 32618 and
     # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
-    dst = Raster.crop(aligned_raster, soil_raster, Save=True, OutputPath=crop_saveto)
+    dst = Raster.crop(aligned_raster, soil_raster, save=True, output_path=crop_saveto)
     assert os.path.exists(crop_saveto)
 
 # def test_ClipRasterWithPolygon():

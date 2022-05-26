@@ -13,7 +13,7 @@ test_requirements = ['pytest>=3', ]
 
 setup(
     name="pyramids-gis",
-    version="1.2.3",
+    version="0.1.0",
     description="gdal utility package",
     author="Mostafa Farrag",
     author_email="moah.farag@gmail.come",
