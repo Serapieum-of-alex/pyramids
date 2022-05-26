@@ -2242,168 +2242,6 @@ class Raster:
 
 
     @staticmethod
-    def asciiToRaster(
-            ascii_file: str,
-            save_path: str,
-            pixel_type: int = 1,
-            raster_file = None,
-            epsg = None
-    ):
-        """ASCIItoRaster.
-
-            ASCIItoRaster convert an ASCII file into a raster format and in takes  all
-            the spatial reference information (projection, coordinates of the corner point), and
-            number of rows and columns from raster file or you have to define the epsg corresponding
-            to the you coordinate system and projection
-
-        Parameters
-        ----------
-        ascii_file: [str]
-            name of the ASCII file you want to convert and the name
-            should include the extension ".asc"
-        save_path: [str]
-            path to save the new raster including new raster name and extension (.tif)
-        pixel_type: [int]
-            type of the data to be stored in the pixels,default is 1 (float32)
-            for example pixel type of flow direction raster is unsigned integer
-            1 for float32
-            2 for float64
-            3 for Unsigned integer 16
-            4 for Unsigned integer 32
-            5 for integer 16
-            6 for integer 32
-
-        raster_file: [str]
-            source raster to get the spatial information, both ASCII
-            file and source raster should have the same number of rows, and
-            same number of columns default value is [None].
-
-        epsg:
-            EPSG stands for European Petroleum Survey Group and is an organization
-            that maintains a geodetic parameter database with standard codes,
-            the EPSG codes, for coordinate systems, datums, spheroids, units
-            and such alike (https://epsg.io/) default value is [None].
-
-        Returns
-        -------
-        a New Raster will be saved in the savePath containing the values
-        of the ASCII file
-
-        Example
-        -------
-        1- ASCII to raster given a raster file:
-        >>> asc_file = "soiltype.asc"
-        >>> raster_file = "DEM.tif"
-        >>> save_to = "Soil_raster.tif"
-        >>> pixeltype = 1
-        >>> Raster.asciiToRaster(asc_file,  save_to, pixeltype, raster_file)
-        2- ASCII to Raster given an EPSG number
-        >>> asc_file = "soiltype.asc"
-        >>> save_to = "Soil_raster.tif"
-        >>> pixeltype = 1
-        >>> epsg_number = 4647
-        >>> Raster.asciiToRaster(asc_file, save_to, pixeltype, epsg = epsg_number)
-        """
-        if not isinstance(ascii_file, str):
-            raise TypeError(f"ascii_file input should be string type - given{type(ascii_file)}")
-
-        if not isinstance(save_path, str):
-            raise TypeError(f"save_path input should be string type - given {type(save_path)}")
-
-        if not isinstance(pixel_type, int):
-            raise TypeError(f"pixel type input should be integer type please check documentations "
-                            f"- given {pixel_type}")
-
-        # input values
-        ASCIIExt = ascii_file[-4:]
-        if not ASCIIExt == ".asc":
-            raise ValueError("please add the extension at the end of the path input")
-
-
-        message = """ you have to enter one of the following inputs
-        - raster_file : if you have a raster with the same spatial information
-            (projection, coordinate system), and have the same number of rows,
-            and columns
-        - epsg : if you have the EPSG number (https://epsg.io/) refering to
-            the spatial information of the ASCII file
-        """
-        assert raster_file is not None or epsg is not None, message
-
-        ### read the ASCII file
-        ASCIIValues, ASCIIDetails = Raster.readASCII(ascii_file, pixel_type)
-        ASCIIRows = ASCIIDetails[0]
-        ASCIIColumns = ASCIIDetails[1]
-
-        # check the optional inputs
-        if raster_file is not None:
-            assert type(raster_file) == str, "raster_file input should be string type"
-
-            RasterExt = raster_file[-4:]
-            assert (
-                    RasterExt == ".tif"
-            ), "please add the extension at the end of the path input"
-            # read the raster file
-            src = gdal.Open(raster_file)
-            RasterColumns = src.RasterXSize
-            RasterRows = src.RasterYSize
-
-            assert (
-                    ASCIIRows == RasterRows and ASCIIColumns == RasterColumns
-            ), " Data in both ASCII file and Raster file should have the same number of row and columns"
-
-            Raster.rasterLike(src, ASCIIValues, save_path, pixel_type)
-        elif epsg is not None:
-            assert (
-                    type(epsg) == int
-            ), "epsg input should be integer type please check documentations"
-            # coordinates of the lower left corner
-            XLeftSide = ASCIIDetails[2]
-            #        YLowSide = ASCIIDetails[3]
-
-            CellSize = ASCIIDetails[4]
-            NoValue = ASCIIDetails[5]
-            # calculate Geotransform coordinates for the raster
-            YUpperSide = ASCIIDetails[3] + ASCIIRows * CellSize
-
-            dst_gt = (XLeftSide, CellSize, 0.0, YUpperSide, 0.0, -1 * CellSize)
-            dst_epsg = osr.SpatialReference()
-            dst_epsg.ImportFromEPSG(epsg)
-
-            if pixel_type == 1:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float32
-                )
-            elif pixel_type == 2:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float64
-                )
-            elif pixel_type == 3:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt16
-                )
-            elif pixel_type == 4:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt32
-                )
-            elif pixel_type == 5:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int16
-                )
-            elif pixel_type == 6:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int32
-                )
-
-            dst.SetGeoTransform(dst_gt)
-            dst.SetProjection(dst_epsg.ExportToWkt())
-            dst.GetRasterBand(1).SetNoDataValue(NoValue)
-            dst.GetRasterBand(1).Fill(NoValue)
-            dst.GetRasterBand(1).WriteArray(ASCIIValues)
-            dst.FlushCache()
-            dst = None
-
-
-    @staticmethod
     def mosaic(
             raster_list: list,
             save: bool = False,
@@ -3065,11 +2903,11 @@ class Raster:
 
     @staticmethod
     def overlayMap(
-            Path: str,
-            ClassesMap: Union[str, np.ndarray],
-            ExcludeValue: Union[float, int],
-            Compressed: bool=False,
-            OccupiedCellsOnly: bool=True
+            path: str,
+            classes_map: Union[str, np.ndarray],
+            exclude_value: Union[float, int],
+            compressed: bool=False,
+            occupied_Cells_only: bool=True
     ) -> Tuple[Dict[List[float], List[float]], int]:
         """OverlayMap.
 
@@ -3079,52 +2917,53 @@ class Raster:
 
         Parameters
         ----------
-            Path: [str]
-                a path to ascii file.
-            ClassesMap: [str/array]
-                a path includng the name of the ASCII and extention, or an array
-                >>> path = "classes.asc"
-            ExcludeValue: [Numeric]
-                values you want to exclude from extracted values.
-            Compressed: [Bool]
-                if the map you provided is compressed.
-            OccupiedCellsOnly: [Bool]
-                if you want to count only cells that is not zero.
+        path: [str]
+            a path to ascii file.
+        classes_map: [str/array]
+            a path includng the name of the ASCII and extention, or an array
+            >>> path = "classes.asc"
+        exclude_value: [Numeric]
+            values you want to exclude from extracted values.
+        compressed: [Bool]
+            if the map you provided is compressed.
+        occupied_Cells_only: [Bool]
+            if you want to count only cells that is not zero.
+
         Returns
         -------
-            ExtractedValues: [Dict]
-                dictonary with a list of values in the basemap as keys
-                    and for each key a list of all the intersected values in the
-                    maps from the path.
-            NonZeroCells: [dataframe]
-                the number of cells in the map.
+        ExtractedValues: [Dict]
+            dictonary with a list of values in the basemap as keys
+                and for each key a list of all the intersected values in the
+                maps from the path.
+        NonZeroCells: [dataframe]
+            the number of cells in the map.
         """
-        if not isinstance(Path, str):
-            raise TypeError(f"Path input should be string type - given{type(Path)}")
+        if not isinstance(path, str):
+            raise TypeError(f"Path input should be string type - given{type(path)}")
 
-        if not isinstance(Compressed, bool):
-            raise TypeError(f"Compressed input should be Boolen type given {type(Compressed)}")
+        if not isinstance(compressed, bool):
+            raise TypeError(f"Compressed input should be Boolen type given {type(compressed)}")
 
         # check wether the path exist or not
-        if not os.path.exists(Path):
-            raise FileNotFoundError(f"the path {Path} you have provided does not exist")
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"the path {path} you have provided does not exist")
 
         # read the base map
-        if isinstance(ClassesMap, str):
-            if ClassesMap.endswith(".asc"):
-                BaseMapV, _ = Raster.readASCII(ClassesMap)
+        if isinstance(classes_map, str):
+            if classes_map.endswith(".asc"):
+                BaseMapV, _ = Raster.readASCII(classes_map)
             else:
-                BaseMap = gdal.Open(ClassesMap)
+                BaseMap = gdal.Open(classes_map)
                 BaseMapV = BaseMap.ReadAsArray()
         else:
-            BaseMapV = ClassesMap
+            BaseMapV = classes_map
 
         ExtractedValues = dict()
 
         try:
             # open the zip file
-            if Compressed:
-                Compressedfile = zipfile.ZipFile(Path)
+            if compressed:
+                Compressedfile = zipfile.ZipFile(path)
                 # get the file name
                 fname = Compressedfile.infolist()[0]
                 ASCIIF = Compressedfile.open(fname)
@@ -3140,17 +2979,17 @@ class Raster:
                     MapValues[row, :] = list(map(float, x))
 
             else:
-                MapValues, SpatialRef = Raster.readASCII(Path)
+                MapValues, SpatialRef = Raster.readASCII(path)
             # count number of nonzero cells
             NonZeroCells = np.count_nonzero(MapValues)
 
-            if OccupiedCellsOnly:
+            if occupied_Cells_only:
                 ExtractedValues = 0
                 return ExtractedValues, NonZeroCells
 
             # get the position of cells that is not zeros
-            rows = np.where(MapValues[:, :] != ExcludeValue)[0]
-            cols = np.where(MapValues[:, :] != ExcludeValue)[1]
+            rows = np.where(MapValues[:, :] != exclude_value)[0]
+            cols = np.where(MapValues[:, :] != exclude_value)[1]
 
         except:
             print("Error Opening the compressed file")
@@ -3177,70 +3016,71 @@ class Raster:
 
     @staticmethod
     def overlayMaps(
-            Path,
-            BaseMapF,
-            FilePrefix,
-            ExcludeValue,
-            Compressed=False,
-            OccupiedCellsOnly=True,
+            path,
+            basemap_file,
+            file_prefix,
+            exclude_value,
+            compressed: bool=False,
+            occupied_cells_only: bool=True,
     ):
         """
         this function is written to extract and return a list of all the values
         in an ASCII file
 
-        Inputs:
-            1-Path
-                [String] a path to the folder includng the maps.
-            2-BaseMapF:
-                [String] a path includng the name of the ASCII and extention like
-                path="data/cropped.asc"
-            3-FilePrefix:
-                [String] a string that make the files you want to filter in the folder
-                uniq
-            3-ExcludedValue:
-                [Numeric] values you want to exclude from exteacted values
-            4-Compressed:
-                [Bool] if the map you provided is compressed
-            5-OccupiedCellsOnly:
-                [Bool] if you want to count only cells that is not zero
-        Outputs:
-            1- ExtractedValues:
-                [Dict] dictonary with a list of values in the basemap as keys
-                    and for each key a list of all the intersected values in the
-                    maps from the path
-            2- NonZeroCells:
-                [dataframe] dataframe with the first column as the "file" name
-                and the second column is the number of cells in each map
+        Parameters
+        ----------
+        path: [String]
+            a path to the folder includng the maps.
+        basemap_file:
+            [String] a path includng the name of the ASCII and extention like
+            path="data/cropped.asc"
+        file_prefix: [String]
+            a string that make the files you want to filter in the folder
+            uniq
+        exclude_value: [Numeric]
+            values you want to exclude from exteacted values
+        compressed:
+            [Bool] if the map you provided is compressed
+        occupied_cells_only:
+            [Bool] if you want to count only cells that is not zero
+
+        Returns
+        -------
+        ExtractedValues:
+            [Dict] dictonary with a list of values in the basemap as keys
+                and for each key a list of all the intersected values in the
+                maps from the path
+        NonZeroCells:
+            [dataframe] dataframe with the first column as the "file" name
+            and the second column is the number of cells in each map
         """
-        # input data validation
-        # data type
-        assert type(Path) == str, "Path input should be string type"
-        assert type(FilePrefix) == str, "Path input should be string type"
-        assert type(Compressed) == bool, "Compressed input should be Boolen type"
-        assert type(BaseMapF) == str, "BaseMapF input should be string type"
+        assert type(path) == str, "Path input should be string type"
+        assert type(file_prefix) == str, "Path input should be string type"
+        assert type(compressed) == bool, "Compressed input should be Boolen type"
+        assert type(basemap_file) == str, "basemap_file input should be string type"
         # input values
         # check wether the path exist or not
-        assert os.path.exists(Path), "the path you have provided does not exist"
+        assert os.path.exists(path), "the path you have provided does not exist"
         # check whether there are files or not inside the folder
-        assert os.listdir(Path) != "", "the path you have provided is empty"
+        assert os.listdir(path) != "", "the path you have provided is empty"
         # get list of all files
-        Files = os.listdir(Path)
+        Files = os.listdir(path)
 
         FilteredList = list()
 
         # filter file list with the File prefix input
         for i in range(len(Files)):
-            if Files[i].startswith(FilePrefix):
+            if Files[i].startswith(file_prefix):
                 FilteredList.append(Files[i])
 
         NonZeroCells = pd.DataFrame()
         NonZeroCells["files"] = FilteredList
         NonZeroCells["cells"] = 0
         # read the base map
-        if BaseMapF.endswith(".asc"):
-            BaseMapV, _ = Raster.readASCII(BaseMapF)
+        if basemap_file.endswith(".asc"):
+            BaseMapV, _ = Raster.readASCII(basemap_file)
         else:
-            BaseMap = gdal.Open(BaseMapF)
+            BaseMap = gdal.Open(basemap_file)
             BaseMapV = BaseMap.ReadAsArray()
 
         ExtractedValues = dict()
@@ -3248,21 +3088,21 @@ class Raster:
 
         for i in range(len(FilteredList)):
             print("File " + FilteredList[i])
-            if OccupiedCellsOnly:
+            if occupied_cells_only:
                 ExtractedValuesi, NonZeroCells.loc[i, "cells"] = Raster.overlayMap(
-                    Path + "/" + FilteredList[i],
+                    path + "/" + FilteredList[i],
                     BaseMapV,
-                    ExcludeValue,
-                    Compressed,
-                    OccupiedCellsOnly,
+                    exclude_value,
+                    compressed,
+                    occupied_cells_only,
                 )
             else:
                 ExtractedValuesi, NonZeroCells.loc[i, "cells"] = Raster.overlayMap(
-                    Path + "/" + FilteredList[i],
+                    path + "/" + FilteredList[i],
                     BaseMapV,
-                    ExcludeValue,
-                    Compressed,
-                    OccupiedCellsOnly,
+                    exclude_value,
+                    compressed,
+                    occupied_cells_only,
                 )
 
                 # these are the destinct values from the BaseMap which are keys in the
@@ -3299,7 +3139,6 @@ class Raster:
         -------
         TYPE
             DESCRIPTION.
-
         """
 
         array_min, array_max = array.min(), array.max()
@@ -3307,431 +3146,10 @@ class Raster:
 
 
 
-    @staticmethod
-    def ncDetails(nc, Var=None):
-        """
-        NCGetGeotransform takes a netcdf object and return the geottansform data of
-        the bottom left corner
-
-        Parameters
-        ----------
-        nc : [netcdf object]
-            netcdf object .
-        Var : [string], optional
-            the variable you want to read from the netcdf file if None is given the
-            last variable in the file will be read. The default is None.
-
-        Returns
-        -------
-        1-geo : [tuple]
-            geotransform data of the netcdf file
-        2-epsg : [integer]
-            epsg number
-        3-size_X : [integer]
-            number of coordinates in x direction
-        4-size_Y : [integer]
-            number of coordinates in y direction
-        5-size_Z : [integer]
-            number of coordinates in z direction
-        6-Time : [integer]
-            time varialble in the netcdf file
-        """
-        # list if variables
-        if Var is None:
-            Var = list(nc.variables.keys())[-1]
-
-        data = nc.variables[Var]
-        # nodatavalue
-        try:
-            NoDataValue = data._FillValue
-        except AttributeError:
-            NoDataValue = data.missing_value
-        # data type
-        try:
-            datatype = data.datatype
-        except AttributeError:
-            datatype = data.dtype
-
-        size_Y, size_X = np.int_(data.shape[-2:])
-        # if there is a stack of layers in the file (3d array)
-        if len(data.shape) == 3 and data.shape[0] > 1:
-            size_Z = np.int_(data.shape[0])
-            try:
-                TimeVar = nc.variables["time"]
-                Time = TimeVar[:]
-                # convert  time numbers to dates
-                Time = netCDF4.num2date(Time[:], TimeVar.units)
-            except:
-                Time = nc.variables["t"][:]
-                # Time = nc.variables['t'].units[11:]
-        else:
-            # if there is only one layer(2D array)
-            size_Z = 1
-            Time = -9999
-
-        # get lats and lons
-        try:
-            lats = nc.variables["latitude"][:]
-            # Geo6 = nc.variables['latitude'].res
-        except:
-            lats = nc.variables["lat"][:]
-            # Geo6 = nc.variables['lat'].res
-
-        try:
-            lons = nc.variables["longitude"][:]
-
-        except:
-            lons = nc.variables["lon"][:]
-            # Geo2 = nc.variables['lon'].size
-
-        # try to get the resolutio of the file
-        try:
-            try:
-                Geo2 = nc.variables["longitude"].res
-            except:
-                try:
-                    Geo2 = nc.variables["lon"].res
-                except:
-                    Geo2 = lons[1] - lons[0]
-        except:
-            assert False, "the netcdf file does not hae a resolution attribute"
-
-        # Lower left corner corner coordinates
-        Geo4 = np.min(lats) + Geo2 / 2
-        Geo1 = np.min(lons) - Geo2 / 2
-
-        try:
-            crso = nc.variables["crs"]
-            proj = crso.projection
-            epsg = Raster.getEPSG(proj, extension="GEOGCS")
-        except:
-            epsg = 4326
-
-        geo = tuple([Geo1, Geo2, 0, Geo4, 0, Geo2])
-
-        return geo, epsg, size_X, size_Y, size_Z, Time, NoDataValue, datatype
 
 
-    @staticmethod
-    def nctoTiff(input_nc, SaveTo, Separator="_"):
-        """
-        Parameters
-        ----------
-        input_nc : [string/list]
-            a path of the netcdf file of a list of the netcdf files' names.
-        SaveTo : TYPE
-            Path to where you want to save the files.
-        Separator : [string]
-            separator in the file name that separate the name from the date.
-            Default is "_"
-        Returns
-        -------
-        None.
-
-        """
-        if type(input_nc) == str:
-            nc = netCDF4.Dataset(input_nc)
-        elif type(input_nc) == list:
-            nc = netCDF4.MFDataset(input_nc)
-
-        # get the variable
-        Var = list(nc.variables.keys())[-1]
-        # extract the data
-        All_Data = nc[Var]
-        # get the details of the file
-        (
-            geo,
-            epsg,
-            size_X,
-            size_Y,
-            size_Z,
-            Time,
-            NoDataValue,
-            datatype,
-        ) = Raster.ncDetails(nc)
-
-        # Create output folder if needed
-        if not os.path.exists(SaveTo):
-            os.mkdir(SaveTo)
-
-        for i in range(0, size_Z):
-            if (
-                    All_Data.shape[0] and All_Data.shape[0] > 1
-            ):  # type(Time) == np.ndarray: #not Time == -9999
-                time_one = Time[i]
-                # d = dt.date.fromordinal(int(time_one))
-                name = os.path.splitext(os.path.basename(input_nc))[0]
-                nameparts = name.split(Separator)[0]  # [0:-2]
-                name_out = os.path.join(
-                    SaveTo
-                    + "/"
-                    + nameparts
-                    + "_%d.%02d.%02d.tif"
-                    % (time_one.year, time_one.month, time_one.day)
-                )
-                data = All_Data[i, :, :]
-            else:
-                name = os.path.splitext(os.path.basename(input_nc))[0]
-                name_out = os.path.join(SaveTo, name + ".tif")
-                data = All_Data[0, :, :]
-
-            driver = gdal.GetDriverByName("GTiff")
-            # driver = gdal.GetDriverByName("MEM")
-
-            if datatype == np.float32:
-                dst = driver.Create(
-                    name_out,
-                    int(data.shape[1]),
-                    int(data.shape[0]),
-                    1,
-                    gdal.GDT_Float32,
-                    ["COMPRESS=LZW"],
-                )
-            elif datatype == np.float64:
-                dst = driver.Create(
-                    name_out,
-                    int(data.shape[1]),
-                    int(data.shape[0]),
-                    1,
-                    gdal.GDT_Float64,
-                )
-            elif datatype == np.uint16:
-                dst = driver.Create(
-                    name_out,
-                    int(data.shape[1]),
-                    int(data.shape[0]),
-                    1,
-                    gdal.GDT_UInt16,
-                    ["COMPRESS=LZW"],
-                )
-            elif datatype == np.uint32:
-                dst = driver.Create(
-                    name_out,
-                    int(data.shape[1]),
-                    int(data.shape[0]),
-                    1,
-                    gdal.GDT_UInt32,
-                    ["COMPRESS=LZW"],
-                )
-            elif datatype == np.int16:
-                dst = driver.Create(
-                    name_out,
-                    int(data.shape[1]),
-                    int(data.shape[0]),
-                    1,
-                    gdal.GDT_Int16,
-                    ["COMPRESS=LZW"],
-                )
-            elif datatype == np.int32:
-                dst = driver.Create(
-                    name_out,
-                    int(data.shape[1]),
-                    int(data.shape[0]),
-                    1,
-                    gdal.GDT_Int32,
-                    ["COMPRESS=LZW"],
-                )
-
-            srse = osr.SpatialReference()
-            if epsg == "":
-                srse.SetWellKnownGeogCS("WGS84")
-
-            else:
-                try:
-                    if not srse.SetWellKnownGeogCS(epsg) == 6:
-                        srse.SetWellKnownGeogCS(epsg)
-                    else:
-                        try:
-                            srse.ImportFromEPSG(int(epsg))
-                        except:
-                            srse.ImportFromWkt(epsg)
-                except:
-                    try:
-                        srse.ImportFromEPSG(int(epsg))
-                    except:
-                        srse.ImportFromWkt(epsg)
-
-            # set the geotransform
-            dst.SetGeoTransform(geo)
-            # set the projection
-            dst.SetProjection(srse.ExportToWkt())
-            # setting the NoDataValue does not accept double precision numbers
-            try:
-                dst.GetRasterBand(1).SetNoDataValue(NoDataValue)
-                # initialize the band with the nodata value instead of 0
-                dst.GetRasterBand(1).Fill(NoDataValue)
-            except:
-                NoDataValue = -9999
-                dst.GetRasterBand(1).SetNoDataValue(NoDataValue)
-                dst.GetRasterBand(1).Fill(NoDataValue)
-                # assert False, "please change the NoDataValue in the source raster as it is not accepted by Gdal"
-                print(
-                    "the NoDataValue in the source Netcdf is double precission and as it is not accepted by Gdal"
-                )
-                print("the NoDataValue now is et to -9999 in the raster")
-
-            dst.GetRasterBand(1).WriteArray(data)
-            dst.FlushCache()
-            dst = None
 
 
-    # def Convert_nc_to_tiff(input_nc, output_folder):
-    #     """
-    #     This function converts the nc file into tiff files
-    #
-    #     Keyword Arguments:
-    #     input_nc -- name, name of the adf file
-    #     output_folder -- Name of the output tiff file
-    #     """
-    #
-    #     # All_Data = Raster.Open_nc_array(input_nc)
-    #
-    #     if type(input_nc) == str:
-    #         nc = netCDF4.Dataset(input_nc)
-    #     elif type(input_nc) == list:
-    #         nc = netCDF4.MFDataset(input_nc)
-    #
-    #     Var = nc.variables.keys()[-1]
-    #     All_Data = nc[Var]
-    #
-    #     geo_out, epsg, size_X, size_Y, size_Z, Time = Raster.Open_nc_info(input_nc)
-    #
-    #     if epsg == 4326:
-    #         epsg = "WGS84"
-    #
-    #     # Create output folder if needed
-    #     if not os.path.exists(output_folder):
-    #         os.mkdir(output_folder)
-    #
-    #     for i in range(0, size_Z):
-    #         if not Time == -9999:
-    #             time_one = Time[i]
-    #             d = dt.fromordinal(time_one)
-    #             name = os.path.splitext(os.path.basename(input_nc))[0]
-    #             nameparts = name.split("_")[0:-2]
-    #             name_out = os.path.join(
-    #                 output_folder,
-    #                 "_".join(nameparts)
-    #                 + "_%d.%02d.%02d.tif" % (d.year, d.month, d.day),
-    #             )
-    #             Data_one = All_Data[i, :, :]
-    #         else:
-    #             name = os.path.splitext(os.path.basename(input_nc))[0]
-    #             name_out = os.path.join(output_folder, name + ".tif")
-    #             Data_one = All_Data[:, :]
-    #
-    #         Raster.createRaster(name_out, Data_one, geo_out, epsg)
-    #
-    #     return ()
-    #
-    #
-    # def Convert_grb2_to_nc(input_wgrib, output_nc, band):
-    #
-    #     # Get environmental variable
-    #     qgis_path = os.environ["qgis"].split(";")
-    #     GDAL_env_path = qgis_path[0]
-    #     GDAL_TRANSLATE_PATH = os.path.join(GDAL_env_path, "gdal_translate.exe")
-    #
-    #     # Create command
-    #     fullCmd = " ".join(
-    #         [
-    #             '"%s" -of netcdf -b %d' % (GDAL_TRANSLATE_PATH, band),
-    #             input_wgrib,
-    #             output_nc,
-    #         ]
-    #     )  # -r {nearest}
-    #
-    #     Raster.Run_command_window(fullCmd)
-    #
-    #     return ()
-    #
-    #
-    # def Convert_adf_to_tiff(input_adf, output_tiff):
-    #     """
-    #     This function converts the adf files into tiff files
-    #
-    #     Keyword Arguments:
-    #     input_adf -- name, name of the adf file
-    #     output_tiff -- Name of the output tiff file
-    #     """
-    #
-    #     # Get environmental variable
-    #     qgis_path = os.environ["qgis"].split(";")
-    #     GDAL_env_path = qgis_path[0]
-    #     GDAL_TRANSLATE_PATH = os.path.join(GDAL_env_path, "gdal_translate.exe")
-    #
-    #     # convert data from ESRI GRID to GeoTIFF
-    #     fullCmd = (
-    #                   '"%s" -co COMPRESS=DEFLATE -co PREDICTOR=1 -co ' "ZLEVEL=1 -of GTiff %s %s"
-    #               ) % (GDAL_TRANSLATE_PATH, input_adf, output_tiff)
-    #
-    #     Raster.Run_command_window(fullCmd)
-    #
-    #     return output_tiff
-    #
-    #
-    # def Convert_bil_to_tiff(input_bil, output_tiff):
-    #     """
-    #     This function converts the bil files into tiff files
-    #
-    #     Keyword Arguments:
-    #     input_bil -- name, name of the bil file
-    #     output_tiff -- Name of the output tiff file
-    #     """
-    #
-    #     gdal.GetDriverByName("EHdr").Register()
-    #     dest = gdal.Open(input_bil, gdalconst.GA_ReadOnly)
-    #     Array = dest.GetRasterBand(1).ReadAsArray()
-    #     geo_out = dest.GetGeoTransform()
-    #     Raster.createRaster(output_tiff, Array, geo_out, "WGS84")
-    #
-    #     return output_tiff
-    #
-    #
-    # def Convert_hdf5_to_tiff(
-    #         inputname_hdf, Filename_tiff_end, Band_number, scaling_factor, geo_out
-    # ):
-    #     """
-    #     This function converts the hdf5 files into tiff files
-    #
-    #     Keyword Arguments:
-    #     input_adf -- name, name of the adf file
-    #     output_tiff -- Name of the output tiff file
-    #     Band_number -- bandnumber of the hdf5 that needs to be converted
-    #     scaling_factor -- factor multipied by data is the output array
-    #     geo -- [minimum lon, pixelsize, rotation, maximum lat, rotation,
-    #             pixelsize], (geospatial dataset)
-    #     """
-    #
-    #     # Open the hdf file
-    #     g = gdal.Open(inputname_hdf, gdal.GA_ReadOnly)
-    #
-    #     #  Define temporary file out and band name in
-    #     name_in = g.GetSubDatasets()[Band_number][0]
-    #
-    #     # Get environmental variable
-    #     qgis_path = os.environ["qgis"].split(";")
-    #     GDAL_env_path = qgis_path[0]
-    #     GDAL_TRANSLATE = os.path.join(GDAL_env_path, "gdal_translate.exe")
-    #
-    #     # run gdal translate command
-    #     FullCmd = "%s -of GTiff %s %s" % (GDAL_TRANSLATE, name_in, Filename_tiff_end)
-    #     Raster.Run_command_window(FullCmd)
-    #
-    #     # Get the data array
-    #     dest = gdal.Open(Filename_tiff_end)
-    #     Data = dest.GetRasterBand(1).ReadAsArray()
-    #     dest = None
-    #
-    #     # If the band data is not SM change the DN values into PROBA-V values and write into the spectral_reflectance_PROBAV
-    #     Data_scaled = Data * scaling_factor
-    #
-    #     # Save the PROBA-V as a tif file
-    #     Raster.createRaster(Filename_tiff_end, Data_scaled, geo_out, "WGS84")
-    #
-    #     return ()
-    #
-    #
     # # def Extract_Data(input_file, output_folder):
     # #     """
     # #     This function extract the zip files
@@ -3792,320 +3210,10 @@ class Raster:
     # #     tar = tarfile.open(zip_filename, "r:gz")
     # #     tar.extractall()
     # #     tar.close()
-    @staticmethod
-    def saveNC(
-            namenc,
-            DataCube,
-            Var,
-            Reference_filename,
-            Startdate="",
-            Enddate="",
-            Time_steps="",
-            Scaling_factor=1,
-    ):
-        """
-        Save_as_NC(namenc, DataCube, Var, Reference_filename,  Startdate = '',
-                   Enddate = '', Time_steps = '', Scaling_factor = 1)
-
-        Parameters
-        ----------
-        namenc : [str]
-            complete path of the output file with .nc extension.
-        DataCube : [array]
-            dataset of the nc file, can be a 2D or 3D array [time, lat, lon],
-            must be same size as reference data.
-        Var : [str]
-            the name of the variable.
-        Reference_filename : [str]
-            complete path to the reference file name.
-        Startdate : str, optional
-            needs to be filled when you want to save a 3D array,'YYYY-mm-dd'
-            defines the Start datum of the dataset. The default is ''.
-        Enddate : str, optional
-            needs to be filled when you want to save a 3D array, 'YYYY-mm-dd'
-            defines the End datum of the dataset. The default is ''.
-        Time_steps : str, optional
-            'monthly' or 'daily', needs to be filled when you want to save a
-            3D array, defines the timestep of the dataset. The default is ''.
-        Scaling_factor : TYPE, optional
-            number, scaling_factor of the dataset. The default is 1.
-
-        Returns
-        -------
-        None.
-
-        """
-        if not os.path.exists(namenc):
-
-            # Get raster information
-            geo_out, proj, size_X, size_Y = Raster.Open_array_info(Reference_filename)
-
-            # Create the lat/lon rasters
-            lon = np.arange(size_X) * geo_out[1] + geo_out[0] - 0.5 * geo_out[1]
-            lat = np.arange(size_Y) * geo_out[5] + geo_out[3] - 0.5 * geo_out[5]
-
-            # Create the nc file
-            nco = netCDF4.Dataset(namenc, "w", format="NETCDF4_CLASSIC")
-            nco.description = "%s data" % Var
-
-            # Create dimensions, variables and attributes:
-            nco.createDimension("longitude", size_X)
-            nco.createDimension("latitude", size_Y)
-
-            # Create time dimension if the parameter is time dependent
-            if Startdate != "":
-                if Time_steps == "monthly":
-                    Dates = pd.date_range(Startdate, Enddate, freq="MS")
-                if Time_steps == "daily":
-                    Dates = pd.date_range(Startdate, Enddate, freq="D")
-                time_or = np.zeros(len(Dates))
-                i = 0
-                for Date in Dates:
-                    time_or[i] = Date.toordinal()
-                    i += 1
-                nco.createDimension("time", None)
-                timeo = nco.createVariable("time", "f4", ("time",))
-                timeo.units = "%s" % Time_steps
-                timeo.standard_name = "time"
-
-            # Create the lon variable
-            lono = nco.createVariable("longitude", "f8", ("longitude",))
-            lono.standard_name = "longitude"
-            lono.units = "degrees_east"
-            lono.pixel_size = geo_out[1]
-
-            # Create the lat variable
-            lato = nco.createVariable("latitude", "f8", ("latitude",))
-            lato.standard_name = "latitude"
-            lato.units = "degrees_north"
-            lato.pixel_size = geo_out[5]
-
-            # Create container variable for CRS: lon/lat WGS84 datum
-            crso = nco.createVariable("crs", "i4")
-            crso.long_name = "Lon/Lat Coords in WGS84"
-            crso.grid_mapping_name = "latitude_longitude"
-            crso.projection = proj
-            crso.longitude_of_prime_meridian = 0.0
-            crso.semi_major_axis = 6378137.0
-            crso.inverse_flattening = 298.257223563
-            crso.geo_reference = geo_out
-
-            # Create the data variable
-            if Startdate != "":
-                preco = nco.createVariable(
-                    "%s" % Var,
-                    "f8",
-                    ("time", "latitude", "longitude"),
-                    zlib=True,
-                    least_significant_digit=1,
-                )
-                timeo[:] = time_or
-            else:
-                preco = nco.createVariable(
-                    "%s" % Var,
-                    "f8",
-                    ("latitude", "longitude"),
-                    zlib=True,
-                    least_significant_digit=1,
-                )
-
-            # Set the data variable information
-            preco.scale_factor = Scaling_factor
-            preco.add_offset = 0.00
-            preco.grid_mapping = "crs"
-            preco.set_auto_maskandscale(False)
-
-            # Set the lat/lon variable
-            lono[:] = lon
-            lato[:] = lat
-
-            # Set the data variable
-            if Startdate != "":
-                for i in range(len(Dates)):
-                    preco[i, :, :] = DataCube[i, :, :] * 1.0 / np.float(Scaling_factor)
-            else:
-                preco[:, :] = DataCube[:, :] * 1.0 / np.float(Scaling_factor)
-
-            nco.close()
-        return ()
 
 
-    # def Create_NC_name(Var, Simulation, Dir_Basin, sheet_nmbr, info=""):
-    #
-    #     # Create the output name
-    #     nameOut = "".join(
-    #         ["_".join([Var, "Simulation%d" % Simulation, "_".join(info)]), ".nc"]
-    #     )
-    #     namePath = os.path.join(
-    #         Dir_Basin,
-    #         "Simulations",
-    #         "Simulation_%d" % Simulation,
-    #         "Sheet_%d" % sheet_nmbr,
-    #     )
-    #     if not os.path.exists(namePath):
-    #         os.makedirs(namePath)
-    #     nameTot = os.path.join(namePath, nameOut)
-    #
-    #     return nameTot
-    #
-    #
-    # def Create_new_NC_file(nc_outname, Basin_Example_File, Basin):
-    #
-    #     # Open basin file
-    #     dest = gdal.Open(Basin_Example_File)
-    #     Basin_array = dest.GetRasterBand(1).ReadAsArray()
-    #     Basin_array[np.isnan(Basin_array)] = -9999
-    #     Basin_array[Basin_array < 0] = -9999
-    #
-    #     # Get Basic information
-    #     Geo = dest.GetGeoTransform()
-    #     size_X = dest.RasterXSize
-    #     size_Y = dest.RasterYSize
-    #     epsg = dest.GetProjection()
-    #
-    #     # Get Year and months
-    #     year = int(os.path.basename(nc_outname).split(".")[0])
-    #     Dates = pd.date_range("%d-01-01" % year, "%d-12-31" % year, freq="MS")
-    #
-    #     # Latitude and longitude
-    #     lons = np.arange(size_X) * Geo[1] + Geo[0] + 0.5 * Geo[1]
-    #     lats = np.arange(size_Y) * Geo[5] + Geo[3] + 0.5 * Geo[5]
-    #
-    #     # Create NetCDF file
-    #     nco = netCDF4.Dataset(nc_outname, "w", format="NETCDF4_CLASSIC")
-    #     nco.set_fill_on()
-    #     nco.description = "%s" % Basin
-    #
-    #     # Create dimensions
-    #     nco.createDimension("latitude", size_Y)
-    #     nco.createDimension("longitude", size_X)
-    #     nco.createDimension("time", None)
-    #
-    #     # Create NetCDF variables
-    #     crso = nco.createVariable("crs", "i4")
-    #     crso.long_name = "Lon/Lat Coords in WGS84"
-    #     crso.standard_name = "crs"
-    #     crso.grid_mapping_name = "latitude_longitude"
-    #     crso.projection = epsg
-    #     crso.longitude_of_prime_meridian = 0.0
-    #     crso.semi_major_axis = 6378137.0
-    #     crso.inverse_flattening = 298.257223563
-    #     crso.geo_reference = Geo
-    #
-    #     ######################### Save Rasters in NetCDF ##############################
-    #
-    #     lato = nco.createVariable("latitude", "f8", ("latitude",))
-    #     lato.units = "degrees_north"
-    #     lato.standard_name = "latitude"
-    #     lato.pixel_size = Geo[5]
-    #
-    #     lono = nco.createVariable("longitude", "f8", ("longitude",))
-    #     lono.units = "degrees_east"
-    #     lono.standard_name = "longitude"
-    #     lono.pixel_size = Geo[1]
-    #
-    #     timeo = nco.createVariable("time", "f4", ("time",))
-    #     timeo.units = "Monthly"
-    #     timeo.standard_name = "time"
-    #
-    #     # Variables
-    #     basin_var = nco.createVariable(
-    #         "Landuse", "i", ("latitude", "longitude"), fill_value=-9999
-    #     )
-    #     basin_var.long_name = "Landuse"
-    #     basin_var.grid_mapping = "crs"
-    #
-    #     # Create time unit
-    #     i = 0
-    #     time_or = np.zeros(len(Dates))
-    #     for Date in Dates:
-    #         time_or[i] = Date.toordinal()
-    #         i += 1
-    #
-    #     # Load data
-    #     lato[:] = lats
-    #     lono[:] = lons
-    #     timeo[:] = time_or
-    #     basin_var[:, :] = Basin_array
-    #
-    #     # close the file
-    #     time.sleep(1)
-    #     nco.close()
-    #     return ()
-    #
-    #
-    # def Add_NC_Array_Variable(nc_outname, Array, name, unit, Scaling_factor=1):
-    #
-    #     # create input array
-    #     Array[np.isnan(Array)] = -9999 * np.float(Scaling_factor)
-    #     Array = np.int_(Array * 1.0 / np.float(Scaling_factor))
-    #
-    #     # Create NetCDF file
-    #     nco = netCDF4.Dataset(nc_outname, "r+", format="NETCDF4_CLASSIC")
-    #     nco.set_fill_on()
-    #
-    #     paro = nco.createVariable(
-    #         "%s" % name,
-    #         "i",
-    #         ("time", "latitude", "longitude"),
-    #         fill_value=-9999,
-    #         zlib=True,
-    #         least_significant_digit=0,
-    #     )
-    #
-    #     paro.scale_factor = Scaling_factor
-    #     paro.add_offset = 0.00
-    #     paro.grid_mapping = "crs"
-    #     paro.long_name = name
-    #     paro.units = unit
-    #     paro.set_auto_maskandscale(False)
-    #
-    #     # Set the data variable
-    #     paro[:, :, :] = Array
-    #
-    #     # close the file
-    #     time.sleep(1)
-    #     nco.close()
-    #
-    #     return ()
-    #
-    #
-    # def Add_NC_Array_Static(nc_outname, Array, name, unit, Scaling_factor=1):
-    #
-    #     # create input array
-    #     Array[np.isnan(Array)] = -9999 * np.float(Scaling_factor)
-    #     Array = np.int_(Array * 1.0 / np.float(Scaling_factor))
-    #
-    #     # Create NetCDF file
-    #     nco = netCDF4.Dataset(nc_outname, "r+", format="NETCDF4_CLASSIC")
-    #     nco.set_fill_on()
-    #
-    #     paro = nco.createVariable(
-    #         "%s" % name,
-    #         "i",
-    #         ("latitude", "longitude"),
-    #         fill_value=-9999,
-    #         zlib=True,
-    #         least_significant_digit=0,
-    #     )
-    #
-    #     paro.scale_factor = Scaling_factor
-    #     paro.add_offset = 0.00
-    #     paro.grid_mapping = "crs"
-    #     paro.long_name = name
-    #     paro.units = unit
-    #     paro.set_auto_maskandscale(False)
-    #
-    #     # Set the data variable
-    #     paro[:, :] = Array
-    #
-    #     # close the file
-    #     time.sleep(1)
-    #     nco.close()
-    #
-    #     return ()
-    #
-    #
+
+
     # def Convert_dict_to_array(River_dict, Array_dict, Reference_data):
     #
     #     if os.path.splitext(Reference_data)[-1] == ".nc":
@@ -4142,8 +3250,9 @@ class Raster:
     #                 DataCube[:, row, col] = Array_dict[river_part][:, river_pixel]
     #
     #     return DataCube
-    #
-    #
+
+
+
     # # def Run_command_window(argument):
     # #     """
     # #     This function runs the argument in the command window without showing cmd window
@@ -4163,128 +3272,34 @@ class Raster:
     # #         process.wait()
     #
     # #     return()
-    #
-    # def Open_array_info(filename=""):
-    #     """
-    #     Opening a tiff info, for example size of array, projection and transform matrix.
-    #
-    #     Keyword Arguments:
-    #     filename -- 'C:/file/to/path/file.tif' or a gdal file (gdal.Open(filename))
-    #         string that defines the input tiff file or gdal file
-    #
-    #     """
-    #     f = gdal.Open(r"%s" % filename)
-    #     if f is None:
-    #         print("%s does not exists" % filename)
-    #     else:
-    #         geo_out = f.GetGeoTransform()
-    #         proj = f.GetProjection()
-    #         size_X = f.RasterXSize
-    #         size_Y = f.RasterYSize
-    #         f = None
-    #     return (geo_out, proj, size_X, size_Y)
-    #
-    #
-    # def Open_nc_info(NC_filename, Var=None):
-    #     """
-    #     Opening a nc info, for example size of array, time (ordinal), projection and transform matrix.
-    #
-    #     Keyword Arguments:
-    #     filename -- 'C:/file/to/path/file.nc'
-    #         string that defines the input nc file
-    #
-    #     """
-    #
-    #     fh = netCDF4.Dataset(NC_filename, mode="r")
-    #
-    #     if Var is None:
-    #         Var = list(fh.variables.keys())[-1]
-    #
-    #     data = fh.variables[Var][:]
-    #
-    #     size_Y, size_X = np.int_(data.shape[-2:])
-    #     if len(data.shape) == 3:
-    #         size_Z = np.int_(data.shape[0])
-    #         Time = fh.variables["time"][:]
-    #     else:
-    #         size_Z = 1
-    #         Time = -9999
-    #     lats = fh.variables["latitude"][:]
-    #     lons = fh.variables["longitude"][:]
-    #
-    #     Geo6 = fh.variables["latitude"].pixel_size
-    #     Geo2 = fh.variables["longitude"].pixel_size
-    #     Geo4 = np.max(lats) + Geo6 / 2
-    #     Geo1 = np.min(lons) - Geo2 / 2
-    #
-    #     crso = fh.variables["crs"]
-    #     proj = crso.projection
-    #     epsg = Raster.Get_epsg(proj, extension="GEOGCS")
-    #     geo_out = tuple([Geo1, Geo2, 0, Geo4, 0, Geo6])
-    #     fh.close()
-    #
-    #     return geo_out, epsg, size_X, size_Y, size_Z, Time
-    #
-    #
-    # def Open_nc_array(NC_filename, Var=None, Startdate="", Enddate=""):
-    #     """
-    #     Opening a nc array.
-    #
-    #     Keyword Arguments:
-    #     filename -- 'C:/file/to/path/file.nc'
-    #         string that defines the input nc file
-    #     Var -- string
-    #         Defines the band name that must be opened.
-    #     Startdate -- "yyyy-mm-dd"
-    #         Defines the startdate (default is from beginning of array)
-    #     Enddate -- "yyyy-mm-dd"
-    #         Defines the enddate (default is from end of array)
-    #     """
-    #
-    #     fh = netCDF4.Dataset(NC_filename, mode="r")
-    #     if Var is None:
-    #         Var = fh.variables.keys()[-1]
-    #
-    #     if Startdate != "":
-    #         Time = fh.variables["time"][:]
-    #         Array_check_start = np.ones(np.shape(Time))
-    #         Date = pd.Timestamp(Startdate)
-    #         Startdate_ord = Date.toordinal()
-    #         Array_check_start[Time >= Startdate_ord] = 0
-    #         Start = np.sum(Array_check_start)
-    #     else:
-    #         Start = 0
-    #
-    #     if Enddate != "":
-    #         Time = fh.variables["time"][:]
-    #         Array_check_end = np.zeros(np.shape(Time))
-    #         Date = pd.Timestamp(Enddate)
-    #         Enddate_ord = Date.toordinal()
-    #         Array_check_end[Enddate_ord >= Time] = 1
-    #         End = np.sum(Array_check_end)
-    #     else:
-    #         try:
-    #             Time = fh.variables["time"][:]
-    #             End = len(Time)
-    #         except:
-    #             End = ""
-    #
-    #     if Enddate != "" or Startdate != "":
-    #         Data = fh.variables[Var][int(Start): int(End), :, :]
-    #
-    #     else:
-    #         Data = fh.variables[Var][:]
-    #     fh.close()
-    #
-    #     Data = np.array(Data)
-    #     try:
-    #         Data[Data == -9999] = np.nan
-    #     except:
-    #         pass
-    #
-    #     return Data
-    #
-    #
+
+    @staticmethod
+    def Open_array_info(filename=""):
+        """
+        Opening a tiff info, for example size of array, projection and transform matrix.
+
+        Keyword Arguments:
+        filename -- 'C:/file/to/path/file.tif' or a gdal file (gdal.Open(filename))
+            string that defines the input tiff file or gdal file
+        """
+        f = gdal.Open(r"%s" % filename)
+        if f is None:
+            print("%s does not exists" % filename)
+        else:
+            geo_out = f.GetGeoTransform()
+            proj = f.GetProjection()
+            size_X = f.RasterXSize
+            size_Y = f.RasterYSize
+            f = None
+        return geo_out, proj, size_X, size_Y
+
+
+
+
+
+
+
+
     # def Open_bil_array(bil_filename, band=1):
     #     """
     #     Opening a bil array.
@@ -4302,144 +3317,9 @@ class Raster:
     #     return Data
     #
     #
-    # def Open_ncs_array(NC_Directory, Var, Startdate, Enddate):
-    #     """
-    #     Opening a nc array.
-    #
-    #     Keyword Arguments:
-    #     NC_Directory -- 'C:/file/to/path'
-    #         string that defines the path to all the simulation nc files
-    #     Var -- string
-    #         Defines the band name that must be opened.
-    #     Startdate -- "yyyy-mm-dd"
-    #         Defines the startdate
-    #     Enddate -- "yyyy-mm-dd"
-    #         Defines the enddate
-    #     """
-    #
-    #     panda_start = pd.Timestamp(Startdate)
-    #     panda_end = pd.Timestamp(Enddate)
-    #
-    #     years = range(int(panda_start.year), int(panda_end.year) + 1)
-    #     Data_end = []
-    #     for year in years:
-    #
-    #         NC_filename = os.path.join(NC_Directory, "%d.nc" % year)
-    #
-    #         if year == years[0]:
-    #             Startdate_now = Startdate
-    #         else:
-    #             Startdate_now = "%d-01-01" % int(year)
-    #
-    #         if year == years[-1]:
-    #             Enddate_now = Enddate
-    #         else:
-    #             Enddate_now = "%d-12-31" % int(year)
-    #
-    #         Data_now = Raster.Open_nc_array(
-    #             NC_filename, Var, Startdate_now, Enddate_now
-    #         )
-    #
-    #         if year == years[0]:
-    #             Data_end = Data_now
-    #         else:
-    #             Data_end = np.vstack([Data_end, Data_now])
-    #
-    #     Data_end = np.array(Data_end)
-    #
-    #     return Data_end
-    #
-    #
-    # def Open_nc_dict(input_netcdf, group_name, startdate="", enddate=""):
-    #     """
-    #     Opening a nc dictionary.
-    #
-    #     Keyword Arguments:
-    #     filename -- 'C:/file/to/path/file.nc'
-    #         string that defines the input nc file
-    #     group_name -- string
-    #         Defines the group name that must be opened.
-    #     Startdate -- "yyyy-mm-dd"
-    #         Defines the startdate (default is from beginning of array)
-    #     Enddate -- "yyyy-mm-dd"
-    #         Defines the enddate (default is from end of array)
-    #     """
-    #     # sort out if the dataset is static or dynamic (written in group_name)
-    #     kind_of_data = group_name.split("_")[-1]
-    #
-    #     # if it is dynamic also collect the time parameter
-    #     if kind_of_data == "dynamic":
-    #         time_dates = Raster.Open_nc_array(input_netcdf, Var="time")
-    #         Amount_months = len(time_dates)
-    #
-    #     # Open the input netcdf and the wanted group name
-    #     in_nc = netCDF4.Dataset(input_netcdf)
-    #     data = in_nc.groups[group_name]
-    #
-    #     # Convert the string into a string that can be retransformed into a dictionary
-    #     string_dict = str(data)
-    #     split_dict = str(string_dict.split("\n")[2:-4])
-    #     split_dict = split_dict.replace("'", "")
-    #     split_dict = split_dict[1:-1]
-    #     dictionary = dict()
-    #     split_dict_split = re.split(":|,  ", split_dict)
-    #
-    #     # Loop over every attribute and add the array
-    #     for i in range(0, len(split_dict_split)):
-    #         number_val = split_dict_split[i]
-    #         if i % 2 == 0:
-    #             Array_text = split_dict_split[i + 1].replace(",", "")
-    #             Array_text = Array_text.replace("[", "")
-    #             Array_text = Array_text.replace("]", "")
-    #             # If the array is dynamic add a 2D array
-    #             if kind_of_data == "dynamic":
-    #                 tot_length = len(np.fromstring(Array_text, sep=" "))
-    #                 dictionary[int(number_val)] = np.fromstring(
-    #                     Array_text, sep=" "
-    #                 ).reshape((int(Amount_months), int(tot_length / Amount_months)))
-    #             # If the array is static add a 1D array
-    #             else:
-    #                 dictionary[int(number_val)] = np.fromstring(Array_text, sep=" ")
-    #
-    #     # Clip the dynamic dataset if a start and enddate is defined
-    #     if kind_of_data == "dynamic":
-    #
-    #         if startdate != "":
-    #             Array_check_start = np.ones(np.shape(time_dates))
-    #             Date = pd.Timestamp(startdate)
-    #             Startdate_ord = Date.toordinal()
-    #             Array_check_start[time_dates >= Startdate_ord] = 0
-    #             Start = np.sum(Array_check_start)
-    #         else:
-    #             Start = 0
-    #
-    #         if enddate != "":
-    #             Array_check_end = np.zeros(np.shape(time_dates))
-    #             Date = pd.Timestamp(enddate)
-    #             Enddate_ord = Date.toordinal()
-    #             Array_check_end[Enddate_ord >= time_dates] = 1
-    #             End = np.sum(Array_check_end)
-    #         else:
-    #             try:
-    #                 time_dates = in_nc.variables["time"][:]
-    #                 End = len(time_dates)
-    #             except:
-    #                 End = ""
-    #
-    #         if Start != 0 or (End != len(time_dates) or ""):
-    #
-    #             if End == "":
-    #                 End = len(time_dates)
-    #
-    #             for key in dictionary.iterkeys():
-    #                 Array = dictionary[key][:, :]
-    #                 Array_new = Array[int(Start): int(End), :]
-    #                 dictionary[key] = Array_new
-    #     in_nc.close()
-    #
-    #     return dictionary
-    #
-    #
+
+
+
     # def Clip_Dataset_GDAL(input_name, output_name, latlim, lonlim):
     #     """
     #     Clip the data to the defined extend of the user (latlim, lonlim) by using the gdal_translate executable of gdal.
@@ -4519,8 +3399,8 @@ class Raster:
     #     dest_in = None
     #
     #     return data, Geo_out
-    #
-    #
+
+
     # def reproject_MODIS(input_name, epsg_to):
     #     """
     #     Reproject the merged data file by using gdalwarp. The input projection must be the MODIS projection.
@@ -4632,8 +3512,8 @@ class Raster:
     #         print("only 2D or 3D dimensions are supported")
     #
     #     return Array_out
-    #
-    #
+
+
     # def gap_filling(dataset, NoDataValue, method=1):
     #     """
     #     This function fills the no data gaps in a numpy array
@@ -4687,8 +3567,8 @@ class Raster:
     #         EndProduct = data_end
     #
     #     return EndProduct
-    #
-    #
+
+
     # # def Get3Darray_time_series_monthly(Data_Path, Startdate, Enddate, Example_data = None):
     # #     """
     # #     This function creates a datacube
@@ -4778,69 +3658,12 @@ class Raster:
     # #         i += 1
     #
     # #     return(dataTot)
-    #
-    # def Vector_to_Raster(Dir, shapefile_name, reference_raster_data_name):
-    #     """
-    #     This function creates a raster of a shp file
-    #
-    #     Keyword arguments:
-    #     Dir --
-    #         str: path to the basin folder
-    #     shapefile_name -- 'C:/....../.shp'
-    #         str: Path from the shape file
-    #     reference_raster_data_name -- 'C:/....../.tif'
-    #         str: Path to an example tiff file (all arrays will be reprojected to this example)
-    #     """
-    #     geo, proj, size_X, size_Y = Raster.Open_array_info(reference_raster_data_name)
-    #
-    #     x_min = geo[0]
-    #     x_max = geo[0] + size_X * geo[1]
-    #     y_min = geo[3] + size_Y * geo[5]
-    #     y_max = geo[3]
-    #     pixel_size = geo[1]
-    #
-    #     # Filename of the raster Tiff that will be created
-    #     Dir_Basin_Shape = os.path.join(Dir, "Basin")
-    #     if not os.path.exists(Dir_Basin_Shape):
-    #         os.mkdir(Dir_Basin_Shape)
-    #
-    #     Basename = os.path.basename(shapefile_name)
-    #     Dir_Raster_end = os.path.join(
-    #         Dir_Basin_Shape, os.path.splitext(Basename)[0] + ".tif"
-    #     )
-    #
-    #     # Open the data source and read in the extent
-    #     source_ds = ogr.Open(shapefile_name)
-    #     source_layer = source_ds.GetLayer()
-    #
-    #     # Create the destination data source
-    #     x_res = int(round((x_max - x_min) / pixel_size))
-    #     y_res = int(round((y_max - y_min) / pixel_size))
-    #
-    #     # Create tiff file
-    #     target_ds = gdal.GetDriverByName("GTiff").Create(
-    #         Dir_Raster_end, x_res, y_res, 1, gdal.GDT_Float32, ["COMPRESS=LZW"]
-    #     )
-    #     target_ds.SetGeoTransform(geo)
-    #     srse = osr.SpatialReference()
-    #     srse.SetWellKnownGeogCS(proj)
-    #     target_ds.SetProjection(srse.ExportToWkt())
-    #     band = target_ds.GetRasterBand(1)
-    #     target_ds.GetRasterBand(1).SetNoDataValue(-9999)
-    #     band.Fill(-9999)
-    #
-    #     # Rasterize the shape and save it as band in tiff file
-    #     gdal.RasterizeLayer(
-    #         target_ds, [1], source_layer, None, None, [1], ["ALL_TOUCHED=TRUE"]
-    #     )
-    #     target_ds = None
-    #
-    #     # Open array
-    #     Raster_Basin = Raster.getRasterData(Dir_Raster_end)
-    #
-    #     return Raster_Basin
-    #
-    #
+
+
+
+
+
+
     # def Moving_average(dataset, Moving_front, Moving_back):
     #     """
     #     This function applies the moving averages over a 3D matrix called dataset.
@@ -4865,8 +3688,9 @@ class Raster:
     #         )
     #
     #     return dataset_out
-    #
-    #
+
+
+
     # def Get_ordinal(Startdate, Enddate, freq="MS"):
     #     """
     #     This function creates an array with ordinal time.
@@ -4888,8 +3712,8 @@ class Raster:
     #     return ordinal
 
 
-    # def Create_Buffer(Data_In, Buffer_area):
 
+    # def Create_Buffer(Data_In, Buffer_area):
     #    '''
     #    This function creates a 3D array which is used to apply the moving window
     #    '''
