@@ -145,3 +145,4 @@ build_artifacts
 .idea/.gitignore
 .idea
 mo_*
+conda/
