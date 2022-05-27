@@ -7,7 +7,12 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
+  <component name="PackageRequirementsSettings">
+    <option name="requirementsPath" value="C:\MyComputer\01Algorithms\gis\pyramids\environment.yml" />
+  </component>
   <component name="PyDocumentationSettings">
+    <option name="format" value="NUMPY" />
+    <option name="myDocStringFormat" value="NumPy" />
     <option name="renderExternalDocumentation" value="true" />
   </component>
 </module>

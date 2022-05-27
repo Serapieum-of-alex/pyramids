@@ -143,3 +143,4 @@ build_artifacts
 .xml
 .idea/pyramids.iml
 .idea/pyramids.iml
+mo_*
