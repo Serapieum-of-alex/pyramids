@@ -143,6 +143,5 @@ build_artifacts
 .xml
 .idea/pyramids.iml
 .idea/.gitignore
-.idea/pyramids.iml
 .idea
 mo_*
