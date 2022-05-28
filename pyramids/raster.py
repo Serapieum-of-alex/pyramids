@@ -2099,7 +2099,7 @@ class Raster:
     def rastersLike(
             src: Dataset,
             array: np.ndarray,
-            path: str=None
+            path: List[str]=None
     ):
         """
         this function creates a Geotiff raster like another input raster, new raster

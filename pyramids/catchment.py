@@ -605,23 +605,23 @@ class Catchment:
 
         Parameters
         ----------
-            Raster: [gdal.dataset]
-                raster to get the spatial information (coordinates of each cell)
-            StCoord: [Dataframe]
-                dataframe with two columns "x", "y" contains the coordinates
-                of each station
+        Raster: [gdal.dataset]
+            raster to get the spatial information (coordinates of each cell)
+        StCoord: [Dataframe]
+            dataframe with two columns "x", "y" contains the coordinates
+            of each station
 
         Returns
         -------
-            StCoord:the same input dataframe with two extra columns "cellx","celly"
+        StCoord:the same input dataframe with two extra columns "cellx","celly"
 
         Examples
         --------
-            >>> soil_type = gdal.Open("DEM.tif")
-            >>> data = dict(id = [0,1,2,3], x = [1,2,3,6], y = [5,4,7,8])
-            >>> stations = pd.DataFrame(data)
-            >>> coordinates = stations[['id','x','y']][:]
-            >>> coordinates.loc[:,["cell_row","cell_col"]] = Catchment.nearestCell(Raster, StCoord).values
+        >>> soil_type = gdal.Open("DEM.tif")
+        >>> data = dict(id = [0,1,2,3], x = [1,2,3,6], y = [5,4,7,8])
+        >>> stations = pd.DataFrame(data)
+        >>> coordinates = stations[['id','x','y']][:]
+        >>> coordinates.loc[:,["cell_row","cell_col"]] = Catchment.nearestCell(Raster, StCoord).values
         """
         if not isinstance(Raster, gdal.Dataset):
             raise TypeError ("raster should be read using gdal (gdal dataset please read it using gdal library) ")
