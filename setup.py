@@ -27,11 +27,11 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     # install_requires=requirements,
-    entry_points={
-        'console_scripts': [
-            'pyramids=pyramids.cli:main',
-        ],
-    },
+    # entry_points={
+    #     'console_scripts': [
+    #         'pyramids=pyramids.cli:main',
+    #     ],
+    # },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
