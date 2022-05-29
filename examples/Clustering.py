@@ -1,10 +1,10 @@
 # import numpy as np
-import gdal
-from Hapi.gis.giscatchment import GISCatchment as GC
+from osgeo import gdal
+from pyramids.catchment import Catchment as GC
 
-Path = "F:/04Private/990110182315.csv"  # Book1.csv
-
-Path = "F:/01Algorithms/Hydrology/HAPI/examples/data/GIS/DEM5km_Rhine_burned_acc.tif"
+# Path = "F:/04Private/990110182315.csv"  # Book1.csv
+rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
+Path = f"{rpath}/examples/data/DEM5km_Rhine_burned_acc.tif"
 # data = np.loadtxt(Path, delimiter=',')
 
 Data = gdal.Open(Path)

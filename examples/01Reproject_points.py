@@ -3,7 +3,7 @@ Created on Fri Feb 19 17:57:06 2021
 
 @author: mofarrag
 """
-from Hapi.gis.vector import Vector
+from pyramids.vector import Vector
 
 #%%
 lon = [-180, -179.5]
@@ -34,3 +34,6 @@ y, x = Vector.reprojectPoints(lat, lon, from_epsg, to_epsg, precision=4)
 
 assert y[0] == 4390682.5383 and y[1] == 9629641.4604, "Error ReprojectPoints error 2y"
 assert x[0] == 28494364.9445 and x[1] == 33190988.6123, "Error ReprojectPoints error 2x"
+
+#%%
+

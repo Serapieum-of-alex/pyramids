@@ -146,3 +146,5 @@ build_artifacts
 .idea
 mo_*
 conda/
+examples/data/Save_prec_netcdf_multiple
+examples/data/ZonalStatistics/

@@ -1,12 +1,6 @@
 # from IPython import get_ipython
 from osgeo import gdal, gdalconst, ogr
-
-# get_ipython().magic("reset -f")
-# import os
-
-
 # os.chdir("")
-
 
 rasterF = "/home/zeito/pyqgis_data/utah_demUTM2.tif"
 shpF = "/home/zeito/pyqgis_data/polygon8.shp"

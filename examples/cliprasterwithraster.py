@@ -11,7 +11,7 @@ os.chdir(Comp + "/Coello/HAPI/Data")
 # import osr
 # from osgeo import gdal, gdalconst
 
-from Hapi.gis.raster import Raster
+from pyramids.raster import Raster
 
 SourceRasterPath = "00inputs/GIS/4000/acc4000.tif"
 RasterTobeClippedPath = (

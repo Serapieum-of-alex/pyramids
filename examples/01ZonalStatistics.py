@@ -9,12 +9,12 @@ currunt_work_directory = Hapi/Example
 """
 # import os
 import numpy as np
-from Hapi.gis.raster import Raster as R
+from pyramids.raster import Raster as R
+rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
 
-Path = "examples/GIS/data/ZonalStatistics/"
+Path = "examples/data/ZonalStatistics/"
 SavePath = Path
 BaseMapF = Path + "classes.tif"
-
 
 ExcludedValue = 0
 Compressed = True

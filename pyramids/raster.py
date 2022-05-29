@@ -18,6 +18,8 @@ import numpy as np
 import pandas as pd
 import pyproj
 import rasterio
+from rasterio.mask import mask as rio_mask
+
 from osgeo import gdal, gdalconst, osr
 from osgeo.gdal import Dataset
 from pyramids.vector import Vector
@@ -103,7 +105,7 @@ class Raster:
     @staticmethod
     def getRasterData(
             src: Dataset,
-            band: str = 1
+            band: int = 1
     ) -> Tuple[np.ndarray, Union[int, float]]:
         """
         get the basic data inside a raster (the array and the nodatavalue)
@@ -126,10 +128,10 @@ class Raster:
             raise TypeError("please enter a valib gdal object (raster has been read using gdal.Open)")
 
         # get the value stores in novalue cells
-        NoDataValue = np.float32(src.GetRasterBand(band).GetNoDataValue())
-        Data = src.GetRasterBand(band).ReadAsArray()
+        nodatavalue = np.float32(src.GetRasterBand(band).GetNoDataValue())
+        arr = src.GetRasterBand(band).ReadAsArray()
 
-        return Data, NoDataValue
+        return arr, nodatavalue
 
 
     @staticmethod
@@ -1373,9 +1375,8 @@ class Raster:
         # inputs value
         if save:
             ext = output_path[-4:]
-            assert (
-                    ext == ".tif"
-            ), "please add the extention at the end of the output_path input"
+            if not ext == ".tif":
+                raise TypeError("please add the extention at the end of the output_path input")
 
         proj = src.GetProjection()
         src_epsg = osr.SpatialReference(wkt=proj)
@@ -1407,7 +1408,7 @@ class Raster:
         # Get the geometry coordinates by using the function.
         coords = Vector.getFeatures(shpfile)
 
-        out_img, out_transform = rasterio.mask.mask(
+        out_img, out_transform = rio_mask(
             dataset=raster, shapes=coords, crop=True
         )
 
@@ -1463,8 +1464,8 @@ class Raster:
 
     @staticmethod
     def clip2(
-            src,
-            poly: GeoDataFrame,
+            src: Union[rasterio.io.DatasetReader, str],
+            poly: Union[GeoDataFrame, str],
             save: bool = False,
             output_path: str = "masked.tif"
     ):
@@ -1488,7 +1489,6 @@ class Raster:
         -------
         out_img : [rasterio object]
             the clipped raster.
-
         metadata : [dictionay]
                 dictionary containing number of bands, coordinate reference system crs
                 dtype, geotransform, height and width of the raster
@@ -1725,7 +1725,7 @@ class Raster:
             cols: list
     ):
         """
-        this function filles cells of a given indices in rows and cols with
+        nearestNeighbour filles cells of a given indices in rows and cols with
         the value of the nearest neighbour.
         as the raster grid is square so the 4 perpendicular direction are of the same
         close so the function give priority to the right then left then bottom then top
@@ -1753,23 +1753,20 @@ class Raster:
         Examples
         --------
         >>> raster = gdal.Open("dem.tif")
-        >>> rows = [3,12]
-        >>> cols = [9,2]
-        >>> new_array = Raster.nearestNeighbour(raster, rows, cols)
+        >>> req_rows = [3,12]
+        >>> req_cols = [9,2]
+        >>> new_array = Raster.nearestNeighbour(raster, req_rows, req_cols)
         """
-        # input data validation
-        # data type
-        assert (
-                type(array) == np.ndarray
-        ), "src should be read using gdal (gdal dataset please read it using gdal library) "
+        if not isinstance(array, np.ndarray):
+            raise TypeError("src should be read using gdal (gdal dataset please read it using gdal library) ")
         assert type(rows) == list, "rows input has to be of type list"
         assert type(cols) == list, "cols input has to be of type list"
 
         #    array=raster.ReadAsArray()
         #    nodatavalue=np.float32(raster.GetRasterBand(1).GetNoDataValue())
-        #    no_rows=raster.RasterYSize
+
         no_rows = np.shape(array)[0]
-        #    no_cols=raster.RasterXSize
+
         no_cols = np.shape(array)[1]
 
         for i in range(len(rows)):

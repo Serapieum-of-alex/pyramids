@@ -4,12 +4,12 @@ Created on Sun May  9 03:35:25 2021
 @author: mofarrag
 """
 import os
-
-os.chdir(r"C:\MyComputer\01Algorithms\Hydrology\Hapi")
+rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
+os.chdir(rpath)
 import numpy as np
-from Hapi.gis.raster import Raster
+from pyramids.raster import Raster
 
-Path = "examples/GIS/data/raster-folder/"
+Path = "examples/data/raster-folder/"
 F = Raster.readRastersFolder(Path)
 assert np.shape(F) == (125, 93, 6)
 

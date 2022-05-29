@@ -7,30 +7,19 @@ match two rasters
 """
 #%links
 import os
+rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
+os.chdir(f"{rpath}/examples")
 
-os.chdir("F:/01Algorithms/Hydrology/HAPI/examples/GIS")
-
-#%library
-# import numpy as np
-import gdal
+from osgeo import gdal
 # import datetime as dt
 # import pandas as pd
-from Hapi.gis.raster import Raster
-
+from pyramids.raster import Raster
 # import matplotlib.pyplot as plt
 #%% inputs
-RasterAPath = (
-    "F:/01Algorithms/Hydrology/HAPI/examples/data/GIS/DEM5km_Rhine_burned_acc.tif"
-)
-RasterBPath = (
-    "F:/01Algorithms/Hydrology/HAPI/examples/data/GIS/MSWEP_1979010100_reprojected.tif"
-)
-
-SaveTo = "F:/01Algorithms/Hydrology/HAPI/examples/data/GIS/MSWEP_1979010100_Matched.tif"
-#%%
-
-### Read the Input rasters
-
+RasterAPath = f"{rpath}/examples/data/DEM5km_Rhine_burned_acc.tif"
+RasterBPath = f"{rpath}/examples/data/MSWEP_1979010100_reprojected.tif"
+SaveTo = f"{rpath}/examples/data/MSWEP_1979010100_Matched.tif"
+#%% Read the Input rasters
 # the source raster is of the ASCII format
 src = gdal.Open(RasterAPath)
 src_Array = src.ReadAsArray()
@@ -43,7 +32,6 @@ print("Shape of distnation raster Before matching = " + str(Dst_Array.shape))
 
 ### Match the alignment of both rasters
 NewRasterB = Raster.matchRasterAlignment(src, dst)
-
 NewRasterB_array = NewRasterB.ReadAsArray()
 print("Shape of distnation  raster after matching = " + str(NewRasterB_array.shape))
 
@@ -53,9 +41,9 @@ assert (
     and NewRasterB_array.shape[1] == src_Array.shape[1]
 ), message
 
-### Match the NODataValue
-
-NewRasterB_ND = Raster.MatchNoDataValue(src, NewRasterB)
+#%% Match the NODataValue
+# TODO : fix bug in nearestneighbor
+NewRasterB_ND = Raster.cropAlligned(src, NewRasterB)
 
 NoDataValue = NewRasterB_ND.GetRasterBand(1).GetNoDataValue()
 
