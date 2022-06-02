@@ -37,7 +37,7 @@ class NC:
             number of coordinates in y direction
         size_Z : [integer]
             number of coordinates in z direction
-        Time : [integer]
+        time : [integer]
             time varialble in the netcdf file
         """
         # list if variables
@@ -67,7 +67,7 @@ class NC:
                 Time = netCDF4.num2date(Time[:], TimeVar.units)
             except:
                 Time = nc.variables["t"][:]
-                # Time = nc.variables['t'].units[11:]
+                # time = nc.variables['t'].units[11:]
         else:
             # if there is only one layer(2D array)
             size_Z = 1

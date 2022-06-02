@@ -1246,7 +1246,7 @@ class Raster:
         Returns
         -------
         dst : [gdal.Dataset]
-            the cropped raster will be returned, if the Save parameter was True,
+            the cropped raster will be returned, if the save parameter was True,
             the cropped raster will also be saved to disk in the OutputPath
             directory.
         """

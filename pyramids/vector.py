@@ -445,9 +445,9 @@ class Vector:
         Returns
         -------
         SaveIng the shapefile or NewGeoDataFrame :
-            If you choose True in the "Save" input the function will save the
+            If you choose True in the "save" input the function will save the
             shapefile in the given "SavePath"
-            If you choose False in the "Save" input the function will return a
+            If you choose False in the "save" input the function will return a
             [geodataframe] dataframe containing both input shapefiles
             you can save it as a shapefile using
             NewDataFrame.to_file("Anyname.shp")
@@ -458,7 +458,7 @@ class Vector:
         >>> shape_file1 = "Inputs/RIM_sub.shp"
         >>> shape_file2 = "Inputs/addSubs.shp"
         >>> NewDataFrame = Vector.combineGeometrics(shape_file1, shape_file2, save=False)
-        Save a shapefile
+        save a shapefile
         >>> shape_file1 = "Inputs/RIM_sub.shp"
         >>> shape_file2 = "Inputs/addSubs.shp"
         >>> Vector.combineGeometrics(shape_file1, shape_file2, save=True, save_path="AllBasins.shp")
@@ -791,7 +791,7 @@ class Vector:
         layer.CreateFeature(feat)
         feat = geom = None  # destroy these
 
-        # Save and close everything
+        # save and close everything
         ds = layer = feat = geom = None
 
     def listAttributes(self):

@@ -309,7 +309,7 @@ class Convert:
         for i in range(0, size_Z):
             if (
                     All_Data.shape[0] and All_Data.shape[0] > 1
-            ):  # type(Time) == np.ndarray: #not Time == -9999
+            ):  # type(time) == np.ndarray: #not time == -9999
                 time_one = Time[i]
                 # d = dt.date.fromordinal(int(time_one))
                 name = os.path.splitext(os.path.basename(input_nc))[0]
