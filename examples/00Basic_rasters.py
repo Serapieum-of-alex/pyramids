@@ -17,6 +17,7 @@ import matplotlib
 import numpy as np
 import pandas as pd
 from osgeo import gdal, ogr, osr
+
 matplotlib.use("TkAgg")
 from pyramids.catchment import Catchment as GC
 from pyramids.raster import Raster
@@ -41,7 +42,7 @@ of qgis in the environment variable with a name "qgis"
 """
 # %% read the raster
 src = gdal.Open(RasterAPath)
-# fig, ax = Map.PlotArray(src, Title="Flow Accumulation")
+# fig, ax = Map.PlotArray(src, title="Flow Accumulation")
 # %% GetRasterData
 """
 get the basic data inside a raster (the array and the nodatavalue)
@@ -159,7 +160,7 @@ Returns
 """
 
 src = Raster.createRaster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
-# Map.PlotArray(src, Title="Flow Accumulation")
+# Map.PlotArray(src, title="Flow Accumulation")
 # %%` RasterLike
 """RasterLike.
 
@@ -207,7 +208,7 @@ arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
 path = datapath + "/rasterlike.tif"
 Raster.rasterLike(src, arr2, path)
 dst = gdal.Open(path)
-# Map.PlotArray(dst, Title="Flow Accumulation", ColorScale=1)
+# Map.PlotArray(dst, title="Flow Accumulation", color_scale=1)
 # %%
 """MapAlgebra.
 
@@ -246,7 +247,7 @@ def func1(val):
 
 
 dst = Raster.mapAlgebra(src, func1)
-# Map.PlotArray(dst, Title="Classes", ColorScale=4, TicksSpacing=1)
+# Map.PlotArray(dst, title="Classes", color_scale=4, ticks_spacing=1)
 # %%
 """RasterFill.
 
@@ -273,7 +274,7 @@ Raster.rasterFill(src, value, save_to=path)
 
 "now the resulted raster is saved to disk"
 dst = gdal.Open(path)
-# Map.PlotArray(dst, Title="Flow Accumulation")
+# Map.PlotArray(dst, title="Flow Accumulation")
 # %%
 """ResampleRaster.
 
@@ -306,7 +307,7 @@ dst = Raster.resampleRaster(src, cell_size, resample_technique="bilinear")
 dst_arr, _ = Raster.getRasterData(dst)
 _, newgeo = Raster.getProjectionData(dst)
 print("New cell size is " + str(newgeo[1]))
-# Map.PlotArray(dst, Title="Flow Accumulation")
+# Map.PlotArray(dst, title="Flow Accumulation")
 # %%
 """ProjectRaster.
 
@@ -385,7 +386,7 @@ Outputs:
 # newepsg, newgeo = Raster.GetProjectionData(dst)
 # print("New EPSG - " + str(newepsg))
 # print("New Geotransform - " + str(newgeo))
-# Map.PlotArray(dst, Title="Flow Accumulation")
+# Map.PlotArray(dst, title="Flow Accumulation")
 # %% CropAlligned
 """if you have an array and you want clip/crop it using another raster/array"""
 
@@ -419,17 +420,17 @@ dst_arr, dst_nodataval = Raster.getRasterData(dst)
 # Map.PlotArray(
 #     dst_arr,
 #     nodataval=dst_nodataval,
-#     Title="Before Cropping-Evapotranspiration",
-#     ColorScale=1,
-#     TicksSpacing=0.01,
+#     title="Before Cropping-Evapotranspiration",
+#     color_scale=1,
+#     ticks_spacing=0.01,
 # )
 dst_arr_cropped = Raster.cropAlligned(dst_arr, src)
 # Map.PlotArray(
 #     dst_arr_cropped,
 #     nodataval=nodataval,
-#     Title="Cropped array",
-#     ColorScale=1,
-#     TicksSpacing=0.01,
+#     title="Cropped array",
+#     color_scale=1,
+#     ticks_spacing=0.01,
 # )
 # %% clip raster using another raster while preserving the alignment
 """
@@ -437,7 +438,7 @@ cropping rasters may  change the alignment of the cells and to keep the alignmen
 we will crop the same previous raster but will give the input to the function as a gdal.dataset object
 """
 dst_cropped = Raster.cropAlligned(dst, src)
-# Map.PlotArray(dst_cropped, Title="Cropped raster", ColorScale=1, TicksSpacing=0.01)
+# Map.PlotArray(dst_cropped, title="Cropped raster", color_scale=1, ticks_spacing=0.01)
 # %% crop raster using array
 """
 we can also crop a raster using an array in condition that we enter the value of the nodata stored in the
@@ -445,7 +446,7 @@ array
 we can repeat the previous example but
 """
 dst_cropped = Raster.cropAlligned(dst, arr, mask_noval=nodataval)
-# Map.PlotArray(dst_cropped, Title="Cropped array", ColorScale=1, TicksSpacing=0.01)
+# Map.PlotArray(dst_cropped, title="Cropped array", color_scale=1, ticks_spacing=0.01)
 # %% clip a folder of rasters using another raster while preserving the alignment
 """
 you can perform the previous step on multiple rasters using the CropAlignedFolder
@@ -521,13 +522,13 @@ epsg, geotransform = Raster.getProjectionData(soil_raster)
 print("Before alignment EPSG = " + str(epsg))
 print("Before alignment Geotransform = " + str(geotransform))
 # cell_size = geotransform[1]
-# Map.PlotArray(soil_raster, Title="To be aligned", ColorScale=1, TicksSpacing=1)
+# Map.PlotArray(soil_raster, title="To be aligned", color_scale=1, ticks_spacing=1)
 
 soil_aligned = Raster.matchRasterAlignment(src, soil_raster)
 New_epsg, New_geotransform = Raster.getProjectionData(soil_aligned)
 print("After alignment EPSG = " + str(New_epsg))
 print("After alignment Geotransform = " + str(New_geotransform))
-# Map.PlotArray(soil_aligned, Title="After alignment", ColorScale=1, TicksSpacing=1)
+# Map.PlotArray(soil_aligned, title="After alignment", color_scale=1, ticks_spacing=1)
 # %%
 """Crop.
 
@@ -543,12 +544,12 @@ Parameters:
     3- OutputPath : [string]
         if you want to save the cropped raster directly to disk
         enter the value of the OutputPath as the path.
-    3- Save : [boolen]
+    3- save : [boolen]
         True if you want to save the cropped raster directly to disk.
 Output:
 -------
     1- dst : [gdal.Dataset]
-        the cropped raster will be returned, if the Save parameter was True,
+        the cropped raster will be returned, if the save parameter was True,
         the cropped raster will also be saved to disk in the OutputPath
         directory.
 """
@@ -556,7 +557,7 @@ RasterA = gdal.Open(aligned_raster)
 epsg, geotransform = Raster.getProjectionData(RasterA)
 print("Raster EPSG = " + str(epsg))
 print("Raster Geotransform = " + str(geotransform))
-# Map.PlotArray(RasterA, Title="Raster to be cropped", ColorScale=1, TicksSpacing=1)
+# Map.PlotArray(RasterA, title="Raster to be cropped", color_scale=1, ticks_spacing=1)
 """
 We will use the soil raster from the previous example as a mask
 so the projection is different between the raster and the mask and the cell size is also different
@@ -565,12 +566,12 @@ dst = Raster.crop(RasterA, soil_raster)
 dst_epsg, dst_geotransform = Raster.getProjectionData(dst)
 print("resulted EPSG = " + str(dst_epsg))
 print("resulted Geotransform = " + str(dst_geotransform))
-# Map.PlotArray(dst, Title="Cropped Raster", ColorScale=1, TicksSpacing=1)
+# Map.PlotArray(dst, title="Cropped Raster", color_scale=1, ticks_spacing=1)
 # %%
 src_aligned = gdal.Open(aligned_raster)
 # # arr, nodataval = Raster.GetRasterData(src_aligned)
-# Map.PlotArray(src_aligned, Title="Before Cropping-Evapotranspiration", ColorScale=1,
-#               TicksSpacing=0.01)
+# Map.PlotArray(src_aligned, title="Before Cropping-Evapotranspiration", color_scale=1,
+#               ticks_spacing=0.01)
 # %%
 """ClipRasterWithPolygon.
 
@@ -609,8 +610,8 @@ src = gdal.Open(aligned_raster)
 
 dst = Raster.clipRasterWithPolygon(aligned_raster, Basinshp, save=False, output_path=None)
 dst = Raster.clip2(aligned_raster, Basinshp, save=False, output_path=None)
-# Map.PlotArray(dst, Title="After Cropping-Evapotranspiration by a shapefile", ColorScale=1,
-#               TicksSpacing=0.01)
+# Map.PlotArray(dst, title="After Cropping-Evapotranspiration by a shapefile", color_scale=1,
+#               ticks_spacing=0.01)
 # %% ReadASCII.
 """ReadASCII.
 
@@ -644,7 +645,7 @@ Example:
 """
 path = datapath + r"/asci_example.asc"
 arr, geotransform = Raster.readASCII(path, pixel_type=1)
-# Map.PlotArray(arr, geotransform[-1], Title="Cropped Raster", ColorScale=2, TicksSpacing=200)
+# Map.PlotArray(arr, geotransform[-1], title="Cropped Raster", color_scale=2, ticks_spacing=200)
 arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
 path2 = datapath + r"/roughness.asc"
 Raster.writeASCII(path2, geotransform, arr)
