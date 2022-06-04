@@ -6,8 +6,8 @@ import requests
 from loguru import logger
 
 
-def get_example_data(article_id: int = 19991261, directory: str = None):
-    """get_example_data.
+def getExampleData(article_id: int = 19991261, directory: str = None):
+    """getExampleData.
 
         retrieve the data required for the examples.
 
@@ -19,9 +19,17 @@ def get_example_data(article_id: int = 19991261, directory: str = None):
         >>> article_id = 19991261
     directory: [str]
         the directory where you want to save the data
+
     Returns
     -------
     None
+
+    Examples
+    --------
+    to download the netcdf file needed for the netcdf examples
+    >>> article_id = 19991261
+    >>> dir = "pyramids\examples\data"
+    >>> getExampleData(article_id, directory=dir)
     """
     baseurl = "https://api.figshare.com/v2"
     url = f"{baseurl}/articles/{article_id}/files"
