@@ -13,7 +13,7 @@ test_requirements = ['pytest>=3', ]
 
 setup(
     name="pyramids-gis",
-    version="0.1.1",
+    version="0.2.0",
     description="GIS utility package",
     author="Mostafa Farrag",
     author_email="moah.farag@gmail.come",
