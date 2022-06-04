@@ -148,3 +148,5 @@ mo_*
 conda/
 examples/data/Save_prec_netcdf_multiple
 examples/data/ZonalStatistics/
+examples/data/precip.1979.nc
+pyramids/Copy of RETRIEVE-ALL-METADATA-WITH-ACCOUNT-INFO.ipynb
