@@ -3,22 +3,22 @@ Current release info
 ====================
 
 .. image:: https://img.shields.io/pypi/v/pyramids-gis
-  :target: https://pypi.org/project/pyramids-gis/0.1.0/
+  :target: https://pypi.org/project/pyramids-gis/0.2.1/
 
 
 .. image:: https://img.shields.io/conda/v/conda-forge/pyramids?label=conda-forge
-  :target: https://pypi.org/project/pyramids-gis/0.1.0/
+  :target: https://pypi.org/project/pyramids-gis/0.2.1/
 
 
 .. image:: https://img.shields.io/pypi/pyversions/pyramids-gis
-  :target: https://pypi.org/project/pyramids-gis/0.1.0/
+  :target: https://pypi.org/project/pyramids-gis/0.2.1/
 
 
 .. image:: https://img.shields.io/github/forks/mafarrag/hapi?style=social   :alt: GitHub forks
 
 
-.. image:: https://anaconda.org/conda-forge/pyramids-gis/badges/downloads.svg
-  :target: https://anaconda.org/conda-forge/pyramids
+.. image:: https://anaconda.org/conda-forge/pyramids/badges/downloads.svg
+  :target: https://anaconda.org/conda-forge/pyramids-gis/0.2.1
 
 
 .. image:: https://img.shields.io/conda/vn/conda-forge/pyramids   :alt: Conda (channel only)

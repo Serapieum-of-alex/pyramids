@@ -2,7 +2,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/MAfarrag/Hapi.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/MAfarrag/Hapi/context:python)
-
+[![Documentation Status](https://readthedocs.org/projects/pyramids-gis/badge/?version=latest)](https://pyramids-gis.readthedocs.io/en/latest/?badge=latest)
 
 
 ![GitHub last commit](https://img.shields.io/github/last-commit/MAfarrag/pyramids)
