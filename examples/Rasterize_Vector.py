@@ -1,5 +1,6 @@
 # from IPython import get_ipython
 from osgeo import gdal, gdalconst, ogr
+
 # os.chdir("")
 
 rasterF = "/home/zeito/pyqgis_data/utah_demUTM2.tif"

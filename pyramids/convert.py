@@ -1,10 +1,13 @@
 """Convert data from one form to another"""
 import os
+
+import netCDF4
 import numpy as np
 from osgeo import gdal, osr
-import netCDF4
-from pyramids.raster import Raster
+
 from pyramids.netcdf import NC
+from pyramids.raster import Raster
+
 
 class Convert:
     """

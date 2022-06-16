@@ -36,4 +36,3 @@ assert y[0] == 4390682.5383 and y[1] == 9629641.4604, "Error ReprojectPoints err
 assert x[0] == 28494364.9445 and x[1] == 33190988.6123, "Error ReprojectPoints error 2x"
 
 #%%
-

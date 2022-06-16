@@ -6,12 +6,16 @@ Created on Sun Aug  2 22:30:48 2020
 make sure to change the directory to the examples folder in the repo
 """
 import os
+
 import matplotlib
+
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import rasterio
-from pyramids.convert import Convert
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from pyramids.convert import Convert
+
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
 ParentPath = f"{rpath}/examples/"
 # %% Netcdf file that contains only one layer

@@ -9,7 +9,9 @@ currunt_work_directory = Hapi/Example
 """
 # import os
 import numpy as np
+
 from pyramids.raster import Raster as R
+
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
 
 Path = "examples/data/ZonalStatistics/"

@@ -4,10 +4,13 @@ Created on Fri May 15 19:30:03 2020
 @author: mofarrag
 """
 import os
+
 os.chdir("F:/02Case studies/Rhine/base_data/GIS/Layers/DEM/srtm/srtms")
 import glob
-from pyramids.raster import Raster
+
 from rasterio.plot import show
+
+from pyramids.raster import Raster
 
 # File and folder paths
 dirpath = "F:/02Case studies/Rhine/base_data/GIS/Layers/DEM/srtm/srtms"
