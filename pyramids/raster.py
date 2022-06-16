@@ -2311,6 +2311,7 @@ class Raster:
     @staticmethod
     def readRastersFolder(
             path: str,
+            band: int=1,
             with_order: bool=True,
             start: str="",
             end: str="",
@@ -2335,6 +2336,8 @@ class Raster:
         path:[String/list]
             path of the folder that contains all the rasters or
             a list contains the paths of the rasters to read.
+        band: [int]
+            number of the band you want to read default is 1.
         with_order: [bool]
             True if the rasters follows a certain order, then the rasters names should have a
             number at the beginning indicating the order.
@@ -2358,6 +2361,11 @@ class Raster:
         -------
         >>> raster_folder = "examples/GIS/data/raster-folder"
         >>> prec = Raster.readRastersFolder(raster_folder)
+
+        >>> import glob
+        >>> search_criteria = "*.tif"
+        >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
+        >>> prec = Raster.readRastersFolder(file_list, with_order=False)
         """
         # input data validation
         # data type
@@ -2436,9 +2444,12 @@ class Raster:
             sample = gdal.Open(files[starti])
         else:
             sample = gdal.Open(path + "/" + files[starti])
+        # check the given band number
+        if band > sample.RasterCount:
+            raise ValueError(f"the raster has only {sample.RasterCount} check the given band number")
 
-        dim = sample.ReadAsArray().shape
-        naval = sample.GetRasterBand(1).GetNoDataValue()
+        dim = sample.GetRasterBand(band).ReadAsArray().shape
+        naval = sample.GetRasterBand(band).GetNoDataValue()
         # fill the array with noval data
         arr_3d = np.ones((dim[0], dim[1], len(range(starti, endi))))
         arr_3d[:, :, :] = naval
@@ -2447,12 +2458,12 @@ class Raster:
             for i in range(starti, endi):
                 # read the tif file
                 f = gdal.Open(files[i])
-                arr_3d[:, :, i] = f.ReadAsArray()
+                arr_3d[:, :, i] = f.GetRasterBand(band).ReadAsArray()
         else:
             for i in enumerate(range(starti, endi)):
                 # read the tif file
                 f = gdal.Open(path + "/" + files[i[1]])
-                arr_3d[:, :, i[0]] = f.ReadAsArray()
+                arr_3d[:, :, i[0]] = f.GetRasterBand(band).ReadAsArray()
 
         return arr_3d
 
