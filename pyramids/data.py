@@ -1,9 +1,10 @@
-import os
 import json
-from requests.exceptions import HTTPError
+import os
 from urllib.request import urlretrieve
+
 import requests
 from loguru import logger
+from requests.exceptions import HTTPError
 
 
 def getExampleData(article_id: int = 19991261, directory: str = None):

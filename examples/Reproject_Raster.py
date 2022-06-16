@@ -4,11 +4,15 @@ Created on Fri Feb 19 17:04:28 2021
 @author: mofarrag
 """
 import os
+
 import matplotlib
+
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
-from pyramids.raster import Raster
 from osgeo import gdal, osr
+
+from pyramids.raster import Raster
+
 #%% directory of the examples folder
 "chenge the current path to the examples directory inside the repo"
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids\examples"

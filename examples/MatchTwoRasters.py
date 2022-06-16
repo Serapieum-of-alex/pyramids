@@ -7,13 +7,16 @@ match two rasters
 """
 #%links
 import os
+
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
 os.chdir(f"{rpath}/examples")
 
 from osgeo import gdal
+
 # import datetime as dt
 # import pandas as pd
 from pyramids.raster import Raster
+
 # import matplotlib.pyplot as plt
 #%% inputs
 RasterAPath = f"{rpath}/examples/data/DEM5km_Rhine_burned_acc.tif"

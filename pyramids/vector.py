@@ -8,15 +8,15 @@ import json
 import warnings
 
 import geopandas as gpd
+import geopy.distance as distance
 import numpy as np
 import pandas as pd
 from fiona.crs import from_epsg
+from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr, osr
 from pyproj import Proj, transform
 from shapely.geometry import Point, Polygon
 from shapely.geometry.multipolygon import MultiPolygon
-from geopandas.geodataframe import GeoDataFrame
-import geopy.distance as distance
 
 
 class Vector:
