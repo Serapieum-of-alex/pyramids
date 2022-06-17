@@ -54,6 +54,10 @@ Current release info
   :target: https://pepy.tech/project/pyramids-gis
 
 
+.. image:: https://coveralls.io/repos/github/MAfarrag/pyramids/badge.svg?branch=main
+    :target: https://coveralls.io/github/MAfarrag/pyramids?branch=main
+
+
 
 
 pyramids - GIS utility package
