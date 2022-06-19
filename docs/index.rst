@@ -90,3 +90,4 @@ Main Features
     vector <vector.rst>
     netcdf <netcdf.rst>
     convert <convert.rst>
+    catchment <catchment.rst>
