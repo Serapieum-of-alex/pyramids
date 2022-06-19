@@ -203,12 +203,8 @@ openArrayInfo
 Raster Operations
 *****************
 
-
-resampleRaster
--------------
-- projectRaster
-- cropAlligned
-- crop
+crop
+--------------
 - clipRasterWithPolygon
 - clip2
 - changeNoDataValue
@@ -335,15 +331,15 @@ mapAlgebra
 
 - `mapAlgebra` executes a mathematical operation on raster array and returns the result
 
-- Parameters
-============
+Parameters
+==========
     src : [gdal.dataset]
         source raster to that you want to make some calculation on its values
     fun: [function]
         defined function that takes one input which is the cell value
 
-- Returns
-=========
+Returns
+=======
     Dataset
         gdal dataset object
 
@@ -378,8 +374,8 @@ rasterFill
 
 - `rasterFill` takes a raster and fill it with one value.
 
-- Parameters
-============
+Parameters
+==========
     src : [gdal.dataset]
         source raster
     val: [numeric]
@@ -387,8 +383,8 @@ rasterFill
     save_to : [str]
         path including the extension (.tif)
 
-- Returns
-=========
+Returns
+=======
     raster : [saved on disk]
         the raster will be saved directly to the path you provided.
 
@@ -404,6 +400,104 @@ rasterFill
 
 .. image:: /images/raster_fill.png
    :width: 500pt
+
+resampleRaster
+-------------
+
+- `resampleRaster` reproject a raster to any projection (default the WGS84 web mercator projection, without
+resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
+
+Parameters
+==========
+    src : [gdal.Dataset]
+         gdal raster (src=gdal.Open("dem.tif"))
+    cell_size : [integer]
+         new cell size to resample the raster.
+        (default empty so raster will not be resampled)
+    resample_technique : [String]
+        resampling technique default is "Nearest"
+        https://gisgeography.com/raster-resampling/
+        "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+        "bilinear" for bilinear
+
+Returns
+=======
+    raster : [gdal.Dataset]
+         gdal object (you can read it by ReadAsArray)
+
+
+.. code:: py
+
+    print("Original Cell Size =" + str(geo[1]))
+    cell_size = 100
+    dst = Raster.resampleRaster(src, cell_size, resample_technique="bilinear")
+
+    dst_arr, _ = Raster.getRasterData(dst)
+    _, newgeo = Raster.getProjectionData(dst)
+    print("New cell size is " + str(newgeo[1]))
+    Map.plot(dst, title="Flow Accumulation")
+
+    Original Cell Size =4000.0
+    New cell size is 100.0
+
+
+.. image:: /images/resample.png
+   :width: 500pt
+
+projectRaster
+-------------
+
+- `projectRaster` reprojects a raster to any projection (default the WGS84 web mercator projection, without resampling)
+The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
+
+Parameters
+==========
+    src: [gdal object]
+        gdal dataset (src=gdal.Open("dem.tif"))
+    to_epsg: [integer]
+        reference number to the new projection (https://epsg.io/)
+        (default 3857 the reference no of WGS84 web mercator )
+    resample_technique: [String]
+        resampling technique default is "Nearest"
+        https://gisgeography.com/raster-resampling/
+        "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+        "bilinear" for bilinear
+    option : [1 or 2]
+        option 2 uses the gda.wrap function, option 1 uses the gda.ReprojectImage function
+
+Returns
+=======
+    raster:
+        gdal dataset (you can read it by ReadAsArray)
+
+.. code:: py
+
+    print("current EPSG - " + str(epsg))
+    to_epsg = 4326
+    dst = Raster.projectRaster(src, to_epsg=to_epsg, option=1)
+    newepsg, newgeo = Raster.getProjectionData(dst)
+    print("New EPSG - " + str(newepsg))
+    print("New Geotransform - " + str(newgeo))
+
+    current EPSG - 32618
+    New EPSG - 4326
+    New Geotransform - (-75.60441, 0.03606600000000526, 0.0, 4.704305, 0.0, -0.03606600000000526)
+
+
+- Option 2
+
+.. code:: py
+
+    dst = Raster.projectRaster(src, to_epsg=to_epsg, option=2)
+    newepsg, newgeo = Raster.getProjectionData(dst)
+    print("New EPSG - " + str(newepsg))
+    print("New Geotransform - " + str(newgeo))
+
+    New EPSG - 4326
+    New Geotransform - (-75.60441003848668, 0.03611587177268461, 0.0, 4.704560448076901, 0.0, -0.03611587177268461)
+
+cropAlligned
+-------------
 
 
 **************
