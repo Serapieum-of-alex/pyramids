@@ -2,12 +2,35 @@
 raster
 ######
 
-raster module contains all the functions that deals with gdal and rasterio
-objest. The module contains function that falls in one of the following
+raster module contains one class `Raster` which have all the functions that deals with gdal
+and rasterio objest. The module contains function that falls in one of the following
 categories.
 
-- The main parameter for most of the functions in the `raster` module
-is the g
+- to import the raster
+
+.. code:: py
+    from pyramids.raster import Raster
+
+- The module contains function that falls in one of the following
+categories.
+
+- The main parameter for most of the functions in the `raster` module is a `gdal.Dataset`
+
+.. code:: py
+
+    raster_path = "examples/data/acc4000.tif"
+    src = gdal.Open(RasterAPath)
+    fig, ax = Map.plot(src, title="Flow Accumulation")
+
+.. image:: docs/images/flow_accumulation.png
+   :width: 500pt
+
+
+.. note::
+
+    * change the directory of your code to point at the repository root directory to be able to read the raster
+    files
+    * the visualization in this documentatin uses digitalearth package to install it `Digital-Earth`_
 
 
 ***********
@@ -177,3 +200,12 @@ Save extracted values
     for i in range(len(Polygons)):
         np.savetxt(SavePath +"/" + str(Polygons[i]) + ".txt",
                    ExtractedValues[Polygons[i]],fmt="%4.2f")
+
+
+**********
+References
+**********
+
+.. target-notes::
+.. _`Digital-Earth`:
+   https://github.com/MAfarrag/Digital-Earth
