@@ -30,9 +30,10 @@ and rasterio objest. The module contains function that falls in one of the follo
 
 - The module contains function that falls in one of the following categories.
 
-#.`Raster Data`_
-#.`Raster Operations`_
-#.`Raster Dataset`_
+#. `Raster Data`_
+#. `Raster Operations`_
+#. `Raster Dataset`_
+
 
 ***********
 Raster Data
@@ -202,10 +203,9 @@ openArrayInfo
 Raster Operations
 *****************
 
-- rasterFill
+
+resampleRaster
 -------------
-- mapAlgebra
-- resampleRaster
 - projectRaster
 - cropAlligned
 - crop
@@ -319,12 +319,91 @@ Returns
     path = "examples/data/rasterlike.tif"
     Raster.rasterLike(src, arr2, path)
 
-- now to check the raster that has been saved we can read it again with `gda.Open`
+- Now to check the raster that has been saved we can read it again with `gda.Open`
 
 .. code:: py
 
     dst = gdal.Open(path)
     Map.plot(dst, title="Flow Accumulation", color_scale=1)
+
+
+.. image:: /images/raster_like.png
+   :width: 500pt
+
+mapAlgebra
+-------------
+
+- `mapAlgebra` executes a mathematical operation on raster array and returns the result
+
+- Parameters
+============
+    src : [gdal.dataset]
+        source raster to that you want to make some calculation on its values
+    fun: [function]
+        defined function that takes one input which is the cell value
+
+- Returns
+=========
+    Dataset
+        gdal dataset object
+
+.. code:: py
+
+    def classify(val):
+        if val < 20:
+            val = 1
+        elif val < 40:
+            val = 2
+        elif val < 60:
+            val = 3
+        elif val < 80:
+            val = 4
+        elif val < 100:
+            val = 5
+        else:
+            val = 0
+        return val
+
+
+    dst = Raster.mapAlgebra(src, classify)
+    Map.plot(dst, title="Classes", color_scale=4, ticks_spacing=1)
+
+.. image:: /images/map_algebra.png
+   :width: 500pt
+
+
+
+rasterFill
+----------
+
+- `rasterFill` takes a raster and fill it with one value.
+
+- Parameters
+============
+    src : [gdal.dataset]
+        source raster
+    val: [numeric]
+        numeric value
+    save_to : [str]
+        path including the extension (.tif)
+
+- Returns
+=========
+    raster : [saved on disk]
+        the raster will be saved directly to the path you provided.
+
+.. code:: py
+
+    path = "examples/data/fillrasterexample.tif"
+    value = 20
+    Raster.rasterFill(src, value, save_to=path)
+
+    "now the resulted raster is saved to disk"
+    dst = gdal.Open(path)
+    Map.plot(dst, title="Flow Accumulation")
+
+.. image:: /images/raster_fill.png
+   :width: 500pt
 
 
 **************
