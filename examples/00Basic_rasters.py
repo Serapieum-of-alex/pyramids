@@ -24,8 +24,6 @@ from osgeo import gdal, ogr, osr
 from pyramids.catchment import Catchment as GC
 from pyramids.raster import Raster
 
-# from Hapi.plot.map import Map
-# from Hapi.plot.visualizer import Visualize as vis
 #%% Paths
 RasterAPath = datapath + "/acc4000.tif"
 RasterBPath = datapath + "/dem_100_f.tif"

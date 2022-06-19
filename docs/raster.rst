@@ -3,16 +3,14 @@ raster
 ######
 
 raster module contains one class `Raster` which have all the functions that deals with gdal
-and rasterio objest. The module contains function that falls in one of the following
-categories.
+and rasterio objest. The module contains function that falls in one of the following categories.
 
-- to import the raster
+- to import the raster module
 
 .. code:: py
+
     from pyramids.raster import Raster
 
-- The module contains function that falls in one of the following
-categories.
 
 - The main parameter for most of the functions in the `raster` module is a `gdal.Dataset`
 
@@ -22,30 +20,137 @@ categories.
     src = gdal.Open(RasterAPath)
     fig, ax = Map.plot(src, title="Flow Accumulation")
 
-.. image:: docs/images/flow_accumulation.png
+.. image:: /images/flow_accumulation.png
    :width: 500pt
-
 
 .. note::
 
-    * change the directory of your code to point at the repository root directory to be able to read the raster
-    files
+    * change the directory of your code to point at the repository root directory to be able to read the raster files
     * the visualization in this documentatin uses digitalearth package to install it `Digital-Earth`_
 
+- The module contains function that falls in one of the following categories.
+
+#.`Raster Data`_
+#.`Raster Operations`_
+#.`Raster Dataset`_
 
 ***********
 Raster Data
 ***********
-function that are related to spatial resolution, projection and
-coordinates of a raster.
+function that are related to spatial resolution, projection and coordinates of a raster.
 
 
 getRasterData
 -------------
+- the definition of the function is as follow.
+
+.. code:: py
+
+    get the basic data inside a raster (the array and the nodatavalue)
+
+    Parameters
+    ----------
+    src: [gdal.Dataset]
+        a gdal.Dataset is a raster already been read using gdal
+    band : [integer]
+        the band you want to get its data. Default is 1
+
+    Returns
+    -------
+    array : [array]
+        array with all the values in the flow path length raster
+    nodataval : [numeric]
+        value stored in novalue cells
+
+- To use the function use the `gda.Dataset` you read using `gdal.Open` method
+
+.. code:: py
+
+    arr, nodataval = Raster.getRasterData(src)
+    print(arr)
+    array([[-3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38],
+       [-3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38,  0.000000e+00,  0.000000e+00,  0.000000e+00,
+        -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38],
+       [-3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38,  1.000000e+00,  0.000000e+00,  2.000000e+00,
+        -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38],
+       [-3.402823e+38, -3.402823e+38, -3.402823e+38,  0.000000e+00,
+         0.000000e+00,  2.000000e+00,  0.000000e+00,  4.000000e+00,
+         0.000000e+00,  0.000000e+00, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38],
+       [-3.402823e+38, -3.402823e+38, -3.402823e+38,  0.000000e+00,
+         4.000000e+00,  4.000000e+00,  0.000000e+00,  5.000000e+00,
+         2.000000e+00,  0.000000e+00, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38],
+       [-3.402823e+38, -3.402823e+38, -3.402823e+38,  0.000000e+00,
+         0.000000e+00,  1.100000e+01,  0.000000e+00,  0.000000e+00,
+         1.000000e+01,  1.000000e+00, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38],
+       [-3.402823e+38, -3.402823e+38,  0.000000e+00,  0.000000e+00,
+         0.000000e+00,  1.500000e+01,  0.000000e+00,  0.000000e+00,
+         0.000000e+00,  1.300000e+01, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38],
+       [-3.402823e+38,  0.000000e+00,  1.000000e+00,  1.000000e+00,
+         1.500000e+01,  2.300000e+01,  4.500000e+01,  1.000000e+00,
+         0.000000e+00,  1.500000e+01, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38],
+       [-3.402823e+38,  0.000000e+00,  1.000000e+00,  1.100000e+01,
+         6.000000e+00,  0.000000e+00,  2.000000e+00,  4.900000e+01,
+         5.400000e+01,  0.000000e+00,  1.600000e+01,  1.700000e+01,
+         0.000000e+00, -3.402823e+38],
+       [-3.402823e+38,  0.000000e+00,  6.000000e+00,  4.000000e+00,
+         0.000000e+00,  1.000000e+00,  1.000000e+00,  0.000000e+00,
+         0.000000e+00,  5.500000e+01,  1.000000e+00,  2.000000e+00,
+         8.600000e+01, -3.402823e+38],
+       [ 0.000000e+00,  4.000000e+00,  2.000000e+00,  0.000000e+00,
+         0.000000e+00,  0.000000e+00, -3.402823e+38,  0.000000e+00,
+         1.000000e+00,  2.000000e+00,  5.900000e+01,  6.300000e+01,
+         0.000000e+00,  8.800000e+01],
+       [ 0.000000e+00,  1.000000e+00,  1.000000e+00, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38,  0.000000e+00,  1.000000e+00,  0.000000e+00,
+        -3.402823e+38, -3.402823e+38],
+       [-3.402823e+38,  0.000000e+00,  0.000000e+00, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
+        -3.402823e+38, -3.402823e+38]], dtype=float32)
+
+    print(nodataval)
+    -3.4028230607370965e+38
 
 
 getProjectionData
 -----------------
+
+- GetProjectionData returns the projection details of a given gdal.Dataset
+
+Parameters
+==========
+src: [gdal.Dataset]
+    raster read by gdal
+
+Returns
+=======
+epsg: [integer]
+     integer reference number that defines the projection (https://epsg.io/)
+geo: [tuple]
+    geotransform data of the upper left corner of the raster
+    (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
+
+
+.. code:: py
+
+    epsg, geo = Raster.getProjectionData(src)
+    print("EPSG = " + str(epsg))
+    EPSG = 32618
+    print(geo)
+    (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 
 
 getEPSG

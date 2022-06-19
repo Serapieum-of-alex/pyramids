@@ -119,14 +119,14 @@ class Raster:
         -------
         array : [array]
             array with all the values in the flow path length raster
-        no_val : [numeric]
+        nodataval : [numeric]
             value stored in novalue cells
         """
         if not isinstance(src, Dataset):
             raise TypeError("please enter a valib gdal object (raster has been read using gdal.Open)")
 
         # get the value stores in novalue cells
-        nodatavalue = np.float32(src.GetRasterBand(band).GetNoDataValue())
+        nodatavalue = src.GetRasterBand(band).GetNoDataValue()
         arr = src.GetRasterBand(band).ReadAsArray()
 
         return arr, nodatavalue
@@ -2124,14 +2124,11 @@ class Raster:
         >>> name = ["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
         >>> Raster.rastersLike(src_raster, data, name)
         """
-        # input data validation
         # length of the 3rd dimension of the array
         try:
             l = np.shape(array)[2]
         except IndexError:
-            assert (
-                False
-            ), "the array you have entered is 2D you have to use RasterLike function not RastersLike"
+            raise IndexError("the array you have entered is 2D you have to use RasterLike function not RastersLike")
 
         # check length of the list of names to be equal to 3rd dimension of the array
         if path is not None:  # paths are given
