@@ -42,21 +42,17 @@ function that are related to spatial resolution, projection and coordinates of a
 
 getRasterData
 -------------
-- the definition of the function is as follow.
+- `getRasterData` get the basic data inside a raster (the array and the nodatavalue)
 
-.. code:: py
-
-    get the basic data inside a raster (the array and the nodatavalue)
-
-    Parameters
-    ----------
+Parameters
+==========
     src: [gdal.Dataset]
         a gdal.Dataset is a raster already been read using gdal
     band : [integer]
         the band you want to get its data. Default is 1
 
-    Returns
-    -------
+Returns
+=======
     array : [array]
         array with all the values in the flow path length raster
     nodataval : [numeric]
@@ -127,21 +123,20 @@ getRasterData
 
 getProjectionData
 -----------------
-
-- GetProjectionData returns the projection details of a given gdal.Dataset
+- `getProjectionData` returns the projection details of a given gdal.Dataset
 
 Parameters
 ==========
-src: [gdal.Dataset]
-    raster read by gdal
+    src: [gdal.Dataset]
+        raster read by gdal
 
 Returns
 =======
-epsg: [integer]
-     integer reference number that defines the projection (https://epsg.io/)
-geo: [tuple]
-    geotransform data of the upper left corner of the raster
-    (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
+    epsg: [integer]
+         integer reference number that defines the projection (https://epsg.io/)
+    geo: [tuple]
+        geotransform data of the upper left corner of the raster
+        (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
 
 
 .. code:: py
@@ -160,6 +155,43 @@ getEPSG
 getCellCoords
 -------------
 
+- `getCellCoords` returns the coordinates of all cell centres inside the domain (only the cells that
+        does not have nodatavalue)
+
+Parameters
+==========
+    src : [gdal_Dataset]
+        Get the data from the gdal datasetof the DEM
+
+Returns
+=======
+    coords : array
+        Array with a list of the coordinates to be interpolated, without the Nan
+    mat_range : array
+        Array with all the centres of cells in the domain of the DEM
+
+
+.. code:: py
+
+    coords, centers_coords = Raster.getCellCoords(src)
+    print(coords)
+    array([[434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+
+    print(centers_coords)
+    array([[[434968.12061706, 520007.78799918],
+        [438968.12061706, 520007.78799918],
+        [442968.12061706, 520007.78799918],
+        [446968.12061706, 520007.78799918],
+        [450968.12061706, 520007.78799918],
+        [454968.12061706, 520007.78799918],
+        [458968.12061706, 520007.78799918],
+
 
 openArrayInfo
 -------------
@@ -169,10 +201,9 @@ openArrayInfo
 *****************
 Raster Operations
 *****************
-- saveRaster
-- createRaster
-- rasterLike
+
 - rasterFill
+-------------
 - mapAlgebra
 - resampleRaster
 - projectRaster
@@ -189,6 +220,112 @@ Raster Operations
 - extractValues
 - overlayMap
 - normalize
+
+saveRaster
+-------------
+- `saveRaster` saves a raster to a path
+
+Parameters
+==========
+    raster: [gdal object]
+        gdal dataset opbject
+    path: [string]
+        a path includng the name of the raster and extention like
+        path="data/cropped.tif"
+
+Returns
+=======
+    the function does not return and data but only save the raster to the hard drive
+
+.. code:: py
+
+    path = "examples/data/save_raster_test.tif"
+    Raster.saveRaster(src, path)
+
+
+createRaster
+-------------
+- `createRaster` method creates a raster from a given array and geotransform data
+and save the tif file if a Path is given or it will return the gdal.Dataset
+
+Parameters
+==========
+    path : [str], optional
+        Path to save the Raster, if '' is given a memory raster will be returned. The default is ''.
+    arr : [array], optional
+        numpy array. The default is ''.
+    geo : [list], optional
+        geotransform list [minimum lon, pixelsize, rotation, maximum lat, rotation,
+            pixelsize]. The default is ''.
+    nodatavalue : TYPE, optional
+        DESCRIPTION. The default is -9999.
+    epsg: [integer]
+        integer reference number to the new projection (https://epsg.io/)
+            (default 3857 the reference no of WGS84 web mercator )
+
+Returns
+=======
+    dst : [gdal.Dataset/save raster to drive].
+        if a path is given the created raster will be saved to drive, if not
+        a gdal.Dataset will be returned.
+
+- If we take the array we obtained from the `getRasterData`, do some arithmetic operation in it, then we created a
+`gdal.DataSet` out of it
+
+.. code:: py
+
+    src = Raster.createRaster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
+    Map.plot(src, title="Flow Accumulation")
+
+
+.. image:: /images/flow_accumulation.png
+   :width: 500pt
+
+rasterLike
+----------
+- `rasterLike` method creates a Geotiff raster like another input raster, new raster will have the same projection,
+coordinates or the top left corner of the original raster, cell size, nodata velue, and number of rows and columns
+the raster and the dem should have the same number of columns and rows
+
+Parameters
+==========
+    src : [gdal.dataset]
+        source raster to get the spatial information
+    array : [numpy array]
+        to store in the new raster
+    path : [String]
+        path to save the new raster including new raster name and extension (.tif)
+    pixel_type : [integer]
+        type of the data to be stored in the pixels,default is 1 (float32)
+        for example pixel type of flow direction raster is unsigned integer
+        1 for float32
+        2 for float64
+        3 for Unsigned integer 16
+        4 for Unsigned integer 32
+        5 for integer 16
+        6 for integer 32
+
+Returns
+=======
+    save the new raster to the given path
+
+- If we have made some calculation on raster array and we want to save the array back in the raster
+
+.. code:: py
+
+    arr2 = np.ones(shape=arr.shape, dtype=np.float64) * nodataval
+    arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
+
+    path = "examples/data/rasterlike.tif"
+    Raster.rasterLike(src, arr2, path)
+
+- now to check the raster that has been saved we can read it again with `gda.Open`
+
+.. code:: py
+
+    dst = gdal.Open(path)
+    Map.plot(dst, title="Flow Accumulation", color_scale=1)
+
 
 **************
 Raster Dataset
