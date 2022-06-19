@@ -207,6 +207,7 @@ arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
 
 path = datapath + "/rasterlike.tif"
 Raster.rasterLike(src, arr2, path)
+
 dst = gdal.Open(path)
 Map.plot(dst, title="Flow Accumulation", color_scale=1)
 # %%
@@ -532,7 +533,7 @@ Map.plot(soil_aligned, title="After alignment", color_scale=1, ticks_spacing=1)
 # %%
 """Crop.
 
-crop method crops a raster sing another raster.
+crop method crops a raster using another raster.
 
 Parameters:
 -----------

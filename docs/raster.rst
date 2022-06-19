@@ -151,7 +151,7 @@ Returns
 
 getEPSG
 -------
-
+# TODO
 
 getCellCoords
 -------------
@@ -196,19 +196,17 @@ Returns
 
 openArrayInfo
 -------------
-
+# TODO
 
 
 *****************
 Raster Operations
 *****************
 
-crop
---------------
 - clipRasterWithPolygon
 - clip2
 - changeNoDataValue
-- matchRasterAlignment
+
 - nearestNeighbour
 - readASCII
 - writeASCII
@@ -498,13 +496,205 @@ Returns
 
 cropAlligned
 -------------
+- If you have an array and you want to clip/crop it using another raster/array.
+
+Crop array using a raster
+=========================
+- `cropAlligned` clip/crop (matches the location of nodata value from src raster to dst raster), Both rasters have to
+have the same dimensions (no of rows & columns) so MatchRasterAlignment should be used prior to this function to
+align both rasters.
+
+Parameters
+^^^^^^^^^^
+    src: [gdal.dataset/np.ndarray]
+        raster you want to clip/store NoDataValue in its cells
+        exactly the same like mask raster
+    mask: [gdal.dataset/np.ndarray]
+        mask raster to get the location of the NoDataValue and
+        where it is in the array
+    mask_noval: [numeric]
+        in case the mask is np.ndarray, the mask_noval have to be given.
+
+Returns
+^^^^^^^
+    dst: [gdal.dataset]
+        the second raster with NoDataValue stored in its cells
+        exactly the same like src raster
+
+
+.. code:: py
+
+    aligned_raster = "examples/data/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
+    dst = gdal.Open(aligned_raster)
+    dst_arr, dst_nodataval = Raster.getRasterData(dst)
+
+    Map.plot(
+        dst_arr,
+        nodataval=dst_nodataval,
+        title="Before Cropping-Evapotranspiration",
+        color_scale=1,
+        ticks_spacing=0.01,
+    )
+
+.. image:: /images/before_cropping.png
+   :width: 500pt
+
+
+.. code:: py
+
+    dst_arr_cropped = Raster.cropAlligned(dst_arr, src)
+    Map.plot(
+        dst_arr_cropped,
+        nodataval=nodataval,
+        title="Cropped array",
+        color_scale=1,
+        ticks_spacing=0.01,
+    )
+
+.. image:: /images/cropped_array.png
+   :width: 500pt
+
+Crop raster using another raster while preserving the alignment
+===============================================================
+- cropping rasters may  change the alignment of the cells and to keep the alignment during cropping a raster we will
+crop the same previous raster but will give the input to the function as a gdal.dataset object.
+
+
+.. code:: py
+
+    dst_cropped = Raster.cropAlligned(dst, src)
+    Map.plot(dst_cropped, title="Cropped raster", color_scale=1, ticks_spacing=0.01)
+
+
+.. image:: /images/cropped_aligned_raster.png
+   :width: 500pt
+
+
+Crop raster using array
+=======================
+
+.. code:: py
+
+    dst_cropped = Raster.cropAlligned(dst, arr, mask_noval=nodataval)
+    Map.plot(dst_cropped, title="Cropped array", color_scale=1, ticks_spacing=0.01)
+
+.. image:: /images/crop_raster_using_array.png
+   :width: 500pt
+
+crop
+----
+- `crop` method crops a raster using another raster (both rasters does not have to be aligned).
+
+Parameters
+==========
+    src: [string/gdal.Dataset]
+        the raster you want to crop as a path or a gdal object
+    mask : [string/gdal.Dataset]
+        the raster you want to use as a mask to crop other raster,
+        the mask can be also a path or a gdal object.
+    output_path : [string]
+        if you want to save the cropped raster directly to disk
+        enter the value of the OutputPath as the path.
+    save : [boolen]
+        True if you want to save the cropped raster directly to disk.
+
+Returns
+=======
+    dst : [gdal.Dataset]
+        the cropped raster will be returned, if the save parameter was True,
+        the cropped raster will also be saved to disk in the OutputPath
+        directory.
+
+
+.. code:: py
+
+    RasterA = gdal.Open(aligned_raster)
+    epsg, geotransform = Raster.getProjectionData(RasterA)
+    print("Raster EPSG = " + str(epsg))
+    print("Raster Geotransform = " + str(geotransform))
+    Map.plot(RasterA, title="Raster to be cropped", color_scale=1, ticks_spacing=1)
+
+    Raster EPSG = 32618
+    Raster Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
+
+.. image:: /images/raster_tobe_cropped.png
+   :width: 500pt
+
+
+- We will use the soil raster from the previous example as a mask so the projection is different between the raster
+and the mask and the cell size is also different
+
+.. code:: py
+
+    dst = Raster.crop(RasterA, soil_raster)
+    dst_epsg, dst_geotransform = Raster.getProjectionData(dst)
+    print("resulted EPSG = " + str(dst_epsg))
+    print("resulted Geotransform = " + str(dst_geotransform))
+    Map.plot(dst, title="Cropped Raster", color_scale=1, ticks_spacing=1)
+
+    resulted EPSG = 32618
+    resulted Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
+
+.. image:: /images/cropped_raster.png
+   :width: 500pt
+
+
+matchRasterAlignment
+--------------------
+- `matchRasterAlignment` method matches the coordinate system and the number of of rows & columns between two rasters
+alignment_src is the source of the coordinate system, number of rows, number of columns & cell size data_src is the
+source of data values in cells the result will be a raster with the same structure like alignment_src but with values
+from data_src using Nearest Neighbour interpolation algorithm
+
+Parameters
+==========
+    alignment_src : [gdal.dataset/string]
+        spatial information source raster to get the spatial information
+        (coordinate system, no of rows & columns)
+    data_src : [gdal.dataset/string]
+        data values source raster to get the data (values of each cell)
+
+Returns
+=======
+    dst : [gdal.dataset]
+        result raster in memory
+
+.. code:: py
+
+    soil_raster = gdal.Open(soilmappath)
+    epsg, geotransform = Raster.getProjectionData(soil_raster)
+    print("Before alignment EPSG = " + str(epsg))
+    print("Before alignment Geotransform = " + str(geotransform))
+    # cell_size = geotransform[1]
+    Map.plot(soil_raster, title="To be aligned", color_scale=1, ticks_spacing=1)
+
+    Before alignment EPSG = 3116
+    Before alignment Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
+
+.. image:: /images/soil_map.png
+   :width: 500pt
+
+
+.. code:: py
+
+    soil_aligned = Raster.matchRasterAlignment(src, soil_raster)
+    New_epsg, New_geotransform = Raster.getProjectionData(soil_aligned)
+    print("After alignment EPSG = " + str(New_epsg))
+    print("After alignment Geotransform = " + str(New_geotransform))
+    Map.plot(soil_aligned, title="After alignment", color_scale=1, ticks_spacing=1)
+
+    After alignment EPSG = 32618
+    After alignment Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
+
+.. image:: /images/soil_map_aligned.png
+   :width: 500pt
 
 
 **************
 Raster Dataset
 **************
+
 - reprojectDataset
-- cropAlignedFolder
 - readASCIIsFolder
 - rastersLike
 - matchDataAlignment
@@ -512,12 +702,44 @@ Raster Dataset
 - readRastersFolder
 - overlayMaps
 
+cropAlignedFolder
+-----------------
+
+- `cropAlignedFolder` matches the location of nodata value from src raster to dst raster, Mask is where the
+nodatavalue will be taken and the location of this value src_dir is path to the folder where rasters exist where we
+need to put the NoDataValue of the mask in RasterB at the same locations.
+
+Parameters
+==========
+    src_dir : [String]
+        path of the folder of the rasters you want to set Nodata Value on the same location of NodataValue of Raster A,
+        the folder should not have any other files except the rasters
+    mask : [String/gdal.Dataset]
+        path/gdal.Dataset of the mask raster to crop the rasters (to get the NoData value and it location in the array)
+        Mask should include the name of the raster and the extension like "data/dem.tif", or you can read the mask raster
+        using gdal and use is the first parameter to the function.
+    saveto : [String]
+        path where new rasters are going to be saved with exact same old names
+
+Returns
+=======
+    new rasters have the values from rasters in B_input_path with the NoDataValue in the same
+    locations like raster A
+
+.. code:: py
+
+    # The folder should contain tif files only (check example here `cropAlignedFolder`_)
+    saveto = "examples/data/crop_aligned_folder/"
+    Raster.cropAlignedFolder(aligned_raster_folder, src, saveto)
+
+
 *****************
 helping functions
 *****************
 - stringSpace
 
 
+****************
 Zonal Statistics
 ****************
 
@@ -624,3 +846,6 @@ References
 .. target-notes::
 .. _`Digital-Earth`:
    https://github.com/MAfarrag/Digital-Earth
+
+.. _`cropAlignedFolder`:
+   https://github.com/MAfarrag/pyramids/tree/main/examples/data/crop_aligned_folder

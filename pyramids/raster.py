@@ -211,7 +211,6 @@ class Raster:
             Array with a list of the coordinates to be interpolated, without the Nan
         mat_range : array
             Array with all the centres of cells in the domain of the DEM
-
         """
         # Getting data for the whole grid
         x_init, xx_span, xy_span, y_init, yy_span, yx_span = src.GetGeoTransform()
@@ -239,9 +238,9 @@ class Raster:
 
     @staticmethod
     def saveRaster(raster: Dataset, path: str) -> None:
-        """SaveRaster.
+        """saveRaster.
 
-            SaveRaster saves a raster to a path
+            saveRaster saves a raster to a path
 
         Parameters
         ----------
@@ -284,9 +283,9 @@ class Raster:
             epsg: Union[str, int] = "",
             nodatavalue: Any = -9999
     ) -> Union[Dataset, None]:
-        """CreateRaster.
+        """createRaster.
 
-        CreateRaster method creates a raster from a given array and geotransform data
+        createRaster method creates a raster from a given array and geotransform data
         and save the tif file if a Path is given or it will return the gdal.Dataset
 
         Parameters
@@ -372,9 +371,9 @@ class Raster:
             path: str,
             pixel_type: int = 1
     ) -> None:
-        """RasterLike.
+        """rasterLike.
 
-        RasterLike method creates a Geotiff raster like another input raster, new raster
+        rasterLike method creates a Geotiff raster like another input raster, new raster
         will have the same projection, coordinates or the top left corner of the original
         raster, cell size, nodata velue, and number of rows and columns
         the raster and the dem should have the same number of columns and rows
@@ -478,9 +477,9 @@ class Raster:
 
     @staticmethod
     def mapAlgebra(src: Dataset, fun) -> Dataset:
-        """MapAlgebra.
+        """mapAlgebra.
 
-        MapAlgebra executes a mathematical operation on raster array and returns
+        mapAlgebra executes a mathematical operation on raster array and returns
         the result
 
         Parameters
@@ -493,6 +492,7 @@ class Raster:
         Returns
         -------
         Dataset
+            gdal dataset object
 
         Examples
         --------
@@ -548,9 +548,9 @@ class Raster:
             val: Union[float, int],
             save_to: str
     ) -> None:
-        """RasterFill.
+        """rasterFill.
 
-            RasterFill takes a raster and fill it with one value
+            rasterFill takes a raster and fill it with one value
 
         Parameters
         ----------
@@ -591,9 +591,9 @@ class Raster:
             cell_size: Union[int, float],
             resample_technique: str="Nearest"
     ) -> Dataset:
-        """ResampleRaster.
+        """resampleRaster.
 
-        this function reproject a raster to any projection
+        resampleRaster reproject a raster to any projection
         (default the WGS84 web mercator projection, without resampling)
         The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
@@ -687,9 +687,9 @@ class Raster:
             resample_technique = "Nearest",
             option: int = 2
     ) -> Dataset:
-        """ProjectRaster.
+        """projectRaster.
 
-        ProjectRaster reprojects a raster to any projection
+        projectRaster reprojects a raster to any projection
         (default the WGS84 web mercator projection, without resampling)
         The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
@@ -985,9 +985,9 @@ class Raster:
             mask: Union[Dataset, np.ndarray],
             mask_noval: Union[int, float] = None
     ) -> Union[np.ndarray, Dataset]:
-        """CropAlligned.
+        """cropAlligned.
 
-        CropAlligned clip/crop (matches the location of nodata value from src raster to dst
+        cropAlligned clip/crop (matches the location of nodata value from src raster to dst
         raster), Both rasters have to have the same dimensions (no of rows & columns)
         so MatchRasterAlignment should be used prior to this function to align both
         rasters
@@ -1138,9 +1138,9 @@ class Raster:
             mask: Union[Dataset, str],
             saveto: str,
     ) -> None:
-        """CropAlignedFolder.
+        """cropAlignedFolder.
 
-            CropAlignedFolder matches the location of nodata value from src raster to dst
+            cropAlignedFolder matches the location of nodata value from src raster to dst
             raster, Mask is where the NoDatavalue will be taken and the location of
             this value src_dir is path to the folder where rasters exist where we
             need to put the NoDataValue of the mask in RasterB at the same locations
@@ -1224,7 +1224,7 @@ class Raster:
             save: bool=False,
             # Resample: bool=True
     ):
-        """Crop.
+        """crop.
 
             crop method crops a raster using another raster (both rasters does not have to be aligned).
 
@@ -1630,9 +1630,9 @@ class Raster:
             alignment_src: Union[Dataset, str],
             data_src: Union[Dataset, str]
     ) -> Dataset:
-        """MatchRasterAlignment.
+        """matchRasterAlignment.
 
-        MatchRasterAlignment method matches the coordinate system and the number of of rows & columns
+        matchRasterAlignment method matches the coordinate system and the number of of rows & columns
         between two rasters
         alignment_src is the source of the coordinate system, number of rows, number of columns & cell size
         data_src is the source of data values in cells
@@ -2796,7 +2796,7 @@ class Raster:
         return val
 
 
-
+    # TODO: check where this function is used and replace it  with getRasterData
     @staticmethod
     def openArrayInfo(fname: str = ""):
         """openArrayInfo.
