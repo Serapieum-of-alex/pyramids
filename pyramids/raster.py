@@ -1825,9 +1825,9 @@ class Raster:
             ascii_file: str,
             pixel_type: int = 1
     ) -> Tuple[np.ndarray, tuple]:
-        """ReadASCII.
+        """readASCII.
 
-            ReadASCII reads an ASCII file
+            readASCII reads an ASCII file
 
         Parameters
         ----------
@@ -1913,9 +1913,9 @@ class Raster:
             geotransform: tuple,
             arr: np.ndarray
     ):
-        """WriteASCII.
+        """writeASCII.
 
-            WriteASCII reads an ASCII file the spatial information
+            writeASCII reads an ASCII file the spatial information
 
         Parameters
         ----------
@@ -2557,7 +2557,7 @@ class Raster:
             classes_map: Union[str, np.ndarray],
             exclude_value: Union[float, int],
             compressed: bool=False,
-            occupied_Cells_only: bool=True
+            occupied_cells_only: bool=True
     ) -> Tuple[Dict[List[float], List[float]], int]:
         """OverlayMap.
 
@@ -2576,7 +2576,7 @@ class Raster:
             values you want to exclude from extracted values.
         compressed: [Bool]
             if the map you provided is compressed.
-        occupied_Cells_only: [Bool]
+        occupied_cells_only: [Bool]
             if you want to count only cells that is not zero.
 
         Returns
@@ -2633,7 +2633,7 @@ class Raster:
             # count number of nonzero cells
             NonZeroCells = np.count_nonzero(MapValues)
 
-            if occupied_Cells_only:
+            if occupied_cells_only:
                 ExtractedValues = 0
                 return ExtractedValues, NonZeroCells
 

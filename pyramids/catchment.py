@@ -596,9 +596,9 @@ class Catchment:
             Raster: Dataset,
             StCoord: DataFrame,
     ) -> DataFrame:
-        """NearestCell.
+        """nearestCell.
 
-            this function calculates the the indices (row, col) of nearest cell in a given
+            nearestCell calculates the the indices (row, col) of nearest cell in a given
             raster to a station
             coordinate system of the raster has to be projected to be able to calculate
             the distance
