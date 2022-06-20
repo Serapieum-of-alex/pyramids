@@ -206,10 +206,6 @@ Raster Operations
 - clipRasterWithPolygon
 - clip2
 - changeNoDataValue
-
-- nearestNeighbour
-- readASCII
-- writeASCII
 - mosaic
 - extractValues
 - overlayMap
@@ -689,6 +685,140 @@ Returns
 .. image:: /images/soil_map_aligned.png
    :width: 500pt
 
+readASCII
+---------
+- `readASCII` reads an ASCII file.
+
+Parameters
+==========
+    ascii_file: [str]
+        name of the ASCII file you want to convert and the name
+        should include the extension ".asc"
+    pixel_type: [Integer]
+        type of the data to be stored in the pixels,default is 1 (float32)
+        for example pixel type of flow direction raster is unsigned integer
+        1 for float32
+        2 for float64
+        3 for Unsigned integer 16
+        4 for Unsigned integer 32
+        5 for integer 16
+        6 for integer 32
+
+Returns
+=======
+    ascii_values: [numpy array]
+        2D arrays containing the values stored in the ASCII file
+    ascii_details: [List]
+        list of the six spatial information of the ASCII file
+        [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+        CellSize, NoValue]
+
+.. code:: py
+
+    path = datapath + r"/asci_example.asc"
+    arr, geotransform = Raster.readASCII(path, pixel_type=1)
+    Map.plot(arr, geotransform[-1], title="Cropped Raster", color_scale=2, ticks_spacing=0.01, nodataval=None)
+
+.. image:: /images/read_ascii.png
+   :width: 500pt
+
+
+writeASCII
+----------
+- `writeASCII` reads an ASCII file the spatial information.
+
+Parameters
+==========
+    ascii_file: [str]
+        name of the ASCII file you want to convert and the name
+        should include the extension ".asc"
+    geotransform: [tuple]
+        list of the six spatial information of the ASCII file
+        [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+        CellSize, NoValue]
+    arr: [np.ndarray]
+        [numpy array] 2D arrays containing the values stored in the ASCII
+        file
+
+Returns
+=======
+    None
+
+.. code:: py
+
+    arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
+    Raster.writeASCII(r"examples/data/roughness.asc", geotransform, arr)
+
+- the ASCII file will look like
+
+.. code:: py
+
+    ncols         14
+    nrows         13
+    xllcorner     432968.1206170588
+    yllcorner     468007.787999178
+    cellsize      4000.0
+    NODATA_value  -3.4028230607370965e+38
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+
+
+nearestNeighbour
+----------------
+
+- `nearestCell` calculates the the indices (row, col) of nearest cell in a given raster to a station coordinate system of
+the raster has to be projected to be able to calculate the distance
+
+Parameters
+----------
+    Raster: [gdal.dataset]
+        raster to get the spatial information (coordinates of each cell)
+    StCoord: [Dataframe]
+        dataframe with two columns "x", "y" contains the coordinates
+        of each station
+
+Returns
+-------
+    StCoord:
+        the same input dataframe with two extra columns "cellx","celly"
+
+.. code:: py
+
+    points = pd.read_csv("examples/data/points.csv")
+    print(points)
+       id            x            y
+    0   1  454795.6728  503143.3264
+    1   2  443847.5736  481850.7151
+    2   3  454044.6935  481189.4256
+    3   4  464533.7067  502683.6482
+    4   5  463231.1242  486656.3455
+    5   6  487292.5152  478045.5720
+
+    points["row"] = np.nan
+    points["col"] = np.nan
+
+    points.loc[:, ["row", "col"]] = GC.nearestCell(src, points[["x", "y"]][:]).values
+    print(points)
+
+       id            x            y   row   col
+    0   1  454795.6728  503143.3264   4.0   5.0
+    1   2  443847.5736  481850.7151   9.0   2.0
+    2   3  454044.6935  481189.4256   9.0   5.0
+    3   4  464533.7067  502683.6482   4.0   7.0
+    4   5  463231.1242  486656.3455   8.0   7.0
+    5   6  487292.5152  478045.5720  10.0  13.0
+
 
 **************
 Raster Dataset
@@ -732,11 +862,6 @@ Returns
     saveto = "examples/data/crop_aligned_folder/"
     Raster.cropAlignedFolder(aligned_raster_folder, src, saveto)
 
-
-*****************
-helping functions
-*****************
-- stringSpace
 
 
 ****************
