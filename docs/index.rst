@@ -22,7 +22,7 @@ Current release info
 
 
 .. image:: https://img.shields.io/conda/vn/conda-forge/pyramids   :alt: Conda (channel only)
-  :target: https://pypi.org/project/pyramids-gis/0.1.0/
+  :target: https://pypi.org/project/pyramids-gis/0.2.1/
 
 
 .. image:: https://img.shields.io/gitter/room/mafarrag/pyramids
@@ -30,7 +30,7 @@ Current release info
 
 
 .. image:: https://static.pepy.tech/personalized-badge/pyramids-gis?period=total&units=international_system&left_color=grey&right_color=blue&left_text=Downloads
-  :target: https://pypi.org/project/pyramids-gis/0.1.0/
+  :target: https://pypi.org/project/pyramids-gis/0.2.1/
 
 
 .. image:: https://img.shields.io/pypi/v/pyramids-gis
@@ -57,6 +57,11 @@ Current release info
 .. image:: https://coveralls.io/repos/github/MAfarrag/pyramids/badge.svg?branch=main
   :target: https://coveralls.io/github/MAfarrag/pyramids?branch=main
 
+.. image:: https://img.shields.io/github/commits-since/mafarrag/pyramids/0.2.1?include_prereleases&style=plastic
+    :alt: GitHub commits since latest release (by SemVer including pre-releases)
+
+.. image:: https://img.shields.io/github/last-commit/mafarrag/pyramids
+    :alt: GitHub last commit
 
 pyramids - GIS utility package
 =====================================================================
