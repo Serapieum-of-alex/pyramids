@@ -646,7 +646,8 @@ Example:
 """
 path = datapath + r"/asci_example.asc"
 arr, geotransform = Raster.readASCII(path, pixel_type=1)
-Map.plot(arr, geotransform[-1], title="Cropped Raster", color_scale=2, ticks_spacing=200)
+fig, ax = Map.plot(arr, geotransform[-1], title="Read ASCII file", color_scale=2, ticks_spacing=0.01, nodataval=None)
+
 arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
 path2 = datapath + r"/roughness.asc"
 Raster.writeASCII(path2, geotransform, arr)
