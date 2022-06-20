@@ -149,10 +149,6 @@ Returns
     (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 
 
-getEPSG
--------
-# TODO
-
 getCellCoords
 -------------
 
@@ -194,22 +190,15 @@ Returns
         [458968.12061706, 520007.78799918],
 
 
-openArrayInfo
--------------
-# TODO
+TODO
+----
+- getEPSG
+- openArrayInfo
 
 
 *****************
 Raster Operations
 *****************
-
-- clipRasterWithPolygon
-- clip2
-- changeNoDataValue
-- mosaic
-- extractValues
-- overlayMap
-- normalize
 
 saveRaster
 -------------
@@ -820,17 +809,19 @@ Returns
     5   6  487292.5152  478045.5720  10.0  13.0
 
 
+TODO
+----
+- clipRasterWithPolygon
+- clip2
+- changeNoDataValue
+- mosaic
+- extractValues
+- normalize
+
 **************
 Raster Dataset
 **************
 
-- reprojectDataset
-- readASCIIsFolder
-- rastersLike
-- matchDataAlignment
-- folderCalculator
-- readRastersFolder
-- overlayMaps
 
 cropAlignedFolder
 -----------------
@@ -862,6 +853,14 @@ Returns
     saveto = "examples/data/crop_aligned_folder/"
     Raster.cropAlignedFolder(aligned_raster_folder, src, saveto)
 
+TODO
+----
+- reprojectDataset
+- readASCIIsFolder
+- rastersLike
+- matchDataAlignment
+- folderCalculator
+- readRastersFolder
 
 
 ****************
@@ -882,20 +881,21 @@ in the examples `Zonal Statistics <https://github.com/MAfarrag/Hapi/blob/master/
 OverlayMap one map
 ------------------
 
-The `OverlayMap` function takes two ascii files the `BaseMap` which is the
+The `overlayMap` function takes two ascii files the `BaseMap` which is the
 raster/asc file of the polygons and the secon is the asc file you want to
 extract its values.
 
 
 .. code:: py
 
-    def overlayMap(path: str,
+    def overlayMap(
+            path: str,
             classes_map: Union[str, np.ndarray],
             exclude_value: Union[float, int],
             compressed: bool=False,
-            occupied_Cells_only: bool=True) -> Tuple[Dict[List[float], List[float]], int]:
+            occupied_cells_only: bool=True) -> Tuple[Dict[List[float], List[float]], int]:
     """
-    """OverlayMap.
+    """overlayMap.
 
             OverlayMap extracts and return a list of all the values in an ASCII file,
             if you have two maps one with classes, and the other map contains any type of values,
@@ -912,7 +912,7 @@ extract its values.
         values you want to exclude from extracted values.
     compressed: [Bool]
         if the map you provided is compressed.
-    occupied_Cells_only: [Bool]
+    occupied_cells_only: [Bool]
         if you want to count only cells that is not zero.
 
     Returns
@@ -943,15 +943,15 @@ To extract the
 
 OverlayMap Several maps
 ===================
-The `OverlayMaps` function takes path to the folder where more than one map exist instead of a path to one file, it also takes an extra parameter `FilePrefix`, this prefix is used to name the files in the given path and all the file has to start with the prefix
+The `overlayMaps` function takes path to the folder where more than one map exist instead of a path to one file, it also takes an extra parameter `FilePrefix`, this prefix is used to name the files in the given path and all the file has to start with the prefix
 
 .. code:: py
 
     FilePrefix = "Map"
     # several maps
-    ExtractedValues, Cells = R.OverlayMaps(Path+"data", BaseMapF, FilePrefix,ExcludedValue, Compressed,OccupiedCellsOnly)
+    ExtractedValues, Cells = R.overlayMaps(Path+"data", BaseMapF, FilePrefix,ExcludedValue, Compressed,OccupiedCellsOnly)
 
-both methods `OverlayMap` and `OverlayMaps` returns the values as a `dict`, the difference is in the number of cells `OverlayMaps` returns a single integer number while `OverlayMap` returns a `dataframe` with two columns the first in the map name and the second is the number of occupied cell in each map.
+both methods `OverlayMap` and `overlayMaps` returns the values as a `dict`, the difference is in the number of cells `overlayMaps` returns a single integer number while `OverlayMap` returns a `dataframe` with two columns the first in the map name and the second is the number of occupied cell in each map.
 
 Save extracted values
 ===================
