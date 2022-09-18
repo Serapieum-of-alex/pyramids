@@ -1,4 +1,4 @@
-"""Convert data from one form to another"""
+"""Convert data from one form to another."""
 import os
 
 import netCDF4
@@ -10,20 +10,18 @@ from pyramids.raster import Raster
 
 
 class Convert:
-    """
-    Convert data from one form to another
-    """
+    """Convert data from one form to another."""
+
     def __init__(self):
         pass
 
-
     @staticmethod
     def asciiToRaster(
-            ascii_file: str,
-            save_path: str,
-            pixel_type: int = 1,
-            raster_file=None,
-            epsg=None
+        ascii_file: str,
+        save_path: str,
+        pixel_type: int = 1,
+        raster_file=None,
+        epsg=None,
     ):
         """ASCIItoRaster.
 
@@ -81,14 +79,20 @@ class Convert:
         >>> Convert.asciiToRaster(asc_file, save_to, pixeltype, epsg = epsg_number)
         """
         if not isinstance(ascii_file, str):
-            raise TypeError(f"ascii_file input should be string type - given{type(ascii_file)}")
+            raise TypeError(
+                f"ascii_file input should be string type - given{type(ascii_file)}"
+            )
 
         if not isinstance(save_path, str):
-            raise TypeError(f"save_path input should be string type - given {type(save_path)}")
+            raise TypeError(
+                f"save_path input should be string type - given {type(save_path)}"
+            )
 
         if not isinstance(pixel_type, int):
-            raise TypeError(f"pixel type input should be integer type please check documentations "
-                            f"- given {pixel_type}")
+            raise TypeError(
+                f"pixel type input should be integer type please check documentations "
+                f"- given {pixel_type}"
+            )
 
         # input values
         ASCIIExt = ascii_file[-4:]
@@ -115,7 +119,7 @@ class Convert:
 
             RasterExt = raster_file[-4:]
             assert (
-                    RasterExt == ".tif"
+                RasterExt == ".tif"
             ), "please add the extension at the end of the path input"
             # read the raster file
             src = gdal.Open(raster_file)
@@ -123,13 +127,13 @@ class Convert:
             RasterRows = src.RasterYSize
 
             assert (
-                    ASCIIRows == RasterRows and ASCIIColumns == RasterColumns
+                ASCIIRows == RasterRows and ASCIIColumns == RasterColumns
             ), " Data in both ASCII file and Raster file should have the same number of row and columns"
 
             Raster.rasterLike(src, ASCIIValues, save_path, pixel_type)
         elif epsg is not None:
             assert (
-                    type(epsg) == int
+                type(epsg) == int
             ), "epsg input should be integer type please check documentations"
             # coordinates of the lower left corner
             XLeftSide = ASCIIDetails[2]
@@ -177,21 +181,11 @@ class Convert:
             dst.FlushCache()
             dst = None
 
-
     @staticmethod
     def asciiFoldertoRaster(
-            path: str,
-            save_path: str,
-            pixel_type: int = 1,
-            Rraster_file=None,
-            epsg=None
+        path: str, save_path: str, pixel_type: int = 1, Rraster_file=None, epsg=None
     ):
-        """
-        This function takes the path of a folder contains ASCII files and convert
-        them into a raster format and in takes  all the spatial information
-        (projection, coordinates of the corner point), and number of rows
-        and columns from raster file or you have to define the epsg corresponding
-        to the you coordinate system and projection
+        """This function takes the path of a folder contains ASCII files and convert them into a raster format and in takes  all the spatial information (projection, coordinates of the corner point), and number of rows and columns from raster file or you have to define the epsg corresponding to the you coordinate system and projection.
 
         Parameters
         ----------
@@ -263,7 +257,6 @@ class Convert:
                 ASCIIFile, name, pixel_type, raster_file=None, epsg=epsg
             )
 
-
     @staticmethod
     def nctoTiff(input_nc, save_to: str, separator: str = "_"):
         """nctoTiff.
@@ -287,7 +280,9 @@ class Convert:
         elif type(input_nc) == list:
             nc = netCDF4.MFDataset(input_nc)
         else:
-            raise TypeError("first parameter to the nctoTiff function should be either str or list")
+            raise TypeError(
+                "first parameter to the nctoTiff function should be either str or list"
+            )
 
         # get the variable
         Var = list(nc.variables.keys())[-1]
@@ -311,7 +306,7 @@ class Convert:
 
         for i in range(0, size_Z):
             if (
-                    All_Data.shape[0] and All_Data.shape[0] > 1
+                All_Data.shape[0] and All_Data.shape[0] > 1
             ):  # type(time) == np.ndarray: #not time == -9999
                 time_one = Time[i]
                 # d = dt.date.fromordinal(int(time_one))

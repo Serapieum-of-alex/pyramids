@@ -1,5 +1,4 @@
-"""
-Created on Sun Aug  2 22:30:48 2020
+"""Created on Sun Aug  2 22:30:48 2020.
 
 @author: mofarrag
 
@@ -10,11 +9,13 @@ import os
 import matplotlib
 
 matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
 import rasterio
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from pyramids.convert import Convert
+
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
 ParentPath = f"{rpath}/examples/"
@@ -23,7 +24,7 @@ FileName = ParentPath + "/data/MSWEP_1979010100.nc"
 SaveTo = ParentPath + "/data/"
 # VarName = None
 Convert.nctoTiff(FileName, SaveTo, separator="_")
-#%% plot
+# %% plot
 src = rasterio.open(SaveTo + "MSWEP_1979010100.nc")
 # fig = plt.figure(figsize=(12, 8))
 # im = plt.imshow(src.read(1) / 100.0, cmap="gist_rainbow")

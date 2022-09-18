@@ -29,14 +29,14 @@ def getExampleData(article_id: int = 19991261, directory: str = None):
     --------
     to download the netcdf file needed for the netcdf examples
     >>> article_id = 19991261
-    >>> dir = "pyramids\examples\data"
+    >>> dir = rf"pyramids/examples/data"
     >>> getExampleData(article_id, directory=dir)
     """
     baseurl = "https://api.figshare.com/v2"
     url = f"{baseurl}/articles/{article_id}/files"
-    headers = {'Content-Type': 'application/json'}
+    headers = {"Content-Type": "application/json"}
 
-    data=None
+    data = None
     # binary=False
     method = "GET"
     response = requests.request(method, url, headers=headers, data=data)
@@ -47,8 +47,8 @@ def getExampleData(article_id: int = 19991261, directory: str = None):
         except ValueError:
             response_data = response.content
     except HTTPError as error:
-        print('Caught an HTTPError: {}'.format(error))
-        print('Body:\n', response.text)
+        print("Caught an HTTPError: {}".format(error))
+        print("Body:\n", response.text)
         raise
 
     response_data = response_data[0]
@@ -58,5 +58,7 @@ def getExampleData(article_id: int = 19991261, directory: str = None):
 
     # dir = os.path.join(directory, f"figshare_{article_id}/")
     # os.makedirs(dir, exist_ok=True)
-    urlretrieve(response_data['download_url'], os.path.join(directory, response_data['name']))
+    urlretrieve(
+        response_data["download_url"], os.path.join(directory, response_data["name"])
+    )
     logger.info(f"{response_data['name']} - has been downloaded successfully")

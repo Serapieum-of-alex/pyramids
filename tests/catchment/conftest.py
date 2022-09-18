@@ -15,6 +15,6 @@ def points() -> DataFrame:
 
 
 @pytest.fixture(scope="module")
-def points_location_in_array () -> DataFrame:
-    data = dict(rows = [4, 9, 9, 4, 8, 10], cols = [5, 2, 5, 7, 7, 13])
+def points_location_in_array() -> DataFrame:
+    data = dict(rows=[4, 9, 9, 4, 8, 10], cols=[5, 2, 5, 7, 7, 13])
     return pd.DataFrame(data)

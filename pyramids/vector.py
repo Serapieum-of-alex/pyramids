@@ -1,5 +1,4 @@
-"""
-Created on Sun Jul 01 17:07:40 2018
+"""Created on Sun Jul 01 17:07:40 2018.
 
 @author: Mostafa
 """
@@ -20,7 +19,7 @@ from shapely.geometry.multipolygon import MultiPolygon
 
 
 class Vector:
-    """Vector
+    """Vector.
 
     Vector class contains different methods to deal with shapefiles
 
@@ -42,7 +41,6 @@ class Vector:
         15- AddSpatialReference
         16- PolygonCenterPoint
         17- WriteShapefile
-
     """
 
     def __init__(self):
@@ -52,30 +50,29 @@ class Vector:
     def getXYCoords(geometry, coord_type: str):
         """getXYCoords.
 
-        Returns either x or y coordinates from  geometry coordinate sequence.
-         Used with LineString and Polygon geometries.
+           Returns either x or y coordinates from  geometry coordinate sequence.
+           Used with LineString and Polygon geometries.
 
-         Parameters
-         ----------
-         geometry: [LineString Geometry]
-              the geometry of a shpefile
-         coord_type: [string]
-             either "x" or "y"
+        Parameters
+        ----------
+        geometry: [LineString Geometry]
+             the geometry of a shpefile
+        coord_type: [string]
+            either "x" or "y"
 
-         Returns
-         -------
-         array:
-             contains x coordinates or y coordinates of all edges of the shapefile
+        Returns
+        -------
+        array:
+            contains x coordinates or y coordinates of all edges of the shapefile
         """
         if coord_type == "x":
             return geometry.coords.xy[0]
         elif coord_type == "y":
             return geometry.coords.xy[1]
 
-
     @staticmethod
     def getPointCoords(geometry, coord_type: str):
-        """GetPointCoords
+        """GetPointCoords.
 
         Returns Coordinates of Point object.
 
@@ -96,10 +93,9 @@ class Vector:
         if coord_type == "y":
             return geometry.y
 
-
     @staticmethod
     def getLineCoords(geometry, coord_type: str):
-        """getLineCoords
+        """getLineCoords.
 
         Returns Coordinates of Linestring object.
 
@@ -116,7 +112,6 @@ class Vector:
             contains x coordinates or y coordinates of all edges of the shapefile
         """
         return Vector.getXYCoords(geometry, coord_type)
-
 
     @staticmethod
     def getPolyCoords(geometry, coord_type: str):
@@ -140,7 +135,6 @@ class Vector:
         ext = geometry.exterior  # type = LinearRing
 
         return Vector.getXYCoords(ext, coord_type)
-
 
     @staticmethod
     def explode(dataframe_row):
@@ -167,10 +161,9 @@ class Vector:
             multdf.loc[geom, "geometry"] = row.geometry[geom]
         outdf = outdf.append(multdf, ignore_index=True)
 
-
     @staticmethod
     def multiGeomHandler(multi_geometry, coord_type: str, geom_type: str):
-        """multiGeomHandler
+        """multiGeomHandler.
 
         Function for handling multi-geometries. Can be MultiPoint, MultiLineString or MultiPolygon.
         Returns a list of coordinates where all parts of Multi-geometries are merged into a single list.
@@ -196,9 +189,7 @@ class Vector:
                 # On the first part of the Multi-geometry initialize the coord_array (np.array)
                 if i == 0:
                     if geom_type == "MultiPoint":
-                        coord_arrays = Vector.getPointCoords(
-                            part, coord_type
-                        )
+                        coord_arrays = Vector.getPointCoords(part, coord_type)
                     elif geom_type == "MultiLineString":
                         coord_arrays = Vector.getLineCoords(part, coord_type)
                 else:
@@ -282,8 +273,7 @@ class Vector:
 
     @staticmethod
     def getFeatures(gdf):
-        """Function to parse features from GeoDataFrame in such a
-        manner that rasterio wants them"""
+        """Function to parse features from GeoDataFrame in such a manner that rasterio wants them."""
         return [json.loads(gdf.to_json())["features"][0]["geometry"]]
 
     @staticmethod
@@ -387,10 +377,9 @@ class Vector:
             poly = Polygon(coords)
             return poly
 
-
     @staticmethod
     def createPoint(coords: list):
-        """CreatePoint
+        """CreatePoint.
 
         CreatePoint takes a list of tuples of coordinates and convert it into
         a list of Shapely point object
@@ -420,8 +409,10 @@ class Vector:
         return points
 
     @staticmethod
-    def combineGeometrics(path1: str, path2: str, save: bool=False, save_path: str=None):
-        """CombineGeometrics
+    def combineGeometrics(
+        path1: str, path2: str, save: bool = False, save_path: str = None
+    ):
+        """CombineGeometrics.
 
         CombineGeometrics reads two shapefiles and combine them into one
         shapefile
@@ -494,7 +485,7 @@ class Vector:
 
     @staticmethod
     def GCSDistance(coords_1: tuple, coords_2: tuple):
-        """GCS_distance
+        """GCS_distance.
 
         this function calculates the distance between two points that have
         geographic coordinate system
@@ -521,8 +512,14 @@ class Vector:
         return dist
 
     @staticmethod
-    def reprojectPoints(lat: list, lon: list, from_epsg: int=4326, to_epsg: int=3857, precision: int=6):
-        """reproject_points
+    def reprojectPoints(
+        lat: list,
+        lon: list,
+        from_epsg: int = 4326,
+        to_epsg: int = 3857,
+        precision: int = 6,
+    ):
+        """reproject_points.
 
         this function change the projection of the coordinates from a coordinate system
         to another (default from GCS to web mercator used by google maps)
@@ -575,7 +572,9 @@ class Vector:
         return y, x
 
     @staticmethod
-    def reprojectPoints2(lat: list, lng: list, from_epsg: int=4326, to_epsg: int=3857):
+    def reprojectPoints2(
+        lat: list, lng: list, from_epsg: int = 4326, to_epsg: int = 3857
+    ):
         """reproject_points.
 
         this function change the projection of the coordinates from a coordinate system
@@ -664,7 +663,9 @@ class Vector:
         return gdf
 
     @staticmethod
-    def polygonCenterPoint(poly: GeoDataFrame, save: bool=False, save_path: str=None):
+    def polygonCenterPoint(
+        poly: GeoDataFrame, save: bool = False, save_path: str = None
+    ):
         """PolygonCenterPoint.
 
         PolygonCenterPoint function takes the a geodata frame of polygons and and
@@ -733,22 +734,17 @@ class Vector:
         MiddlePointdf["geometry"] = None
         # create a list of tuples of the coordinates (x,y) or (long, lat)
         # of the points
-        CoordinatesList = zip(
-            poly["AvgX"].tolist(), poly["AvgY"].tolist()
-        )
+        CoordinatesList = zip(poly["AvgX"].tolist(), poly["AvgY"].tolist())
         PointsList = Vector.createPoint(CoordinatesList)
         # set the spatial reference
         MiddlePointdf["geometry"] = PointsList
         MiddlePointdf.crs = poly.crs
-        MiddlePointdf[poly.columns.tolist()] = poly[
-            poly.columns.tolist()
-        ]
+        MiddlePointdf[poly.columns.tolist()] = poly[poly.columns.tolist()]
 
         if save:
             MiddlePointdf.to_file(save_path)
         else:
             return MiddlePointdf
-
 
     @staticmethod
     def writeShapefile(poly, path: str):
@@ -795,9 +791,7 @@ class Vector:
         ds = layer = feat = geom = None
 
     def listAttributes(self):
-        """
-        Print Attributes List
-        """
+        """Print Attributes List."""
         print("\n")
         print(
             f"Attributes List of: {repr(self.__dict__['name'])} - {self.__class__.__name__} Instance\n"

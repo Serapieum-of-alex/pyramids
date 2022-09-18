@@ -1,4 +1,6 @@
 # import numpy as np
+import sys
+
 from osgeo import gdal
 
 from pyramids.catchment import Catchment as GC
@@ -12,12 +14,10 @@ Data = gdal.Open(Path)
 DataArr = Data.ReadAsArray()
 NoDataValue = Data.GetRasterBand(1).GetNoDataValue()
 
-import sys
-
 print(sys.getrecursionlimit())
 # sys.setrecursionlimit(6000)
 # print(sys.getrecursionlimit())
-#%%
+# %%
 lowervalue = 0.1  # DataArr[DataArr != NoDataValue].min()
 uppervalue = 20  # DataArr[DataArr != NoDataValue].max()
 

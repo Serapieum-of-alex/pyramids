@@ -13,7 +13,7 @@ except PackageNotFoundError:  # pragma: no cover
 
 # documentation format
 __author__ = "Mostafa Farrag"
-__email__ = 'moah.farag@gmail.com'
+__email__ = "moah.farag@gmail.com"
 __docformat__ = "restructuredtext"
 
 # Let users know if they're missing any of our hard dependencies
@@ -25,14 +25,15 @@ for dependency in hard_dependencies:
         __import__(dependency)
     except ImportError as e:
         missing_dependencies.append(dependency)
+        print(e)
 
 if missing_dependencies:
     raise ImportError("Missing required dependencies {0}".format(missing_dependencies))
 
 
-import pyramids.catchment
-import pyramids.raster
-import pyramids.vector
+# import pyramids.catchment
+# import pyramids.raster
+# import pyramids.vector
 
 __doc__ = """
 pyramids - GIS utility package

@@ -1,11 +1,11 @@
-"""
-Created on Sat May 26 04:52:15 2018
+"""Created on Sat May 26 04:52:15 2018.
 
 @author: Mostafa
 """
 
 import numpy as np
-import pandas as pd
+
+# import pandas as pd
 from osgeo import gdal
 from osgeo.gdal import Dataset
 from pandas import DataFrame
@@ -17,9 +17,7 @@ from pyramids.raster import Raster as raster
 
 
 class Catchment:
-    """
-    GISCatchment class contains methods to deal with the MED and generate the
-    flow direction based on the D8 method and process the DEM
+    """GISCatchment class contains methods to deal with the MED and generate the flow direction based on the D8 method and process the DEM.
 
     Methods:
         1- D8
@@ -37,8 +35,7 @@ class Catchment:
 
     @staticmethod
     def D8(DEM):
-        """
-        D8 method generate flow direction raster from DEM and fill sinks
+        """D8 method generate flow direction raster from DEM and fill sinks.
 
         inputs:
         ----------
@@ -390,9 +387,7 @@ class Catchment:
 
     @staticmethod
     def flowDirectionIndex(flow_direct):
-        """
-        this function takes flow firection raster and convert codes for the 8 directions
-        (1,2,4,8,16,32,64,128) into indices of the Downstream cell
+        """this function takes flow firection raster and convert codes for the 8 directions (1,2,4,8,16,32,64,128) into indices of the Downstream cell.
 
         inputs:
         ----------
@@ -470,10 +465,7 @@ class Catchment:
 
     @staticmethod
     def flowDirectionTable(flow_direct):
-        """
-        this function takes flow direction indices created by FlowDirectِِIndex function
-        and create a dictionary with the cells indices as a key and  indices of directly
-        upstream cells as values (list of tuples)
+        """this function takes flow direction indices created by FlowDirectِِIndex function and create a dictionary with the cells indices as a key and  indices of directly upstream cells as values (list of tuples)
 
         Inputs:
         ----------
@@ -489,7 +481,6 @@ class Catchment:
 
         Example:
         ----------
-
         """
         # input data validation
         # validation is inside FlowDirectِِIndex
@@ -529,9 +520,7 @@ class Catchment:
 
     @staticmethod
     def deleteBasins(basins, pathout):
-        """
-        this function deletes all the basins in a basin raster created when delineating
-        a catchment and leave only the first basin which is the biggest basin in the raster
+        """this function deletes all the basins in a basin raster created when delineating a catchment and leave only the first basin which is the biggest basin in the raster.
 
         Inputs:
         ----------
@@ -593,8 +582,8 @@ class Catchment:
 
     @staticmethod
     def nearestCell(
-            Raster: Dataset,
-            StCoord: DataFrame,
+        Raster: Dataset,
+        StCoord: DataFrame,
     ) -> DataFrame:
         """nearestCell.
 
@@ -624,18 +613,26 @@ class Catchment:
         >>> coordinates.loc[:,["cell_row","cell_col"]] = Catchment.nearestCell(Raster, StCoord).values
         """
         if not isinstance(Raster, gdal.Dataset):
-            raise TypeError ("raster should be read using gdal (gdal dataset please read it using gdal library) ")
+            raise TypeError(
+                "raster should be read using gdal (gdal dataset please read it using gdal library) "
+            )
 
         if not isinstance(StCoord, DataFrame):
-            raise TypeError(f"please check StCoord input it should be pandas dataframe - given {type(StCoord)}")
+            raise TypeError(
+                f"please check StCoord input it should be pandas dataframe - given {type(StCoord)}"
+            )
 
         # check if the user has stored the coordinates in the dataframe with the right names or not
-        if not "x" in StCoord.columns:
-            raise ValueError ("please check the StCoord parameter it should contain a column with the x coordinates"
-                             "and the column name should be 'x'")
-        if not "y" in StCoord.columns:
-            raise ValueError ("please check the StCoord parameter it should contain a column with the y coordinates"
-                             "and the column name should be 'y'")
+        if "x" not in StCoord.columns:
+            raise ValueError(
+                "please check the StCoord parameter it should contain a column with the x coordinates"
+                "and the column name should be 'x'"
+            )
+        if "y" not in StCoord.columns:
+            raise ValueError(
+                "please check the StCoord parameter it should contain a column with the y coordinates"
+                "and the column name should be 'y'"
+            )
 
         StCoord["cell_row"] = np.nan
         StCoord["cell_col"] = np.nan
@@ -845,9 +842,7 @@ class Catchment:
 
     @staticmethod
     def cluster(Data, LowerValue, UpperValue):
-        """
-        Cluster method group all the connected values between two numbers in
-        a raster in clusters
+        """Cluster method group all the connected values between two numbers in a raster in clusters.
 
         Parameters
         ----------
@@ -868,7 +863,6 @@ class Catchment:
             list contains two indeces [x,y] for the position of each value .
         values : [numeric]
             the values stored in each cell in the cluster .
-
         """
         position = []
         values = []
@@ -899,9 +893,7 @@ class Catchment:
         return cluster, count, position, values
 
     def listAttributes(self):
-        """
-        Print Attributes List
-        """
+        """Print Attributes List."""
 
         print("\n")
         print(

@@ -8,16 +8,14 @@ from pyramids.raster import Raster
 
 
 class NC:
-    """Nectcdf"""
+    """Nectcdf."""
+
     def __init__(self):
         pass
 
-
     @staticmethod
     def ncDetails(nc, var=None):
-        """
-        NCGetGeotransform takes a netcdf object and return the geottansform data of
-        the bottom left corner
+        """NCGetGeotransform takes a netcdf object and return the geottansform data of the bottom left corner.
 
         Parameters
         ----------
@@ -117,17 +115,16 @@ class NC:
 
         return geo, epsg, size_X, size_Y, size_Z, Time, NoDataValue, datatype
 
-
     @staticmethod
     def saveNC(
-            namenc,
-            DataCube,
-            Var,
-            Reference_filename,
-            Startdate="",
-            Enddate="",
-            Time_steps="",
-            Scaling_factor=1,
+        namenc,
+        DataCube,
+        Var,
+        Reference_filename,
+        Startdate="",
+        Enddate="",
+        Time_steps="",
+        Scaling_factor=1,
     ):
         """
         Save_as_NC(namenc, DataCube, Var, Reference_filename,  Startdate = '',

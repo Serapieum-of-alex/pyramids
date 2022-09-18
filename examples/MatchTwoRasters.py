@@ -1,5 +1,4 @@
-"""
-Created on Fri Oct 11 15:43:22 2019
+"""Created on Fri Oct 11 15:43:22 2019.
 
 @author: mofarrag
 
@@ -44,7 +43,7 @@ assert (
     and NewRasterB_array.shape[1] == src_Array.shape[1]
 ), message
 
-#%% Match the NODataValue
+# %% Match the NODataValue
 # TODO : fix bug in nearestneighbor
 NewRasterB_ND = Raster.cropAlligned(src, NewRasterB)
 
@@ -59,5 +58,5 @@ assert (
 # f = NewRasterB_ND_array[NewRasterB_ND_array == NoDataValue]
 # g = src_Array[src_Array == NoDataValue]
 
-#%%
+# %%
 Raster.saveRaster(NewRasterB_ND, SaveTo)

@@ -1,5 +1,4 @@
-"""
-Created on Fri Mar 26 21:44:12 2021
+"""Created on Fri Mar 26 21:44:12 2021.
 
 @author: mofarrag
 """
@@ -15,7 +14,7 @@ from pyramids.raster import Raster
 
 SourceRasterPath = "00inputs/GIS/4000/acc4000.tif"
 RasterTobeClippedPath = (
-        Comp + "/Documents/01Algorithms/HAPI/Hapi/Parameters/01/Par_BETA.tif"
+    Comp + "/Documents/01Algorithms/HAPI/Hapi/Parameters/01/Par_BETA.tif"
 )
 output = "F:/Users/mofarrag/distributed/Hapi/Data/output.tif"
 # %%

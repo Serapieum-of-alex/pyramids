@@ -1,6 +1,7 @@
 import geopandas as gpd
 import numpy as np
 import pytest
+
 # import datetime as dt
 from osgeo import gdal
 from osgeo.gdal import Dataset
@@ -38,25 +39,37 @@ def src_geotransform(src: Dataset) -> tuple:
 
 @pytest.fixture(scope="module")
 def src_arr_first_4_rows() -> np.ndarray:
-    return np.array([[434968.12061706, 520007.78799918],
-                     [434968.12061706, 520007.78799918],
-                     [434968.12061706, 520007.78799918],
-                     [434968.12061706, 520007.78799918]])
+    return np.array(
+        [
+            [434968.12061706, 520007.78799918],
+            [434968.12061706, 520007.78799918],
+            [434968.12061706, 520007.78799918],
+            [434968.12061706, 520007.78799918],
+        ]
+    )
 
 
 @pytest.fixture(scope="module")
 def src_arr_last_4_rows() -> np.ndarray:
-    return np.array([[478968.12061706, 520007.78799918],
-                     [478968.12061706, 520007.78799918],
-                     [478968.12061706, 520007.78799918],
-                     [478968.12061706, 520007.78799918]])
+    return np.array(
+        [
+            [478968.12061706, 520007.78799918],
+            [478968.12061706, 520007.78799918],
+            [478968.12061706, 520007.78799918],
+            [478968.12061706, 520007.78799918],
+        ]
+    )
 
 
 @pytest.fixture(scope="module")
 def cells_centerscoords() -> np.ndarray:
-    return np.array([[434968.12061706, 520007.78799918],
-                    [438968.12061706, 520007.78799918],
-                    [442968.12061706, 520007.78799918]])
+    return np.array(
+        [
+            [434968.12061706, 520007.78799918],
+            [438968.12061706, 520007.78799918],
+            [442968.12061706, 520007.78799918],
+        ]
+    )
 
 
 @pytest.fixture(scope="module")
@@ -127,7 +140,9 @@ def project_raster_to_epsg() -> int:
 
 @pytest.fixture(scope="module")
 def aligned_raster() -> Dataset:
-    return gdal.Open("examples/data/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif")
+    return gdal.Open(
+        "examples/data/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
+    )
 
 
 @pytest.fixture(scope="module")
@@ -189,18 +204,22 @@ def rasters_folder_between_dates_raster_number() -> int:
 def basin_polygon() -> gpd.GeoDataFrame:
     return gpd.read_file("tests/data/basin.geojson")
 
+
 @pytest.fixture(scope="module")
 def ascii_file_path() -> str:
     return "tests/data/asci_example.asc"
+
 
 @pytest.fixture(scope="module")
 def ascii_file_save_to() -> str:
     return "tests/data/asci_write_test.asc"
 
+
 @pytest.fixture(scope="module")
 def ascii_shape() -> tuple:
-    return 13,14
+    return 13, 14
+
 
 @pytest.fixture(scope="module")
 def ascii_geotransform() -> tuple:
-    return 13, 14, 432968.1206170588, 468007.787999178, 4000.0, -3.4028230607370965e+38
+    return 13, 14, 432968.1206170588, 468007.787999178, 4000.0, -3.4028230607370965e38

@@ -9,7 +9,7 @@ import sys
 # datapath = os.path.join(rootpath, "examples/data/GIS/Hapi_GIS_Data")
 # run
 # rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
-datapath = os.path.join("examples/data") #rpath,
+datapath = os.path.join("examples/data")  # rpath,
 # os.chdir(rpath)
 
 import geopandas as gpd
@@ -571,8 +571,12 @@ Map.plot(dst, title="Cropped Raster", color_scale=1, ticks_spacing=1)
 # %%
 src_aligned = gdal.Open(aligned_raster)
 # # arr, nodataval = Raster.GetRasterData(src_aligned)
-Map.plot(src_aligned, title="Before Cropping-Evapotranspiration", color_scale=1,
-              ticks_spacing=0.01)
+Map.plot(
+    src_aligned,
+    title="Before Cropping-Evapotranspiration",
+    color_scale=1,
+    ticks_spacing=0.01,
+)
 # %%
 """ClipRasterWithPolygon.
 
@@ -609,10 +613,16 @@ EX:
 shp = gpd.read_file(Basinshp)
 src = gdal.Open(aligned_raster)
 
-dst = Raster.clipRasterWithPolygon(aligned_raster, Basinshp, save=False, output_path=None)
+dst = Raster.clipRasterWithPolygon(
+    aligned_raster, Basinshp, save=False, output_path=None
+)
 dst = Raster.clip2(aligned_raster, Basinshp, save=False, output_path=None)
-Map.plot(dst, title="After Cropping-Evapotranspiration by a shapefile", color_scale=1,
-              ticks_spacing=0.01)
+Map.plot(
+    dst,
+    title="After Cropping-Evapotranspiration by a shapefile",
+    color_scale=1,
+    ticks_spacing=0.01,
+)
 # %% ReadASCII.
 """ReadASCII.
 
@@ -646,7 +656,14 @@ Example:
 """
 path = datapath + r"/asci_example.asc"
 arr, geotransform = Raster.readASCII(path, pixel_type=1)
-fig, ax = Map.plot(arr, geotransform[-1], title="Read ASCII file", color_scale=2, ticks_spacing=0.01, nodataval=None)
+fig, ax = Map.plot(
+    arr,
+    geotransform[-1],
+    title="Read ASCII file",
+    color_scale=2,
+    ticks_spacing=0.01,
+    nodataval=None,
+)
 
 arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
 path2 = datapath + r"/roughness.asc"

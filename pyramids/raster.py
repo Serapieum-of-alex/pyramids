@@ -1,6 +1,4 @@
-"""
-GISpy contains python functions to handle raster data align them together
-based on a source raster, perform any algebric operation on cell's values
+"""GISpy contains python functions to handle raster data align them together based on a source raster, perform any algebric operation on cell's values.
 
 @author: Mostafa
 """
@@ -24,9 +22,7 @@ from pyramids.vector import Vector
 
 
 class Raster:
-    """
-    Raster class contains methods to deal with rasters and netcdf files,
-    change projection and coordinate systems.
+    """Raster class contains methods to deal with rasters and netcdf files, change projection and coordinate systems.
 
     Methods:
         1-GetMask
@@ -96,17 +92,15 @@ class Raster:
         68-Get_ordinal
         69-ListAttributes
     """
+
     def __init__(self):
         pass
 
-
     @staticmethod
     def getRasterData(
-            src: Dataset,
-            band: int = 1
+        src: Dataset, band: int = 1
     ) -> Tuple[np.ndarray, Union[int, float]]:
-        """
-        get the basic data inside a raster (the array and the nodatavalue)
+        """get the basic data inside a raster (the array and the nodatavalue)
 
         Parameters
         ----------
@@ -123,14 +117,15 @@ class Raster:
             value stored in novalue cells
         """
         if not isinstance(src, Dataset):
-            raise TypeError("please enter a valib gdal object (raster has been read using gdal.Open)")
+            raise TypeError(
+                "please enter a valib gdal object (raster has been read using gdal.Open)"
+            )
 
         # get the value stores in novalue cells
         nodatavalue = src.GetRasterBand(band).GetNoDataValue()
         arr = src.GetRasterBand(band).ReadAsArray()
 
         return arr, nodatavalue
-
 
     @staticmethod
     def getProjectionData(src: Dataset) -> Tuple[int, tuple]:
@@ -160,9 +155,8 @@ class Raster:
 
         return epsg, geo
 
-
     @staticmethod
-    def getEPSG(proj, extension: str="tiff"):
+    def getEPSG(proj, extension: str = "tiff"):
         """GetEPSG.
 
             This function reads the projection of a GEOGCS file or tiff file
@@ -191,7 +185,6 @@ class Raster:
             epsg = 4326
 
         return epsg
-
 
     @staticmethod
     def getCellCoords(src: Dataset) -> Tuple[np.ndarray, np.ndarray]:
@@ -235,7 +228,6 @@ class Raster:
 
         return np.array(coords), np.array(mat_range)
 
-
     @staticmethod
     def saveRaster(raster: Dataset, path: str) -> None:
         """saveRaster.
@@ -261,7 +253,9 @@ class Raster:
         >>> Raster.saveRaster(gdal_raster_obj, output_path)
         """
         if not isinstance(raster, gdal.Dataset):
-            raise TypeError("raster parameter should be read using gdal dataset please read it using gdal")
+            raise TypeError(
+                "raster parameter should be read using gdal dataset please read it using gdal"
+            )
 
         if not isinstance(path, str):
             raise TypeError("Raster_path input should be string type")
@@ -273,15 +267,16 @@ class Raster:
         driver = gdal.GetDriverByName("GTiff")
         dst_ds = driver.CreateCopy(path, raster, 0)
         dst_ds = None  # Flush the dataset to disk
-
+        # print to go around the assigned but never used pre-commit issue
+        print(dst_ds)
 
     @staticmethod
     def createRaster(
-            path: str = "",
-            arr: Union[str, Dataset, np.ndarray] = "",
-            geo: Union[str, tuple] = "",
-            epsg: Union[str, int] = "",
-            nodatavalue: Any = -9999
+        path: str = "",
+        arr: Union[str, Dataset, np.ndarray] = "",
+        geo: Union[str, tuple] = "",
+        epsg: Union[str, int] = "",
+        nodatavalue: Any = -9999,
     ) -> Union[Dataset, None]:
         """createRaster.
 
@@ -363,13 +358,9 @@ class Raster:
             dst_ds = None
             return
 
-
     @staticmethod
     def rasterLike(
-            src: Dataset,
-            array: np.ndarray,
-            path: str,
-            pixel_type: int = 1
+        src: Dataset, array: np.ndarray, path: str, pixel_type: int = 1
     ) -> None:
         """rasterLike.
 
@@ -408,7 +399,9 @@ class Raster:
         >>> Raster.rasterLike(src_raster, data, name)
         """
         if not isinstance(src, gdal.Dataset):
-            raise TypeError("src should be read using gdal (gdal dataset please read it using gdal library) ")
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal library) "
+            )
 
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
@@ -417,7 +410,9 @@ class Raster:
             raise TypeError("Raster_path input should be string type")
 
         if not isinstance(pixel_type, int):
-            raise TypeError("pixel type input should be integer type please check documentations")
+            raise TypeError(
+                "pixel type input should be integer type please check documentations"
+            )
 
         # input values
         #    assert os.path.exists(path), path+ " you have provided does not exist"
@@ -473,7 +468,6 @@ class Raster:
         dst.GetRasterBand(1).WriteArray(array)
         dst.FlushCache()
         dst = None
-
 
     @staticmethod
     def mapAlgebra(src: Dataset, fun) -> Dataset:
@@ -541,13 +535,8 @@ class Raster:
 
         return dst
 
-
     @staticmethod
-    def rasterFill(
-            src: Dataset,
-            val: Union[float, int],
-            save_to: str
-    ) -> None:
+    def rasterFill(src: Dataset, val: Union[float, int], save_to: str) -> None:
         """rasterFill.
 
             rasterFill takes a raster and fill it with one value
@@ -584,12 +573,9 @@ class Raster:
         #  if the save_to parameter is empty
         Raster.rasterLike(src, src_array, save_to, pixel_type=1)
 
-
     @staticmethod
     def resampleRaster(
-            src: Dataset,
-            cell_size: Union[int, float],
-            resample_technique: str="Nearest"
+        src: Dataset, cell_size: Union[int, float], resample_technique: str = "Nearest"
     ) -> Dataset:
         """resampleRaster.
 
@@ -616,10 +602,14 @@ class Raster:
              gdal object (you can read it by ReadAsArray)
         """
         if not isinstance(src, gdal.Dataset):
-            raise TypeError("src should be read using gdal (gdal dataset please read it using gdal library) ")
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal library) "
+            )
 
         if not isinstance(resample_technique, str):
-            raise TypeError(" please enter correct resample_technique more information see docmentation ")
+            raise TypeError(
+                " please enter correct resample_technique more information see docmentation "
+            )
 
         if resample_technique == "Nearest":
             resample_technique = gdal.GRA_NearestNeighbour
@@ -679,13 +669,9 @@ class Raster:
 
         return dst
 
-
     @staticmethod
     def projectRaster(
-            src: Dataset,
-            to_epsg: int,
-            resample_technique = "Nearest",
-            option: int = 2
+        src: Dataset, to_epsg: int, resample_technique: str = "Nearest", option: int = 2
     ) -> Dataset:
         """projectRaster.
 
@@ -720,14 +706,20 @@ class Raster:
         # input data validation
         # data type
         if not isinstance(src, gdal.Dataset):
-            raise TypeError("src should be read using gdal (gdal dataset please read it using gdal"
-                            f" library) given {type(src)}")
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal"
+                f" library) given {type(src)}"
+            )
         if not isinstance(to_epsg, int):
-            raise TypeError("please enter correct integer number for to_epsg more information "
-                            f"https://epsg.io/, given {type(to_epsg)}")
+            raise TypeError(
+                "please enter correct integer number for to_epsg more information "
+                f"https://epsg.io/, given {type(to_epsg)}"
+            )
         if not isinstance(resample_technique, str):
-            raise TypeError("please enter correct resample_technique more information see "
-                            "docmentation ")
+            raise TypeError(
+                "please enter correct resample_technique more information see "
+                "docmentation "
+            )
 
         if resample_technique == "Nearest":
             resample_technique = gdal.GRA_NearestNeighbour
@@ -798,7 +790,7 @@ class Raster:
                 #                                  to_epsg=int(dst_epsg.GetAttrValue('AUTHORITY',1)))
             else:
                 new_xs = xs
-                new_ys = ys
+                # new_ys = ys
 
             pixel_spacing = np.abs(new_xs[0] - new_xs[1])
 
@@ -840,15 +832,14 @@ class Raster:
 
         return dst
 
-
     # TODO: merge ReprojectDataset and ProjectRaster they are almost the same
     # TODO: still needs to be tested
     @staticmethod
     def reprojectDataset(
-            src: Dataset,
-            to_epsg: int = 3857,
-            cell_size = [],
-            resample_technique: str = "Nearest"
+        src: Dataset,
+        to_epsg: int = 3857,
+        cell_size: int = [],
+        resample_technique: str = "Nearest",
     ):
         """ReprojectDataset.
 
@@ -877,14 +868,20 @@ class Raster:
              a GDAL in-memory file object, where you can ReadAsArray etc.
         """
         if not isinstance(src, gdal.Dataset):
-            raise TypeError("src should be read using gdal (gdal dataset please read it using gdal"
-                            f" library) given {type(src)}")
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal"
+                f" library) given {type(src)}"
+            )
         if not isinstance(to_epsg, int):
-            raise TypeError("please enter correct integer number for to_epsg more information "
-                            f"https://epsg.io/, given {type(to_epsg)}")
+            raise TypeError(
+                "please enter correct integer number for to_epsg more information "
+                f"https://epsg.io/, given {type(to_epsg)}"
+            )
         if not isinstance(resample_technique, str):
-            raise TypeError("please enter correct resample_technique more information see "
-                            "docmentation ")
+            raise TypeError(
+                "please enter correct resample_technique more information see "
+                "docmentation "
+            )
 
         if cell_size:
             assert isinstance(cell_size, int) or isinstance(
@@ -977,13 +974,11 @@ class Raster:
 
         return dst
 
-
-
     @staticmethod
     def cropAlligned(
-            src: Union[Dataset, np.ndarray],
-            mask: Union[Dataset, np.ndarray],
-            mask_noval: Union[int, float] = None
+        src: Union[Dataset, np.ndarray],
+        mask: Union[Dataset, np.ndarray],
+        mask_noval: Union[int, float] = None,
     ) -> Union[np.ndarray, Dataset]:
         """cropAlligned.
 
@@ -1025,8 +1020,10 @@ class Raster:
             assert mask_noval is not None, msg
             mask_array = mask.copy()
         else:
-            raise TypeError("The second parameter 'mask' has to be either gdal.Dataset or numpy array"
-                            f"given - {type(mask)}")
+            raise TypeError(
+                "The second parameter 'mask' has to be either gdal.Dataset or numpy array"
+                f"given - {type(mask)}"
+            )
 
         # if the to be clipped object is raster
         if isinstance(src, gdal.Dataset):
@@ -1044,17 +1041,23 @@ class Raster:
 
         # check proj
         if not mask_array.shape == src_array.shape:
-            raise ValueError("two rasters has different no of columns or rows please resample or match both rasters")
+            raise ValueError(
+                "two rasters has different no of columns or rows please resample or match both rasters"
+            )
 
         # if both inputs are rasters
         if isinstance(mask, gdal.Dataset) and isinstance(src, gdal.Dataset):
             if not src_gt == mask_gt:
-                raise ValueError("location of upper left corner of both rasters are not the same or cell size is "
-                                 "different please match both rasters first ")
+                raise ValueError(
+                    "location of upper left corner of both rasters are not the same or cell size is "
+                    "different please match both rasters first "
+                )
 
             if not mask_epsg == src_epsg:
-                raise ValueError("Raster A & B are using different coordinate system please reproject one of them to "
-                                 "the other raster coordinate system")
+                raise ValueError(
+                    "Raster A & B are using different coordinate system please reproject one of them to "
+                    "the other raster coordinate system"
+                )
 
         src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = mask_noval
 
@@ -1084,14 +1087,14 @@ class Raster:
                     for i in range(row)
                     for j in range(col)
                     if np.isclose(src_array[i, j], mask_noval, rtol=0.001)
-                       and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
+                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
                 ]
                 cols = [
                     j
                     for i in range(row)
                     for j in range(col)
                     if np.isclose(src_array[i, j], mask_noval, rtol=0.001)
-                       and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
+                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
                 ]
             # interpolate those missing cells by nearest neighbour
             if elem_mask > elem_src:
@@ -1131,12 +1134,11 @@ class Raster:
         else:
             return src_array
 
-
     @staticmethod
     def cropAlignedFolder(
-            src_dir: str,
-            mask: Union[Dataset, str],
-            saveto: str,
+        src_dir: str,
+        mask: Union[Dataset, str],
+        saveto: str,
     ) -> None:
         """cropAlignedFolder.
 
@@ -1176,11 +1178,15 @@ class Raster:
         if isinstance(mask, str):
             # check wether the path exists or not
             if not os.path.exists(mask):
-                raise FileNotFoundError("source raster you have provided does not exist")
+                raise FileNotFoundError(
+                    "source raster you have provided does not exist"
+                )
 
             ext = mask[-4:]
             if not ext == ".tif":
-                raise TypeError("Please add the extension '.tif' at the end of the mask input")
+                raise TypeError(
+                    "Please add the extension '.tif' at the end of the mask input"
+                )
 
             mask = gdal.Open(mask)
         else:
@@ -1195,10 +1201,14 @@ class Raster:
 
         # check wether the path exists or not
         if not os.path.exists(src_dir):
-                raise FileNotFoundError(f"the {src_dir} path you have provided does not exist")
+            raise FileNotFoundError(
+                f"the {src_dir} path you have provided does not exist"
+            )
 
         if not os.path.exists(saveto):
-            raise FileNotFoundError(f"the {saveto} path you have provided does not exist")
+            raise FileNotFoundError(
+                f"the {saveto} path you have provided does not exist"
+            )
         # check wether the folder has the rasters or not
         if not len(os.listdir(src_dir)) > 0:
             raise FileNotFoundError(f"{src_dir} folder you have provided is empty")
@@ -1215,14 +1225,13 @@ class Raster:
                 new_B = Raster.cropAlligned(B, mask)
                 Raster.saveRaster(new_B, saveto + files_list[i])
 
-
     @staticmethod
     def crop(
-            src: Union[Dataset, str],
-            mask: Union[Dataset, str],
-            output_path: str="",
-            save: bool=False,
-            # Resample: bool=True
+        src: Union[Dataset, str],
+        mask: Union[Dataset, str],
+        output_path: str = "",
+        save: bool = False,
+        # Resample: bool=True
     ):
         """crop.
 
@@ -1254,8 +1263,9 @@ class Raster:
         elif isinstance(mask, gdal.Dataset):
             mask = mask
         else:
-            print("Second parameter has to be either path to the mask raster"
-                "or a gdal.Dataset object")
+            print(
+                "Second parameter has to be either path to the mask raster or a gdal.Dataset object"
+            )
             return
 
         if isinstance(src, str):
@@ -1263,8 +1273,9 @@ class Raster:
         elif isinstance(src, gdal.Dataset):
             src = src
         else:
-            print("first parameter has to be either path to the raster to be cropped "
-                "or a gdal.Dataset object")
+            print(
+                "first parameter has to be either path to the raster to be cropped or a gdal.Dataset object"
+            )
             return
 
         # first align the mask with the src raster
@@ -1310,13 +1321,12 @@ class Raster:
 
         return dst
 
-
     @staticmethod
     def clipRasterWithPolygon(
-            raster_path: str,
-            shapefile_path: str,
-            save: bool = False,
-            output_path: str = None
+        raster_path: str,
+        shapefile_path: str,
+        save: bool = False,
+        output_path: str = None,
     ):
         """ClipRasterWithPolygon.
 
@@ -1374,7 +1384,9 @@ class Raster:
         if save:
             ext = output_path[-4:]
             if not ext == ".tif":
-                raise TypeError("please add the extention at the end of the output_path input")
+                raise TypeError(
+                    "please add the extention at the end of the output_path input"
+                )
 
         proj = src.GetProjection()
         src_epsg = osr.SpatialReference(wkt=proj)
@@ -1406,9 +1418,7 @@ class Raster:
         # Get the geometry coordinates by using the function.
         coords = Vector.getFeatures(shpfile)
 
-        out_img, out_transform = rio_mask(
-            dataset=raster, shapes=coords, crop=True
-        )
+        out_img, out_transform = rio_mask(dataset=raster, shapes=coords, crop=True)
 
         # copy the metadata from the original data file.
         out_meta = raster.meta.copy()
@@ -1459,13 +1469,12 @@ class Raster:
 
         return projected_raster
 
-
     @staticmethod
     def clip2(
-            src: Union[rasterio.io.DatasetReader, str],
-            poly: Union[GeoDataFrame, str],
-            save: bool = False,
-            output_path: str = "masked.tif"
+        src: Union[rasterio.io.DatasetReader, str],
+        poly: Union[GeoDataFrame, str],
+        save: bool = False,
+        output_path: str = "masked.tif",
     ):
         """Clip2.
 
@@ -1553,12 +1562,8 @@ class Raster:
 
         return out_img, out_meta
 
-
     @staticmethod
-    def changeNoDataValue(
-            src: Dataset,
-            dst: Dataset
-    ):
+    def changeNoDataValue(src: Dataset, dst: Dataset):
         """ChangeNoDataValue.
 
         ChangeNoDataValue changes the cells of nodata value in a dst raster to match
@@ -1582,10 +1587,10 @@ class Raster:
         # input data validation
         # data type
         assert (
-                type(src) == gdal.Dataset
+            type(src) == gdal.Dataset
         ), "src should be read using gdal (gdal dataset please read it using gdal library) "
         assert (
-                type(dst) == gdal.Dataset
+            type(dst) == gdal.Dataset
         ), "dst should be read using gdal (gdal dataset please read it using gdal library) "
 
         src_noval = np.float32(src.GetRasterBand(1).GetNoDataValue())
@@ -1624,11 +1629,9 @@ class Raster:
 
         return dst
 
-
     @staticmethod
     def matchRasterAlignment(
-            alignment_src: Union[Dataset, str],
-            data_src: Union[Dataset, str]
+        alignment_src: Union[Dataset, str], data_src: Union[Dataset, str]
     ) -> Dataset:
         """matchRasterAlignment.
 
@@ -1663,16 +1666,20 @@ class Raster:
         elif isinstance(alignment_src, str):
             src = gdal.Open(alignment_src)
         else:
-            raise TypeError("First parameter should be a raster read using gdal (gdal dataset please read it "
-                            f"using gdal library) or a path to the raster, given {type(alignment_src)}")
+            raise TypeError(
+                "First parameter should be a raster read using gdal (gdal dataset please read it "
+                f"using gdal library) or a path to the raster, given {type(alignment_src)}"
+            )
 
         if isinstance(data_src, gdal.Dataset):
             RasterB = data_src
         elif isinstance(data_src, str):
             RasterB = gdal.Open(data_src)
         else:
-            raise TypeError("Second parameter should be a raster read using gdal (gdal dataset please read it "
-                            f"using gdal library) or a path to the raster, given {type(data_src)}")
+            raise TypeError(
+                "Second parameter should be a raster read using gdal (gdal dataset please read it "
+                f"using gdal library) or a path to the raster, given {type(data_src)}"
+            )
 
         # we need number of rows and cols from src A and data from src B to store both in dst
         src_proj = src.GetProjection()
@@ -1714,21 +1721,11 @@ class Raster:
 
         return dst
 
-
     @staticmethod
     def nearestNeighbour(
-            array: np.ndarray,
-            nodatavalue: Union[float, int],
-            rows: list,
-            cols: list
+        array: np.ndarray, nodatavalue: Union[float, int], rows: list, cols: list
     ):
-        """
-        nearestNeighbour filles cells of a given indices in rows and cols with
-        the value of the nearest neighbour.
-        as the raster grid is square so the 4 perpendicular direction are of the same
-        close so the function give priority to the right then left then bottom then top
-        and the same for 45 degree inclined direction right bottom then left bottom
-        then left Top then right Top
+        """nearestNeighbour filles cells of a given indices in rows and cols with the value of the nearest neighbour. as the raster grid is square so the 4 perpendicular direction are of the same close so the function give priority to the right then left then bottom then top and the same for 45 degree inclined direction right bottom then left bottom then left Top then right Top.
 
         Parameters
         ----------
@@ -1756,7 +1753,9 @@ class Raster:
         >>> new_array = Raster.nearestNeighbour(raster, req_rows, req_cols)
         """
         if not isinstance(array, np.ndarray):
-            raise TypeError("src should be read using gdal (gdal dataset please read it using gdal library) ")
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal library) "
+            )
         assert type(rows) == list, "rows input has to be of type list"
         assert type(cols) == list, "cols input has to be of type list"
 
@@ -1785,33 +1784,33 @@ class Raster:
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i]]
 
             elif (
-                    array[rows[i] - 1, cols[i] + 1] != nodatavalue
-                    and rows[i] - 1 > 0
-                    and cols[i] + 1 <= no_cols
+                array[rows[i] - 1, cols[i] + 1] != nodatavalue
+                and rows[i] - 1 > 0
+                and cols[i] + 1 <= no_cols
             ):
                 # give the cell the value of the cell that is at the right bottom
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i] + 1]
 
             elif (
-                    array[rows[i] - 1, cols[i] - 1] != nodatavalue
-                    and rows[i] - 1 > 0
-                    and cols[i] - 1 > 0
+                array[rows[i] - 1, cols[i] - 1] != nodatavalue
+                and rows[i] - 1 > 0
+                and cols[i] - 1 > 0
             ):
                 # give the cell the value of the cell that is at the left bottom
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i] - 1]
 
             elif (
-                    array[rows[i] + 1, cols[i] - 1] != nodatavalue
-                    and rows[i] + 1 <= no_rows
-                    and cols[i] - 1 > 0
+                array[rows[i] + 1, cols[i] - 1] != nodatavalue
+                and rows[i] + 1 <= no_rows
+                and cols[i] - 1 > 0
             ):
                 # give the cell the value of the cell that is at the left Top
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i] - 1]
 
             elif (
-                    array[rows[i] + 1, cols[i] + 1] != nodatavalue
-                    and rows[i] + 1 <= no_rows
-                    and cols[i] + 1 <= no_cols
+                array[rows[i] + 1, cols[i] + 1] != nodatavalue
+                and rows[i] + 1 <= no_rows
+                and cols[i] + 1 <= no_cols
             ):
                 # give the cell the value of the cell that is at the right Top
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i] + 1]
@@ -1819,12 +1818,8 @@ class Raster:
                 print("the cell is isolated (No surrounding cells exist)")
         return array
 
-
     @staticmethod
-    def readASCII(
-            ascii_file: str,
-            pixel_type: int = 1
-    ) -> Tuple[np.ndarray, tuple]:
+    def readASCII(ascii_file: str, pixel_type: int = 1) -> Tuple[np.ndarray, tuple]:
         """readASCII.
 
             readASCII reads an ASCII file
@@ -1861,7 +1856,9 @@ class Raster:
             raise TypeError("ascii_file input should be string type")
 
         if not isinstance(pixel_type, int):
-            raise TypeError("pixel type input should be integer type please check documentations")
+            raise TypeError(
+                "pixel type input should be integer type please check documentations"
+            )
 
         # input values
         ASCIIExt = ascii_file[-4:]
@@ -1894,25 +1891,21 @@ class Raster:
                 for j in range(len(x)):
                     float(x[j])
             except:
-                print(f"Error reading the ARCII file please check row {i + 6 + 1}, column {j}")
+                print(
+                    f"Error reading the ARCII file please check row {i + 6 + 1}, column {j}"
+                )
                 print(f"A value of {x[j]} , is stored in the ASCII file ")
 
         geotransform = (rows, cols, XLeftSide, YLowerSide, CellSize, NoValue)
 
         return arr, geotransform
 
-
     @staticmethod
     def stringSpace(inp):
         return str(inp) + "  "
 
-
     @staticmethod
-    def writeASCII(
-            ascii_file: str,
-            geotransform: tuple,
-            arr: np.ndarray
-    ):
+    def writeASCII(ascii_file: str, geotransform: tuple, arr: np.ndarray):
         """writeASCII.
 
             writeASCII reads an ASCII file the spatial information
@@ -1949,7 +1942,9 @@ class Raster:
         try:
             File = open(ascii_file, "w")
         except FileExistsError:
-            raise FileExistsError(f"path you have provided does not exist please check {ascii_file}")
+            raise FileExistsError(
+                f"path you have provided does not exist please check {ascii_file}"
+            )
 
         # write the the ASCII file details
         File.write("ncols         " + str(geotransform[1]) + "\n")
@@ -1966,12 +1961,8 @@ class Raster:
 
         File.close()
 
-
     @staticmethod
-    def mosaic(
-            raster_list: list,
-            save: bool = False,
-            path: str = "MosaicedRaster.tif"):
+    def mosaic(raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"):
         """mosaic.
 
         Parameters
@@ -2022,7 +2013,6 @@ class Raster:
                 dest.write(dst)
 
         return dst, dst_meta
-
 
     @staticmethod
     def readASCIIsFolder(path: str, pixel_type: int):
@@ -2088,19 +2078,9 @@ class Raster:
 
         return arr_3d, ASCIIDetails, files
 
-
-
     @staticmethod
-    def rastersLike(
-            src: Dataset,
-            array: np.ndarray,
-            path: List[str]=None
-    ):
-        """
-        this function creates a Geotiff raster like another input raster, new raster
-        will have the same projection, coordinates or the top left corner of the original
-        raster, cell size, nodata velue, and number of rows and columns
-        the raster and the dem should have the same number of columns and rows
+    def rastersLike(src: Dataset, array: np.ndarray, path: List[str] = None):
+        """this function creates a Geotiff raster like another input raster, new raster will have the same projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number of rows and columns the raster and the dem should have the same number of columns and rows.
 
         Parameters
         ----------
@@ -2128,15 +2108,15 @@ class Raster:
         try:
             l = np.shape(array)[2]
         except IndexError:
-            raise IndexError("the array you have entered is 2D you have to use RasterLike function not RastersLike")
+            raise IndexError(
+                "the array you have entered is 2D you have to use RasterLike function not RastersLike"
+            )
 
         # check length of the list of names to be equal to 3rd dimension of the array
         if path is not None:  # paths are given
             assert len(path) == np.shape(array)[2], (
-                    "length of list of names "
-                    + str(len(path))
-                    + "should equal the 3d dimension of the array-"
-                    + str(np.shape(array)[2])
+                f"length of list of names {len(path)} should equal the 3d "
+                f"dimension of the array-{np.shape(array)[2]}"
             )
         else:  # paths are not given
             # try to create a folder called results at the current working directory to store resulted rasters
@@ -2152,13 +2132,8 @@ class Raster:
         for i in range(l):
             Raster.rasterLike(src, array[:, :, i], path[i])
 
-
     @staticmethod
-    def matchDataAlignment(
-            src_alignment: str,
-            rasters_dir: str,
-            save_to: str
-    ):
+    def matchDataAlignment(src_alignment: str, rasters_dir: str, save_to: str):
         """matchDataAlignment.
 
         this function matches the coordinate system and the number of of rows & columns
@@ -2225,13 +2200,8 @@ class Raster:
                 new_B = Raster.matchRasterAlignment(A, B)
                 Raster.saveRaster(new_B, save_to + files_list[i])
 
-
     @staticmethod
-    def folderCalculator(
-            rasters_dir: str,
-            save_to: str,
-            function
-    ):
+    def folderCalculator(rasters_dir: str, save_to: str, function):
         """folderCalculator.
 
         this function matches the location of nodata value from src raster to dst
@@ -2274,14 +2244,14 @@ class Raster:
         assert callable(function), "second argument should be a function"
 
         assert os.path.exists(rasters_dir), (
-                rasters_dir + "the path you have provided does not exist"
+            rasters_dir + "the path you have provided does not exist"
         )
         assert os.path.exists(save_to), (
-                save_to + "the path you have provided does not exist"
+            save_to + "the path you have provided does not exist"
         )
         # check whether there are files or not inside the folder
         assert os.listdir(rasters_dir) != "", (
-                rasters_dir + "the path you have provided is empty"
+            rasters_dir + "the path you have provided is empty"
         )
 
         # check if you can create the folder
@@ -2304,17 +2274,16 @@ class Raster:
             args = [B, save_to + files_list[i]]
             function(args)
 
-
     @staticmethod
     def readRastersFolder(
-            path: str,
-            band: int=1,
-            with_order: bool=True,
-            start: str="",
-            end: str="",
-            fmt: str="",
-            freq: str="daily",
-            # separator: str = "."
+        path: str,
+        band: int = 1,
+        with_order: bool = True,
+        start: str = "",
+        end: str = "",
+        fmt: str = "",
+        freq: str = "daily",
+        # separator: str = "."
     ):
         """ReadRastersFolder.
 
@@ -2366,7 +2335,7 @@ class Raster:
         """
         # input data validation
         # data type
-        if not isinstance(path, str)  and not isinstance(path, list):
+        if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")
 
         # input values
@@ -2412,9 +2381,9 @@ class Raster:
             for i in range(len(files)):
                 if freq == "daily":
                     l = len(files[i]) - 4
-                    day = int(files[i][l - 2: l])
-                    month = int(files[i][l - 5:l - 3])
-                    year = int(files[i][l - 10: l - 6])
+                    day = int(files[i][l - 2 : l])
+                    month = int(files[i][l - 5 : l - 3])
+                    year = int(files[i][l - 10 : l - 6])
                     dates.append(dt.datetime(year, month, day))
                 elif freq == "hourly":
                     year = int(files[i].split("_")[-4])
@@ -2443,7 +2412,9 @@ class Raster:
             sample = gdal.Open(path + "/" + files[starti])
         # check the given band number
         if band > sample.RasterCount:
-            raise ValueError(f"the raster has only {sample.RasterCount} check the given band number")
+            raise ValueError(
+                f"the raster has only {sample.RasterCount} check the given band number"
+            )
 
         dim = sample.GetRasterBand(band).ReadAsArray().shape
         naval = sample.GetRasterBand(band).GetNoDataValue()
@@ -2466,10 +2437,10 @@ class Raster:
 
     @staticmethod
     def extractValues(
-            path: str,
-            exclude_value,
-            compressed: bool=True,
-            occupied_Cells_only: bool=True
+        path: str,
+        exclude_value,
+        compressed: bool = True,
+        occupied_Cells_only: bool = True,
     ):
         """extractValues.
 
@@ -2487,7 +2458,6 @@ class Raster:
         compressed: [Bool]
              if the map you provided is compressed
         occupied_Cells_only:
-
         """
         # input data validation
         # data type
@@ -2550,14 +2520,13 @@ class Raster:
 
         return ExtractedValues, NonZeroCells
 
-
     @staticmethod
     def overlayMap(
-            path: str,
-            classes_map: Union[str, np.ndarray],
-            exclude_value: Union[float, int],
-            compressed: bool=False,
-            occupied_cells_only: bool=True
+        path: str,
+        classes_map: Union[str, np.ndarray],
+        exclude_value: Union[float, int],
+        compressed: bool = False,
+        occupied_cells_only: bool = True,
     ) -> Tuple[Dict[List[float], List[float]], int]:
         """OverlayMap.
 
@@ -2592,7 +2561,9 @@ class Raster:
             raise TypeError(f"Path input should be string type - given{type(path)}")
 
         if not isinstance(compressed, bool):
-            raise TypeError(f"Compressed input should be Boolen type given {type(compressed)}")
+            raise TypeError(
+                f"Compressed input should be Boolen type given {type(compressed)}"
+            )
 
         # check wether the path exist or not
         if not os.path.exists(path):
@@ -2663,19 +2634,16 @@ class Raster:
 
         return ExtractedValues, NonZeroCells
 
-
     @staticmethod
     def overlayMaps(
-            path: str,
-            basemap_file: str,
-            file_prefix: str,
-            exclude_value: Union[float, int],
-            compressed: bool=False,
-            occupied_cells_only: bool=True,
+        path: str,
+        basemap_file: str,
+        file_prefix: str,
+        exclude_value: Union[float, int],
+        compressed: bool = False,
+        occupied_cells_only: bool = True,
     ):
-        """
-        this function is written to extract and return a list of all the values
-        in an ASCII file
+        """this function is written to extract and return a list of all the values in an ASCII file.
 
         Parameters
         ----------
@@ -2764,8 +2732,8 @@ class Raster:
                         ExtractedValues[BaseMapValues[j]] = list()
 
                     ExtractedValues[BaseMapValues[j]] = (
-                            ExtractedValues[BaseMapValues[j]]
-                            + ExtractedValuesi[BaseMapValues[j]]
+                        ExtractedValues[BaseMapValues[j]]
+                        + ExtractedValuesi[BaseMapValues[j]]
                     )
 
             if ExtractedValuesi == -1 or NonZeroCells.loc[i, "cells"] == -1:
@@ -2773,7 +2741,6 @@ class Raster:
                 continue
 
         return ExtractedValues, NonZeroCells
-
 
     @staticmethod
     def normalize(array: np.ndarray):
@@ -2794,7 +2761,6 @@ class Raster:
         array_max = array.max()
         val = (array - array_min) / (array_max - array_min)
         return val
-
 
     # TODO: check where this function is used and replace it  with getRasterData
     @staticmethod
@@ -2830,11 +2796,8 @@ class Raster:
             src = None
         return geo_out, proj, size_X, size_Y
 
-
     def listAttributes(self):
-        """
-        Print Attributes List
-        """
+        """Print Attributes List."""
 
         print("\n")
         print(

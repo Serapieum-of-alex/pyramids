@@ -1,13 +1,14 @@
-"""
-Created on Sun May  9 03:35:25 2021
+"""Created on Sun May  9 03:35:25 2021.
 
 @author: mofarrag
 """
 import os
 
+import numpy as np
+
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
 os.chdir(rpath)
-import numpy as np
+
 
 from pyramids.raster import Raster
 
