@@ -6,16 +6,14 @@ with open("README.md", "r") as readme_file:
 with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
-# requirements = [line.strip() for line in open("requirements.txt").readlines()]
-# requirements = requirements[1:]
+requirements = [line.strip() for line in open("requirements.txt").readlines()]
+requirements = requirements[1:]
 
-test_requirements = [
-    "pytest>=3",
-]
+test_requirements = ["pytest >=7.1.3", "pytest-cov >=3.0.0", "pre-commit >=2.20.0"]
 
 setup(
     name="pyramids-gis",
-    version="0.2.2",
+    version="0.2.3",
     description="GIS utility package",
     author="Mostafa Farrag",
     author_email="moah.farag@gmail.come",
@@ -28,7 +26,7 @@ setup(
     packages=find_packages(include=["pyramids", "pyramids.*"]),
     test_suite="tests",
     tests_require=test_requirements,
-    # install_requires=requirements,
+    install_requires=requirements,
     # entry_points={
     #     'console_scripts': [
     #         'pyramids=pyramids.cli:main',
