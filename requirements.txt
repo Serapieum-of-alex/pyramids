@@ -1,6 +1,6 @@
 affine >=2.3.1
 Fiona >=1.8.21
-GDAL ==3.4.3
+GDAL >=3.4.3
 geopandas >=0.11.1
 geopy >=2.2.0
 loguru >=0.6.0
