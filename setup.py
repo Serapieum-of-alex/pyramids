@@ -7,7 +7,7 @@ with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
 requirements = [line.strip() for line in open("requirements.txt").readlines()]
-requirements = requirements[1:]
+# requirements = requirements[1:]
 
 test_requirements = ["pytest >=7.1.3", "pytest-cov >=3.0.0", "pre-commit >=2.20.0"]
 
