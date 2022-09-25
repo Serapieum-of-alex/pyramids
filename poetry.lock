@@ -346,8 +346,11 @@ optional = false
 python-versions = ">=3.6.0"
 
 [package.extras]
-numpy = ["numpy (>1.0.0)"]
+numpy = ["numpy (>1.19.0)"]
 
+[package.source]
+type = "url"
+url = "https://download.lfd.uci.edu/pythonlibs/archived/GDAL-3.4.3-cp39-cp39-win_amd64.whl"
 [[package]]
 name = "geographiclib"
 version = "1.52"
@@ -1020,7 +1023,7 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.12"
-content-hash = "953dabb4029b64449117e895a46161cf6de261c5c345e60a6051024b22553282"
+content-hash = "f350b177462dd74c295a445652ac6c6c4e3daa60a8120c65254340cfee61e8db"
 
 [metadata.files]
 affine = [
@@ -1279,9 +1282,7 @@ fonttools = [
     {file = "fonttools-4.37.3-py3-none-any.whl", hash = "sha256:a5bc5f5d48faa4085310b8ebd4c5d33bf27c6636c5f10a7de792510af2745a81"},
     {file = "fonttools-4.37.3.zip", hash = "sha256:f32ef6ec966cf0e7d2aa88601fed2e3a8f2851c26b5db2c80ccc8f82bee4eedc"},
 ]
-GDAL = [
-    {file = "GDAL-3.4.3.tar.gz", hash = "sha256:f4f4b0bb34073b164c5a05a1b0eb44af47349e5606eb7b75244c2167ac462f36"},
-]
+GDAL = []
 geographiclib = [
     {file = "geographiclib-1.52-py3-none-any.whl", hash = "sha256:8f441c527b0b8a26cd96c965565ff0513d1e4d9952b704bf449409e5015c77b7"},
     {file = "geographiclib-1.52.tar.gz", hash = "sha256:ac400d672b8954b0306bca890b088bb8ba2a757dc8133cca0b878f34b33b2740"},
