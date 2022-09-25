@@ -150,5 +150,3 @@ examples/data/precip.1979.nc
 pyramids/Copy of RETRIEVE-ALL-METADATA-WITH-ACCOUNT-INFO.ipynb
 tests/Copy of RETRIEVE-ALL-METADATA-WITH-ACCOUNT-INFO.ipynb
 .idea/
-poetry.lock
-pyproject.toml
