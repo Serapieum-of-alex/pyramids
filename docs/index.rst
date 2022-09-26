@@ -90,7 +90,7 @@ Main Features
    :hidden:
    :maxdepth: 1
 
-    Installation <00Installation.rst>
+    Installation <installation.rst>
     raster <raster.rst>
     vector <vector.rst>
     netcdf <netcdf.rst>
