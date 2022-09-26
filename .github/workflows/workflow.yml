@@ -11,24 +11,64 @@ jobs:
       OS: ${{ matrix.os }}
 
     steps:
+      #----------------------------------------------
+      #       check-out repo and set-up python
+      #----------------------------------------------
       - uses: actions/checkout@master
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@master
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
-      - uses: conda-incubator/setup-miniconda@v2
+      #----------------------------------------------
+      #  -----  install & configure miniconda  -----
+      #----------------------------------------------
+      #- uses: conda-incubator/setup-miniconda@v2
+      #  with:
+      #    miniconda-version: "latest"
+      #    channels: conda-forge
+      #    allow-softlinks: true
+      #    channel-priority: flexible
+      #    show-channel-urls: true
+      #----------------------------------------------
+      #  -----  install & configure poetry  -----
+      #----------------------------------------------
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
         with:
-          miniconda-version: "latest"
-          channels: conda-forge
-          allow-softlinks: true
-          channel-priority: flexible
-          show-channel-urls: true
-
+          version:1.1.15
+          virtualenvs-create:true
+          virtualenvs-in-project:true
+          virtualenvs-path:{cache-dir}/virtualenvs
+          installer-parallel:true
+      #----------------------------------------------
+      #       load cached venv if cache exists
+      #----------------------------------------------
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v2
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+      #----------------------------------------------
+      # install dependencies if cache does not exist
+      #----------------------------------------------
       - name: Install dependencies
+      #  run: |
+      #    $CONDA/bin/conda install --yes --file requirements.txt --name base #env update --file environment.yml --name base
+      #    python setup.py install
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+      #----------------------------------------------
+      # install your root project, if required
+      #----------------------------------------------
+      - name: Install library
+        run: poetry install --no-interaction
+      - name: Run tests
         run: |
-          $CONDA/bin/conda install --yes --file requirements.txt --name base #env update --file environment.yml --name base
-          python setup.py install
+          source .venv/bin/activate
+          pytest tests/
+          coverage report
 
 #    - name: Lint with flake8
 #      run: |
@@ -38,16 +78,16 @@ jobs:
 #        $CONDA/bin/flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 #        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
 #        $CONDA/bin/flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      - name: Generate coverage report
+      #- name: Generate coverage report
 #        working-directory: ../
-        run: |
-          pwd
-          pip install coveralls && coveralls --service=github
-          $CONDA/bin/pytest --cov=pyramids --cov-report=xml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_FLAG_NAME: ${{ matrix.python-version }}
-          COVERALLS_PARALLEL: true
+      #  run: |
+      #    pwd
+      #    pip install coveralls && coveralls --service=github
+      #    $CONDA/bin/pytest --cov=pyramids --cov-report=xml
+      #  env:
+      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #    COVERALLS_FLAG_NAME: ${{ matrix.python-version }}
+      #    COVERALLS_PARALLEL: true
 
 
 #      - name: Upload coverage to Codecov

@@ -1023,7 +1023,7 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.12"
-content-hash = "f350b177462dd74c295a445652ac6c6c4e3daa60a8120c65254340cfee61e8db"
+content-hash = "5d610c7f85750ea6988bcab8dee1a59e2040c4b46657e898756362796f0d7af5"
 
 [metadata.files]
 affine = [
