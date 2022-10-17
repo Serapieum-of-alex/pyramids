@@ -235,8 +235,14 @@ class Raster:
             if a path is given the created raster will be saved to drive, if not
             a gdal.Dataset will be returned.
         """
-        if np.isnan(nodatavalue):
-            nodatavalue = -9999
+        try:
+            if np.isnan(nodatavalue):
+                nodatavalue = -9999
+        except TypeError:
+            # np.isnan fails sometimes with the following error
+            # TypeError: ufunc 'isnan' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''
+            if pd.isnull(nodatavalue):
+                nodatavalue = -9999
 
         if path == "":
             driver_type = "MEM"
@@ -2269,7 +2275,6 @@ class Raster:
         if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")
 
-        # input values
         if isinstance(path, str):
             # check wether the path exist or not
             if not os.path.exists(path):
