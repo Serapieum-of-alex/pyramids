@@ -2115,24 +2115,17 @@ class Raster:
         assert type(save_to) == str, "save_to input should be string type"
         # input values
         ext = src_alignment[-4:]
-        assert ext == ".tif", "please add the extension at the end of the path input"
+        assert ext == ".tif", "please add the extension(.tif) at the end of the path input"
 
         A = gdal.Open(src_alignment)
         files_list = os.listdir(rasters_dir)
         if "desktop.ini" in files_list:
             files_list.remove("desktop.ini")
 
-        print("New Path- " + save_to)
+        print(f"New Path- {save_to}")
         for i in range(len(files_list)):
             if files_list[i][-4:] == ".tif":
-                print(
-                    str(i + 1)
-                    + "/"
-                    + str(len(files_list))
-                    + " - "
-                    + save_to
-                    + files_list[i]
-                )
+                print(f"{i + 1}/{len(files_list)} - {save_to} files_list[i]")
                 B = gdal.Open(rasters_dir + files_list[i])
                 new_B = Raster.matchRasterAlignment(A, B)
                 Raster.saveRaster(new_B, save_to + files_list[i])
@@ -2174,18 +2167,16 @@ class Raster:
         >>> save_to = "03Weather_Data/new/4km_f/new_evap/"
         >>> Raster.folderCalculator(rasters_dir, save_to, func)
         """
-        # input data validation
-        # data type
         assert type(rasters_dir) == str, "A_path input should be string type"
         assert type(save_to) == str, "B_input_path input should be string type"
         assert callable(function), "second argument should be a function"
 
-        assert os.path.exists(rasters_dir), (
-            rasters_dir + "the path you have provided does not exist"
-        )
-        assert os.path.exists(save_to), (
-            save_to + "the path you have provided does not exist"
-        )
+        if not os.path.exists(rasters_dir):
+            raise FileNotFoundError(f"{rasters_dir} the path you have provided does not exist")
+
+        if not os.path.exists(save_to):
+            raise FileNotFoundError(f"{save_to} the path you have provided does not exist")
+
         # check whether there are files or not inside the folder
         assert os.listdir(rasters_dir) != "", (
             rasters_dir + "the path you have provided is empty"

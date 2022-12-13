@@ -10,7 +10,6 @@ import geopandas as gpd
 import geopy.distance as distance
 import numpy as np
 import pandas as pd
-from fiona.crs import from_epsg
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr, osr
 from pyproj import Proj, transform
@@ -623,44 +622,44 @@ class Vector:
             y.append(point.GetPoints()[0][1])
         return x, y
 
-    @staticmethod
-    def addSpatialReference(gdf: GeoDataFrame, epsg: int):
-        """AddSpatialReference.
-
-        AddSpatialReference takes GeoPandas DataFrame and set the coordinate system
-        based on the given epsg input
-
-        Parameters
-        ----------
-        gdf: [GeoDataFrame]
-            geopandas dataframe
-        epsg: [integer]
-            EPSG stands for European Petroleum Survey Group and is an organization
-            that maintains a geodetic parameter database with standard codes,
-            the EPSG codes, for coordinate systems, datums, spheroids, units
-            and such alike (https://epsg.io/) default value is [None].
-
-        Returns
-        -------
-        gdf: [GeoDataFrame]
-            the same input geopandas dataframe but with spatial reference
-
-        Examples
-        --------
-        >>> NewGeometry = gpd.GeoDataFrame()
-        >>> coordinates = [(24.950899, 60.169158), (24.953492, 60.169158),
-        >>>                 (24.953510, 60.170104), (24.950958, 60.169990)]
-        >>> NewGeometry.loc[0,'geometry'] = Vector.createPolygon(coordinates,2)
-        # adding spatial reference system
-        >>> NewGeometry.crs = from_epsg(4326)
-        # to check the spatial reference
-        >>> NewGeometry.crs
-        >>> {'init': 'epsg:4326', 'no_defs': True}
-        """
-
-        gdf.crs = from_epsg(epsg)
-
-        return gdf
+    # @staticmethod
+    # def addSpatialReference(gdf: GeoDataFrame, epsg: int):
+    #     """AddSpatialReference.
+    #
+    #     AddSpatialReference takes GeoPandas DataFrame and set the coordinate system
+    #     based on the given epsg input
+    #
+    #     Parameters
+    #     ----------
+    #     gdf: [GeoDataFrame]
+    #         geopandas dataframe
+    #     epsg: [integer]
+    #         EPSG stands for European Petroleum Survey Group and is an organization
+    #         that maintains a geodetic parameter database with standard codes,
+    #         the EPSG codes, for coordinate systems, datums, spheroids, units
+    #         and such alike (https://epsg.io/) default value is [None].
+    #
+    #     Returns
+    #     -------
+    #     gdf: [GeoDataFrame]
+    #         the same input geopandas dataframe but with spatial reference
+    #
+    #     Examples
+    #     --------
+    #     >>> NewGeometry = gpd.GeoDataFrame()
+    #     >>> coordinates = [(24.950899, 60.169158), (24.953492, 60.169158),
+    #     >>>                 (24.953510, 60.170104), (24.950958, 60.169990)]
+    #     >>> NewGeometry.loc[0,'geometry'] = Vector.createPolygon(coordinates,2)
+    #     # adding spatial reference system
+    #     >>> NewGeometry.crs = from_epsg(4326)
+    #     # to check the spatial reference
+    #     >>> NewGeometry.crs
+    #     >>> {'init': 'epsg:4326', 'no_defs': True}
+    #     """
+    #     # from fiona.crs import from_epsg
+    #     gdf.crs = from_epsg(epsg)
+    #
+    #     return gdf
 
     @staticmethod
     def polygonCenterPoint(
