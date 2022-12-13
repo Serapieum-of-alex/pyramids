@@ -1,37 +1,24 @@
-import os
-import sys
-
-# os.chdir("examples/")
-# debug
-# rootpath = os.path.abspath(os.getcwd())
-# datapath = os.path.join(rootpath, "examples/GIS/data")
-# sys.path.append(rootpath + "/src")
-# datapath = os.path.join(rootpath, "examples/data/GIS/Hapi_GIS_Data")
-# run
-# rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
-datapath = os.path.join("examples/data")  # rpath,
-# os.chdir(rpath)
-
 import geopandas as gpd
 import matplotlib
 
 matplotlib.use("TkAgg")
 import numpy as np
 import pandas as pd
+
 from digitalearth.map import Map
 from osgeo import gdal, ogr, osr
 
 from pyramids.catchment import Catchment as GC
 from pyramids.raster import Raster
-
 #%% Paths
-RasterAPath = datapath + "/acc4000.tif"
-RasterBPath = datapath + "/dem_100_f.tif"
-pointsPath = datapath + "/points.csv"
-aligned_raster_folder = datapath + "/aligned_rasters/"
-aligned_raster = datapath + "/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
-soilmappath = datapath + "/soil_raster.tif"
-Basinshp = datapath + "/basin.geojson"
+datapath = "examples/data"
+RasterAPath =  f"{datapath}/acc4000.tif"
+RasterBPath = f"{datapath}/dem_100_f.tif"
+pointsPath = f"{datapath}/points.csv"
+aligned_raster_folder = f"{datapath}/aligned_rasters/"
+aligned_raster = f"{datapath}/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
+soilmappath = f"{datapath}/soil_raster.tif"
+Basinshp = f"{datapath}/basin.geojson"
 #%%
 """
 you need to define the TEMP path in your environment variable as some of the metods in the raster
