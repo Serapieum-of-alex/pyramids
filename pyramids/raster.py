@@ -18,6 +18,7 @@ from osgeo import gdal, gdalconst, osr
 from osgeo.gdal import Dataset
 from rasterio.mask import mask as rio_mask
 
+
 from pyramids.vector import Vector
 
 
@@ -2115,7 +2116,9 @@ class Raster:
         assert type(save_to) == str, "save_to input should be string type"
         # input values
         ext = src_alignment[-4:]
-        assert ext == ".tif", "please add the extension(.tif) at the end of the path input"
+        assert (
+            ext == ".tif"
+        ), "please add the extension(.tif) at the end of the path input"
 
         A = gdal.Open(src_alignment)
         files_list = os.listdir(rasters_dir)
@@ -2172,10 +2175,14 @@ class Raster:
         assert callable(function), "second argument should be a function"
 
         if not os.path.exists(rasters_dir):
-            raise FileNotFoundError(f"{rasters_dir} the path you have provided does not exist")
+            raise FileNotFoundError(
+                f"{rasters_dir} the path you have provided does not exist"
+            )
 
         if not os.path.exists(save_to):
-            raise FileNotFoundError(f"{save_to} the path you have provided does not exist")
+            raise FileNotFoundError(
+                f"{save_to} the path you have provided does not exist"
+            )
 
         # check whether there are files or not inside the folder
         assert os.listdir(rasters_dir) != "", (
