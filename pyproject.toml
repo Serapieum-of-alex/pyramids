@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyramids-gis"
-version = "0.2.6"
+version = "0.2.7"
 description = "GIS utility package"
 authors = ["Mostafa Farrag <moah.farag@gmail.com>"]
 license = "GNU General Public License v3"
@@ -34,7 +34,7 @@ GDAL = "3.4.3"
 affine = "^2.3.1"
 pyproj = "3.4.0"
 pandas = "^1.4.4"
-geopandas = "^0.11.1"
+geopandas = "^0.12.2"
 Rtree = "^1.0.0"
 Shapely = "^1.8.4"
 rasterio = "^1.3.0"
