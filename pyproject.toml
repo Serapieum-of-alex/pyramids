@@ -29,7 +29,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-GDAL = "3.4.3"
+GDAL = "3.6.0.1"
 #gdal = {url = "https://download.lfd.uci.edu/pythonlibs/archived/GDAL-3.4.3-cp39-cp39-win_amd64.whl" }
 affine = "^2.3.1"
 pyproj = "3.4.0"
