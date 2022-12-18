@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyramids-gis"
-version = "0.2.7"
+version = "0.2.8"
 description = "GIS utility package"
 authors = ["Mostafa Farrag <moah.farag@gmail.com>"]
 license = "GNU General Public License v3"
