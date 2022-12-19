@@ -4,15 +4,15 @@ import matplotlib
 matplotlib.use("TkAgg")
 import numpy as np
 import pandas as pd
-
-from digitalearth.map import Map
+from digitalearth.static import Map
 from osgeo import gdal, ogr, osr
 
 from pyramids.catchment import Catchment as GC
 from pyramids.raster import Raster
+
 #%% Paths
 datapath = "examples/data"
-RasterAPath =  f"{datapath}/acc4000.tif"
+RasterAPath = f"{datapath}/acc4000.tif"
 RasterBPath = f"{datapath}/dem_100_f.tif"
 pointsPath = f"{datapath}/points.csv"
 aligned_raster_folder = f"{datapath}/aligned_rasters/"

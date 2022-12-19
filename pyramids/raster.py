@@ -18,7 +18,6 @@ from osgeo import gdal, gdalconst, osr
 from osgeo.gdal import Dataset
 from rasterio.mask import mask as rio_mask
 
-
 from pyramids.vector import Vector
 
 
@@ -161,14 +160,14 @@ class Raster:
         return np.array(coords), np.array(mat_range)
 
     @staticmethod
-    def saveRaster(raster: Dataset, path: str) -> None:
+    def saveRaster(src: Dataset, path: str) -> None:
         """saveRaster.
 
             saveRaster saves a raster to a path
 
         Parameters
         ----------
-        raster: [gdal object]
+        src: [gdal object]
             gdal dataset opbject
         path: [string]
             a path includng the name of the raster and extention like
@@ -184,7 +183,7 @@ class Raster:
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
         >>> Raster.saveRaster(gdal_raster_obj, output_path)
         """
-        if not isinstance(raster, gdal.Dataset):
+        if not isinstance(src, gdal.Dataset):
             raise TypeError(
                 "raster parameter should be read using gdal dataset please read it using gdal"
             )
@@ -197,7 +196,7 @@ class Raster:
             raise ValueError("please add the extension at the end of the path input")
 
         driver = gdal.GetDriverByName("GTiff")
-        dst_ds = driver.CreateCopy(path, raster, 0)
+        dst_ds = driver.CreateCopy(path, src, 0)
         dst_ds = None  # Flush the dataset to disk
         # print to go around the assigned but never used pre-commit issue
         print(dst_ds)
