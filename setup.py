@@ -13,7 +13,7 @@ requirements_dev = [line.strip() for line in open("requirements-dev.txt").readli
 
 setup(
     name="pyramids-gis",
-    version="0.2.9",
+    version="0.2.10",
     description="GIS utility package",
     author="Mostafa Farrag",
     author_email="moah.farag@gmail.come",
