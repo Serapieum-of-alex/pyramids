@@ -139,7 +139,7 @@ build_artifacts
 *.qgz
 .vscode
 
-.xml
+*.xml
 .idea/pyramids.iml
 .idea/.gitignore
 mo_*
