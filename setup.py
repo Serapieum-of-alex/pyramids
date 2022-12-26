@@ -7,13 +7,11 @@ with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
 requirements = [line.strip() for line in open("requirements.txt").readlines()]
-requirements = requirements[1:]
-
 requirements_dev = [line.strip() for line in open("requirements-dev.txt").readlines()]
 
 setup(
     name="pyramids-gis",
-    version="0.2.10",
+    version="0.2.11",
     description="GIS utility package",
     author="Mostafa Farrag",
     author_email="moah.farag@gmail.come",
