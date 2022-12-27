@@ -16,3 +16,8 @@ History
 ------------------
 
 * lock numpy version to 1.23.5 as conda-forge can not install 1.24.0
+
+0.2.11 (2022-12-27)
+------------------
+
+* fix bug in pypi package names in requirements.txt file
