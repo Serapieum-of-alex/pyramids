@@ -8,7 +8,7 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/MAfarrag/pyramids)
 ![GitHub forks](https://img.shields.io/github/forks/MAfarrag/pyramids?style=social)
 ![GitHub Repo stars](https://img.shields.io/github/stars/MAfarrag/pyramids?style=social)
-[![Coverage Status](https://coveralls.io/repos/github/MAfarrag/pyramids/badge.svg?branch=main)](https://coveralls.io/github/MAfarrag/pyramids?branch=main)
+[![codecov](https://codecov.io/gh/Serapieum-of-alex/pyramids/branch/main/graph/badge.svg?token=g0DV4dCa8N)](https://codecov.io/gh/Serapieum-of-alex/pyramids)
 
 
 ![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.io/github/commits-since/mafarrag/pyramids/0.2.1?include_prereleases&style=plastic)
