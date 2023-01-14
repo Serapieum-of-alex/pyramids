@@ -9,6 +9,7 @@
 ![GitHub forks](https://img.shields.io/github/forks/MAfarrag/pyramids?style=social)
 ![GitHub Repo stars](https://img.shields.io/github/stars/MAfarrag/pyramids?style=social)
 [![codecov](https://codecov.io/gh/Serapieum-of-alex/pyramids/branch/main/graph/badge.svg?token=g0DV4dCa8N)](https://codecov.io/gh/Serapieum-of-alex/pyramids)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/5e3aa4d0acc843d1a91caf33545ecf03)](https://www.codacy.com/gh/Serapieum-of-alex/pyramids/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Serapieum-of-alex/pyramids&amp;utm_campaign=Badge_Grade)
 
 
 ![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.io/github/commits-since/mafarrag/pyramids/0.2.1?include_prereleases&style=plastic)
@@ -64,7 +65,7 @@ pip install git+https://github.com/MAfarrag/pyramids
 ## pip
 to install the last release you can easly use pip
 ```
-pip install pyramids-gis==0.2.11
+pip install pyramids-gis==0.2.12
 ```
 
 Quick start
