@@ -1,5 +1,6 @@
-import os
 import gzip
+import os
+
 
 def extractFromGZ(input_file: str, output_file: str, delete=False):
     """ExtractFromGZ method extract data from the zip/.gz files, save the data.
