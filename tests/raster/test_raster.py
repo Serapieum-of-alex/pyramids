@@ -4,7 +4,6 @@ import os
 import numpy as np
 from osgeo import gdal, osr
 from osgeo.gdal import Dataset
-
 from pyramids.raster import Raster
 
 
