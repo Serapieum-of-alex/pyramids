@@ -21,3 +21,8 @@ History
 ------------------
 
 * fix bug in pypi package names in requirements.txt file
+
+0.2.11 (2023-01-14)
+------------------
+
+* add utils module for functions dealing with compressing files, and others utility functions
