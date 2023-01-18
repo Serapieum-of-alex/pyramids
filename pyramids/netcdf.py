@@ -1,9 +1,10 @@
 import os
 from typing import Tuple
+
 import netCDF4
-from netCDF4._netCDF4 import Dataset
 import numpy as np
 import pandas as pd
+from netCDF4._netCDF4 import Dataset
 
 from pyramids.raster import Raster
 
@@ -15,7 +16,7 @@ class NC:
         pass
 
     @staticmethod
-    def ncDetails(nc: Dataset, var: str = None, time_var_name: str=None) -> Tuple:
+    def ncDetails(nc: Dataset, var: str = None, time_var_name: str = None) -> Tuple:
         """ncDetails takes a netcdf Dataset and return the geottansform data of the bottom left corner.
 
         Parameters
@@ -60,7 +61,7 @@ class NC:
         except AttributeError:
             datatype = data.dtype
 
-        lat_len, lon_len = np.int_(data.shape[-2:]) #lat=y, lon=x
+        lat_len, lon_len = np.int_(data.shape[-2:])  # lat=y, lon=x
         # if there is a stack of layers in the file (3d array)
         if len(data.shape) == 3 and data.shape[0] > 1:
             time_len = np.int_(data.shape[0])
@@ -112,7 +113,7 @@ class NC:
         return geo, epsg, lon_len, lat_len, time_len, time_var, no_data_value, datatype
 
     @staticmethod
-    def get_time(nc, time_var_name: str=None) -> np.ndarray:
+    def get_time(nc, time_var_name: str = None) -> np.ndarray:
         """Get the time variable from the netcdf Dataset.
 
         Parameters
@@ -125,7 +126,6 @@ class NC:
 
         Returns
         -------
-
         """
         if time_var_name is None:
             try:
@@ -214,7 +214,9 @@ class NC:
                     time_or[i] = Date.toordinal()
                     i += 1
                 nco.createDimension("temporal_resolution", None)
-                timeo = nco.createVariable("temporal_resolution", "f4", ("temporal_resolution",))
+                timeo = nco.createVariable(
+                    "temporal_resolution", "f4", ("temporal_resolution",)
+                )
                 timeo.units = "%s" % Time_steps
                 timeo.standard_name = "temporal_resolution"
 

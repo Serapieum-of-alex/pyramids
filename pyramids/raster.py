@@ -15,12 +15,14 @@ import pyproj
 import rasterio
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, gdalconst, osr
-from osgeo.osr import SpatialReference
 from osgeo.gdal import Dataset
+from osgeo.osr import SpatialReference
 from rasterio.mask import mask as rio_mask
 
 from pyramids.vector import Vector
+
 DEFAULT_NO_DATA_VALUE = -9999
+
 
 class Raster:
     """Raster class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
@@ -120,7 +122,7 @@ class Raster:
 
     @staticmethod
     def setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE, band: int = 1):
-        """Set the no data value in a raster
+        """Set the no data value in a raster.
 
         Parameters
         ----------
@@ -144,13 +146,15 @@ class Raster:
             src.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
             src.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
             # assert False, "please change the no_data_value in the source raster as it is not accepted by Gdal"
-            print("the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
-                  f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster")
+            print(
+                "the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
+                f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
+            )
 
         return src
 
     @staticmethod
-    def createSpatialReference(epsg: int="") -> SpatialReference:
+    def createSpatialReference(epsg: int = "") -> SpatialReference:
         """Create a spatial reference object from epsg number.
 
         Parameters
@@ -267,12 +271,12 @@ class Raster:
 
     @staticmethod
     def createRaster(
-            path: str = "",
-            arr: Union[str, Dataset, np.ndarray] = "",
-            geo: Union[str, tuple] = "",
-            epsg: Union[str, int] = "",
-            nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
-            band: int = 1,
+        path: str = "",
+        arr: Union[str, Dataset, np.ndarray] = "",
+        geo: Union[str, tuple] = "",
+        epsg: Union[str, int] = "",
+        nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
+        band: int = 1,
     ) -> Union[Dataset, None]:
         """createRaster.
 
@@ -443,7 +447,7 @@ class Raster:
         dst = None
 
     @staticmethod
-    def mapAlgebra(src: Dataset, fun, band: int=1) -> Dataset:
+    def mapAlgebra(src: Dataset, fun, band: int = 1) -> Dataset:
         """mapAlgebra.
 
         mapAlgebra executes a mathematical operation on raster array and returns

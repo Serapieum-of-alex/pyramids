@@ -258,7 +258,13 @@ class Convert:
             )
 
     @staticmethod
-    def nctoTiff(input_nc, save_to: str, separator: str = "_", time_var_name: str=None, prefix: str=None):
+    def nctoTiff(
+        input_nc,
+        save_to: str,
+        separator: str = "_",
+        time_var_name: str = None,
+        prefix: str = None,
+    ):
         """nctoTiff.
 
         Parameters
@@ -294,7 +300,9 @@ class Convert:
         # extract the data
         dataset = nc[Var]
         # get the details of the file
-        geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.ncDetails(nc, time_var_name=time_var_name)
+        geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.ncDetails(
+            nc, time_var_name=time_var_name
+        )
 
         # Create output folder if needed
         if not os.path.exists(save_to):
@@ -309,11 +317,16 @@ class Convert:
             nameparts = fname_prefix
 
         for i in range(time_len):
-            if time_len > 1:  # dataset.shape[0] and # type(temporal_resolution) == np.ndarray: #not temporal_resolution == -9999
+            if (
+                time_len > 1
+            ):  # dataset.shape[0] and # type(temporal_resolution) == np.ndarray: #not temporal_resolution == -9999
                 time_one = time_var[i]
-                name_out = os.path.join(save_to, f"{nameparts}_{time_one.strftime('%Y')}.{time_one.strftime('%m')}."
-                                                 f"{time_one.strftime('%d')}.{time_one.strftime('%H')}."
-                                                 f"{time_one.strftime('%M')}.{time_one.strftime('%S')}.tif")
+                name_out = os.path.join(
+                    save_to,
+                    f"{nameparts}_{time_one.strftime('%Y')}.{time_one.strftime('%m')}."
+                    f"{time_one.strftime('%d')}.{time_one.strftime('%H')}."
+                    f"{time_one.strftime('%M')}.{time_one.strftime('%S')}.tif",
+                )
             else:
                 name_out = os.path.join(save_to, f"{fname_prefix}.tif")
 
