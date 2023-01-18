@@ -258,73 +258,66 @@ class Convert:
             )
 
     @staticmethod
-    def nctoTiff(input_nc, save_to: str, separator: str = "_"):
+    def nctoTiff(input_nc, save_to: str, separator: str = "_", time_var_name: str=None, prefix: str=None):
         """nctoTiff.
 
         Parameters
         ----------
         input_nc : [string/list]
-            a path of the netcdf file of a list of the netcdf files' names.
+            a path of the netcdf file or a list of the netcdf files' names.
         save_to : [str]
             Path to where you want to save the files.
         separator : [string]
             separator in the file name that separate the name from the date.
-            Default is "_"
+            Default is "_".
+        time_var_name: [str]
+            name of the time variable in the dataset, as it does not have a unified name. the function will check
+            the name time and temporal_resolution if the time_var parameter is not given
+        prefix: [str]
+            file name prefix. Default is None.
 
         Returns
         -------
         None.
         """
-        if type(input_nc) == str:
+        if isinstance(input_nc, str):
             nc = netCDF4.Dataset(input_nc)
-        elif type(input_nc) == list:
+        elif isinstance(input_nc, list):
             nc = netCDF4.MFDataset(input_nc)
         else:
             raise TypeError(
-                "first parameter to the nctoTiff function should be either str or list"
+                "First parameter to the nctoTiff function should be either str or list"
             )
 
         # get the variable
         Var = list(nc.variables.keys())[-1]
         # extract the data
-        All_Data = nc[Var]
+        dataset = nc[Var]
         # get the details of the file
-        (
-            geo,
-            epsg,
-            size_X,
-            size_Y,
-            size_Z,
-            Time,
-            NoDataValue,
-            datatype,
-        ) = NC.ncDetails(nc)
+        geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.ncDetails(nc, time_var_name=time_var_name)
 
         # Create output folder if needed
         if not os.path.exists(save_to):
             os.mkdir(save_to)
 
-        for i in range(0, size_Z):
-            if (
-                All_Data.shape[0] and All_Data.shape[0] > 1
-            ):  # type(time) == np.ndarray: #not time == -9999
-                time_one = Time[i]
-                # d = dt.date.fromordinal(int(time_one))
-                name = os.path.splitext(os.path.basename(input_nc))[0]
-                nameparts = name.split(separator)[0]  # [0:-2]
-                name_out = os.path.join(
-                    save_to
-                    + "/"
-                    + nameparts
-                    + "_%d.%02d.%02d.tif"
-                    % (time_one.year, time_one.month, time_one.day)
-                )
-                data = All_Data[i, :, :]
-            else:
-                name = os.path.splitext(os.path.basename(input_nc))[0]
-                name_out = os.path.join(save_to, name + ".tif")
-                data = All_Data[0, :, :]
+        if prefix is None and time_len > 1:
+            # if there is no prefix take the first par of the fname
+            fname_prefix = os.path.splitext(os.path.basename(input_nc))[0]
+            nameparts = fname_prefix.split(separator)[0]
+        else:
+            fname_prefix = prefix
+            nameparts = fname_prefix
 
+        for i in range(time_len):
+            if time_len > 1:  # dataset.shape[0] and # type(temporal_resolution) == np.ndarray: #not temporal_resolution == -9999
+                time_one = time_var[i]
+                name_out = os.path.join(save_to, f"{nameparts}_{time_one.strftime('%Y')}.{time_one.strftime('%m')}."
+                                                 f"{time_one.strftime('%d')}.{time_one.strftime('%H')}."
+                                                 f"{time_one.strftime('%M')}.{time_one.strftime('%S')}.tif")
+            else:
+                name_out = os.path.join(save_to, f"{fname_prefix}.tif")
+
+            data = dataset[i, :, :]
             driver = gdal.GetDriverByName("GTiff")
             # driver = gdal.GetDriverByName("MEM")
 
@@ -382,44 +375,12 @@ class Convert:
                     ["COMPRESS=LZW"],
                 )
 
-            srse = osr.SpatialReference()
-            if epsg == "":
-                srse.SetWellKnownGeogCS("WGS84")
-
-            else:
-                try:
-                    if not srse.SetWellKnownGeogCS(epsg) == 6:
-                        srse.SetWellKnownGeogCS(epsg)
-                    else:
-                        try:
-                            srse.ImportFromEPSG(int(epsg))
-                        except:
-                            srse.ImportFromWkt(epsg)
-                except:
-                    try:
-                        srse.ImportFromEPSG(int(epsg))
-                    except:
-                        srse.ImportFromWkt(epsg)
-
+            sr = Raster.createSpatialReference(epsg=epsg)
             # set the geotransform
             dst.SetGeoTransform(geo)
             # set the projection
-            dst.SetProjection(srse.ExportToWkt())
-            # setting the NoDataValue does not accept double precision numbers
-            try:
-                dst.GetRasterBand(1).SetNoDataValue(NoDataValue)
-                # initialize the band with the nodata value instead of 0
-                dst.GetRasterBand(1).Fill(NoDataValue)
-            except:
-                NoDataValue = -9999
-                dst.GetRasterBand(1).SetNoDataValue(NoDataValue)
-                dst.GetRasterBand(1).Fill(NoDataValue)
-                # assert False, "please change the NoDataValue in the source raster as it is not accepted by Gdal"
-                print(
-                    "the NoDataValue in the source Netcdf is double precission and as it is not accepted by Gdal"
-                )
-                print("the NoDataValue now is et to -9999 in the raster")
-
+            dst.SetProjection(sr.ExportToWkt())
+            dst = Raster.setNoDataValue(dst)
             dst.GetRasterBand(1).WriteArray(data)
             dst.FlushCache()
             dst = None
