@@ -148,6 +148,7 @@ class Raster:
                   f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster")
 
         return src
+
     @staticmethod
     def createSpatialReference(epsg: int="") -> SpatialReference:
         """Create a spatial reference object from epsg number.
@@ -266,11 +267,12 @@ class Raster:
 
     @staticmethod
     def createRaster(
-        path: str = "",
-        arr: Union[str, Dataset, np.ndarray] = "",
-        geo: Union[str, tuple] = "",
-        epsg: Union[str, int] = "",
-        nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
+            path: str = "",
+            arr: Union[str, Dataset, np.ndarray] = "",
+            geo: Union[str, tuple] = "",
+            epsg: Union[str, int] = "",
+            nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
+            band: int = 1,
     ) -> Union[Dataset, None]:
         """createRaster.
 
@@ -291,6 +293,8 @@ class Raster:
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator )
+        band: [int]
+            band number.
 
         Returns
         -------
@@ -324,13 +328,7 @@ class Raster:
 
         srse = Raster.createSpatialReference(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
-
-        try:
-            # if the nodata value gives error because of the type.
-            dst_ds.GetRasterBand(1).SetNoDataValue(nodatavalue)
-        except TypeError:
-            # TypeError: in method 'Band_SetNoDataValue', argument 2 of type 'double'
-            dst_ds.GetRasterBand(1).SetNoDataValue(np.float64(nodatavalue))
+        dst_ds = Raster.setNoDataValue(dst_ds, no_data_value=nodatavalue, band=band)
 
         dst_ds.SetGeoTransform(geo)
         dst_ds.GetRasterBand(1).WriteArray(arr)
@@ -343,7 +341,7 @@ class Raster:
 
     @staticmethod
     def rasterLike(
-        src: Dataset, array: np.ndarray, path: str, pixel_type: int = 1
+        src: Dataset, array: np.ndarray, path: str, pixel_type: int = 1, band: int = 1
     ) -> None:
         """rasterLike.
 
@@ -369,6 +367,8 @@ class Raster:
             4 for Unsigned integer 32
             5 for integer 16
             6 for integer 32
+        band: [int]
+            band number.
 
         Returns
         -------
@@ -407,7 +407,7 @@ class Raster:
         cols = src.RasterXSize
         rows = src.RasterYSize
         gt = src.GetGeoTransform()
-        noval = src.GetRasterBand(1).GetNoDataValue()
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
         if pixel_type == 1:
             dst = gdal.GetDriverByName("GTiff").Create(
                 path, cols, rows, 1, gdal.GDT_Float32
@@ -436,24 +436,14 @@ class Raster:
         dst.SetGeoTransform(gt)
         dst.SetProjection(prj)
         # setting the NoDataValue does not accept double precision numbers
-        try:
-            dst.GetRasterBand(1).SetNoDataValue(noval)
-            dst.GetRasterBand(1).Fill(noval)
-        except:
-            noval = -999999
-            dst.GetRasterBand(1).SetNoDataValue(noval)
-            dst.GetRasterBand(1).Fill(noval)
-            # assert False, "please change the NoDataValue in the source raster as it is not accepted by Gdal"
-            print(
-                "please change the NoDataValue in the source raster as it is not accepted by Gdal"
-            )
+        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value, band=band)
 
         dst.GetRasterBand(1).WriteArray(array)
         dst.FlushCache()
         dst = None
 
     @staticmethod
-    def mapAlgebra(src: Dataset, fun) -> Dataset:
+    def mapAlgebra(src: Dataset, fun, band: int=1) -> Dataset:
         """mapAlgebra.
 
         mapAlgebra executes a mathematical operation on raster array and returns
@@ -464,7 +454,9 @@ class Raster:
         src : [gdal.dataset]
             source raster to that you want to make some calculation on its values
         fun: [function]
-            defined function that takes one input which is the cell value
+            defined function that takes one input which is the cell value.
+        band: [int]
+            band number.
 
         Returns
         -------
@@ -488,7 +480,7 @@ class Raster:
         src_proj = src.GetProjection()
         src_row = src.RasterYSize
         src_col = src.RasterXSize
-        noval = np.float32(src.GetRasterBand(1).GetNoDataValue())
+        noval = np.float32(src.GetRasterBand(band).GetNoDataValue())
         src_sref = osr.SpatialReference(wkt=src_proj)
         src_array = src.ReadAsArray()
 
@@ -511,10 +503,9 @@ class Raster:
         # set the projection
         dst.SetProjection(src_sref.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
-        dst.GetRasterBand(1).WriteArray(new_array)
+        no_data_value = src.GetRasterBand(band).GetNoDataValue()
+        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value, band=band)
+        dst.GetRasterBand(band).WriteArray(new_array)
 
         return dst
 
@@ -1844,8 +1835,8 @@ class Raster:
             )
 
         # input values
-        ASCIIExt = ascii_file[-4:]
-        if not ASCIIExt == ".asc":
+        file_extension = ascii_file[-4:]
+        if not file_extension == ".asc":
             raise ValueError("please add the extension at the end of the path input")
 
         if not os.path.exists(ascii_file):
@@ -1853,21 +1844,21 @@ class Raster:
 
         ### read the ASCII file
         File = open(ascii_file)
-        Wholefile = File.readlines()
+        whole_file = File.readlines()
         File.close()
 
-        cols = int(Wholefile[0].split()[1])
-        rows = int(Wholefile[1].split()[1])
+        cols = int(whole_file[0].split()[1])
+        rows = int(whole_file[1].split()[1])
 
-        XLeftSide = float(Wholefile[2].split()[1])
-        YLowerSide = float(Wholefile[3].split()[1])
-        CellSize = float(Wholefile[4].split()[1])
-        NoValue = float(Wholefile[5].split()[1])
+        x_left_side = float(whole_file[2].split()[1])
+        y_lower_side = float(whole_file[3].split()[1])
+        call_size = float(whole_file[4].split()[1])
+        no_data_value = float(whole_file[5].split()[1])
 
         arr = np.ones((rows, cols), dtype=np.float32)
         try:
             for i in range(rows):
-                x = Wholefile[6 + i].split()
+                x = whole_file[6 + i].split()
                 arr[i, :] = list(map(float, x))
         except:
             try:
@@ -1879,7 +1870,7 @@ class Raster:
                 )
                 print(f"A value of {x[j]} , is stored in the ASCII file ")
 
-        geotransform = (rows, cols, XLeftSide, YLowerSide, CellSize, NoValue)
+        geotransform = (rows, cols, x_left_side, y_lower_side, call_size, no_data_value)
 
         return arr, geotransform
 
