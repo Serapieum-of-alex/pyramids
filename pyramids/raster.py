@@ -15,11 +15,12 @@ import pyproj
 import rasterio
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, gdalconst, osr
+from osgeo.osr import SpatialReference
 from osgeo.gdal import Dataset
 from rasterio.mask import mask as rio_mask
 
 from pyramids.vector import Vector
-
+DEFAULT_NO_DATA_VALUE = -9999
 
 class Raster:
     """Raster class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
@@ -118,6 +119,68 @@ class Raster:
         return epsg
 
     @staticmethod
+    def setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE, band: int = 1):
+        """Set the no data value in a raster
+
+        Parameters
+        ----------
+        src: [Dataset]
+            gdal Dataset
+        no_data_value: [numeric]
+            no data value to fill the masked part of the array
+        band: [int]
+            band number.
+
+        Returns
+        -------
+        gdal Dataset
+        """
+        # setting the no_data_value does not accept double precision numbers
+        try:
+            src.GetRasterBand(band).SetNoDataValue(no_data_value)
+            # initialize the band with the nodata value instead of 0
+            src.GetRasterBand(band).Fill(no_data_value)
+        except:
+            src.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
+            src.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
+            # assert False, "please change the no_data_value in the source raster as it is not accepted by Gdal"
+            print("the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
+                  f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster")
+
+        return src
+    @staticmethod
+    def createSpatialReference(epsg: int="") -> SpatialReference:
+        """Create a spatial reference object from epsg number.
+
+        Parameters
+        ----------
+        epsg: [int]
+            epsg number.
+
+        Returns
+        -------
+        SpatialReference object
+        """
+        sr = osr.SpatialReference()
+        if epsg == "":
+            sr.SetWellKnownGeogCS("WGS84")
+        else:
+            try:
+                if not sr.SetWellKnownGeogCS(epsg) == 6:
+                    sr.SetWellKnownGeogCS(epsg)
+                else:
+                    try:
+                        sr.ImportFromEPSG(int(epsg))
+                    except:
+                        sr.ImportFromWkt(epsg)
+            except:
+                try:
+                    sr.ImportFromEPSG(int(epsg))
+                except:
+                    sr.ImportFromWkt(epsg)
+        return sr
+
+    @staticmethod
     def getCellCoords(src: Dataset) -> Tuple[np.ndarray, np.ndarray]:
         """GetCoords.
 
@@ -207,7 +270,7 @@ class Raster:
         arr: Union[str, Dataset, np.ndarray] = "",
         geo: Union[str, tuple] = "",
         epsg: Union[str, int] = "",
-        nodatavalue: Any = -9999,
+        nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
     ) -> Union[Dataset, None]:
         """createRaster.
 
@@ -237,12 +300,12 @@ class Raster:
         """
         try:
             if np.isnan(nodatavalue):
-                nodatavalue = -9999
+                nodatavalue = DEFAULT_NO_DATA_VALUE
         except TypeError:
             # np.isnan fails sometimes with the following error
             # TypeError: ufunc 'isnan' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''
             if pd.isnull(nodatavalue):
-                nodatavalue = -9999
+                nodatavalue = DEFAULT_NO_DATA_VALUE
 
         if path == "":
             driver_type = "MEM"
@@ -258,27 +321,10 @@ class Raster:
         dst_ds = driver.Create(
             path, int(arr.shape[1]), int(arr.shape[0]), 1, gdal.GDT_Float32, compress
         )
-        srse = osr.SpatialReference()
 
-        if epsg == "":
-            # if no epsg assume WGS 94 (4326)
-            srse.SetWellKnownGeogCS("WGS84")
-        else:
-            try:
-                if not srse.SetWellKnownGeogCS(epsg) == 6:
-                    srse.SetWellKnownGeogCS(epsg)
-                else:
-                    try:
-                        srse.ImportFromEPSG(int(epsg))
-                    except:
-                        srse.ImportFromWkt(epsg)
-            except:
-                try:
-                    srse.ImportFromEPSG(int(epsg))
-                except:
-                    srse.ImportFromWkt(epsg)
-
+        srse = Raster.createSpatialReference(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
+
         try:
             # if the nodata value gives error because of the type.
             dst_ds.GetRasterBand(1).SetNoDataValue(nodatavalue)
