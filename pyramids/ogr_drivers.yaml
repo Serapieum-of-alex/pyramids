@@ -1,0 +1,240 @@
+AmigoCloud:
+	- Long name: AmigoCloud
+	- Creation: yes
+	- Geo-referencing: yes
+	- Build requirements: libcurl
+Arrow:
+	- Long name: GeoArrow IPC File Format / Stream
+	- Creation: yes
+	- Geo-referencing: yes
+	- Build requirements: Apache Arrow C++ library
+CARTO:
+	- Long name: Carto
+	- Creation: yes
+	- Geo-referencing: yes
+	- Build requirements: libcurl
+CSV:
+	- Long name: Comma Separated Value .csv
+	- Creation: yes
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+DGN:
+	- Long name: Microstation DGN
+	- Creation: yes	
+	- Geo-referencing: yes
+	- Build requirements: Built-in by default
+DGNv8:
+	- Long name: Microstation DGN v8
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Open Design Alliance Teigha library
+DXF:
+	- Long name: AutoCAD DXF
+	- Creation: yes	
+	- Geo-referencing: No
+	- Build requirements: Built-in by default
+Elasticsearch:
+	- Long name: Elasticsearch Geographically Encoded Objects for Elasticsearch
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: libcurl
+FileGDB:
+	- Long name: ESRI File Geodatabase FileGDB
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: FileGDB API library
+FlatGeobuf:
+	- Long name: FlatGeobuf
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+Geoconcept:
+	- Long name: GeoConcept text export
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+GeoJSON:
+	- Long name: GeoJSON
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+GeoJSONSeq:
+	- Long name: Sequence of GeoJSON features
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements:  Built-in by default
+GeoRSS:
+	- Long name: Geographically Encoded Objects for RSS feeds
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: read support needs libexpat
+GML:
+	- Long name: Geography Markup Language
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: read support needs Xerces or libexpat
+GMT:
+	- Long name: GMT ASCII Vectors .gmt
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+GPKG:
+	- Long name: GeoPackage vector
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: libsqlite3
+GPSBabel:
+	- Long name: GPSBabel
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: read support needs GPX driver and libexpat
+GPX:
+	- Long name: GPS Exchange Format
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: read support needs libexpat
+HANA:
+	- Long name: SAP HANA
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: odbc-cpp-wrapper
+IDB:
+	- Long name: IDB
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Informix DataBlade
+INTERLIS 1:
+	- Long name: “INTERLIS 1” and “INTERLIS 2” drivers
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Xerces
+INTERLIS 2:
+	- Long name: “INTERLIS 1” and “INTERLIS 2” drivers
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Xerces
+JML:
+	- Long name: JML: OpenJUMP JML format
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: read support needs libexpat
+KML:
+	- Long name: Keyhole Markup Language
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: read support needs libexpat
+LIBKML:
+	- Long name: LIBKML Driver .kml .kmz
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: libkml
+MapML:
+	- Long name: MapML
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+Memory:
+	- Long name: Memory
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+MapInfo File:
+	- Long name: MapInfo TAB and MIF/MID
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+MongoDBv3:
+	- Long name: MongoDBv3
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Mongo CXX >= 3.4.0 client library
+MSSQLSpatial:
+	- Long name: Microsoft SQL Server Spatial Database
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: ODBC library
+MVT:
+	- Long name: MVT: Mapbox Vector Tiles
+	- Creation: yes	
+	- Geo-referencing: yes
+	- Build requirements: requires SQLite and GEOS for write support
+MySQL:
+	- Long name: MySQL
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: MySQL library
+netCDF:
+	- Long name: Vector
+	- Creation: yes
+	- Geo-referencing: yes	
+	- Build requirements: libnetcdf
+OCI:
+	- Long name: Oracle Spatial
+	- Creation: yes	
+	- Geo-referencing: yes
+	- Build requirements: OCI library
+ODS:
+	- Long name: Open Document Spreadsheet
+	- Creation: yes
+	- Geo-referencing: No
+	- Build requirements: libexpat
+OpenFileGDB:
+	- Long name: ESRI File Geodatabase OpenFileGDB
+	- Creation: yes
+	- Geo-referencing: yes
+	- Build requirements: Built-in by default
+Parquet:
+	- Long name: GeoParquet
+	- Creation: yes
+	- Geo-referencing: yes	
+	- Build requirements: Parquet component of the Apache Arrow C++ library
+PDF:
+	- Long name: Geospatial PDF
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: none for write support, Poppler/PoDoFo/PDFium for read support
+PostgreSQL:
+	- Long name: PostgreSQL / PostGIS
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: PostgreSQL client library libpq
+PGDump:
+	- Long name: PostgreSQL SQL Dump
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+Selafin:
+	- Long name: Selafin files
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+ESRI Shapefile:
+	- Long name: ESRI Shapefile / DBF
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+SQLite:
+	- Long name: SQLite / Spatialite RDBMS
+	- Creation: yes	
+	- Geo-referencing: yes
+	- Build requirements: libsqlite3 or libspatialite
+VDV:
+	- Long name: VDV-451/VDV-452/INTREST Data Format
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+VRT:
+	- Long name: Virtual Format
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+WAsP:
+	- Long name: WAsP .map format
+	- Creation: yes	
+	- Geo-referencing: yes	
+	- Build requirements: Built-in by default
+XLSX:
+	- Long name: MS Office Open XML spreadsheet
+	- Creation: yes	
+	- Geo-referencing: No
+	- Build requirements: libexpat

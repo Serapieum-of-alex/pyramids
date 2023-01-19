@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "vector",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "fid": 1, "value": 1000, "value_string": "first" }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 9.940591531901759, 53.540640446292045 ], [ 9.949148897275471, 53.542244187752395 ], [ 9.949934418849036, 53.540195182070036 ], [ 9.940591531901759, 53.540640446292045 ] ] ] } },
+{ "type": "Feature", "properties": { "fid": 2, "value": 2000, "value_string": "second" }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 9.94363290186436, 53.537211872093323 ], [ 9.945085179847272, 53.532433940220542 ], [ 9.94862685596113, 53.532839210116556 ], [ 9.946346565363092, 53.537747545938728 ], [ 9.94363290186436, 53.537211872093323 ] ] ] } }
+]
+}
