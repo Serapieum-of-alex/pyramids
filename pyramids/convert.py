@@ -1,12 +1,16 @@
 """Convert data from one form to another."""
+from typing import Any
 import os
 
 import netCDF4
 import numpy as np
-from osgeo import gdal, osr
+from osgeo import gdal, osr, ogr
+from osgeo.gdal import Band
+
 
 from pyramids.netcdf import NC
 from pyramids.raster import Raster
+from pyramids.vector import Vector
 
 
 class Convert:
@@ -388,7 +392,7 @@ class Convert:
                     ["COMPRESS=LZW"],
                 )
 
-            sr = Raster.createSpatialReference(epsg=epsg)
+            sr = Raster.createSRfromEPSG(epsg=epsg)
             # set the geotransform
             dst.SetGeoTransform(geo)
             # set the projection
@@ -397,3 +401,109 @@ class Convert:
             dst.GetRasterBand(1).WriteArray(data)
             dst.FlushCache()
             dst = None
+
+    @staticmethod
+    def rasterize(
+            raster_path: str, vector_path: str, out_path: str, vector_field=None
+    ):
+        """Covert a vector into raster
+
+            - the raster cell values will be taken from the column name given in the vector_filed in the vector file.
+            - all the new raster geotransform data will be copied from the given raster.
+
+        Parameters
+        ----------
+        raster_path : [str]
+            raster path
+        vector_path : [str]
+            vector path
+        out_path : [str]
+            Path for output raster. Format and Datatype are the same as ``ras``.
+        vector_field : str or None
+            Name of a field in the vector to burn values from. If None, all vector
+            features are burned with a constant value of 1.
+
+        Returns
+        -------
+        gdal.Dataset
+            Single band raster with vector geometries burned.
+        """
+        src = Raster.openDataset(raster_path)
+        ds = Vector.openVector(vector_path)
+
+        # Check EPSG are same, if not reproject vector.
+        src_epsg = Raster.getEPSG(src)
+        ds_epsg = Vector.getEPSG(ds)
+        if src_epsg != ds_epsg:
+            # TODO: reproject the vector to the raster projection instead of raising an error.
+            raise ValueError(
+                f"Raster and vector are not the same EPSG. {src_epsg} != {ds_epsg}"
+            )
+
+        dr = Raster.createEmptyDriver(src, out_path, bands=1, no_data_value=0)
+
+        if vector_field is None:
+            # Use a constant value for all features.
+            burn_values = [1]
+            attribute = None
+        else:
+            # Use the values given in the vector field.
+            burn_values = None
+            attribute = vector_field
+
+        rasterize_opts = gdal.RasterizeOptions(
+            bands=[1],
+            burnValues=burn_values,
+            attribute=attribute,
+            allTouched=True)
+        _ = gdal.Rasterize(dr, vector_path, options=rasterize_opts)
+
+        dr.FlushCache()
+        dr = None
+        # read the rasterized vector
+        src = Raster.openDataset(out_path)
+        return src
+
+
+    @staticmethod
+    def polygonize(
+            band: Band, path: str, dtype: int = ogr.OFTInteger, col_name: Any = "extent"
+    ) -> None:
+        """polygonize.
+
+            polygonize takes a gdal band object and group neighboring cells with the same value into one polygon,
+            the resulted vector will be saved to disk as a geojson file
+
+        Parameters
+        ----------
+        band:
+            gdal band
+        path:
+            pathbwhere you want to save the polygon, the path should include the extension at the end
+            (i.e. path/vector_name.geojson)
+        dtype:
+            data type of the column where the band values are going to be stored
+        col_name:
+            name of the column where the raster data will be stored.
+
+        Returns
+        -------
+        None
+        """
+        if not path.endswith(".geojson"):
+            raise ValueError(
+                "The resulted polygon will be saved to desk as a geojson file, therefore the path should "
+                "end with file name followed by .geojson"
+            )
+
+        dst_layername = path.split(".")[0].split("/")[-1]
+        # drv = ogr.GetDriverByName("ESRI Shapefile")
+        # Todo: find a way to create a memory driver and make the polygonize function update the memory driver
+        drv = ogr.GetDriverByName("GeoJSON")
+        dst_ds = drv.CreateDataSource(path)
+        dst_layer = dst_ds.CreateLayer(dst_layername, srs=None)
+        newField = ogr.FieldDefn(col_name, dtype)
+        dst_layer.CreateField(newField)
+        gdal.Polygonize(band, None, dst_layer, 0, [])  # , callback=None
+        dst_layer = None
+        # dst_ds.Destroy()
