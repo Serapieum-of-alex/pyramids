@@ -392,12 +392,12 @@ class Convert:
                     ["COMPRESS=LZW"],
                 )
 
-            sr = Raster.createSRfromEPSG(epsg=epsg)
+            sr = Raster._createSRfromEPSG(epsg=epsg)
             # set the geotransform
             dst.SetGeoTransform(geo)
             # set the projection
             dst.SetProjection(sr.ExportToWkt())
-            dst = Raster.setNoDataValue(dst)
+            dst = Raster._setNoDataValue(dst)
             dst.GetRasterBand(1).WriteArray(data)
             dst.FlushCache()
             dst = None
