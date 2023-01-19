@@ -31,6 +31,24 @@ class Raster:
         pass
 
     @staticmethod
+    def openDataset(path: str, read_only=True):
+        """Open a raster using GDAL.
+
+        Parameters
+        ----------
+        path : [str]
+            Path of file to open.
+        read_only : [bool]
+            File mode, set to False to open in "update" mode.
+
+        Returns
+        -------
+        GDAL dataset
+        """
+        access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
+        return gdal.OpenShared(path, access)
+
+    @staticmethod
     def getRasterData(
         src: Dataset, band: int = 1
     ) -> Tuple[np.ndarray, Union[int, float]]:
@@ -90,71 +108,29 @@ class Raster:
         return epsg, geo
 
     @staticmethod
-    def getEPSG(proj, extension: str = "tiff"):
+    def getEPSG(src):
         """GetEPSG.
 
             This function reads the projection of a GEOGCS file or tiff file
 
         Parameters
         ----------
-        proj : TYPE
-            projection read from the netcdf file.
-        extension : [string], optional
-            tiff or GEOGCS . The default is 'tiff'.
+        src: [gdal.Dataset]
+            raster read by gdal
 
         Returns
         -------
         epsg : [integer]
             epsg number
         """
-        try:
-            if extension == "tiff":
-                # Get info of the dataset that is used for transforming
-                g_proj = proj.GetProjection()
-                Projection = g_proj.split('EPSG","')
-            if extension == "GEOGCS":
-                Projection = proj
-            epsg = int((str(Projection[-1]).split("]")[0])[0:-1])
-        except:
-            epsg = 4326
+        prj = src.GetProjection()
+        epsg = Vector._getEPSGfromPrj(prj)
 
         return epsg
 
-    @staticmethod
-    def setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE, band: int = 1):
-        """Set the no data value in a raster.
-
-        Parameters
-        ----------
-        src: [Dataset]
-            gdal Dataset
-        no_data_value: [numeric]
-            no data value to fill the masked part of the array
-        band: [int]
-            band number.
-
-        Returns
-        -------
-        gdal Dataset
-        """
-        # setting the no_data_value does not accept double precision numbers
-        try:
-            src.GetRasterBand(band).SetNoDataValue(no_data_value)
-            # initialize the band with the nodata value instead of 0
-            src.GetRasterBand(band).Fill(no_data_value)
-        except:
-            src.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
-            src.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
-            # assert False, "please change the no_data_value in the source raster as it is not accepted by Gdal"
-            print(
-                "the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
-                f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
-            )
-
-        return src
 
     @staticmethod
-    def createSpatialReference(epsg: int = "") -> SpatialReference:
+    def _createSRfromEPSG(epsg: int = "") -> SpatialReference:
         """Create a spatial reference object from epsg number.
 
         Parameters
@@ -167,6 +143,7 @@ class Raster:
         SpatialReference object
         """
         sr = osr.SpatialReference()
+
         if epsg == "":
             sr.SetWellKnownGeogCS("WGS84")
         else:
@@ -184,6 +161,111 @@ class Raster:
                 except:
                     sr.ImportFromWkt(epsg)
         return sr
+
+
+    @staticmethod
+    def _setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE):
+        """Set the no data value in a all raster bands.
+
+        Parameters
+        ----------
+        src: [Dataset]
+            gdal Dataset
+        no_data_value: [numeric]
+            no data value to fill the masked part of the array
+
+        Returns
+        -------
+        gdal Dataset
+        """
+        # setting the no_data_value does not accept double precision numbers
+        for band in range(1, src.RasterCount + 1):
+            try:
+                src.GetRasterBand(band).SetNoDataValue(no_data_value)
+                # initialize the band with the nodata value instead of 0
+                src.GetRasterBand(band).Fill(no_data_value)
+            except:
+                src.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
+                src.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
+                # assert False, "please change the no_data_value in the source raster as it is not accepted by Gdal"
+                print(
+                    "the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
+                    f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
+                )
+
+        return src
+
+
+    @staticmethod
+    def getBandNames(src):
+        """Get band names from band meta data if exists otherwise will return idex [1,2, ...]
+
+        Parameters
+        ----------
+        src : [gdal.]Dataset]
+            gdal Dataset
+
+        Returns
+        -------
+        list[str]
+        """
+        names = []
+        for i in range(1, src.RasterCount + 1):
+            band_i = src.GetRasterBand(i)
+
+            if band_i.GetDescription():
+                # Use the band_i description.
+                names.append(band_i.GetDescription())
+            else:
+                # Check for metedata.
+                band_i_name = 'Band_{}'.format(band_i.GetBand())
+                metadata = band_i.GetDataset().GetMetadata_Dict()
+
+                # If in metadata, return the metadata entry, else Band_N.
+                if band_i_name in metadata and metadata[band_i_name]:
+                    names.append(metadata[band_i_name])
+                else:
+                    names.append(band_i_name)
+
+        return names
+
+    @staticmethod
+    def createEmptyDriver(src: Dataset, path: str, bands: int=1, no_data_value=None):
+        """Create a new empty driver from another dataset.
+
+        Parameters
+        ----------
+        src : [Dataset]
+            gdal dataset
+        path : str
+        bands : int or None
+            Number of bands to create in the output raster.
+        no_data_value : float or None
+            No data value, if None uses the same as ``src``.
+
+        Returns
+        -------
+        gdal.DataSet
+        """
+        # Raster size.
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+        bands = int(bands) if bands is not None else src.RasterCount
+        dtype = src.GetRasterBand(1).DataType
+
+        # Create the driver.
+        # TODO: make an option to decide the type of the driver (mem or to disk)
+        driver = src.GetDriver()
+        dst = driver.Create(path, cols, rows, bands, dtype)
+
+        # Set the projection.
+        dst.SetGeoTransform(src.GetGeoTransform())
+        dst.SetProjection(src.GetProjectionRef())
+
+        if no_data_value is not None:
+            dst = Raster._setNoDataValue(dst, no_data_value=float(no_data_value))
+
+        return dst
 
     @staticmethod
     def getCellCoords(src: Dataset) -> Tuple[np.ndarray, np.ndarray]:
@@ -330,9 +412,9 @@ class Raster:
             path, int(arr.shape[1]), int(arr.shape[0]), 1, gdal.GDT_Float32, compress
         )
 
-        srse = Raster.createSpatialReference(epsg=epsg)
+        srse = Raster._createSRfromEPSG(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
-        dst_ds = Raster.setNoDataValue(dst_ds, no_data_value=nodatavalue, band=band)
+        dst_ds = Raster._setNoDataValue(dst_ds, no_data_value=nodatavalue)
 
         dst_ds.SetGeoTransform(geo)
         dst_ds.GetRasterBand(1).WriteArray(arr)
@@ -440,7 +522,7 @@ class Raster:
         dst.SetGeoTransform(gt)
         dst.SetProjection(prj)
         # setting the NoDataValue does not accept double precision numbers
-        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value, band=band)
+        dst = Raster._setNoDataValue(dst, no_data_value=no_data_value)
 
         dst.GetRasterBand(1).WriteArray(array)
         dst.FlushCache()
@@ -508,7 +590,7 @@ class Raster:
         dst.SetProjection(src_sref.ExportToWkt())
         # set the no data value
         no_data_value = src.GetRasterBand(band).GetNoDataValue()
-        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value, band=band)
+        dst = Raster._setNoDataValue(dst, no_data_value=no_data_value)
         dst.GetRasterBand(band).WriteArray(new_array)
 
         return dst
@@ -637,9 +719,8 @@ class Raster:
         # set the projection
         dst.SetProjection(sr_src.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
+        dst = Raster._setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             src, dst, sr_src.ExportToWkt(), sr_src.ExportToWkt(), resample_technique
@@ -793,9 +874,8 @@ class Raster:
             # set the projection
             dst.SetProjection(dst_sr.ExportToWkt())
             # set the no data value
-            dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-            # initialize the band with the nodata value instead of 0
-            dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+            no_data_value = src.GetRasterBand(1).GetNoDataValue()
+            dst = Raster._setNoDataValue(dst, no_data_value)
             # perform the projection & resampling
             gdal.ReprojectImage(
                 src,
@@ -942,9 +1022,8 @@ class Raster:
         # set the projection
         dst.SetProjection(dst_epsg.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
+        dst = Raster._setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             src, dst, src_sr.ExportToWkt(), dst_epsg.ExportToWkt(), resample_technique
@@ -1096,16 +1175,7 @@ class Raster:
                 dst.SetProjection(src_sref.ExportToWkt())
 
             # set the no data value
-            try:
-                # if the nodata value gives error because of the type.
-                dst.GetRasterBand(1).SetNoDataValue(mask_noval)
-                # initialize the band with the nodata value instead of 0
-                dst.GetRasterBand(1).Fill(mask_noval)
-            except TypeError:
-                # TypeError: in method 'Band_SetNoDataValue', argument 2 of type 'double'
-                dst.GetRasterBand(1).SetNoDataValue(np.float64(mask_noval))
-                dst.GetRasterBand(1).Fill(np.float64(mask_noval))
-
+            dst = Raster._setNoDataValue(dst, mask_noval)
             dst.GetRasterBand(1).WriteArray(src_array)
 
             return dst
@@ -1600,9 +1670,8 @@ class Raster:
         # set the projection
         dst.SetProjection(dst_sref.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
+        dst = Raster._setNoDataValue(dst, no_data_value)
         dst.GetRasterBand(1).WriteArray(dst_array)
 
         return dst
@@ -1683,9 +1752,8 @@ class Raster:
         # set the projection
         dst.SetProjection(src_sr.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
+        dst = Raster._setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
         resample_technique = gdal.GRA_NearestNeighbour  # gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
