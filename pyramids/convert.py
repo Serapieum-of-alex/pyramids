@@ -3,24 +3,26 @@ import os
 import shutil
 import tempfile
 import uuid
-from typing import Any
+from typing import Any, Dict
 
 import netCDF4
 import numpy as np
 import pandas as pd
 from osgeo import gdal, ogr, osr
-from osgeo.gdal import Band
+from osgeo.gdal import Dataset
+
 
 from pyramids.array import getPixels
 from pyramids.netcdf import NC
 from pyramids.raster import Raster
 from pyramids.vector import Vector
-
+from pyramids.utils import GDAL_OGR_DATA_TYPES
 
 class Convert:
     """Convert data from one form to another."""
 
     def __init__(self):
+        self.vector_catalog: Dict[str, str] = Vector.getCatalog()
         pass
 
     @staticmethod
@@ -466,7 +468,7 @@ class Convert:
 
     @staticmethod
     def polygonize(
-        band: Band, path: str, dtype: int = ogr.OFTInteger, col_name: Any = "extent"
+        src: Dataset, path: str, band: int = 1, col_name: Any = "id", driver: str = "GeoJSON",
     ) -> None:
         """polygonize.
 
@@ -475,35 +477,35 @@ class Convert:
 
         Parameters
         ----------
-        band:
-            gdal band
-        path:
-            pathbwhere you want to save the polygon, the path should include the extension at the end
+        src:
+            gdal Dataset
+        band: [int]
+            raster band index [1,2,3,..]
+        path:[str]
+            path where you want to save the polygon, the path should include the extension at the end
             (i.e. path/vector_name.geojson)
-        dtype:
-            data type of the column where the band values are going to be stored
         col_name:
             name of the column where the raster data will be stored.
+        driver: [str]
+            vector driver, for all possible drivers check https://gdal.org/drivers/vector/index.html .
+            Default is "GeoJSON".
 
         Returns
         -------
         None
         """
-        if not path.endswith(".geojson"):
-            raise ValueError(
-                "The resulted polygon will be saved to desk as a geojson file, therefore the path should "
-                "end with file name followed by .geojson"
-            )
+        band = src.GetRasterBand(band)
+        prj = src.GetProjection()
+        srs = osr.SpatialReference(wkt=prj)
 
         dst_layername = path.split(".")[0].split("/")[-1]
-        # drv = ogr.GetDriverByName("ESRI Shapefile")
         # Todo: find a way to create a memory driver and make the polygonize function update the memory driver
-        drv = ogr.GetDriverByName("GeoJSON")
+        drv = ogr.GetDriverByName(driver)
         dst_ds = drv.CreateDataSource(path)
-        dst_layer = dst_ds.CreateLayer(dst_layername, srs=None)
-        newField = ogr.FieldDefn(col_name, dtype)
+        dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
+        newField = ogr.FieldDefn(col_name, GDAL_OGR_DATA_TYPES[band.DataType])
         dst_layer.CreateField(newField)
-        gdal.Polygonize(band, None, dst_layer, 0, [])  # , callback=None
+        gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
         dst_layer = None
         # dst_ds.Destroy()
 
