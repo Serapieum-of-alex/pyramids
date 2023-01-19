@@ -18,7 +18,7 @@ from osgeo import gdal, gdalconst, osr
 from osgeo.gdal import Dataset
 from osgeo.osr import SpatialReference
 from rasterio.mask import mask as rio_mask
-
+from pyramids.utils import numpy_to_gdal_dtype
 from pyramids.vector import Vector
 
 DEFAULT_NO_DATA_VALUE = -9999
@@ -48,6 +48,46 @@ class Raster:
         access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
         return gdal.OpenShared(path, access)
 
+
+    @staticmethod
+    def _createDriver(cols: int, rows: int, bands: int, pixel_type: int, driver: str = "GTiff", path: str=None):
+        """Create GDAL driver
+
+        Parameters
+        ----------
+        cols: [int]
+            number of columns
+        rows: [int]
+            number of rows
+        bands: [int]
+            number of bands
+        driver: [str]
+            driver type ["GTiff", "MEM"]
+        path: [str]
+            path to save the GTiff driver.
+        pixel_type:
+            gdal data type, use the functions in the utils module to map data types from numpy or ogr to gdal.
+
+        Returns
+        -------
+        gdal driver
+        """
+        if driver == "GTiff":
+            if not isinstance(path, str):
+                raise TypeError("Raster_path input should be string type")
+
+            if path[-4:] != ".tif":
+                raise TypeError ("The path to save the created raster should end with .tif")
+
+        if driver == "GTiff":
+            dr = gdal.GetDriverByName(driver).Create(
+                path, cols, rows, bands, pixel_type
+            )
+        else:
+            dr = gdal.GetDriverByName(driver).Create(
+                "", cols, rows, bands, pixel_type
+            )
+        return dr
     @staticmethod
     def getRasterData(
         src: Dataset, band: int = 1
@@ -424,8 +464,8 @@ class Raster:
 
     @staticmethod
     def rasterLike(
-        src: Dataset, array: np.ndarray, path: str, pixel_type: int = 1, band: int = 1
-    ) -> None:
+        src: Dataset, array: np.ndarray, driver:str = "GTiff", path: str = None
+    ) -> Union[None, Dataset]:
         """rasterLike.
 
         rasterLike method creates a Geotiff raster like another input raster, new raster
@@ -439,30 +479,28 @@ class Raster:
             source raster to get the spatial information
         array : [numpy array]
             to store in the new raster
+        driver:[str]
+            gdal driver type. Default is "GTiff"
         path : [String]
             path to save the new raster including new raster name and extension (.tif)
-        pixel_type : [integer]
-            type of the data to be stored in the pixels,default is 1 (float32)
-            for example pixel type of flow direction raster is unsigned integer
-            1 for float32
-            2 for float64
-            3 for Unsigned integer 16
-            4 for Unsigned integer 32
-            5 for integer 16
-            6 for integer 32
-        band: [int]
-            band number.
 
         Returns
         -------
-            save the new raster to the given path
+        None:
+            if the driver is "GTiff" the function will save the new raster to the given path.
+        Dataset:
+            if the driver is "MEM" the function will return the created raster in memory.
 
         Example
         -------
-        >>> data = np.load("RAIN_5k.npy")
-        >>> src_raster = gdal.Open("DEM.tif")
+        >>> array = np.load("RAIN_5k.npy")
+        >>> src = gdal.Open("DEM.tif")
         >>> name = "rain.tif"
-        >>> Raster.rasterLike(src_raster, data, name)
+        >>> Raster.rasterLike(src, array, driver="GTiff", path=name)
+        - or create a raster in memory
+        >>> array = np.load("RAIN_5k.npy")
+        >>> src = gdal.Open("DEM.tif")
+        >>> dst = Raster.rasterLike(src, array, driver="MEM")
         """
         if not isinstance(src, gdal.Dataset):
             raise TypeError(
@@ -472,49 +510,14 @@ class Raster:
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
 
-        if not isinstance(path, str):
-            raise TypeError("Raster_path input should be string type")
-
-        if not isinstance(pixel_type, int):
-            raise TypeError(
-                "pixel type input should be integer type please check documentations"
-            )
-
-        # input values
-        #    assert os.path.exists(path), path+ " you have provided does not exist"
-        ext = path[-4:]
-        assert ext == ".tif", "please add the extension at the end of the path input"
-        #    assert os.path.exists(path), "source raster you have provided does not exist"
-
+        bands = 1
         prj = src.GetProjection()
         cols = src.RasterXSize
         rows = src.RasterYSize
         gt = src.GetGeoTransform()
-        no_data_value = src.GetRasterBand(1).GetNoDataValue()
-        if pixel_type == 1:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_Float32
-            )
-        elif pixel_type == 2:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_Float64
-            )
-        elif pixel_type == 3:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_UInt16
-            )
-        elif pixel_type == 4:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_UInt32
-            )
-        elif pixel_type == 5:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_Int16
-            )
-        elif pixel_type == 6:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_Int32
-            )
+        no_data_value = src.GetRasterBand(bands).GetNoDataValue()
+        pixel_type = numpy_to_gdal_dtype(array)
+        dst = Raster._createDriver(cols, rows, bands, pixel_type, driver=driver, path=path)
 
         dst.SetGeoTransform(gt)
         dst.SetProjection(prj)
@@ -522,8 +525,12 @@ class Raster:
         dst = Raster._setNoDataValue(dst, no_data_value=no_data_value)
 
         dst.GetRasterBand(1).WriteArray(array)
-        dst.FlushCache()
-        dst = None
+        if driver == "GTiff":
+            dst.FlushCache()
+            dst = None
+        else:
+            return dst
+
 
     @staticmethod
     def mapAlgebra(src: Dataset, fun, band: int = 1) -> Dataset:
@@ -593,7 +600,12 @@ class Raster:
         return dst
 
     @staticmethod
-    def rasterFill(src: Dataset, val: Union[float, int], save_to: str) -> None:
+    def rasterFill(
+            src: Dataset,
+            val: Union[float, int],
+            driver: str = "GTiff",
+            path: str = None
+    ) -> Union[None, Dataset]:
         """rasterFill.
 
             rasterFill takes a raster and fill it with one value
@@ -604,7 +616,9 @@ class Raster:
             source raster
         val: [numeric]
             numeric value
-        save_to : [str]
+        driver: [str]
+            driver type ["GTiff", "MEM"]
+        path : [str]
             path including the extension (.tif)
 
         Returns
@@ -612,9 +626,8 @@ class Raster:
         raster : [saved on disk]
             the raster will be saved directly to the path you provided.
         """
-        assert isinstance(
-            src, gdal.Dataset
-        ), "src should be read using gdal (gdal dataset please read it using gdal library) "
+        if not isinstance(src, gdal.Dataset):
+            raise TypeError("src should be read using gdal (gdal dataset please read it using gdal library) ")
 
         NoDataVal = src.GetRasterBand(1).GetNoDataValue()
         src_array = src.ReadAsArray()
@@ -626,9 +639,9 @@ class Raster:
             src_array[~np.isclose(src_array, NoDataVal, rtol=0.001)] = val
         else:
             src_array[~np.isnan(src_array)] = val
-        # TODO : make this function returns the resulted raster
-        #  if the save_to parameter is empty
-        Raster.rasterLike(src, src_array, save_to, pixel_type=1)
+        dst = Raster.rasterLike(src, src_array, driver=driver, path=path)
+        return dst
+
 
     @staticmethod
     def resampleRaster(
