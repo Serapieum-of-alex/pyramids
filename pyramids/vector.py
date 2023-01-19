@@ -5,13 +5,14 @@
 
 import json
 import warnings
-
+from typing import Union
 import geopandas as gpd
 import geopy.distance as distance
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr, osr
+from osgeo.ogr import DataSource
 from pyproj import Proj, transform
 from shapely.geometry import Point, Polygon
 from shapely.geometry.multipolygon import MultiPolygon
@@ -45,6 +46,140 @@ class Vector:
     def __init__(self):
         pass
 
+    @staticmethod
+    def openVector(path: str, geodataframe=False, read_only=True):
+        """Open a vector dataset using OGR or GeoPandas.
+
+        Parameters
+        ----------
+        path : str
+            Path to vector file.
+        geodataframe : bool
+            Set to True to open with geopandas, else use OGR.
+        read_only : bool
+            If opening with OGR, set to False to open in "update" mode.
+
+        Returns
+        -------
+        GeoDataFrame if ``with_geopandas`` else OGR datsource.
+        """
+        if geodataframe:
+            ds = gpd.read_file(path)
+        else:
+            update = False if read_only else True
+            ds = ogr.OpenShared(path, update=update)
+        return ds
+
+    @staticmethod
+    def _getDsEPSG(ds: DataSource):
+        """Get epsg for a given ogr Datasource
+
+        Parameters
+        ----------
+        ds: [DataSource]
+            ogr datasource (vector file read by ogr)
+
+        Returns
+        -------
+        int:
+            epsg number
+        """
+        layer = ds.GetLayer(0)
+        spatial_ref = layer.GetSpatialRef()
+        spatial_ref.AutoIdentifyEPSG()
+        epsg = int(spatial_ref.GetAuthorityCode(None))
+        return epsg
+
+
+    @staticmethod
+    def _createSRfromProj(prj: str):
+        """Create spatial reference object from projection
+
+        Parameters
+        ----------
+        prj: [str]
+            projection string
+            >>> "GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]"
+
+        Returns
+        -------
+
+        """
+        srs = osr.SpatialReference()
+
+        if prj.startswith("PROJCS") or prj.startswith("GEOGCS"):
+            # ESRI well know text strings,
+            srs.ImportFromESRI([prj])
+        else:
+            # Proj4 strings.
+            srs.ImportFromProj4(prj)
+
+        srs.AutoIdentifyEPSG()
+
+        return srs
+
+
+    @staticmethod
+    def _getEPSGfromPrj(prj: str) -> int:
+        """
+        create spatial reference from the projection then auto identify the epsg using the osr object
+
+        Parameters
+        ----------
+        prj: [str]
+
+        Returns
+        -------
+        Examples
+        --------
+        >>> src = gdal.Open("path/to/raster.tif")
+        >>> prj = src.GetProjection()
+        >>> epsg = Vector._getEPSGfromPrj(prj)
+        """
+        srs = Vector._createSRfromProj(prj)
+        epsg = int(srs.GetAuthorityCode(None))
+        return epsg
+
+    @staticmethod
+    def _getGdfEPSG(gdf: GeoDataFrame):
+        """Get epsg for a given geodataframe
+
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            vector file read by geopandas
+
+        Returns
+        -------
+        int:
+            epsg number
+        """
+        prj = Proj(gdf.crs).srs
+        epsg = Vector._getEPSGfromPrj(prj)
+        return epsg
+
+    @staticmethod
+    def getEPSG(vector_obj: Union[DataSource, GeoDataFrame]) -> int:
+        """getEPSG
+
+        Parameters
+        ----------
+        vector_obj: [ogr.DataSource/GeoDataFrame]
+            vector file read by ogr or geopandas.
+
+        Returns
+        -------
+        int:
+            epsg number
+        """
+        if isinstance(vector_obj, ogr.DataSource):
+            epsg = Vector._getDsEPSG(vector_obj)
+        elif isinstance(vector_obj, gpd.GeoDataFrame):
+            epsg = Vector._getGdfEPSG(vector_obj)
+        else:
+            raise ValueError(f'Unable to get EPSG from: {type(vector_obj)}, only ogr.Datasource and '
+                             'geopandas.GeoDataFrame are supported')
+        return epsg
     @staticmethod
     def getXYCoords(geometry, coord_type: str):
         """getXYCoords.
