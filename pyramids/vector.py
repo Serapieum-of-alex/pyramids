@@ -118,7 +118,7 @@ class Vector:
         return srs
 
     @staticmethod
-    def _getEPSGfromPrj(prj: str) -> int:
+    def getEPSGfromPrj(prj: str) -> int:
         """create spatial reference from the projection then auto identify the epsg using the osr object.
 
         Parameters
@@ -127,11 +127,14 @@ class Vector:
 
         Returns
         -------
+        int
+            epsg number
+
         Examples
         --------
         >>> src = gdal.Open("path/to/raster.tif")
         >>> prj = src.GetProjection()
-        >>> epsg = Vector._getEPSGfromPrj(prj)
+        >>> epsg = Vector.getEPSGfromPrj(prj)
         """
         srs = Vector._createSRfromProj(prj)
         epsg = int(srs.GetAuthorityCode(None))
@@ -152,7 +155,7 @@ class Vector:
             epsg number
         """
         prj = Proj(gdf.crs).srs
-        epsg = Vector._getEPSGfromPrj(prj)
+        epsg = Vector.getEPSGfromPrj(prj)
         return epsg
 
     @staticmethod

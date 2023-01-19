@@ -1,12 +1,17 @@
 """Convert data from one form to another."""
 import os
+import shutil
+import tempfile
+import uuid
 from typing import Any
 
 import netCDF4
 import numpy as np
+import pandas as pd
 from osgeo import gdal, ogr, osr
 from osgeo.gdal import Band
 
+from pyramids.array import getPixels
 from pyramids.netcdf import NC
 from pyramids.raster import Raster
 from pyramids.vector import Vector
@@ -501,3 +506,105 @@ class Convert:
         gdal.Polygonize(band, None, dst_layer, 0, [])  # , callback=None
         dst_layer = None
         # dst_ds.Destroy()
+
+    @staticmethod
+    def rasterToDataframe(src: str, vector=None):
+        """Convert a raster to a DataFrame.
+
+            The function do the following
+            - Flatted the array in each band in the raster then mask the values if a vector
+            file is given otherwise it will flatten all values.
+            - put the values for each band in a column in a dataframe under the name of the raster band, if no meta
+            data in the raster band, and index number will be used [1, 2, 3, ...]
+
+        Parameters
+        ----------
+        src : str
+            Path to raster file.
+        vector : str
+            Optional path to vector file. If given, raster pixels will be extracted
+            from features in the vector. If None, all raster pixels are converted
+            to a DataFrame.
+
+        Returns
+        -------
+        DataFrame
+        """
+        temp_dir = vector_mask_fname = None
+
+        # Get raster band names. open the dataset using gdal.Open
+        src = Raster.openDataset(src)
+        # raster_band_names = util.get_raster_band_names(src)
+        band_names = Raster.getBandNames(src)
+
+        # Create a mask from the pixels touched by the vector.
+        if vector is not None:
+            # Create a temporary directory for files.
+            temp_dir = tempfile.mkdtemp()
+            new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}")
+
+            # read the vector with geopandas
+            gdf = Vector.openVector(vector, geodataframe=True)
+            # add a unique value for each row to use it to rasterize the vector
+            gdf["burn_value"] = list(range(1, len(gdf) + 1))
+            # save the new vector to disk to read it with ogr later
+            gdf.to_file(new_vector_path, driver="GeoJSON")
+
+            # rasterize the vector by burning the unique values as cell values.
+            rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
+            rasterized_vector = Convert.rasterize(
+                src, new_vector_path, rasterized_vector_path, vector_field="burn_value"
+            )
+
+            # Loop over mask values to extract pixels.
+            tile_dfs = []  # DataFrames of each tile.
+            mask_arr = rasterized_vector.GetRasterBand(1).ReadAsArray()
+
+            for arr in Raster.getTile(src):
+
+                mask_dfs = []
+                for mask_val in gdf["burn_value"].values:
+                    # Extract only masked pixels.
+                    flatten_masked_values = getPixels(
+                        arr, mask_arr, mask_val=mask_val
+                    ).transpose()
+                    fid_px = np.ones(flatten_masked_values.shape[0]) * mask_val
+
+                    # Create a DataFrame of masked flatten_masked_values and their FID.
+                    mask_df = pd.DataFrame(flatten_masked_values, columns=band_names)
+                    mask_df["burn_value"] = fid_px
+                    mask_dfs.append(mask_df)
+
+                # Concat the mask DataFrames.
+                mask_df = pd.concat(mask_dfs)
+
+                # Join with pixels with vector attributes using the FID.
+                tile_dfs.append(mask_df.merge(gdf, how="left", on="burn_value"))
+
+            # Merge all the tiles.
+            out_df = pd.concat(tile_dfs)
+
+        else:
+            # No vector given, simply load the raster.
+            tile_dfs = []  # DataFrames of each tile.
+            for arr in Raster.getTile(src):
+
+                idx = (1, 2)  # Assume multiband
+                if arr.ndim == 2:
+                    idx = (0, 1)  # Handle single band rasters
+
+                mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
+                pixels = getPixels(arr, mask_arr).transpose()
+                tile_dfs.append(pd.DataFrame(pixels, columns=band_names))
+
+            # Merge all the tiles.
+            out_df = pd.concat(tile_dfs)
+
+        # TODO mask no data values.
+
+        # Remove temporary files.
+        if temp_dir is not None:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        # Return dropping any extra cols.
+        return out_df.drop(columns=["burn_value", "geometry"], errors="ignore")

@@ -124,7 +124,7 @@ class Raster:
             epsg number
         """
         prj = src.GetProjection()
-        epsg = Vector._getEPSGfromPrj(prj)
+        epsg = Vector.getEPSGfromPrj(prj)
 
         return epsg
 
@@ -2801,7 +2801,7 @@ class Raster:
         val = (array - array_min) / (array_max - array_min)
         return val
 
-    # TODO: check where this function is used and replace it  with getRasterData
+    # TODO: replace it  with getRasterData
     @staticmethod
     def openArrayInfo(fname: str = ""):
         """openArrayInfo.
@@ -2820,20 +2820,68 @@ class Raster:
             (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
         proj: [str]
             projection as a well known text.
-        size_x: [float]
-
-        size_y: [float]
+        cols: [float]
+            number of columns
+        rows: [float]
+            number of rows
         """
         src = gdal.Open(fname)
         if src is None:
-            print(f"{fname} does not exists")
-        else:
-            geo_out = src.GetGeoTransform()
-            proj = src.GetProjection()
-            size_X = src.RasterXSize
-            size_Y = src.RasterYSize
-            src = None
-        return geo_out, proj, size_X, size_Y
+            raise FileNotFoundError(f"{fname} does not exists")
+
+        geo = src.GetGeoTransform()
+        proj = src.GetProjection()
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+
+        return geo, proj, cols, rows
+
+    @staticmethod
+    def _window(src: Dataset, size: int = 256):
+        """Raster square window size/offsets.
+
+        Parameters
+        ----------
+        src : [gdal.Dataset]
+            gdal Dataset object.
+        size : [int]
+            Size of window in pixels. One value required which is used for both the
+            x and y size. E.g 256 means a 256x256 window.
+
+        Yields
+        ------
+        tuple[int]
+            4 element tuple containing the x size, y size, x offset and y offset
+            of the window.
+        """
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+        for xoff in range(0, cols, size):
+            xsize = size if size + xoff <= cols else cols - xoff
+            for yoff in range(0, rows, size):
+                ysize = size if size + yoff <= rows else rows - yoff
+                yield xsize, ysize, xoff, yoff
+
+    @staticmethod
+    def getTile(src: Dataset, size=256):
+        """gets a raster array in tiles.
+
+        Parameters
+        ----------
+        src : gdal.Dataset
+            Input raster.
+        size : int
+            Size of window in pixels. One value required which is used for both the
+            x and y size. E.g 256 means a 256x256 window.
+
+        Yields
+        ------
+        np.ndarray
+            Raster array in form [band][y][x].
+        """
+        for xsize, ysize, xoff, yoff in Raster._window(src, size=size):
+            # read the array at a certain indeces
+            yield src.ReadAsArray(xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize)
 
     def listAttributes(self):
         """Print Attributes List."""
