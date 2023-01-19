@@ -128,7 +128,6 @@ class Raster:
 
         return epsg
 
-
     @staticmethod
     def _createSRfromEPSG(epsg: int = "") -> SpatialReference:
         """Create a spatial reference object from epsg number.
@@ -162,7 +161,6 @@ class Raster:
                     sr.ImportFromWkt(epsg)
         return sr
 
-
     @staticmethod
     def _setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE):
         """Set the no data value in a all raster bands.
@@ -195,7 +193,6 @@ class Raster:
 
         return src
 
-
     @staticmethod
     def getBandNames(src):
         """Get band names from band meta data if exists otherwise will return idex [1,2, ...]
@@ -218,7 +215,7 @@ class Raster:
                 names.append(band_i.GetDescription())
             else:
                 # Check for metedata.
-                band_i_name = 'Band_{}'.format(band_i.GetBand())
+                band_i_name = "Band_{}".format(band_i.GetBand())
                 metadata = band_i.GetDataset().GetMetadata_Dict()
 
                 # If in metadata, return the metadata entry, else Band_N.
@@ -230,7 +227,7 @@ class Raster:
         return names
 
     @staticmethod
-    def createEmptyDriver(src: Dataset, path: str, bands: int=1, no_data_value=None):
+    def createEmptyDriver(src: Dataset, path: str, bands: int = 1, no_data_value=None):
         """Create a new empty driver from another dataset.
 
         Parameters

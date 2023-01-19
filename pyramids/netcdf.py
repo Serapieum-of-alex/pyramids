@@ -112,7 +112,6 @@ class NC:
 
         return geo, epsg, lon_len, lat_len, time_len, time_var, no_data_value, datatype
 
-
     @staticmethod
     def getEPSG(proj, extension: str = "tiff"):
         """GetEPSG.

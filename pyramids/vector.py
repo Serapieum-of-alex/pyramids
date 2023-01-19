@@ -6,6 +6,7 @@
 import json
 import warnings
 from typing import Union
+
 import geopandas as gpd
 import geopy.distance as distance
 import numpy as np
@@ -72,7 +73,7 @@ class Vector:
 
     @staticmethod
     def _getDsEPSG(ds: DataSource):
-        """Get epsg for a given ogr Datasource
+        """Get epsg for a given ogr Datasource.
 
         Parameters
         ----------
@@ -90,10 +91,9 @@ class Vector:
         epsg = int(spatial_ref.GetAuthorityCode(None))
         return epsg
 
-
     @staticmethod
     def _createSRfromProj(prj: str):
-        """Create spatial reference object from projection
+        """Create spatial reference object from projection.
 
         Parameters
         ----------
@@ -103,7 +103,6 @@ class Vector:
 
         Returns
         -------
-
         """
         srs = osr.SpatialReference()
 
@@ -118,11 +117,9 @@ class Vector:
 
         return srs
 
-
     @staticmethod
     def _getEPSGfromPrj(prj: str) -> int:
-        """
-        create spatial reference from the projection then auto identify the epsg using the osr object
+        """create spatial reference from the projection then auto identify the epsg using the osr object.
 
         Parameters
         ----------
@@ -142,7 +139,7 @@ class Vector:
 
     @staticmethod
     def _getGdfEPSG(gdf: GeoDataFrame):
-        """Get epsg for a given geodataframe
+        """Get epsg for a given geodataframe.
 
         Parameters
         ----------
@@ -160,7 +157,7 @@ class Vector:
 
     @staticmethod
     def getEPSG(vector_obj: Union[DataSource, GeoDataFrame]) -> int:
-        """getEPSG
+        """getEPSG.
 
         Parameters
         ----------
@@ -177,9 +174,12 @@ class Vector:
         elif isinstance(vector_obj, gpd.GeoDataFrame):
             epsg = Vector._getGdfEPSG(vector_obj)
         else:
-            raise ValueError(f'Unable to get EPSG from: {type(vector_obj)}, only ogr.Datasource and '
-                             'geopandas.GeoDataFrame are supported')
+            raise ValueError(
+                f"Unable to get EPSG from: {type(vector_obj)}, only ogr.Datasource and "
+                "geopandas.GeoDataFrame are supported"
+            )
         return epsg
+
     @staticmethod
     def getXYCoords(geometry, coord_type: str):
         """getXYCoords.

@@ -1,12 +1,11 @@
 """Convert data from one form to another."""
-from typing import Any
 import os
+from typing import Any
 
 import netCDF4
 import numpy as np
-from osgeo import gdal, osr, ogr
+from osgeo import gdal, ogr, osr
 from osgeo.gdal import Band
-
 
 from pyramids.netcdf import NC
 from pyramids.raster import Raster
@@ -403,10 +402,8 @@ class Convert:
             dst = None
 
     @staticmethod
-    def rasterize(
-            raster_path: str, vector_path: str, out_path: str, vector_field=None
-    ):
-        """Covert a vector into raster
+    def rasterize(raster_path: str, vector_path: str, out_path: str, vector_field=None):
+        """Covert a vector into raster.
 
             - the raster cell values will be taken from the column name given in the vector_filed in the vector file.
             - all the new raster geotransform data will be copied from the given raster.
@@ -452,10 +449,8 @@ class Convert:
             attribute = vector_field
 
         rasterize_opts = gdal.RasterizeOptions(
-            bands=[1],
-            burnValues=burn_values,
-            attribute=attribute,
-            allTouched=True)
+            bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
+        )
         _ = gdal.Rasterize(dr, vector_path, options=rasterize_opts)
 
         dr.FlushCache()
@@ -464,10 +459,9 @@ class Convert:
         src = Raster.openDataset(out_path)
         return src
 
-
     @staticmethod
     def polygonize(
-            band: Band, path: str, dtype: int = ogr.OFTInteger, col_name: Any = "extent"
+        band: Band, path: str, dtype: int = ogr.OFTInteger, col_name: Any = "extent"
     ) -> None:
         """polygonize.
 

@@ -1,8 +1,12 @@
-import numpy as np
-from typing import Union, Tuple
+from typing import Tuple, Union
 
-def _getIndeces(arr: np.ndarray, mask_val: Union[int, float]) -> Tuple[np.ndarray, np.ndarray]:
-    """Get the array indeces for the non-zero cells
+import numpy as np
+
+
+def _getIndeces(
+    arr: np.ndarray, mask_val: Union[int, float]
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Get the array indeces for the non-zero cells.
 
     Parameters
     ----------
