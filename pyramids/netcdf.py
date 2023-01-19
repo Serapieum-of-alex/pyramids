@@ -104,13 +104,47 @@ class NC:
         try:
             crso = nc.variables["crs"]
             proj = crso.projection
-            epsg = Raster.getEPSG(proj, extension="GEOGCS")
+            epsg = NC.getEPSG(proj, extension="GEOGCS")
         except:
             epsg = 4326
 
         geo = tuple([geo1, geo2, 0, geo4, 0, geo2])
 
         return geo, epsg, lon_len, lat_len, time_len, time_var, no_data_value, datatype
+
+
+    @staticmethod
+    def getEPSG(proj, extension: str = "tiff"):
+        """GetEPSG.
+
+            This function reads the projection of a GEOGCS file or tiff file
+
+        Parameters
+        ----------
+        proj : TYPE
+            projection read from the netcdf file.
+        extension : [string], optional
+            tiff or GEOGCS . The default is 'tiff'.
+
+        Returns
+        -------
+        epsg : [integer]
+            epsg number
+        """
+        try:
+            if extension == "tiff":
+                # Get info of the dataset that is used for transforming
+                g_proj = proj.GetProjection()
+                Projection = g_proj.split('EPSG","')
+
+            if extension == "GEOGCS":
+                Projection = proj
+
+            epsg = int((str(Projection[-1]).split("]")[0])[0:-1])
+        except:
+            epsg = 4326
+
+        return epsg
 
     @staticmethod
     def get_time(nc, time_var_name: str = None) -> np.ndarray:
