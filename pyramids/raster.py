@@ -601,10 +601,6 @@ class Raster:
                     new_array[i, j] = fun(src_array[i, j])
 
         # create the output raster
-        # mem_drv = gdal.GetDriverByName("MEM")
-        # dst = mem_drv.Create(
-        #     "", src_col, src_row, 1, gdalconst.GDT_Float32
-        # )
         dst = Raster._createDataset(src_col, src_row, 1, gdalconst.GDT_Float32, driver="MEM")
         # set the geotransform
         dst.SetGeoTransform(src_gt)
@@ -1035,11 +1031,10 @@ class Raster:
             pixel_spacing = cell_size
 
         # create a new raster
-        mem_drv = gdal.GetDriverByName("MEM")
+
         cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
-        dst = mem_drv.Create("", cols, rows, 1, gdalconst.GDT_Float32)
-        # ['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
+        dst = Raster._createDataset(cols, rows, 1, gdalconst.GDT_Float32, driver="MEM")
 
         # new geotransform
         new_geo = (ulx, pixel_spacing, src_gt[2], uly, src_gt[4], -pixel_spacing)
@@ -1185,9 +1180,7 @@ class Raster:
 
         # if the dst is a raster
         if isinstance(src, gdal.Dataset):
-            mem_drv = gdal.GetDriverByName("MEM")
-            dst = mem_drv.Create("", col, row, 1, gdalconst.GDT_Float32)
-            # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression
+            dst = Raster._createDataset(col, row, 1, gdalconst.GDT_Float32, driver="MEM")
             # but with lot of computation
             # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
             # are aligned so they have the sam gt
@@ -1685,11 +1678,7 @@ class Raster:
                     dst_array[i, j] = src_noval
 
         # dst_array[dst_array==dst_noval]=src_noval
-
-        mem_drv = gdal.GetDriverByName("MEM")
-        dst = mem_drv.Create(
-            "", dst_col, dst_row, 1, gdalconst.GDT_Float32
-        )  # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
+        dst = Raster._createDataset(dst_col, dst_row, 1, gdalconst.GDT_Float32, driver="MEM")
 
         # set the geotransform
         dst.SetGeoTransform(dst_gt)
@@ -1770,9 +1759,7 @@ class Raster:
         reprojected_RasterB = Raster.projectRaster(RasterB, src_epsg)
 
         # create a new raster
-        mem_drv = gdal.GetDriverByName("MEM")
-        dst = mem_drv.Create("", src_x, src_y, 1, gdalconst.GDT_Float32)
-        # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
+        dst = Raster._createDataset(src_x, src_y, 1, gdalconst.GDT_Float32, driver="MEM")
         # set the geotransform
         dst.SetGeoTransform(src_gt)
         # set the projection
