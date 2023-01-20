@@ -9,6 +9,7 @@ import netCDF4
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+from pandas import DataFrame
 from osgeo import gdal, ogr, osr
 from osgeo.gdal import Dataset
 
@@ -404,23 +405,25 @@ class Convert:
             dst.SetGeoTransform(geo)
             # set the projection
             dst.SetProjection(sr.ExportToWkt())
-            dst = Raster._setNoDataValue(dst)
+            dst = Raster.setNoDataValue(dst)
             dst.GetRasterBand(1).WriteArray(data)
             dst.FlushCache()
             dst = None
 
     @staticmethod
-    def rasterize(raster_path: str, vector_path: str, out_path: str, vector_field=None):
+    def rasterize(vector: str, raster: str, out_path: str, vector_field=None):
         """Covert a vector into raster.
 
-            - the raster cell values will be taken from the column name given in the vector_filed in the vector file.
+            - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
             - all the new raster geotransform data will be copied from the given raster.
+            - raster and vector should have the same projection
 
         Parameters
         ----------
-        raster_path : [str]
-            raster path
-        vector_path : [str]
+        raster : [str/gdal Dataset]
+            raster path, or gdal Dataset, the raster will only be used as a source for the geotransform (
+            projection, rows, columns, location) data to be copied to the rasterized vector.
+        vector : [str/ogr DataSource]
             vector path
         out_path : [str]
             Path for output raster. Format and Datatype are the same as ``ras``.
@@ -433,8 +436,15 @@ class Convert:
         gdal.Dataset
             Single band raster with vector geometries burned.
         """
-        src = Raster.openDataset(raster_path)
-        ds = Vector.openVector(vector_path)
+        if isinstance(raster, str):
+            src = Raster.openDataset(raster)
+        else:
+            src = raster
+
+        if isinstance(vector, str):
+            ds = Vector.openVector(vector)
+        else:
+            ds = vector
 
         # Check EPSG are same, if not reproject vector.
         src_epsg = Raster.getEPSG(src)
@@ -459,7 +469,7 @@ class Convert:
         rasterize_opts = gdal.RasterizeOptions(
             bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
         )
-        _ = gdal.Rasterize(dr, vector_path, options=rasterize_opts)
+        _ = gdal.Rasterize(dr, vector, options=rasterize_opts)
 
         dr.FlushCache()
         dr = None
@@ -506,7 +516,7 @@ class Convert:
         dst_layername = path.split(".")[0].split("/")[-1]
         # Todo: find a way to create a memory driver and make the polygonize function update the memory driver
         # Create a temporary directory for files.
-        temp_dir = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}")
+        temp_dir = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}.geojson")
 
         dst_ds = Vector.createDataSource(driver, path)
         dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
@@ -519,7 +529,7 @@ class Convert:
         # return gpd.read_file(path)
 
     @staticmethod
-    def rasterToDataframe(src: str, vector=None):
+    def rasterToDataframe(src: str, vector=None) -> DataFrame:
         """Convert a raster to a DataFrame.
 
             The function do the following
@@ -532,10 +542,8 @@ class Convert:
         ----------
         src : str
             Path to raster file.
-        vector : str
-            Optional path to vector file. If given, raster pixels will be extracted
-            from features in the vector. If None, all raster pixels are converted
-            to a DataFrame.
+        vector : Optional[str]
+            path to vector file. If given, it will be used to clip the raster
 
         Returns
         -------
