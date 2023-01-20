@@ -52,7 +52,7 @@ class Raster:
         return gdal.OpenShared(path, access)
 
     @staticmethod
-    def _createDriver(
+    def _createDataset(
         cols: int,
         rows: int,
         bands: int,
@@ -83,7 +83,7 @@ class Raster:
         """
         if driver == "GTiff":
             if not isinstance(path, str):
-                raise TypeError("Raster_path input should be string type")
+                raise TypeError("The path input should be string")
 
             if path[-4:] != ".tif":
                 raise TypeError(
@@ -527,7 +527,7 @@ class Raster:
         gt = src.GetGeoTransform()
         no_data_value = src.GetRasterBand(bands).GetNoDataValue()
         pixel_type = numpy_to_gdal_dtype(array)
-        dst = Raster._createDriver(
+        dst = Raster._createDataset(
             cols, rows, bands, pixel_type, driver=driver, path=path
         )
 
