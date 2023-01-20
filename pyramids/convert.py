@@ -11,12 +11,12 @@ import pandas as pd
 from osgeo import gdal, ogr, osr
 from osgeo.gdal import Dataset
 
-
 from pyramids.array import getPixels
 from pyramids.netcdf import NC
 from pyramids.raster import Raster
+from pyramids.utils import gdal_to_ogr_dtype
 from pyramids.vector import Vector
-from pyramids.utils import GDAL_OGR_DATA_TYPES
+
 
 class Convert:
     """Convert data from one form to another."""
@@ -468,7 +468,11 @@ class Convert:
 
     @staticmethod
     def polygonize(
-        src: Dataset, path: str, band: int = 1, col_name: Any = "id", driver: str = "GeoJSON",
+        src: Dataset,
+        path: str,
+        band: int = 1,
+        col_name: Any = "id",
+        driver: str = "GeoJSON",
     ) -> None:
         """polygonize.
 
@@ -503,7 +507,8 @@ class Convert:
         drv = ogr.GetDriverByName(driver)
         dst_ds = drv.CreateDataSource(path)
         dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
-        newField = ogr.FieldDefn(col_name, GDAL_OGR_DATA_TYPES[band.DataType])
+        dtype = gdal_to_ogr_dtype(src)
+        newField = ogr.FieldDefn(col_name, dtype)
         dst_layer.CreateField(newField)
         gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
         dst_layer = None
@@ -532,7 +537,7 @@ class Convert:
         -------
         DataFrame
         """
-        temp_dir = vector_mask_fname = None
+        temp_dir = None
 
         # Get raster band names. open the dataset using gdal.Open
         src = Raster.openDataset(src)
