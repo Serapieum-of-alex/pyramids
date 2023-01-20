@@ -55,5 +55,7 @@ class TestRasterToDataFrame:
         df = Convert.rasterToDataframe(raster_to_df_path, vector_mask_path)
         assert isinstance(df, DataFrame)
         assert len(df) == len(rasterized_mask_values)
-        assert np.array_equal(df.values, rasterized_mask_values), "the extracted values in the dataframe does not equa the real " \
+        assert np.array_equal(df["Band_1"].values, rasterized_mask_values), "the extracted values in the dataframe " \
+                                                                           "does not " \
+                                                                   "equa the real " \
                                                        "values in the array"
