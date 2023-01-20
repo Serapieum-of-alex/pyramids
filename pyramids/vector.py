@@ -91,6 +91,38 @@ class Vector:
         return ds
 
     @staticmethod
+    def createDataSource(driver: str = "GeoJSON", path: str=None):
+        """
+
+        Parameters
+        ----------
+        driver: [str]
+            driver type ["GeoJSON", "MEMORY"]
+        path: [str]
+            path to save the vector driver.
+
+        Returns
+        -------
+
+        """
+        if driver == "GeoJSON":
+            if path[-8:] != ".geojson":
+                raise TypeError(
+                    "The path to save the created raster should end with .geojson"
+                )
+        elif driver == "MEMORY":
+            path = "memData"
+        else:
+            raise TypeError(
+                "The given driver type is not supported at the moment the only supported drivers are 'GeoJSON' and "
+                "'MEMORY'"
+            )
+
+        ds = ogr.GetDriverByName(driver).CreateDataSource(path)
+        return ds
+
+
+    @staticmethod
     def _getDsEPSG(ds: DataSource):
         """Get epsg for a given ogr Datasource.
 
