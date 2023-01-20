@@ -8,6 +8,7 @@ from typing import Any, Dict
 import netCDF4
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 from osgeo import gdal, ogr, osr
 from osgeo.gdal import Dataset
 
@@ -504,8 +505,10 @@ class Convert:
 
         dst_layername = path.split(".")[0].split("/")[-1]
         # Todo: find a way to create a memory driver and make the polygonize function update the memory driver
-        drv = ogr.GetDriverByName(driver)
-        dst_ds = drv.CreateDataSource(path)
+        # Create a temporary directory for files.
+        temp_dir = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}")
+
+        dst_ds = Vector.createDataSource(driver, path)
         dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
         dtype = gdal_to_ogr_dtype(src)
         newField = ogr.FieldDefn(col_name, dtype)
@@ -513,6 +516,7 @@ class Convert:
         gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
         dst_layer = None
         # dst_ds.Destroy()
+        # return gpd.read_file(path)
 
     @staticmethod
     def rasterToDataframe(src: str, vector=None):
@@ -541,7 +545,6 @@ class Convert:
 
         # Get raster band names. open the dataset using gdal.Open
         src = Raster.openDataset(src)
-        # raster_band_names = util.get_raster_band_names(src)
         band_names = Raster.getBandNames(src)
 
         # Create a mask from the pixels touched by the vector.
