@@ -27,5 +27,26 @@ def polygonized_raster_path() -> str:
 
 
 @pytest.fixture(scope="session")
+def vector_mask_path() -> str:
+    return "tests/data/mask.geojson"
+
+@pytest.fixture(scope="session")
+def rasterized_mask_path() -> str:
+    return "tests/data/rasterized_mask.tif"
+
+
+@pytest.fixture(scope="session")
+def rasterized_mask_array() -> np.ndarray:
+    return np.array([[1, 1, 1, 1],[1, 1, 1, 1],[1, 1, 1, 1],[1, 1, 1, 1]])
+
+@pytest.fixture(scope="session")
+def raster_to_df() -> str:
+    return "tests/data/raster_to_df.tif"
+
+@pytest.fixture(scope="session")
+def raster_to_df_dataset(raster_to_df: str) -> Dataset:
+    return gdal.Open(raster_to_df)
+@pytest.fixture(scope="session")
 def arr() -> np.ndarray:
     return np.array([[1,2], [3,4]], dtype=np.float32)
+
