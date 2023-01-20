@@ -1,7 +1,8 @@
 import gzip
 import os
-from osgeo import gdal, ogr, gdal_array
 
+from osgeo import gdal, gdal_array, ogr
+from osgeo.gdal import Dataset
 # mapping between gdal type and ogr field type
 GDAL_OGR_DATA_TYPES = {
     gdal.GDT_Unknown: ogr.OFTInteger,
@@ -19,17 +20,18 @@ GDAL_OGR_DATA_TYPES = {
 }
 
 NUMPY_GDAL_DATA_TYPES = {
-  "uint8": 1,
-  "int8": 1,
-  "uint16": 2,
-  "int16": 3,
-  "uint32": 4,
-  "int32": 5,
-  "float32": 6,
-  "float64": 7,
-  "complex64": 10,
-  "complex128": 11,
+    "uint8": 1,
+    "int8": 1,
+    "uint16": 2,
+    "int16": 3,
+    "uint32": 4,
+    "int32": 5,
+    "float32": 6,
+    "float64": 7,
+    "complex64": 10,
+    "complex128": 11,
 }
+
 
 def numpy_to_gdal_dtype(arr):
     """mapping functiuon between numpy and gdal data types.
@@ -49,6 +51,25 @@ def numpy_to_gdal_dtype(arr):
     return gdal_type
 
     # return GDAL_NUMPY_DATA_TYPES[list(NUMPY_GDAL_DATA_TYPES.keys())[loc]]
+
+def gdal_to_ogr_dtype(src: Dataset, band : int = 1):
+    """return the coresponding data type grom ogr to each gdal data type
+
+    Parameters
+    ----------
+    src: [DataSet]
+        gdal Dataset
+    band: [gda Band]
+        gdal band
+
+    Returns
+    -------
+    gdal data type
+    """
+    band = src.GetRasterBand(band)
+    loc = list(GDAL_OGR_DATA_TYPES.keys()).index(band.DataType) + 1
+    key = list(GDAL_OGR_DATA_TYPES.keys())[loc]
+    return GDAL_OGR_DATA_TYPES[key]
 
 def extractFromGZ(input_file: str, output_file: str, delete=False):
     """ExtractFromGZ method extract data from the zip/.gz files, save the data.
