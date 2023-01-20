@@ -10,3 +10,7 @@ import pytest
 @pytest.fixture(scope="module")
 def create_vector_path() -> str:
     return "tests/data/create_geojson_datasource.geojson"
+
+@pytest.fixture(scope="module")
+def test_vector_path() -> str:
+    return "tests/data/test_vector.geojson"
