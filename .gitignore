@@ -138,7 +138,7 @@ build_artifacts
 
 *.qgz
 .vscode
-
+*.xlsx
 *.xml
 .idea/pyramids.iml
 .idea/.gitignore
