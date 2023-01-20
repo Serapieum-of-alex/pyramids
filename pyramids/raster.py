@@ -49,7 +49,14 @@ class Raster:
         if not os.path.exists(path):
             raise FileNotFoundError(f"The given file:{path} does not exist")
         access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
-        return gdal.OpenShared(path, access)
+        src = gdal.OpenShared(path, access)
+        if src is None:
+            raise ValueError (
+                f"The raster path: {path} you enter gives a None gdal Object check the read premission, maybe "
+                f"the raster is being used by other software"
+            )
+
+        return src
 
     @staticmethod
     def _createDataset(
@@ -93,7 +100,7 @@ class Raster:
         if driver == "GTiff":
             dr = gdal.GetDriverByName(driver).Create(
                 path, cols, rows, bands, pixel_type
-            )
+            )  # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
         else:
             dr = gdal.GetDriverByName(driver).Create("", cols, rows, bands, pixel_type)
         return dr
@@ -212,7 +219,7 @@ class Raster:
         return sr
 
     @staticmethod
-    def _setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE):
+    def setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE):
         """Set the no data value in a all raster bands.
 
         Parameters
@@ -310,7 +317,7 @@ class Raster:
         dst.SetProjection(src.GetProjectionRef())
 
         if no_data_value is not None:
-            dst = Raster._setNoDataValue(dst, no_data_value=float(no_data_value))
+            dst = Raster.setNoDataValue(dst, no_data_value=float(no_data_value))
 
         return dst
 
@@ -461,7 +468,7 @@ class Raster:
 
         srse = Raster._createSRfromEPSG(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
-        dst_ds = Raster._setNoDataValue(dst_ds, no_data_value=nodatavalue)
+        dst_ds = Raster.setNoDataValue(dst_ds, no_data_value=nodatavalue)
 
         dst_ds.SetGeoTransform(geo)
         dst_ds.GetRasterBand(1).WriteArray(arr)
@@ -534,7 +541,7 @@ class Raster:
         dst.SetGeoTransform(gt)
         dst.SetProjection(prj)
         # setting the NoDataValue does not accept double precision numbers
-        dst = Raster._setNoDataValue(dst, no_data_value=no_data_value)
+        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value)
 
         dst.GetRasterBand(1).WriteArray(array)
         if driver == "GTiff":
@@ -594,18 +601,18 @@ class Raster:
                     new_array[i, j] = fun(src_array[i, j])
 
         # create the output raster
-        mem_drv = gdal.GetDriverByName("MEM")
-        dst = mem_drv.Create(
-            "", src_col, src_row, 1, gdalconst.GDT_Float32
-        )  # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
-
+        # mem_drv = gdal.GetDriverByName("MEM")
+        # dst = mem_drv.Create(
+        #     "", src_col, src_row, 1, gdalconst.GDT_Float32
+        # )
+        dst = Raster._createDataset(src_col, src_row, 1, gdalconst.GDT_Float32, driver="MEM")
         # set the geotransform
         dst.SetGeoTransform(src_gt)
         # set the projection
         dst.SetProjection(src_sref.ExportToWkt())
         # set the no data value
         no_data_value = src.GetRasterBand(band).GetNoDataValue()
-        dst = Raster._setNoDataValue(dst, no_data_value=no_data_value)
+        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value)
         dst.GetRasterBand(band).WriteArray(new_array)
 
         return dst
@@ -739,7 +746,7 @@ class Raster:
         dst.SetProjection(sr_src.ExportToWkt())
         # set the no data value
         no_data_value = src.GetRasterBand(1).GetNoDataValue()
-        dst = Raster._setNoDataValue(dst, no_data_value)
+        dst = Raster.setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             src, dst, sr_src.ExportToWkt(), sr_src.ExportToWkt(), resample_technique
@@ -894,7 +901,7 @@ class Raster:
             dst.SetProjection(dst_sr.ExportToWkt())
             # set the no data value
             no_data_value = src.GetRasterBand(1).GetNoDataValue()
-            dst = Raster._setNoDataValue(dst, no_data_value)
+            dst = Raster.setNoDataValue(dst, no_data_value)
             # perform the projection & resampling
             gdal.ReprojectImage(
                 src,
@@ -1042,7 +1049,7 @@ class Raster:
         dst.SetProjection(dst_epsg.ExportToWkt())
         # set the no data value
         no_data_value = src.GetRasterBand(1).GetNoDataValue()
-        dst = Raster._setNoDataValue(dst, no_data_value)
+        dst = Raster.setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             src, dst, src_sr.ExportToWkt(), dst_epsg.ExportToWkt(), resample_technique
@@ -1194,7 +1201,7 @@ class Raster:
                 dst.SetProjection(src_sref.ExportToWkt())
 
             # set the no data value
-            dst = Raster._setNoDataValue(dst, mask_noval)
+            dst = Raster.setNoDataValue(dst, mask_noval)
             dst.GetRasterBand(1).WriteArray(src_array)
 
             return dst
@@ -1690,7 +1697,7 @@ class Raster:
         dst.SetProjection(dst_sref.ExportToWkt())
         # set the no data value
         no_data_value = src.GetRasterBand(1).GetNoDataValue()
-        dst = Raster._setNoDataValue(dst, no_data_value)
+        dst = Raster.setNoDataValue(dst, no_data_value)
         dst.GetRasterBand(1).WriteArray(dst_array)
 
         return dst
@@ -1772,7 +1779,7 @@ class Raster:
         dst.SetProjection(src_sr.ExportToWkt())
         # set the no data value
         no_data_value = src.GetRasterBand(1).GetNoDataValue()
-        dst = Raster._setNoDataValue(dst, no_data_value)
+        dst = Raster.setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
         resample_technique = gdal.GRA_NearestNeighbour  # gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
