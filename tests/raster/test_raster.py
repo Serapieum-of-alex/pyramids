@@ -64,13 +64,14 @@ def test_save_rasters(
     assert os.path.exists(save_raster_path)
     os.remove(save_raster_path)
 
+
 class TestRasterLike:
     def test_create_raster_like_to_disk(
-            self,
-            src: Dataset,
-            src_arr: np.ndarray,
-            src_no_data_value: float,
-            raster_like_path: str,
+        self,
+        src: Dataset,
+        src_arr: np.ndarray,
+        src_no_data_value: float,
+        raster_like_path: str,
     ):
         arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
         arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -86,10 +87,10 @@ class TestRasterLike:
         assert src.GetGeoTransform() == dst.GetGeoTransform()
 
     def test_create_raster_like_to_mem(
-            self,
-            src: Dataset,
-            src_arr: np.ndarray,
-            src_no_data_value: float,
+        self,
+        src: Dataset,
+        src_arr: np.ndarray,
+        src_no_data_value: float,
     ):
         arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
         arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -116,11 +117,7 @@ def test_map_algebra(
     assert vals == [1, 2, 3, 4, 5]
 
 
-def test_fill_raster(
-        src: Dataset,
-        fill_raster_path: str,
-        fill_raster_value: int
-):
+def test_fill_raster(src: Dataset, fill_raster_path: str, fill_raster_value: int):
     Raster.rasterFill(src, fill_raster_value, driver="GTiff", path=fill_raster_path)
     "now the resulted raster is saved to disk"
     dst = gdal.Open(fill_raster_path)
