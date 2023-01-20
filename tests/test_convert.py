@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import geopandas as gpd
+from geopandas.geodataframe import DataFrame
 from osgeo.gdal import Dataset
 
 from pyramids.raster import Raster
@@ -17,12 +18,12 @@ def test_polygonize(test_image: Dataset, polygonized_raster_path: str):
 
 def test_rasterize_vector(
         vector_mask_path,
-        raster_to_df: str,
+        raster_to_df_path,
         raster_to_df_dataset: Dataset,
         rasterized_mask_path: str,
         rasterized_mask_array: np.ndarray
 ):
-    src = Convert.rasterize(vector_mask_path, raster_to_df, rasterized_mask_path)
+    src = Convert.rasterize(vector_mask_path, raster_to_df_path, rasterized_mask_path)
     assert Raster.getEPSG(src) == 32618
     geo = src.GetGeoTransform()
     geo_source = raster_to_df_dataset.GetGeoTransform()
@@ -32,11 +33,27 @@ def test_rasterize_vector(
     values = arr[arr[:,:] == 1.0]
     assert values.shape[0] == 16
 
-# class TestRasterToDataFrame:
-#     def test_raster_to_dataframe(
-#             self,
-#             raster_to_df: str,
-#             vector_mask_path
-#     ):
-#         df = Convert.rasterToDataframe(raster_to_df, vector_mask_path)
-#         print(df)
+class TestRasterToDataFrame:
+    def test_raster_to_dataframe_without_mask(
+            self,
+            raster_to_df_path: str,
+            raster_to_df_arr: np.ndarray
+    ):
+        df = Convert.rasterToDataframe(raster_to_df_path) #, vector_mask_path
+        assert isinstance(df, DataFrame)
+        rows, cols = raster_to_df_arr.shape
+        arr_flatten = raster_to_df_arr.reshape((rows * cols,1))
+        assert np.array_equal(df.values, arr_flatten), "the extracted values in the dataframe does not equa the real " \
+                                                       "values in the array"
+
+    def test_raster_to_dataframe_with_mask(
+            self,
+            raster_to_df_path,
+            vector_mask_path,
+            rasterized_mask_values: np.ndarray
+    ):
+        df = Convert.rasterToDataframe(raster_to_df_path, vector_mask_path)
+        assert isinstance(df, DataFrame)
+        assert len(df) == len(rasterized_mask_values)
+        assert np.array_equal(df.values, rasterized_mask_values), "the extracted values in the dataframe does not equa the real " \
+                                                       "values in the array"

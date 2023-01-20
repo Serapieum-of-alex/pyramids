@@ -540,7 +540,7 @@ class Convert:
 
         Parameters
         ----------
-        src : str
+        src : [str/gdal Dataset]
             Path to raster file.
         vector : Optional[str]
             path to vector file. If given, it will be used to clip the raster
@@ -552,7 +552,9 @@ class Convert:
         temp_dir = None
 
         # Get raster band names. open the dataset using gdal.Open
-        src = Raster.openDataset(src)
+        if isinstance(src, str):
+            src = Raster.openDataset(src)
+
         band_names = Raster.getBandNames(src)
 
         # Create a mask from the pixels touched by the vector.
@@ -571,7 +573,7 @@ class Convert:
             # rasterize the vector by burning the unique values as cell values.
             rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
             rasterized_vector = Convert.rasterize(
-                src, new_vector_path, rasterized_vector_path, vector_field="burn_value"
+                new_vector_path, src, rasterized_vector_path, vector_field="burn_value"
             )
 
             # Loop over mask values to extract pixels.
