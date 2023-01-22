@@ -130,7 +130,7 @@ class Vector:
         return ds
 
     @staticmethod
-    def copyDriverToMemory(ds: DataSource, name: str = "") -> DataSource:
+    def copyDriverToMemory(ds: DataSource, name: str = "memory") -> DataSource:
         """copyDriverToMemory.
 
             copy driver to a memory driver

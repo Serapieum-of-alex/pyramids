@@ -75,7 +75,12 @@ class TestRasterToDataFrame:
         )
 
 
-class TestOgrDataSourceToGDF:
-    def test_1(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
-        gdf = Convert.ogrDataSourceToGeoDF(data_source)
+class TestConvertDataSourceAndGDF:
+    def test_ds_to_gdf(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
+        gdf = Convert._ogrDataSourceToGeoDF(data_source)
         assert all(gdf == ds_geodataframe)
+
+    def test_gdf_to_ds(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
+        ds = Convert._gdfToOgrDataSourceT(ds_geodataframe)
+        assert isinstance(ds, DataSource)
+        assert ds.name == "memory"

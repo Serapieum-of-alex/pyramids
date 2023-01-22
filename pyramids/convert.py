@@ -530,7 +530,7 @@ class Convert:
             dst_layer = None
             dst_ds = None
         else:
-            gdf = Convert.ogrDataSourceToGeoDF(dst_ds)
+            gdf = Convert._ogrDataSourceToGeoDF(dst_ds)
             return gdf
 
 
@@ -636,7 +636,7 @@ class Convert:
         return out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
 
     @staticmethod
-    def ogrDataSourceToGeoDF(ds: DataSource) -> GeoDataFrame:
+    def _ogrDataSourceToGeoDF(ds: DataSource) -> GeoDataFrame:
         """Convert ogr DataSource object to a GeoDataFrame.
 
         Parameters
@@ -673,3 +673,26 @@ class Convert:
         Vector.saveVector(ds, new_vector_path)
         gdf = gpd.read_file(new_vector_path)
         return gdf
+
+
+    @staticmethod
+    def _gdfToOgrDataSourceT(gdf: GeoDataFrame) -> DataSource:
+        """Convert ogr DataSource object to a GeoDataFrame.
+
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            ogr DataSource
+
+        Returns
+        -------
+        ogr.DataSource
+        """
+        # Create a temporary directory for files.
+        temp_dir = tempfile.mkdtemp()
+        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        gdf.to_file(new_vector_path)
+        ds = Vector.openVector(new_vector_path)
+        ds = Vector.copyDriverToMemory(ds)
+        return ds
+
