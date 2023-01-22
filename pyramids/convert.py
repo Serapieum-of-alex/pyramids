@@ -315,7 +315,7 @@ class Convert:
         # extract the data
         dataset = nc[Var]
         # get the details of the file
-        geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.ncDetails(
+        geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.getNCDetails(
             nc, time_var_name=time_var_name
         )
 
