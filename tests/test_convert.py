@@ -14,22 +14,20 @@ class TestPolygonize:
     def test_save_polygon_to_disk(
         self, test_image: Dataset, polygonized_raster_path: str
     ):
-        Convert.polygonize(test_image, polygonized_raster_path)
+        Convert.rasterToPolygon(test_image, polygonized_raster_path, driver="GeoJSON")
         assert os.path.exists(polygonized_raster_path)
         gdf = gpd.read_file(polygonized_raster_path)
         assert len(gdf) == 4
         assert all(gdf.geometry.geom_type == "Polygon")
         os.remove(polygonized_raster_path)
 
-    # def test_save_polygon_to_memory(
-    #     self, test_image: Dataset, polygonized_raster_path: str
-    # ):
-    #     Convert.polygonize(test_image, driver="MEMORY")
-    #     assert os.path.exists(polygonized_raster_path)
-    #     gdf = gpd.read_file(polygonized_raster_path)
-    #     assert len(gdf) == 4
-    #     assert all(gdf.geometry.geom_type == "Polygon")
-    #     os.remove(polygonized_raster_path)
+    def test_save_polygon_to_memory(
+        self, test_image: Dataset, polygonized_raster_path: str
+    ):
+        gdf = Convert.rasterToPolygon(test_image)
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == 4
+        assert all(gdf.geometry.geom_type == "Polygon")
 
 
 def test_rasterize_vector(

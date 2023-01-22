@@ -3,7 +3,7 @@ import os
 import shutil
 import tempfile
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import geopandas as gpd
 import netCDF4
@@ -481,13 +481,13 @@ class Convert:
         return src
 
     @staticmethod
-    def polygonize(
+    def rasterToPolygon(
         src: Dataset,
         path: str = None,
         band: int = 1,
         col_name: Any = "id",
-        driver: str = "GeoJSON",
-    ) -> None:
+        driver: str = "MEMORY",
+    ) -> Union[GeoDataFrame, None]:
         """polygonize.
 
             polygonize takes a gdal band object and group neighboring cells with the same value into one polygon,
@@ -519,17 +519,20 @@ class Convert:
             dst_layername = "id"
         else:
             dst_layername = path.split(".")[0].split("/")[-1]
-        # Todo: find a way to create a memory driver and make the polygonize function update the memory driver
-        # Create a temporary directory for files.
+
         dst_ds = Vector.createDataSource(driver, path)
         dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
         dtype = gdal_to_ogr_dtype(src)
         newField = ogr.FieldDefn(col_name, dtype)
         dst_layer.CreateField(newField)
         gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
-        dst_layer = None
-        # dst_ds.Destroy()
-        # return gpd.read_file(path)
+        if path:
+            dst_layer = None
+            dst_ds = None
+        else:
+            gdf = Convert.ogrDataSourceToGeoDF(dst_ds)
+            return gdf
+
 
     @staticmethod
     def rasterToDataframe(src: str, vector=None) -> DataFrame:
