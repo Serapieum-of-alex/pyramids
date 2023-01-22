@@ -4,9 +4,8 @@
 """
 
 import json
-import os.path
 import warnings
-from typing import Dict, Union
+from typing import Dict, Union, Tuple, List
 
 import geopandas as gpd
 import geopy.distance as distance
@@ -370,7 +369,7 @@ class Vector:
     def getPolyCoords(geometry, coord_type: str):
         """getPolyCoords.
 
-        Returns Coordinates of Polygon using the Exterior of the Polygon.
+            Returns Coordinates of Polygon using the Exterior of the Polygon.
 
         parameters
         ----------
@@ -586,36 +585,36 @@ class Vector:
         return input_dataframe
 
     @staticmethod
-    def createPolygon(coords, geom_type: int = 1):
-        """create_polygon.
+    def createPolygon(coords: List[Tuple[float, float]], wkt: bool = False):
+        """Create a polygon Geometry.
 
-        this function creates a polygon from coordinates
+        Create a polygon from coordinates
 
         parameters
         ----------
         coords: [List]
             list of tuples [(x1,y1),(x2,y2)]
-        geom_type: [Integer]
-            1 to return a polygon in the form of WellKnownText, 2 to return a
-            polygon as an object
+        wkt: [bool]
+            True if you want to create the WellKnownText only not the shapely polygon object
 
         Returns
         -------
-        Type 1 returns a string of the polygon and its coordinates as
-        a WellKnownText, Type 2 returns Shapely Polygon object you can assign it
+        - if wkt is True the function returns a string of the polygon and its coordinates as
+        a WellKnownText,
+        - if wkt is False the function returns Shapely Polygon object you can assign it
         to a GeoPandas GeoDataFrame directly
 
         Examples
         --------
         >>> coordinates = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
-        >>> Vector.createPolygon(coordinates, 1)
+        >>> Vector.createPolygon(coordinates, wkt=True)
         it will give
         >>> 'POLYGON ((24.95 60.16 0,24.95 60.16 0,24.95 60.17 0,24.95 60.16 0))'
         while
         >>> new_geometry = gpd.GeoDataFrame()
-        >>> new_geometry.loc[0,'geometry'] = Vector.createPolygon(coordinates, 2)
+        >>> new_geometry.loc[0,'geometry'] = Vector.createPolygon(coordinates, wkt=False)
         """
-        if geom_type == 1:
+        if wkt:
             # create a ring
             ring = ogr.Geometry(ogr.wkbLinearRing)
             for coord in coords:
@@ -631,7 +630,7 @@ class Vector:
             return poly
 
     @staticmethod
-    def createPoint(coords: list):
+    def createPoint(coords: List[Tuple[float]]) -> List[Point]:
         """CreatePoint.
 
         CreatePoint takes a list of tuples of coordinates and convert it into
