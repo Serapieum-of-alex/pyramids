@@ -2,6 +2,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import geopandas as gpd
+from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
 from osgeo.gdal import Dataset
 
@@ -29,6 +31,11 @@ def polygonized_raster_path() -> str:
 @pytest.fixture(scope="session")
 def vector_mask_path() -> str:
     return "tests/data/mask.geojson"
+
+
+@pytest.fixture(scope="session")
+def vector_mask_gdf() -> GeoDataFrame:
+    return gpd.read_file("tests/data/mask.geojson")
 
 
 @pytest.fixture(scope="session")
