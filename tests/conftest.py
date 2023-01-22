@@ -1,7 +1,7 @@
 from pathlib import Path
 
-import pytest
 import numpy as np
+import pytest
 from osgeo import gdal
 from osgeo.gdal import Dataset
 
@@ -30,6 +30,7 @@ def polygonized_raster_path() -> str:
 def vector_mask_path() -> str:
     return "tests/data/mask.geojson"
 
+
 @pytest.fixture(scope="session")
 def rasterized_mask_path() -> str:
     return "tests/data/rasterized_mask.tif"
@@ -37,19 +38,23 @@ def rasterized_mask_path() -> str:
 
 @pytest.fixture(scope="session")
 def rasterized_mask_array() -> np.ndarray:
-    return np.array([[1, 1, 1, 1],[1, 1, 1, 1],[1, 1, 1, 1],[1, 1, 1, 1]])
+    return np.array([[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]])
+
 
 @pytest.fixture(scope="session")
 def rasterized_mask_values() -> np.ndarray:
     return np.array([1, 2, 3, 4, 15, 16, 17, 18, 29, 30, 31, 32, 43, 44, 45, 46])
 
+
 @pytest.fixture(scope="session")
 def raster_to_df_path() -> str:
     return "tests/data/raster_to_df.tif"
 
+
 @pytest.fixture(scope="session")
 def raster_to_df_dataset(raster_to_df_path: str) -> Dataset:
     return gdal.Open(raster_to_df_path)
+
 
 @pytest.fixture(scope="session")
 def raster_to_df_arr(raster_to_df_dataset: Dataset) -> np.ndarray:
@@ -58,5 +63,4 @@ def raster_to_df_arr(raster_to_df_dataset: Dataset) -> np.ndarray:
 
 @pytest.fixture(scope="session")
 def arr() -> np.ndarray:
-    return np.array([[1,2], [3,4]], dtype=np.float32)
-
+    return np.array([[1, 2], [3, 4]], dtype=np.float32)

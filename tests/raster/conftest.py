@@ -1,6 +1,7 @@
-from typing import List
-import os
 import glob
+import os
+from typing import List
+
 import geopandas as gpd
 import numpy as np
 import pytest
@@ -224,6 +225,7 @@ def ascii_shape() -> tuple:
 @pytest.fixture(scope="module")
 def ascii_geotransform() -> tuple:
     return 13, 14, 432968.1206170588, 468007.787999178, 4000.0, -3.4028230607370965e38
+
 
 @pytest.fixture(scope="module")
 def merge_input_raster() -> List[str]:
