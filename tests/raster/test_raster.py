@@ -39,44 +39,48 @@ def test_GetProjectionData(
 
 class TestGetCellCoords:
     def test_cell_center_all_cells(
-            self,
-            src: Dataset,
-            src_shape: tuple,
-            src_cell_center_coords_first_4_rows,
-            src_cell_center_coords_last_4_rows,
-            cells_centerscoords: np.ndarray,
+        self,
+        src: Dataset,
+        src_shape: tuple,
+        src_cell_center_coords_first_4_rows,
+        src_cell_center_coords_last_4_rows,
+        cells_centerscoords: np.ndarray,
     ):
-        """
-        get center coordinates of all cells
-        """
+        """get center coordinates of all cells."""
         coords = Raster.getCellCoords(src, location="center", mask=False)
         assert len(coords) == src_shape[0] * src_shape[1]
-        assert np.isclose(coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001).all(), \
+        assert np.isclose(
+            coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001
+        ).all(), (
             "the coordinates of the first 4 rows differs from the validation coords"
-        assert np.isclose(coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001).all(),\
-            "the coordinates of the last 4 rows differs from the validation coords"
-
+        )
+        assert np.isclose(
+            coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001
+        ).all(), "the coordinates of the last 4 rows differs from the validation coords"
 
     def test_cell_center_masked_cells(
-            self,
-            src: Dataset,
-            src_masked_values_len: int,
-            src_masked_cells_center_coords_last4,
+        self,
+        src: Dataset,
+        src_masked_values_len: int,
+        src_masked_cells_center_coords_last4,
     ):
-        """get cell coordinates from cells inside the domain only.
-        """
+        """get cell coordinates from cells inside the domain only."""
         coords = Raster.getCellCoords(src, location="center", mask=True)
         assert coords.shape[0] == src_masked_values_len
-        assert np.isclose(coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001).all()
-
+        assert np.isclose(
+            coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
+        ).all()
 
     def test_cell_corner_all_cells(
-            self,
-            src: Dataset,
-            src_cells_corner_coords_last4,
+        self,
+        src: Dataset,
+        src_cells_corner_coords_last4,
     ):
         coords = Raster.getCellCoords(src, location="corner")
-        assert np.isclose(coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001).all()
+        assert np.isclose(
+            coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
+        ).all()
+
 
 class TestCreateCellGeometry:
     def test_create_cell_polygon(self, src: Dataset, src_shape: Tuple, src_epsg: int):
@@ -84,13 +88,12 @@ class TestCreateCellGeometry:
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
 
-    def test_create_cell_points(
-            self, src: Dataset, src_shape: Tuple, src_epsg: int
-    ):
+    def test_create_cell_points(self, src: Dataset, src_shape: Tuple, src_epsg: int):
         gdf = Raster.getCellPoints(src)
         # check the size
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
+
 
 def test_create_raster(
     src_arr: np.ndarray,
