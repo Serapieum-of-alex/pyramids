@@ -1,4 +1,5 @@
 import os
+from osgeo import ogr
 from osgeo.ogr import DataSource
 from geopandas.geodataframe import GeoDataFrame
 from pyramids.vector import Vector
@@ -11,6 +12,7 @@ class TestOpenVector:
         ds = Vector.openVector(test_vector_path)
         assert isinstance(ds, DataSource)
         assert ds.name == test_vector_path
+
 
     def test_open_geodataframe(
             self,
@@ -36,3 +38,19 @@ class TestCreateDataSource:
         assert isinstance(ds, DataSource), "the in memory ogr data source object was not created correctly"
         assert ds.name == "memData"
 
+# def test_geodataframe_to_datasource(gdf: GeoDataFrame):
+#     ds = Vector.GeoDataFrameToOgr(gdf)
+#     ds.name
+#     print("sss")
+
+def test_copy_driver_to_memory(data_source: DataSource):
+    name = "test_copy_datasource"
+    ds = Vector.copyDriverToMemory(data_source, name)
+    assert isinstance(ds, DataSource)
+    assert ds.name == name
+
+def test_save_vector(data_source: DataSource, test_save_vector_path: str):
+    Vector.saveVector(data_source, test_save_vector_path)
+    assert os.path.exists(test_save_vector_path), "The vector file does not exist"
+    # read the vector to check it
+    assert ogr.GetDriverByName("GeoJSON").Open(test_save_vector_path)

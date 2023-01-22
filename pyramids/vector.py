@@ -1,9 +1,11 @@
 """Created on Sun Jul 01 17:07:40 2018.
-
+ogr classes: https://gdal.org/java/org/gdal/ogr/package-summary.html
+ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html
 @author: Mostafa
 """
 
 import json
+import os.path
 import warnings
 from typing import Dict, Union
 
@@ -14,7 +16,7 @@ import pandas as pd
 
 # import yaml
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import ogr, osr
+from osgeo import ogr, osr, gdal
 from osgeo.ogr import DataSource
 from pyproj import Proj, transform
 from shapely.geometry import Point, Polygon
@@ -87,12 +89,13 @@ class Vector:
             ds = gpd.read_file(path)
         else:
             update = False if read_only else True
-            ds = ogr.OpenShared(path, update=update)
+            # ds = ogr.OpenShared(path, update=update)
+            ds = gdal.OpenEx(path)
         return ds
 
     @staticmethod
-    def createDataSource(driver: str = "GeoJSON", path: str=None):
-        """
+    def createDataSource(driver: str = "GeoJSON", path: str=None) -> Union[DataSource, None]:
+        """Create ogr DataSource
 
         Parameters
         ----------
@@ -103,15 +106,19 @@ class Vector:
 
         Returns
         -------
-
+        ogr DataSource
         """
-        if driver == "GeoJSON":
-            if path[-8:] != ".geojson":
+        if driver == "MEMORY":
+            path = "memData"
+        elif driver == "GeoJSON":
+            if not path.endswith(".geojson"):
                 raise TypeError(
                     "The path to save the created raster should end with .geojson"
                 )
-        elif driver == "MEMORY":
-            path = "memData"
+            # check if theere is a file with the given path
+            if os.path.exists(path):
+                raise FileExistsError(f"There is file wit the given path: {path}")
+
         else:
             raise TypeError(
                 "The given driver type is not supported at the moment the only supported drivers are 'GeoJSON' and "
@@ -121,6 +128,63 @@ class Vector:
         ds = ogr.GetDriverByName(driver).CreateDataSource(path)
         return ds
 
+    @staticmethod
+    def copyDriverToMemory(ds: DataSource, name:str = "") -> DataSource:
+        """copyDriverToMemory.
+
+            copy driver to a memory driver
+
+        Parameters
+        ----------
+        ds: [ogr.DataSource]
+            ogr datasource
+        name: [str]
+            datasource name
+
+        Returns
+        -------
+        ogr.DataSource
+        """
+        driver = ogr.GetDriverByName('Memory')
+        return driver.CopyDataSource(ds, name)
+
+    @staticmethod
+    def saveVector(ds: DataSource, path: str, driver: str = "GeoJSON"):
+        """Save Vector to disk
+
+            Currently saves ogr DataSource to disk
+
+        Parameters
+        ----------
+        ds: [DataSource]
+            ogr DataSource
+        path: [path]
+            path to save the vector
+        driver: [str]
+            driver type
+
+        Returns
+        -------
+        None
+        """
+        ogr.GetDriverByName(driver).CopyDataSource(ds, path)
+
+
+    @staticmethod
+    def GeoDataFrameToOgr(gdf: DataSource):
+        """
+        convert a geopandas geodataframe into ogr DataSource
+
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            geopandas geodataframe
+
+        Returns
+        -------
+        ogr.DataSource
+        """
+        return ogr.Open(gdf.to_json())
 
     @staticmethod
     def _getDsEPSG(ds: DataSource):
