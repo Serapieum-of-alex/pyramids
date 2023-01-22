@@ -77,6 +77,8 @@ class Raster:
     ) -> Dataset:
         """Create GDAL driver.
 
+            creates a driver and save it to disk and in memory if path is not given.
+
         Parameters
         ----------
         cols: [int]
@@ -96,23 +98,23 @@ class Raster:
         -------
         gdal driver
         """
-        if driver == "GTiff":
+        if path:
             if not isinstance(path, str):
                 raise TypeError("The path input should be string")
+            if driver == "GTiff":
+                if not path.endswith(".tif"):
+                    raise TypeError(
+                        "The path to save the created raster should end with .tif"
+                    )
 
-            if path[-4:] != ".tif":
-                raise TypeError(
-                    "The path to save the created raster should end with .tif"
-                )
-
-        if driver == "GTiff":
-            dr = gdal.GetDriverByName(driver).Create(
+            src = gdal.GetDriverByName(driver).Create(
                 path, cols, rows, bands, pixel_type
             )  # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
         else:
             # for memory drivers
-            dr = gdal.GetDriverByName(driver).Create("", cols, rows, bands, pixel_type)
-        return dr
+            driver = "MEM"
+            src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, pixel_type)
+        return src
 
     @staticmethod
     def getRasterData(
@@ -312,16 +314,13 @@ class Raster:
         -------
         gdal.DataSet
         """
-        # Raster size.
         cols = src.RasterXSize
         rows = src.RasterYSize
         bands = int(bands) if bands is not None else src.RasterCount
         dtype = src.GetRasterBand(1).DataType
 
         # Create the driver.
-        # TODO: make an option to decide the type of the driver (mem or to disk)
-        driver = src.GetDriver()
-        dst = driver.Create(path, cols, rows, bands, dtype)
+        dst = Raster._createDataset(cols, rows, bands, dtype, path=path)
 
         # Set the projection.
         dst.SetGeoTransform(src.GetGeoTransform())
