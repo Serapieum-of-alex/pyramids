@@ -30,6 +30,27 @@ def src_no_data_value(src: Dataset) -> float:
 
 
 @pytest.fixture(scope="module")
+def src_masked_values(src_arr: np.ndarray, src_no_data_value: float) -> np.ndarray:
+    return src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)]
+
+
+@pytest.fixture(scope="module")
+def src_masked_cells_center_coords_last4() -> np.ndarray:
+    return np.array(
+        [
+            [478968.12061706, 478007.78799918],
+            [478968.12061706, 474007.78799918],
+            [482968.12061706, 514007.78799918],
+            [482968.12061706, 510007.78799918]
+        ]
+    )
+
+
+@pytest.fixture(scope="module")
+def src_masked_values_len(src_masked_values: np.ndarray) -> int:
+    return src_masked_values.shape[0]
+
+@pytest.fixture(scope="module")
 def src_epsg() -> int:
     return 32618
 
@@ -40,27 +61,26 @@ def src_geotransform(src: Dataset) -> tuple:
 
 
 @pytest.fixture(scope="module")
-def src_arr_first_4_rows() -> np.ndarray:
-    return np.array(
-        [
-            [434968.12061706, 520007.78799918],
-            [434968.12061706, 520007.78799918],
-            [434968.12061706, 520007.78799918],
-            [434968.12061706, 520007.78799918],
-        ]
-    )
+def src_cell_center_coords_first_4_rows() -> np.ndarray:
+    return np.array([[434968.12061706, 518007.78799918],
+       [438968.12061706, 518007.78799918],
+       [442968.12061706, 518007.78799918],
+       [446968.12061706, 518007.78799918]])
+
+@pytest.fixture(scope="module")
+def src_cell_center_coords_last_4_rows() -> np.ndarray:
+    return np.array([[470968.12061706, 466007.78799918],
+       [474968.12061706, 466007.78799918],
+       [478968.12061706, 466007.78799918],
+       [482968.12061706, 466007.78799918]])
 
 
 @pytest.fixture(scope="module")
-def src_arr_last_4_rows() -> np.ndarray:
-    return np.array(
-        [
-            [478968.12061706, 520007.78799918],
-            [478968.12061706, 520007.78799918],
-            [478968.12061706, 520007.78799918],
-            [478968.12061706, 520007.78799918],
-        ]
-    )
+def src_cells_corner_coords_last4() -> np.ndarray:
+    return np.array([[468968.12061706, 468007.78799918],
+       [472968.12061706, 468007.78799918],
+       [476968.12061706, 468007.78799918],
+       [480968.12061706, 468007.78799918]])
 
 
 @pytest.fixture(scope="module")

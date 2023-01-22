@@ -370,7 +370,7 @@ class Raster:
         return dst
 
     @staticmethod
-    def getCellCoords(src: Dataset) -> Tuple[np.ndarray, np.ndarray]:
+    def getCellCoords(src: Dataset, location: str = "center", mask: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """GetCoords.
 
         Returns the coordinates of the cell centres inside the domain (only the cells that
@@ -380,36 +380,65 @@ class Raster:
         ----------
         src : [gdal_Dataset]
             Get the data from the gdal datasetof the DEM
+        location: [str]
+            location of the coordinates "center" for the center of a cell, corner for the corner of the cell.
+            the corner is the top left corner.
+        mask: [bool]
+            True to Execlude the cells out of the doain. Default is False.
 
         Returns
         -------
-        coords : array
+        coords : [np.ndarray]
             Array with a list of the coordinates to be interpolated, without the Nan
-        mat_range : array
+        mat_range : [np.ndarray]
             Array with all the centres of cells in the domain of the DEM
         """
+        # check the location parameter
+        location = location.lower()
+        if location not in ["center", "corner"]:
+            raise ValueError("The location parameter can have one of these values: 'center', 'corner', "
+                             f"but the value: {location} is given.")
+
+        if location == "center":
+            # Adding 0.5*cell size to get the centre
+            add_value = 0.5
+        else:
+            add_value = 0
         # Getting data for the whole grid
-        x_init, xx_span, xy_span, y_init, yy_span, yx_span = src.GetGeoTransform()
-        shape_dem = src.ReadAsArray().shape
+        x_init, cell_size_x, xy_span, y_init, yy_span, cell_size_y = src.GetGeoTransform()
 
-        # Getting data of the mask
+        if cell_size_x != -1 * cell_size_y:
+            logger.warning(f"The given raster does not have a square cells, the cell size is {cell_size_x}*{cell_size_y} ")
+
+        rows, cols = src.ReadAsArray().shape
+
+        # data in the array
         no_val = src.GetRasterBand(1).GetNoDataValue()
-        mask = src.ReadAsArray()
+        arr = src.ReadAsArray()
 
-        # Adding 0.5*cell size to get the centre
-        x = np.array([x_init + xx_span * (i + 0.5) for i in range(shape_dem[0])])
-        y = np.array([y_init + yy_span * (i + 0.5) for i in range(shape_dem[1])])
-        mat_range = [[(xi, yi) for xi in x] for yi in y]
+        # calculate the coordinates of all cells
+        x = np.array([x_init + cell_size_x * (i + add_value) for i in range(rows)])
+        y = np.array([y_init + cell_size_y * (i + add_value) for i in range(cols)])
+        all_cells = [[(xi, yi) for xi in x] for yi in y]
 
-        # applying the mask
-        coords = []
+        if mask:
+            # execlude the no_data_values cells.
+            masked_cells = []
 
-        for i in range(len(x) - 1):
-            for j in range(len(y) - 1):
-                if np.isclose(mask[i, j], no_val, rtol=0.001):
-                    coords.append(mat_range[j][i])
+            for i in range(len(x)): # - 1
+                for j in range(len(y)): # - 1
+                    if not np.isclose(arr[i, j], no_val, rtol=0.001):
+                        masked_cells.append(all_cells[j][i])
 
-        return np.array(coords), np.array(mat_range)
+            coords = np.array(masked_cells)
+        else:
+            # get coordinates of all cells
+            coords = np.array(all_cells)
+            x = coords[:, :, 0].flatten()
+            y = coords[:, :, 1].flatten()
+            coords = np.array([x, y]).transpose()
+
+        return coords
 
     @staticmethod
     def saveRaster(src: Dataset, path: str) -> None:
@@ -531,7 +560,7 @@ class Raster:
     @staticmethod
     def rasterLike(
         src: Dataset, array: np.ndarray, driver: str = "GTiff", path: str = None
-    ) -> Union[None, Dataset]:
+    ) -> Union[Dataset, None]:
         """rasterLike.
 
         rasterLike method creates a Geotiff raster like another input raster, new raster
@@ -2230,7 +2259,12 @@ class Raster:
 
     @staticmethod
     def rastersLike(src: Dataset, array: np.ndarray, path: List[str] = None):
-        """this function creates a Geotiff raster like another input raster, new raster will have the same projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number of rows and columns the raster and the dem should have the same number of columns and rows.
+        """Create Raster like other source raster with a given array
+
+            - This function creates a Geotiff raster like another input raster, new raster will have the same
+            projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number
+            of rows and columns
+            - the raster and the given array should have the same number of columns and rows.
 
         Parameters
         ----------

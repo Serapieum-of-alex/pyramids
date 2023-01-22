@@ -17,8 +17,9 @@ def test_GetRasterData(
     assert np.isclose(src_no_data_value, nodataval, rtol=0.001)
     assert isinstance(arr, np.ndarray)
 
+
 def test_get_raster_details(src: Dataset, src_shape: tuple):
-    cols, rows, prj, bands, gt, no_data_value, dtypes= Raster.getRasterDetails(src)
+    cols, rows, prj, bands, gt, no_data_value, dtypes = Raster.getRasterDetails(src)
     assert cols == src_shape[1]
     assert rows == src_shape[0]
     assert isinstance(no_data_value, list)
@@ -36,16 +37,44 @@ def test_GetProjectionData(
     assert geo == src_geotransform
 
 
-def test_GetCellCoords(
-    src: Dataset,
-    src_arr_first_4_rows: np.ndarray,
-    src_arr_last_4_rows: np.ndarray,
-    cells_centerscoords: np.ndarray,
-):
-    coords, centerscoords = Raster.getCellCoords(src)
-    assert np.isclose(coords[:4, :], src_arr_first_4_rows, rtol=0.000001).all()
-    assert np.isclose(coords[-4:, :], src_arr_last_4_rows, rtol=0.000001).all()
-    assert np.isclose(centerscoords[0][:3], cells_centerscoords, rtol=0.000001).all()
+class TestGetCellCoords:
+    def test_cell_center_all_cells(
+            self,
+            src: Dataset,
+            src_shape: tuple,
+            src_cell_center_coords_first_4_rows,
+            src_cell_center_coords_last_4_rows,
+            cells_centerscoords: np.ndarray,
+    ):
+        """
+        get center coordinates of all cells
+        """
+        coords = Raster.getCellCoords(src, location="center", mask=False)
+        assert len(coords) == src_shape[0] * src_shape[1]
+        assert np.isclose(coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001).all()
+        assert np.isclose(coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001).all()
+
+
+    def test_cell_center_masked_cells(
+            self,
+            src: Dataset,
+            src_masked_values_len: int,
+            src_masked_cells_center_coords_last4,
+    ):
+        """get cell coordinates from cells inside the domain only.
+        """
+        coords = Raster.getCellCoords(src, location="center", mask=True)
+        assert coords.shape[0] == src_masked_values_len
+        assert np.isclose(coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001).all()
+
+
+    def test_cell_corner_all_cells(
+            self,
+            src: Dataset,
+            src_cells_corner_coords_last4,
+    ):
+        coords = Raster.getCellCoords(src, location="corner")
+        assert np.isclose(coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001).all()
 
 
 def test_create_raster(
