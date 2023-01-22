@@ -82,13 +82,13 @@ class Raster:
         Parameters
         ----------
         cols: [int]
-            number of columns
+            number of columns.
         rows: [int]
-            number of rows
+            number of rows.
         bands: [int]
-            number of bands
+            number of bands.
         driver: [str]
-            driver type ["GTiff", "MEM"]
+            driver type ["GTiff", "MEM"].
         path: [str]
             path to save the GTiff driver.
         pixel_type:
@@ -168,13 +168,52 @@ class Raster:
             (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
         """
         geo = src.GetGeoTransform()
-        # GET PROJECTION
         src_proj = src.GetProjection()
-        # spatial ref
         sr_src = osr.SpatialReference(wkt=src_proj)
         epsg = int(sr_src.GetAttrValue("AUTHORITY", 1))
 
         return epsg, geo
+
+    @staticmethod
+    def getRasterDetails(
+            src: Dataset
+    ) -> Tuple[int, int, str, int, Tuple, List[Any], List]:
+        """Get gdal dataset details
+
+        Parameters
+        ----------
+        src: [Dataset]
+            gdal dataset
+
+        Returns
+        -------
+        cols: [int]
+            number of columns.
+        rows: [int]
+            number of rows.
+        prj: [str]
+            projection.
+        bands: [int]
+            number of bands.
+        gt: Tupe[int]
+            geotransform.
+        no_data_value: List[Any]
+            no data value for each band in the dataset.
+        dtype: List[gdal.DataType]
+            gdal data type for each band in the dataset.
+        """
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+        prj = src.GetProjection()
+        # src.GetProjectionRef()
+        bands = src.RasterCount
+        gt = src.GetGeoTransform()
+
+        no_data_value = [src.GetRasterBand(i).GetNoDataValue() for i in range(1, bands+1)]
+        dtype = [src.GetRasterBand(i).DataType for i in range(1, bands+1)]
+
+        return cols, rows, prj, bands, gt, no_data_value, dtype
+
 
     @staticmethod
     def getEPSG(src: Dataset) -> int:
@@ -315,16 +354,14 @@ class Raster:
         -------
         gdal.DataSet
         """
-        cols = src.RasterXSize
-        rows = src.RasterYSize
         bands = int(bands) if bands is not None else src.RasterCount
-        dtype = src.GetRasterBand(1).DataType
 
+        cols, rows, prj, _, gt, _, dtypes = Raster.getRasterDetails(src)
         # Create the driver.
-        dst = Raster._createDataset(cols, rows, bands, dtype, path=path)
+        dst = Raster._createDataset(cols, rows, bands, dtypes[0], path=path)
 
         # Set the projection.
-        dst.SetGeoTransform(src.GetGeoTransform())
+        dst.SetGeoTransform(gt)
         dst.SetProjection(src.GetProjectionRef())
 
         if no_data_value is not None:
@@ -538,12 +575,9 @@ class Raster:
             raise TypeError("array should be of type numpy array")
 
         bands = 1
-        prj = src.GetProjection()
-        cols = src.RasterXSize
-        rows = src.RasterYSize
-        gt = src.GetGeoTransform()
-        no_data_value = src.GetRasterBand(bands).GetNoDataValue()
         pixel_type = numpy_to_gdal_dtype(array)
+        cols, rows, prj, _, gt, no_data_value, _ = Raster.getRasterDetails(src)
+
         dst = Raster._createDataset(
             cols, rows, bands, pixel_type, driver=driver, path=path
         )
@@ -551,7 +585,7 @@ class Raster:
         dst.SetGeoTransform(gt)
         dst.SetProjection(prj)
         # setting the NoDataValue does not accept double precision numbers
-        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value)
+        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value[0])
 
         dst.GetRasterBand(1).WriteArray(array)
         if driver == "GTiff":
@@ -597,9 +631,9 @@ class Raster:
         src_row = src.RasterYSize
         src_col = src.RasterXSize
         noval = np.float32(src.GetRasterBand(band).GetNoDataValue())
-        src_sref = osr.SpatialReference(wkt=src_proj)
         src_array = src.ReadAsArray()
         dtype = src.GetRasterBand(1).DataType
+        src_sref = osr.SpatialReference(wkt=src_proj)
 
         # fill the new array with the nodata value
         new_array = np.ones((src_row, src_col)) * noval
@@ -711,16 +745,12 @@ class Raster:
         elif resample_technique == "bilinear":
             resample_technique = gdal.GRA_Bilinear
 
-        #    # READ THE RASTER
-        # GET PROJECTION
+
         src_proj = src.GetProjection()
-        # GET THE GEOTRANSFORM
         src_gt = src.GetGeoTransform()
-        # GET NUMBER OF columns
         src_x = src.RasterXSize
-        # get number of rows
         src_y = src.RasterYSize
-        # spatial ref
+
         sr_src = osr.SpatialReference(wkt=src_proj)
 
         ulx = src_gt[0]
@@ -742,7 +772,7 @@ class Raster:
         # create a new raster
         cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
-        dtype = src.GetRasterBand(1).DataType #gdalconst.GDT_Float32
+        dtype = src.GetRasterBand(1).DataType
 
         dst = Raster._createDataset(cols, rows, 1, dtype)
 
@@ -820,15 +850,11 @@ class Raster:
             resample_technique = gdal.GRA_Bilinear
 
         if option == 1:
-            # GET PROJECTION
             src_proj = src.GetProjection()
-            # GET THE GEOTRANSFORM
             src_gt = src.GetGeoTransform()
-            # GET NUMBER OF columns
             src_x = src.RasterXSize
-            # get number of rows
             src_y = src.RasterYSize
-            # spatial ref
+
             src_sr = osr.SpatialReference(wkt=src_proj)
             src_epsg = src_sr.GetAttrValue("AUTHORITY", 1)
 
@@ -889,7 +915,7 @@ class Raster:
             cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
             rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
-            dtype = src.GetRasterBand(1).DataType  # gdalconst.GDT_Float32
+            dtype = src.GetRasterBand(1).DataType
             dst = Raster._createDataset(cols, rows, 1, dtype)
 
             # new geotransform
@@ -1756,13 +1782,9 @@ class Raster:
             )
 
         # we need number of rows and cols from src A and data from src B to store both in dst
-        src_proj = src.GetProjection()
-        src_gt = src.GetGeoTransform()
-        src_x = src.RasterXSize
-        src_y = src.RasterYSize
-        dtype = src.GetRasterBand(1).DataType
+        cols, rows, prj, bands, gt, no_data_value, dtypes = Raster.getRasterDetails(src)
 
-        src_sr = osr.SpatialReference(wkt=src_proj)
+        src_sr = osr.SpatialReference(wkt=prj)
         src_epsg = int(src_sr.GetAttrValue("AUTHORITY", 1))
 
         # reproject the RasterB to match the projection of alignment_src
@@ -1770,17 +1792,17 @@ class Raster:
 
         # create a new raster
         dst = Raster._createDataset(
-            src_x, src_y, 1, dtype, driver="MEM"
+            cols, rows, 1, dtypes[0], driver="MEM"
         )
         # set the geotransform
-        dst.SetGeoTransform(src_gt)
+        dst.SetGeoTransform(gt)
         # set the projection
         dst.SetProjection(src_sr.ExportToWkt())
         # set the no data value
         no_data_value = src.GetRasterBand(1).GetNoDataValue()
         dst = Raster.setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
-        resample_technique = gdal.GRA_NearestNeighbour  # gdal.GRA_NearestNeighbour
+        resample_technique = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
         gdal.ReprojectImage(
             reprojected_RasterB,

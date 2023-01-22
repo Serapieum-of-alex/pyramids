@@ -17,6 +17,14 @@ def test_GetRasterData(
     assert np.isclose(src_no_data_value, nodataval, rtol=0.001)
     assert isinstance(arr, np.ndarray)
 
+def test_get_raster_details(src: Dataset, src_shape: tuple):
+    cols, rows, prj, bands, gt, no_data_value, dtypes= Raster.getRasterDetails(src)
+    assert cols == src_shape[1]
+    assert rows == src_shape[0]
+    assert isinstance(no_data_value, list)
+    assert isinstance(dtypes, list)
+    assert isinstance(gt, tuple)
+
 
 def test_GetProjectionData(
     src: Dataset,
