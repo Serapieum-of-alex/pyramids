@@ -34,8 +34,8 @@ def vector_mask_path() -> str:
 
 
 @pytest.fixture(scope="session")
-def vector_mask_gdf() -> GeoDataFrame:
-    return gpd.read_file("tests/data/mask.geojson")
+def vector_mask_gdf(vector_mask_path: str) -> GeoDataFrame:
+    return gpd.read_file(vector_mask_path)
 
 
 @pytest.fixture(scope="session")

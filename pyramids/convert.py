@@ -418,7 +418,7 @@ class Convert:
         vector: Union[str, GeoDataFrame],
         raster: Union[str, Dataset],
         path: str = None,
-        vector_field = None,
+        vector_field=None,
     ) -> Union[None, Dataset]:
         """Covert a vector into raster.
 
@@ -551,7 +551,7 @@ class Convert:
             return gdf
 
     @staticmethod
-    def rasterToDataframe(src: str, vector=None) -> DataFrame:
+    def rasterToDataframe(src: str, vector: Union[str, GeoDataFrame]=None) -> DataFrame:
         """Convert a raster to a DataFrame.
 
             The function do the following
@@ -564,8 +564,8 @@ class Convert:
         ----------
         src : [str/gdal Dataset]
             Path to raster file.
-        vector : Optional[str]
-            path to vector file. If given, it will be used to clip the raster
+        vector : Optional[GeoDataFrame/str]
+            GeoDataFrame for the vector file path to vector file. If given, it will be used to clip the raster
 
         Returns
         -------
@@ -586,11 +586,14 @@ class Convert:
             new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}")
 
             # read the vector with geopandas
-            gdf = Vector.openVector(vector, geodataframe=True)
-            # add a unique value for each row to use it to rasterize the vector
-            gdf["burn_value"] = list(range(1, len(gdf) + 1))
-            # save the new vector to disk to read it with ogr later
-            gdf.to_file(new_vector_path, driver="GeoJSON")
+            if isinstance(vector, str):
+                gdf = Vector.openVector(vector, geodataframe=True)
+            elif isinstance(vector, GeoDataFrame):
+                gdf = vector
+                # add a unique value for each row to use it to rasterize the vector
+                gdf["burn_value"] = list(range(1, len(gdf) + 1))
+                # save the new vector to disk to read it with ogr later
+                gdf.to_file(new_vector_path, driver="GeoJSON")
 
             # rasterize the vector by burning the unique values as cell values.
             # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")

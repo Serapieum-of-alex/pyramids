@@ -142,6 +142,13 @@ class TestRasterToDataFrame:
     def test_raster_to_dataframe_without_mask(
         self, raster_to_df_path: str, raster_to_df_arr: np.ndarray
     ):
+        """the input raster is given as a string path on disk.
+
+        Parameters
+        ----------
+        raster_to_df_path: path to raster on disk
+        raster_to_df_arr: array for comparison
+        """
         df = Convert.rasterToDataframe(raster_to_df_path)
         assert isinstance(df, DataFrame)
         rows, cols = raster_to_df_arr.shape
@@ -151,10 +158,39 @@ class TestRasterToDataFrame:
             "values in the array"
         )
 
-    def test_raster_to_dataframe_with_mask(
+    def test_raster_to_dataframe_with_mask_as_path_input(
         self, raster_to_df_path, vector_mask_path, rasterized_mask_values: np.ndarray
     ):
+        """the input mask vector is given as a string path on disk.
+
+        Parameters
+        ----------
+        raster_to_df_path: path on disk
+        vector_mask_path: path on disk
+        rasterized_mask_values: for camparioson
+        """
         df = Convert.rasterToDataframe(raster_to_df_path, vector_mask_path)
+        assert isinstance(df, DataFrame)
+        assert len(df) == len(rasterized_mask_values)
+        assert np.array_equal(df["Band_1"].values, rasterized_mask_values), (
+            "the extracted values in the dataframe "
+            "does not "
+            "equa the real "
+            "values in the array"
+        )
+
+    def test_raster_to_dataframe_with_gdf_mask(
+        self, raster_to_df_path: str, vector_mask_gdf: GeoDataFrame, rasterized_mask_values: np.ndarray
+    ):
+        """the input mask vector is given as geodataframe.
+
+        Parameters
+        ----------
+        raster_to_df_path:  path on disk
+        vector_mask_gdf: geodataframe for the vector mask
+        rasterized_mask_values: array for comparison
+        """
+        df = Convert.rasterToDataframe(raster_to_df_path, vector_mask_gdf)
         assert isinstance(df, DataFrame)
         assert len(df) == len(rasterized_mask_values)
         assert np.array_equal(df["Band_1"].values, rasterized_mask_values), (
