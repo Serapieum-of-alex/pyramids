@@ -1,3 +1,4 @@
+from typing import List
 import os
 
 # import geopandas as gpd
@@ -343,3 +344,13 @@ class TestReadRastersFolder:
             rasters_folder_dim[1],
             rasters_folder_between_dates_raster_number,
         )
+
+
+def test_merge(
+    merge_input_raster: List[str],
+    merge_output: str,
+):
+    Raster.gdal_merge(merge_input_raster, merge_output)
+    assert os.path.exists(merge_output)
+    src = gdal.Open(merge_output)
+    assert src.GetRasterBand(1).GetNoDataValue() == 0

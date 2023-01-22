@@ -1,5 +1,5 @@
 """GISpy contains python functions to handle raster data align them together based on a source raster, perform any algebric operation on cell's values.
-
+gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html
 @author: Mostafa
 """
 import datetime as dt
@@ -7,7 +7,7 @@ import json
 import os
 import zipfile
 from typing import Any, Dict, List, Tuple, Union
-
+from loguru import logger
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -18,6 +18,12 @@ from osgeo import gdal, gdalconst, osr
 from osgeo.gdal import Dataset
 from osgeo.osr import SpatialReference
 from rasterio.mask import mask as rio_mask
+try:
+    from osgeo_utils import gdal_merge
+except ModuleNotFoundError:
+    logger.warning(
+        "osgeo_utils module does not exist try install pip install osgeo-utils "
+    )
 
 from pyramids.utils import numpy_to_gdal_dtype
 from pyramids.vector import Vector
@@ -32,7 +38,7 @@ class Raster:
         pass
 
     @staticmethod
-    def openDataset(path: str, read_only=True):
+    def openDataset(path: str, read_only=True) -> Dataset:
         """Open a raster using GDAL.
 
         Parameters
@@ -66,7 +72,7 @@ class Raster:
         pixel_type: int,
         driver: str = "GTiff",
         path: str = None,
-    ):
+    ) -> Dataset:
         """Create GDAL driver.
 
         Parameters
@@ -102,8 +108,10 @@ class Raster:
                 path, cols, rows, bands, pixel_type
             )  # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
         else:
+            # for memory drivers
             dr = gdal.GetDriverByName(driver).Create("", cols, rows, bands, pixel_type)
         return dr
+
 
     @staticmethod
     def getRasterData(
@@ -165,7 +173,7 @@ class Raster:
         return epsg, geo
 
     @staticmethod
-    def getEPSG(src):
+    def getEPSG(src: Dataset) -> int:
         """GetEPSG.
 
             This function reads the projection of a GEOGCS file or tiff file
@@ -219,7 +227,7 @@ class Raster:
         return sr
 
     @staticmethod
-    def setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE):
+    def setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE) -> Dataset:
         """Set the no data value in a all raster bands.
 
         Parameters
@@ -251,7 +259,7 @@ class Raster:
         return src
 
     @staticmethod
-    def getBandNames(src):
+    def getBandNames(src: Dataset) -> List[str]:
         """Get band names from band meta data if exists otherwise will return idex [1,2, ...]
 
         Parameters
@@ -284,7 +292,7 @@ class Raster:
         return names
 
     @staticmethod
-    def createEmptyDriver(src: Dataset, path: str, bands: int = 1, no_data_value=None):
+    def createEmptyDriver(src: Dataset, path: str, bands: int = 1, no_data_value=None) -> Dataset:
         """Create a new empty driver from another dataset.
 
         Parameters
@@ -920,7 +928,7 @@ class Raster:
         to_epsg: int = 3857,
         cell_size: int = [],
         resample_technique: str = "Nearest",
-    ):
+    ) -> Dataset:
         """ReprojectDataset.
 
         ReprojectDataset reprojects and resamples a folder of rasters to any projection
@@ -1299,7 +1307,7 @@ class Raster:
         output_path: str = "",
         save: bool = False,
         # Resample: bool=True
-    ):
+    ) -> Dataset:
         """crop.
 
             crop method crops a raster using another raster (both rasters does not have to be aligned).
@@ -1394,7 +1402,7 @@ class Raster:
         shapefile_path: str,
         save: bool = False,
         output_path: str = None,
-    ):
+    ) -> Dataset:
         """ClipRasterWithPolygon.
 
             ClipRasterWithPolygon method clip a raster using polygon shapefile
@@ -1542,7 +1550,7 @@ class Raster:
         poly: Union[GeoDataFrame, str],
         save: bool = False,
         output_path: str = "masked.tif",
-    ):
+    ) -> Dataset:
         """Clip2.
 
             Clip function takes a rasterio object and clip it with a given geodataframe
@@ -1630,7 +1638,7 @@ class Raster:
         return out_img, out_meta
 
     @staticmethod
-    def changeNoDataValue(src: Dataset, dst: Dataset):
+    def changeNoDataValue(src: Dataset, dst: Dataset) -> Dataset:
         """ChangeNoDataValue.
 
         ChangeNoDataValue changes the cells of nodata value in a dst raster to match
@@ -1783,8 +1791,14 @@ class Raster:
     @staticmethod
     def nearestNeighbour(
         array: np.ndarray, nodatavalue: Union[float, int], rows: list, cols: list
-    ):
-        """nearestNeighbour filles cells of a given indices in rows and cols with the value of the nearest neighbour. as the raster grid is square so the 4 perpendicular direction are of the same close so the function give priority to the right then left then bottom then top and the same for 45 degree inclined direction right bottom then left bottom then left Top then right Top.
+    ) -> np.ndarray:
+        """nearestNeighbour
+
+            - nearestNeighbour fills the cells of a given indices in rows and cols with the value of the nearest
+            neighbour.
+            - Ss the raster grid is square so the 4 perpendicular direction are of the same close so the function
+            gives priority to the right then left then bottom then top and the same for 45 degree inclined direction
+            right bottom then left bottom then left Top then right Top.
 
         Parameters
         ----------
@@ -1815,8 +1829,10 @@ class Raster:
             raise TypeError(
                 "src should be read using gdal (gdal dataset please read it using gdal library) "
             )
-        assert type(rows) == list, "rows input has to be of type list"
-        assert type(cols) == list, "cols input has to be of type list"
+        if not isinstance(rows, list):
+            raise TypeError("rows input has to be of type list")
+        if not isinstance(cols, list):
+            raise TypeError("cols input has to be of type list")
 
         #    array=raster.ReadAsArray()
         #    nodatavalue=np.float32(raster.GetRasterBand(1).GetNoDataValue())
@@ -1964,7 +1980,7 @@ class Raster:
         return str(inp) + "  "
 
     @staticmethod
-    def writeASCII(ascii_file: str, geotransform: tuple, arr: np.ndarray):
+    def writeASCII(ascii_file: str, geotransform: tuple, arr: np.ndarray) -> None:
         """writeASCII.
 
             writeASCII reads an ASCII file the spatial information
@@ -2021,7 +2037,61 @@ class Raster:
         File.close()
 
     @staticmethod
-    def mosaic(raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"):
+    def gdal_merge(
+            src: List[str],
+            dst: str,
+            no_data_value: Union[float, int, str] = "0",
+            init: Union[float, int, str] = "nan",
+            n: Union[float, int, str] = "nan",
+    ):
+        """merge.
+
+            merges group of rasters into one raster
+
+        Parameters
+        ----------
+        src: List[str]
+            list of the path to all input raster
+        dst: [str]
+            path to the output raster
+        no_data_value: [float/int]
+            Assign a specified nodata value to output bands.
+        init: [float/int]
+            Pre-initialize the output image bands with these values. However, it is not marked as the nodata value
+            in the output file. If only one value is given, the same value is used in all the bands.
+        n: [float/int]
+            Ignore pixels from files being merged in with this pixel value.
+
+        Returns
+        -------
+        None
+        """
+        # run the command
+        # cmd = "gdal_merge.py -o merged_image_1.tif"
+        # subprocess.call(cmd.split() + file_list)
+        # vrt = gdal.BuildVRT("merged.vrt",file_list)
+        # src = gdal.Translate("merged_image.tif",vrt)
+
+        parameters = (
+                ["", "-o", dst]
+                + src
+                + [
+                    "-co",
+                    "COMPRESS=LZW",
+                    "-init",
+                    str(init),
+                    "-a_nodata",
+                    str(no_data_value),
+                    "-n",
+                    str(n),
+                ]
+        )  # '-separate'
+        gdal_merge.main(parameters)
+
+
+
+    @staticmethod
+    def rasterio_merge(raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"):
         """mosaic.
 
         Parameters
