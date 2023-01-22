@@ -13,9 +13,11 @@ import numpy as np
 import pandas as pd
 import pyproj
 import rasterio
+from geopandas import GeoDataFrame
 from geopandas.geodataframe import GeoDataFrame
+from shapely.geometry.polygon import Polygon
 from loguru import logger
-from osgeo import gdal, gdalconst, osr
+from osgeo import gdal, osr  # gdalconst,
 from osgeo.gdal import Dataset
 from osgeo.osr import SpatialReference
 from rasterio.mask import mask as rio_mask
@@ -417,16 +419,16 @@ class Raster:
         arr = src.ReadAsArray()
 
         # calculate the coordinates of all cells
-        x = np.array([x_init + cell_size_x * (i + add_value) for i in range(rows)])
-        y = np.array([y_init + cell_size_y * (i + add_value) for i in range(cols)])
-        all_cells = [[(xi, yi) for xi in x] for yi in y]
+        x = np.array([x_init + cell_size_x * (i + add_value) for i in range(cols)])
+        y = np.array([y_init + cell_size_y * (i + add_value) for i in range(rows)])
+        all_cells = [[(xi, yi) for yi in y] for xi in x]
 
         if mask:
             # execlude the no_data_values cells.
             masked_cells = []
 
-            for i in range(len(x)): # - 1
-                for j in range(len(y)): # - 1
+            for i in range(rows): # - 1
+                for j in range(cols): # - 1
                     if not np.isclose(arr[i, j], no_val, rtol=0.001):
                         masked_cells.append(all_cells[j][i])
 
@@ -439,6 +441,79 @@ class Raster:
             coords = np.array([x, y]).transpose()
 
         return coords
+
+    @staticmethod
+    def getCellPolygons(src: Dataset, mask=False) -> GeoDataFrame:
+        """Get a polygon shapely geometry for the raster cells
+
+        Parameters
+        ----------
+        src: [Dataset]
+            Raster dataset
+        mask: [bool]
+            True to get the polygons of the cells inside the domain.
+
+        Returns
+        -------
+        GeoDataFrame:
+            with two columns, geometry, and id
+        """
+        coords = Raster.getCellCoords(src, location="corner", mask=mask)
+        cell_size = src.GetGeoTransform()[1]
+        epsg = Raster.getEPSG(src)
+        x = np.zeros((coords.shape[0], 4))
+        y = np.zeros((coords.shape[0], 4))
+        # fill the top left corner point
+        x[:, 0] = coords[:,0]
+        y[:, 0] = coords[:, 1]
+        # fill the top right
+        x[:, 1] = x[:, 0] + cell_size
+        y[:, 1] = y[:, 0]
+        # fill the bottom right
+        x[:, 2] = x[:, 0] + cell_size
+        y[:, 2] = y[:, 0] - cell_size
+
+        # fill the bottom left
+        x[:, 3] = x[:, 0]
+        y[:, 3] = y[:, 0] - cell_size
+
+        coords_tuples = [list(zip(x[:,i], y[:, i])) for i in range(4)]
+        polys_coords = [(coords_tuples[0][i], coords_tuples[1][i], coords_tuples[2][i], coords_tuples[3][i]) for i in
+                  range(len(x))]
+        polygons = list(map(Vector.createPolygon, polys_coords))
+        gdf = gpd.GeoDataFrame(geometry=polygons)
+        gdf.set_crs(epsg=epsg, inplace=True)
+        gdf["id"] = gdf.index
+        gdf.to_file("tests/data/testttttttttttt.geojson")
+        return gdf
+
+
+    @staticmethod
+    def getCellPoints(src: Dataset, mask=False) -> GeoDataFrame:
+        """Get a point shapely geometry for the raster cells center point
+
+        Parameters
+        ----------
+        src: [Dataset]
+            Raster dataset
+        mask: [bool]
+            True to get the polygons of the cells inside the domain.
+
+        Returns
+        -------
+        GeoDataFrame:
+            with two columns, geometry, and id
+        """
+        coords = Raster.getCellCoords(src, location="center", mask=mask)
+        epsg = Raster.getEPSG(src)
+
+        coords_tuples = list(zip(coords[:, 0], coords[:, 1]))
+        points = Vector.createPoint(coords_tuples)
+        gdf = gpd.GeoDataFrame(geometry=points)
+        gdf.set_crs(epsg=epsg, inplace=True)
+        gdf["id"] = gdf.index
+        return gdf
+
 
     @staticmethod
     def saveRaster(src: Dataset, path: str) -> None:
