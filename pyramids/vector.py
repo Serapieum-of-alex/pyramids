@@ -68,7 +68,9 @@ class Vector:
     #     return catalog
 
     @staticmethod
-    def openVector(path: str, geodataframe: bool = False, read_only: bool = True) -> DataSource:
+    def openVector(
+        path: str, geodataframe: bool = False, read_only: bool = True
+    ) -> DataSource:
         """Open a vector dataset using OGR or GeoPandas.
 
         Parameters

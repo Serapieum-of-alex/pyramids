@@ -1,6 +1,6 @@
 import gzip
 import os
-
+import numpy as np
 from osgeo import gdal, gdal_array, ogr
 from osgeo.gdal import Dataset
 
@@ -34,7 +34,7 @@ NUMPY_GDAL_DATA_TYPES = {
 }
 
 
-def numpy_to_gdal_dtype(arr):
+def numpy_to_gdal_dtype(arr: np.ndarray):
     """mapping functiuon between numpy and gdal data types.
 
     Parameters

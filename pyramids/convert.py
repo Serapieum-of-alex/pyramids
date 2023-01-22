@@ -415,10 +415,10 @@ class Convert:
 
     @staticmethod
     def polygonToRaster(
-            vector: Union[str, GeoDataFrame],
-            raster: Union[str, Dataset],
-            path: str = None,
-            vector_field=None
+        vector: Union[str, GeoDataFrame],
+        raster: Union[str, Dataset],
+        path: str = None,
+        vector_field = None,
     ) -> Union[None, Dataset]:
         """Covert a vector into raster.
 
@@ -550,7 +550,6 @@ class Convert:
             gdf = Convert._ogrDataSourceToGeoDF(dst_ds)
             return gdf
 
-
     @staticmethod
     def rasterToDataframe(src: str, vector=None) -> DataFrame:
         """Convert a raster to a DataFrame.
@@ -597,7 +596,7 @@ class Convert:
             # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
             rasterized_vector = Convert.polygonToRaster(
                 new_vector_path, src, vector_field="burn_value"
-            )# rasterized_vector_path,
+            )  # rasterized_vector_path,
 
             # Loop over mask values to extract pixels.
             tile_dfs = []  # DataFrames of each tile.
@@ -691,7 +690,6 @@ class Convert:
         gdf = gpd.read_file(new_vector_path)
         return gdf
 
-
     @staticmethod
     def _gdfToOgrDataSource(gdf: GeoDataFrame) -> DataSource:
         """Convert ogr DataSource object to a GeoDataFrame.
@@ -712,4 +710,3 @@ class Convert:
         ds = Vector.openVector(new_vector_path)
         ds = Vector.copyDriverToMemory(ds)
         return ds
-

@@ -33,14 +33,14 @@ class TestPolygonize:
 
 class TestPolygonToRaster:
     def test_disk_inputs_and_outputs(
-            self,
-            vector_mask_path,
-            raster_to_df_path,
-            raster_to_df_dataset: Dataset,
-            rasterized_mask_path: str,
-            rasterized_mask_array: np.ndarray,
+        self,
+        vector_mask_path,
+        raster_to_df_path,
+        raster_to_df_dataset: Dataset,
+        rasterized_mask_path: str,
+        rasterized_mask_array: np.ndarray,
     ):
-        """All inputs are in disk
+        """All inputs are in disk.
 
             - The inputs to the function are in disk.
             - The output will be written to disk.
@@ -53,9 +53,13 @@ class TestPolygonToRaster:
         rasterized_mask_path
         rasterized_mask_array
         """
-        src = Convert.polygonToRaster(vector_mask_path, raster_to_df_path, rasterized_mask_path)
-        assert os.path.exists(rasterized_mask_path), "The output raster should have been saved to disk at the " \
-                                                     f"following path: {raster_to_df_path}"
+        src = Convert.polygonToRaster(
+            vector_mask_path, raster_to_df_path, rasterized_mask_path
+        )
+        assert os.path.exists(rasterized_mask_path), (
+            "The output raster should have been saved to disk at the "
+            f"following path: {raster_to_df_path}"
+        )
         src = gdal.Open(rasterized_mask_path)
         assert Raster.getEPSG(src) == 32618
         geo = src.GetGeoTransform()
@@ -66,16 +70,15 @@ class TestPolygonToRaster:
         values = arr[arr[:, :] == 1.0]
         assert values.shape[0] == 16
 
-
     def test_gdf_input(
-            self,
-            vector_mask_gdf:GeoDataFrame,
-            raster_to_df_path: str,
-            raster_to_df_dataset: Dataset,
-            rasterized_mask_path: str,
-            rasterized_mask_array: np.ndarray,
+        self,
+        vector_mask_gdf: GeoDataFrame,
+        raster_to_df_path: str,
+        raster_to_df_dataset: Dataset,
+        rasterized_mask_path: str,
+        rasterized_mask_array: np.ndarray,
     ):
-        """Geodataframe input polygon
+        """Geodataframe input polygon.
 
             - The inputs to the function are in disk.
             - The output will be written to disk.
@@ -88,9 +91,13 @@ class TestPolygonToRaster:
         rasterized_mask_path
         rasterized_mask_array
         """
-        src = Convert.polygonToRaster(vector_mask_gdf, raster_to_df_path, rasterized_mask_path)
-        assert os.path.exists(rasterized_mask_path), "The output raster should have been saved to disk at the " \
-                                                     f"following path: {raster_to_df_path}"
+        src = Convert.polygonToRaster(
+            vector_mask_gdf, raster_to_df_path, rasterized_mask_path
+        )
+        assert os.path.exists(rasterized_mask_path), (
+            "The output raster should have been saved to disk at the "
+            f"following path: {raster_to_df_path}"
+        )
         src = gdal.Open(rasterized_mask_path)
         assert Raster.getEPSG(src) == 32618
         geo = src.GetGeoTransform()
@@ -102,13 +109,13 @@ class TestPolygonToRaster:
         assert values.shape[0] == 16
 
     def test_return_output(
-            self,
-            vector_mask_path: str,
-            raster_to_df_path: str,
-            raster_to_df_dataset: Dataset,
-            rasterized_mask_array: np.ndarray,
+        self,
+        vector_mask_path: str,
+        raster_to_df_path: str,
+        raster_to_df_dataset: Dataset,
+        rasterized_mask_array: np.ndarray,
     ):
-        """Geodataframe input polygon
+        """Geodataframe input polygon.
 
             - The inputs to the function are in disk,
             - The output will be returned as gdal.Dataset.

@@ -1,8 +1,8 @@
 from pathlib import Path
 
+import geopandas as gpd
 import numpy as np
 import pytest
-import geopandas as gpd
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
 from osgeo.gdal import Dataset
