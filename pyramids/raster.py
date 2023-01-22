@@ -1,5 +1,5 @@
-"""GISpy contains python functions to handle raster data align them together based on a source raster, perform any algebric operation on cell's values.
-gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html
+"""GISpy contains python functions to handle raster data align them together based on a source raster, perform any algebric operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
+
 @author: Mostafa
 """
 import datetime as dt
@@ -7,17 +7,19 @@ import json
 import os
 import zipfile
 from typing import Any, Dict, List, Tuple, Union
-from loguru import logger
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pyproj
 import rasterio
 from geopandas.geodataframe import GeoDataFrame
+from loguru import logger
 from osgeo import gdal, gdalconst, osr
 from osgeo.gdal import Dataset
 from osgeo.osr import SpatialReference
 from rasterio.mask import mask as rio_mask
+
 try:
     from osgeo_utils import gdal_merge
 except ModuleNotFoundError:
@@ -57,7 +59,7 @@ class Raster:
         access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
         src = gdal.OpenShared(path, access)
         if src is None:
-            raise ValueError (
+            raise ValueError(
                 f"The raster path: {path} you enter gives a None gdal Object check the read premission, maybe "
                 f"the raster is being used by other software"
             )
@@ -111,7 +113,6 @@ class Raster:
             # for memory drivers
             dr = gdal.GetDriverByName(driver).Create("", cols, rows, bands, pixel_type)
         return dr
-
 
     @staticmethod
     def getRasterData(
@@ -292,7 +293,9 @@ class Raster:
         return names
 
     @staticmethod
-    def createEmptyDriver(src: Dataset, path: str, bands: int = 1, no_data_value=None) -> Dataset:
+    def createEmptyDriver(
+        src: Dataset, path: str, bands: int = 1, no_data_value=None
+    ) -> Dataset:
         """Create a new empty driver from another dataset.
 
         Parameters
@@ -609,7 +612,9 @@ class Raster:
                     new_array[i, j] = fun(src_array[i, j])
 
         # create the output raster
-        dst = Raster._createDataset(src_col, src_row, 1, gdalconst.GDT_Float32, driver="MEM")
+        dst = Raster._createDataset(
+            src_col, src_row, 1, gdalconst.GDT_Float32, driver="MEM"
+        )
         # set the geotransform
         dst.SetGeoTransform(src_gt)
         # set the projection
@@ -1188,7 +1193,9 @@ class Raster:
 
         # if the dst is a raster
         if isinstance(src, gdal.Dataset):
-            dst = Raster._createDataset(col, row, 1, gdalconst.GDT_Float32, driver="MEM")
+            dst = Raster._createDataset(
+                col, row, 1, gdalconst.GDT_Float32, driver="MEM"
+            )
             # but with lot of computation
             # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
             # are aligned so they have the sam gt
@@ -1686,7 +1693,9 @@ class Raster:
                     dst_array[i, j] = src_noval
 
         # dst_array[dst_array==dst_noval]=src_noval
-        dst = Raster._createDataset(dst_col, dst_row, 1, gdalconst.GDT_Float32, driver="MEM")
+        dst = Raster._createDataset(
+            dst_col, dst_row, 1, gdalconst.GDT_Float32, driver="MEM"
+        )
 
         # set the geotransform
         dst.SetGeoTransform(dst_gt)
@@ -1767,7 +1776,9 @@ class Raster:
         reprojected_RasterB = Raster.projectRaster(RasterB, src_epsg)
 
         # create a new raster
-        dst = Raster._createDataset(src_x, src_y, 1, gdalconst.GDT_Float32, driver="MEM")
+        dst = Raster._createDataset(
+            src_x, src_y, 1, gdalconst.GDT_Float32, driver="MEM"
+        )
         # set the geotransform
         dst.SetGeoTransform(src_gt)
         # set the projection
@@ -1792,7 +1803,7 @@ class Raster:
     def nearestNeighbour(
         array: np.ndarray, nodatavalue: Union[float, int], rows: list, cols: list
     ) -> np.ndarray:
-        """nearestNeighbour
+        """nearestNeighbour.
 
             - nearestNeighbour fills the cells of a given indices in rows and cols with the value of the nearest
             neighbour.
@@ -2038,11 +2049,11 @@ class Raster:
 
     @staticmethod
     def gdal_merge(
-            src: List[str],
-            dst: str,
-            no_data_value: Union[float, int, str] = "0",
-            init: Union[float, int, str] = "nan",
-            n: Union[float, int, str] = "nan",
+        src: List[str],
+        dst: str,
+        no_data_value: Union[float, int, str] = "0",
+        init: Union[float, int, str] = "nan",
+        n: Union[float, int, str] = "nan",
     ):
         """merge.
 
@@ -2073,25 +2084,25 @@ class Raster:
         # src = gdal.Translate("merged_image.tif",vrt)
 
         parameters = (
-                ["", "-o", dst]
-                + src
-                + [
-                    "-co",
-                    "COMPRESS=LZW",
-                    "-init",
-                    str(init),
-                    "-a_nodata",
-                    str(no_data_value),
-                    "-n",
-                    str(n),
-                ]
+            ["", "-o", dst]
+            + src
+            + [
+                "-co",
+                "COMPRESS=LZW",
+                "-init",
+                str(init),
+                "-a_nodata",
+                str(no_data_value),
+                "-n",
+                str(n),
+            ]
         )  # '-separate'
         gdal_merge.main(parameters)
 
-
-
     @staticmethod
-    def rasterio_merge(raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"):
+    def rasterio_merge(
+        raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"
+    ):
         """mosaic.
 
         Parameters

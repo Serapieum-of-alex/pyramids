@@ -5,15 +5,16 @@ import tempfile
 import uuid
 from typing import Any, Dict
 
+import geopandas as gpd
 import netCDF4
 import numpy as np
 import pandas as pd
-import geopandas as gpd
-from pandas import DataFrame
+from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, ogr, osr
 from osgeo.gdal import Dataset
 from osgeo.ogr import DataSource
-from geopandas.geodataframe import GeoDataFrame
+from pandas import DataFrame
+
 # import fiona
 from pyramids.array import getPixels
 from pyramids.netcdf import NC
@@ -633,7 +634,7 @@ class Convert:
 
     @staticmethod
     def ogrDataSourceToGeoDF(ds: DataSource) -> GeoDataFrame:
-        """Convert ogr DataSource object to a GeoDataFrame
+        """Convert ogr DataSource object to a GeoDataFrame.
 
         Parameters
         ----------
@@ -669,4 +670,3 @@ class Convert:
         Vector.saveVector(ds, new_vector_path)
         gdf = gpd.read_file(new_vector_path)
         return gdf
-
