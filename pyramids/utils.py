@@ -3,6 +3,7 @@ import os
 
 from osgeo import gdal, gdal_array, ogr
 from osgeo.gdal import Dataset
+
 # mapping between gdal type and ogr field type
 GDAL_OGR_DATA_TYPES = {
     gdal.GDT_Unknown: ogr.OFTInteger,
@@ -52,8 +53,9 @@ def numpy_to_gdal_dtype(arr):
 
     # return GDAL_NUMPY_DATA_TYPES[list(NUMPY_GDAL_DATA_TYPES.keys())[loc]]
 
-def gdal_to_ogr_dtype(src: Dataset, band : int = 1):
-    """return the coresponding data type grom ogr to each gdal data type
+
+def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
+    """return the coresponding data type grom ogr to each gdal data type.
 
     Parameters
     ----------
@@ -70,6 +72,7 @@ def gdal_to_ogr_dtype(src: Dataset, band : int = 1):
     loc = list(GDAL_OGR_DATA_TYPES.keys()).index(band.DataType) + 1
     key = list(GDAL_OGR_DATA_TYPES.keys())[loc]
     return GDAL_OGR_DATA_TYPES[key]
+
 
 def extractFromGZ(input_file: str, output_file: str, delete=False):
     """ExtractFromGZ method extract data from the zip/.gz files, save the data.
