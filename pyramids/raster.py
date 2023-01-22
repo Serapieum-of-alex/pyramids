@@ -108,8 +108,8 @@ class Raster:
                     )
 
             src = gdal.GetDriverByName(driver).Create(
-                path, cols, rows, bands, pixel_type
-            )  # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
+                path, cols, rows, bands, pixel_type, ['COMPRESS=LZW']
+            )  # LZW is a lossless compression method achieve the highst compression but with lot of computation
         else:
             # for memory drivers
             driver = "MEM"
@@ -417,7 +417,7 @@ class Raster:
 
     @staticmethod
     def createRaster(
-        path: str = "",
+        path: str = None,
         arr: Union[str, Dataset, np.ndarray] = "",
         geo: Union[str, tuple] = "",
         epsg: Union[str, int] = "",
@@ -461,20 +461,19 @@ class Raster:
             if pd.isnull(nodatavalue):
                 nodatavalue = DEFAULT_NO_DATA_VALUE
 
-        if path == "":
+        if path is None:
             driver_type = "MEM"
-            compress = []
         else:
             if not isinstance(path, str):
                 raise TypeError("first parameter Path should be string")
 
             driver_type = "GTiff"
-            compress = ["COMPRESS=LZW"]
 
-        driver = gdal.GetDriverByName(driver_type)
-        dst_ds = driver.Create(
-            path, int(arr.shape[1]), int(arr.shape[0]), 1, gdal.GDT_Float32, compress
-        )
+        cols = int(arr.shape[1])
+        rows = int(arr.shape[0])
+        bands = 1
+        pixel_type = numpy_to_gdal_dtype(arr)
+        dst_ds = Raster._createDataset(cols, rows, bands, pixel_type, driver=driver_type, path=path)
 
         srse = Raster._createSRfromEPSG(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
@@ -483,7 +482,7 @@ class Raster:
         dst_ds.SetGeoTransform(geo)
         dst_ds.GetRasterBand(1).WriteArray(arr)
 
-        if path == "":
+        if path is None:
             return dst_ds
         else:
             dst_ds = None
