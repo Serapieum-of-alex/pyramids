@@ -590,10 +590,11 @@ class Convert:
                 gdf = Vector.openVector(vector, geodataframe=True)
             elif isinstance(vector, GeoDataFrame):
                 gdf = vector
-                # add a unique value for each row to use it to rasterize the vector
-                gdf["burn_value"] = list(range(1, len(gdf) + 1))
-                # save the new vector to disk to read it with ogr later
-                gdf.to_file(new_vector_path, driver="GeoJSON")
+
+            # add a unique value for each row to use it to rasterize the vector
+            gdf["burn_value"] = list(range(1, len(gdf) + 1))
+            # save the new vector to disk to read it with ogr later
+            gdf.to_file(new_vector_path, driver="GeoJSON")
 
             # rasterize the vector by burning the unique values as cell values.
             # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
