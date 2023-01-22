@@ -1,5 +1,6 @@
 # import numpy as np
 from typing import List, Tuple
+
 import geopandas as gpd
 import pytest
 from geopandas.geodataframe import GeoDataFrame
@@ -8,13 +9,16 @@ from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr
 from osgeo.ogr import DataSource
 
+
 @pytest.fixture(scope="module")
 def coordinates() -> List[Tuple[int, int]]:
     return [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
 
+
 @pytest.fixture(scope="module")
 def coordinates_wkt() -> str:
-    return 'POLYGON ((-106.64 24.0 0,-106.49 24.05 0,-106.49 24.01 0,-106.49 23.98 0))'
+    return "POLYGON ((-106.64 24.0 0,-106.49 24.05 0,-106.49 24.01 0,-106.49 23.98 0))"
+
 
 @pytest.fixture(scope="module")
 def create_vector_path() -> str:

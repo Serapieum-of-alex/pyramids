@@ -5,7 +5,7 @@
 
 import json
 import warnings
-from typing import Dict, Union, Tuple, List
+from typing import Dict, List, Tuple, Union
 
 import geopandas as gpd
 import geopy.distance as distance

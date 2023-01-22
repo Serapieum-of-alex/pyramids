@@ -15,12 +15,12 @@ import pyproj
 import rasterio
 from geopandas import GeoDataFrame
 from geopandas.geodataframe import GeoDataFrame
-from shapely.geometry.polygon import Polygon
 from loguru import logger
 from osgeo import gdal, osr  # gdalconst,
 from osgeo.gdal import Dataset
 from osgeo.osr import SpatialReference
 from rasterio.mask import mask as rio_mask
+from shapely.geometry.polygon import Polygon
 
 try:
     from osgeo_utils import gdal_merge
@@ -372,7 +372,9 @@ class Raster:
         return dst
 
     @staticmethod
-    def getCellCoords(src: Dataset, location: str = "center", mask: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+    def getCellCoords(
+        src: Dataset, location: str = "center", mask: bool = False
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """GetCoords.
 
         Returns the coordinates of the cell centres inside the domain (only the cells that
@@ -398,8 +400,10 @@ class Raster:
         # check the location parameter
         location = location.lower()
         if location not in ["center", "corner"]:
-            raise ValueError("The location parameter can have one of these values: 'center', 'corner', "
-                             f"but the value: {location} is given.")
+            raise ValueError(
+                "The location parameter can have one of these values: 'center', 'corner', "
+                f"but the value: {location} is given."
+            )
 
         if location == "center":
             # Adding 0.5*cell size to get the centre
@@ -407,10 +411,19 @@ class Raster:
         else:
             add_value = 0
         # Getting data for the whole grid
-        x_init, cell_size_x, xy_span, y_init, yy_span, cell_size_y = src.GetGeoTransform()
+        (
+            x_init,
+            cell_size_x,
+            xy_span,
+            y_init,
+            yy_span,
+            cell_size_y,
+        ) = src.GetGeoTransform()
 
         if cell_size_x != -1 * cell_size_y:
-            logger.warning(f"The given raster does not have a square cells, the cell size is {cell_size_x}*{cell_size_y} ")
+            logger.warning(
+                f"The given raster does not have a square cells, the cell size is {cell_size_x}*{cell_size_y} "
+            )
 
         rows, cols = src.ReadAsArray().shape
 
@@ -427,8 +440,8 @@ class Raster:
             # execlude the no_data_values cells.
             masked_cells = []
 
-            for i in range(rows): # - 1
-                for j in range(cols): # - 1
+            for i in range(rows):
+                for j in range(cols):
                     if not np.isclose(arr[i, j], no_val, rtol=0.001):
                         masked_cells.append(all_cells[j][i])
 
@@ -444,7 +457,7 @@ class Raster:
 
     @staticmethod
     def getCellPolygons(src: Dataset, mask=False) -> GeoDataFrame:
-        """Get a polygon shapely geometry for the raster cells
+        """Get a polygon shapely geometry for the raster cells.
 
         Parameters
         ----------
@@ -464,7 +477,7 @@ class Raster:
         x = np.zeros((coords.shape[0], 4))
         y = np.zeros((coords.shape[0], 4))
         # fill the top left corner point
-        x[:, 0] = coords[:,0]
+        x[:, 0] = coords[:, 0]
         y[:, 0] = coords[:, 1]
         # fill the top right
         x[:, 1] = x[:, 0] + cell_size
@@ -477,25 +490,34 @@ class Raster:
         x[:, 3] = x[:, 0]
         y[:, 3] = y[:, 0] - cell_size
 
-        coords_tuples = [list(zip(x[:,i], y[:, i])) for i in range(4)]
-        polys_coords = [(coords_tuples[0][i], coords_tuples[1][i], coords_tuples[2][i], coords_tuples[3][i]) for i in
-                  range(len(x))]
+        coords_tuples = [list(zip(x[:, i], y[:, i])) for i in range(4)]
+        polys_coords = [
+            (
+                coords_tuples[0][i],
+                coords_tuples[1][i],
+                coords_tuples[2][i],
+                coords_tuples[3][i],
+            )
+            for i in range(len(x))
+        ]
         polygons = list(map(Vector.createPolygon, polys_coords))
         gdf = gpd.GeoDataFrame(geometry=polygons)
         gdf.set_crs(epsg=epsg, inplace=True)
         gdf["id"] = gdf.index
-        gdf.to_file("tests/data/testttttttttttt.geojson")
         return gdf
 
-
     @staticmethod
-    def getCellPoints(src: Dataset, mask=False) -> GeoDataFrame:
-        """Get a point shapely geometry for the raster cells center point
+    def getCellPoints(
+        src: Dataset, location: str = "center", mask=False
+    ) -> GeoDataFrame:
+        """Get a point shapely geometry for the raster cells center point.
 
         Parameters
         ----------
         src: [Dataset]
             Raster dataset
+        location: [str]
+            location of the point, ["corner", "center"]. Default is "center".
         mask: [bool]
             True to get the polygons of the cells inside the domain.
 
@@ -504,7 +526,7 @@ class Raster:
         GeoDataFrame:
             with two columns, geometry, and id
         """
-        coords = Raster.getCellCoords(src, location="center", mask=mask)
+        coords = Raster.getCellCoords(src, location=location, mask=mask)
         epsg = Raster.getEPSG(src)
 
         coords_tuples = list(zip(coords[:, 0], coords[:, 1]))
@@ -513,7 +535,6 @@ class Raster:
         gdf.set_crs(epsg=epsg, inplace=True)
         gdf["id"] = gdf.index
         return gdf
-
 
     @staticmethod
     def saveRaster(src: Dataset, path: str) -> None:
@@ -684,9 +705,7 @@ class Raster:
         dtype = numpy_to_gdal_dtype(array)
         cols, rows, prj, _, gt, no_data_value, _ = Raster.getRasterDetails(src)
 
-        dst = Raster._createDataset(
-            cols, rows, bands, dtype, driver=driver, path=path
-        )
+        dst = Raster._createDataset(cols, rows, bands, dtype, driver=driver, path=path)
 
         dst.SetGeoTransform(gt)
         dst.SetProjection(prj)
@@ -2334,7 +2353,7 @@ class Raster:
 
     @staticmethod
     def rastersLike(src: Dataset, array: np.ndarray, path: List[str] = None):
-        """Create Raster like other source raster with a given array
+        """Create Raster like other source raster with a given array.
 
             - This function creates a Geotiff raster like another input raster, new raster will have the same
             projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number
