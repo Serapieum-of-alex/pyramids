@@ -16,7 +16,7 @@ class NC:
         pass
 
     @staticmethod
-    def ncDetails(nc: Dataset, var: str = None, time_var_name: str = None) -> Tuple:
+    def getNCDetails(nc: Dataset, var: str = None, time_var_name: str = None) -> Tuple:
         """ncDetails takes a netcdf Dataset and return the geottansform data of the bottom left corner.
 
         Parameters
