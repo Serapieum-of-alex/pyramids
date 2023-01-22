@@ -1,20 +1,39 @@
 import os
 import numpy as np
 import geopandas as gpd
-from geopandas.geodataframe import DataFrame
+from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo.gdal import Dataset
+from osgeo.ogr import DataSource
 
 from pyramids.raster import Raster
 from pyramids.convert import Convert
 
+class TestPolygonize:
+    def test_save_polygon_to_disk(
+            self,
+            test_image: Dataset,
+            polygonized_raster_path: str
+    ):
+        Convert.polygonize(test_image, polygonized_raster_path)
+        assert os.path.exists(polygonized_raster_path)
+        gdf = gpd.read_file(polygonized_raster_path)
+        assert len(gdf) == 4
+        assert all(gdf.geometry.geom_type == "Polygon")
+        os.remove(polygonized_raster_path)
 
-def test_polygonize(test_image: Dataset, polygonized_raster_path: str):
-    Convert.polygonize(test_image, polygonized_raster_path)
-    assert os.path.exists(polygonized_raster_path)
-    gdf = gpd.read_file(polygonized_raster_path)
-    assert len(gdf) == 4
-    assert all(gdf.geometry.geom_type == "Polygon")
-    os.remove(polygonized_raster_path)
+
+    def test_save_polygon_to_memory(
+            self,
+            test_image: Dataset,
+            polygonized_raster_path: str
+    ):
+        Convert.polygonize(test_image, driver="MEMORY")
+        assert os.path.exists(polygonized_raster_path)
+        gdf = gpd.read_file(polygonized_raster_path)
+        assert len(gdf) == 4
+        assert all(gdf.geometry.geom_type == "Polygon")
+        os.remove(polygonized_raster_path)
+
 
 def test_rasterize_vector(
         vector_mask_path,
@@ -59,3 +78,12 @@ class TestRasterToDataFrame:
                                                                            "does not " \
                                                                    "equa the real " \
                                                        "values in the array"
+
+class TestOgrDataSourceToGDF:
+    def test_1(
+            self,
+            data_source: DataSource,
+            ds_geodataframe: GeoDataFrame
+    ):
+        gdf = Convert.ogrDataSourceToGeoDF(data_source)
+        assert all(gdf == ds_geodataframe)

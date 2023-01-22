@@ -23,6 +23,11 @@ def data_source(test_vector_path: str) -> DataSource:
 
 
 @pytest.fixture(scope="module")
+def ds_geodataframe(test_vector_path: str) -> GeoDataFrame:
+    return gpd.read_file(test_vector_path)
+
+
+@pytest.fixture(scope="module")
 def gdf(test_vector_path: str) -> GeoDataFrame:
     return gpd.read_file(test_vector_path)
 

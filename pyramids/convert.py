@@ -12,7 +12,9 @@ import geopandas as gpd
 from pandas import DataFrame
 from osgeo import gdal, ogr, osr
 from osgeo.gdal import Dataset
-
+from osgeo.ogr import DataSource
+from geopandas.geodataframe import GeoDataFrame
+# import fiona
 from pyramids.array import getPixels
 from pyramids.netcdf import NC
 from pyramids.raster import Raster
@@ -480,7 +482,7 @@ class Convert:
     @staticmethod
     def polygonize(
         src: Dataset,
-        path: str,
+        path: str = None,
         band: int = 1,
         col_name: Any = "id",
         driver: str = "GeoJSON",
@@ -512,12 +514,12 @@ class Convert:
         band = src.GetRasterBand(band)
         prj = src.GetProjection()
         srs = osr.SpatialReference(wkt=prj)
-
-        dst_layername = path.split(".")[0].split("/")[-1]
+        if path is None:
+            dst_layername = "id"
+        else:
+            dst_layername = path.split(".")[0].split("/")[-1]
         # Todo: find a way to create a memory driver and make the polygonize function update the memory driver
         # Create a temporary directory for files.
-        temp_dir = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}.geojson")
-
         dst_ds = Vector.createDataSource(driver, path)
         dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
         dtype = gdal_to_ogr_dtype(src)
@@ -628,3 +630,43 @@ class Convert:
 
         # Return dropping any extra cols.
         return out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
+
+    @staticmethod
+    def ogrDataSourceToGeoDF(ds: DataSource) -> GeoDataFrame:
+        """Convert ogr DataSource object to a GeoDataFrame
+
+        Parameters
+        ----------
+        ds: [ogr.DataSource]
+            ogr DataSource
+
+        Returns
+        -------
+        GeoDataFrame
+        """
+        # # TODO: not complete yet the function needs to take an ogr.DataSource and then write it to disk and then read
+        # #  it using the gdal.OpenEx as below
+        # # but this way if i write the vector to disk i can just read it ysing geopandas as df directly.
+        # # https://gis.stackexchange.com/questions/227737/python-gdal-ogr-2-x-read-vectors-with-gdal-openex-or-ogr-open
+        #
+        # # read the vector using gdal not ogr
+        # ds = gdal.OpenEx(path)  # , gdal.OF_READONLY
+        # layer = ds.GetLayer(0)
+        # layer_name = layer.GetName()
+        # mempath = "/vsimem/test.geojson"
+        # # convert the vector read as a gdal dataset to memory
+        # # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.VectorTranslateOptions
+        # gdal.VectorTranslate(mempath, ds)  # , SQLStatement=f"SELECT * FROM {layer_name}", layerName=layer_name
+        # # reading the memory file using fiona
+        # f = fiona.open(mempath, driver='geojson')
+        # gdf = gpd.GeoDataFrame.from_features(f, crs=f.crs)
+
+        # till i manage to do the above way just write the ogr.DataSource to disk and then read it using geopandas
+
+        # Create a temporary directory for files.
+        temp_dir = tempfile.mkdtemp()
+        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        Vector.saveVector(ds, new_vector_path)
+        gdf = gpd.read_file(new_vector_path)
+        return gdf
+
