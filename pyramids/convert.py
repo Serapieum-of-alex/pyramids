@@ -414,7 +414,12 @@ class Convert:
             dst = None
 
     @staticmethod
-    def rasterize(vector: str, raster: str, out_path: str, vector_field=None):
+    def polygonToRaster(
+            vector: Union[str, GeoDataFrame],
+            raster: Union[str, Dataset],
+            path: str = None,
+            vector_field=None
+    ) -> Union[None, Dataset]:
         """Covert a vector into raster.
 
             - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
@@ -423,13 +428,13 @@ class Convert:
 
         Parameters
         ----------
+        vector : [str/ogr DataSource/GeoDataFrame]
+            vector path
         raster : [str/gdal Dataset]
             raster path, or gdal Dataset, the raster will only be used as a source for the geotransform (
             projection, rows, columns, location) data to be copied to the rasterized vector.
-        vector : [str/ogr DataSource]
-            vector path
-        out_path : [str]
-            Path for output raster. Format and Datatype are the same as ``ras``.
+        path : [str]
+            Path for output raster. if given the resulted raster will be saved to disk.
         vector_field : str or None
             Name of a field in the vector to burn values from. If None, all vector
             features are burned with a constant value of 1.
@@ -444,10 +449,20 @@ class Convert:
         else:
             src = raster
 
-        if isinstance(vector, str):
-            ds = Vector.openVector(vector)
+        if not isinstance(vector, GeoDataFrame):
+            # if the given vector is a path
+            if isinstance(vector, str):
+                ds = Vector.openVector(vector)
+            else:
+                # if the given vector is a ogr.DataSource
+                ds = vector
         else:
-            ds = vector
+            # if the given vector is a geodataframe, convert it to ogr datasource
+            ds = Convert._gdfToOgrDataSource(vector)
+            # then save it to disk and get the path
+            vector_path = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}.geojson")
+            vector.to_file(vector_path)
+            vector = vector_path
 
         # Check EPSG are same, if not reproject vector.
         src_epsg = Raster.getEPSG(src)
@@ -458,7 +473,7 @@ class Convert:
                 f"Raster and vector are not the same EPSG. {src_epsg} != {ds_epsg}"
             )
 
-        dr = Raster.createEmptyDriver(src, out_path, bands=1, no_data_value=0)
+        src = Raster.createEmptyDriver(src, path, bands=1, no_data_value=0)
 
         if vector_field is None:
             # Use a constant value for all features.
@@ -472,13 +487,15 @@ class Convert:
         rasterize_opts = gdal.RasterizeOptions(
             bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
         )
-        _ = gdal.Rasterize(dr, vector, options=rasterize_opts)
+        _ = gdal.Rasterize(src, vector, options=rasterize_opts)
 
-        dr.FlushCache()
-        dr = None
-        # read the rasterized vector
-        src = Raster.openDataset(out_path)
-        return src
+        if path:
+            src.FlushCache()
+            src = None
+        else:
+            # read the rasterized vector
+            # src = Raster.openDataset(path)
+            return src
 
     @staticmethod
     def rasterToPolygon(
@@ -577,10 +594,10 @@ class Convert:
             gdf.to_file(new_vector_path, driver="GeoJSON")
 
             # rasterize the vector by burning the unique values as cell values.
-            rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
-            rasterized_vector = Convert.rasterize(
-                new_vector_path, src, rasterized_vector_path, vector_field="burn_value"
-            )
+            # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
+            rasterized_vector = Convert.polygonToRaster(
+                new_vector_path, src, vector_field="burn_value"
+            )# rasterized_vector_path,
 
             # Loop over mask values to extract pixels.
             tile_dfs = []  # DataFrames of each tile.
@@ -676,7 +693,7 @@ class Convert:
 
 
     @staticmethod
-    def _gdfToOgrDataSourceT(gdf: GeoDataFrame) -> DataSource:
+    def _gdfToOgrDataSource(gdf: GeoDataFrame) -> DataSource:
         """Convert ogr DataSource object to a GeoDataFrame.
 
         Parameters
