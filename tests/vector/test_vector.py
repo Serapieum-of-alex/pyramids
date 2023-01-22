@@ -56,4 +56,4 @@ def test_save_vector(data_source: DataSource, test_save_vector_path: str):
     # read the vector to check it
     assert ogr.GetDriverByName("GeoJSON").Open(test_save_vector_path)
     # clean
-    os.path.remove(test_save_vector_path)
+    os.remove(test_save_vector_path)
