@@ -55,3 +55,5 @@ def test_save_vector(data_source: DataSource, test_save_vector_path: str):
     assert os.path.exists(test_save_vector_path), "The vector file does not exist"
     # read the vector to check it
     assert ogr.GetDriverByName("GeoJSON").Open(test_save_vector_path)
+    # clean
+    os.path.remove(test_save_vector_path)
