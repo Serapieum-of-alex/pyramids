@@ -71,7 +71,7 @@ class Raster:
         cols: int,
         rows: int,
         bands: int,
-        pixel_type: int,
+        dtype: int,
         driver: str = "MEM",
         path: str = None,
     ) -> Dataset:
@@ -91,7 +91,7 @@ class Raster:
             driver type ["GTiff", "MEM"].
         path: [str]
             path to save the GTiff driver.
-        pixel_type:
+        dtype:
             gdal data type, use the functions in the utils module to map data types from numpy or ogr to gdal.
 
         Returns
@@ -108,14 +108,13 @@ class Raster:
                     )
 
             src = gdal.GetDriverByName(driver).Create(
-                path, cols, rows, bands, pixel_type, ['COMPRESS=LZW']
+                path, cols, rows, bands, dtype, ["COMPRESS=LZW"]
             )  # LZW is a lossless compression method achieve the highst compression but with lot of computation
         else:
             # for memory drivers
             driver = "MEM"
-            src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, pixel_type)
+            src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, dtype)
         return src
-
 
     @staticmethod
     def getRasterData(
@@ -176,9 +175,9 @@ class Raster:
 
     @staticmethod
     def getRasterDetails(
-            src: Dataset
+        src: Dataset,
     ) -> Tuple[int, int, str, int, Tuple, List[Any], List]:
-        """Get gdal dataset details
+        """Get gdal dataset details.
 
         Parameters
         ----------
@@ -209,11 +208,12 @@ class Raster:
         bands = src.RasterCount
         gt = src.GetGeoTransform()
 
-        no_data_value = [src.GetRasterBand(i).GetNoDataValue() for i in range(1, bands+1)]
-        dtype = [src.GetRasterBand(i).DataType for i in range(1, bands+1)]
+        no_data_value = [
+            src.GetRasterBand(i).GetNoDataValue() for i in range(1, bands + 1)
+        ]
+        dtype = [src.GetRasterBand(i).DataType for i in range(1, bands + 1)]
 
         return cols, rows, prj, bands, gt, no_data_value, dtype
-
 
     @staticmethod
     def getEPSG(src: Dataset) -> int:
@@ -510,8 +510,10 @@ class Raster:
         cols = int(arr.shape[1])
         rows = int(arr.shape[0])
         bands = 1
-        pixel_type = numpy_to_gdal_dtype(arr)
-        dst_ds = Raster._createDataset(cols, rows, bands, pixel_type, driver=driver_type, path=path)
+        dtype = numpy_to_gdal_dtype(arr)
+        dst_ds = Raster._createDataset(
+            cols, rows, bands, dtype, driver=driver_type, path=path
+        )
 
         srse = Raster._createSRfromEPSG(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
@@ -575,11 +577,11 @@ class Raster:
             raise TypeError("array should be of type numpy array")
 
         bands = 1
-        pixel_type = numpy_to_gdal_dtype(array)
+        dtype = numpy_to_gdal_dtype(array)
         cols, rows, prj, _, gt, no_data_value, _ = Raster.getRasterDetails(src)
 
         dst = Raster._createDataset(
-            cols, rows, bands, pixel_type, driver=driver, path=path
+            cols, rows, bands, dtype, driver=driver, path=path
         )
 
         dst.SetGeoTransform(gt)
@@ -622,7 +624,9 @@ class Raster:
         >>> new_raster = Raster.mapAlgebra(src_raster, func)
         """
         if not isinstance(src, gdal.Dataset):
-            raise TypeError("src should be read using gdal (gdal dataset please read it using gdal library) ")
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal library) "
+            )
         if not callable(fun):
             raise TypeError("second argument should be a function")
 
@@ -644,9 +648,7 @@ class Raster:
                     new_array[i, j] = fun(src_array[i, j])
 
         # create the output raster
-        dst = Raster._createDataset(
-            src_col, src_row, 1, dtype, driver="MEM"
-        )
+        dst = Raster._createDataset(src_col, src_row, 1, dtype, driver="MEM")
         # set the geotransform
         dst.SetGeoTransform(src_gt)
         # set the projection
@@ -744,7 +746,6 @@ class Raster:
             resample_technique = gdal.GRA_Cubic
         elif resample_technique == "bilinear":
             resample_technique = gdal.GRA_Bilinear
-
 
         src_proj = src.GetProjection()
         src_gt = src.GetGeoTransform()
@@ -1213,9 +1214,7 @@ class Raster:
 
         # if the dst is a raster
         if isinstance(src, gdal.Dataset):
-            dst = Raster._createDataset(
-                col, row, 1, dtype, driver="MEM"
-            )
+            dst = Raster._createDataset(col, row, 1, dtype, driver="MEM")
             # but with lot of computation
             # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
             # are aligned so they have the sam gt
@@ -1714,9 +1713,7 @@ class Raster:
                     dst_array[i, j] = src_noval
 
         # dst_array[dst_array==dst_noval]=src_noval
-        dst = Raster._createDataset(
-            dst_col, dst_row, 1, dtype, driver="MEM"
-        )
+        dst = Raster._createDataset(dst_col, dst_row, 1, dtype, driver="MEM")
 
         # set the geotransform
         dst.SetGeoTransform(dst_gt)
@@ -1791,9 +1788,7 @@ class Raster:
         reprojected_RasterB = Raster.projectRaster(RasterB, src_epsg)
 
         # create a new raster
-        dst = Raster._createDataset(
-            cols, rows, 1, dtypes[0], driver="MEM"
-        )
+        dst = Raster._createDataset(cols, rows, 1, dtypes[0], driver="MEM")
         # set the geotransform
         dst.SetGeoTransform(gt)
         # set the projection
