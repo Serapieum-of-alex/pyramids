@@ -1,5 +1,6 @@
 import os
-
+from typing import List, Tuple
+from shapely.geometry.polygon import Polygon
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr
 from osgeo.ogr import DataSource
@@ -57,3 +58,35 @@ def test_save_vector(data_source: DataSource, test_save_vector_path: str):
     assert ogr.GetDriverByName("GeoJSON").Open(test_save_vector_path)
     # clean
     os.remove(test_save_vector_path)
+
+
+class TestCreatePolygon:
+    def test_create_wkt_str(
+            self,
+            coordinates: List[Tuple[int, int]],
+            coordinates_wkt: str,
+    ):
+        """
+        Test create the wkt from coordinates.
+        """
+        coords = Vector.createPolygon(coordinates, wkt=True)
+        assert isinstance(coords, str)
+        assert coords == coordinates_wkt
+
+
+    def test_create_polygon_object(
+            self,
+            coordinates: List[Tuple[int, int]],
+            coordinates_wkt: str,
+    ):
+        """
+        Test create the wkt from coordinates.
+        """
+        coords = Vector.createPolygon(coordinates)
+        assert isinstance(coords, Polygon)
+
+class TestCreatePoint:
+    def test_create_point_geometries(self, coordinates: List[Tuple[int, int]]):
+        point_list = Vector.createPoint(coordinates)
+        assert isinstance(point_list, list)
+        assert len(point_list) == len(coordinates)
