@@ -19,7 +19,6 @@ from osgeo.ogr import DataSource
 from pyproj import Proj, transform
 from shapely.geometry import Point, Polygon
 from shapely.geometry.multipolygon import MultiPolygon
-
 # from pyramids import __path__
 
 

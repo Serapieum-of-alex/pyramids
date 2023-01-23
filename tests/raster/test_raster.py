@@ -58,7 +58,6 @@ class TestGetCellCoords:
             coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001
         ).all(), "the coordinates of the last 4 rows differs from the validation coords"
 
-
     def test_cell_corner_all_cells(
         self,
         src: Dataset,

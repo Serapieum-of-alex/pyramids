@@ -13,14 +13,12 @@ import numpy as np
 import pandas as pd
 import pyproj
 import rasterio
-from geopandas import GeoDataFrame
 from geopandas.geodataframe import GeoDataFrame
 from loguru import logger
 from osgeo import gdal, osr  # gdalconst,
 from osgeo.gdal import Dataset
 from osgeo.osr import SpatialReference
 from rasterio.mask import mask as rio_mask
-from shapely.geometry.polygon import Polygon
 
 try:
     from osgeo_utils import gdal_merge
