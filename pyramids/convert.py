@@ -551,7 +551,11 @@ class Convert:
 
     @staticmethod
     def rasterToGeoDataFrame(
-        src: str, vector: Union[str, GeoDataFrame] = None, add_geometry: str = None
+            src: str,
+            vector: Union[str, GeoDataFrame] = None,
+            add_geometry: str = None,
+            tile: bool = False,
+            tile_size: int = 1500,
     ) -> Union[DataFrame, GeoDataFrame]:
         """Convert a raster to a GeoDataFrame.
 
@@ -570,6 +574,10 @@ class Convert:
         add_geometry: [str]
             "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
             Default is None.
+        tile: [bool]
+            True to use tiles in extracting the values from the raster. Default is False.
+        tile_size: [int]
+            tile size. Default is 1500.
 
         Returns
         -------
@@ -616,7 +624,7 @@ class Convert:
             df_list = []
             mask_arr = rasterized_vector.GetRasterBand(1).ReadAsArray()
 
-            for arr in Raster.getTile(src):
+            for arr in Raster.getTile(src, tile_size):
 
                 mask_dfs = []
                 for mask_val in gdf["burn_value"].values:
@@ -640,21 +648,27 @@ class Convert:
             # Merge all the tiles.
             out_df = pd.concat(df_list)
         else:
-            # No vector given, simply load the raster.
-            df_list = []  # DataFrames of each tile.
-            for arr in Raster.getTile(src):
-                # Assume multiband
-                idx = (1, 2)
-                if arr.ndim == 2:
-                    # Handle single band rasters
-                    idx = (0, 1)
+            if tile:
+                df_list = []  # DataFrames of each tile.
+                for arr in Raster.getTile(src):
+                    # Assume multiband
+                    idx = (1, 2)
+                    if arr.ndim == 2:
+                        # Handle single band rasters
+                        idx = (0, 1)
 
-                mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
-                pixels = getPixels(arr, mask_arr).transpose()
-                df_list.append(pd.DataFrame(pixels, columns=band_names))
+                    mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
+                    pixels = getPixels(arr, mask_arr).transpose()
+                    df_list.append(pd.DataFrame(pixels, columns=band_names))
 
-            # Merge all the tiles.
-            out_df = pd.concat(df_list)
+                # Merge all the tiles.
+                out_df = pd.concat(df_list)
+            else:
+                # Warning: not checked yet for multi bands
+                arr = src.ReadAsArray()
+                pixels = arr.flatten()
+                out_df = pd.DataFrame(pixels, columns=band_names)
+
             if add_geometry:
                 if add_geometry.lower() == "point":
                     coords = Raster.getCellPoints(src, mask=True)

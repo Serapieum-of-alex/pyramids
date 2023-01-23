@@ -149,7 +149,7 @@ class TestRasterToDataFrame:
         raster_to_df_path: path to raster on disk
         raster_to_df_arr: array for comparison
         """
-        gdf = Convert.rasterToGeoDataFrame(raster_to_df_path)
+        gdf = Convert.rasterToGeoDataFrame(raster_to_df_path, add_geometry="Point")
         assert isinstance(gdf, GeoDataFrame)
         rows, cols = raster_to_df_arr.shape
         # get values and reshape arrays for comparison
@@ -196,7 +196,7 @@ class TestRasterToDataFrame:
         vector_mask_gdf: geodataframe for the vector mask
         rasterized_mask_values: array for comparison
         """
-        gdf = Convert.rasterToGeoDataFrame(raster_to_df_path, vector_mask_gdf)
+        gdf = Convert.rasterToGeoDataFrame(raster_to_df_path, vector_mask_gdf, add_geometry="Point")
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == len(rasterized_mask_values)
         assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
