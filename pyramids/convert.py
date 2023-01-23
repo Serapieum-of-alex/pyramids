@@ -15,7 +15,6 @@ from osgeo.gdal import Dataset
 from osgeo.ogr import DataSource
 from pandas import DataFrame
 
-# import fiona
 from pyramids.array import getPixels
 from pyramids.netcdf import NC
 from pyramids.raster import Raster
