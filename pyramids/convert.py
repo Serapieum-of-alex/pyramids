@@ -551,11 +551,11 @@ class Convert:
 
     @staticmethod
     def rasterToGeoDataFrame(
-            src: str,
-            vector: Union[str, GeoDataFrame] = None,
-            add_geometry: str = None,
-            tile: bool = False,
-            tile_size: int = 1500,
+        src: str,
+        vector: Union[str, GeoDataFrame] = None,
+        add_geometry: str = None,
+        tile: bool = False,
+        tile_size: int = 1500,
     ) -> Union[DataFrame, GeoDataFrame]:
         """Convert a raster to a GeoDataFrame.
 

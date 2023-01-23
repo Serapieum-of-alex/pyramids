@@ -5,7 +5,7 @@
 
 import json
 import warnings
-from typing import Dict, List, Tuple, Union
+from typing import List, Tuple, Union
 
 import geopandas as gpd
 import geopy.distance as distance
@@ -14,11 +14,12 @@ import pandas as pd
 
 # import yaml
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, ogr, osr
+from osgeo import ogr, osr
 from osgeo.ogr import DataSource
 from pyproj import Proj, transform
 from shapely.geometry import Point, Polygon
 from shapely.geometry.multipolygon import MultiPolygon
+
 # from pyramids import __path__
 
 

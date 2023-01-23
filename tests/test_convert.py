@@ -196,7 +196,9 @@ class TestRasterToDataFrame:
         vector_mask_gdf: geodataframe for the vector mask
         rasterized_mask_values: array for comparison
         """
-        gdf = Convert.rasterToGeoDataFrame(raster_to_df_path, vector_mask_gdf, add_geometry="Point")
+        gdf = Convert.rasterToGeoDataFrame(
+            raster_to_df_path, vector_mask_gdf, add_geometry="Point"
+        )
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == len(rasterized_mask_values)
         assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
