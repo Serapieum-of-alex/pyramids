@@ -149,11 +149,14 @@ class TestRasterToDataFrame:
         raster_to_df_path: path to raster on disk
         raster_to_df_arr: array for comparison
         """
-        df = Convert.rasterToDataframe(raster_to_df_path)
-        assert isinstance(df, DataFrame)
+        gdf = Convert.rasterToDataframe(raster_to_df_path)
+        assert isinstance(gdf, GeoDataFrame)
         rows, cols = raster_to_df_arr.shape
+        # get values and reshape arrays for comparison
         arr_flatten = raster_to_df_arr.reshape((rows * cols, 1))
-        assert np.array_equal(df.values, arr_flatten), (
+        extracted_values = gdf.loc[:, gdf.columns[0]].values
+        extracted_values = extracted_values.reshape(arr_flatten.shape)
+        assert np.array_equal(extracted_values, arr_flatten), (
             "the extracted values in the dataframe does not equa the real "
             "values in the array"
         )
@@ -180,7 +183,10 @@ class TestRasterToDataFrame:
         )
 
     def test_raster_to_dataframe_with_gdf_mask(
-        self, raster_to_df_path: str, vector_mask_gdf: GeoDataFrame, rasterized_mask_values: np.ndarray
+        self,
+        raster_to_df_path: str,
+        vector_mask_gdf: GeoDataFrame,
+        rasterized_mask_values: np.ndarray,
     ):
         """the input mask vector is given as geodataframe.
 
@@ -190,10 +196,10 @@ class TestRasterToDataFrame:
         vector_mask_gdf: geodataframe for the vector mask
         rasterized_mask_values: array for comparison
         """
-        df = Convert.rasterToDataframe(raster_to_df_path, vector_mask_gdf)
-        assert isinstance(df, DataFrame)
-        assert len(df) == len(rasterized_mask_values)
-        assert np.array_equal(df["Band_1"].values, rasterized_mask_values), (
+        gdf = Convert.rasterToDataframe(raster_to_df_path, vector_mask_gdf)
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == len(rasterized_mask_values)
+        assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
             "the extracted values in the dataframe "
             "does not "
             "equa the real "

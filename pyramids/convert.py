@@ -551,7 +551,9 @@ class Convert:
             return gdf
 
     @staticmethod
-    def rasterToDataframe(src: str, vector: Union[str, GeoDataFrame]=None) -> DataFrame:
+    def rasterToDataframe(
+        src: str, vector: Union[str, GeoDataFrame] = None, add_geometry: str = None
+    ) -> Union[DataFrame, GeoDataFrame]:
         """Convert a raster to a DataFrame.
 
             The function do the following
@@ -566,6 +568,9 @@ class Convert:
             Path to raster file.
         vector : Optional[GeoDataFrame/str]
             GeoDataFrame for the vector file path to vector file. If given, it will be used to clip the raster
+        add_geometry: [str]
+            "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
+            Default is None.
 
         Returns
         -------
@@ -598,12 +603,14 @@ class Convert:
 
             # rasterize the vector by burning the unique values as cell values.
             # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
-            rasterized_vector = Convert.polygonToRaster(
+            rasterized_vector: Dataset = Convert.polygonToRaster(
                 new_vector_path, src, vector_field="burn_value"
             )  # rasterized_vector_path,
+            coords = Raster.getCellPolygons(rasterized_vector, mask=True)
 
             # Loop over mask values to extract pixels.
-            tile_dfs = []  # DataFrames of each tile.
+            # DataFrames of each tile.
+            df_list = []
             mask_arr = rasterized_vector.GetRasterBand(1).ReadAsArray()
 
             for arr in Raster.getTile(src):
@@ -625,27 +632,30 @@ class Convert:
                 mask_df = pd.concat(mask_dfs)
 
                 # Join with pixels with vector attributes using the FID.
-                tile_dfs.append(mask_df.merge(gdf, how="left", on="burn_value"))
+                df_list.append(mask_df.merge(gdf, how="left", on="burn_value"))
 
             # Merge all the tiles.
-            out_df = pd.concat(tile_dfs)
-
+            out_df = pd.concat(df_list)
         else:
             # No vector given, simply load the raster.
-            tile_dfs = []  # DataFrames of each tile.
+            df_list = []  # DataFrames of each tile.
             for arr in Raster.getTile(src):
-
-                idx = (1, 2)  # Assume multiband
+                # Assume multiband
+                idx = (1, 2)
                 if arr.ndim == 2:
-                    idx = (0, 1)  # Handle single band rasters
+                    # Handle single band rasters
+                    idx = (0, 1)
 
                 mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
                 pixels = getPixels(arr, mask_arr).transpose()
-                tile_dfs.append(pd.DataFrame(pixels, columns=band_names))
+                df_list.append(pd.DataFrame(pixels, columns=band_names))
 
             # Merge all the tiles.
-            out_df = pd.concat(tile_dfs)
+            out_df = pd.concat(df_list)
+            coords = Raster.getCellPolygons(src, mask=False)
 
+        out_df = out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
+        out_df_with_geoms = gpd.GeoDataFrame(out_df, geometry=coords["geometry"])
         # TODO mask no data values.
 
         # Remove temporary files.
@@ -653,7 +663,7 @@ class Convert:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
         # Return dropping any extra cols.
-        return out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
+        return out_df_with_geoms
 
     @staticmethod
     def _ogrDataSourceToGeoDF(ds: DataSource) -> GeoDataFrame:
