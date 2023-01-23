@@ -58,6 +58,17 @@ class TestGetCellCoords:
             coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001
         ).all(), "the coordinates of the last 4 rows differs from the validation coords"
 
+
+    def test_cell_corner_all_cells(
+        self,
+        src: Dataset,
+        src_cells_corner_coords_last4,
+    ):
+        coords = Raster.getCellCoords(src, location="corner")
+        assert np.isclose(
+            coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
+        ).all()
+
     def test_cell_center_masked_cells(
         self,
         src: Dataset,
@@ -69,16 +80,6 @@ class TestGetCellCoords:
         assert coords.shape[0] == src_masked_values_len
         assert np.isclose(
             coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
-        ).all()
-
-    def test_cell_corner_all_cells(
-        self,
-        src: Dataset,
-        src_cells_corner_coords_last4,
-    ):
-        coords = Raster.getCellCoords(src, location="corner")
-        assert np.isclose(
-            coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
         ).all()
 
 

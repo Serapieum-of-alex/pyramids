@@ -447,11 +447,18 @@ class Raster:
 
             coords = np.array(masked_cells)
         else:
+            cells = []
             # get coordinates of all cells
-            coords = np.array(all_cells)
-            x = coords[:, :, 0].flatten()
-            y = coords[:, :, 1].flatten()
-            coords = np.array([x, y]).transpose()
+            for i in range(rows):
+                for j in range(cols):
+                    cells.append(all_cells[j][i])
+
+            coords = np.array(cells)
+            # FixME: the below line gives error
+            # coords = np.array(all_cells)
+            # x = coords[:, :, 0].flatten()
+            # y = coords[:, :, 1].flatten()
+            # coords = np.array([x, y])#.transpose()
 
         return coords
 
