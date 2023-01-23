@@ -98,8 +98,11 @@ class NC:
             raise KeyError("the netcdf file does not have a resolution attribute")
 
         # Lower left corner corner coordinates
-        geo4 = np.min(lats) + geo2 / 2
-        geo1 = np.min(lons) - geo2 / 2
+        geo4 = np.min(lats) #+ geo2 / 2
+        if np.max(lons) > 180:
+            geo1 = np.min(lons) - 180 #- geo2 #/ 2
+        else:
+            geo1 = np.min(lons)
 
         try:
             crso = nc.variables["crs"]
