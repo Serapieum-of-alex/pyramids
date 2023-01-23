@@ -417,11 +417,11 @@ class Raster:
             yy_span,
             cell_size_y,
         ) = src.GetGeoTransform()
-
-        if cell_size_x != -1 * cell_size_y:
-            logger.warning(
-                f"The given raster does not have a square cells, the cell size is {cell_size_x}*{cell_size_y} "
-            )
+        if cell_size_x != cell_size_y :
+            if cell_size_x != -1 * cell_size_y :
+                logger.warning(
+                    f"The given raster does not have a square cells, the cell size is {cell_size_x}*{cell_size_y} "
+                )
 
         rows, cols = src.ReadAsArray().shape
 
@@ -993,7 +993,7 @@ class Raster:
             dst_sr.ImportFromEPSG(to_epsg)
 
             # in case the source crs is GCS and longitude is in the west hemisphere gdal
-            # reads longitude fron 0 to 360 and transformation factor wont work with values
+            # reads longitude from 0 to 360 and transformation factor wont work with values
             # greater than 180
             if src_epsg != str(to_epsg):
                 if src_epsg == "4326" and src_gt[0] > 180:
