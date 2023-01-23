@@ -551,10 +551,10 @@ class Convert:
             return gdf
 
     @staticmethod
-    def rasterToDataframe(
+    def rasterToGeoDataFrame(
         src: str, vector: Union[str, GeoDataFrame] = None, add_geometry: str = None
     ) -> Union[DataFrame, GeoDataFrame]:
-        """Convert a raster to a DataFrame.
+        """Convert a raster to a GeoDataFrame.
 
             The function do the following
             - Flatted the array in each band in the raster then mask the values if a vector
