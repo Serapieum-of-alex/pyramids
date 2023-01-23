@@ -605,7 +605,11 @@ class Convert:
             rasterized_vector: Dataset = Convert.polygonToRaster(
                 new_vector_path, src, vector_field="burn_value"
             )  # rasterized_vector_path,
-            coords = Raster.getCellPolygons(rasterized_vector, mask=True)
+            if add_geometry:
+                if add_geometry.lower() == "point":
+                    coords = Raster.getCellPoints(rasterized_vector, mask=True)
+                else:
+                    coords = Raster.getCellPolygons(rasterized_vector, mask=True)
 
             # Loop over mask values to extract pixels.
             # DataFrames of each tile.
@@ -651,10 +655,16 @@ class Convert:
 
             # Merge all the tiles.
             out_df = pd.concat(df_list)
-            coords = Raster.getCellPolygons(src, mask=False)
+            if add_geometry:
+                if add_geometry.lower() == "point":
+                    coords = Raster.getCellPoints(src, mask=True)
+                else:
+                    coords = Raster.getCellPolygons(src, mask=True)
 
         out_df = out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
-        out_df_with_geoms = gpd.GeoDataFrame(out_df, geometry=coords["geometry"])
+        if add_geometry:
+            out_df = gpd.GeoDataFrame(out_df, geometry=coords["geometry"])
+
         # TODO mask no data values.
 
         # Remove temporary files.
@@ -662,7 +672,7 @@ class Convert:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
         # Return dropping any extra cols.
-        return out_df_with_geoms
+        return out_df
 
     @staticmethod
     def _ogrDataSourceToGeoDF(ds: DataSource) -> GeoDataFrame:
