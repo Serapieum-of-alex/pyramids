@@ -1,4 +1,4 @@
-"""GISpy contains python functions to handle raster data align them together based on a source raster, perform any algebric operation on cell's values.
+"""GISpy contains python functions to handle raster data align them together based on a source raster, perform any algebric operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 
 @author: Mostafa
 """
@@ -14,11 +14,23 @@ import pandas as pd
 import pyproj
 import rasterio
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, gdalconst, osr
+from loguru import logger
+from osgeo import gdal, osr  # gdalconst,
 from osgeo.gdal import Dataset
+from osgeo.osr import SpatialReference
 from rasterio.mask import mask as rio_mask
 
+try:
+    from osgeo_utils import gdal_merge
+except ModuleNotFoundError:
+    logger.warning(
+        "osgeo_utils module does not exist try install pip install osgeo-utils "
+    )
+
+from pyramids.utils import numpy_to_gdal_dtype
 from pyramids.vector import Vector
+
+DEFAULT_NO_DATA_VALUE = -9999
 
 
 class Raster:
@@ -26,6 +38,83 @@ class Raster:
 
     def __init__(self):
         pass
+
+    @staticmethod
+    def openDataset(path: str, read_only=True) -> Dataset:
+        """Open a raster using GDAL.
+
+        Parameters
+        ----------
+        path : [str]
+            Path of file to open.
+        read_only : [bool]
+            File mode, set to False to open in "update" mode.
+
+        Returns
+        -------
+        GDAL dataset
+        """
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"The given file:{path} does not exist")
+        access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
+        src = gdal.OpenShared(path, access)
+        if src is None:
+            raise ValueError(
+                f"The raster path: {path} you enter gives a None gdal Object check the read premission, maybe "
+                f"the raster is being used by other software"
+            )
+
+        return src
+
+    @staticmethod
+    def _createDataset(
+        cols: int,
+        rows: int,
+        bands: int,
+        dtype: int,
+        driver: str = "MEM",
+        path: str = None,
+    ) -> Dataset:
+        """Create GDAL driver.
+
+            creates a driver and save it to disk and in memory if path is not given.
+
+        Parameters
+        ----------
+        cols: [int]
+            number of columns.
+        rows: [int]
+            number of rows.
+        bands: [int]
+            number of bands.
+        driver: [str]
+            driver type ["GTiff", "MEM"].
+        path: [str]
+            path to save the GTiff driver.
+        dtype:
+            gdal data type, use the functions in the utils module to map data types from numpy or ogr to gdal.
+
+        Returns
+        -------
+        gdal driver
+        """
+        if path:
+            if not isinstance(path, str):
+                raise TypeError("The path input should be string")
+            if driver == "GTiff":
+                if not path.endswith(".tif"):
+                    raise TypeError(
+                        "The path to save the created raster should end with .tif"
+                    )
+
+            src = gdal.GetDriverByName(driver).Create(
+                path, cols, rows, bands, dtype, ["COMPRESS=LZW"]
+            )  # LZW is a lossless compression method achieve the highst compression but with lot of computation
+        else:
+            # for memory drivers
+            driver = "MEM"
+            src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, dtype)
+        return src
 
     @staticmethod
     def getRasterData(
@@ -78,47 +167,212 @@ class Raster:
             (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
         """
         geo = src.GetGeoTransform()
-        # GET PROJECTION
         src_proj = src.GetProjection()
-        # spatial ref
         sr_src = osr.SpatialReference(wkt=src_proj)
         epsg = int(sr_src.GetAttrValue("AUTHORITY", 1))
 
         return epsg, geo
 
     @staticmethod
-    def getEPSG(proj, extension: str = "tiff"):
+    def getRasterDetails(
+        src: Dataset,
+    ) -> Tuple[int, int, str, int, Tuple, List[Any], List]:
+        """Get gdal dataset details.
+
+        Parameters
+        ----------
+        src: [Dataset]
+            gdal dataset
+
+        Returns
+        -------
+        cols: [int]
+            number of columns.
+        rows: [int]
+            number of rows.
+        prj: [str]
+            projection.
+        bands: [int]
+            number of bands.
+        gt: Tupe[int]
+            geotransform.
+        no_data_value: List[Any]
+            no data value for each band in the dataset.
+        dtype: List[gdal.DataType]
+            gdal data type for each band in the dataset.
+        """
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+        prj = src.GetProjection()
+        # src.GetProjectionRef()
+        bands = src.RasterCount
+        gt = src.GetGeoTransform()
+
+        no_data_value = [
+            src.GetRasterBand(i).GetNoDataValue() for i in range(1, bands + 1)
+        ]
+        dtype = [src.GetRasterBand(i).DataType for i in range(1, bands + 1)]
+
+        return cols, rows, prj, bands, gt, no_data_value, dtype
+
+    @staticmethod
+    def getEPSG(src: Dataset) -> int:
         """GetEPSG.
 
             This function reads the projection of a GEOGCS file or tiff file
 
         Parameters
         ----------
-        proj : TYPE
-            projection read from the netcdf file.
-        extension : [string], optional
-            tiff or GEOGCS . The default is 'tiff'.
+        src: [gdal.Dataset]
+            raster read by gdal
 
         Returns
         -------
         epsg : [integer]
             epsg number
         """
-        try:
-            if extension == "tiff":
-                # Get info of the dataset that is used for transforming
-                g_proj = proj.GetProjection()
-                Projection = g_proj.split('EPSG","')
-            if extension == "GEOGCS":
-                Projection = proj
-            epsg = int((str(Projection[-1]).split("]")[0])[0:-1])
-        except:
-            epsg = 4326
+        prj = src.GetProjection()
+        epsg = Vector.getEPSGfromPrj(prj)
 
         return epsg
 
     @staticmethod
-    def getCellCoords(src: Dataset) -> Tuple[np.ndarray, np.ndarray]:
+    def _createSRfromEPSG(epsg: int = "") -> SpatialReference:
+        """Create a spatial reference object from epsg number.
+
+        Parameters
+        ----------
+        epsg: [int]
+            epsg number.
+
+        Returns
+        -------
+        SpatialReference object
+        """
+        sr = osr.SpatialReference()
+
+        if epsg == "":
+            sr.SetWellKnownGeogCS("WGS84")
+        else:
+            try:
+                if not sr.SetWellKnownGeogCS(epsg) == 6:
+                    sr.SetWellKnownGeogCS(epsg)
+                else:
+                    try:
+                        sr.ImportFromEPSG(int(epsg))
+                    except:
+                        sr.ImportFromWkt(epsg)
+            except:
+                try:
+                    sr.ImportFromEPSG(int(epsg))
+                except:
+                    sr.ImportFromWkt(epsg)
+        return sr
+
+    @staticmethod
+    def setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE) -> Dataset:
+        """Set the no data value in a all raster bands.
+
+        Parameters
+        ----------
+        src: [Dataset]
+            gdal Dataset
+        no_data_value: [numeric]
+            no data value to fill the masked part of the array
+
+        Returns
+        -------
+        gdal Dataset
+        """
+        # setting the no_data_value does not accept double precision numbers
+        for band in range(1, src.RasterCount + 1):
+            try:
+                src.GetRasterBand(band).SetNoDataValue(no_data_value)
+                # initialize the band with the nodata value instead of 0
+                src.GetRasterBand(band).Fill(no_data_value)
+            except:
+                src.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
+                src.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
+                # assert False, "please change the no_data_value in the source raster as it is not accepted by Gdal"
+                print(
+                    "the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
+                    f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
+                )
+
+        return src
+
+    @staticmethod
+    def getBandNames(src: Dataset) -> List[str]:
+        """Get band names from band meta data if exists otherwise will return idex [1,2, ...]
+
+        Parameters
+        ----------
+        src : [gdal.]Dataset]
+            gdal Dataset
+
+        Returns
+        -------
+        list[str]
+        """
+        names = []
+        for i in range(1, src.RasterCount + 1):
+            band_i = src.GetRasterBand(i)
+
+            if band_i.GetDescription():
+                # Use the band_i description.
+                names.append(band_i.GetDescription())
+            else:
+                # Check for metedata.
+                band_i_name = "Band_{}".format(band_i.GetBand())
+                metadata = band_i.GetDataset().GetMetadata_Dict()
+
+                # If in metadata, return the metadata entry, else Band_N.
+                if band_i_name in metadata and metadata[band_i_name]:
+                    names.append(metadata[band_i_name])
+                else:
+                    names.append(band_i_name)
+
+        return names
+
+    @staticmethod
+    def createEmptyDriver(
+        src: Dataset, path: str, bands: int = 1, no_data_value=None
+    ) -> Dataset:
+        """Create a new empty driver from another dataset.
+
+        Parameters
+        ----------
+        src : [Dataset]
+            gdal dataset
+        path : str
+        bands : int or None
+            Number of bands to create in the output raster.
+        no_data_value : float or None
+            No data value, if None uses the same as ``src``.
+
+        Returns
+        -------
+        gdal.DataSet
+        """
+        bands = int(bands) if bands is not None else src.RasterCount
+
+        cols, rows, prj, _, gt, _, dtypes = Raster.getRasterDetails(src)
+        # Create the driver.
+        dst = Raster._createDataset(cols, rows, bands, dtypes[0], path=path)
+
+        # Set the projection.
+        dst.SetGeoTransform(gt)
+        dst.SetProjection(src.GetProjectionRef())
+
+        if no_data_value is not None:
+            dst = Raster.setNoDataValue(dst, no_data_value=float(no_data_value))
+
+        return dst
+
+    @staticmethod
+    def getCellCoords(
+        src: Dataset, location: str = "center", mask: bool = False
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """GetCoords.
 
         Returns the coordinates of the cell centres inside the domain (only the cells that
@@ -128,36 +382,164 @@ class Raster:
         ----------
         src : [gdal_Dataset]
             Get the data from the gdal datasetof the DEM
+        location: [str]
+            location of the coordinates "center" for the center of a cell, corner for the corner of the cell.
+            the corner is the top left corner.
+        mask: [bool]
+            True to Execlude the cells out of the doain. Default is False.
 
         Returns
         -------
-        coords : array
+        coords : [np.ndarray]
             Array with a list of the coordinates to be interpolated, without the Nan
-        mat_range : array
+        mat_range : [np.ndarray]
             Array with all the centres of cells in the domain of the DEM
         """
+        # check the location parameter
+        location = location.lower()
+        if location not in ["center", "corner"]:
+            raise ValueError(
+                "The location parameter can have one of these values: 'center', 'corner', "
+                f"but the value: {location} is given."
+            )
+
+        if location == "center":
+            # Adding 0.5*cell size to get the centre
+            add_value = 0.5
+        else:
+            add_value = 0
         # Getting data for the whole grid
-        x_init, xx_span, xy_span, y_init, yy_span, yx_span = src.GetGeoTransform()
-        shape_dem = src.ReadAsArray().shape
+        (
+            x_init,
+            cell_size_x,
+            xy_span,
+            y_init,
+            yy_span,
+            cell_size_y,
+        ) = src.GetGeoTransform()
 
-        # Getting data of the mask
+        if cell_size_x != -1 * cell_size_y:
+            logger.warning(
+                f"The given raster does not have a square cells, the cell size is {cell_size_x}*{cell_size_y} "
+            )
+
+        rows, cols = src.ReadAsArray().shape
+
+        # data in the array
         no_val = src.GetRasterBand(1).GetNoDataValue()
-        mask = src.ReadAsArray()
+        arr = src.ReadAsArray()
 
-        # Adding 0.5*cell size to get the centre
-        x = np.array([x_init + xx_span * (i + 0.5) for i in range(shape_dem[0])])
-        y = np.array([y_init + yy_span * (i + 0.5) for i in range(shape_dem[1])])
-        mat_range = [[(xi, yi) for xi in x] for yi in y]
+        # calculate the coordinates of all cells
+        x = np.array([x_init + cell_size_x * (i + add_value) for i in range(cols)])
+        y = np.array([y_init + cell_size_y * (i + add_value) for i in range(rows)])
+        all_cells = [[(xi, yi) for yi in y] for xi in x]
 
-        # applying the mask
-        coords = []
+        if mask:
+            # execlude the no_data_values cells.
+            masked_cells = []
 
-        for i in range(len(x) - 1):
-            for j in range(len(y) - 1):
-                if np.isclose(mask[i, j], no_val, rtol=0.001):
-                    coords.append(mat_range[j][i])
+            for i in range(rows):
+                for j in range(cols):
+                    if not np.isclose(arr[i, j], no_val, rtol=0.001):
+                        masked_cells.append(all_cells[j][i])
 
-        return np.array(coords), np.array(mat_range)
+            coords = np.array(masked_cells)
+        else:
+            cells = []
+            # get coordinates of all cells
+            for i in range(rows):
+                for j in range(cols):
+                    cells.append(all_cells[j][i])
+
+            coords = np.array(cells)
+            # FixME: the below line gives error
+            # coords = np.array(all_cells)
+            # x = coords[:, :, 0].flatten()
+            # y = coords[:, :, 1].flatten()
+            # coords = np.array([x, y])#.transpose()
+
+        return coords
+
+    @staticmethod
+    def getCellPolygons(src: Dataset, mask=False) -> GeoDataFrame:
+        """Get a polygon shapely geometry for the raster cells.
+
+        Parameters
+        ----------
+        src: [Dataset]
+            Raster dataset
+        mask: [bool]
+            True to get the polygons of the cells inside the domain.
+
+        Returns
+        -------
+        GeoDataFrame:
+            with two columns, geometry, and id
+        """
+        coords = Raster.getCellCoords(src, location="corner", mask=mask)
+        cell_size = src.GetGeoTransform()[1]
+        epsg = Raster.getEPSG(src)
+        x = np.zeros((coords.shape[0], 4))
+        y = np.zeros((coords.shape[0], 4))
+        # fill the top left corner point
+        x[:, 0] = coords[:, 0]
+        y[:, 0] = coords[:, 1]
+        # fill the top right
+        x[:, 1] = x[:, 0] + cell_size
+        y[:, 1] = y[:, 0]
+        # fill the bottom right
+        x[:, 2] = x[:, 0] + cell_size
+        y[:, 2] = y[:, 0] - cell_size
+
+        # fill the bottom left
+        x[:, 3] = x[:, 0]
+        y[:, 3] = y[:, 0] - cell_size
+
+        coords_tuples = [list(zip(x[:, i], y[:, i])) for i in range(4)]
+        polys_coords = [
+            (
+                coords_tuples[0][i],
+                coords_tuples[1][i],
+                coords_tuples[2][i],
+                coords_tuples[3][i],
+            )
+            for i in range(len(x))
+        ]
+        polygons = list(map(Vector.createPolygon, polys_coords))
+        gdf = gpd.GeoDataFrame(geometry=polygons)
+        gdf.set_crs(epsg=epsg, inplace=True)
+        gdf["id"] = gdf.index
+        return gdf
+
+    @staticmethod
+    def getCellPoints(
+        src: Dataset, location: str = "center", mask=False
+    ) -> GeoDataFrame:
+        """Get a point shapely geometry for the raster cells center point.
+
+        Parameters
+        ----------
+        src: [Dataset]
+            Raster dataset
+        location: [str]
+            location of the point, ["corner", "center"]. Default is "center".
+        mask: [bool]
+            True to get the polygons of the cells inside the domain.
+
+        Returns
+        -------
+        GeoDataFrame:
+            with two columns, geometry, and id
+        """
+        coords = Raster.getCellCoords(src, location=location, mask=mask)
+        epsg = Raster.getEPSG(src)
+
+        coords_tuples = list(zip(coords[:, 0], coords[:, 1]))
+        points = Vector.createPoint(coords_tuples)
+        gdf = gpd.GeoDataFrame(geometry=points)
+        gdf.set_crs(epsg=epsg, inplace=True)
+        gdf["id"] = gdf.index
+        return gdf
 
     @staticmethod
     def saveRaster(src: Dataset, path: str) -> None:
@@ -203,11 +585,12 @@ class Raster:
 
     @staticmethod
     def createRaster(
-        path: str = "",
+        path: str = None,
         arr: Union[str, Dataset, np.ndarray] = "",
         geo: Union[str, tuple] = "",
         epsg: Union[str, int] = "",
-        nodatavalue: Any = -9999,
+        nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
+        band: int = 1,
     ) -> Union[Dataset, None]:
         """createRaster.
 
@@ -228,6 +611,8 @@ class Raster:
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator )
+        band: [int]
+            band number.
 
         Returns
         -------
@@ -237,59 +622,37 @@ class Raster:
         """
         try:
             if np.isnan(nodatavalue):
-                nodatavalue = -9999
+                nodatavalue = DEFAULT_NO_DATA_VALUE
         except TypeError:
             # np.isnan fails sometimes with the following error
             # TypeError: ufunc 'isnan' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''
             if pd.isnull(nodatavalue):
-                nodatavalue = -9999
+                nodatavalue = DEFAULT_NO_DATA_VALUE
 
-        if path == "":
+        if path is None:
             driver_type = "MEM"
-            compress = []
         else:
             if not isinstance(path, str):
                 raise TypeError("first parameter Path should be string")
 
             driver_type = "GTiff"
-            compress = ["COMPRESS=LZW"]
 
-        driver = gdal.GetDriverByName(driver_type)
-        dst_ds = driver.Create(
-            path, int(arr.shape[1]), int(arr.shape[0]), 1, gdal.GDT_Float32, compress
+        cols = int(arr.shape[1])
+        rows = int(arr.shape[0])
+        bands = 1
+        dtype = numpy_to_gdal_dtype(arr)
+        dst_ds = Raster._createDataset(
+            cols, rows, bands, dtype, driver=driver_type, path=path
         )
-        srse = osr.SpatialReference()
 
-        if epsg == "":
-            # if no epsg assume WGS 94 (4326)
-            srse.SetWellKnownGeogCS("WGS84")
-        else:
-            try:
-                if not srse.SetWellKnownGeogCS(epsg) == 6:
-                    srse.SetWellKnownGeogCS(epsg)
-                else:
-                    try:
-                        srse.ImportFromEPSG(int(epsg))
-                    except:
-                        srse.ImportFromWkt(epsg)
-            except:
-                try:
-                    srse.ImportFromEPSG(int(epsg))
-                except:
-                    srse.ImportFromWkt(epsg)
-
+        srse = Raster._createSRfromEPSG(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
-        try:
-            # if the nodata value gives error because of the type.
-            dst_ds.GetRasterBand(1).SetNoDataValue(nodatavalue)
-        except TypeError:
-            # TypeError: in method 'Band_SetNoDataValue', argument 2 of type 'double'
-            dst_ds.GetRasterBand(1).SetNoDataValue(np.float64(nodatavalue))
+        dst_ds = Raster.setNoDataValue(dst_ds, no_data_value=nodatavalue)
 
         dst_ds.SetGeoTransform(geo)
         dst_ds.GetRasterBand(1).WriteArray(arr)
 
-        if path == "":
+        if path is None:
             return dst_ds
         else:
             dst_ds = None
@@ -297,8 +660,8 @@ class Raster:
 
     @staticmethod
     def rasterLike(
-        src: Dataset, array: np.ndarray, path: str, pixel_type: int = 1
-    ) -> None:
+        src: Dataset, array: np.ndarray, driver: str = "GTiff", path: str = None
+    ) -> Union[Dataset, None]:
         """rasterLike.
 
         rasterLike method creates a Geotiff raster like another input raster, new raster
@@ -312,28 +675,28 @@ class Raster:
             source raster to get the spatial information
         array : [numpy array]
             to store in the new raster
+        driver:[str]
+            gdal driver type. Default is "GTiff"
         path : [String]
             path to save the new raster including new raster name and extension (.tif)
-        pixel_type : [integer]
-            type of the data to be stored in the pixels,default is 1 (float32)
-            for example pixel type of flow direction raster is unsigned integer
-            1 for float32
-            2 for float64
-            3 for Unsigned integer 16
-            4 for Unsigned integer 32
-            5 for integer 16
-            6 for integer 32
 
         Returns
         -------
-            save the new raster to the given path
+        None:
+            if the driver is "GTiff" the function will save the new raster to the given path.
+        Dataset:
+            if the driver is "MEM" the function will return the created raster in memory.
 
         Example
         -------
-        >>> data = np.load("RAIN_5k.npy")
-        >>> src_raster = gdal.Open("DEM.tif")
+        >>> array = np.load("RAIN_5k.npy")
+        >>> src = gdal.Open("DEM.tif")
         >>> name = "rain.tif"
-        >>> Raster.rasterLike(src_raster, data, name)
+        >>> Raster.rasterLike(src, array, driver="GTiff", path=name)
+        - or create a raster in memory
+        >>> array = np.load("RAIN_5k.npy")
+        >>> src = gdal.Open("DEM.tif")
+        >>> dst = Raster.rasterLike(src, array, driver="MEM")
         """
         if not isinstance(src, gdal.Dataset):
             raise TypeError(
@@ -343,71 +706,26 @@ class Raster:
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
 
-        if not isinstance(path, str):
-            raise TypeError("Raster_path input should be string type")
+        bands = 1
+        dtype = numpy_to_gdal_dtype(array)
+        cols, rows, prj, _, gt, no_data_value, _ = Raster.getRasterDetails(src)
 
-        if not isinstance(pixel_type, int):
-            raise TypeError(
-                "pixel type input should be integer type please check documentations"
-            )
-
-        # input values
-        #    assert os.path.exists(path), path+ " you have provided does not exist"
-        ext = path[-4:]
-        assert ext == ".tif", "please add the extension at the end of the path input"
-        #    assert os.path.exists(path), "source raster you have provided does not exist"
-
-        prj = src.GetProjection()
-        cols = src.RasterXSize
-        rows = src.RasterYSize
-        gt = src.GetGeoTransform()
-        noval = src.GetRasterBand(1).GetNoDataValue()
-        if pixel_type == 1:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_Float32
-            )
-        elif pixel_type == 2:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_Float64
-            )
-        elif pixel_type == 3:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_UInt16
-            )
-        elif pixel_type == 4:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_UInt32
-            )
-        elif pixel_type == 5:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_Int16
-            )
-        elif pixel_type == 6:
-            dst = gdal.GetDriverByName("GTiff").Create(
-                path, cols, rows, 1, gdal.GDT_Int32
-            )
+        dst = Raster._createDataset(cols, rows, bands, dtype, driver=driver, path=path)
 
         dst.SetGeoTransform(gt)
         dst.SetProjection(prj)
         # setting the NoDataValue does not accept double precision numbers
-        try:
-            dst.GetRasterBand(1).SetNoDataValue(noval)
-            dst.GetRasterBand(1).Fill(noval)
-        except:
-            noval = -999999
-            dst.GetRasterBand(1).SetNoDataValue(noval)
-            dst.GetRasterBand(1).Fill(noval)
-            # assert False, "please change the NoDataValue in the source raster as it is not accepted by Gdal"
-            print(
-                "please change the NoDataValue in the source raster as it is not accepted by Gdal"
-            )
+        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value[0])
 
         dst.GetRasterBand(1).WriteArray(array)
-        dst.FlushCache()
-        dst = None
+        if driver == "GTiff":
+            dst.FlushCache()
+            dst = None
+
+        return dst
 
     @staticmethod
-    def mapAlgebra(src: Dataset, fun) -> Dataset:
+    def mapAlgebra(src: Dataset, fun, band: int = 1) -> Dataset:
         """mapAlgebra.
 
         mapAlgebra executes a mathematical operation on raster array and returns
@@ -418,7 +736,9 @@ class Raster:
         src : [gdal.dataset]
             source raster to that you want to make some calculation on its values
         fun: [function]
-            defined function that takes one input which is the cell value
+            defined function that takes one input which is the cell value.
+        band: [int]
+            band number.
 
         Returns
         -------
@@ -431,20 +751,21 @@ class Raster:
         >>> func = np.abs
         >>> new_raster = Raster.mapAlgebra(src_raster, func)
         """
-        # input data validation
-        # data type
-        assert isinstance(
-            src, gdal.Dataset
-        ), "src should be read using gdal (gdal dataset please read it using gdal library) "
-        assert callable(fun), "second argument should be a function"
+        if not isinstance(src, gdal.Dataset):
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal library) "
+            )
+        if not callable(fun):
+            raise TypeError("second argument should be a function")
 
         src_gt = src.GetGeoTransform()
         src_proj = src.GetProjection()
         src_row = src.RasterYSize
         src_col = src.RasterXSize
-        noval = np.float32(src.GetRasterBand(1).GetNoDataValue())
-        src_sref = osr.SpatialReference(wkt=src_proj)
+        noval = np.float32(src.GetRasterBand(band).GetNoDataValue())
         src_array = src.ReadAsArray()
+        dtype = src.GetRasterBand(1).DataType
+        src_sref = osr.SpatialReference(wkt=src_proj)
 
         # fill the new array with the nodata value
         new_array = np.ones((src_row, src_col)) * noval
@@ -455,25 +776,22 @@ class Raster:
                     new_array[i, j] = fun(src_array[i, j])
 
         # create the output raster
-        mem_drv = gdal.GetDriverByName("MEM")
-        dst = mem_drv.Create(
-            "", src_col, src_row, 1, gdalconst.GDT_Float32
-        )  # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
-
+        dst = Raster._createDataset(src_col, src_row, 1, dtype, driver="MEM")
         # set the geotransform
         dst.SetGeoTransform(src_gt)
         # set the projection
         dst.SetProjection(src_sref.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
-        dst.GetRasterBand(1).WriteArray(new_array)
+        no_data_value = src.GetRasterBand(band).GetNoDataValue()
+        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value)
+        dst.GetRasterBand(band).WriteArray(new_array)
 
         return dst
 
     @staticmethod
-    def rasterFill(src: Dataset, val: Union[float, int], save_to: str) -> None:
+    def rasterFill(
+        src: Dataset, val: Union[float, int], driver: str = "GTiff", path: str = None
+    ) -> Union[None, Dataset]:
         """rasterFill.
 
             rasterFill takes a raster and fill it with one value
@@ -484,7 +802,9 @@ class Raster:
             source raster
         val: [numeric]
             numeric value
-        save_to : [str]
+        driver: [str]
+            driver type ["GTiff", "MEM"]
+        path : [str]
             path including the extension (.tif)
 
         Returns
@@ -492,9 +812,10 @@ class Raster:
         raster : [saved on disk]
             the raster will be saved directly to the path you provided.
         """
-        assert isinstance(
-            src, gdal.Dataset
-        ), "src should be read using gdal (gdal dataset please read it using gdal library) "
+        if not isinstance(src, gdal.Dataset):
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal library) "
+            )
 
         NoDataVal = src.GetRasterBand(1).GetNoDataValue()
         src_array = src.ReadAsArray()
@@ -506,9 +827,8 @@ class Raster:
             src_array[~np.isclose(src_array, NoDataVal, rtol=0.001)] = val
         else:
             src_array[~np.isnan(src_array)] = val
-        # TODO : make this function returns the resulted raster
-        #  if the save_to parameter is empty
-        Raster.rasterLike(src, src_array, save_to, pixel_type=1)
+        dst = Raster.rasterLike(src, src_array, driver=driver, path=path)
+        return dst
 
     @staticmethod
     def resampleRaster(
@@ -555,16 +875,11 @@ class Raster:
         elif resample_technique == "bilinear":
             resample_technique = gdal.GRA_Bilinear
 
-        #    # READ THE RASTER
-        # GET PROJECTION
         src_proj = src.GetProjection()
-        # GET THE GEOTRANSFORM
         src_gt = src.GetGeoTransform()
-        # GET NUMBER OF columns
         src_x = src.RasterXSize
-        # get number of rows
         src_y = src.RasterYSize
-        # spatial ref
+
         sr_src = osr.SpatialReference(wkt=src_proj)
 
         ulx = src_gt[0]
@@ -584,21 +899,19 @@ class Raster:
             -1 * pixel_spacing,
         )
         # create a new raster
-        mem_drv = gdal.GetDriverByName("MEM")
         cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
-        dst = mem_drv.Create("", cols, rows, 1, gdalconst.GDT_Float32)
-        # ['COMPRESS=LZW']
-        # LZW is a lossless compression method achieve the highst compression but with lot of computation
+        dtype = src.GetRasterBand(1).DataType
+
+        dst = Raster._createDataset(cols, rows, 1, dtype)
 
         # set the geotransform
         dst.SetGeoTransform(new_geo)
         # set the projection
         dst.SetProjection(sr_src.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
+        dst = Raster.setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             src, dst, sr_src.ExportToWkt(), sr_src.ExportToWkt(), resample_technique
@@ -666,15 +979,11 @@ class Raster:
             resample_technique = gdal.GRA_Bilinear
 
         if option == 1:
-            # GET PROJECTION
             src_proj = src.GetProjection()
-            # GET THE GEOTRANSFORM
             src_gt = src.GetGeoTransform()
-            # GET NUMBER OF columns
             src_x = src.RasterXSize
-            # get number of rows
             src_y = src.RasterYSize
-            # spatial ref
+
             src_sr = osr.SpatialReference(wkt=src_proj)
             src_epsg = src_sr.GetAttrValue("AUTHORITY", 1)
 
@@ -732,11 +1041,11 @@ class Raster:
             pixel_spacing = np.abs(new_xs[0] - new_xs[1])
 
             # create a new raster
-            mem_drv = gdal.GetDriverByName("MEM")
             cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
             rows = int(np.round(abs(uly - lry) / pixel_spacing))
-            dst = mem_drv.Create("", cols, rows, 1, gdalconst.GDT_Float32)
-            # ['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
+
+            dtype = src.GetRasterBand(1).DataType
+            dst = Raster._createDataset(cols, rows, 1, dtype)
 
             # new geotransform
             new_geo = (
@@ -752,9 +1061,8 @@ class Raster:
             # set the projection
             dst.SetProjection(dst_sr.ExportToWkt())
             # set the no data value
-            dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-            # initialize the band with the nodata value instead of 0
-            dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+            no_data_value = src.GetRasterBand(1).GetNoDataValue()
+            dst = Raster.setNoDataValue(dst, no_data_value)
             # perform the projection & resampling
             gdal.ReprojectImage(
                 src,
@@ -777,7 +1085,7 @@ class Raster:
         to_epsg: int = 3857,
         cell_size: int = [],
         resample_technique: str = "Nearest",
-    ):
+    ) -> Dataset:
         """ReprojectDataset.
 
         ReprojectDataset reprojects and resamples a folder of rasters to any projection
@@ -832,15 +1140,11 @@ class Raster:
         elif resample_technique == "bilinear":
             resample_technique = gdal.GRA_Bilinear
 
-        #    # READ THE RASTER
-        # GET PROJECTION
         src_proj = src.GetProjection()
-        # GET THE GEOTRANSFORM
         src_gt = src.GetGeoTransform()
-        # GET NUMBER OF columns
         src_x = src.RasterXSize
-        # get number of rows
         src_y = src.RasterYSize
+        dtype = src.GetRasterBand(1).DataType
         # spatial ref
         src_sr = osr.SpatialReference(wkt=src_proj)
         src_epsg = src_sr.GetAttrValue("AUTHORITY", 1)
@@ -888,11 +1192,9 @@ class Raster:
             pixel_spacing = cell_size
 
         # create a new raster
-        mem_drv = gdal.GetDriverByName("MEM")
         cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
-        dst = mem_drv.Create("", cols, rows, 1, gdalconst.GDT_Float32)
-        # ['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
+        dst = Raster._createDataset(cols, rows, 1, dtype, driver="MEM")
 
         # new geotransform
         new_geo = (ulx, pixel_spacing, src_gt[2], uly, src_gt[4], -pixel_spacing)
@@ -901,9 +1203,8 @@ class Raster:
         # set the projection
         dst.SetProjection(dst_epsg.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
+        dst = Raster.setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             src, dst, src_sr.ExportToWkt(), dst_epsg.ExportToWkt(), resample_technique
@@ -972,9 +1273,11 @@ class Raster:
             src_sref = osr.SpatialReference(wkt=src_proj)
             src_epsg = int(src_sref.GetAttrValue("AUTHORITY", 1))
             src_array = src.ReadAsArray()
+            dtype = src.GetRasterBand(1).DataType
         elif isinstance(src, np.ndarray):
             # if the object to be cropped is array
             src_array = src.copy()
+            dtype = src.dtype
 
         # check proj
         if not mask_array.shape == src_array.shape:
@@ -1039,9 +1342,7 @@ class Raster:
 
         # if the dst is a raster
         if isinstance(src, gdal.Dataset):
-            mem_drv = gdal.GetDriverByName("MEM")
-            dst = mem_drv.Create("", col, row, 1, gdalconst.GDT_Float32)
-            # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression
+            dst = Raster._createDataset(col, row, 1, dtype, driver="MEM")
             # but with lot of computation
             # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
             # are aligned so they have the sam gt
@@ -1055,16 +1356,7 @@ class Raster:
                 dst.SetProjection(src_sref.ExportToWkt())
 
             # set the no data value
-            try:
-                # if the nodata value gives error because of the type.
-                dst.GetRasterBand(1).SetNoDataValue(mask_noval)
-                # initialize the band with the nodata value instead of 0
-                dst.GetRasterBand(1).Fill(mask_noval)
-            except TypeError:
-                # TypeError: in method 'Band_SetNoDataValue', argument 2 of type 'double'
-                dst.GetRasterBand(1).SetNoDataValue(np.float64(mask_noval))
-                dst.GetRasterBand(1).Fill(np.float64(mask_noval))
-
+            dst = Raster.setNoDataValue(dst, mask_noval)
             dst.GetRasterBand(1).WriteArray(src_array)
 
             return dst
@@ -1169,7 +1461,7 @@ class Raster:
         output_path: str = "",
         save: bool = False,
         # Resample: bool=True
-    ):
+    ) -> Dataset:
         """crop.
 
             crop method crops a raster using another raster (both rasters does not have to be aligned).
@@ -1264,7 +1556,7 @@ class Raster:
         shapefile_path: str,
         save: bool = False,
         output_path: str = None,
-    ):
+    ) -> Dataset:
         """ClipRasterWithPolygon.
 
             ClipRasterWithPolygon method clip a raster using polygon shapefile
@@ -1412,7 +1704,7 @@ class Raster:
         poly: Union[GeoDataFrame, str],
         save: bool = False,
         output_path: str = "masked.tif",
-    ):
+    ) -> Dataset:
         """Clip2.
 
             Clip function takes a rasterio object and clip it with a given geodataframe
@@ -1500,7 +1792,7 @@ class Raster:
         return out_img, out_meta
 
     @staticmethod
-    def changeNoDataValue(src: Dataset, dst: Dataset):
+    def changeNoDataValue(src: Dataset, dst: Dataset) -> Dataset:
         """ChangeNoDataValue.
 
         ChangeNoDataValue changes the cells of nodata value in a dst raster to match
@@ -1536,6 +1828,7 @@ class Raster:
         dst_proj = dst.GetProjection()
         dst_row = dst.RasterYSize
         dst_col = dst.RasterXSize
+        dtype = dst.GetRasterBand(1).DataType
         dst_noval = np.float32(dst.GetRasterBand(1).GetNoDataValue())
         dst_sref = osr.SpatialReference(wkt=dst_proj)
         #    dst_epsg = int(dst_sref.GetAttrValue('AUTHORITY',1))
@@ -1548,20 +1841,15 @@ class Raster:
                     dst_array[i, j] = src_noval
 
         # dst_array[dst_array==dst_noval]=src_noval
-
-        mem_drv = gdal.GetDriverByName("MEM")
-        dst = mem_drv.Create(
-            "", dst_col, dst_row, 1, gdalconst.GDT_Float32
-        )  # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
+        dst = Raster._createDataset(dst_col, dst_row, 1, dtype, driver="MEM")
 
         # set the geotransform
         dst.SetGeoTransform(dst_gt)
         # set the projection
         dst.SetProjection(dst_sref.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
+        dst = Raster.setNoDataValue(dst, no_data_value)
         dst.GetRasterBand(1).WriteArray(dst_array)
 
         return dst
@@ -1619,34 +1907,25 @@ class Raster:
             )
 
         # we need number of rows and cols from src A and data from src B to store both in dst
-        src_proj = src.GetProjection()
-        # GET THE GEOTRANSFORM
-        src_gt = src.GetGeoTransform()
-        # GET NUMBER OF columns
-        src_x = src.RasterXSize
-        # get number of rows
-        src_y = src.RasterYSize
+        cols, rows, prj, bands, gt, no_data_value, dtypes = Raster.getRasterDetails(src)
 
-        src_sr = osr.SpatialReference(wkt=src_proj)
+        src_sr = osr.SpatialReference(wkt=prj)
         src_epsg = int(src_sr.GetAttrValue("AUTHORITY", 1))
 
         # reproject the RasterB to match the projection of alignment_src
         reprojected_RasterB = Raster.projectRaster(RasterB, src_epsg)
 
         # create a new raster
-        mem_drv = gdal.GetDriverByName("MEM")
-        dst = mem_drv.Create("", src_x, src_y, 1, gdalconst.GDT_Float32)
-        # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
+        dst = Raster._createDataset(cols, rows, 1, dtypes[0], driver="MEM")
         # set the geotransform
-        dst.SetGeoTransform(src_gt)
+        dst.SetGeoTransform(gt)
         # set the projection
         dst.SetProjection(src_sr.ExportToWkt())
         # set the no data value
-        dst.GetRasterBand(1).SetNoDataValue(src.GetRasterBand(1).GetNoDataValue())
-        # initialize the band with the nodata value instead of 0
-        dst.GetRasterBand(1).Fill(src.GetRasterBand(1).GetNoDataValue())
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
+        dst = Raster.setNoDataValue(dst, no_data_value)
         # perform the projection & resampling
-        resample_technique = gdal.GRA_NearestNeighbour  # gdal.GRA_NearestNeighbour
+        resample_technique = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
         gdal.ReprojectImage(
             reprojected_RasterB,
@@ -1661,8 +1940,14 @@ class Raster:
     @staticmethod
     def nearestNeighbour(
         array: np.ndarray, nodatavalue: Union[float, int], rows: list, cols: list
-    ):
-        """nearestNeighbour filles cells of a given indices in rows and cols with the value of the nearest neighbour. as the raster grid is square so the 4 perpendicular direction are of the same close so the function give priority to the right then left then bottom then top and the same for 45 degree inclined direction right bottom then left bottom then left Top then right Top.
+    ) -> np.ndarray:
+        """nearestNeighbour.
+
+            - nearestNeighbour fills the cells of a given indices in rows and cols with the value of the nearest
+            neighbour.
+            - Ss the raster grid is square so the 4 perpendicular direction are of the same close so the function
+            gives priority to the right then left then bottom then top and the same for 45 degree inclined direction
+            right bottom then left bottom then left Top then right Top.
 
         Parameters
         ----------
@@ -1693,8 +1978,10 @@ class Raster:
             raise TypeError(
                 "src should be read using gdal (gdal dataset please read it using gdal library) "
             )
-        assert type(rows) == list, "rows input has to be of type list"
-        assert type(cols) == list, "cols input has to be of type list"
+        if not isinstance(rows, list):
+            raise TypeError("rows input has to be of type list")
+        if not isinstance(cols, list):
+            raise TypeError("cols input has to be of type list")
 
         #    array=raster.ReadAsArray()
         #    nodatavalue=np.float32(raster.GetRasterBand(1).GetNoDataValue())
@@ -1798,8 +2085,8 @@ class Raster:
             )
 
         # input values
-        ASCIIExt = ascii_file[-4:]
-        if not ASCIIExt == ".asc":
+        file_extension = ascii_file[-4:]
+        if not file_extension == ".asc":
             raise ValueError("please add the extension at the end of the path input")
 
         if not os.path.exists(ascii_file):
@@ -1807,21 +2094,21 @@ class Raster:
 
         ### read the ASCII file
         File = open(ascii_file)
-        Wholefile = File.readlines()
+        whole_file = File.readlines()
         File.close()
 
-        cols = int(Wholefile[0].split()[1])
-        rows = int(Wholefile[1].split()[1])
+        cols = int(whole_file[0].split()[1])
+        rows = int(whole_file[1].split()[1])
 
-        XLeftSide = float(Wholefile[2].split()[1])
-        YLowerSide = float(Wholefile[3].split()[1])
-        CellSize = float(Wholefile[4].split()[1])
-        NoValue = float(Wholefile[5].split()[1])
+        x_left_side = float(whole_file[2].split()[1])
+        y_lower_side = float(whole_file[3].split()[1])
+        call_size = float(whole_file[4].split()[1])
+        no_data_value = float(whole_file[5].split()[1])
 
         arr = np.ones((rows, cols), dtype=np.float32)
         try:
             for i in range(rows):
-                x = Wholefile[6 + i].split()
+                x = whole_file[6 + i].split()
                 arr[i, :] = list(map(float, x))
         except:
             try:
@@ -1833,7 +2120,7 @@ class Raster:
                 )
                 print(f"A value of {x[j]} , is stored in the ASCII file ")
 
-        geotransform = (rows, cols, XLeftSide, YLowerSide, CellSize, NoValue)
+        geotransform = (rows, cols, x_left_side, y_lower_side, call_size, no_data_value)
 
         return arr, geotransform
 
@@ -1842,7 +2129,7 @@ class Raster:
         return str(inp) + "  "
 
     @staticmethod
-    def writeASCII(ascii_file: str, geotransform: tuple, arr: np.ndarray):
+    def writeASCII(ascii_file: str, geotransform: tuple, arr: np.ndarray) -> None:
         """writeASCII.
 
             writeASCII reads an ASCII file the spatial information
@@ -1899,7 +2186,61 @@ class Raster:
         File.close()
 
     @staticmethod
-    def mosaic(raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"):
+    def gdal_merge(
+        src: List[str],
+        dst: str,
+        no_data_value: Union[float, int, str] = "0",
+        init: Union[float, int, str] = "nan",
+        n: Union[float, int, str] = "nan",
+    ):
+        """merge.
+
+            merges group of rasters into one raster
+
+        Parameters
+        ----------
+        src: List[str]
+            list of the path to all input raster
+        dst: [str]
+            path to the output raster
+        no_data_value: [float/int]
+            Assign a specified nodata value to output bands.
+        init: [float/int]
+            Pre-initialize the output image bands with these values. However, it is not marked as the nodata value
+            in the output file. If only one value is given, the same value is used in all the bands.
+        n: [float/int]
+            Ignore pixels from files being merged in with this pixel value.
+
+        Returns
+        -------
+        None
+        """
+        # run the command
+        # cmd = "gdal_merge.py -o merged_image_1.tif"
+        # subprocess.call(cmd.split() + file_list)
+        # vrt = gdal.BuildVRT("merged.vrt",file_list)
+        # src = gdal.Translate("merged_image.tif",vrt)
+
+        parameters = (
+            ["", "-o", dst]
+            + src
+            + [
+                "-co",
+                "COMPRESS=LZW",
+                "-init",
+                str(init),
+                "-a_nodata",
+                str(no_data_value),
+                "-n",
+                str(n),
+            ]
+        )  # '-separate'
+        gdal_merge.main(parameters)
+
+    @staticmethod
+    def rasterio_merge(
+        raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"
+    ):
         """mosaic.
 
         Parameters
@@ -2017,7 +2358,12 @@ class Raster:
 
     @staticmethod
     def rastersLike(src: Dataset, array: np.ndarray, path: List[str] = None):
-        """this function creates a Geotiff raster like another input raster, new raster will have the same projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number of rows and columns the raster and the dem should have the same number of columns and rows.
+        """Create Raster like other source raster with a given array.
+
+            - This function creates a Geotiff raster like another input raster, new raster will have the same
+            projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number
+            of rows and columns
+            - the raster and the given array should have the same number of columns and rows.
 
         Parameters
         ----------
@@ -2695,7 +3041,7 @@ class Raster:
         val = (array - array_min) / (array_max - array_min)
         return val
 
-    # TODO: check where this function is used and replace it  with getRasterData
+    # TODO: replace it  with getRasterData
     @staticmethod
     def openArrayInfo(fname: str = ""):
         """openArrayInfo.
@@ -2714,20 +3060,68 @@ class Raster:
             (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
         proj: [str]
             projection as a well known text.
-        size_x: [float]
-
-        size_y: [float]
+        cols: [float]
+            number of columns
+        rows: [float]
+            number of rows
         """
         src = gdal.Open(fname)
         if src is None:
-            print(f"{fname} does not exists")
-        else:
-            geo_out = src.GetGeoTransform()
-            proj = src.GetProjection()
-            size_X = src.RasterXSize
-            size_Y = src.RasterYSize
-            src = None
-        return geo_out, proj, size_X, size_Y
+            raise FileNotFoundError(f"{fname} does not exists")
+
+        geo = src.GetGeoTransform()
+        proj = src.GetProjection()
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+
+        return geo, proj, cols, rows
+
+    @staticmethod
+    def _window(src: Dataset, size: int = 256):
+        """Raster square window size/offsets.
+
+        Parameters
+        ----------
+        src : [gdal.Dataset]
+            gdal Dataset object.
+        size : [int]
+            Size of window in pixels. One value required which is used for both the
+            x and y size. E.g 256 means a 256x256 window.
+
+        Yields
+        ------
+        tuple[int]
+            4 element tuple containing the x size, y size, x offset and y offset
+            of the window.
+        """
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+        for xoff in range(0, cols, size):
+            xsize = size if size + xoff <= cols else cols - xoff
+            for yoff in range(0, rows, size):
+                ysize = size if size + yoff <= rows else rows - yoff
+                yield xsize, ysize, xoff, yoff
+
+    @staticmethod
+    def getTile(src: Dataset, size=256):
+        """gets a raster array in tiles.
+
+        Parameters
+        ----------
+        src : gdal.Dataset
+            Input raster.
+        size : int
+            Size of window in pixels. One value required which is used for both the
+            x and y size. E.g 256 means a 256x256 window.
+
+        Yields
+        ------
+        np.ndarray
+            Raster array in form [band][y][x].
+        """
+        for xsize, ysize, xoff, yoff in Raster._window(src, size=size):
+            # read the array at a certain indeces
+            yield src.ReadAsArray(xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize)
 
     def listAttributes(self):
         """Print Attributes List."""

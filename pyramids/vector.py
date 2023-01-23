@@ -1,20 +1,25 @@
-"""Created on Sun Jul 01 17:07:40 2018.
+"""Created on Sun Jul 01 17:07:40 2018. ogr classes: https://gdal.org/java/org/gdal/ogr/package-summary.html ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
 
 @author: Mostafa
 """
 
 import json
 import warnings
+from typing import Dict, List, Tuple, Union
 
 import geopandas as gpd
 import geopy.distance as distance
 import numpy as np
 import pandas as pd
+
+# import yaml
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import ogr, osr
+from osgeo import gdal, ogr, osr
+from osgeo.ogr import DataSource
 from pyproj import Proj, transform
 from shapely.geometry import Point, Polygon
 from shapely.geometry.multipolygon import MultiPolygon
+# from pyramids import __path__
 
 
 class Vector:
@@ -43,7 +48,254 @@ class Vector:
     """
 
     def __init__(self):
+        # read the drivers catalog
+        # self.catalog = self.getCatalog()
         pass
+
+    # @staticmethod
+    # def getCatalog() -> Dict[str, str]:
+    #     """Read drivers catalog
+    #
+    #     Returns
+    #     -------
+    #     catalog: [Dict]
+    #         attribute in the object
+    #     """
+    #     with open(f"{__path__[0]}/ogr_drivers.yaml", "r") as stream:
+    #         catalog = yaml.safe_load(stream)
+    #     return catalog
+
+    @staticmethod
+    def openVector(
+        path: str, geodataframe: bool = False, read_only: bool = True
+    ) -> DataSource:
+        """Open a vector dataset using OGR or GeoPandas.
+
+        Parameters
+        ----------
+        path : str
+            Path to vector file.
+        geodataframe : bool
+            Set to True to open with geopandas, else use OGR.
+        read_only : bool
+            If opening with OGR, set to False to open in "update" mode.
+
+        Returns
+        -------
+        GeoDataFrame if ``with_geopandas`` else OGR datsource.
+        """
+        if geodataframe:
+            ds = gpd.read_file(path)
+        else:
+            update = False if read_only else True
+            ds = ogr.OpenShared(path, update=update)
+            # ds = gdal.OpenEx(path)
+        return ds
+
+    @staticmethod
+    def createDataSource(
+        driver: str = "GeoJSON", path: str = None
+    ) -> Union[DataSource, None]:
+        """Create ogr DataSource.
+
+        Parameters
+        ----------
+        driver: [str]
+            driver type ["GeoJSON", "MEMORY"]
+        path: [str]
+            path to save the vector driver.
+
+        Returns
+        -------
+        ogr DataSource
+        """
+        if driver == "MEMORY":
+            path = "memData"
+        elif driver == "GeoJSON":
+            if not path.endswith(".geojson"):
+                raise TypeError(
+                    "The path to save the created raster should end with .geojson"
+                )
+            # # check if theere is a file with the given path
+            # if os.path.exists(path):
+            #     raise FileExistsError(f"There is file wit the given path: {path}")
+
+        else:
+            raise TypeError(
+                "The given driver type is not supported at the moment the only supported drivers are 'GeoJSON' and "
+                "'MEMORY'"
+            )
+
+        ds = ogr.GetDriverByName(driver).CreateDataSource(path)
+        return ds
+
+    @staticmethod
+    def copyDriverToMemory(ds: DataSource, name: str = "memory") -> DataSource:
+        """copyDriverToMemory.
+
+            copy driver to a memory driver
+
+        Parameters
+        ----------
+        ds: [ogr.DataSource]
+            ogr datasource
+        name: [str]
+            datasource name
+
+        Returns
+        -------
+        ogr.DataSource
+        """
+        driver = ogr.GetDriverByName("Memory")
+        return driver.CopyDataSource(ds, name)
+
+    @staticmethod
+    def saveVector(ds: DataSource, path: str, driver: str = "GeoJSON"):
+        """Save Vector to disk.
+
+            Currently saves ogr DataSource to disk
+
+        Parameters
+        ----------
+        ds: [DataSource]
+            ogr DataSource
+        path: [path]
+            path to save the vector
+        driver: [str]
+            driver type
+
+        Returns
+        -------
+        None
+        """
+        ogr.GetDriverByName(driver).CopyDataSource(ds, path)
+
+    @staticmethod
+    def GeoDataFrameToOgr(gdf: DataSource):
+        """convert a geopandas geodataframe into ogr DataSource.
+
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            geopandas geodataframe
+
+        Returns
+        -------
+        ogr.DataSource
+        """
+        return ogr.Open(gdf.to_json())
+
+    @staticmethod
+    def _getDsEPSG(ds: DataSource):
+        """Get epsg for a given ogr Datasource.
+
+        Parameters
+        ----------
+        ds: [DataSource]
+            ogr datasource (vector file read by ogr)
+
+        Returns
+        -------
+        int:
+            epsg number
+        """
+        layer = ds.GetLayer(0)
+        spatial_ref = layer.GetSpatialRef()
+        spatial_ref.AutoIdentifyEPSG()
+        epsg = int(spatial_ref.GetAuthorityCode(None))
+        return epsg
+
+    @staticmethod
+    def _createSRfromProj(prj: str):
+        """Create spatial reference object from projection.
+
+        Parameters
+        ----------
+        prj: [str]
+            projection string
+            >>> "GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]"
+
+        Returns
+        -------
+        """
+        srs = osr.SpatialReference()
+
+        if prj.startswith("PROJCS") or prj.startswith("GEOGCS"):
+            # ESRI well know text strings,
+            srs.ImportFromESRI([prj])
+        else:
+            # Proj4 strings.
+            srs.ImportFromProj4(prj)
+
+        srs.AutoIdentifyEPSG()
+
+        return srs
+
+    @staticmethod
+    def getEPSGfromPrj(prj: str) -> int:
+        """create spatial reference from the projection then auto identify the epsg using the osr object.
+
+        Parameters
+        ----------
+        prj: [str]
+
+        Returns
+        -------
+        int
+            epsg number
+
+        Examples
+        --------
+        >>> src = gdal.Open("path/to/raster.tif")
+        >>> prj = src.GetProjection()
+        >>> epsg = Vector.getEPSGfromPrj(prj)
+        """
+        srs = Vector._createSRfromProj(prj)
+        epsg = int(srs.GetAuthorityCode(None))
+        return epsg
+
+    @staticmethod
+    def _getGdfEPSG(gdf: GeoDataFrame):
+        """Get epsg for a given geodataframe.
+
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            vector file read by geopandas
+
+        Returns
+        -------
+        int:
+            epsg number
+        """
+        prj = Proj(gdf.crs).srs
+        epsg = Vector.getEPSGfromPrj(prj)
+        return epsg
+
+    @staticmethod
+    def getEPSG(vector_obj: Union[DataSource, GeoDataFrame]) -> int:
+        """getEPSG.
+
+        Parameters
+        ----------
+        vector_obj: [ogr.DataSource/GeoDataFrame]
+            vector file read by ogr or geopandas.
+
+        Returns
+        -------
+        int:
+            epsg number
+        """
+        if isinstance(vector_obj, ogr.DataSource):
+            epsg = Vector._getDsEPSG(vector_obj)
+        elif isinstance(vector_obj, gpd.GeoDataFrame):
+            epsg = Vector._getGdfEPSG(vector_obj)
+        else:
+            raise ValueError(
+                f"Unable to get EPSG from: {type(vector_obj)}, only ogr.Datasource and "
+                "geopandas.GeoDataFrame are supported"
+            )
+        return epsg
 
     @staticmethod
     def getXYCoords(geometry, coord_type: str):
@@ -116,7 +368,7 @@ class Vector:
     def getPolyCoords(geometry, coord_type: str):
         """getPolyCoords.
 
-        Returns Coordinates of Polygon using the Exterior of the Polygon.
+            Returns Coordinates of Polygon using the Exterior of the Polygon.
 
         parameters
         ----------
@@ -332,36 +584,36 @@ class Vector:
         return input_dataframe
 
     @staticmethod
-    def createPolygon(coords, geom_type: int = 1):
-        """create_polygon.
+    def createPolygon(coords: List[Tuple[float, float]], wkt: bool = False):
+        """Create a polygon Geometry.
 
-        this function creates a polygon from coordinates
+        Create a polygon from coordinates
 
         parameters
         ----------
         coords: [List]
             list of tuples [(x1,y1),(x2,y2)]
-        geom_type: [Integer]
-            1 to return a polygon in the form of WellKnownText, 2 to return a
-            polygon as an object
+        wkt: [bool]
+            True if you want to create the WellKnownText only not the shapely polygon object
 
         Returns
         -------
-        Type 1 returns a string of the polygon and its coordinates as
-        a WellKnownText, Type 2 returns Shapely Polygon object you can assign it
+        - if wkt is True the function returns a string of the polygon and its coordinates as
+        a WellKnownText,
+        - if wkt is False the function returns Shapely Polygon object you can assign it
         to a GeoPandas GeoDataFrame directly
 
         Examples
         --------
         >>> coordinates = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
-        >>> Vector.createPolygon(coordinates, 1)
+        >>> Vector.createPolygon(coordinates, wkt=True)
         it will give
         >>> 'POLYGON ((24.95 60.16 0,24.95 60.16 0,24.95 60.17 0,24.95 60.16 0))'
         while
         >>> new_geometry = gpd.GeoDataFrame()
-        >>> new_geometry.loc[0,'geometry'] = Vector.createPolygon(coordinates, 2)
+        >>> new_geometry.loc[0,'geometry'] = Vector.createPolygon(coordinates, wkt=False)
         """
-        if geom_type == 1:
+        if wkt:
             # create a ring
             ring = ogr.Geometry(ogr.wkbLinearRing)
             for coord in coords:
@@ -377,7 +629,7 @@ class Vector:
             return poly
 
     @staticmethod
-    def createPoint(coords: list):
+    def createPoint(coords: List[Tuple[float]]) -> List[Point]:
         """CreatePoint.
 
         CreatePoint takes a list of tuples of coordinates and convert it into

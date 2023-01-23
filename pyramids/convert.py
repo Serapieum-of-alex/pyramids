@@ -1,18 +1,32 @@
 """Convert data from one form to another."""
 import os
+import shutil
+import tempfile
+import uuid
+from typing import Any, Dict, Union
 
+import geopandas as gpd
 import netCDF4
 import numpy as np
-from osgeo import gdal, osr
+import pandas as pd
+from geopandas.geodataframe import GeoDataFrame
+from osgeo import gdal, ogr, osr
+from osgeo.gdal import Dataset
+from osgeo.ogr import DataSource
+from pandas import DataFrame
 
+from pyramids.array import getPixels
 from pyramids.netcdf import NC
 from pyramids.raster import Raster
+from pyramids.utils import gdal_to_ogr_dtype
+from pyramids.vector import Vector
 
 
 class Convert:
     """Convert data from one form to another."""
 
     def __init__(self):
+        self.vector_catalog: Dict[str, str] = Vector.getCatalog()
         pass
 
     @staticmethod
@@ -258,73 +272,79 @@ class Convert:
             )
 
     @staticmethod
-    def nctoTiff(input_nc, save_to: str, separator: str = "_"):
+    def nctoTiff(
+        input_nc,
+        save_to: str,
+        separator: str = "_",
+        time_var_name: str = None,
+        prefix: str = None,
+    ):
         """nctoTiff.
 
         Parameters
         ----------
         input_nc : [string/list]
-            a path of the netcdf file of a list of the netcdf files' names.
+            a path of the netcdf file or a list of the netcdf files' names.
         save_to : [str]
             Path to where you want to save the files.
         separator : [string]
             separator in the file name that separate the name from the date.
-            Default is "_"
+            Default is "_".
+        time_var_name: [str]
+            name of the time variable in the dataset, as it does not have a unified name. the function will check
+            the name time and temporal_resolution if the time_var parameter is not given
+        prefix: [str]
+            file name prefix. Default is None.
 
         Returns
         -------
         None.
         """
-        if type(input_nc) == str:
+        if isinstance(input_nc, str):
             nc = netCDF4.Dataset(input_nc)
-        elif type(input_nc) == list:
+        elif isinstance(input_nc, list):
             nc = netCDF4.MFDataset(input_nc)
         else:
             raise TypeError(
-                "first parameter to the nctoTiff function should be either str or list"
+                "First parameter to the nctoTiff function should be either str or list"
             )
 
         # get the variable
         Var = list(nc.variables.keys())[-1]
         # extract the data
-        All_Data = nc[Var]
+        dataset = nc[Var]
         # get the details of the file
-        (
-            geo,
-            epsg,
-            size_X,
-            size_Y,
-            size_Z,
-            Time,
-            NoDataValue,
-            datatype,
-        ) = NC.ncDetails(nc)
+        geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.getNCDetails(
+            nc, time_var_name=time_var_name
+        )
 
         # Create output folder if needed
         if not os.path.exists(save_to):
             os.mkdir(save_to)
 
-        for i in range(0, size_Z):
-            if (
-                All_Data.shape[0] and All_Data.shape[0] > 1
-            ):  # type(time) == np.ndarray: #not time == -9999
-                time_one = Time[i]
-                # d = dt.date.fromordinal(int(time_one))
-                name = os.path.splitext(os.path.basename(input_nc))[0]
-                nameparts = name.split(separator)[0]  # [0:-2]
-                name_out = os.path.join(
-                    save_to
-                    + "/"
-                    + nameparts
-                    + "_%d.%02d.%02d.tif"
-                    % (time_one.year, time_one.month, time_one.day)
-                )
-                data = All_Data[i, :, :]
-            else:
-                name = os.path.splitext(os.path.basename(input_nc))[0]
-                name_out = os.path.join(save_to, name + ".tif")
-                data = All_Data[0, :, :]
+        if prefix is None and time_len > 1:
+            # if there is no prefix take the first par of the fname
+            fname_prefix = os.path.splitext(os.path.basename(input_nc))[0]
+            nameparts = fname_prefix.split(separator)[0]
+        else:
+            fname_prefix = prefix
+            nameparts = fname_prefix
 
+        for i in range(time_len):
+            if (
+                time_len > 1
+            ):  # dataset.shape[0] and # type(temporal_resolution) == np.ndarray: #not temporal_resolution == -9999
+                time_one = time_var[i]
+                name_out = os.path.join(
+                    save_to,
+                    f"{nameparts}_{time_one.strftime('%Y')}.{time_one.strftime('%m')}."
+                    f"{time_one.strftime('%d')}.{time_one.strftime('%H')}."
+                    f"{time_one.strftime('%M')}.{time_one.strftime('%S')}.tif",
+                )
+            else:
+                name_out = os.path.join(save_to, f"{fname_prefix}.tif")
+
+            data = dataset[i, :, :]
             driver = gdal.GetDriverByName("GTiff")
             # driver = gdal.GetDriverByName("MEM")
 
@@ -382,44 +402,324 @@ class Convert:
                     ["COMPRESS=LZW"],
                 )
 
-            srse = osr.SpatialReference()
-            if epsg == "":
-                srse.SetWellKnownGeogCS("WGS84")
-
-            else:
-                try:
-                    if not srse.SetWellKnownGeogCS(epsg) == 6:
-                        srse.SetWellKnownGeogCS(epsg)
-                    else:
-                        try:
-                            srse.ImportFromEPSG(int(epsg))
-                        except:
-                            srse.ImportFromWkt(epsg)
-                except:
-                    try:
-                        srse.ImportFromEPSG(int(epsg))
-                    except:
-                        srse.ImportFromWkt(epsg)
-
+            sr = Raster._createSRfromEPSG(epsg=epsg)
             # set the geotransform
             dst.SetGeoTransform(geo)
             # set the projection
-            dst.SetProjection(srse.ExportToWkt())
-            # setting the NoDataValue does not accept double precision numbers
-            try:
-                dst.GetRasterBand(1).SetNoDataValue(NoDataValue)
-                # initialize the band with the nodata value instead of 0
-                dst.GetRasterBand(1).Fill(NoDataValue)
-            except:
-                NoDataValue = -9999
-                dst.GetRasterBand(1).SetNoDataValue(NoDataValue)
-                dst.GetRasterBand(1).Fill(NoDataValue)
-                # assert False, "please change the NoDataValue in the source raster as it is not accepted by Gdal"
-                print(
-                    "the NoDataValue in the source Netcdf is double precission and as it is not accepted by Gdal"
-                )
-                print("the NoDataValue now is et to -9999 in the raster")
-
+            dst.SetProjection(sr.ExportToWkt())
+            dst = Raster.setNoDataValue(dst)
             dst.GetRasterBand(1).WriteArray(data)
             dst.FlushCache()
             dst = None
+
+    @staticmethod
+    def polygonToRaster(
+        vector: Union[str, GeoDataFrame],
+        raster: Union[str, Dataset],
+        path: str = None,
+        vector_field=None,
+    ) -> Union[None, Dataset]:
+        """Covert a vector into raster.
+
+            - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
+            - all the new raster geotransform data will be copied from the given raster.
+            - raster and vector should have the same projection
+
+        Parameters
+        ----------
+        vector : [str/ogr DataSource/GeoDataFrame]
+            vector path
+        raster : [str/gdal Dataset]
+            raster path, or gdal Dataset, the raster will only be used as a source for the geotransform (
+            projection, rows, columns, location) data to be copied to the rasterized vector.
+        path : [str]
+            Path for output raster. if given the resulted raster will be saved to disk.
+        vector_field : str or None
+            Name of a field in the vector to burn values from. If None, all vector
+            features are burned with a constant value of 1.
+
+        Returns
+        -------
+        gdal.Dataset
+            Single band raster with vector geometries burned.
+        """
+        if isinstance(raster, str):
+            src = Raster.openDataset(raster)
+        else:
+            src = raster
+
+        if not isinstance(vector, GeoDataFrame):
+            # if the given vector is a path
+            if isinstance(vector, str):
+                ds = Vector.openVector(vector)
+            else:
+                # if the given vector is a ogr.DataSource
+                ds = vector
+        else:
+            # if the given vector is a geodataframe, convert it to ogr datasource
+            ds = Convert._gdfToOgrDataSource(vector)
+            # then save it to disk and get the path
+            vector_path = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}.geojson")
+            vector.to_file(vector_path)
+            vector = vector_path
+
+        # Check EPSG are same, if not reproject vector.
+        src_epsg = Raster.getEPSG(src)
+        ds_epsg = Vector.getEPSG(ds)
+        if src_epsg != ds_epsg:
+            # TODO: reproject the vector to the raster projection instead of raising an error.
+            raise ValueError(
+                f"Raster and vector are not the same EPSG. {src_epsg} != {ds_epsg}"
+            )
+
+        src = Raster.createEmptyDriver(src, path, bands=1, no_data_value=0)
+
+        if vector_field is None:
+            # Use a constant value for all features.
+            burn_values = [1]
+            attribute = None
+        else:
+            # Use the values given in the vector field.
+            burn_values = None
+            attribute = vector_field
+
+        rasterize_opts = gdal.RasterizeOptions(
+            bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
+        )
+        _ = gdal.Rasterize(src, vector, options=rasterize_opts)
+
+        if path:
+            src.FlushCache()
+            src = None
+        else:
+            # read the rasterized vector
+            # src = Raster.openDataset(path)
+            return src
+
+    @staticmethod
+    def rasterToPolygon(
+        src: Dataset,
+        path: str = None,
+        band: int = 1,
+        col_name: Any = "id",
+        driver: str = "MEMORY",
+    ) -> Union[GeoDataFrame, None]:
+        """polygonize.
+
+            polygonize takes a gdal band object and group neighboring cells with the same value into one polygon,
+            the resulted vector will be saved to disk as a geojson file
+
+        Parameters
+        ----------
+        src:
+            gdal Dataset
+        band: [int]
+            raster band index [1,2,3,..]
+        path:[str]
+            path where you want to save the polygon, the path should include the extension at the end
+            (i.e. path/vector_name.geojson)
+        col_name:
+            name of the column where the raster data will be stored.
+        driver: [str]
+            vector driver, for all possible drivers check https://gdal.org/drivers/vector/index.html .
+            Default is "GeoJSON".
+
+        Returns
+        -------
+        None
+        """
+        band = src.GetRasterBand(band)
+        prj = src.GetProjection()
+        srs = osr.SpatialReference(wkt=prj)
+        if path is None:
+            dst_layername = "id"
+        else:
+            dst_layername = path.split(".")[0].split("/")[-1]
+
+        dst_ds = Vector.createDataSource(driver, path)
+        dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
+        dtype = gdal_to_ogr_dtype(src)
+        newField = ogr.FieldDefn(col_name, dtype)
+        dst_layer.CreateField(newField)
+        gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
+        if path:
+            dst_layer = None
+            dst_ds = None
+        else:
+            gdf = Convert._ogrDataSourceToGeoDF(dst_ds)
+            return gdf
+
+    @staticmethod
+    def rasterToGeoDataFrame(
+        src: str, vector: Union[str, GeoDataFrame] = None, add_geometry: str = None
+    ) -> Union[DataFrame, GeoDataFrame]:
+        """Convert a raster to a GeoDataFrame.
+
+            The function do the following
+            - Flatted the array in each band in the raster then mask the values if a vector
+            file is given otherwise it will flatten all values.
+            - put the values for each band in a column in a dataframe under the name of the raster band, if no meta
+            data in the raster band, and index number will be used [1, 2, 3, ...]
+
+        Parameters
+        ----------
+        src : [str/gdal Dataset]
+            Path to raster file.
+        vector : Optional[GeoDataFrame/str]
+            GeoDataFrame for the vector file path to vector file. If given, it will be used to clip the raster
+        add_geometry: [str]
+            "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
+            Default is None.
+
+        Returns
+        -------
+        DataFrame
+        """
+        temp_dir = None
+
+        # Get raster band names. open the dataset using gdal.Open
+        if isinstance(src, str):
+            src = Raster.openDataset(src)
+
+        band_names = Raster.getBandNames(src)
+
+        # Create a mask from the pixels touched by the vector.
+        if vector is not None:
+            # Create a temporary directory for files.
+            temp_dir = tempfile.mkdtemp()
+            new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}")
+
+            # read the vector with geopandas
+            if isinstance(vector, str):
+                gdf = Vector.openVector(vector, geodataframe=True)
+            elif isinstance(vector, GeoDataFrame):
+                gdf = vector
+
+            # add a unique value for each row to use it to rasterize the vector
+            gdf["burn_value"] = list(range(1, len(gdf) + 1))
+            # save the new vector to disk to read it with ogr later
+            gdf.to_file(new_vector_path, driver="GeoJSON")
+
+            # rasterize the vector by burning the unique values as cell values.
+            # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
+            rasterized_vector: Dataset = Convert.polygonToRaster(
+                new_vector_path, src, vector_field="burn_value"
+            )  # rasterized_vector_path,
+            coords = Raster.getCellPolygons(rasterized_vector, mask=True)
+
+            # Loop over mask values to extract pixels.
+            # DataFrames of each tile.
+            df_list = []
+            mask_arr = rasterized_vector.GetRasterBand(1).ReadAsArray()
+
+            for arr in Raster.getTile(src):
+
+                mask_dfs = []
+                for mask_val in gdf["burn_value"].values:
+                    # Extract only masked pixels.
+                    flatten_masked_values = getPixels(
+                        arr, mask_arr, mask_val=mask_val
+                    ).transpose()
+                    fid_px = np.ones(flatten_masked_values.shape[0]) * mask_val
+
+                    # Create a DataFrame of masked flatten_masked_values and their FID.
+                    mask_df = pd.DataFrame(flatten_masked_values, columns=band_names)
+                    mask_df["burn_value"] = fid_px
+                    mask_dfs.append(mask_df)
+
+                # Concat the mask DataFrames.
+                mask_df = pd.concat(mask_dfs)
+
+                # Join with pixels with vector attributes using the FID.
+                df_list.append(mask_df.merge(gdf, how="left", on="burn_value"))
+
+            # Merge all the tiles.
+            out_df = pd.concat(df_list)
+        else:
+            # No vector given, simply load the raster.
+            df_list = []  # DataFrames of each tile.
+            for arr in Raster.getTile(src):
+                # Assume multiband
+                idx = (1, 2)
+                if arr.ndim == 2:
+                    # Handle single band rasters
+                    idx = (0, 1)
+
+                mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
+                pixels = getPixels(arr, mask_arr).transpose()
+                df_list.append(pd.DataFrame(pixels, columns=band_names))
+
+            # Merge all the tiles.
+            out_df = pd.concat(df_list)
+            coords = Raster.getCellPolygons(src, mask=False)
+
+        out_df = out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
+        out_df_with_geoms = gpd.GeoDataFrame(out_df, geometry=coords["geometry"])
+        # TODO mask no data values.
+
+        # Remove temporary files.
+        if temp_dir is not None:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        # Return dropping any extra cols.
+        return out_df_with_geoms
+
+    @staticmethod
+    def _ogrDataSourceToGeoDF(ds: DataSource) -> GeoDataFrame:
+        """Convert ogr DataSource object to a GeoDataFrame.
+
+        Parameters
+        ----------
+        ds: [ogr.DataSource]
+            ogr DataSource
+
+        Returns
+        -------
+        GeoDataFrame
+        """
+        # # TODO: not complete yet the function needs to take an ogr.DataSource and then write it to disk and then read
+        # #  it using the gdal.OpenEx as below
+        # # but this way if i write the vector to disk i can just read it ysing geopandas as df directly.
+        # # https://gis.stackexchange.com/questions/227737/python-gdal-ogr-2-x-read-vectors-with-gdal-openex-or-ogr-open
+        #
+        # # read the vector using gdal not ogr
+        # ds = gdal.OpenEx(path)  # , gdal.OF_READONLY
+        # layer = ds.GetLayer(0)
+        # layer_name = layer.GetName()
+        # mempath = "/vsimem/test.geojson"
+        # # convert the vector read as a gdal dataset to memory
+        # # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.VectorTranslateOptions
+        # gdal.VectorTranslate(mempath, ds)  # , SQLStatement=f"SELECT * FROM {layer_name}", layerName=layer_name
+        # # reading the memory file using fiona
+        # f = fiona.open(mempath, driver='geojson')
+        # gdf = gpd.GeoDataFrame.from_features(f, crs=f.crs)
+
+        # till i manage to do the above way just write the ogr.DataSource to disk and then read it using geopandas
+
+        # Create a temporary directory for files.
+        temp_dir = tempfile.mkdtemp()
+        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        Vector.saveVector(ds, new_vector_path)
+        gdf = gpd.read_file(new_vector_path)
+        return gdf
+
+    @staticmethod
+    def _gdfToOgrDataSource(gdf: GeoDataFrame) -> DataSource:
+        """Convert ogr DataSource object to a GeoDataFrame.
+
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            ogr DataSource
+
+        Returns
+        -------
+        ogr.DataSource
+        """
+        # Create a temporary directory for files.
+        temp_dir = tempfile.mkdtemp()
+        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        gdf.to_file(new_vector_path)
+        ds = Vector.openVector(new_vector_path)
+        ds = Vector.copyDriverToMemory(ds)
+        return ds

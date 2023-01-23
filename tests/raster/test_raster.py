@@ -1,9 +1,11 @@
 import os
+from typing import List, Tuple
 
 # import geopandas as gpd
 import numpy as np
 from osgeo import gdal, osr
 from osgeo.gdal import Dataset
+
 from pyramids.raster import Raster
 
 
@@ -16,6 +18,15 @@ def test_GetRasterData(
     assert isinstance(arr, np.ndarray)
 
 
+def test_get_raster_details(src: Dataset, src_shape: tuple):
+    cols, rows, prj, bands, gt, no_data_value, dtypes = Raster.getRasterDetails(src)
+    assert cols == src_shape[1]
+    assert rows == src_shape[0]
+    assert isinstance(no_data_value, list)
+    assert isinstance(dtypes, list)
+    assert isinstance(gt, tuple)
+
+
 def test_GetProjectionData(
     src: Dataset,
     src_epsg: int,
@@ -26,16 +37,62 @@ def test_GetProjectionData(
     assert geo == src_geotransform
 
 
-def test_GetCellCoords(
-    src: Dataset,
-    src_arr_first_4_rows: np.ndarray,
-    src_arr_last_4_rows: np.ndarray,
-    cells_centerscoords: np.ndarray,
-):
-    coords, centerscoords = Raster.getCellCoords(src)
-    assert np.isclose(coords[:4, :], src_arr_first_4_rows, rtol=0.000001).all()
-    assert np.isclose(coords[-4:, :], src_arr_last_4_rows, rtol=0.000001).all()
-    assert np.isclose(centerscoords[0][:3], cells_centerscoords, rtol=0.000001).all()
+class TestGetCellCoords:
+    def test_cell_center_all_cells(
+        self,
+        src: Dataset,
+        src_shape: tuple,
+        src_cell_center_coords_first_4_rows,
+        src_cell_center_coords_last_4_rows,
+        cells_centerscoords: np.ndarray,
+    ):
+        """get center coordinates of all cells."""
+        coords = Raster.getCellCoords(src, location="center", mask=False)
+        assert len(coords) == src_shape[0] * src_shape[1]
+        assert np.isclose(
+            coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001
+        ).all(), (
+            "the coordinates of the first 4 rows differs from the validation coords"
+        )
+        assert np.isclose(
+            coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001
+        ).all(), "the coordinates of the last 4 rows differs from the validation coords"
+
+    def test_cell_corner_all_cells(
+        self,
+        src: Dataset,
+        src_cells_corner_coords_last4,
+    ):
+        coords = Raster.getCellCoords(src, location="corner")
+        assert np.isclose(
+            coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
+        ).all()
+
+    def test_cell_center_masked_cells(
+        self,
+        src: Dataset,
+        src_masked_values_len: int,
+        src_masked_cells_center_coords_last4,
+    ):
+        """get cell coordinates from cells inside the domain only."""
+        coords = Raster.getCellCoords(src, location="center", mask=True)
+        assert coords.shape[0] == src_masked_values_len
+        assert np.isclose(
+            coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
+        ).all()
+
+
+class TestCreateCellGeometry:
+    def test_create_cell_polygon(self, src: Dataset, src_shape: Tuple, src_epsg: int):
+        gdf = Raster.getCellPolygons(src)
+        assert len(gdf) == src_shape[0] * src_shape[1]
+        assert gdf.crs.to_epsg() == src_epsg
+
+    def test_create_cell_points(self, src: Dataset, src_shape: Tuple, src_epsg: int):
+        gdf = Raster.getCellPoints(src)
+        # check the size
+        assert len(gdf) == src_shape[0] * src_shape[1]
+        assert gdf.crs.to_epsg() == src_epsg
 
 
 def test_create_raster(
@@ -64,24 +121,44 @@ def test_save_rasters(
     os.remove(save_raster_path)
 
 
-def test_raster_like(
-    src: Dataset,
-    src_arr: np.ndarray,
-    src_no_data_value: float,
-    raster_like_path: str,
-):
-    arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
-    arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+class TestRasterLike:
+    def test_create_raster_like_to_disk(
+        self,
+        src: Dataset,
+        src_arr: np.ndarray,
+        src_no_data_value: float,
+        raster_like_path: str,
+    ):
+        arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
+        arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
 
-    Raster.rasterLike(src, arr2, raster_like_path)
-    dst = gdal.Open(raster_like_path)
-    arr = dst.ReadAsArray()
-    assert arr.shape == src_arr.shape
-    assert np.isclose(
-        src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
-    )
-    assert src.GetGeoTransform() == dst.GetGeoTransform()
-    os.path.exists(raster_like_path)
+        Raster.rasterLike(src, arr2, driver="GTiff", path=raster_like_path)
+        assert os.path.exists(raster_like_path)
+        dst = gdal.Open(raster_like_path)
+        arr = dst.ReadAsArray()
+        assert arr.shape == src_arr.shape
+        assert np.isclose(
+            src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
+        )
+        assert src.GetGeoTransform() == dst.GetGeoTransform()
+
+    def test_create_raster_like_to_mem(
+        self,
+        src: Dataset,
+        src_arr: np.ndarray,
+        src_no_data_value: float,
+    ):
+        arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
+        arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+
+        dst = Raster.rasterLike(src, arr2, driver="MEM")
+
+        arr = dst.ReadAsArray()
+        assert arr.shape == src_arr.shape
+        assert np.isclose(
+            src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
+        )
+        assert src.GetGeoTransform() == dst.GetGeoTransform()
 
 
 def test_map_algebra(
@@ -97,7 +174,7 @@ def test_map_algebra(
 
 
 def test_fill_raster(src: Dataset, fill_raster_path: str, fill_raster_value: int):
-    Raster.rasterFill(src, fill_raster_value, save_to=fill_raster_path)
+    Raster.rasterFill(src, fill_raster_value, driver="GTiff", path=fill_raster_path)
     "now the resulted raster is saved to disk"
     dst = gdal.Open(fill_raster_path)
     arr = dst.ReadAsArray()
@@ -322,3 +399,13 @@ class TestReadRastersFolder:
             rasters_folder_dim[1],
             rasters_folder_between_dates_raster_number,
         )
+
+
+def test_merge(
+    merge_input_raster: List[str],
+    merge_output: str,
+):
+    Raster.gdal_merge(merge_input_raster, merge_output)
+    assert os.path.exists(merge_output)
+    src = gdal.Open(merge_output)
+    assert src.GetRasterBand(1).GetNoDataValue() == 0

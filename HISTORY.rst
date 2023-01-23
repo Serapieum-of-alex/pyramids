@@ -26,3 +26,10 @@ History
 ------------------
 
 * add utils module for functions dealing with compressing files, and others utility functions
+
+0.3.0 (2023-01-23)
+------------------
+
+* add array module to deal with any array operations.
+* add openDataset, getEPSG create SpatialReference, and setNoDataValue utility function, getCellCoords, ...
+* add rasterToPolygon, PolygonToRaster, rasterToGeoDataFrame, conversion between ogr DataSource and GeoDataFrame.

@@ -138,7 +138,7 @@ build_artifacts
 
 *.qgz
 .vscode
-
+*.xlsx
 *.xml
 .idea/pyramids.iml
 .idea/.gitignore
@@ -147,6 +147,11 @@ conda/
 examples/data/Save_prec_netcdf_multiple
 examples/data/ZonalStatistics/
 examples/data/precip.1979.nc
-pyramids/Copy of RETRIEVE-ALL-METADATA-WITH-ACCOUNT-INFO.ipynb
-tests/Copy of RETRIEVE-ALL-METADATA-WITH-ACCOUNT-INFO.ipynb
+examples/Copy of RETRIEVE-ALL-METADATA-WITH-ACCOUNT-INFO.ipynb
 .idea/
+#examples/data/crop_aligned_folder/Evaporation_ECMWF_ERA-Interim_mm_daily_*
+#examples/data/fill_raster_saved.tif
+#examples/data/raster_like_saved.tif
+tests/data/asci_write_test.asc
+tests/data/poligonized.geojson
+tests/mo/*

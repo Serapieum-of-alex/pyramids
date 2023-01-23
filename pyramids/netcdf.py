@@ -1,8 +1,10 @@
 import os
+from typing import Tuple
 
 import netCDF4
 import numpy as np
 import pandas as pd
+from netCDF4._netCDF4 import Dataset
 
 from pyramids.raster import Raster
 
@@ -14,16 +16,19 @@ class NC:
         pass
 
     @staticmethod
-    def ncDetails(nc, var=None):
-        """NCGetGeotransform takes a netcdf object and return the geottansform data of the bottom left corner.
+    def getNCDetails(nc: Dataset, var: str = None, time_var_name: str = None) -> Tuple:
+        """ncDetails takes a netcdf Dataset and return the geottansform data of the bottom left corner.
 
         Parameters
         ----------
-        nc : [netcdf object]
+        nc : [netcdf Dataset]
             netcdf object .
-        var : [string], optional
+        var : [str], optional
             the variable you want to read from the netcdf file if None is given the
             last variable in the file will be read. The default is None.
+        time_var_name: [str]
+            name of the time variable in the dataset, as it does not have a unified name. the function will check
+            the name time and temporal_resolution if the time_var parameter is not given
 
         Returns
         -------
@@ -37,8 +42,8 @@ class NC:
             number of coordinates in y direction
         size_Z : [integer]
             number of coordinates in z direction
-        time : [integer]
-            time varialble in the netcdf file
+        temporal_resolution : [integer]
+            temporal_resolution varialble in the netcdf file
         """
         # list if variables
         if var is None:
@@ -47,73 +52,129 @@ class NC:
         data = nc.variables[var]
         # nodatavalue
         try:
-            NoDataValue = data._FillValue
+            no_data_value = data._FillValue
         except AttributeError:
-            NoDataValue = data.missing_value
+            no_data_value = data.missing_value
         # data type
         try:
             datatype = data.datatype
         except AttributeError:
             datatype = data.dtype
 
-        size_Y, size_X = np.int_(data.shape[-2:])
+        lat_len, lon_len = np.int_(data.shape[-2:])  # lat=y, lon=x
         # if there is a stack of layers in the file (3d array)
         if len(data.shape) == 3 and data.shape[0] > 1:
-            size_Z = np.int_(data.shape[0])
-            try:
-                TimeVar = nc.variables["time"]
-                Time = TimeVar[:]
-                # convert  time numbers to dates
-                Time = netCDF4.num2date(Time[:], TimeVar.units)
-            except:
-                Time = nc.variables["t"][:]
-                # time = nc.variables['t'].units[11:]
+            time_len = np.int_(data.shape[0])
+            time_var = NC.get_time(nc, time_var_name=time_var_name)
         else:
             # if there is only one layer(2D array)
-            size_Z = 1
-            Time = -9999
+            time_len = 1
+            time_var = -9999
 
         # get lats and lons
         try:
             lats = nc.variables["latitude"][:]
             # Geo6 = nc.variables['latitude'].res
-        except:
+        except KeyError:
             lats = nc.variables["lat"][:]
             # Geo6 = nc.variables['lat'].res
 
         try:
             lons = nc.variables["longitude"][:]
-
-        except:
+        except KeyError:
             lons = nc.variables["lon"][:]
             # Geo2 = nc.variables['lon'].size
 
         # try to get the resolutio of the file
         try:
             try:
-                Geo2 = nc.variables["longitude"].res
-            except:
+                geo2 = nc.variables["longitude"].res
+            except (KeyError, AttributeError):
                 try:
-                    Geo2 = nc.variables["lon"].res
-                except:
-                    Geo2 = lons[1] - lons[0]
-        except:
-            assert False, "the netcdf file does not hae a resolution attribute"
+                    geo2 = nc.variables["lon"].res
+                except (KeyError, AttributeError):
+                    geo2 = lons[1] - lons[0]
+        except (KeyError, AttributeError):
+            raise KeyError("the netcdf file does not have a resolution attribute")
 
         # Lower left corner corner coordinates
-        Geo4 = np.min(lats) + Geo2 / 2
-        Geo1 = np.min(lons) - Geo2 / 2
+        geo4 = np.min(lats) + geo2 / 2
+        geo1 = np.min(lons) - geo2 / 2
 
         try:
             crso = nc.variables["crs"]
             proj = crso.projection
-            epsg = Raster.getEPSG(proj, extension="GEOGCS")
+            epsg = NC.getEPSG(proj, extension="GEOGCS")
         except:
             epsg = 4326
 
-        geo = tuple([Geo1, Geo2, 0, Geo4, 0, Geo2])
+        geo = tuple([geo1, geo2, 0, geo4, 0, geo2])
 
-        return geo, epsg, size_X, size_Y, size_Z, Time, NoDataValue, datatype
+        return geo, epsg, lon_len, lat_len, time_len, time_var, no_data_value, datatype
+
+    @staticmethod
+    def getEPSG(proj, extension: str = "tiff"):
+        """GetEPSG.
+
+            This function reads the projection of a GEOGCS file or tiff file
+
+        Parameters
+        ----------
+        proj : TYPE
+            projection read from the netcdf file.
+        extension : [string], optional
+            tiff or GEOGCS . The default is 'tiff'.
+
+        Returns
+        -------
+        epsg : [integer]
+            epsg number
+        """
+        try:
+            if extension == "tiff":
+                # Get info of the dataset that is used for transforming
+                g_proj = proj.GetProjection()
+                Projection = g_proj.split('EPSG","')
+
+            if extension == "GEOGCS":
+                Projection = proj
+
+            epsg = int((str(Projection[-1]).split("]")[0])[0:-1])
+        except:
+            epsg = 4326
+
+        return epsg
+
+    @staticmethod
+    def get_time(nc, time_var_name: str = None) -> np.ndarray:
+        """Get the time variable from the netcdf Dataset.
+
+        Parameters
+        ----------
+        nc: [Dataset]
+            netcdf object .
+        time_var_name: [str]
+            name of the time variable in the dataset, as it does not have a unified name. the function will check
+            the name time and temporal_resolution if the time_var parameter is not given
+
+        Returns
+        -------
+        """
+        if time_var_name is None:
+            try:
+                time_var = nc.variables["temporal_resolution"]
+                time_arr = time_var[:]
+                # convert  temporal_resolution numbers to dates
+                time_arr = netCDF4.num2date(time_arr[:], time_var.units)
+            except KeyError:
+                time_arr = nc.variables["t"][:]
+                # temporal_resolution = nc.variables['t'].units[11:]
+        else:
+            time_var = nc.variables[time_var_name]
+            time_arr = time_var[:]
+            time_arr = netCDF4.num2date(time_arr[:], time_var.units)
+
+        return time_arr
 
     @staticmethod
     def saveNC(
@@ -135,7 +196,7 @@ class NC:
         namenc : [str]
             complete path of the output file with .nc extension.
         DataCube : [array]
-            dataset of the nc file, can be a 2D or 3D array [time, lat, lon],
+            dataset of the nc file, can be a 2D or 3D array [temporal_resolution, lat, lon],
             must be same size as reference data.
         Var : [str]
             the name of the variable.
@@ -174,7 +235,7 @@ class NC:
             nco.createDimension("longitude", size_X)
             nco.createDimension("latitude", size_Y)
 
-            # Create time dimension if the parameter is time dependent
+            # Create temporal_resolution dimension if the parameter is temporal_resolution dependent
             if Startdate != "":
                 if Time_steps == "monthly":
                     Dates = pd.date_range(Startdate, Enddate, freq="MS")
@@ -185,10 +246,12 @@ class NC:
                 for Date in Dates:
                     time_or[i] = Date.toordinal()
                     i += 1
-                nco.createDimension("time", None)
-                timeo = nco.createVariable("time", "f4", ("time",))
+                nco.createDimension("temporal_resolution", None)
+                timeo = nco.createVariable(
+                    "temporal_resolution", "f4", ("temporal_resolution",)
+                )
                 timeo.units = "%s" % Time_steps
-                timeo.standard_name = "time"
+                timeo.standard_name = "temporal_resolution"
 
             # Create the lon variable
             lono = nco.createVariable("longitude", "f8", ("longitude",))
@@ -217,7 +280,7 @@ class NC:
                 preco = nco.createVariable(
                     "%s" % Var,
                     "f8",
-                    ("time", "latitude", "longitude"),
+                    ("temporal_resolution", "latitude", "longitude"),
                     zlib=True,
                     least_significant_digit=1,
                 )
