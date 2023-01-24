@@ -38,3 +38,5 @@ History
 ------------------
 * add pyarrow to use parquet data type for saving dataframes and geodataframes
 * add H3 indexing package, and add new module indexing with functions to convert geometries to indeces back and forth.
+* fix bug in calculating pivot point of the netcdf file
+* rasterToDataFrame function will create geometries of the cells only based on the add_geometry parameter.
