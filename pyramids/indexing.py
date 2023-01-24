@@ -1,18 +1,19 @@
-from typing import Tuple, Set, Dict, Union
-from shapely.geometry import Polygon
+from typing import Dict, Set, Tuple, Union
+
 import h3
+from geopandas.geodataframe import GeoDataFrame
 from pandas import DataFrame
 from pandas.core.series import Series
-from geopandas.geodataframe import GeoDataFrame
+from shapely.geometry import Polygon
+
 
 class H3:
-
     def __init__(self):
         pass
 
     @staticmethod
     def geometryToIndex(lat, lon, resolution):
-        """Get Hexagon index
+        """Get Hexagon index.
 
             get the index of the hexagon that the coordinates lie inside at a certain resolution level.
 
@@ -32,10 +33,9 @@ class H3:
         """
         return h3.geo_to_h3(lat, lon, resolution)
 
-
     @staticmethod
     def getIndex(gdf: GeoDataFrame, resolution: int) -> Series:
-        """Get Hexagon index
+        """Get Hexagon index.
 
             get the index of the hexagon that the coordinates lie inside at a certain resolution level.
 
@@ -58,13 +58,14 @@ class H3:
         >>> resolution = 3
         >>> gdf["h3_index"] = H3.getIndex(gdf)
         """
-        fn = lambda gdf_row: H3.geometryToIndex(gdf_row.geometry.y, gdf_row.geometry.x, resolution)
+        fn = lambda gdf_row: H3.geometryToIndex(
+            gdf_row.geometry.y, gdf_row.geometry.x, resolution
+        )
         return gdf.apply(fn, axis=1)
-
 
     @staticmethod
     def getCoords(hex_index: str) -> Tuple:
-        """Get the coordinates
+        """Get the coordinates.
 
             returns the coordinates from the hexdecimal string
 
@@ -80,10 +81,9 @@ class H3:
         """
         return h3.h3_to_geo(hex_index)
 
-
     @staticmethod
     def indexToPolygon(hex_index: str) -> Polygon:
-        """Get Polygon
+        """Get Polygon.
 
             return the polygon corresponding to the given hexagon index
 
@@ -107,7 +107,7 @@ class H3:
     # def getGeometry():
     @staticmethod
     def getGeometry(gdf: Union[GeoDataFrame, DataFrame], index_col: str) -> Series:
-        """Get the Hexagon polygon geometry form a hexagon index
+        """Get the Hexagon polygon geometry form a hexagon index.
 
         Parameters
         ----------
@@ -125,10 +125,9 @@ class H3:
         fn = lambda gdf_row: H3.indexToPolygon(gdf_row[index_col])
         return gdf.apply(fn, axis=1)
 
-
     @staticmethod
     def getParent(hex_index: str) -> Set[str]:
-        """Get the parent hexagon
+        """Get the parent hexagon.
 
             return the parent hexagon index corresponding to the given index
 
@@ -143,10 +142,9 @@ class H3:
         """
         return h3.h3_to_parent(hex_index)
 
-
     @staticmethod
     def getChild(hex_index: str) -> Set[str]:
-        """Get the child hexagon
+        """Get the child hexagon.
 
             return the parent hexagon index corresponding to the given index
 
@@ -163,7 +161,7 @@ class H3:
 
     @staticmethod
     def getAttributes(hex_index: str) -> Dict[str, str]:
-        """Get hexagon attributes
+        """Get hexagon attributes.
 
             returns some attributes for a given hexagon
 
@@ -191,12 +189,12 @@ class H3:
             "cordinates": H3.getCoords(hex_index),
             "boundary": H3.getPolygon(hex_index).wkt,
             "parent": H3.getParent(hex_index),
-            "children": H3.getChild(hex_index)
+            "children": H3.getChild(hex_index),
         }
 
     @staticmethod
-    def aggregate(gdf: Union[DataFrame, GeoDataFrame], col_name: str)-> GeoDataFrame:
-        """Get number of geometries in each hexagon
+    def aggregate(gdf: Union[DataFrame, GeoDataFrame], col_name: str) -> GeoDataFrame:
+        """Get number of geometries in each hexagon.
 
         Parameters
         ----------
@@ -210,4 +208,9 @@ class H3:
         GeoDataFrame:
             GeoDataFrame with extra column "count" containing the count of geometries in each hexagon.
         """
-        return gdf.groupby([col_name])[col_name].agg('count').to_frame('count').reset_index()
+        return (
+            gdf.groupby([col_name])[col_name]
+            .agg("count")
+            .to_frame("count")
+            .reset_index()
+        )

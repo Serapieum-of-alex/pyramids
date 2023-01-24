@@ -25,7 +25,6 @@ def test_index_to_polygon(
     hex_8503262bfffffff_res5_polygon: Polygon,
 ):
     geom = H3.indexToPolygon(hex_index)
-    # assert geom.bounds == hex_8503262bfffffff_res5_polygon.bounds
     assert geom.almost_equals(hex_8503262bfffffff_res5_polygon)
 
 
