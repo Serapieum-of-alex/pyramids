@@ -65,7 +65,7 @@ pip install git+https://github.com/MAfarrag/pyramids
 ## pip
 to install the last release you can easly use pip
 ```
-pip install pyramids-gis==0.3.0
+pip install pyramids-gis==0.3.1
 ```
 
 Quick start
