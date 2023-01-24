@@ -33,3 +33,8 @@ History
 * add array module to deal with any array operations.
 * add openDataset, getEPSG create SpatialReference, and setNoDataValue utility function, getCellCoords, ...
 * add rasterToPolygon, PolygonToRaster, rasterToGeoDataFrame, conversion between ogr DataSource and GeoDataFrame.
+
+0.3.1 (2023-01-25)
+------------------
+* add pyarrow to use parquet data type for saving dataframes and geodataframes
+* add H3 indexing package, and add new module indexing with functions to convert geometries to indeces back and forth.
