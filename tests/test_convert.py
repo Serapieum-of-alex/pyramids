@@ -12,9 +12,8 @@ from pyramids.raster import Raster
 
 
 class TestRasterToPolygon:
-    """
-    Tect converting raster to polygon
-    """
+    """Tect converting raster to polygon."""
+
     def test_save_polygon_to_disk(
         self, test_image: Dataset, polygonized_raster_path: str
     ):
@@ -175,7 +174,9 @@ class TestRasterToDataFrame:
         vector_mask_path: path on disk
         rasterized_mask_values: for camparioson
         """
-        gdf = Convert.rasterToGeoDataFrame(raster_to_df_path, vector_mask_path, add_geometry="Point")
+        gdf = Convert.rasterToGeoDataFrame(
+            raster_to_df_path, vector_mask_path, add_geometry="Point"
+        )
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == len(rasterized_mask_values)
         assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
