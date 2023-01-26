@@ -2,6 +2,10 @@
 Current release info
 ====================
 
+.. image:: https://readthedocs.org/projects/pyramids-gis/badge/?version=latest
+    :target: https://pyramids-gis.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 .. image:: https://img.shields.io/pypi/v/pyramids-gis
   :target: https://pypi.org/project/pyramids-gis
 
