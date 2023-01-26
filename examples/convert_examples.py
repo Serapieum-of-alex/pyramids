@@ -1,6 +1,8 @@
 import geopandas as gpd
 from osgeo import gdal
+
 from pyramids.convert import Convert
+
 #%%
 """
 RasterToPolygon takes a gdal Dataset object and group neighboring cells with the same value into one
@@ -22,7 +24,7 @@ test convert polygon into raster
 - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
 - all the new raster geotransform data will be copied from the given raster.
 - raster and vector should have the same projection
-            
+
 """
 ## case 1 first two input parameters are paths for files on disk
 
@@ -30,9 +32,7 @@ input_vector_path = "examples/data/convert_data/mask.geojson"
 src_raster_path = "examples/data/convert_data/raster_to_df.tif"
 # Path for output raster. if given the resulted raster will be saved to disk.
 output_raster = "examples/data/convert_data/rasterized_mask.tif"
-Convert.polygonToRaster(
-    input_vector_path, src_raster_path, output_raster
-)
+Convert.polygonToRaster(input_vector_path, src_raster_path, output_raster)
 src = gdal.Open(output_raster)
 src.RasterXSize
 src.RasterYSize
@@ -40,9 +40,7 @@ src.RasterYSize
 ## case 2 the input vector is a geodataframe object
 gdf = gpd.read_file(input_vector_path)
 print(gdf)
-Convert.polygonToRaster(
-    gdf, src_raster_path, output_raster
-)
+Convert.polygonToRaster(gdf, src_raster_path, output_raster)
 
 ## case 3 there is no given path to save the output raster to disk to it will be returned as an output.
 src = Convert.polygonToRaster(gdf, src_raster_path)
@@ -62,7 +60,7 @@ file is given otherwise it will flatten all values.
     specify the type of shapely geometry you want to create from each cell,
         - If point is chosen, the created point will be at the center of each cell
         - If a polygon is chosen, a square polygon will be created that covers the entire cell.
-- 
+-
 src : [str/gdal Dataset]
     Path to raster file.
 vector : Optional[GeoDataFrame/str]
@@ -77,7 +75,7 @@ tile_size: [int]
 """
 gdf = Convert.rasterToGeoDataFrame(src_raster_path, add_geometry="Point")
 """
-the resulted geodataframe will have the band value under the name of the band (if the raster file has a metadata, 
+the resulted geodataframe will have the band value under the name of the band (if the raster file has a metadata,
 if not, the bands will be indexed from 1 to the number of bands)
 """
 print(gdf.columns)
@@ -90,7 +88,7 @@ examples/data/convert_data/raster_to_polygon.png
 gdf = gpd.read_file(input_vector_path)
 df = Convert.rasterToGeoDataFrame(src_raster_path, gdf)
 # print(df)
-    # Band_1  fid
+# Band_1  fid
 # 0        1    1
 # 1        2    1
 # 2        3    1

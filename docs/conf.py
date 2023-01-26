@@ -58,7 +58,7 @@ extensions = [
     # "python_docs_theme",
     # "pydata_sphinx_theme"
     "numpydoc",
-    "nbsphinx"
+    "nbsphinx",
 ]
 
 autosectionlabel_prefix_document = True

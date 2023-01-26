@@ -1,6 +1,8 @@
 from geopandas.geodataframe import GeoDataFrame
-from pyramids.indexing import H3
 from shapely import wkt
+
+from pyramids.indexing import H3
+
 #%% geometryToIndex
 """
 get the index of the hexagon that the coordinates lie inside at a certain resolution level.
@@ -112,5 +114,5 @@ Returns
 Pandas Series
     polygon geometries corespondint to the hexagon index.
 """
-geom = H3.getGeometry(gdf, index_column = "h3")
+geom = H3.getGeometry(gdf, index_column="h3")
 # geom.to_file("examples/data/indexing_data/indexing_h3_resolution1_polys.geojson")
