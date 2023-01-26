@@ -170,7 +170,13 @@ class NC:
                 # convert  temporal_resolution numbers to dates
                 time_arr = netCDF4.num2date(time_arr[:], time_var.units)
             except KeyError:
-                time_arr = nc.variables["t"][:]
+                # try to t as the time variable name
+                try:
+                    time_arr = nc.variables["t"][:]
+                except KeyError:
+                    # if non of the temporal_resolution and t are the name of the time variable print all the variable
+                    print(f"{nc.variables}")
+                    raise KeyError("Please enter the time_var_name for the nctoTiff")
                 # temporal_resolution = nc.variables['t'].units[11:]
         else:
             time_var = nc.variables[time_var_name]
