@@ -102,5 +102,5 @@ Main Features
     Vector <vector.rst>
     NetCDF <netcdf.rst>
     Convert <convert.rst>
-    Indeixing <indexing.rst>
+    Indeixing <spatial_indexing.rst>
     Catchment <catchment.rst>

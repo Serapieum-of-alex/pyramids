@@ -8,10 +8,12 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
+
 import os
 import sys
 
 # import sphinx_rtd_theme
+
 # General information about the project.
 project = "pyramids"
 author = "Mostafa Farrag"
@@ -58,7 +60,7 @@ extensions = [
     # "python_docs_theme",
     # "pydata_sphinx_theme"
     "numpydoc",
-    "nbsphinx",
+    "nbsphinx"
 ]
 
 autosectionlabel_prefix_document = True
@@ -124,6 +126,7 @@ pygments_style = "sphinx"
 # html_theme = "sphinx_rtd_theme"
 html_theme = "pydata_sphinx_theme"
 
+
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
@@ -169,7 +172,13 @@ html_static_path = ["static"]
 # html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-# html_sidebars = {}
+html_sidebars = {
+    "**": [
+        "globaltoc.html",
+        "relations.html",  # needs 'show_related': True theme option to display
+        "searchbox.html",
+    ]
+}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -206,8 +215,6 @@ htmlhelp_basename = "pyramidsdoc"
 
 
 # -- Options for LaTeX output --------------------------------------------------
-
-
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
@@ -256,7 +263,6 @@ texinfo_documents = [
         "pyramids",
         "pyramids Documentation",
         "Mostafa Farrag",
-        "pyramids",
         "One line description of project.",
         "Miscellaneous",
     )
