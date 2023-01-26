@@ -58,7 +58,7 @@ extensions = [
     # "sphinx.ext.doctest",
     # "sphinx.ext.autosectionlabel",
     # "python_docs_theme",
-    # "pydata_sphinx_theme"
+    "pydata_sphinx_theme"
     "numpydoc",
     "nbsphinx"
 ]
