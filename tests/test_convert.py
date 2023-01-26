@@ -11,7 +11,10 @@ from pyramids.convert import Convert
 from pyramids.raster import Raster
 
 
-class TestPolygonize:
+class TestRasterToPolygon:
+    """
+    Tect converting raster to polygon
+    """
     def test_save_polygon_to_disk(
         self, test_image: Dataset, polygonized_raster_path: str
     ):
@@ -53,7 +56,7 @@ class TestPolygonToRaster:
         rasterized_mask_path
         rasterized_mask_array
         """
-        src = Convert.polygonToRaster(
+        Convert.polygonToRaster(
             vector_mask_path, raster_to_df_path, rasterized_mask_path
         )
         assert os.path.exists(rasterized_mask_path), (
@@ -91,7 +94,7 @@ class TestPolygonToRaster:
         rasterized_mask_path
         rasterized_mask_array
         """
-        src = Convert.polygonToRaster(
+        Convert.polygonToRaster(
             vector_mask_gdf, raster_to_df_path, rasterized_mask_path
         )
         assert os.path.exists(rasterized_mask_path), (
@@ -172,10 +175,10 @@ class TestRasterToDataFrame:
         vector_mask_path: path on disk
         rasterized_mask_values: for camparioson
         """
-        df = Convert.rasterToGeoDataFrame(raster_to_df_path, vector_mask_path)
-        assert isinstance(df, DataFrame)
-        assert len(df) == len(rasterized_mask_values)
-        assert np.array_equal(df["Band_1"].values, rasterized_mask_values), (
+        gdf = Convert.rasterToGeoDataFrame(raster_to_df_path, vector_mask_path, add_geometry="Point")
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == len(rasterized_mask_values)
+        assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
             "the extracted values in the dataframe "
             "does not "
             "equa the real "
