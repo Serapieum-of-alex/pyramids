@@ -506,8 +506,8 @@ class Convert:
     ) -> Union[GeoDataFrame, None]:
         """polygonize.
 
-            polygonize takes a gdal band object and group neighboring cells with the same value into one polygon,
-            the resulted vector will be saved to disk as a geojson file
+            RasterToPolygon takes a gdal Dataset object and group neighboring cells with the same value into one
+            polygon, the resulted vector will be saved to disk as a geojson file
 
         Parameters
         ----------
@@ -560,10 +560,14 @@ class Convert:
         """Convert a raster to a GeoDataFrame.
 
             The function do the following
-            - Flatted the array in each band in the raster then mask the values if a vector
+            - Flatten the array in each band in the raster then mask the values if a vector
             file is given otherwise it will flatten all values.
-            - put the values for each band in a column in a dataframe under the name of the raster band, if no meta
-            data in the raster band, and index number will be used [1, 2, 3, ...]
+            - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
+            data in the raster band exists, an index number will be used [1, 2, 3, ...]
+            - The function has a add_geometry parameter with two possible values ["point", "polygon"], which you can
+            specify the type of shapely geometry you want to create from each cell,
+                - If point is chosen, the created point will be at the center of each cell
+                - If a polygon is chosen, a square polygon will be created that covers the entire cell.
 
         Parameters
         ----------
@@ -581,7 +585,13 @@ class Convert:
 
         Returns
         -------
-        DataFrame
+        DataFrame/GeoDataFrame
+            columndL:
+                >>> print(gdf.columns)
+                >>> Index(['Band_1', 'geometry'], dtype='object')
+
+        the resulted geodataframe will have the band value under the name of the band (if the raster file has a metadata,
+        if not, the bands will be indexed from 1 to the number of bands)
         """
         temp_dir = None
 

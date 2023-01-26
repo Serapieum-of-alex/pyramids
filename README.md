@@ -1,3 +1,4 @@
+[![Documentation Status](https://readthedocs.org/projects/pyramids-gis/badge/?version=latest)](https://pyramids-gis.readthedocs.io/en/latest/?badge=latest)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pyramids-gis.png)](https://img.shields.io/pypi/pyversions/pyramids-gis)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
@@ -47,7 +48,7 @@ Installing pyramids
 Installing `pyramids` from the `conda-forge` channel can be achieved by:
 
 ```
-conda install -c conda-forge pyramids=0.3.0
+conda install -c conda-forge pyramids=0.3.2
 ```
 
 It is possible to list all of the versions of `pyramids` available on your platform with:
@@ -59,13 +60,13 @@ conda search pyramids --channel conda-forge
 ## Install from Github
 to install the last development to time you can install the library from github
 ```
-pip install git+https://github.com/MAfarrag/pyramids
+pip install git+https://github.com/Serapieum-of-alex/pyramids
 ```
 
 ## pip
 to install the last release you can easly use pip
 ```
-pip install pyramids-gis==0.3.1
+pip install pyramids-gis==0.3.2
 ```
 
 Quick start

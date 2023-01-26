@@ -99,6 +99,7 @@ class Raster:
         gdal driver
         """
         if path:
+            driver = "GTiff" if driver == "MEM" else driver
             if not isinstance(path, str):
                 raise TypeError("The path input should be string")
             if driver == "GTiff":

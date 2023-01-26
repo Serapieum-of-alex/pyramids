@@ -37,7 +37,7 @@ class H3:
     def getIndex(gdf: GeoDataFrame, resolution: int) -> Series:
         """Get Hexagon index.
 
-            get the index of the hexagon that the coordinates lie inside at a certain resolution level.
+            get the index of the hexagon that the coordinates locate inside at a certain resolution level.
 
         Parameters
         ----------
@@ -83,7 +83,7 @@ class H3:
 
     @staticmethod
     def indexToPolygon(hex_index: str) -> Polygon:
-        """Get Polygon.
+        """indexToPolygon.
 
             return the polygon corresponding to the given hexagon index
 
@@ -106,7 +106,7 @@ class H3:
 
     # def getGeometry():
     @staticmethod
-    def getGeometry(gdf: Union[GeoDataFrame, DataFrame], index_col: str) -> Series:
+    def getGeometry(gdf: Union[GeoDataFrame, DataFrame], index_column: str) -> Series:
         """Get the Hexagon polygon geometry form a hexagon index.
 
         Parameters
@@ -114,7 +114,7 @@ class H3:
         gdf: [GeoDataFrame]
             geodataframe with a column filled with hexagon index
 
-        index_col: [str]
+        index_column: [str]
             column where the hexagon index is stored
 
         Returns
@@ -122,7 +122,7 @@ class H3:
         Pandas Series
             polygon geometries corespondint to the hexagon index.
         """
-        fn = lambda gdf_row: H3.indexToPolygon(gdf_row[index_col])
+        fn = lambda gdf_row: H3.indexToPolygon(gdf_row[index_column])
         return gdf.apply(fn, axis=1)
 
     @staticmethod
