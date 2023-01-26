@@ -40,3 +40,8 @@ History
 * add H3 indexing package, and add new module indexing with functions to convert geometries to indeces back and forth.
 * fix bug in calculating pivot point of the netcdf file
 * rasterToDataFrame function will create geometries of the cells only based on the add_geometry parameter.
+
+0.3.2 (2023-01-25)
+------------------
+* refactor code
+* add documentation
