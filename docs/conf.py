@@ -15,7 +15,7 @@ import sys
 # import sphinx_rtd_theme
 
 # General information about the project.
-project = "pyramids"
+project = "pyramids-gis"
 author = "Mostafa Farrag"
 
 # copyright = u"2013-2019, "
@@ -28,7 +28,7 @@ html_theme_path = ["."]
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath("../pyramids"))
+sys.path.insert(0, os.path.abspath("../pyramids-gis"))
 sys.path.insert(0, os.path.abspath(".."))
 sys.path.insert(0, os.path.abspath("../examples"))
 
@@ -37,7 +37,7 @@ sys.path.insert(0, os.path.abspath("../examples"))
 # os.path.abspath to make it absolute, like shown here.
 sys.path.append(os.path.abspath("sphinxext"))
 
-# import pyramids
+# import pyramids-gis
 
 
 # -- General configuration -----------------------------------------------------
@@ -143,7 +143,7 @@ html_theme = "pydata_sphinx_theme"
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
 """
-html_logo = "images/pyramids.png"
+html_logo = "images/pyramids-gis.png"
 """
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -209,14 +209,14 @@ html_show_sourcelink = True
 html_file_suffix = ".html"
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "pyramidsdoc"
+htmlhelp_basename = "pyramids-gisdoc"
 
 
 # -- Options for LaTeX output --------------------------------------------------
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ("index", "pyramids.tex", "pyramids Documentation", "Mostafa Farrag", "report")
+    ("index", "pyramids-gis.tex", "pyramids-gis Documentation", "Mostafa Farrag", "report")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -244,7 +244,7 @@ latex_domain_indices = False
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "pyramids", "pyramids Documentation", [author], 1)]
+man_pages = [("index", "pyramids-gis", "pyramids-gis Documentation", [author], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -258,8 +258,8 @@ man_pages = [("index", "pyramids", "pyramids Documentation", [author], 1)]
 texinfo_documents = [
     (
         "index",
-        "pyramids",
-        "pyramids Documentation",
+        "pyramids-gis",
+        "pyramids-gis Documentation",
         "Mostafa Farrag",
         "One line description of project.",
         "Miscellaneous",
@@ -286,5 +286,5 @@ autodoc_mock_imports = [
     #    "netCDF4_utils",
     #    "netcdftime",
     #    "pyproj",
-    #    "pyramids.version",
+    #    "pyramids-gis.version",
 ]
