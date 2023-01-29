@@ -78,7 +78,7 @@ Returns:
     >>> 3   POINT (42.00000 14.00000)
 
 .. image:: images/indexing/points.png
-    :width: 40pt
+    :width: 500pt
 
 .. code-block:: py
     :linenos:
@@ -94,7 +94,7 @@ Returns:
     >>> Name: h3, dtype: object
 
 .. image:: images/indexing/hexagons_level1.png
-    :width: 40pt
+    :width: 500pt
 
 .. code-block:: py
     :linenos:
@@ -110,7 +110,7 @@ Returns:
     >>>  Name: h3, dtype: object
 
 .. image:: images/indexing/hexagons_level0.png
-    :width: 40pt
+    :width: 500pt
 
 
 indexToPolygon

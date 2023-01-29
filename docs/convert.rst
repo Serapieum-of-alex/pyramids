@@ -42,7 +42,7 @@ Case 2: Return the output Polygon
 
 
 .. image:: images/convert/raster_to_polygon.png
-    :width: 40pt
+    :width: 400pt
 
 ***************
 polygonToRaster
@@ -72,7 +72,7 @@ Case 1: First two input parameters are paths for files on disk
 
 
 .. image:: images/convert/raster_to_polygon.png
-    :width: 40pt
+    :width: 400pt
 
 .. note::
     Currently the code does not reproject any of the raster or the vector if they have different projections
@@ -166,7 +166,7 @@ if not, the bands will be indexed from 1 to the number of bands)
     >>> [182 rows x 2 columns]
 
 .. image:: images/convert/raster_to_geodataframe.png
-    :width: 40pt
+    :width: 400pt
 
 ***********************
 Case 2: Mask the raster
@@ -199,4 +199,4 @@ Case 2: Mask the raster
     >>> 15      46    1
 
 .. image:: images/convert/raster_to_df_with_mask.png
-    :width: 40pt
+    :width: 400pt
