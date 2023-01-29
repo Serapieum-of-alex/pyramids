@@ -41,7 +41,7 @@ History
 * fix bug in calculating pivot point of the netcdf file
 * rasterToDataFrame function will create geometries of the cells only based on the add_geometry parameter.
 
-0.3.2 (2023-01-25)
+0.3.2 (2023-01-29)
 ------------------
 * refactor code
 * add documentation
