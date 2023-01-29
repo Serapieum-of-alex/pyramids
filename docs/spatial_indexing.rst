@@ -8,7 +8,6 @@ H3
 **
 
 .. code-block:: py
-    :linenos:
 
     from pyramids.indexing import H3
 
@@ -29,7 +28,6 @@ Returns:
         hexadecimal number
 
 .. code-block:: py
-    :linenos:
 
     lat_lon = (89.83, -157.30)
     h3_resolution = 5
@@ -53,7 +51,6 @@ Returns:
         pandas series with a column with the h3 hex index.
 
 .. code-block:: py
-    :linenos:
 
     from geopandas.geodataframe import GeoDataFrame
     from pyramids.indexing import H3
@@ -81,7 +78,6 @@ Returns:
     :width: 500pt
 
 .. code-block:: py
-    :linenos:
 
     h3_resolution = 1
     gdf["h3"] = H3.getIndex(gdf, h3_resolution)
@@ -97,7 +93,6 @@ Returns:
     :width: 500pt
 
 .. code-block:: py
-    :linenos:
 
     h3_resolution = 0
     gdf["h3"] = H3.getIndex(gdf, h3_resolution)
@@ -126,7 +121,6 @@ Returns:
     Shapely Polygon
 
 .. code-block:: py
-    :linenos:
 
     hex_index = "854c91cffffffff"
     geom = H3.indexToPolygon(hex_index)
@@ -151,7 +145,6 @@ Returns:
         polygon geometries corespondint to the hexagon index.
 
 .. code-block:: py
-    :linenos:
 
     geom = H3.getGeometry(gdf, index_column = "h3")
 
