@@ -38,7 +38,7 @@ and rasterio objest. The module contains function that falls in one of the follo
 ***********
 Raster Data
 ***********
-function that are related to spatial resolution, projection and coordinates of a raster.
+- function that are related to spatial resolution, projection and coordinates of a raster.
 
 
 getRasterData
@@ -201,7 +201,7 @@ Raster Operations
 *****************
 
 saveRaster
--------------
+----------
 - `saveRaster` saves a raster to a path
 
 Parameters
@@ -223,9 +223,9 @@ Returns
 
 
 createRaster
--------------
+------------
 - `createRaster` method creates a raster from a given array and geotransform data
-and save the tif file if a Path is given or it will return the gdal.Dataset
+    and save the tif file if a Path is given or it will return the gdal.Dataset
 
 Parameters
 ==========
@@ -249,7 +249,7 @@ Returns
         a gdal.Dataset will be returned.
 
 - If we take the array we obtained from the `getRasterData`, do some arithmetic operation in it, then we created a
-`gdal.DataSet` out of it
+    `gdal.DataSet` out of it
 
 .. code:: py
 
@@ -263,8 +263,8 @@ Returns
 rasterLike
 ----------
 - `rasterLike` method creates a Geotiff raster like another input raster, new raster will have the same projection,
-coordinates or the top left corner of the original raster, cell size, nodata velue, and number of rows and columns
-the raster and the dem should have the same number of columns and rows
+    coordinates or the top left corner of the original raster, cell size, nodata velue, and number of rows and columns
+    the raster and the dem should have the same number of columns and rows
 
 Parameters
 ==========
@@ -310,8 +310,7 @@ Returns
    :width: 500pt
 
 mapAlgebra
--------------
-
+----------
 - `mapAlgebra` executes a mathematical operation on raster array and returns the result
 
 Parameters
@@ -354,7 +353,6 @@ Returns
 
 rasterFill
 ----------
-
 - `rasterFill` takes a raster and fill it with one value.
 
 Parameters
@@ -385,18 +383,17 @@ Returns
    :width: 500pt
 
 resampleRaster
--------------
+--------------
 
 - `resampleRaster` reproject a raster to any projection (default the WGS84 web mercator projection, without
-resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
+    resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
 Parameters
 ==========
     src : [gdal.Dataset]
          gdal raster (src=gdal.Open("dem.tif"))
     cell_size : [integer]
-         new cell size to resample the raster.
-        (default empty so raster will not be resampled)
+         new cell size to resample the raster. (default empty so raster will not be resampled)
     resample_technique : [String]
         resampling technique default is "Nearest"
         https://gisgeography.com/raster-resampling/
@@ -431,7 +428,7 @@ projectRaster
 -------------
 
 - `projectRaster` reprojects a raster to any projection (default the WGS84 web mercator projection, without resampling)
-The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
+    The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
 Parameters
 ==========
@@ -480,14 +477,14 @@ Returns
     New Geotransform - (-75.60441003848668, 0.03611587177268461, 0.0, 4.704560448076901, 0.0, -0.03611587177268461)
 
 cropAlligned
--------------
+------------
 - If you have an array and you want to clip/crop it using another raster/array.
 
 Crop array using a raster
 =========================
 - `cropAlligned` clip/crop (matches the location of nodata value from src raster to dst raster), Both rasters have to
-have the same dimensions (no of rows & columns) so MatchRasterAlignment should be used prior to this function to
-align both rasters.
+    have the same dimensions (no of rows & columns) so MatchRasterAlignment should be used prior to this function to
+    align both rasters.
 
 Parameters
 ^^^^^^^^^^
@@ -542,7 +539,7 @@ Returns
 Crop raster using another raster while preserving the alignment
 ===============================================================
 - cropping rasters may  change the alignment of the cells and to keep the alignment during cropping a raster we will
-crop the same previous raster but will give the input to the function as a gdal.dataset object.
+    crop the same previous raster but will give the input to the function as a gdal.dataset object.
 
 
 .. code:: py
@@ -607,7 +604,7 @@ Returns
 
 
 - We will use the soil raster from the previous example as a mask so the projection is different between the raster
-and the mask and the cell size is also different
+    and the mask and the cell size is also different
 
 .. code:: py
 
@@ -627,9 +624,9 @@ and the mask and the cell size is also different
 matchRasterAlignment
 --------------------
 - `matchRasterAlignment` method matches the coordinate system and the number of of rows & columns between two rasters
-alignment_src is the source of the coordinate system, number of rows, number of columns & cell size data_src is the
-source of data values in cells the result will be a raster with the same structure like alignment_src but with values
-from data_src using Nearest Neighbour interpolation algorithm
+    alignment_src is the source of the coordinate system, number of rows, number of columns & cell size data_src is the
+    source of data values in cells the result will be a raster with the same structure like alignment_src but with values
+    from data_src using Nearest Neighbour interpolation algorithm
 
 Parameters
 ==========
@@ -767,7 +764,7 @@ nearestNeighbour
 ----------------
 
 - `nearestCell` calculates the the indices (row, col) of nearest cell in a given raster to a station coordinate system of
-the raster has to be projected to be able to calculate the distance
+    the raster has to be projected to be able to calculate the distance
 
 Parameters
 ----------
@@ -826,9 +823,9 @@ Raster Dataset
 cropAlignedFolder
 -----------------
 
-- `cropAlignedFolder` matches the location of nodata value from src raster to dst raster, Mask is where the
-nodatavalue will be taken and the location of this value src_dir is path to the folder where rasters exist where we
-need to put the NoDataValue of the mask in RasterB at the same locations.
+- `cropAlignedFolder`_ matches the location of nodata value from src raster to dst raster, Mask is where the
+    nodatavalue will be taken and the location of this value src_dir is path to the folder where rasters exist where we
+    need to put the NoDataValue of the mask in RasterB at the same locations.
 
 Parameters
 ==========
@@ -942,7 +939,7 @@ To extract the
 
 
 OverlayMap Several maps
-===================
+=======================
 The `overlayMaps` function takes path to the folder where more than one map exist instead of a path to one file, it also takes an extra parameter `FilePrefix`, this prefix is used to name the files in the given path and all the file has to start with the prefix
 
 .. code:: py
@@ -954,9 +951,10 @@ The `overlayMaps` function takes path to the folder where more than one map exis
 both methods `OverlayMap` and `overlayMaps` returns the values as a `dict`, the difference is in the number of cells `overlayMaps` returns a single integer number while `OverlayMap` returns a `dataframe` with two columns the first in the map name and the second is the number of occupied cell in each map.
 
 Save extracted values
-===================
+=====================
 
 .. code:: py
+
     # save extracted values in different files
     Polygons = list(ExtractedValues.keys())
     for i in range(len(Polygons)):
@@ -969,8 +967,5 @@ References
 **********
 
 .. target-notes::
-.. _`Digital-Earth`:
-   https://github.com/MAfarrag/Digital-Earth
-
-.. _`cropAlignedFolder`:
-   https://github.com/MAfarrag/pyramids/tree/main/examples/data/crop_aligned_folder
+.. _`Digital-Earth`: https://github.com/Serapieum-of-alex/Digital-Earth
+.. _`cropAlignedFolder`: https://github.com/MAfarrag/pyramids/tree/main/examples/data/crop_aligned_folder
