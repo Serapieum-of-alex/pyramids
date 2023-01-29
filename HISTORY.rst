@@ -45,3 +45,4 @@ History
 ------------------
 * refactor code
 * add documentation
+* fix creating memory driver with compression in _createDataset
