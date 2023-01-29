@@ -13,11 +13,10 @@ polygon, the resulted vector will be saved to disk as a geojson file
 Case 1: Save the result to disk
 ===============================
 - If you are working with big raster data with small spatial resolution, you should consider saving the output
-polygon directly to disk.
-- If you give the second parameter a path, the function will save the resulted polygon to disk
+    polygon directly to disk.
+- If you give the second parameter a path, the function will save the resulted polygon to disk.
 
 .. code-block:: py
-    :linenos:
 
     src_path = gdal.Open("examples/data/convert_data/test_image.tif")
     polygonized_raster_path = "examples/data/convert_data/polygonized.geojson"
@@ -30,7 +29,6 @@ Case 2: Return the output Polygon
 - If you want the output polygon to be returned as a `GeoDataFrame`
 
 .. code-block:: py
-    :linenos:
 
     gdf = Convert.rasterToPolygon(src_path)
     print(gdf)
@@ -42,7 +40,7 @@ Case 2: Return the output Polygon
 
 
 .. image:: images/convert/raster_to_polygon.png
-    :width: 400pt
+    :width: 500pt
 
 ***************
 polygonToRaster
@@ -60,7 +58,6 @@ Case 1: First two input parameters are paths for files on disk
 - Path for output raster. if given the resulted raster will be saved to disk.
 
 .. code-block:: py
-    :linenos:
 
     input_vector_path = "examples/data/convert_data/mask.geojson"
     src_raster_path = "examples/data/convert_data/raster_to_df.tif"
@@ -72,7 +69,7 @@ Case 1: First two input parameters are paths for files on disk
 
 
 .. image:: images/convert/raster_to_polygon.png
-    :width: 400pt
+    :width: 500pt
 
 .. note::
     Currently the code does not reproject any of the raster or the vector if they have different projections
@@ -83,7 +80,6 @@ Case 2: The input vector is a GeoDataFrame object
 =================================================
 
 .. code-block:: py
-    :linenos:
 
     gdf = gpd.read_file(input_vector_path)
     print(gdf)
@@ -102,7 +98,6 @@ Case 3: Return the output raster
 There is no given path to save the output raster to disk to it will be returned as an output.
 
 .. code-block:: py
-    :linenos:
 
     src = Convert.polygonToRaster(gdf, src_raster_path)
     type(src)
@@ -124,31 +119,31 @@ file is given otherwise it will flatten all values.
     specify the type of shapely geometry you want to create from each cell,
         - If point is chosen, the created point will be at the center of each cell
         - If a polygon is chosen, a square polygon will be created that covers the entire cell.
--
-src : [str/gdal Dataset]
-    Path to raster file.
-vector : Optional[GeoDataFrame/str]
-    GeoDataFrame for the vector file path to vector file. If given, it will be used to clip the raster
-add_geometry: [str]
-    "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
-    Default is None.
-tile: [bool]
-    True to use tiles in extracting the values from the raster. Default is False.
-tile_size: [int]
-    tile size. Default is 1500.
+
+Parameters
+==========
+    src : [str/gdal Dataset]
+        Path to raster file.
+    vector : Optional[GeoDataFrame/str]
+        GeoDataFrame for the vector file path to vector file. If given, it will be used to clip the raster
+    add_geometry: [str]
+        "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
+        Default is None.
+    tile: [bool]
+        True to use tiles in extracting the values from the raster. Default is False.
+    tile_size: [int]
+        tile size. Default is 1500.
 
 
 .. code-block:: py
-    :linenos:
 
     src_raster_path = "examples/data/convert_data/raster_to_df.tif"
     gdf = Convert.rasterToGeoDataFrame(src_raster_path, add_geometry="Point")
 
 - The resulted geodataframe will have the band value under the name of the band (if the raster file has a metadata,
-if not, the bands will be indexed from 1 to the number of bands)
+    if not, the bands will be indexed from 1 to the number of bands)
 
 .. code-block:: py
-    :linenos:
 
     print(gdf)
     >>> Band_1                       geometry
@@ -166,14 +161,13 @@ if not, the bands will be indexed from 1 to the number of bands)
     >>> [182 rows x 2 columns]
 
 .. image:: images/convert/raster_to_geodataframe.png
-    :width: 400pt
+    :width: 500pt
 
 ***********************
 Case 2: Mask the raster
 ***********************
 
 .. code-block:: py
-    :linenos:
 
     gdf = gpd.read_file(input_vector_path)
     df = Convert.rasterToGeoDataFrame(src_raster_path, gdf)
@@ -199,4 +193,4 @@ Case 2: Mask the raster
     >>> 15      46    1
 
 .. image:: images/convert/raster_to_df_with_mask.png
-    :width: 400pt
+    :width: 500pt
