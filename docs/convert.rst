@@ -120,6 +120,7 @@ file is given otherwise it will flatten all values.
         - If point is chosen, the created point will be at the center of each cell
         - If a polygon is chosen, a square polygon will be created that covers the entire cell.
 
+==========
 Parameters
 ==========
     src : [str/gdal Dataset]
