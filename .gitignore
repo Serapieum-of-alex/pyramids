@@ -155,3 +155,4 @@ examples/Copy of RETRIEVE-ALL-METADATA-WITH-ACCOUNT-INFO.ipynb
 tests/data/asci_write_test.asc
 tests/data/poligonized.geojson
 tests/mo/*
+examples/coords.csv

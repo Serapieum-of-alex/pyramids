@@ -8,5 +8,5 @@ pep8-naming >=0.13.3
 pre-commit >=3.0.3
 pre-commit-hooks >=4.4.0
 pytest >=7.2.1
-pytest-cov ==4.0.0
+pytest-cov >=4.0.0
 reorder-python-imports >=3.9.0
