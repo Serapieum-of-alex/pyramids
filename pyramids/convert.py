@@ -26,7 +26,7 @@ class Convert:
     """Convert data from one form to another."""
 
     def __init__(self):
-        self.vector_catalog: Dict[str, str] = Vector.getCatalog()
+        # self.vector_catalog: Dict[str, str] = Vector.getCatalog()
         pass
 
     @staticmethod
@@ -144,7 +144,7 @@ class Convert:
                 ASCIIRows == RasterRows and ASCIIColumns == RasterColumns
             ), " Data in both ASCII file and Raster file should have the same number of row and columns"
 
-            Raster.rasterLike(src, ASCIIValues, save_path, pixel_type)
+            Raster.rasterLike(src, ASCIIValues, save_path)
         elif epsg is not None:
             assert (
                 type(epsg) == int
