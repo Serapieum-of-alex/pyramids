@@ -5,13 +5,12 @@
 
 import json
 import warnings
-from typing import List, Tuple, Union, Dict
+from typing import Dict, List, Tuple, Union
 
 import geopandas as gpd
 import geopy.distance as distance
 import numpy as np
 import pandas as pd
-
 import yaml
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr, osr
@@ -55,7 +54,7 @@ class Vector:
 
     @staticmethod
     def getCatalog() -> Dict[str, str]:
-        """Read drivers catalog
+        """Read drivers catalog.
 
         Returns
         -------

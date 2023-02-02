@@ -3,7 +3,7 @@ import os
 import shutil
 import tempfile
 import uuid
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 import geopandas as gpd
 import netCDF4
