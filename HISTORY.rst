@@ -46,3 +46,8 @@ History
 * refactor code
 * add documentation
 * fix creating memory driver with compression in _createDataset
+
+0.3.3 (2023-02-06)
+------------------
+* fix bug in reading the ogr drivers catalog for the vector class
+* fix bug in creating rasterLike in the asciiToRaster method
