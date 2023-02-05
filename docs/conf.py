@@ -58,7 +58,7 @@ extensions = [
     # "sphinx.ext.doctest",
     # "sphinx.ext.autosectionlabel",
     "numpydoc",
-    "nbsphinx"
+    "nbsphinx",
 ]
 
 autosectionlabel_prefix_document = True
@@ -216,7 +216,13 @@ htmlhelp_basename = "pyramids-gisdoc"
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ("index", "pyramids-gis.tex", "pyramids-gis Documentation", "Mostafa Farrag", "report")
+    (
+        "index",
+        "pyramids-gis.tex",
+        "pyramids-gis Documentation",
+        "Mostafa Farrag",
+        "report",
+    )
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

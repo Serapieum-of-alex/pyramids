@@ -5,14 +5,13 @@
 
 import json
 import warnings
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import geopandas as gpd
 import geopy.distance as distance
 import numpy as np
 import pandas as pd
-
-# import yaml
+import yaml
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr, osr
 from osgeo.ogr import DataSource
@@ -20,7 +19,7 @@ from pyproj import Proj, transform
 from shapely.geometry import Point, Polygon
 from shapely.geometry.multipolygon import MultiPolygon
 
-# from pyramids import __path__
+from pyramids import __path__
 
 
 class Vector:
@@ -50,21 +49,21 @@ class Vector:
 
     def __init__(self):
         # read the drivers catalog
-        # self.catalog = self.getCatalog()
+        self.catalog = self.getCatalog()
         pass
 
-    # @staticmethod
-    # def getCatalog() -> Dict[str, str]:
-    #     """Read drivers catalog
-    #
-    #     Returns
-    #     -------
-    #     catalog: [Dict]
-    #         attribute in the object
-    #     """
-    #     with open(f"{__path__[0]}/ogr_drivers.yaml", "r") as stream:
-    #         catalog = yaml.safe_load(stream)
-    #     return catalog
+    @staticmethod
+    def getCatalog() -> Dict[str, str]:
+        """Read drivers catalog.
+
+        Returns
+        -------
+        catalog: [Dict]
+            attribute in the object
+        """
+        with open(f"{__path__[0]}/ogr_drivers.yaml", "r") as stream:
+            catalog = yaml.safe_load(stream)
+        return catalog
 
     @staticmethod
     def openVector(
