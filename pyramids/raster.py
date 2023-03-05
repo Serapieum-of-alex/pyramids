@@ -39,9 +39,26 @@ class Raster:
     raster: Dataset
     array: np.ndarray
     no_data_value: Union[float, int]
+    geotransform: Tuple[float, float, float, float]
+    proj: str
+    row: int
+    columns: int
+    band_number: int
 
     def __init__(self, src: Dataset):
+        if not isinstance(src, gdal.Dataset):
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal"
+                f" library) given {type(src)}"
+            )
         self.raster = src
+        self.geotransform = src.GetGeoTransform()
+        self.proj = src.GetProjection()
+        self.row = src.RasterYSize
+        self.columns = src.RasterXSize
+        self.band_number = self.raster.RasterCount
+        self.epsg = self.getEPSG()
+        self.band_names = self.getBandNames()
         pass
 
     @classmethod
@@ -101,7 +118,7 @@ class Raster:
 
         # Set the projection.
         dst.SetGeoTransform(gt)
-        dst.SetProjection(src.GetProjectionRef())
+        dst.SetProjection(src_obj.raster.GetProjectionRef())
         dst = cls(dst)
         if no_data_value is not None:
             dst.setNoDataValue(no_data_value=float(no_data_value))
@@ -546,29 +563,6 @@ class Raster:
                     sr.ImportFromWkt(epsg)
         return sr
 
-    def setNoDataValue(self, no_data_value=DEFAULT_NO_DATA_VALUE):
-        """Set the no data value in a all raster bands.
-
-        Parameters
-        ----------
-        no_data_value: [numeric]
-            no data value to fill the masked part of the array
-        """
-        # setting the no_data_value does not accept double precision numbers
-        for band in range(1, self.raster.RasterCount + 1):
-            try:
-                self.raster.GetRasterBand(band).SetNoDataValue(no_data_value)
-                # initialize the band with the nodata value instead of 0
-                self.raster.GetRasterBand(band).Fill(no_data_value)
-            except:
-                self.raster.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
-                self.raster.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
-                # assert False, "please change the no_data_value in the source raster as it is not accepted by Gdal"
-                print(
-                    "the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
-                    f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
-                )
-
     def getBandNames(self) -> List[str]:
         """Get band names from band meta data if exists otherwise will return idex [1,2, ...]
 
@@ -599,9 +593,32 @@ class Raster:
 
         return names
 
-    @staticmethod
+    def setNoDataValue(self, no_data_value=DEFAULT_NO_DATA_VALUE):
+        """Set the no data value in a all raster bands.
+
+        Parameters
+        ----------
+        no_data_value: [numeric]
+            no data value to fill the masked part of the array
+        """
+        # setting the no_data_value does not accept double precision numbers
+        for band in range(1, self.raster.RasterCount + 1):
+            try:
+                self.raster.GetRasterBand(band).SetNoDataValue(no_data_value)
+                # initialize the band with the nodata value instead of 0
+                self.raster.GetRasterBand(band).Fill(no_data_value)
+            except:
+                self.raster.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
+                self.raster.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
+                # assert False, "please change the no_data_value in the source raster as it is not accepted by Gdal"
+                print(
+                    "the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
+                    f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
+                )
+
+
     def getCellCoords(
-        src: Dataset, location: str = "center", mask: bool = False
+            self, location: str = "center", mask: bool = False
     ) -> Tuple[np.ndarray, np.ndarray]:
         """GetCoords.
 
@@ -610,8 +627,6 @@ class Raster:
 
         Parameters
         ----------
-        src : [gdal_Dataset]
-            Get the data from the gdal datasetof the DEM
         location: [str]
             location of the coordinates "center" for the center of a cell, corner for the corner of the cell.
             the corner is the top left corner.
@@ -646,18 +661,18 @@ class Raster:
             y_init,
             yy_span,
             cell_size_y,
-        ) = src.GetGeoTransform()
+        ) = self.raster.GetGeoTransform()
         if cell_size_x != cell_size_y:
             if cell_size_x != -1 * cell_size_y:
                 logger.warning(
                     f"The given raster does not have a square cells, the cell size is {cell_size_x}*{cell_size_y} "
                 )
 
-        rows, cols = src.ReadAsArray().shape
+        rows, cols = self.raster.ReadAsArray().shape
 
         # data in the array
-        no_val = src.GetRasterBand(1).GetNoDataValue()
-        arr = src.ReadAsArray()
+        no_val = self.raster.GetRasterBand(1).GetNoDataValue()
+        arr = self.raster.ReadAsArray()
 
         # calculate the coordinates of all cells
         x = np.array([x_init + cell_size_x * (i + add_value) for i in range(cols)])
@@ -690,14 +705,11 @@ class Raster:
 
         return coords
 
-    @staticmethod
-    def getCellPolygons(src: Dataset, mask=False) -> GeoDataFrame:
+    def getCellPolygons(self, mask=False) -> GeoDataFrame:
         """Get a polygon shapely geometry for the raster cells.
 
         Parameters
         ----------
-        src: [Dataset]
-            Raster dataset
         mask: [bool]
             True to get the polygons of the cells inside the domain.
 
@@ -706,9 +718,9 @@ class Raster:
         GeoDataFrame:
             with two columns, geometry, and id
         """
-        coords = Raster.getCellCoords(src, location="corner", mask=mask)
-        cell_size = src.GetGeoTransform()[1]
-        epsg = Raster.getEPSG(src)
+        coords = self.getCellCoords(location="corner", mask=mask)
+        cell_size = self.raster.GetGeoTransform()[1]
+        epsg = self.getEPSG()
         x = np.zeros((coords.shape[0], 4))
         y = np.zeros((coords.shape[0], 4))
         # fill the top left corner point
@@ -741,16 +753,13 @@ class Raster:
         gdf["id"] = gdf.index
         return gdf
 
-    @staticmethod
     def getCellPoints(
-        src: Dataset, location: str = "center", mask=False
+            self, location: str = "center", mask=False
     ) -> GeoDataFrame:
         """Get a point shapely geometry for the raster cells center point.
 
         Parameters
         ----------
-        src: [Dataset]
-            Raster dataset
         location: [str]
             location of the point, ["corner", "center"]. Default is "center".
         mask: [bool]
@@ -761,8 +770,8 @@ class Raster:
         GeoDataFrame:
             with two columns, geometry, and id
         """
-        coords = Raster.getCellCoords(src, location=location, mask=mask)
-        epsg = Raster.getEPSG(src)
+        coords = self.getCellCoords(location=location, mask=mask)
+        epsg = self.getEPSG()
 
         coords_tuples = list(zip(coords[:, 0], coords[:, 1]))
         points = Vector.createPoint(coords_tuples)
@@ -771,16 +780,13 @@ class Raster:
         gdf["id"] = gdf.index
         return gdf
 
-    @staticmethod
-    def saveRaster(src: Dataset, path: str) -> None:
+    def to_geotiff(self, path: str) -> None:
         """saveRaster.
 
             saveRaster saves a raster to a path
 
         Parameters
         ----------
-        src: [gdal object]
-            gdal dataset opbject
         path: [string]
             a path includng the name of the raster and extention like
             path="data/cropped.tif"
@@ -795,11 +801,6 @@ class Raster:
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
         >>> Raster.saveRaster(gdal_raster_obj, output_path)
         """
-        if not isinstance(src, gdal.Dataset):
-            raise TypeError(
-                "raster parameter should be read using gdal dataset please read it using gdal"
-            )
-
         if not isinstance(path, str):
             raise TypeError("Raster_path input should be string type")
         # input values
@@ -808,13 +809,12 @@ class Raster:
             raise ValueError("please add the extension at the end of the path input")
 
         driver = gdal.GetDriverByName("GTiff")
-        dst_ds = driver.CreateCopy(path, src, 0)
+        dst_ds = driver.CreateCopy(path, self.raster, 0)
         dst_ds = None  # Flush the dataset to disk
         # print to go around the assigned but never used pre-commit issue
         print(dst_ds)
 
-    @staticmethod
-    def mapAlgebra(src: Dataset, fun, band: int = 1) -> Dataset:
+    def mapAlgebra(self, fun, band: int = 1) -> Dataset:
         """mapAlgebra.
 
         - mapAlgebra executes a mathematical operation on raster array and returns
@@ -823,8 +823,6 @@ class Raster:
 
         Parameters
         ----------
-        src : [gdal.dataset]
-            source raster to that you want to make some calculation on its values
         fun: [function]
             defined function that takes one input which is the cell value.
         band: [int]
@@ -841,20 +839,16 @@ class Raster:
         >>> func = np.abs
         >>> new_raster = Raster.mapAlgebra(src_raster, func)
         """
-        if not isinstance(src, gdal.Dataset):
-            raise TypeError(
-                "src should be read using gdal (gdal dataset please read it using gdal library) "
-            )
         if not callable(fun):
             raise TypeError("second argument should be a function")
 
-        src_gt = src.GetGeoTransform()
-        src_proj = src.GetProjection()
-        src_row = src.RasterYSize
-        src_col = src.RasterXSize
-        noval = src.GetRasterBand(band).GetNoDataValue()
-        src_array = src.ReadAsArray()
-        dtype = src.GetRasterBand(1).DataType
+        src_gt = self.raster.GetGeoTransform()
+        src_proj = self.raster.GetProjection()
+        src_row = self.raster.RasterYSize
+        src_col = self.raster.RasterXSize
+        noval = self.raster.GetRasterBand(band).GetNoDataValue()
+        src_array = self.raster.ReadAsArray()
+        dtype = self.raster.GetRasterBand(1).DataType
         src_sref = osr.SpatialReference(wkt=src_proj)
 
         # fill the new array with the nodata value
@@ -872,24 +866,22 @@ class Raster:
         # set the projection
         dst.SetProjection(src_sref.ExportToWkt())
         # set the no data value
-        no_data_value = src.GetRasterBand(band).GetNoDataValue()
-        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value)
-        dst.GetRasterBand(band).WriteArray(new_array)
+        no_data_value = self.raster.GetRasterBand(band).GetNoDataValue()
+        dst_obj = Raster(dst)
+        dst_obj.setNoDataValue(no_data_value=no_data_value)
+        dst_obj.raster.GetRasterBand(band).WriteArray(new_array)
 
-        return dst
+        return dst_obj
 
-    @staticmethod
-    def rasterFill(
-        src: Dataset, val: Union[float, int], driver: str = "GTiff", path: str = None
+    def fill(
+            self, val: Union[float, int], driver: str = "GTiff", path: str = None
     ) -> Union[None, Dataset]:
-        """rasterFill.
+        """Fill.
 
-            rasterFill takes a raster and fill it with one value
+            Fill takes a raster and fill it with one value
 
         Parameters
         ----------
-        src : [gdal.dataset]
-            source raster
         val: [numeric]
             numeric value
         driver: [str]
@@ -902,13 +894,9 @@ class Raster:
         raster : [saved on disk]
             the raster will be saved directly to the path you provided.
         """
-        if not isinstance(src, gdal.Dataset):
-            raise TypeError(
-                "src should be read using gdal (gdal dataset please read it using gdal library) "
-            )
 
-        NoDataVal = src.GetRasterBand(1).GetNoDataValue()
-        src_array = src.ReadAsArray()
+        NoDataVal = self.raster.GetRasterBand(1).GetNoDataValue()
+        src_array = self.raster.ReadAsArray()
 
         if NoDataVal is None:
             NoDataVal = np.nan
@@ -917,12 +905,11 @@ class Raster:
             src_array[~np.isclose(src_array, NoDataVal, rtol=0.001)] = val
         else:
             src_array[~np.isnan(src_array)] = val
-        dst = Raster.rasterLike(src, src_array, driver=driver, path=path)
+        dst = Raster.rasterLike(self.raster, src_array, driver=driver, path=path)
         return dst
 
-    @staticmethod
-    def resampleRaster(
-        src: Dataset, cell_size: Union[int, float], resample_technique: str = "Nearest"
+    def resample(
+            self, cell_size: Union[int, float], resample_technique: str = "Nearest"
     ) -> Dataset:
         """resampleRaster.
 
@@ -932,8 +919,6 @@ class Raster:
 
         Parameters
         ----------
-        src : [gdal.Dataset]
-             gdal raster (src=gdal.Open("dem.tif"))
         cell_size : [integer]
              new cell size to resample the raster.
             (default empty so raster will not be resampled)
@@ -948,11 +933,6 @@ class Raster:
         raster : [gdal.Dataset]
              gdal object (you can read it by ReadAsArray)
         """
-        if not isinstance(src, gdal.Dataset):
-            raise TypeError(
-                "src should be read using gdal (gdal dataset please read it using gdal library) "
-            )
-
         if not isinstance(resample_technique, str):
             raise TypeError(
                 " please enter correct resample_technique more information see docmentation "
@@ -965,53 +945,47 @@ class Raster:
         elif resample_technique == "bilinear":
             resample_technique = gdal.GRA_Bilinear
 
-        src_proj = src.GetProjection()
-        src_gt = src.GetGeoTransform()
-        src_x = src.RasterXSize
-        src_y = src.RasterYSize
+        sr_src = osr.SpatialReference(wkt=self.proj)
 
-        sr_src = osr.SpatialReference(wkt=src_proj)
-
-        ulx = src_gt[0]
-        uly = src_gt[3]
+        ulx = self.geotransform[0]
+        uly = self.geotransform[3]
         # transform the right lower corner point
-        lrx = src_gt[0] + src_gt[1] * src_x
-        lry = src_gt[3] + src_gt[5] * src_y
+        lrx = self.geotransform[0] + self.geotransform[1] * self.columns
+        lry = self.geotransform[3] + self.geotransform[5] * self.row
 
         pixel_spacing = cell_size
         # new geotransform
         new_geo = (
-            src_gt[0],
+            self.geotransform[0],
             pixel_spacing,
-            src_gt[2],
-            src_gt[3],
-            src_gt[4],
+            self.geotransform[2],
+            self.geotransform[3],
+            self.geotransform[4],
             -1 * pixel_spacing,
         )
         # create a new raster
         cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
-        dtype = src.GetRasterBand(1).DataType
+        dtype = self.raster.GetRasterBand(1).DataType
 
         dst = Raster._createDataset(cols, rows, 1, dtype)
-
         # set the geotransform
         dst.SetGeoTransform(new_geo)
         # set the projection
         dst.SetProjection(sr_src.ExportToWkt())
+        dst_obj = Raster(dst)
         # set the no data value
-        no_data_value = src.GetRasterBand(1).GetNoDataValue()
-        dst = Raster.setNoDataValue(dst, no_data_value)
+        no_data_value = self.raster.GetRasterBand(1).GetNoDataValue()
+        dst_obj.setNoDataValue(no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
-            src, dst, sr_src.ExportToWkt(), sr_src.ExportToWkt(), resample_technique
+            self.raster, dst_obj.raster, sr_src.ExportToWkt(), sr_src.ExportToWkt(), resample_technique
         )
 
-        return dst
+        return dst_obj
 
-    @staticmethod
-    def projectRaster(
-        src: Dataset, to_epsg: int, resample_technique: str = "Nearest", option: int = 2
+    def reproject(
+        self, to_epsg: int, resample_technique: str = "Nearest", option: int = 2
     ) -> Dataset:
         """projectRaster.
 
@@ -1021,8 +995,6 @@ class Raster:
 
         Parameters
         ----------
-        src: [gdal object]
-            gdal dataset (src=gdal.Open("dem.tif"))
         to_epsg: [integer]
             reference number to the new projection (https://epsg.io/)
             (default 3857 the reference no of WGS84 web mercator )
@@ -1041,15 +1013,8 @@ class Raster:
 
         Examples
         --------
-        >>> projected_raster = Raster.projectRaster(src, to_epsg=3857)
+        >>> projected_raster = Raster.reproject(src, to_epsg=3857)
         """
-        # input data validation
-        # data type
-        if not isinstance(src, gdal.Dataset):
-            raise TypeError(
-                "src should be read using gdal (gdal dataset please read it using gdal"
-                f" library) given {type(src)}"
-            )
         if not isinstance(to_epsg, int):
             raise TypeError(
                 "please enter correct integer number for to_epsg more information "
@@ -1069,10 +1034,10 @@ class Raster:
             resample_technique = gdal.GRA_Bilinear
 
         if option == 1:
-            src_proj = src.GetProjection()
-            src_gt = src.GetGeoTransform()
-            src_x = src.RasterXSize
-            src_y = src.RasterYSize
+            src_proj = self.proj
+            src_gt = self.geotransform
+            src_x = self.columns
+            src_y = self.row
 
             src_sr = osr.SpatialReference(wkt=src_proj)
             src_epsg = src_sr.GetAttrValue("AUTHORITY", 1)
@@ -1134,7 +1099,7 @@ class Raster:
             cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
             rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
-            dtype = src.GetRasterBand(1).DataType
+            dtype = self.raster.GetRasterBand(1).DataType
             dst = Raster._createDataset(cols, rows, 1, dtype)
 
             # new geotransform
@@ -1151,21 +1116,23 @@ class Raster:
             # set the projection
             dst.SetProjection(dst_sr.ExportToWkt())
             # set the no data value
-            no_data_value = src.GetRasterBand(1).GetNoDataValue()
-            dst = Raster.setNoDataValue(dst, no_data_value)
+            no_data_value = self.raster.GetRasterBand(1).GetNoDataValue()
+            dst_obj = Raster(dst)
+            dst_obj.setNoDataValue(no_data_value)
             # perform the projection & resampling
             gdal.ReprojectImage(
-                src,
-                dst,
+                self.raster,
+                dst_obj.raster,
                 src_sr.ExportToWkt(),
                 dst_sr.ExportToWkt(),
                 resample_technique,
             )
 
         else:
-            dst = gdal.Warp("", src, dstSRS="EPSG:" + str(to_epsg), format="VRT")
+            dst = gdal.Warp("", self.raster, dstSRS="EPSG:" + str(to_epsg), format="VRT")
+            dst_obj = Raster(dst)
 
-        return dst
+        return dst_obj
 
     @staticmethod
     def cropAlligned(
@@ -1176,9 +1143,10 @@ class Raster:
         """cropAlligned.
 
         cropAlligned clip/crop (matches the location of nodata value from src raster to dst
-        raster), Both rasters have to have the same dimensions (no of rows & columns)
-        so MatchRasterAlignment should be used prior to this function to align both
-        rasters
+        raster),
+            - Both rasters have to have the same dimensions (no of rows & columns)
+            so MatchRasterAlignment should be used prior to this function to align both
+            rasters
 
         Parameters
         ----------
@@ -1237,7 +1205,7 @@ class Raster:
         # check proj
         if not mask_array.shape == src_array.shape:
             raise ValueError(
-                "two rasters has different no of columns or rows please resample or match both rasters"
+                "Two rasters has different number of columns or rows please resample or match both rasters"
             )
 
         # if both inputs are rasters
@@ -1410,7 +1378,8 @@ class Raster:
         #                         resample_technique)
 
         if save:
-            Raster.saveRaster(dst, output_path)
+            dst_obj = Raster(dst)
+            dst_obj.to_geotiff(output_path)
 
         return dst
 
@@ -2426,7 +2395,7 @@ class Dataset:
         pass
 
     @staticmethod
-    def readRastersFolder(
+    def read(
         path: str,
         band: int = 1,
         with_order: bool = True,
@@ -2477,12 +2446,12 @@ class Dataset:
         Example
         -------
         >>> raster_folder = "examples/GIS/data/raster-folder"
-        >>> prec = Raster.readRastersFolder(raster_folder)
+        >>> prec = Dataset.readRastersFolder(raster_folder)
 
         >>> import glob
         >>> search_criteria = "*.tif"
         >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Raster.readRastersFolder(file_list, with_order=False)
+        >>> prec = Dataset.readRastersFolder(file_list, with_order=False)
         """
         # input data validation
         # data type
