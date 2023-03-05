@@ -10,6 +10,10 @@ from osgeo.gdal import Dataset
 
 
 @pytest.fixture(scope="module")
+def src_path() -> str:
+    return "examples/data/acc4000.tif"
+
+@pytest.fixture(scope="module")
 def src() -> Dataset:
     return gdal.Open("examples/data/acc4000.tif")
 
