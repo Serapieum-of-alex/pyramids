@@ -3,17 +3,107 @@ from typing import List, Tuple
 
 # import geopandas as gpd
 import numpy as np
+import pytest
 from osgeo import gdal, osr
 from osgeo.gdal import Dataset
 
 from pyramids.raster import Raster
+
+# @pytest.fixture(scope="module")
+class TestCreateRasterObject:
+    def test_from_gdal_dataset(
+        self,
+        src: str,
+        src_no_data_value: float,
+    ):
+        src = Raster(src)
+        assert isinstance(src, Raster)
+
+    def test_from_open_raster(
+        self,
+        src_path: str,
+        src_no_data_value: float,
+    ):
+        src = Raster.openRaster(src_path)
+        assert isinstance(src, Raster)
+
+    def test_from_create_empty_driver(
+        self,
+        src: Dataset,
+        src_no_data_value: float,
+    ):
+        src = Raster.createEmptyDriver(src)
+        assert isinstance(src, Raster)
+
+    def test_create_raster(
+        self,
+        src_arr: np.ndarray,
+        src_geotransform: tuple,
+        src_epsg: int,
+        src_no_data_value: float,
+    ):
+        src = Raster.createRaster(
+            arr=src_arr,
+            geo=src_geotransform,
+            epsg=src_epsg,
+            nodatavalue=src_no_data_value,
+        )
+        assert isinstance(src.raster, Dataset)
+        assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
+        assert np.isclose(
+            src.raster.GetRasterBand(1).GetNoDataValue(),
+            src_no_data_value,
+            rtol=0.00001,
+        )
+        assert src.raster.GetGeoTransform() == src_geotransform
+
+
+class TestRasterLike:
+    def test_create_raster_like_to_disk(
+        self,
+        src: Dataset,
+        src_arr: np.ndarray,
+        src_no_data_value: float,
+        raster_like_path: str,
+    ):
+        arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
+        arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+
+        Raster.rasterLike(src, arr2, driver="GTiff", path=raster_like_path)
+        assert os.path.exists(raster_like_path)
+        dst = gdal.Open(raster_like_path)
+        arr = dst.ReadAsArray()
+        assert arr.shape == src_arr.shape
+        assert np.isclose(
+            src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
+        )
+        assert src.GetGeoTransform() == dst.GetGeoTransform()
+
+    def test_create_raster_like_to_mem(
+        self,
+        src: Dataset,
+        src_arr: np.ndarray,
+        src_no_data_value: float,
+    ):
+        arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
+        arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+
+        dst = Raster.rasterLike(src, arr2, driver="MEM")
+
+        arr = dst.raster.ReadAsArray()
+        assert arr.shape == src_arr.shape
+        assert np.isclose(
+            src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
+        )
+        assert src.GetGeoTransform() == dst.raster.GetGeoTransform()
 
 
 def test_GetRasterData(
     src: Dataset,
     src_no_data_value: float,
 ):
-    arr, nodataval = Raster.getRasterData(src)
+    src = Raster(src)
+    arr, nodataval = src.getRasterData()
     assert np.isclose(src_no_data_value, nodataval, rtol=0.001)
     assert isinstance(arr, np.ndarray)
 
@@ -95,23 +185,6 @@ class TestCreateCellGeometry:
         assert gdf.crs.to_epsg() == src_epsg
 
 
-def test_create_raster(
-    src_arr: np.ndarray,
-    src_geotransform: tuple,
-    src_epsg: int,
-    src_no_data_value: float,
-):
-    src = Raster.createRaster(
-        arr=src_arr, geo=src_geotransform, epsg=src_epsg, nodatavalue=src_no_data_value
-    )
-    assert isinstance(src, Dataset)
-    assert np.isclose(src.ReadAsArray(), src_arr, rtol=0.00001).all()
-    assert np.isclose(
-        src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
-    )
-    assert src.GetGeoTransform() == src_geotransform
-
-
 def test_save_rasters(
     src: Dataset,
     save_raster_path: str,
@@ -119,46 +192,6 @@ def test_save_rasters(
     Raster.saveRaster(src, save_raster_path)
     assert os.path.exists(save_raster_path)
     os.remove(save_raster_path)
-
-
-class TestRasterLike:
-    def test_create_raster_like_to_disk(
-        self,
-        src: Dataset,
-        src_arr: np.ndarray,
-        src_no_data_value: float,
-        raster_like_path: str,
-    ):
-        arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
-        arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
-
-        Raster.rasterLike(src, arr2, driver="GTiff", path=raster_like_path)
-        assert os.path.exists(raster_like_path)
-        dst = gdal.Open(raster_like_path)
-        arr = dst.ReadAsArray()
-        assert arr.shape == src_arr.shape
-        assert np.isclose(
-            src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
-        )
-        assert src.GetGeoTransform() == dst.GetGeoTransform()
-
-    def test_create_raster_like_to_mem(
-        self,
-        src: Dataset,
-        src_arr: np.ndarray,
-        src_no_data_value: float,
-    ):
-        arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
-        arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
-
-        dst = Raster.rasterLike(src, arr2, driver="MEM")
-
-        arr = dst.ReadAsArray()
-        assert arr.shape == src_arr.shape
-        assert np.isclose(
-            src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
-        )
-        assert src.GetGeoTransform() == dst.GetGeoTransform()
 
 
 def test_map_algebra(

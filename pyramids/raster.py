@@ -36,11 +36,16 @@ DEFAULT_NO_DATA_VALUE = -9999
 class Raster:
     """Raster class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
 
-    def __init__(self):
+    raster: Dataset
+    array: np.ndarray
+    no_data_value: Union[float, int]
+
+    def __init__(self, src: Dataset):
+        self.raster = src
         pass
 
-    @staticmethod
-    def openDataset(path: str, read_only=True) -> Dataset:
+    @classmethod
+    def openRaster(cls, path: str, read_only=True):
         """Open a raster using GDAL.
 
         Parameters
@@ -56,6 +61,7 @@ class Raster:
         """
         if not os.path.exists(path):
             raise FileNotFoundError(f"The given file:{path} does not exist")
+
         access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
         src = gdal.OpenShared(path, access)
         if src is None:
@@ -64,7 +70,146 @@ class Raster:
                 f"the raster is being used by other software"
             )
 
-        return src
+        return cls(src)
+
+    @classmethod
+    def createEmptyDriver(
+        cls, src: Dataset, path: str = None, bands: int = 1, no_data_value=None
+    ):
+        """Create a new empty driver from another dataset.
+
+        Parameters
+        ----------
+        src : [Dataset]
+            gdal dataset
+        path : str
+        bands : int or None
+            Number of bands to create in the output raster.
+        no_data_value : float or None
+            No data value, if None uses the same as ``src``.
+
+        Returns
+        -------
+        gdal.DataSet
+        """
+        bands = int(bands) if bands is not None else src.RasterCount
+        # create the obhect
+        src_obj = cls(src)
+        cols, rows, prj, _, gt, _, dtypes = src_obj.getRasterDetails()
+        # Create the driver.
+        dst = src_obj._createDataset(cols, rows, bands, dtypes[0], path=path)
+
+        # Set the projection.
+        dst.SetGeoTransform(gt)
+        dst.SetProjection(src.GetProjectionRef())
+        dst = cls(dst)
+        if no_data_value is not None:
+            dst.setNoDataValue(no_data_value=float(no_data_value))
+
+        return dst
+
+    @staticmethod
+    def readASCII(ascii_file: str, pixel_type: int = 1) -> Tuple[np.ndarray, tuple]:
+        """readASCII.
+
+            readASCII reads an ASCII file
+
+        Parameters
+        ----------
+        ascii_file: [str]
+            name of the ASCII file you want to convert and the name
+            should include the extension ".asc"
+        pixel_type: [Integer]
+            type of the data to be stored in the pixels,default is 1 (float32)
+            for example pixel type of flow direction raster is unsigned integer
+            1 for float32
+            2 for float64
+            3 for Unsigned integer 16
+            4 for Unsigned integer 32
+            5 for integer 16
+            6 for integer 32
+
+        Returns
+        -------
+        ascii_values: [numpy array]
+            2D arrays containing the values stored in the ASCII file
+        ascii_details: [List]
+            list of the six spatial information of the ASCII file
+            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+            CellSize, NoValue]
+
+        Examples
+        --------
+        >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
+        """
+        if not isinstance(ascii_file, str):
+            raise TypeError("ascii_file input should be string type")
+
+        if not isinstance(pixel_type, int):
+            raise TypeError(
+                "pixel type input should be integer type please check documentations"
+            )
+
+        # input values
+        file_extension = ascii_file[-4:]
+        if not file_extension == ".asc":
+            raise ValueError("please add the extension at the end of the path input")
+
+        if not os.path.exists(ascii_file):
+            raise FileNotFoundError("ASCII file path you have provided does not exist")
+
+        ### read the ASCII file
+        File = open(ascii_file)
+        whole_file = File.readlines()
+        File.close()
+
+        cols = int(whole_file[0].split()[1])
+        rows = int(whole_file[1].split()[1])
+
+        x_left_side = float(whole_file[2].split()[1])
+        y_lower_side = float(whole_file[3].split()[1])
+        call_size = float(whole_file[4].split()[1])
+        no_data_value = float(whole_file[5].split()[1])
+
+        arr = np.ones((rows, cols), dtype=np.float32)
+        try:
+            for i in range(rows):
+                x = whole_file[6 + i].split()
+                arr[i, :] = list(map(float, x))
+        except:
+            try:
+                for j in range(len(x)):
+                    float(x[j])
+            except:
+                print(
+                    f"Error reading the ARCII file please check row {i + 6 + 1}, column {j}"
+                )
+                print(f"A value of {x[j]} , is stored in the ASCII file ")
+
+        geotransform = (rows, cols, x_left_side, y_lower_side, call_size, no_data_value)
+
+        return arr, geotransform
+
+    def getRasterData(self, band: int = 1) -> Tuple[np.ndarray, Union[int, float]]:
+        """get the basic data inside a raster (the array and the nodatavalue)
+
+        Parameters
+        ----------
+        band : [integer]
+            the band you want to get its data. Default is 1
+
+        Returns
+        -------
+        array : [array]
+            array with all the values in the raster.
+        nodataval : [numeric]
+            value stored in novalue cells
+        """
+        # get the value stores in novalue cells
+        nodatavalue = self.raster.GetRasterBand(band).GetNoDataValue()
+        arr = self.raster.GetRasterBand(band).ReadAsArray()
+
+        return arr, nodatavalue
 
     @staticmethod
     def _createDataset(
@@ -117,47 +262,155 @@ class Raster:
             src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, dtype)
         return src
 
-    @staticmethod
-    def getRasterData(
-        src: Dataset, band: int = 1
-    ) -> Tuple[np.ndarray, Union[int, float]]:
-        """get the basic data inside a raster (the array and the nodatavalue)
+    @classmethod
+    def createRaster(
+        cls,
+        path: str = None,
+        arr: Union[str, Dataset, np.ndarray] = "",
+        geo: Union[str, tuple] = "",
+        epsg: Union[str, int] = "",
+        nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
+        band: int = 1,
+    ) -> Union[Dataset, None]:
+        """createRaster.
+
+        createRaster method creates a raster from a given array and geotransform data
+        and save the tif file if a Path is given or it will return the gdal.Dataset
 
         Parameters
         ----------
-        src: [gdal.Dataset]
-            a gdal.Dataset is a raster already been read using gdal
-        band : [integer]
-            the band you want to get its data. Default is 1
+        path : [str], optional
+            Path to save the Raster, if '' is given a memory raster will be returned. The default is ''.
+        arr : [array], optional
+            numpy array. The default is ''.
+        geo : [list], optional
+            geotransform list [minimum lon, pixelsize, rotation, maximum lat, rotation,
+                pixelsize]. The default is ''.
+        nodatavalue : TYPE, optional
+            DESCRIPTION. The default is -9999.
+        epsg: [integer]
+            integer reference number to the new projection (https://epsg.io/)
+                (default 3857 the reference no of WGS84 web mercator )
+        band: [int]
+            band number.
 
         Returns
         -------
-        array : [array]
-            array with all the values in the flow path length raster
-        nodataval : [numeric]
-            value stored in novalue cells
+        dst : [gdal.Dataset/save raster to drive].
+            if a path is given the created raster will be saved to drive, if not
+            a gdal.Dataset will be returned.
         """
-        if not isinstance(src, Dataset):
-            raise TypeError(
-                "please enter a valib gdal object (raster has been read using gdal.Open)"
-            )
+        try:
+            if np.isnan(nodatavalue):
+                nodatavalue = DEFAULT_NO_DATA_VALUE
+        except TypeError:
+            # np.isnan fails sometimes with the following error
+            # TypeError: ufunc 'isnan' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''
+            if pd.isnull(nodatavalue):
+                nodatavalue = DEFAULT_NO_DATA_VALUE
 
-        # get the value stores in novalue cells
-        nodatavalue = src.GetRasterBand(band).GetNoDataValue()
-        arr = src.GetRasterBand(band).ReadAsArray()
+        if path is None:
+            driver_type = "MEM"
+        else:
+            if not isinstance(path, str):
+                raise TypeError("first parameter Path should be string")
 
-        return arr, nodatavalue
+            driver_type = "GTiff"
 
-    @staticmethod
-    def getProjectionData(src: Dataset) -> Tuple[int, tuple]:
-        """GetProjectionData.
+        cols = int(arr.shape[1])
+        rows = int(arr.shape[0])
+        bands = 1
+        dtype = numpy_to_gdal_dtype(arr)
+        dst_ds = Raster._createDataset(
+            cols, rows, bands, dtype, driver=driver_type, path=path
+        )
 
-        GetProjectionData returns the projection details of a given gdal.Dataset
+        srse = Raster._createSRfromEPSG(epsg=epsg)
+        dst_ds.SetProjection(srse.ExportToWkt())
+        dst_obj = cls(dst_ds)
+        dst_obj.setNoDataValue(no_data_value=nodatavalue)
+
+        dst_obj.raster.SetGeoTransform(geo)
+        dst_obj.raster.GetRasterBand(1).WriteArray(arr)
+
+        if path is None:
+            return dst_obj
+        else:
+            dst_ds = None
+            return
+
+    @classmethod
+    def rasterLike(
+        cls, src: Dataset, array: np.ndarray, driver: str = "GTiff", path: str = None
+    ) -> Union[Dataset, None]:
+        """rasterLike.
+
+        rasterLike method creates a Geotiff raster like another input raster, new raster
+        will have the same projection, coordinates or the top left corner of the original
+        raster, cell size, nodata velue, and number of rows and columns
+        the raster and the dem should have the same number of columns and rows
 
         Parameters
         ----------
-        src: [gdal.Dataset]
-            raster read by gdal
+        src : [gdal.dataset]
+            source raster to get the spatial information
+        array : [numpy array]
+            to store in the new raster
+        driver:[str]
+            gdal driver type. Default is "GTiff"
+        path : [String]
+            path to save the new raster including new raster name and extension (.tif)
+
+        Returns
+        -------
+        None:
+            if the driver is "GTiff" the function will save the new raster to the given path.
+        Dataset:
+            if the driver is "MEM" the function will return the created raster in memory.
+
+        Example
+        -------
+        >>> array = np.load("RAIN_5k.npy")
+        >>> src = gdal.Open("DEM.tif")
+        >>> name = "rain.tif"
+        >>> Raster.rasterLike(src, array, driver="GTiff", path=name)
+        - or create a raster in memory
+        >>> array = np.load("RAIN_5k.npy")
+        >>> src = gdal.Open("DEM.tif")
+        >>> dst = Raster.rasterLike(src, array, driver="MEM")
+        """
+        if not isinstance(src, gdal.Dataset):
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal library) "
+            )
+
+        if not isinstance(array, np.ndarray):
+            raise TypeError("array should be of type numpy array")
+
+        bands = 1
+        dtype = numpy_to_gdal_dtype(array)
+        src_obj = cls(src)
+        cols, rows, prj, _, gt, no_data_value, _ = src_obj.getRasterDetails()
+
+        dst = Raster._createDataset(cols, rows, bands, dtype, driver=driver, path=path)
+
+        dst.SetGeoTransform(gt)
+        dst.SetProjection(prj)
+        # setting the NoDataValue does not accept double precision numbers
+        dst_obj = cls(dst)
+        dst_obj.setNoDataValue(no_data_value=no_data_value[0])
+
+        dst_obj.raster.GetRasterBand(1).WriteArray(array)
+        if driver == "GTiff":
+            dst_obj.raster.FlushCache()
+            dst_obj = None
+
+        return dst_obj
+
+    def getProjectionData(self) -> Tuple[int, tuple]:
+        """GetProjectionData.
+
+        GetProjectionData returns the projection details of a given gdal.Dataset
 
         Returns
         -------
@@ -167,23 +420,17 @@ class Raster:
             geotransform data of the upper left corner of the raster
             (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
         """
-        geo = src.GetGeoTransform()
-        src_proj = src.GetProjection()
+        geo = self.raster.GetGeoTransform()
+        src_proj = self.raster.GetProjection()
         sr_src = osr.SpatialReference(wkt=src_proj)
         epsg = int(sr_src.GetAttrValue("AUTHORITY", 1))
 
         return epsg, geo
 
-    @staticmethod
     def getRasterDetails(
-        src: Dataset,
+        self,
     ) -> Tuple[int, int, str, int, Tuple, List[Any], List]:
         """Get gdal dataset details.
-
-        Parameters
-        ----------
-        src: [Dataset]
-            gdal dataset
 
         Returns
         -------
@@ -202,37 +449,66 @@ class Raster:
         dtype: List[gdal.DataType]
             gdal data type for each band in the dataset.
         """
-        cols = src.RasterXSize
-        rows = src.RasterYSize
-        prj = src.GetProjection()
+        cols = self.raster.RasterXSize
+        rows = self.raster.RasterYSize
+        prj = self.raster.GetProjection()
         # src.GetProjectionRef()
-        bands = src.RasterCount
-        gt = src.GetGeoTransform()
+        bands = self.raster.RasterCount
+        gt = self.raster.GetGeoTransform()
 
         no_data_value = [
-            src.GetRasterBand(i).GetNoDataValue() for i in range(1, bands + 1)
+            self.raster.GetRasterBand(i).GetNoDataValue() for i in range(1, bands + 1)
         ]
-        dtype = [src.GetRasterBand(i).DataType for i in range(1, bands + 1)]
+        dtype = [self.raster.GetRasterBand(i).DataType for i in range(1, bands + 1)]
 
         return cols, rows, prj, bands, gt, no_data_value, dtype
 
+    # TODO: replace it  with getRasterData
     @staticmethod
-    def getEPSG(src: Dataset) -> int:
-        """GetEPSG.
+    def openArrayInfo(fname: str = ""):
+        """openArrayInfo.
 
-            This function reads the projection of a GEOGCS file or tiff file
+        Opening a tiff info, for example size of array, projection and transform matrix.
 
         Parameters
         ----------
-        src: [gdal.Dataset]
-            raster read by gdal
+        fname: [str]
+            path to the tiff file
+
+        Returns
+        -------
+        geotransform: [Tuple]
+            geotransform data of the upper left corner of the raster
+            (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
+        proj: [str]
+            projection as a well known text.
+        cols: [float]
+            number of columns
+        rows: [float]
+            number of rows
+        """
+        src = gdal.Open(fname)
+        if src is None:
+            raise FileNotFoundError(f"{fname} does not exists")
+
+        geo = src.GetGeoTransform()
+        proj = src.GetProjection()
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+
+        return geo, proj, cols, rows
+
+    def getEPSG(self) -> int:
+        """GetEPSG.
+
+            This function reads the projection of a GEOGCS file or tiff file
 
         Returns
         -------
         epsg : [integer]
             epsg number
         """
-        prj = src.GetProjection()
+        prj = self.raster.GetProjection()
         epsg = Vector.getEPSGfromPrj(prj)
 
         return epsg
@@ -270,54 +546,42 @@ class Raster:
                     sr.ImportFromWkt(epsg)
         return sr
 
-    @staticmethod
-    def setNoDataValue(src, no_data_value=DEFAULT_NO_DATA_VALUE) -> Dataset:
+    def setNoDataValue(self, no_data_value=DEFAULT_NO_DATA_VALUE):
         """Set the no data value in a all raster bands.
 
         Parameters
         ----------
-        src: [Dataset]
-            gdal Dataset
         no_data_value: [numeric]
             no data value to fill the masked part of the array
-
-        Returns
-        -------
-        gdal Dataset
         """
         # setting the no_data_value does not accept double precision numbers
-        for band in range(1, src.RasterCount + 1):
+        for band in range(1, self.raster.RasterCount + 1):
             try:
-                src.GetRasterBand(band).SetNoDataValue(no_data_value)
+                self.raster.GetRasterBand(band).SetNoDataValue(no_data_value)
                 # initialize the band with the nodata value instead of 0
-                src.GetRasterBand(band).Fill(no_data_value)
+                self.raster.GetRasterBand(band).Fill(no_data_value)
             except:
-                src.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
-                src.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
+                self.raster.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
+                self.raster.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
                 # assert False, "please change the no_data_value in the source raster as it is not accepted by Gdal"
                 print(
                     "the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
                     f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
                 )
 
-        return src
-
-    @staticmethod
-    def getBandNames(src: Dataset) -> List[str]:
+    def getBandNames(self) -> List[str]:
         """Get band names from band meta data if exists otherwise will return idex [1,2, ...]
 
         Parameters
         ----------
-        src : [gdal.]Dataset]
-            gdal Dataset
 
         Returns
         -------
         list[str]
         """
         names = []
-        for i in range(1, src.RasterCount + 1):
-            band_i = src.GetRasterBand(i)
+        for i in range(1, self.raster.RasterCount + 1):
+            band_i = self.raster.GetRasterBand(i)
 
             if band_i.GetDescription():
                 # Use the band_i description.
@@ -334,41 +598,6 @@ class Raster:
                     names.append(band_i_name)
 
         return names
-
-    @staticmethod
-    def createEmptyDriver(
-        src: Dataset, path: str, bands: int = 1, no_data_value=None
-    ) -> Dataset:
-        """Create a new empty driver from another dataset.
-
-        Parameters
-        ----------
-        src : [Dataset]
-            gdal dataset
-        path : str
-        bands : int or None
-            Number of bands to create in the output raster.
-        no_data_value : float or None
-            No data value, if None uses the same as ``src``.
-
-        Returns
-        -------
-        gdal.DataSet
-        """
-        bands = int(bands) if bands is not None else src.RasterCount
-
-        cols, rows, prj, _, gt, _, dtypes = Raster.getRasterDetails(src)
-        # Create the driver.
-        dst = Raster._createDataset(cols, rows, bands, dtypes[0], path=path)
-
-        # Set the projection.
-        dst.SetGeoTransform(gt)
-        dst.SetProjection(src.GetProjectionRef())
-
-        if no_data_value is not None:
-            dst = Raster.setNoDataValue(dst, no_data_value=float(no_data_value))
-
-        return dst
 
     @staticmethod
     def getCellCoords(
@@ -585,152 +814,12 @@ class Raster:
         print(dst_ds)
 
     @staticmethod
-    def createRaster(
-        path: str = None,
-        arr: Union[str, Dataset, np.ndarray] = "",
-        geo: Union[str, tuple] = "",
-        epsg: Union[str, int] = "",
-        nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
-        band: int = 1,
-    ) -> Union[Dataset, None]:
-        """createRaster.
-
-        createRaster method creates a raster from a given array and geotransform data
-        and save the tif file if a Path is given or it will return the gdal.Dataset
-
-        Parameters
-        ----------
-        path : [str], optional
-            Path to save the Raster, if '' is given a memory raster will be returned. The default is ''.
-        arr : [array], optional
-            numpy array. The default is ''.
-        geo : [list], optional
-            geotransform list [minimum lon, pixelsize, rotation, maximum lat, rotation,
-                pixelsize]. The default is ''.
-        nodatavalue : TYPE, optional
-            DESCRIPTION. The default is -9999.
-        epsg: [integer]
-            integer reference number to the new projection (https://epsg.io/)
-                (default 3857 the reference no of WGS84 web mercator )
-        band: [int]
-            band number.
-
-        Returns
-        -------
-        dst : [gdal.Dataset/save raster to drive].
-            if a path is given the created raster will be saved to drive, if not
-            a gdal.Dataset will be returned.
-        """
-        try:
-            if np.isnan(nodatavalue):
-                nodatavalue = DEFAULT_NO_DATA_VALUE
-        except TypeError:
-            # np.isnan fails sometimes with the following error
-            # TypeError: ufunc 'isnan' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''
-            if pd.isnull(nodatavalue):
-                nodatavalue = DEFAULT_NO_DATA_VALUE
-
-        if path is None:
-            driver_type = "MEM"
-        else:
-            if not isinstance(path, str):
-                raise TypeError("first parameter Path should be string")
-
-            driver_type = "GTiff"
-
-        cols = int(arr.shape[1])
-        rows = int(arr.shape[0])
-        bands = 1
-        dtype = numpy_to_gdal_dtype(arr)
-        dst_ds = Raster._createDataset(
-            cols, rows, bands, dtype, driver=driver_type, path=path
-        )
-
-        srse = Raster._createSRfromEPSG(epsg=epsg)
-        dst_ds.SetProjection(srse.ExportToWkt())
-        dst_ds = Raster.setNoDataValue(dst_ds, no_data_value=nodatavalue)
-
-        dst_ds.SetGeoTransform(geo)
-        dst_ds.GetRasterBand(1).WriteArray(arr)
-
-        if path is None:
-            return dst_ds
-        else:
-            dst_ds = None
-            return
-
-    @staticmethod
-    def rasterLike(
-        src: Dataset, array: np.ndarray, driver: str = "GTiff", path: str = None
-    ) -> Union[Dataset, None]:
-        """rasterLike.
-
-        rasterLike method creates a Geotiff raster like another input raster, new raster
-        will have the same projection, coordinates or the top left corner of the original
-        raster, cell size, nodata velue, and number of rows and columns
-        the raster and the dem should have the same number of columns and rows
-
-        Parameters
-        ----------
-        src : [gdal.dataset]
-            source raster to get the spatial information
-        array : [numpy array]
-            to store in the new raster
-        driver:[str]
-            gdal driver type. Default is "GTiff"
-        path : [String]
-            path to save the new raster including new raster name and extension (.tif)
-
-        Returns
-        -------
-        None:
-            if the driver is "GTiff" the function will save the new raster to the given path.
-        Dataset:
-            if the driver is "MEM" the function will return the created raster in memory.
-
-        Example
-        -------
-        >>> array = np.load("RAIN_5k.npy")
-        >>> src = gdal.Open("DEM.tif")
-        >>> name = "rain.tif"
-        >>> Raster.rasterLike(src, array, driver="GTiff", path=name)
-        - or create a raster in memory
-        >>> array = np.load("RAIN_5k.npy")
-        >>> src = gdal.Open("DEM.tif")
-        >>> dst = Raster.rasterLike(src, array, driver="MEM")
-        """
-        if not isinstance(src, gdal.Dataset):
-            raise TypeError(
-                "src should be read using gdal (gdal dataset please read it using gdal library) "
-            )
-
-        if not isinstance(array, np.ndarray):
-            raise TypeError("array should be of type numpy array")
-
-        bands = 1
-        dtype = numpy_to_gdal_dtype(array)
-        cols, rows, prj, _, gt, no_data_value, _ = Raster.getRasterDetails(src)
-
-        dst = Raster._createDataset(cols, rows, bands, dtype, driver=driver, path=path)
-
-        dst.SetGeoTransform(gt)
-        dst.SetProjection(prj)
-        # setting the NoDataValue does not accept double precision numbers
-        dst = Raster.setNoDataValue(dst, no_data_value=no_data_value[0])
-
-        dst.GetRasterBand(1).WriteArray(array)
-        if driver == "GTiff":
-            dst.FlushCache()
-            dst = None
-
-        return dst
-
-    @staticmethod
     def mapAlgebra(src: Dataset, fun, band: int = 1) -> Dataset:
         """mapAlgebra.
 
-        mapAlgebra executes a mathematical operation on raster array and returns
+        - mapAlgebra executes a mathematical operation on raster array and returns
         the result
+        - The mapAlgebra executes the function only on one cell at a time.
 
         Parameters
         ----------
@@ -763,7 +852,7 @@ class Raster:
         src_proj = src.GetProjection()
         src_row = src.RasterYSize
         src_col = src.RasterXSize
-        noval = np.float32(src.GetRasterBand(band).GetNoDataValue())
+        noval = src.GetRasterBand(band).GetNoDataValue()
         src_array = src.ReadAsArray()
         dtype = src.GetRasterBand(1).DataType
         src_sref = osr.SpatialReference(wkt=src_proj)
@@ -1078,141 +1167,6 @@ class Raster:
 
         return dst
 
-    # TODO: merge ReprojectDataset and ProjectRaster they are almost the same
-    # TODO: still needs to be tested
-    @staticmethod
-    def reprojectDataset(
-        src: Dataset,
-        to_epsg: int = 3857,
-        cell_size: int = [],
-        resample_technique: str = "Nearest",
-    ) -> Dataset:
-        """ReprojectDataset.
-
-        ReprojectDataset reprojects and resamples a folder of rasters to any projection
-        (default the WGS84 web mercator projection, without resampling)
-
-        Parameters
-        ----------
-        src: [gdal dataset]
-            gdal dataset object (src=gdal.Open("dem.tif"))
-        to_epsg: [integer]
-             reference number to the new projection (https://epsg.io/)
-            (default 3857 the reference no of WGS84 web mercator )
-        cell_size: [integer]
-             number to resample the raster cell size to a new cell size
-            (default empty so raster will not be resampled)
-        resample_technique: [String]
-            resampling technique default is "Nearest"
-            https://gisgeography.com/raster-resampling/
-            "Nearest" for nearest neighbour,"cubic" for cubic convolution,
-            "bilinear" for bilinear
-
-        Returns
-        -------
-        raster: [gdal Dataset]
-             a GDAL in-memory file object, where you can ReadAsArray etc.
-        """
-        if not isinstance(src, gdal.Dataset):
-            raise TypeError(
-                "src should be read using gdal (gdal dataset please read it using gdal"
-                f" library) given {type(src)}"
-            )
-        if not isinstance(to_epsg, int):
-            raise TypeError(
-                "please enter correct integer number for to_epsg more information "
-                f"https://epsg.io/, given {type(to_epsg)}"
-            )
-        if not isinstance(resample_technique, str):
-            raise TypeError(
-                "please enter correct resample_technique more information see "
-                "docmentation "
-            )
-
-        if cell_size:
-            assert isinstance(cell_size, int) or isinstance(
-                cell_size, float
-            ), "please enter an integer or float cell size"
-
-        if resample_technique == "Nearest":
-            resample_technique = gdal.GRA_NearestNeighbour
-        elif resample_technique == "cubic":
-            resample_technique = gdal.GRA_Cubic
-        elif resample_technique == "bilinear":
-            resample_technique = gdal.GRA_Bilinear
-
-        src_proj = src.GetProjection()
-        src_gt = src.GetGeoTransform()
-        src_x = src.RasterXSize
-        src_y = src.RasterYSize
-        dtype = src.GetRasterBand(1).DataType
-        # spatial ref
-        src_sr = osr.SpatialReference(wkt=src_proj)
-        src_epsg = src_sr.GetAttrValue("AUTHORITY", 1)
-
-        # distination
-        # spatial ref
-        dst_epsg = osr.SpatialReference()
-        dst_epsg.ImportFromEPSG(to_epsg)
-        # transformation factors
-        tx = osr.CoordinateTransformation(src_sr, dst_epsg)
-
-        # incase the source crs is GCS and longitude is in the west hemisphere gdal
-        # reads longitude fron 0 to 360 and transformation factor wont work with valeus
-        # greater than 180
-        if src_epsg == "4326" and src_gt[0] > 180:
-            lng_new = src_gt[0] - 360
-            # transform the right upper corner point
-            (ulx, uly, ulz) = tx.TransformPoint(lng_new, src_gt[3])
-            # transform the right lower corner point
-            (lrx, lry, lrz) = tx.TransformPoint(
-                lng_new + src_gt[1] * src_x, src_gt[3] + src_gt[5] * src_y
-            )
-        else:
-            # transform the right upper corner point
-            (ulx, uly, ulz) = tx.TransformPoint(src_gt[0], src_gt[3])
-            # transform the right lower corner point
-            (lrx, lry, lrz) = tx.TransformPoint(
-                src_gt[0] + src_gt[1] * src_x, src_gt[3] + src_gt[5] * src_y
-            )
-
-        if not cell_size:
-            # the result raster has the same pixcel size as the source
-            # check if the coordinate system is GCS convert the distance from angular to metric
-            if src_epsg == "4326":
-                coords_1 = (src_gt[3], src_gt[0])
-                coords_2 = (src_gt[3], src_gt[0] + src_gt[1])
-                #            pixel_spacing=geopy.distance.vincenty(coords_1, coords_2).m
-                pixel_spacing = Vector.GCSDistance(coords_1, coords_2)
-            else:
-                pixel_spacing = src_gt[1]
-        else:
-            # if src_epsg.GetAttrValue('AUTHORITY', 1) != "4326":
-            #     assert (cell_size > 1), "please enter cell size greater than 1"
-            # if the user input a cell size resample the raster
-            pixel_spacing = cell_size
-
-        # create a new raster
-        cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
-        rows = int(np.round(abs(uly - lry) / pixel_spacing))
-        dst = Raster._createDataset(cols, rows, 1, dtype, driver="MEM")
-
-        # new geotransform
-        new_geo = (ulx, pixel_spacing, src_gt[2], uly, src_gt[4], -pixel_spacing)
-        # set the geotransform
-        dst.SetGeoTransform(new_geo)
-        # set the projection
-        dst.SetProjection(dst_epsg.ExportToWkt())
-        # set the no data value
-        no_data_value = src.GetRasterBand(1).GetNoDataValue()
-        dst = Raster.setNoDataValue(dst, no_data_value)
-        # perform the projection & resampling
-        gdal.ReprojectImage(
-            src, dst, src_sr.ExportToWkt(), dst_epsg.ExportToWkt(), resample_technique
-        )
-
-        return dst
-
     @staticmethod
     def cropAlligned(
         src: Union[Dataset, np.ndarray],
@@ -1363,97 +1317,6 @@ class Raster:
             return dst
         else:
             return src_array
-
-    @staticmethod
-    def cropAlignedFolder(
-        src_dir: str,
-        mask: Union[Dataset, str],
-        saveto: str,
-    ) -> None:
-        """cropAlignedFolder.
-
-            cropAlignedFolder matches the location of nodata value from src raster to dst
-            raster, Mask is where the NoDatavalue will be taken and the location of
-            this value src_dir is path to the folder where rasters exist where we
-            need to put the NoDataValue of the mask in RasterB at the same locations
-
-        Parameters
-        ----------
-        src_dir : [String]
-            path of the folder of the rasters you want to set Nodata Value
-            on the same location of NodataValue of Raster A, the folder should
-            not have any other files except the rasters
-        mask : [String/gdal.Dataset]
-            path/gdal.Dataset of the mask raster to crop the rasters (to get the NoData value
-            and it location in the array) Mask should include the name of the raster and the
-            extension like "data/dem.tif", or you can read the mask raster using gdal and use
-            is the first parameter to the function.
-        saveto : [String]
-            path where new rasters are going to be saved with exact
-            same old names
-
-        Returns
-        -------
-        new rasters have the values from rasters in B_input_path with the NoDataValue in the same
-        locations like raster A
-
-        Examples
-        --------
-        >>> dem_path = "examples/GIS/data/acc4000.tif"
-        >>> src_path = "examples/GIS/data/aligned_rasters/"
-        >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-        >>> Raster.cropAlignedFolder(dem_path, src_path, out_path)
-        """
-        # if the mask is a string
-        if isinstance(mask, str):
-            # check wether the path exists or not
-            if not os.path.exists(mask):
-                raise FileNotFoundError(
-                    "source raster you have provided does not exist"
-                )
-
-            ext = mask[-4:]
-            if not ext == ".tif":
-                raise TypeError(
-                    "Please add the extension '.tif' at the end of the mask input"
-                )
-
-            mask = gdal.Open(mask)
-        else:
-            mask = mask
-
-        # assert isinstance(Mask_path, str), "Mask_path input should be string type"
-        if not isinstance(src_dir, str):
-            raise TypeError("src_dir input should be string type")
-
-        if not isinstance(saveto, str):
-            raise TypeError("saveto input should be string type")
-
-        # check wether the path exists or not
-        if not os.path.exists(src_dir):
-            raise FileNotFoundError(
-                f"the {src_dir} path you have provided does not exist"
-            )
-
-        if not os.path.exists(saveto):
-            raise FileNotFoundError(
-                f"the {saveto} path you have provided does not exist"
-            )
-        # check wether the folder has the rasters or not
-        if not len(os.listdir(src_dir)) > 0:
-            raise FileNotFoundError(f"{src_dir} folder you have provided is empty")
-
-        files_list = os.listdir(src_dir)
-        if "desktop.ini" in files_list:
-            files_list.remove("desktop.ini")
-
-        print("New Path- " + saveto)
-        for i in range(len(files_list)):
-            if files_list[i][-4:] == ".tif":
-                print(f"{i + 1}/{len(files_list)} - {saveto}{files_list[i]}")
-                B = gdal.Open(src_dir + files_list[i])
-                new_B = Raster.cropAlligned(B, mask)
-                Raster.saveRaster(new_B, saveto + files_list[i])
 
     @staticmethod
     def crop(
@@ -1861,10 +1724,12 @@ class Raster:
     ) -> Dataset:
         """matchRasterAlignment.
 
-        matchRasterAlignment method matches the coordinate system and the number of of rows & columns
-        between two rasters
-        alignment_src is the source of the coordinate system, number of rows, number of columns & cell size
-        data_src is the source of data values in cells
+        matchRasterAlignment method copies the following data
+            - The coordinate system
+            - The number of of rows & columns
+            - cell size
+        from alignment_src to a data_src raster (the source of data values in cells)
+
         the result will be a raster with the same structure like alignment_src but with
         values from data_src using Nearest Neighbour interpolation algorithm
 
@@ -2044,88 +1909,6 @@ class Raster:
         return array
 
     @staticmethod
-    def readASCII(ascii_file: str, pixel_type: int = 1) -> Tuple[np.ndarray, tuple]:
-        """readASCII.
-
-            readASCII reads an ASCII file
-
-        Parameters
-        ----------
-        ascii_file: [str]
-            name of the ASCII file you want to convert and the name
-            should include the extension ".asc"
-        pixel_type: [Integer]
-            type of the data to be stored in the pixels,default is 1 (float32)
-            for example pixel type of flow direction raster is unsigned integer
-            1 for float32
-            2 for float64
-            3 for Unsigned integer 16
-            4 for Unsigned integer 32
-            5 for integer 16
-            6 for integer 32
-
-        Returns
-        -------
-        ascii_values: [numpy array]
-            2D arrays containing the values stored in the ASCII file
-        ascii_details: [List]
-            list of the six spatial information of the ASCII file
-            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-            CellSize, NoValue]
-
-        Examples
-        --------
-        >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
-        """
-        if not isinstance(ascii_file, str):
-            raise TypeError("ascii_file input should be string type")
-
-        if not isinstance(pixel_type, int):
-            raise TypeError(
-                "pixel type input should be integer type please check documentations"
-            )
-
-        # input values
-        file_extension = ascii_file[-4:]
-        if not file_extension == ".asc":
-            raise ValueError("please add the extension at the end of the path input")
-
-        if not os.path.exists(ascii_file):
-            raise FileNotFoundError("ASCII file path you have provided does not exist")
-
-        ### read the ASCII file
-        File = open(ascii_file)
-        whole_file = File.readlines()
-        File.close()
-
-        cols = int(whole_file[0].split()[1])
-        rows = int(whole_file[1].split()[1])
-
-        x_left_side = float(whole_file[2].split()[1])
-        y_lower_side = float(whole_file[3].split()[1])
-        call_size = float(whole_file[4].split()[1])
-        no_data_value = float(whole_file[5].split()[1])
-
-        arr = np.ones((rows, cols), dtype=np.float32)
-        try:
-            for i in range(rows):
-                x = whole_file[6 + i].split()
-                arr[i, :] = list(map(float, x))
-        except:
-            try:
-                for j in range(len(x)):
-                    float(x[j])
-            except:
-                print(
-                    f"Error reading the ARCII file please check row {i + 6 + 1}, column {j}"
-                )
-                print(f"A value of {x[j]} , is stored in the ASCII file ")
-
-        geotransform = (rows, cols, x_left_side, y_lower_side, call_size, no_data_value)
-
-        return arr, geotransform
-
-    @staticmethod
     def stringSpace(inp):
         return str(inp) + "  "
 
@@ -2294,129 +2077,6 @@ class Raster:
         return dst, dst_meta
 
     @staticmethod
-    def readASCIIsFolder(path: str, pixel_type: int):
-        """readASCIIsFolder.
-
-        this function reads rasters from a folder and creates a 3d arraywith the same
-        2d dimensions of the first raster in the folder and len as the number of files
-        inside the folder.
-        - all rasters should have the same dimensions
-        - folder should only contain raster files
-
-        Parameters
-        ----------
-        path: [String]
-            path of the folder that contains all the rasters.
-        pixel_type: [int]
-
-        Returns
-        -------
-        arr_3d: [numpy.ndarray]
-            3d array contains arrays read from all rasters in the folder.
-
-        ASCIIDetails: [List]
-            list of the six spatial information of the ASCII file
-            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-            CellSize, NoValue]
-        files: [list]
-            list of names of all files inside the folder
-
-        Examples
-        --------
-        >>> raster_dir = "ASCII folder/"
-        >>> pixel_type = 1
-        >>> ASCIIArray, ASCIIDetails, NameList = Raster.readASCIIsFolder(raster_dir, pixel_type)
-        """
-        # input data validation
-        # data type
-        assert type(path) == str, "A_path input should be string type"
-        # input values
-        # check wether the path exist or not
-        assert os.path.exists(path), "the path you have provided does not exist"
-        # check whether there are files or not inside the folder
-        assert os.listdir(path) != "", "the path you have provided is empty"
-        # get list of all files
-        files = os.listdir(path)
-        if "desktop.ini" in files:
-            files.remove("desktop.ini")
-        # check that folder only contains rasters
-        assert all(
-            f.endswith(".asc") for f in files
-        ), "all files in the given folder should have .tif extension"
-        # create a 3d array with the 2d dimension of the first raster and the len
-        # of the number of rasters in the folder
-        ASCIIValues, ASCIIDetails = Raster.readASCII(path + "/" + files[0], pixel_type)
-        noval = ASCIIDetails[5]
-        # fill the array with noval data
-        arr_3d = np.ones((ASCIIDetails[0], ASCIIDetails[1], len(files))) * noval
-
-        for i in range(len(files)):
-            # read the tif file
-            f, _ = Raster.readASCII(path + "/" + files[0], pixel_type)
-            arr_3d[:, :, i] = f
-
-        return arr_3d, ASCIIDetails, files
-
-    @staticmethod
-    def rastersLike(src: Dataset, array: np.ndarray, path: List[str] = None):
-        """Create Raster like other source raster with a given array.
-
-            - This function creates a Geotiff raster like another input raster, new raster will have the same
-            projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number
-            of rows and columns
-            - the raster and the given array should have the same number of columns and rows.
-
-        Parameters
-        ----------
-        src: [gdal.dataset]
-            source raster to get the spatial information
-        array: [numpy array]
-            3D array to be stores as a rasters, the dimensions should be
-            [rows, columns, timeseries length]
-        path: [String]
-            list of names to save the new rasters
-            like ["results/surfaceDischarge_2012_08_13_23.tif","results/surfaceDischarge_2012_08_14_00.tif"]
-            Default value is None
-
-        Returns
-        -------
-        save the new raster to the given path
-
-        Examples
-        --------
-        >>> src_raster = gdal.Open("DEM.tif")
-        >>> name = ["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
-        >>> Raster.rastersLike(src_raster, data, name)
-        """
-        # length of the 3rd dimension of the array
-        try:
-            l = np.shape(array)[2]
-        except IndexError:
-            raise IndexError(
-                "the array you have entered is 2D you have to use RasterLike function not RastersLike"
-            )
-
-        # check length of the list of names to be equal to 3rd dimension of the array
-        if path is not None:  # paths are given
-            assert len(path) == np.shape(array)[2], (
-                f"length of list of names {len(path)} should equal the 3d "
-                f"dimension of the array-{np.shape(array)[2]}"
-            )
-        else:  # paths are not given
-            # try to create a folder called results at the current working directory to store resulted rasters
-            try:
-                os.makedirs(os.path.join(os.getcwd(), "result_rasters"))
-            except WindowsError:
-                assert (
-                    False
-                ), "please either to provide your own paths including folder name and rasternames.tif in a list or rename the folder called result_rasters"
-            # careate list of names
-            path = ["result_rasters/" + str(i) + ".tif" for i in range(l)]
-
-        for i in range(l):
-            Raster.rasterLike(src, array[:, :, i], path[i])
-
-    @staticmethod
     def matchDataAlignment(src_alignment: str, rasters_dir: str, save_to: str):
         """matchDataAlignment.
 
@@ -2478,242 +2138,6 @@ class Raster:
                 B = gdal.Open(rasters_dir + files_list[i])
                 new_B = Raster.matchRasterAlignment(A, B)
                 Raster.saveRaster(new_B, save_to + files_list[i])
-
-    @staticmethod
-    def folderCalculator(rasters_dir: str, save_to: str, function):
-        """folderCalculator.
-
-        this function matches the location of nodata value from src raster to dst
-        raster
-        Raster A is where the NoDatavalue will be taken and the location of this value
-        B_input_path is path to the folder where Raster B exist where  we need to put
-        the NoDataValue of RasterA in RasterB at the same locations
-
-        Parameters
-        ----------
-        rasters_dir: [String]
-            path of the folder of rasters you want to execute a certain function on all
-            of them
-        save_to: [String]
-            path of the folder where resulted raster will be saved
-        function: [function]
-            callable function (builtin or user defined)
-
-        Returns
-        -------
-        new rasters will be saved to the save_to
-
-        Examples
-        --------
-        >>> def func(args):
-        ...    A = args[0]
-        ...    funcion = np.abs
-        ...    path = args[1]
-        ...    B = Raster.mapAlgebra(A, funcion)
-        ...    Raster.saveRaster(B, path)
-
-        >>> rasters_dir = "03Weather_Data/new/4km_f/evap/"
-        >>> save_to = "03Weather_Data/new/4km_f/new_evap/"
-        >>> Raster.folderCalculator(rasters_dir, save_to, func)
-        """
-        assert type(rasters_dir) == str, "A_path input should be string type"
-        assert type(save_to) == str, "B_input_path input should be string type"
-        assert callable(function), "second argument should be a function"
-
-        if not os.path.exists(rasters_dir):
-            raise FileNotFoundError(
-                f"{rasters_dir} the path you have provided does not exist"
-            )
-
-        if not os.path.exists(save_to):
-            raise FileNotFoundError(
-                f"{save_to} the path you have provided does not exist"
-            )
-
-        # check whether there are files or not inside the folder
-        assert os.listdir(rasters_dir) != "", (
-            rasters_dir + "the path you have provided is empty"
-        )
-
-        # check if you can create the folder
-        # try:
-        #     os.makedirs(os.path.join(os.environ['TEMP'],"AllignedRasters"))
-        # except WindowsError :
-        #     # if not able to create the folder delete the folder with the same name and create one empty
-        #     shutil.rmtree(os.path.join(os.environ['TEMP']+"/AllignedRasters"))
-        #     os.makedirs(os.path.join(os.environ['TEMP'],"AllignedRasters"))
-
-        # get names of rasters
-        files_list = os.listdir(rasters_dir)
-        if "desktop.ini" in files_list:
-            files_list.remove("desktop.ini")
-
-        # execute the function on each raster
-        for i in range(len(files_list)):
-            print(str(i + 1) + "/" + str(len(files_list)) + " - " + files_list[i])
-            B = gdal.Open(rasters_dir + files_list[i])
-            args = [B, save_to + files_list[i]]
-            function(args)
-
-    @staticmethod
-    def readRastersFolder(
-        path: str,
-        band: int = 1,
-        with_order: bool = True,
-        start: str = "",
-        end: str = "",
-        fmt: str = "",
-        freq: str = "daily",
-        # separator: str = "."
-    ):
-        """ReadRastersFolder.
-
-        this function reads rasters from a folder and creates a 3d array with the same
-        2d dimensions of the first raster in the folder and len as the number of files
-
-        inside the folder.
-        - all rasters should have the same dimensions
-        - folder should only contain raster files
-        - raster file name should have the date at the end of the file name before the extension directly
-          with the YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD
-          >>> "50_MSWEP_1979.01.01.tif"
-
-        Parameters
-        ----------
-        path:[String/list]
-            path of the folder that contains all the rasters or
-            a list contains the paths of the rasters to read.
-        band: [int]
-            number of the band you want to read default is 1.
-        with_order: [bool]
-            True if the rasters follows a certain order, then the rasters names should have a
-            number at the beginning indicating the order.
-        fmt: [str]
-            format of the given date
-        start: [str]
-            start date if you want to read the input temperature for a specific period only,
-            if not given all rasters in the given path will be read.
-        end: [str]
-            end date if you want to read the input temperature for a specific period only,
-            if not given all rasters in the given path will be read.
-        freq: [str]
-            frequency of the rasters "daily", Hourly, monthly
-
-        Returns
-        -------
-        arr_3d: [numpy.ndarray]
-            3d array contains arrays read from all rasters in the folder.
-
-        Example
-        -------
-        >>> raster_folder = "examples/GIS/data/raster-folder"
-        >>> prec = Raster.readRastersFolder(raster_folder)
-
-        >>> import glob
-        >>> search_criteria = "*.tif"
-        >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Raster.readRastersFolder(file_list, with_order=False)
-        """
-        # input data validation
-        # data type
-        if not isinstance(path, str) and not isinstance(path, list):
-            raise TypeError(f"path input should be string/list type, given{type(path)}")
-
-        if isinstance(path, str):
-            # check wether the path exist or not
-            if not os.path.exists(path):
-                raise FileNotFoundError("The path you have provided does not exist")
-            # get list of all files
-            files = os.listdir(path)
-            files = [i for i in files if i.endswith(".tif")]
-            # files = glob.glob(os.path.join(path, "*.tif"))
-            # check whether there are files or not inside the folder
-            if len(files) < 1:
-                raise FileNotFoundError("The path you have provided is empty")
-
-            if "desktop.ini" in files:
-                files.remove("desktop.ini")
-        else:
-            files = path[:]
-
-        # to sort the files in the same order as the first number in the name
-        if with_order:
-            try:
-                filesNo = [int(i.split("_")[0]) for i in files]
-            except ValueError:
-                ErrorMsg = (
-                    "please include a number at the beginning of the"
-                    "rasters name to indicate the order of the rasters. to do so please"
-                    "use the Inputs.RenameFiles method to solve this issue and don't "
-                    "include any other files in the folder with the rasters"
-                )
-                assert False, ErrorMsg
-
-            filetuple = sorted(zip(filesNo, files))
-            files = [x for _, x in filetuple]
-
-        if start != "" or end != "":
-            start = dt.datetime.strptime(start, fmt)
-            end = dt.datetime.strptime(end, fmt)
-
-            # get the dates for each file
-            dates = list()
-            for i in range(len(files)):
-                if freq == "daily":
-                    l = len(files[i]) - 4
-                    day = int(files[i][l - 2 : l])
-                    month = int(files[i][l - 5 : l - 3])
-                    year = int(files[i][l - 10 : l - 6])
-                    dates.append(dt.datetime(year, month, day))
-                elif freq == "hourly":
-                    year = int(files[i].split("_")[-4])
-                    month = int(files[i].split("_")[-3])
-                    day = int(files[i].split("_")[-2])
-                    hour = int(files[i].split("_")[-1].split(".")[0])
-                    dates.append(dt.datetime(year, month, day, hour))
-
-            starti = dates.index(start)
-            endi = dates.index(end) + 1
-            assert all(
-                f.endswith(".tif") for f in files[starti:endi]
-            ), "all files in the given folder should have .tif extension"
-        else:
-            starti = 0
-            endi = len(files)
-            # check that folder only contains rasters
-            assert all(
-                f.endswith(".tif") for f in files
-            ), "all files in the given folder should have .tif extension"
-        # create a 3d array with the 2d dimension of the first raster and the len
-        # of the number of rasters in the folder
-        if type(path) == list:
-            sample = gdal.Open(files[starti])
-        else:
-            sample = gdal.Open(path + "/" + files[starti])
-        # check the given band number
-        if band > sample.RasterCount:
-            raise ValueError(
-                f"the raster has only {sample.RasterCount} check the given band number"
-            )
-
-        dim = sample.GetRasterBand(band).ReadAsArray().shape
-        naval = sample.GetRasterBand(band).GetNoDataValue()
-        # fill the array with noval data
-        arr_3d = np.ones((dim[0], dim[1], len(range(starti, endi))))
-        arr_3d[:, :, :] = naval
-
-        if type(path) == list:
-            for i in range(starti, endi):
-                # read the tif file
-                f = gdal.Open(files[i])
-                arr_3d[:, :, i] = f.GetRasterBand(band).ReadAsArray()
-        else:
-            for i in enumerate(range(starti, endi)):
-                # read the tif file
-                f = gdal.Open(path + "/" + files[i[1]])
-                arr_3d[:, :, i[0]] = f.GetRasterBand(band).ReadAsArray()
-
-        return arr_3d
 
     @staticmethod
     def extractValues(
@@ -2915,6 +2339,678 @@ class Raster:
         return ExtractedValues, NonZeroCells
 
     @staticmethod
+    def normalize(array: np.ndarray):
+        """
+        Normalizes numpy arrays into scale 0.0 - 1.0
+
+        Parameters
+        ----------
+        array : [array]
+            numpy array
+
+        Returns
+        -------
+        array
+            DESCRIPTION.
+        """
+        array_min = array.min()
+        array_max = array.max()
+        val = (array - array_min) / (array_max - array_min)
+        return val
+
+    @staticmethod
+    def _window(src: Dataset, size: int = 256):
+        """Raster square window size/offsets.
+
+        Parameters
+        ----------
+        src : [gdal.Dataset]
+            gdal Dataset object.
+        size : [int]
+            Size of window in pixels. One value required which is used for both the
+            x and y size. E.g 256 means a 256x256 window.
+
+        Yields
+        ------
+        tuple[int]
+            4 element tuple containing the x size, y size, x offset and y offset
+            of the window.
+        """
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+        for xoff in range(0, cols, size):
+            xsize = size if size + xoff <= cols else cols - xoff
+            for yoff in range(0, rows, size):
+                ysize = size if size + yoff <= rows else rows - yoff
+                yield xsize, ysize, xoff, yoff
+
+    @staticmethod
+    def getTile(src: Dataset, size=256):
+        """gets a raster array in tiles.
+
+        Parameters
+        ----------
+        src : gdal.Dataset
+            Input raster.
+        size : int
+            Size of window in pixels. One value required which is used for both the
+            x and y size. E.g 256 means a 256x256 window.
+
+        Yields
+        ------
+        np.ndarray
+            Raster array in form [band][y][x].
+        """
+        for xsize, ysize, xoff, yoff in Raster._window(src, size=size):
+            # read the array at a certain indeces
+            yield src.ReadAsArray(xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize)
+
+    def listAttributes(self):
+        """Print Attributes List."""
+
+        print("\n")
+        print(
+            f"Attributes List of: { repr(self.__dict__['name'])} - {self.__class__.__name__}  Instance\n"
+        )
+        self_keys = list(self.__dict__.keys())
+        self_keys.sort()
+        for key in self_keys:
+            if key != "name":
+                print(str(key) + " : " + repr(self.__dict__[key]))
+
+        print("\n")
+
+
+class Dataset:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def readRastersFolder(
+        path: str,
+        band: int = 1,
+        with_order: bool = True,
+        start: str = "",
+        end: str = "",
+        fmt: str = "",
+        freq: str = "daily",
+        # separator: str = "."
+    ):
+        """ReadRastersFolder.
+
+        this function reads rasters from a folder and creates a 3d array with the same
+        2d dimensions of the first raster in the folder and len as the number of files
+
+        inside the folder.
+        - all rasters should have the same dimensions
+        - folder should only contain raster files
+        - raster file name should have the date at the end of the file name before the extension directly
+          with the YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD
+          >>> "50_MSWEP_1979.01.01.tif"
+
+        Parameters
+        ----------
+        path:[String/list]
+            path of the folder that contains all the rasters or
+            a list contains the paths of the rasters to read.
+        band: [int]
+            number of the band you want to read default is 1.
+        with_order: [bool]
+            True if the rasters follows a certain order, then the rasters names should have a
+            number at the beginning indicating the order.
+        fmt: [str]
+            format of the given date
+        start: [str]
+            start date if you want to read the input temperature for a specific period only,
+            if not given all rasters in the given path will be read.
+        end: [str]
+            end date if you want to read the input temperature for a specific period only,
+            if not given all rasters in the given path will be read.
+        freq: [str]
+            frequency of the rasters "daily", Hourly, monthly
+
+        Returns
+        -------
+        arr_3d: [numpy.ndarray]
+            3d array contains arrays read from all rasters in the folder.
+
+        Example
+        -------
+        >>> raster_folder = "examples/GIS/data/raster-folder"
+        >>> prec = Raster.readRastersFolder(raster_folder)
+
+        >>> import glob
+        >>> search_criteria = "*.tif"
+        >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
+        >>> prec = Raster.readRastersFolder(file_list, with_order=False)
+        """
+        # input data validation
+        # data type
+        if not isinstance(path, str) and not isinstance(path, list):
+            raise TypeError(f"path input should be string/list type, given{type(path)}")
+
+        if isinstance(path, str):
+            # check wether the path exist or not
+            if not os.path.exists(path):
+                raise FileNotFoundError("The path you have provided does not exist")
+            # get list of all files
+            files = os.listdir(path)
+            files = [i for i in files if i.endswith(".tif")]
+            # files = glob.glob(os.path.join(path, "*.tif"))
+            # check whether there are files or not inside the folder
+            if len(files) < 1:
+                raise FileNotFoundError("The path you have provided is empty")
+
+            if "desktop.ini" in files:
+                files.remove("desktop.ini")
+        else:
+            files = path[:]
+
+        # to sort the files in the same order as the first number in the name
+        if with_order:
+            try:
+                filesNo = [int(i.split("_")[0]) for i in files]
+            except ValueError:
+                ErrorMsg = (
+                    "please include a number at the beginning of the"
+                    "rasters name to indicate the order of the rasters. to do so please"
+                    "use the Inputs.RenameFiles method to solve this issue and don't "
+                    "include any other files in the folder with the rasters"
+                )
+                assert False, ErrorMsg
+
+            filetuple = sorted(zip(filesNo, files))
+            files = [x for _, x in filetuple]
+
+        if start != "" or end != "":
+            start = dt.datetime.strptime(start, fmt)
+            end = dt.datetime.strptime(end, fmt)
+
+            # get the dates for each file
+            dates = list()
+            for i in range(len(files)):
+                if freq == "daily":
+                    l = len(files[i]) - 4
+                    day = int(files[i][l - 2 : l])
+                    month = int(files[i][l - 5 : l - 3])
+                    year = int(files[i][l - 10 : l - 6])
+                    dates.append(dt.datetime(year, month, day))
+                elif freq == "hourly":
+                    year = int(files[i].split("_")[-4])
+                    month = int(files[i].split("_")[-3])
+                    day = int(files[i].split("_")[-2])
+                    hour = int(files[i].split("_")[-1].split(".")[0])
+                    dates.append(dt.datetime(year, month, day, hour))
+
+            starti = dates.index(start)
+            endi = dates.index(end) + 1
+            assert all(
+                f.endswith(".tif") for f in files[starti:endi]
+            ), "all files in the given folder should have .tif extension"
+        else:
+            starti = 0
+            endi = len(files)
+            # check that folder only contains rasters
+            assert all(
+                f.endswith(".tif") for f in files
+            ), "all files in the given folder should have .tif extension"
+        # create a 3d array with the 2d dimension of the first raster and the len
+        # of the number of rasters in the folder
+        if type(path) == list:
+            sample = gdal.Open(files[starti])
+        else:
+            sample = gdal.Open(path + "/" + files[starti])
+        # check the given band number
+        if band > sample.RasterCount:
+            raise ValueError(
+                f"the raster has only {sample.RasterCount} check the given band number"
+            )
+
+        dim = sample.GetRasterBand(band).ReadAsArray().shape
+        naval = sample.GetRasterBand(band).GetNoDataValue()
+        # fill the array with noval data
+        arr_3d = np.ones((dim[0], dim[1], len(range(starti, endi))))
+        arr_3d[:, :, :] = naval
+
+        if type(path) == list:
+            for i in range(starti, endi):
+                # read the tif file
+                f = gdal.Open(files[i])
+                arr_3d[:, :, i] = f.GetRasterBand(band).ReadAsArray()
+        else:
+            for i in enumerate(range(starti, endi)):
+                # read the tif file
+                f = gdal.Open(path + "/" + files[i[1]])
+                arr_3d[:, :, i[0]] = f.GetRasterBand(band).ReadAsArray()
+
+        return arr_3d
+
+    @staticmethod
+    def readASCIIsFolder(path: str, pixel_type: int):
+        """readASCIIsFolder.
+
+        this function reads rasters from a folder and creates a 3d arraywith the same
+        2d dimensions of the first raster in the folder and len as the number of files
+        inside the folder.
+        - all rasters should have the same dimensions
+        - folder should only contain raster files
+
+        Parameters
+        ----------
+        path: [String]
+            path of the folder that contains all the rasters.
+        pixel_type: [int]
+
+        Returns
+        -------
+        arr_3d: [numpy.ndarray]
+            3d array contains arrays read from all rasters in the folder.
+
+        ASCIIDetails: [List]
+            list of the six spatial information of the ASCII file
+            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+            CellSize, NoValue]
+        files: [list]
+            list of names of all files inside the folder
+
+        Examples
+        --------
+        >>> raster_dir = "ASCII folder/"
+        >>> pixel_type = 1
+        >>> ASCIIArray, ASCIIDetails, NameList = Raster.readASCIIsFolder(raster_dir, pixel_type)
+        """
+        # input data validation
+        # data type
+        assert type(path) == str, "A_path input should be string type"
+        # input values
+        # check wether the path exist or not
+        assert os.path.exists(path), "the path you have provided does not exist"
+        # check whether there are files or not inside the folder
+        assert os.listdir(path) != "", "the path you have provided is empty"
+        # get list of all files
+        files = os.listdir(path)
+        if "desktop.ini" in files:
+            files.remove("desktop.ini")
+        # check that folder only contains rasters
+        assert all(
+            f.endswith(".asc") for f in files
+        ), "all files in the given folder should have .tif extension"
+        # create a 3d array with the 2d dimension of the first raster and the len
+        # of the number of rasters in the folder
+        ASCIIValues, ASCIIDetails = Raster.readASCII(path + "/" + files[0], pixel_type)
+        noval = ASCIIDetails[5]
+        # fill the array with noval data
+        arr_3d = np.ones((ASCIIDetails[0], ASCIIDetails[1], len(files))) * noval
+
+        for i in range(len(files)):
+            # read the tif file
+            f, _ = Raster.readASCII(path + "/" + files[0], pixel_type)
+            arr_3d[:, :, i] = f
+
+        return arr_3d, ASCIIDetails, files
+
+    @staticmethod
+    def rastersLike(src: Dataset, array: np.ndarray, path: List[str] = None):
+        """Create Raster like other source raster with a given array.
+
+            - This function creates a Geotiff raster like another input raster, new raster will have the same
+            projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number
+            of rows and columns
+            - the raster and the given array should have the same number of columns and rows.
+
+        Parameters
+        ----------
+        src: [gdal.dataset]
+            source raster to get the spatial information
+        array: [numpy array]
+            3D array to be stores as a rasters, the dimensions should be
+            [rows, columns, timeseries length]
+        path: [String]
+            list of names to save the new rasters
+            like ["results/surfaceDischarge_2012_08_13_23.tif","results/surfaceDischarge_2012_08_14_00.tif"]
+            Default value is None
+
+        Returns
+        -------
+        save the new raster to the given path
+
+        Examples
+        --------
+        >>> src_raster = gdal.Open("DEM.tif")
+        >>> name = ["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
+        >>> Raster.rastersLike(src_raster, data, name)
+        """
+        # length of the 3rd dimension of the array
+        try:
+            l = np.shape(array)[2]
+        except IndexError:
+            raise IndexError(
+                "the array you have entered is 2D you have to use RasterLike function not RastersLike"
+            )
+
+        # check length of the list of names to be equal to 3rd dimension of the array
+        if path is not None:  # paths are given
+            assert len(path) == np.shape(array)[2], (
+                f"length of list of names {len(path)} should equal the 3d "
+                f"dimension of the array-{np.shape(array)[2]}"
+            )
+        else:  # paths are not given
+            # try to create a folder called results at the current working directory to store resulted rasters
+            try:
+                os.makedirs(os.path.join(os.getcwd(), "result_rasters"))
+            except WindowsError:
+                assert (
+                    False
+                ), "please either to provide your own paths including folder name and rasternames.tif in a list or rename the folder called result_rasters"
+            # careate list of names
+            path = ["result_rasters/" + str(i) + ".tif" for i in range(l)]
+
+        for i in range(l):
+            Raster.rasterLike(src, array[:, :, i], path[i])
+
+    # TODO: merge ReprojectDataset and ProjectRaster they are almost the same
+    # TODO: still needs to be tested
+    @staticmethod
+    def reprojectDataset(
+        src: Dataset,
+        to_epsg: int = 3857,
+        cell_size: int = [],
+        resample_technique: str = "Nearest",
+    ) -> Dataset:
+        """ReprojectDataset.
+
+        ReprojectDataset reprojects and resamples a folder of rasters to any projection
+        (default the WGS84 web mercator projection, without resampling)
+
+        Parameters
+        ----------
+        src: [gdal dataset]
+            gdal dataset object (src=gdal.Open("dem.tif"))
+        to_epsg: [integer]
+             reference number to the new projection (https://epsg.io/)
+            (default 3857 the reference no of WGS84 web mercator )
+        cell_size: [integer]
+             number to resample the raster cell size to a new cell size
+            (default empty so raster will not be resampled)
+        resample_technique: [String]
+            resampling technique default is "Nearest"
+            https://gisgeography.com/raster-resampling/
+            "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+            "bilinear" for bilinear
+
+        Returns
+        -------
+        raster: [gdal Dataset]
+             a GDAL in-memory file object, where you can ReadAsArray etc.
+        """
+        if not isinstance(src, gdal.Dataset):
+            raise TypeError(
+                "src should be read using gdal (gdal dataset please read it using gdal"
+                f" library) given {type(src)}"
+            )
+        if not isinstance(to_epsg, int):
+            raise TypeError(
+                "please enter correct integer number for to_epsg more information "
+                f"https://epsg.io/, given {type(to_epsg)}"
+            )
+        if not isinstance(resample_technique, str):
+            raise TypeError(
+                "please enter correct resample_technique more information see "
+                "docmentation "
+            )
+
+        if cell_size:
+            assert isinstance(cell_size, int) or isinstance(
+                cell_size, float
+            ), "please enter an integer or float cell size"
+
+        if resample_technique == "Nearest":
+            resample_technique = gdal.GRA_NearestNeighbour
+        elif resample_technique == "cubic":
+            resample_technique = gdal.GRA_Cubic
+        elif resample_technique == "bilinear":
+            resample_technique = gdal.GRA_Bilinear
+
+        src_proj = src.GetProjection()
+        src_gt = src.GetGeoTransform()
+        src_x = src.RasterXSize
+        src_y = src.RasterYSize
+        dtype = src.GetRasterBand(1).DataType
+        # spatial ref
+        src_sr = osr.SpatialReference(wkt=src_proj)
+        src_epsg = src_sr.GetAttrValue("AUTHORITY", 1)
+
+        # distination
+        # spatial ref
+        dst_epsg = osr.SpatialReference()
+        dst_epsg.ImportFromEPSG(to_epsg)
+        # transformation factors
+        tx = osr.CoordinateTransformation(src_sr, dst_epsg)
+
+        # incase the source crs is GCS and longitude is in the west hemisphere gdal
+        # reads longitude fron 0 to 360 and transformation factor wont work with valeus
+        # greater than 180
+        if src_epsg == "4326" and src_gt[0] > 180:
+            lng_new = src_gt[0] - 360
+            # transform the right upper corner point
+            (ulx, uly, ulz) = tx.TransformPoint(lng_new, src_gt[3])
+            # transform the right lower corner point
+            (lrx, lry, lrz) = tx.TransformPoint(
+                lng_new + src_gt[1] * src_x, src_gt[3] + src_gt[5] * src_y
+            )
+        else:
+            # transform the right upper corner point
+            (ulx, uly, ulz) = tx.TransformPoint(src_gt[0], src_gt[3])
+            # transform the right lower corner point
+            (lrx, lry, lrz) = tx.TransformPoint(
+                src_gt[0] + src_gt[1] * src_x, src_gt[3] + src_gt[5] * src_y
+            )
+
+        if not cell_size:
+            # the result raster has the same pixcel size as the source
+            # check if the coordinate system is GCS convert the distance from angular to metric
+            if src_epsg == "4326":
+                coords_1 = (src_gt[3], src_gt[0])
+                coords_2 = (src_gt[3], src_gt[0] + src_gt[1])
+                #            pixel_spacing=geopy.distance.vincenty(coords_1, coords_2).m
+                pixel_spacing = Vector.GCSDistance(coords_1, coords_2)
+            else:
+                pixel_spacing = src_gt[1]
+        else:
+            # if src_epsg.GetAttrValue('AUTHORITY', 1) != "4326":
+            #     assert (cell_size > 1), "please enter cell size greater than 1"
+            # if the user input a cell size resample the raster
+            pixel_spacing = cell_size
+
+        # create a new raster
+        cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
+        rows = int(np.round(abs(uly - lry) / pixel_spacing))
+        dst = Raster._createDataset(cols, rows, 1, dtype, driver="MEM")
+
+        # new geotransform
+        new_geo = (ulx, pixel_spacing, src_gt[2], uly, src_gt[4], -pixel_spacing)
+        # set the geotransform
+        dst.SetGeoTransform(new_geo)
+        # set the projection
+        dst.SetProjection(dst_epsg.ExportToWkt())
+        # set the no data value
+        no_data_value = src.GetRasterBand(1).GetNoDataValue()
+        dst = Raster.setNoDataValue(dst, no_data_value)
+        # perform the projection & resampling
+        gdal.ReprojectImage(
+            src, dst, src_sr.ExportToWkt(), dst_epsg.ExportToWkt(), resample_technique
+        )
+
+        return dst
+
+    @staticmethod
+    def cropAlignedFolder(
+        src_dir: str,
+        mask: Union[Dataset, str],
+        saveto: str,
+    ) -> None:
+        """cropAlignedFolder.
+
+            cropAlignedFolder matches the location of nodata value from src raster to dst
+            raster, Mask is where the NoDatavalue will be taken and the location of
+            this value src_dir is path to the folder where rasters exist where we
+            need to put the NoDataValue of the mask in RasterB at the same locations
+
+        Parameters
+        ----------
+        src_dir : [String]
+            path of the folder of the rasters you want to set Nodata Value
+            on the same location of NodataValue of Raster A, the folder should
+            not have any other files except the rasters
+        mask : [String/gdal.Dataset]
+            path/gdal.Dataset of the mask raster to crop the rasters (to get the NoData value
+            and it location in the array) Mask should include the name of the raster and the
+            extension like "data/dem.tif", or you can read the mask raster using gdal and use
+            is the first parameter to the function.
+        saveto : [String]
+            path where new rasters are going to be saved with exact
+            same old names
+
+        Returns
+        -------
+        new rasters have the values from rasters in B_input_path with the NoDataValue in the same
+        locations like raster A
+
+        Examples
+        --------
+        >>> dem_path = "examples/GIS/data/acc4000.tif"
+        >>> src_path = "examples/GIS/data/aligned_rasters/"
+        >>> out_path = "examples/GIS/data/crop_aligned_folder/"
+        >>> Raster.cropAlignedFolder(dem_path, src_path, out_path)
+        """
+        # if the mask is a string
+        if isinstance(mask, str):
+            # check wether the path exists or not
+            if not os.path.exists(mask):
+                raise FileNotFoundError(
+                    "source raster you have provided does not exist"
+                )
+
+            ext = mask[-4:]
+            if not ext == ".tif":
+                raise TypeError(
+                    "Please add the extension '.tif' at the end of the mask input"
+                )
+
+            mask = gdal.Open(mask)
+        else:
+            mask = mask
+
+        # assert isinstance(Mask_path, str), "Mask_path input should be string type"
+        if not isinstance(src_dir, str):
+            raise TypeError("src_dir input should be string type")
+
+        if not isinstance(saveto, str):
+            raise TypeError("saveto input should be string type")
+
+        # check wether the path exists or not
+        if not os.path.exists(src_dir):
+            raise FileNotFoundError(
+                f"the {src_dir} path you have provided does not exist"
+            )
+
+        if not os.path.exists(saveto):
+            raise FileNotFoundError(
+                f"the {saveto} path you have provided does not exist"
+            )
+        # check wether the folder has the rasters or not
+        if not len(os.listdir(src_dir)) > 0:
+            raise FileNotFoundError(f"{src_dir} folder you have provided is empty")
+
+        files_list = os.listdir(src_dir)
+        if "desktop.ini" in files_list:
+            files_list.remove("desktop.ini")
+
+        print("New Path- " + saveto)
+        for i in range(len(files_list)):
+            if files_list[i][-4:] == ".tif":
+                print(f"{i + 1}/{len(files_list)} - {saveto}{files_list[i]}")
+                B = gdal.Open(src_dir + files_list[i])
+                new_B = Raster.cropAlligned(B, mask)
+                Raster.saveRaster(new_B, saveto + files_list[i])
+
+    @staticmethod
+    def folderCalculator(rasters_dir: str, save_to: str, function):
+        """folderCalculator.
+
+        this function matches the location of nodata value from src raster to dst
+        raster
+        Raster A is where the NoDatavalue will be taken and the location of this value
+        B_input_path is path to the folder where Raster B exist where  we need to put
+        the NoDataValue of RasterA in RasterB at the same locations
+
+        Parameters
+        ----------
+        rasters_dir: [String]
+            path of the folder of rasters you want to execute a certain function on all
+            of them
+        save_to: [String]
+            path of the folder where resulted raster will be saved
+        function: [function]
+            callable function (builtin or user defined)
+
+        Returns
+        -------
+        new rasters will be saved to the save_to
+
+        Examples
+        --------
+        >>> def func(args):
+        ...    A = args[0]
+        ...    funcion = np.abs
+        ...    path = args[1]
+        ...    B = Raster.mapAlgebra(A, funcion)
+        ...    Raster.saveRaster(B, path)
+
+        >>> rasters_dir = "03Weather_Data/new/4km_f/evap/"
+        >>> save_to = "03Weather_Data/new/4km_f/new_evap/"
+        >>> Raster.folderCalculator(rasters_dir, save_to, func)
+        """
+        assert type(rasters_dir) == str, "A_path input should be string type"
+        assert type(save_to) == str, "B_input_path input should be string type"
+        assert callable(function), "second argument should be a function"
+
+        if not os.path.exists(rasters_dir):
+            raise FileNotFoundError(
+                f"{rasters_dir} the path you have provided does not exist"
+            )
+
+        if not os.path.exists(save_to):
+            raise FileNotFoundError(
+                f"{save_to} the path you have provided does not exist"
+            )
+
+        # check whether there are files or not inside the folder
+        assert os.listdir(rasters_dir) != "", (
+            rasters_dir + "the path you have provided is empty"
+        )
+
+        # check if you can create the folder
+        # try:
+        #     os.makedirs(os.path.join(os.environ['TEMP'],"AllignedRasters"))
+        # except WindowsError :
+        #     # if not able to create the folder delete the folder with the same name and create one empty
+        #     shutil.rmtree(os.path.join(os.environ['TEMP']+"/AllignedRasters"))
+        #     os.makedirs(os.path.join(os.environ['TEMP'],"AllignedRasters"))
+
+        # get names of rasters
+        files_list = os.listdir(rasters_dir)
+        if "desktop.ini" in files_list:
+            files_list.remove("desktop.ini")
+
+        # execute the function on each raster
+        for i in range(len(files_list)):
+            print(str(i + 1) + "/" + str(len(files_list)) + " - " + files_list[i])
+            B = gdal.Open(rasters_dir + files_list[i])
+            args = [B, save_to + files_list[i]]
+            function(args)
+
+    @staticmethod
     def overlayMaps(
         path: str,
         basemap_file: str,
@@ -3021,120 +3117,3 @@ class Raster:
                 continue
 
         return ExtractedValues, NonZeroCells
-
-    @staticmethod
-    def normalize(array: np.ndarray):
-        """
-        Normalizes numpy arrays into scale 0.0 - 1.0
-
-        Parameters
-        ----------
-        array : [array]
-            numpy array
-
-        Returns
-        -------
-        array
-            DESCRIPTION.
-        """
-        array_min = array.min()
-        array_max = array.max()
-        val = (array - array_min) / (array_max - array_min)
-        return val
-
-    # TODO: replace it  with getRasterData
-    @staticmethod
-    def openArrayInfo(fname: str = ""):
-        """openArrayInfo.
-
-        Opening a tiff info, for example size of array, projection and transform matrix.
-
-        Parameters
-        ----------
-        fname: [str]
-            path to the tiff file
-
-        Returns
-        -------
-        geotransform: [Tuple]
-            geotransform data of the upper left corner of the raster
-            (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
-        proj: [str]
-            projection as a well known text.
-        cols: [float]
-            number of columns
-        rows: [float]
-            number of rows
-        """
-        src = gdal.Open(fname)
-        if src is None:
-            raise FileNotFoundError(f"{fname} does not exists")
-
-        geo = src.GetGeoTransform()
-        proj = src.GetProjection()
-        cols = src.RasterXSize
-        rows = src.RasterYSize
-
-        return geo, proj, cols, rows
-
-    @staticmethod
-    def _window(src: Dataset, size: int = 256):
-        """Raster square window size/offsets.
-
-        Parameters
-        ----------
-        src : [gdal.Dataset]
-            gdal Dataset object.
-        size : [int]
-            Size of window in pixels. One value required which is used for both the
-            x and y size. E.g 256 means a 256x256 window.
-
-        Yields
-        ------
-        tuple[int]
-            4 element tuple containing the x size, y size, x offset and y offset
-            of the window.
-        """
-        cols = src.RasterXSize
-        rows = src.RasterYSize
-        for xoff in range(0, cols, size):
-            xsize = size if size + xoff <= cols else cols - xoff
-            for yoff in range(0, rows, size):
-                ysize = size if size + yoff <= rows else rows - yoff
-                yield xsize, ysize, xoff, yoff
-
-    @staticmethod
-    def getTile(src: Dataset, size=256):
-        """gets a raster array in tiles.
-
-        Parameters
-        ----------
-        src : gdal.Dataset
-            Input raster.
-        size : int
-            Size of window in pixels. One value required which is used for both the
-            x and y size. E.g 256 means a 256x256 window.
-
-        Yields
-        ------
-        np.ndarray
-            Raster array in form [band][y][x].
-        """
-        for xsize, ysize, xoff, yoff in Raster._window(src, size=size):
-            # read the array at a certain indeces
-            yield src.ReadAsArray(xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize)
-
-    def listAttributes(self):
-        """Print Attributes List."""
-
-        print("\n")
-        print(
-            f"Attributes List of: { repr(self.__dict__['name'])} - {self.__class__.__name__}  Instance\n"
-        )
-        self_keys = list(self.__dict__.keys())
-        self_keys.sort()
-        for key in self_keys:
-            if key != "name":
-                print(str(key) + " : " + repr(self.__dict__[key]))
-
-        print("\n")
