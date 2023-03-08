@@ -58,12 +58,16 @@ class Raster:
         self.row = src.RasterYSize
         self.columns = src.RasterXSize
         self.band_count = self.raster.RasterCount
-        self.no_data_value = [src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)]
-        self.dtype = [src.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)]
+        self.no_data_value = [
+            src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
+        ]
+        self.dtype = [
+            src.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
+        ]
         self.epsg = self.getEPSG()
         self.band_names = self.getBandNames()
         # count cells inside the domain
-        arr = self.raster.ReadAsArray()
+        # arr = self.raster.ReadAsArray()
         # self.domain_count = np.size(arr[:, :]) - np.count_nonzero(
         #     (arr[np.isclose(arr, self.no_data_value[0], rtol=0.001)])
         # )
@@ -616,7 +620,7 @@ class Raster:
                 # initialize the band with the nodata value instead of 0
                 self.raster.GetRasterBand(band).Fill(no_data_value)
                 # update the no_data_value in the Raster object
-                self.no_data_value[band -1] = no_data_value
+                self.no_data_value[band - 1] = no_data_value
             except:
                 self.raster.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
                 self.raster.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
@@ -628,9 +632,8 @@ class Raster:
                 self.no_data_value[band - 1] = DEFAULT_NO_DATA_VALUE
             print("aaa")
 
-
     def getCellCoords(
-            self, location: str = "center", mask: bool = False
+        self, location: str = "center", mask: bool = False
     ) -> Tuple[np.ndarray, np.ndarray]:
         """GetCoords.
 
@@ -765,9 +768,7 @@ class Raster:
         gdf["id"] = gdf.index
         return gdf
 
-    def getCellPoints(
-            self, location: str = "center", mask=False
-    ) -> GeoDataFrame:
+    def getCellPoints(self, location: str = "center", mask=False) -> GeoDataFrame:
         """Get a point shapely geometry for the raster cells center point.
 
         Parameters
@@ -886,7 +887,7 @@ class Raster:
         return dst_obj
 
     def fill(
-            self, val: Union[float, int], driver: str = "GTiff", path: str = None
+        self, val: Union[float, int], driver: str = "GTiff", path: str = None
     ) -> Union[None, Dataset]:
         """Fill.
 
@@ -921,7 +922,7 @@ class Raster:
         return dst
 
     def resample(
-            self, cell_size: Union[int, float], resample_technique: str = "Nearest"
+        self, cell_size: Union[int, float], resample_technique: str = "Nearest"
     ) -> Dataset:
         """resampleRaster.
 
@@ -991,7 +992,11 @@ class Raster:
         dst_obj.setNoDataValue(no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
-            self.raster, dst_obj.raster, sr_src.ExportToWkt(), sr_src.ExportToWkt(), resample_technique
+            self.raster,
+            dst_obj.raster,
+            sr_src.ExportToWkt(),
+            sr_src.ExportToWkt(),
+            resample_technique,
         )
 
         return dst_obj
@@ -1141,16 +1146,18 @@ class Raster:
             )
 
         else:
-            dst = gdal.Warp("", self.raster, dstSRS="EPSG:" + str(to_epsg), format="VRT")
+            dst = gdal.Warp(
+                "", self.raster, dstSRS="EPSG:" + str(to_epsg), format="VRT"
+            )
             dst_obj = Raster(dst)
 
         return dst_obj
 
     def cropAlligned(
-            self,
-            mask: Union[Dataset, np.ndarray],
-            mask_noval: Union[int, float] = None,
-            band: int = 1,
+        self,
+        mask: Union[Dataset, np.ndarray],
+        mask_noval: Union[int, float] = None,
+        band: int = 1,
     ) -> Union[np.ndarray, Dataset]:
         """cropAlligned.
 
@@ -1193,7 +1200,9 @@ class Raster:
             mask_array = mask.ReadAsArray()
         elif isinstance(mask, np.ndarray):
             if mask_noval is None:
-                raise ValueError("You have to enter the value of the no_val parameter when the mask is a numpy array")
+                raise ValueError(
+                    "You have to enter the value of the no_val parameter when the mask is a numpy array"
+                )
             mask_array = mask.copy()
             row, col = mask.shape
         else:
@@ -1299,8 +1308,8 @@ class Raster:
             return src_array
 
     def matchRasterAlignment(
-            self,
-            alignment_src: Union[Dataset, str],
+        self,
+        alignment_src: Union[Dataset, str],
     ) -> Dataset:
         """matchRasterAlignment.
 
@@ -1376,9 +1385,9 @@ class Raster:
         return dst_obj
 
     def crop(
-            self,
-            mask: Union[Dataset, str],
-            # Resample: bool=True
+        self,
+        mask: Union[Dataset, str],
+        # Resample: bool=True
     ) -> Dataset:
         """crop.
 
@@ -1750,7 +1759,6 @@ class Raster:
         dst.GetRasterBand(1).WriteArray(dst_array)
 
         return dst
-
 
     @staticmethod
     def nearestNeighbour(

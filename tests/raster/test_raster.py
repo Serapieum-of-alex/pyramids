@@ -57,7 +57,6 @@ class TestCreateRasterObject:
         )
         assert src.raster.GetGeoTransform() == src_geotransform
 
-
     class TestRasterLike:
         def test_create_raster_like_to_disk(
             self,
@@ -97,17 +96,17 @@ class TestCreateRasterObject:
             )
             assert src.GetGeoTransform() == dst.raster.GetGeoTransform()
 
+
 class TestSpatialProperties:
     def test_GetRasterData(
-            self,
-            src: Dataset,
-            src_no_data_value: float,
+        self,
+        src: Dataset,
+        src_no_data_value: float,
     ):
         src = Raster(src)
         arr, nodataval = src.getRasterData()
         assert np.isclose(src_no_data_value, nodataval, rtol=0.001)
         assert isinstance(arr, np.ndarray)
-
 
     def test_get_raster_details(self, src: Dataset, src_shape: tuple):
         src = Raster(src)
@@ -118,18 +117,16 @@ class TestSpatialProperties:
         assert isinstance(dtypes, list)
         assert isinstance(gt, tuple)
 
-
     def test_GetProjectionData(
-            self,
-            src: Dataset,
-            src_epsg: int,
-            src_geotransform: tuple,
+        self,
+        src: Dataset,
+        src_epsg: int,
+        src_geotransform: tuple,
     ):
         src = Raster(src)
         epsg, geo = src.getProjectionData()
         assert epsg == src_epsg
         assert geo == src_geotransform
-
 
     def test_get_band_names(self, src: Dataset):
         src = Raster(src)
@@ -138,9 +135,9 @@ class TestSpatialProperties:
         assert names == ["Band_1"]
 
     def test_set_no_data_value(
-            self,
-            src: Dataset,
-            src_no_data_value: float,
+        self,
+        src: Dataset,
+        src_no_data_value: float,
     ):
         src = Raster(src)
         src.setNoDataValue(5)
@@ -169,7 +166,9 @@ class TestSpatialProperties:
             )
             assert np.isclose(
                 coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001
-            ).all(), "the coordinates of the last 4 rows differs from the validation coords"
+            ).all(), (
+                "the coordinates of the last 4 rows differs from the validation coords"
+            )
 
         def test_cell_corner_all_cells(
             self,
@@ -214,20 +213,21 @@ class TestCreateCellGeometry:
 
 class TestSave:
     def test_save_rasters(
-            self,
-            src: Dataset,
-            save_raster_path: str,
+        self,
+        src: Dataset,
+        save_raster_path: str,
     ):
         src = Raster(src)
         src.to_geotiff(save_raster_path)
         assert os.path.exists(save_raster_path)
         os.remove(save_raster_path)
 
+
 class TestMathOperations:
     def test_map_algebra(
-            self,
-            src: Dataset,
-            mapalgebra_function,
+        self,
+        src: Dataset,
+        mapalgebra_function,
     ):
         src = Raster(src)
         dst = src.mapAlgebra(mapalgebra_function)
@@ -239,8 +239,9 @@ class TestMathOperations:
 
 
 class TestFillRaster:
-
-    def test_memory_raster(self, src: Dataset, fill_raster_path: str, fill_raster_value: int):
+    def test_memory_raster(
+        self, src: Dataset, fill_raster_path: str, fill_raster_value: int
+    ):
         src = Raster(src)
         dst = src.fill(fill_raster_value, driver="MEM", path=fill_raster_path)
         arr = dst.raster.ReadAsArray()
@@ -249,7 +250,9 @@ class TestFillRaster:
         vals = list(set(vals))
         assert vals[0] == fill_raster_value
 
-    def test_disk_raster(self, src: Dataset, fill_raster_path: str, fill_raster_value: int):
+    def test_disk_raster(
+        self, src: Dataset, fill_raster_path: str, fill_raster_value: int
+    ):
         src = Raster(src)
         src.fill(fill_raster_value, driver="GTiff", path=fill_raster_path)
         "now the resulted raster is saved to disk"
@@ -357,7 +360,6 @@ class TestCropAlligned:
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
         assert (dst_arr_cropped == src_arr).all()
 
-
     # def test_crop_arr_with_gdal_obj(
     #     self,
     #     src: Dataset,
@@ -399,7 +401,6 @@ def test_crop(
     # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
     aligned_raster = Raster(aligned_raster)
     aligned_raster.crop(soil_raster)
-
 
 
 # def test_ClipRasterWithPolygon():
