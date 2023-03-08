@@ -1387,7 +1387,6 @@ class Raster:
     def crop(
         self,
         mask: Union[Dataset, str],
-        # Resample: bool=True
     ) -> Dataset:
         """crop.
 
@@ -1422,38 +1421,6 @@ class Raster:
         # crop the src raster with the aligned mask
         dst_obj = self.cropAlligned(mask_aligned.raster)
 
-        # mask_proj = mask.GetProjection()
-        # # GET THE GEOTRANSFORM
-        # mask_gt = mask.GetGeoTransform()
-        # # GET NUMBER OF columns
-        # mask_x = mask.RasterXSize
-        # # get number of rows
-        # mask_y = mask.RasterYSize
-        #
-        # mask_epsg = osr.SpatialReference(wkt=mask_proj)
-        #
-        # mem_drv = gdal.GetDriverByName("MEM")
-        # dst = mem_drv.Create("", mask_x, mask_y, 1,
-        #                      gdalconst.GDT_Float32)
-        # # ,['COMPRESS=LZW'] LZW is a lossless compression method achieve the highst compression but with lot of computation
-        # # set the geotransform
-        # dst.SetGeoTransform(mask_gt)
-        # # set the projection
-        # dst.SetProjection(mask_epsg.ExportToWkt())
-        # # set the no data value
-        # dst.GetRasterBand(1).SetNoDataValue(mask.GetRasterBand(1).GetNoDataValue())
-        # # initialize the band with the nodata value instead of 0
-        # dst.GetRasterBand(1).Fill(mask.GetRasterBand(1).GetNoDataValue())
-        # # perform the projection & resampling
-        # resample_technique = gdal.GRA_NearestNeighbour  # gdal.GRA_NearestNeighbour
-        #
-        # # reproject the src raster to the mask projection
-        # Reprojected_src = gdal.Warp('', src,
-        #                               dstSRS='EPSG:' + mask_epsg.GetAttrValue('AUTHORITY', 1), format='VRT')
-        # if Resample:
-        #     # resample
-        #     gdal.ReprojectImage(Reprojected_src, dst, mask_epsg.ExportToWkt(), mask_epsg.ExportToWkt(),
-        #                         resample_technique)
         return dst_obj
 
     @staticmethod
