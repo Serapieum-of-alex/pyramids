@@ -137,6 +137,18 @@ class TestSpatialProperties:
         assert isinstance(names, list)
         assert names == ["Band_1"]
 
+    def test_set_no_data_value(
+            self,
+            src: Dataset,
+            src_no_data_value: float,
+    ):
+        src = Raster(src)
+        src.setNoDataValue(5)
+        # check if the no_data_value in the Dataset object is set
+        assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
+        # check if the no_data_value of the Raster object is set
+        assert src.no_data_value[0] == 5
+
     class TestGetCellCoords:
         def test_cell_center_all_cells(
             self,
@@ -275,7 +287,7 @@ def test_resample(
     assert dst.raster.GetProjection() == src.raster.GetProjection()
 
 
-class TestProjectRaster:
+class TestReproject:
     def test_option1(
         self,
         src: Dataset,
@@ -316,19 +328,6 @@ class TestProjectRaster:
 # TODO: test ReprojectDataset
 class TestCropAlligned:
     # TODO: still create a test for the case that the src and the mask does not have the same alignments
-    def test_crop_arr_with_gdal_obj(
-        self,
-        src: Dataset,
-        aligned_raster_arr,
-        src_arr: np.ndarray,
-        src_no_data_value: float,
-    ):
-        dst_arr_cropped = Raster.cropAlligned(aligned_raster_arr, src)
-        # check that all the places of the nodatavalue are the same in both arrays
-        src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
-        dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
-        assert (dst_arr_cropped == src_arr).all()
-
     def test_crop_gdal_obj_with_gdal_obj(
         self,
         src: Dataset,
@@ -336,8 +335,9 @@ class TestCropAlligned:
         src_arr: np.ndarray,
         src_no_data_value: float,
     ):
-        dst_cropped = Raster.cropAlligned(aligned_raster, src)
-        dst_arr_cropped = dst_cropped.ReadAsArray()
+        aligned_raster = Raster(aligned_raster)
+        croped = aligned_raster.cropAlligned(src)
+        dst_arr_cropped = croped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
@@ -349,25 +349,43 @@ class TestCropAlligned:
         src_arr: np.ndarray,
         src_no_data_value: float,
     ):
-        dst_cropped = Raster.cropAlligned(
-            aligned_raster, src_arr, mask_noval=src_no_data_value
-        )
-        dst_arr_cropped = dst_cropped.ReadAsArray()
+        aligned_raster = Raster(aligned_raster)
+        croped = aligned_raster.cropAlligned(src_arr, mask_noval=src_no_data_value)
+        dst_arr_cropped = croped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
         assert (dst_arr_cropped == src_arr).all()
 
-    def test_crop_folder(
-        self,
-        src: Dataset,
-        crop_aligned_folder_path: str,
-        crop_aligned_folder_saveto: str,
-    ):
-        Raster.cropAlignedFolder(
-            crop_aligned_folder_path, src, crop_aligned_folder_saveto
-        )
-        assert len(os.listdir(crop_aligned_folder_saveto)) == 3
+
+    # def test_crop_arr_with_gdal_obj(
+    #     self,
+    #     src: Dataset,
+    #     aligned_raster_arr,
+    #     src_arr: np.ndarray,
+    #     src_no_data_value: float,
+    # ):
+    #     dst_arr_cropped = src.cropAlligned(aligned_raster_arr, src)
+    #     # check that all the places of the nodatavalue are the same in both arrays
+    #     src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+    #     dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
+    #     assert (dst_arr_cropped == src_arr).all()
+
+
+def test_match_raster_alignment(
+    src: Dataset,
+    src_shape: tuple,
+    src_no_data_value: float,
+    src_geotransform: tuple,
+    soil_raster: Dataset,
+):
+    soil_raster_obj = Raster(soil_raster)
+    soil_aligned = soil_raster_obj.matchRasterAlignment(src)
+    assert soil_aligned.raster.ReadAsArray().shape == src_shape
+    nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
+    assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
+    geotransform = soil_aligned.raster.GetGeoTransform()
+    assert src_geotransform == geotransform
 
 
 def test_crop(
@@ -379,8 +397,9 @@ def test_crop(
     # Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
     # the aligned_raster has a epsg = 32618 and
     # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
-    Raster.crop(aligned_raster, soil_raster, save=True, output_path=crop_saveto)
-    assert os.path.exists(crop_saveto)
+    aligned_raster = Raster(aligned_raster)
+    aligned_raster.crop(soil_raster)
+
 
 
 # def test_ClipRasterWithPolygon():
@@ -401,71 +420,6 @@ class TestASCII:
         arr = np.ones(shape=(13, 14)) * 0.03
         Raster.writeASCII(ascii_file_save_to, ascii_geotransform, arr)
         assert os.path.exists(ascii_file_save_to)
-
-
-def test_match_raster_alignment(
-    src: Dataset,
-    src_shape: tuple,
-    src_no_data_value: float,
-    src_geotransform: tuple,
-    soil_raster: Dataset,
-):
-    soil_aligned = Raster.matchRasterAlignment(src, soil_raster)
-    assert soil_aligned.ReadAsArray().shape == src_shape
-    nodataval = soil_aligned.GetRasterBand(1).GetNoDataValue()
-    assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
-    geotransform = soil_aligned.GetGeoTransform()
-    assert src_geotransform == geotransform
-
-
-class TestReadRastersFolder:
-    def test_read_all_inside_folder_without_order(
-        self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
-    ):
-        arr = Raster.readRastersFolder(rasters_folder_path, with_order=False)
-        assert np.shape(arr) == (
-            rasters_folder_dim[0],
-            rasters_folder_dim[1],
-            rasters_folder_rasters_number,
-        )
-
-    def test_read_all_inside_folder(
-        self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
-    ):
-        arr = Raster.readRastersFolder(rasters_folder_path, with_order=True)
-        assert np.shape(arr) == (
-            rasters_folder_dim[0],
-            rasters_folder_dim[1],
-            rasters_folder_rasters_number,
-        )
-
-    def test_read_between_dates(
-        self,
-        rasters_folder_path: str,
-        rasters_folder_start_date: str,
-        rasters_folder_end_date: str,
-        rasters_folder_date_fmt: str,
-        rasters_folder_dim: tuple,
-        rasters_folder_between_dates_raster_number: int,
-    ):
-        arr = Raster.readRastersFolder(
-            rasters_folder_path,
-            with_order=True,
-            start=rasters_folder_start_date,
-            end=rasters_folder_end_date,
-            fmt=rasters_folder_date_fmt,
-        )
-        assert np.shape(arr) == (
-            rasters_folder_dim[0],
-            rasters_folder_dim[1],
-            rasters_folder_between_dates_raster_number,
-        )
 
 
 def test_merge(

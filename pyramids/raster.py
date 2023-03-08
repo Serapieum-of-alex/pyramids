@@ -38,12 +38,13 @@ class Raster:
 
     raster: Dataset
     array: np.ndarray
-    no_data_value: Union[float, int]
+    no_data_value: List[Union[float, int]]
+    dtype: List[Union[float, int]]
     geotransform: Tuple[float, float, float, float]
     proj: str
     row: int
     columns: int
-    band_number: int
+    band_count: int
 
     def __init__(self, src: Dataset):
         if not isinstance(src, gdal.Dataset):
@@ -56,9 +57,16 @@ class Raster:
         self.proj = src.GetProjection()
         self.row = src.RasterYSize
         self.columns = src.RasterXSize
-        self.band_number = self.raster.RasterCount
+        self.band_count = self.raster.RasterCount
+        self.no_data_value = [src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)]
+        self.dtype = [src.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)]
         self.epsg = self.getEPSG()
         self.band_names = self.getBandNames()
+        # count cells inside the domain
+        arr = self.raster.ReadAsArray()
+        # self.domain_count = np.size(arr[:, :]) - np.count_nonzero(
+        #     (arr[np.isclose(arr, self.no_data_value[0], rtol=0.001)])
+        # )
         pass
 
     @classmethod
@@ -602,11 +610,13 @@ class Raster:
             no data value to fill the masked part of the array
         """
         # setting the no_data_value does not accept double precision numbers
-        for band in range(1, self.raster.RasterCount + 1):
+        for band in range(1, self.band_count + 1):
             try:
                 self.raster.GetRasterBand(band).SetNoDataValue(no_data_value)
                 # initialize the band with the nodata value instead of 0
                 self.raster.GetRasterBand(band).Fill(no_data_value)
+                # update the no_data_value in the Raster object
+                self.no_data_value[band -1] = no_data_value
             except:
                 self.raster.GetRasterBand(band).SetNoDataValue(DEFAULT_NO_DATA_VALUE)
                 self.raster.GetRasterBand(band).Fill(DEFAULT_NO_DATA_VALUE)
@@ -615,6 +625,8 @@ class Raster:
                     "the no_data_value in the source Netcdf is double precission and as it is not accepted by Gdal the "
                     f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
                 )
+                self.no_data_value[band - 1] = DEFAULT_NO_DATA_VALUE
+            print("aaa")
 
 
     def getCellCoords(
@@ -891,10 +903,10 @@ class Raster:
 
         Returns
         -------
-        raster : [saved on disk]
-            the raster will be saved directly to the path you provided.
+        raster : [None/Dataset]
+            if the raster is saved directly to the path you provided the returned value will be None, otherwise the
+            returned value will be the Dataset itself.
         """
-
         NoDataVal = self.raster.GetRasterBand(1).GetNoDataValue()
         src_array = self.raster.ReadAsArray()
 
@@ -1134,15 +1146,15 @@ class Raster:
 
         return dst_obj
 
-    @staticmethod
     def cropAlligned(
-        src: Union[Dataset, np.ndarray],
-        mask: Union[Dataset, np.ndarray],
-        mask_noval: Union[int, float] = None,
+            self,
+            mask: Union[Dataset, np.ndarray],
+            mask_noval: Union[int, float] = None,
+            band: int = 1,
     ) -> Union[np.ndarray, Dataset]:
         """cropAlligned.
 
-        cropAlligned clip/crop (matches the location of nodata value from src raster to dst
+        cropAlligned clip/crop (matches the location of nodata value from mask to src
         raster),
             - Both rasters have to have the same dimensions (no of rows & columns)
             so MatchRasterAlignment should be used prior to this function to align both
@@ -1150,6 +1162,7 @@ class Raster:
 
         Parameters
         ----------
+        TODO: the oriiginal function had the ability to crop an array with a dataset object and the opposite
         src: [gdal.dataset/np.ndarray]
             raster you want to clip/store NoDataValue in its cells
             exactly the same like mask raster
@@ -1158,6 +1171,8 @@ class Raster:
             where it is in the array
         mask_noval: [numeric]
             in case the mask is np.ndarray, the mask_noval have to be given.
+        band: [int]
+            band index, starts from 1 to the number of bands.
 
         Returns
         -------
@@ -1165,7 +1180,7 @@ class Raster:
             the second raster with NoDataValue stored in its cells
             exactly the same like src raster
         """
-        # if the mask object is raster
+        # check the mask
         if isinstance(mask, gdal.Dataset):
             mask_gt = mask.GetGeoTransform()
             mask_proj = mask.GetProjection()
@@ -1177,9 +1192,10 @@ class Raster:
             mask_noval = mask.GetRasterBand(1).GetNoDataValue()
             mask_array = mask.ReadAsArray()
         elif isinstance(mask, np.ndarray):
-            msg = " You have to enter the value of the no_val parameter when the mask is a numpy array"
-            assert mask_noval is not None, msg
+            if mask_noval is None:
+                raise ValueError("You have to enter the value of the no_val parameter when the mask is a numpy array")
             mask_array = mask.copy()
+            row, col = mask.shape
         else:
             raise TypeError(
                 "The second parameter 'mask' has to be either gdal.Dataset or numpy array"
@@ -1187,20 +1203,16 @@ class Raster:
             )
 
         # if the to be clipped object is raster
-        if isinstance(src, gdal.Dataset):
-            src_gt = src.GetGeoTransform()
-            src_proj = src.GetProjection()
-            row = src.RasterYSize
-            col = src.RasterXSize
-            src_noval = src.GetRasterBand(1).GetNoDataValue()
-            src_sref = osr.SpatialReference(wkt=src_proj)
-            src_epsg = int(src_sref.GetAttrValue("AUTHORITY", 1))
-            src_array = src.ReadAsArray()
-            dtype = src.GetRasterBand(1).DataType
-        elif isinstance(src, np.ndarray):
+        src_noval = self.no_data_value[band - 1]
+        dtype = self.dtype[band - 1]
+
+        src_sref = osr.SpatialReference(wkt=self.proj)
+        src_array = self.raster.ReadAsArray()
+        # Warning: delete later the self.raster will never be an array
+        if isinstance(self.raster, np.ndarray):
             # if the object to be cropped is array
-            src_array = src.copy()
-            dtype = src.dtype
+            src_array = self.raster.copy()
+            dtype = self.raster.dtype
 
         # check proj
         if not mask_array.shape == src_array.shape:
@@ -1209,14 +1221,14 @@ class Raster:
             )
 
         # if both inputs are rasters
-        if isinstance(mask, gdal.Dataset) and isinstance(src, gdal.Dataset):
-            if not src_gt == mask_gt:
+        if isinstance(mask, gdal.Dataset) and isinstance(self.raster, gdal.Dataset):
+            if not self.geotransform == mask_gt:
                 raise ValueError(
                     "location of upper left corner of both rasters are not the same or cell size is "
                     "different please match both rasters first "
                 )
 
-            if not mask_epsg == src_epsg:
+            if not mask_epsg == self.epsg:
                 raise ValueError(
                     "Raster A & B are using different coordinate system please reproject one of them to "
                     "the other raster coordinate system"
@@ -1230,7 +1242,7 @@ class Raster:
         # and now has to be filled with values
         # compare no of element that is not nodatavalue in both rasters to make sure they are matched
         # if both inputs are rasters
-        if isinstance(mask, gdal.Dataset) and isinstance(src, gdal.Dataset):
+        if isinstance(mask, gdal.Dataset) and isinstance(self.raster, gdal.Dataset):
             # there might be cells that are out of domain in the src but not out of domain in the mask
             # so change all the src_noval to mask_noval in the src_array
             src_array[np.isclose(src_array, src_noval, rtol=0.001)] = mask_noval
@@ -1264,7 +1276,7 @@ class Raster:
                 src_array = Raster.nearestNeighbour(src_array, mask_noval, rows, cols)
 
         # if the dst is a raster
-        if isinstance(src, gdal.Dataset):
+        if isinstance(self.raster, gdal.Dataset):
             dst = Raster._createDataset(col, row, 1, dtype, driver="MEM")
             # but with lot of computation
             # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
@@ -1275,24 +1287,98 @@ class Raster:
                 # set the projection
                 dst.SetProjection(mask_sref.ExportToWkt())
             except UnboundLocalError:
-                dst.SetGeoTransform(src_gt)
+                dst.SetGeoTransform(self.geotransform)
                 dst.SetProjection(src_sref.ExportToWkt())
 
+            dst_obj = Raster(dst)
             # set the no data value
-            dst = Raster.setNoDataValue(dst, mask_noval)
-            dst.GetRasterBand(1).WriteArray(src_array)
-
-            return dst
+            dst_obj.setNoDataValue(mask_noval)
+            dst_obj.raster.GetRasterBand(1).WriteArray(src_array)
+            return dst_obj
         else:
             return src_array
 
-    @staticmethod
+    def matchRasterAlignment(
+            self,
+            alignment_src: Union[Dataset, str],
+    ) -> Dataset:
+        """matchRasterAlignment.
+
+        matchRasterAlignment method copies the following data
+            - The coordinate system
+            - The number of of rows & columns
+            - cell size
+        from alignment_src to a data_src raster (the source of data values in cells)
+
+        the result will be a raster with the same structure like alignment_src but with
+        values from data_src using Nearest Neighbour interpolation algorithm
+
+        Parameters
+        ----------
+        alignment_src : [gdal.dataset/string]
+            spatial information source raster to get the spatial information
+            (coordinate system, no of rows & columns)
+            data values source raster to get the data (values of each cell)
+
+        Returns
+        -------
+        dst : [Raster]
+            Raster object
+
+        Examples
+        --------
+        >>> A = gdal.Open("examples/GIS/data/acc4000.tif")
+        >>> B = gdal.Open("examples/GIS/data/soil_raster.tif")
+        >>> RasterBMatched = Raster.matchRasterAlignment(A,B)
+        """
+        if isinstance(alignment_src, gdal.Dataset):
+            src = alignment_src
+        elif isinstance(alignment_src, str):
+            src = gdal.Open(alignment_src)
+        else:
+            raise TypeError(
+                "First parameter should be a raster read using gdal (gdal dataset please read it "
+                f"using gdal library) or a path to the raster, given {type(alignment_src)}"
+            )
+
+        src = Raster(src)
+
+        # we need number of rows and cols from src A and data from src B to store both in dst
+        cols, rows, prj, bands, gt, no_data_value, dtypes = src.getRasterDetails()
+
+        src_sr = osr.SpatialReference(wkt=prj)
+        src_epsg = int(src_sr.GetAttrValue("AUTHORITY", 1))
+
+        # reproject the raster to match the projection of alignment_src
+        reprojected_RasterB = self.reproject(src_epsg)
+
+        # create a new raster
+        dst = Raster._createDataset(cols, rows, 1, dtypes[0], driver="MEM")
+        # set the geotransform
+        dst.SetGeoTransform(gt)
+        # set the projection
+        dst.SetProjection(src_sr.ExportToWkt())
+        # set the no data value
+        no_data_value = src.raster.GetRasterBand(1).GetNoDataValue()
+        dst_obj = Raster(dst)
+        dst_obj.setNoDataValue(no_data_value)
+        # perform the projection & resampling
+        resample_technique = gdal.GRA_NearestNeighbour
+        # resample the reprojected_RasterB
+        gdal.ReprojectImage(
+            reprojected_RasterB.raster,
+            dst_obj.raster,
+            src_sr.ExportToWkt(),
+            src_sr.ExportToWkt(),
+            resample_technique,
+        )
+
+        return dst_obj
+
     def crop(
-        src: Union[Dataset, str],
-        mask: Union[Dataset, str],
-        output_path: str = "",
-        save: bool = False,
-        # Resample: bool=True
+            self,
+            mask: Union[Dataset, str],
+            # Resample: bool=True
     ) -> Dataset:
         """crop.
 
@@ -1300,16 +1386,9 @@ class Raster:
 
         Parameters
         -----------
-        src: [string/gdal.Dataset]
-            the raster you want to crop as a path or a gdal object
         mask : [string/gdal.Dataset]
             the raster you want to use as a mask to crop other raster,
             the mask can be also a path or a gdal object.
-        output_path : [string]
-            if you want to save the cropped raster directly to disk
-            enter the value of the OutputPath as the path.
-        save : [boolen]
-            True if you want to save the cropped raster directly to disk.
 
         Returns
         -------
@@ -1324,25 +1403,15 @@ class Raster:
         elif isinstance(mask, gdal.Dataset):
             mask = mask
         else:
-            print(
+            raise TypeError(
                 "Second parameter has to be either path to the mask raster or a gdal.Dataset object"
             )
-            return
-
-        if isinstance(src, str):
-            src = gdal.Open(src)
-        elif isinstance(src, gdal.Dataset):
-            src = src
-        else:
-            print(
-                "first parameter has to be either path to the raster to be cropped or a gdal.Dataset object"
-            )
-            return
 
         # first align the mask with the src raster
-        mask_aligned = Raster.matchRasterAlignment(src, mask)
+        mask_obj = Raster(mask)
+        mask_aligned = mask_obj.matchRasterAlignment(self.raster)
         # crop the src raster with the aligned mask
-        dst = Raster.cropAlligned(src, mask_aligned)
+        dst_obj = self.cropAlligned(mask_aligned.raster)
 
         # mask_proj = mask.GetProjection()
         # # GET THE GEOTRANSFORM
@@ -1376,12 +1445,7 @@ class Raster:
         #     # resample
         #     gdal.ReprojectImage(Reprojected_src, dst, mask_epsg.ExportToWkt(), mask_epsg.ExportToWkt(),
         #                         resample_technique)
-
-        if save:
-            dst_obj = Raster(dst)
-            dst_obj.to_geotiff(output_path)
-
-        return dst
+        return dst_obj
 
     @staticmethod
     def clipRasterWithPolygon(
@@ -1687,90 +1751,6 @@ class Raster:
 
         return dst
 
-    @staticmethod
-    def matchRasterAlignment(
-        alignment_src: Union[Dataset, str], data_src: Union[Dataset, str]
-    ) -> Dataset:
-        """matchRasterAlignment.
-
-        matchRasterAlignment method copies the following data
-            - The coordinate system
-            - The number of of rows & columns
-            - cell size
-        from alignment_src to a data_src raster (the source of data values in cells)
-
-        the result will be a raster with the same structure like alignment_src but with
-        values from data_src using Nearest Neighbour interpolation algorithm
-
-        Parameters
-        ----------
-        alignment_src : [gdal.dataset/string]
-            spatial information source raster to get the spatial information
-            (coordinate system, no of rows & columns)
-        data_src : [gdal.dataset/string]
-            data values source raster to get the data (values of each cell)
-
-        Returns
-        -------
-        dst : [gdal.dataset]
-            result raster in memory
-
-        Examples
-        --------
-        >>> A = gdal.Open("examples/GIS/data/acc4000.tif")
-        >>> B = gdal.Open("examples/GIS/data/soil_raster.tif")
-        >>> RasterBMatched = Raster.matchRasterAlignment(A,B)
-        """
-        if isinstance(alignment_src, gdal.Dataset):
-            src = alignment_src
-        elif isinstance(alignment_src, str):
-            src = gdal.Open(alignment_src)
-        else:
-            raise TypeError(
-                "First parameter should be a raster read using gdal (gdal dataset please read it "
-                f"using gdal library) or a path to the raster, given {type(alignment_src)}"
-            )
-
-        if isinstance(data_src, gdal.Dataset):
-            RasterB = data_src
-        elif isinstance(data_src, str):
-            RasterB = gdal.Open(data_src)
-        else:
-            raise TypeError(
-                "Second parameter should be a raster read using gdal (gdal dataset please read it "
-                f"using gdal library) or a path to the raster, given {type(data_src)}"
-            )
-
-        # we need number of rows and cols from src A and data from src B to store both in dst
-        cols, rows, prj, bands, gt, no_data_value, dtypes = Raster.getRasterDetails(src)
-
-        src_sr = osr.SpatialReference(wkt=prj)
-        src_epsg = int(src_sr.GetAttrValue("AUTHORITY", 1))
-
-        # reproject the RasterB to match the projection of alignment_src
-        reprojected_RasterB = Raster.projectRaster(RasterB, src_epsg)
-
-        # create a new raster
-        dst = Raster._createDataset(cols, rows, 1, dtypes[0], driver="MEM")
-        # set the geotransform
-        dst.SetGeoTransform(gt)
-        # set the projection
-        dst.SetProjection(src_sr.ExportToWkt())
-        # set the no data value
-        no_data_value = src.GetRasterBand(1).GetNoDataValue()
-        dst = Raster.setNoDataValue(dst, no_data_value)
-        # perform the projection & resampling
-        resample_technique = gdal.GRA_NearestNeighbour
-        # resample the reprojected_RasterB
-        gdal.ReprojectImage(
-            reprojected_RasterB,
-            dst,
-            src_sr.ExportToWkt(),
-            src_sr.ExportToWkt(),
-            resample_technique,
-        )
-
-        return dst
 
     @staticmethod
     def nearestNeighbour(
@@ -1822,7 +1802,6 @@ class Raster:
         #    nodatavalue=np.float32(raster.GetRasterBand(1).GetNoDataValue())
 
         no_rows = np.shape(array)[0]
-
         no_cols = np.shape(array)[1]
 
         for i in range(len(rows)):
@@ -2451,7 +2430,7 @@ class Dataset:
         >>> import glob
         >>> search_criteria = "*.tif"
         >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Dataset.readRastersFolder(file_list, with_order=False)
+        >>> prec = Dataset.read(file_list, with_order=False)
         """
         # input data validation
         # data type
@@ -2586,7 +2565,7 @@ class Dataset:
         --------
         >>> raster_dir = "ASCII folder/"
         >>> pixel_type = 1
-        >>> ASCIIArray, ASCIIDetails, NameList = Raster.readASCIIsFolder(raster_dir, pixel_type)
+        >>> ASCIIArray, ASCIIDetails, NameList = Dataset.readASCIIsFolder(raster_dir, pixel_type)
         """
         # input data validation
         # data type
