@@ -206,7 +206,7 @@ class Vector:
         return epsg
 
     @staticmethod
-    def _createSRfromProj(prj: str):
+    def _createSRfromProj(prj: str, string_type: str = None):
         """Create spatial reference object from projection.
 
         Parameters
@@ -214,20 +214,22 @@ class Vector:
         prj: [str]
             projection string
             >>> "GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]"
+        string_type: [str]
+            type of the string ["ESRI wkt", "WKT", "PROj4"]
 
         Returns
         -------
         """
         srs = osr.SpatialReference()
 
-        if prj.startswith("PROJCS") or prj.startswith("GEOGCS"):
+        if string_type is None:
+            srs.ImportFromWkt(prj)
+        elif prj.startswith("PROJCS") or prj.startswith("GEOGCS"):
             # ESRI well know text strings,
             srs.ImportFromESRI([prj])
         else:
             # Proj4 strings.
             srs.ImportFromProj4(prj)
-
-        srs.AutoIdentifyEPSG()
 
         return srs
 
@@ -251,7 +253,13 @@ class Vector:
         >>> epsg = Vector.getEPSGfromPrj(prj)
         """
         srs = Vector._createSRfromProj(prj)
-        epsg = int(srs.GetAuthorityCode(None))
+        response = srs.AutoIdentifyEPSG()
+        if response == 0:
+            epsg = int(srs.GetAuthorityCode(None))
+        else:
+            # the GetAuthorityCode failed to identify the epsg number https://gdal.org/doxygen/classOGRSpatialReference.html
+            # srs.FindMatches()
+            epsg = int(srs.GetAttrValue("AUTHORITY", 1))
         return epsg
 
     @staticmethod
