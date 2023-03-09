@@ -7,6 +7,7 @@ import json
 import os
 import zipfile
 from typing import Any, Dict, List, Tuple, Union
+from loguru import logger
 
 import geopandas as gpd
 import numpy as np
@@ -14,9 +15,7 @@ import pandas as pd
 import pyproj
 import rasterio
 from geopandas.geodataframe import GeoDataFrame
-from loguru import logger
 from osgeo import gdal, osr  # gdalconst,
-from osgeo.gdal import Dataset
 from osgeo.osr import SpatialReference
 from rasterio.mask import mask as rio_mask
 
@@ -36,7 +35,7 @@ DEFAULT_NO_DATA_VALUE = -9999
 class Raster:
     """Raster class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
 
-    raster: Dataset
+    raster: gdal.Dataset
     array: np.ndarray
     no_data_value: List[Union[float, int]]
     dtype: List[Union[float, int]]
@@ -46,7 +45,7 @@ class Raster:
     columns: int
     band_count: int
 
-    def __init__(self, src: Dataset):
+    def __init__(self, src: gdal.Dataset):
         if not isinstance(src, gdal.Dataset):
             raise TypeError(
                 "src should be read using gdal (gdal dataset please read it using gdal"
@@ -75,7 +74,7 @@ class Raster:
 
     @classmethod
     def openRaster(cls, path: str, read_only=True):
-        """Open a raster using GDAL.
+        """Open a geotiff file.
 
         Parameters
         ----------
@@ -103,13 +102,13 @@ class Raster:
 
     @classmethod
     def createEmptyDriver(
-        cls, src: Dataset, path: str = None, bands: int = 1, no_data_value=None
+        cls, src: gdal.Dataset, path: str = None, bands: int = 1, no_data_value=None
     ):
         """Create a new empty driver from another dataset.
 
         Parameters
         ----------
-        src : [Dataset]
+        src : [gdal.Dataset]
             gdal dataset
         path : str
         bands : int or None
@@ -137,18 +136,24 @@ class Raster:
 
         return dst
 
-    @staticmethod
-    def readASCII(ascii_file: str, pixel_type: int = 1) -> Tuple[np.ndarray, tuple]:
+    @classmethod
+    def readASCII(cls, path: str, epsg: int = 4326, dtype: int = 1):
         """readASCII.
 
-            readASCII reads an ASCII file
+            - readASCII reads an ASCII file.
+            - The functions searches for the .prj file in the same directory of the ascii file,
+            if it finds it, it will use it to define the projection for the raster object.
+            - If the .prj file does not exist in the same directory as the given file, the function
+            will use the epsg parameter given (Default is 4326).
 
         Parameters
         ----------
-        ascii_file: [str]
+        path: [str]
             name of the ASCII file you want to convert and the name
             should include the extension ".asc"
-        pixel_type: [Integer]
+        epsg: [int]
+            epsg number. Default is 4326 for WGS84.
+        dtype: [Integer]
             type of the data to be stored in the pixels,default is 1 (float32)
             for example pixel type of flow direction raster is unsigned integer
             1 for float32
@@ -169,26 +174,21 @@ class Raster:
 
         Examples
         --------
-        >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
+        >>> src_obj = Raster.readASCII("dem.asc", 1)
         """
-        if not isinstance(ascii_file, str):
-            raise TypeError("ascii_file input should be string type")
+        if not isinstance(path, str):
+            raise TypeError("path input should be string type")
 
-        if not isinstance(pixel_type, int):
+        if not isinstance(dtype, int):
             raise TypeError(
                 "pixel type input should be integer type please check documentations"
             )
 
-        # input values
-        file_extension = ascii_file[-4:]
-        if not file_extension == ".asc":
-            raise ValueError("please add the extension at the end of the path input")
-
-        if not os.path.exists(ascii_file):
+        if not os.path.exists(path):
             raise FileNotFoundError("ASCII file path you have provided does not exist")
 
         ### read the ASCII file
-        File = open(ascii_file)
+        File = open(path)
         whole_file = File.readlines()
         File.close()
 
@@ -197,10 +197,16 @@ class Raster:
 
         x_left_side = float(whole_file[2].split()[1])
         y_lower_side = float(whole_file[3].split()[1])
-        call_size = float(whole_file[4].split()[1])
+        cell_size = float(whole_file[4].split()[1])
         no_data_value = float(whole_file[5].split()[1])
 
+        # calculate Geotransform coordinates for the raster
+        y_upper_side = y_lower_side + rows * cell_size
+        geotransform = (x_left_side, cell_size, 0.0, y_upper_side, 0.0, -1 * cell_size)
+
         arr = np.ones((rows, cols), dtype=np.float32)
+        # TODO: improve reading the ascii, the loop below
+        #  https://gis.stackexchange.com/questions/347692/reading-ascii-grid-file-cell-value-for-given-long-lat-coordinates
         try:
             for i in range(rows):
                 x = whole_file[6 + i].split()
@@ -215,9 +221,29 @@ class Raster:
                 )
                 print(f"A value of {x[j]} , is stored in the ASCII file ")
 
-        geotransform = (rows, cols, x_left_side, y_lower_side, call_size, no_data_value)
+        # cehck if the projection .prj file exist in the same directory
+        srs = osr.SpatialReference()
+        prj_file = f"{path.split('.')[0]}.prj"
+        if os.path.exists(prj_file):
+            prj_text = open(prj_file, 'r').read()
+            if srs.ImportFromWkt(prj_text):
+                raise ValueError(f"Error importing PRJ information from: {prj_file}")
+        else:
+            srs.ImportFromEPSG(epsg)
+            logger.warning("There is no projection found for the ascii file, and the epsg parameter"
+                           f"to the function will be used to define projection: epsg: {epsg} is used")
 
-        return arr, geotransform
+        src = Raster._createDataset(cols, rows, 1, dtype, driver= "MEM")
+
+        # Set the projection.
+        src.SetGeoTransform(geotransform)
+        src.SetProjection(srs.ExportToWkt())
+        src_obj = cls(src)
+        src_obj.setNoDataValue(no_data_value=no_data_value)
+        src_obj.raster.GetRasterBand(1).WriteArray(arr)
+
+        return src_obj
+
 
     def getRasterData(self, band: int = 1) -> Tuple[np.ndarray, Union[int, float]]:
         """get the basic data inside a raster (the array and the nodatavalue)
@@ -248,7 +274,7 @@ class Raster:
         dtype: int,
         driver: str = "MEM",
         path: str = None,
-    ) -> Dataset:
+    ) -> gdal.Dataset:
         """Create GDAL driver.
 
             creates a driver and save it to disk and in memory if path is not given.
@@ -295,12 +321,12 @@ class Raster:
     def createRaster(
         cls,
         path: str = None,
-        arr: Union[str, Dataset, np.ndarray] = "",
+        arr: Union[str, gdal.Dataset, np.ndarray] = "",
         geo: Union[str, tuple] = "",
         epsg: Union[str, int] = "",
         nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
         band: int = 1,
-    ) -> Union[Dataset, None]:
+    ) -> Union[gdal.Dataset, None]:
         """createRaster.
 
         createRaster method creates a raster from a given array and geotransform data
@@ -370,8 +396,8 @@ class Raster:
 
     @classmethod
     def rasterLike(
-        cls, src: Dataset, array: np.ndarray, driver: str = "GTiff", path: str = None
-    ) -> Union[Dataset, None]:
+        cls, src: gdal.Dataset, array: np.ndarray, driver: str = "GTiff", path: str = None
+    ) -> Union[gdal.Dataset, None]:
         """rasterLike.
 
         rasterLike method creates a Geotiff raster like another input raster, new raster
@@ -630,7 +656,6 @@ class Raster:
                     f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
                 )
                 self.no_data_value[band - 1] = DEFAULT_NO_DATA_VALUE
-            print("aaa")
 
     def getCellCoords(
         self, location: str = "center", mask: bool = False
@@ -827,7 +852,7 @@ class Raster:
         # print to go around the assigned but never used pre-commit issue
         print(dst_ds)
 
-    def mapAlgebra(self, fun, band: int = 1) -> Dataset:
+    def mapAlgebra(self, fun, band: int = 1) -> gdal.Dataset:
         """mapAlgebra.
 
         - mapAlgebra executes a mathematical operation on raster array and returns
@@ -888,7 +913,7 @@ class Raster:
 
     def fill(
         self, val: Union[float, int], driver: str = "GTiff", path: str = None
-    ) -> Union[None, Dataset]:
+    ) -> Union[None, gdal.Dataset]:
         """Fill.
 
             Fill takes a raster and fill it with one value
@@ -904,9 +929,9 @@ class Raster:
 
         Returns
         -------
-        raster : [None/Dataset]
+        raster : [None/gdal.Dataset]
             if the raster is saved directly to the path you provided the returned value will be None, otherwise the
-            returned value will be the Dataset itself.
+            returned value will be the gdal.Dataset itself.
         """
         NoDataVal = self.raster.GetRasterBand(1).GetNoDataValue()
         src_array = self.raster.ReadAsArray()
@@ -923,7 +948,7 @@ class Raster:
 
     def resample(
         self, cell_size: Union[int, float], resample_technique: str = "Nearest"
-    ) -> Dataset:
+    ) -> gdal.Dataset:
         """resampleRaster.
 
         resampleRaster reproject a raster to any projection
@@ -1003,7 +1028,7 @@ class Raster:
 
     def reproject(
         self, to_epsg: int, resample_technique: str = "Nearest", option: int = 2
-    ) -> Dataset:
+    ) -> gdal.Dataset:
         """projectRaster.
 
         projectRaster reprojects a raster to any projection
@@ -1155,10 +1180,10 @@ class Raster:
 
     def cropAlligned(
         self,
-        mask: Union[Dataset, np.ndarray],
+        mask: Union[gdal.Dataset, np.ndarray],
         mask_noval: Union[int, float] = None,
         band: int = 1,
-    ) -> Union[np.ndarray, Dataset]:
+    ) -> Union[np.ndarray, gdal.Dataset]:
         """cropAlligned.
 
         cropAlligned clip/crop (matches the location of nodata value from mask to src
@@ -1309,8 +1334,8 @@ class Raster:
 
     def matchRasterAlignment(
         self,
-        alignment_src: Union[Dataset, str],
-    ) -> Dataset:
+        alignment_src: Union[gdal.Dataset, str],
+    ) -> gdal.Dataset:
         """matchRasterAlignment.
 
         matchRasterAlignment method copies the following data
@@ -1386,8 +1411,8 @@ class Raster:
 
     def crop(
         self,
-        mask: Union[Dataset, str],
-    ) -> Dataset:
+        mask: Union[gdal.Dataset, str],
+    ) -> gdal.Dataset:
         """crop.
 
             crop method crops a raster using another raster (both rasters does not have to be aligned).
@@ -1429,7 +1454,7 @@ class Raster:
         shapefile_path: str,
         save: bool = False,
         output_path: str = None,
-    ) -> Dataset:
+    ) -> gdal.Dataset:
         """ClipRasterWithPolygon.
 
             ClipRasterWithPolygon method clip a raster using polygon shapefile
@@ -1577,7 +1602,7 @@ class Raster:
         poly: Union[GeoDataFrame, str],
         save: bool = False,
         output_path: str = "masked.tif",
-    ) -> Dataset:
+    ) -> gdal.Dataset:
         """Clip2.
 
             Clip function takes a rasterio object and clip it with a given geodataframe
@@ -1665,7 +1690,7 @@ class Raster:
         return out_img, out_meta
 
     @staticmethod
-    def changeNoDataValue(src: Dataset, dst: Dataset) -> Dataset:
+    def changeNoDataValue(src: gdal.Dataset, dst: gdal.Dataset) -> gdal.Dataset:
         """ChangeNoDataValue.
 
         ChangeNoDataValue changes the cells of nodata value in a dst raster to match
@@ -1836,14 +1861,14 @@ class Raster:
         return str(inp) + "  "
 
     @staticmethod
-    def writeASCII(ascii_file: str, geotransform: tuple, arr: np.ndarray) -> None:
+    def writeASCII(path: str, geotransform: tuple, arr: np.ndarray) -> None:
         """writeASCII.
 
             writeASCII reads an ASCII file the spatial information
 
         Parameters
         ----------
-        ascii_file: [str]
+        path: [str]
             name of the ASCII file you want to convert and the name
             should include the extension ".asc"
         geotransform: [tuple]
@@ -1862,19 +1887,19 @@ class Raster:
         --------
         >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
         """
-        if not isinstance(ascii_file, str):
-            raise TypeError("ascii_file input should be string type")
+        if not isinstance(path, str):
+            raise TypeError("path input should be string type")
 
         # input values
-        ASCIIExt = ascii_file[-4:]
+        ASCIIExt = path[-4:]
         if not ASCIIExt == ".asc":
             raise ValueError("please add the extension at the end of the path input")
 
         try:
-            File = open(ascii_file, "w")
+            File = open(path, "w")
         except FileExistsError:
             raise FileExistsError(
-                f"path you have provided does not exist please check {ascii_file}"
+                f"path you have provided does not exist please check {path}"
             )
 
         # write the the ASCII file details
@@ -2282,7 +2307,7 @@ class Raster:
         return val
 
     @staticmethod
-    def _window(src: Dataset, size: int = 256):
+    def _window(src: gdal.Dataset, size: int = 256):
         """Raster square window size/offsets.
 
         Parameters
@@ -2308,7 +2333,7 @@ class Raster:
                 yield xsize, ysize, xoff, yoff
 
     @staticmethod
-    def getTile(src: Dataset, size=256):
+    def getTile(src: gdal.Dataset, size=256):
         """gets a raster array in tiles.
 
         Parameters
@@ -2345,19 +2370,29 @@ class Raster:
 
 
 class Dataset:
-    def __init__(self):
+    files: List[str]
+
+    """
+    files:
+        list of geotiff files' names
+    """
+    def __init__(self, src, arr: np.ndarray, files: List[str]=None):
+        self.files = files
+        self.raster = Raster(src)
+        self.array = arr
         pass
 
-    @staticmethod
-    def read(
-        path: str,
-        band: int = 1,
-        with_order: bool = True,
-        start: str = "",
-        end: str = "",
-        fmt: str = "",
-        freq: str = "daily",
-        # separator: str = "."
+    @classmethod
+    def readDataset(
+            cls,
+            path: str,
+            band: int = 1,
+            with_order: bool = True,
+            start: str = "",
+            end: str = "",
+            fmt: str = "",
+            freq: str = "daily",
+            # separator: str = "."
     ):
         """ReadRastersFolder.
 
@@ -2407,8 +2442,6 @@ class Dataset:
         >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
         >>> prec = Dataset.read(file_list, with_order=False)
         """
-        # input data validation
-        # data type
         if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")
 
@@ -2479,10 +2512,10 @@ class Dataset:
             ), "all files in the given folder should have .tif extension"
         # create a 3d array with the 2d dimension of the first raster and the len
         # of the number of rasters in the folder
-        if type(path) == list:
+        if isinstance(path, list):
             sample = gdal.Open(files[starti])
         else:
-            sample = gdal.Open(path + "/" + files[starti])
+            sample = gdal.Open(f"{path}/{files[starti]}")
         # check the given band number
         if band > sample.RasterCount:
             raise ValueError(
@@ -2505,8 +2538,7 @@ class Dataset:
                 # read the tif file
                 f = gdal.Open(path + "/" + files[i[1]])
                 arr_3d[:, :, i[0]] = f.GetRasterBand(band).ReadAsArray()
-
-        return arr_3d
+        cls(sample, files, arr_3d)
 
     @staticmethod
     def readASCIIsFolder(path: str, pixel_type: int):
@@ -2539,8 +2571,8 @@ class Dataset:
         Examples
         --------
         >>> raster_dir = "ASCII folder/"
-        >>> pixel_type = 1
-        >>> ASCIIArray, ASCIIDetails, NameList = Dataset.readASCIIsFolder(raster_dir, pixel_type)
+        >>> dtype = 1
+        >>> ASCIIArray, ASCIIDetails, NameList = Dataset.readASCIIsFolder(raster_dir, dtype)
         """
         # input data validation
         # data type
@@ -2573,7 +2605,7 @@ class Dataset:
         return arr_3d, ASCIIDetails, files
 
     @staticmethod
-    def rastersLike(src: Dataset, array: np.ndarray, path: List[str] = None):
+    def rastersLike(src: gdal.Dataset, array: np.ndarray, path: List[str] = None):
         """Create Raster like other source raster with a given array.
 
             - This function creates a Geotiff raster like another input raster, new raster will have the same
@@ -2635,11 +2667,11 @@ class Dataset:
     # TODO: still needs to be tested
     @staticmethod
     def reprojectDataset(
-        src: Dataset,
+        src: gdal.Dataset,
         to_epsg: int = 3857,
         cell_size: int = [],
         resample_technique: str = "Nearest",
-    ) -> Dataset:
+    ) -> gdal.Dataset:
         """ReprojectDataset.
 
         ReprojectDataset reprojects and resamples a folder of rasters to any projection
@@ -2769,7 +2801,7 @@ class Dataset:
     @staticmethod
     def cropAlignedFolder(
         src_dir: str,
-        mask: Union[Dataset, str],
+        mask: Union[gdal.Dataset, str],
         saveto: str,
     ) -> None:
         """cropAlignedFolder.

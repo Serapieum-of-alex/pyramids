@@ -19,13 +19,19 @@ class TestCreateRasterObject:
         src = Raster(src)
         assert isinstance(src, Raster)
 
-    def test_from_open_raster(
+
+    def test_from_open_ascii_file(
         self,
-        src_path: str,
-        src_no_data_value: float,
+        ascii_file_path: str,
+        ascii_shape: tuple,
+        ascii_geotransform: tuple,
     ):
-        src = Raster.openRaster(src_path)
-        assert isinstance(src, Raster)
+        src_obj = Raster.readASCII(ascii_file_path, dtype=1)
+        assert src_obj.band_count == 1
+        assert src_obj.epsg == 6326
+        assert isinstance(src_obj.raster, Dataset)
+        assert src_obj.geotransform == (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
+
 
     def test_from_create_empty_driver(
         self,
@@ -407,15 +413,6 @@ def test_crop(
 
 
 class TestASCII:
-    def test_read_ascii(
-        self,
-        ascii_file_path: str,
-        ascii_shape: tuple,
-        ascii_geotransform: tuple,
-    ):
-        arr, details = Raster.readASCII(ascii_file_path, pixel_type=1)
-        assert arr.shape == ascii_shape
-        assert details == ascii_geotransform
 
     def test_write_ascii(self, ascii_geotransform: tuple, ascii_file_save_to: str):
         arr = np.ones(shape=(13, 14)) * 0.03
