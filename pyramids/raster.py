@@ -225,15 +225,17 @@ class Raster:
         srs = osr.SpatialReference()
         prj_file = f"{path.split('.')[0]}.prj"
         if os.path.exists(prj_file):
-            prj_text = open(prj_file, 'r').read()
+            prj_text = open(prj_file, "r").read()
             if srs.ImportFromWkt(prj_text):
                 raise ValueError(f"Error importing PRJ information from: {prj_file}")
         else:
             srs.ImportFromEPSG(epsg)
-            logger.warning("There is no projection found for the ascii file, and the epsg parameter"
-                           f"to the function will be used to define projection: epsg: {epsg} is used")
+            logger.warning(
+                "There is no projection found for the ascii file, and the epsg parameter"
+                f"to the function will be used to define projection: epsg: {epsg} is used"
+            )
 
-        src = Raster._createDataset(cols, rows, 1, dtype, driver= "MEM")
+        src = Raster._createDataset(cols, rows, 1, dtype, driver="MEM")
 
         # Set the projection.
         src.SetGeoTransform(geotransform)
@@ -243,7 +245,6 @@ class Raster:
         src_obj.raster.GetRasterBand(1).WriteArray(arr)
 
         return src_obj
-
 
     def getRasterData(self, band: int = 1) -> Tuple[np.ndarray, Union[int, float]]:
         """get the basic data inside a raster (the array and the nodatavalue)
@@ -396,7 +397,11 @@ class Raster:
 
     @classmethod
     def rasterLike(
-        cls, src: gdal.Dataset, array: np.ndarray, driver: str = "GTiff", path: str = None
+        cls,
+        src: gdal.Dataset,
+        array: np.ndarray,
+        driver: str = "GTiff",
+        path: str = None,
     ) -> Union[gdal.Dataset, None]:
         """rasterLike.
 
@@ -2376,7 +2381,8 @@ class Dataset:
     files:
         list of geotiff files' names
     """
-    def __init__(self, src, arr: np.ndarray, files: List[str]=None):
+
+    def __init__(self, src, arr: np.ndarray, files: List[str] = None):
         self.files = files
         self.raster = Raster(src)
         self.array = arr
@@ -2384,15 +2390,15 @@ class Dataset:
 
     @classmethod
     def readDataset(
-            cls,
-            path: str,
-            band: int = 1,
-            with_order: bool = True,
-            start: str = "",
-            end: str = "",
-            fmt: str = "",
-            freq: str = "daily",
-            # separator: str = "."
+        cls,
+        path: str,
+        band: int = 1,
+        with_order: bool = True,
+        start: str = "",
+        end: str = "",
+        fmt: str = "",
+        freq: str = "daily",
+        # separator: str = "."
     ):
         """ReadRastersFolder.
 
