@@ -13,11 +13,11 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pyproj
-import rasterio
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr  # gdalconst,
 from osgeo.osr import SpatialReference
-from rasterio.mask import mask as rio_mask
+import netCDF4
+from pyramids.netcdf import NC
 
 try:
     from osgeo_utils import gdal_merge
@@ -30,6 +30,11 @@ from pyramids.utils import numpy_to_gdal_dtype
 from pyramids.vector import Vector
 
 DEFAULT_NO_DATA_VALUE = -9999
+
+# By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead they return an error
+# value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
+# this behavior in GDAL and OGR by calling the UseExceptions()
+gdal.UseExceptions()
 
 
 class Raster:
@@ -53,6 +58,8 @@ class Raster:
             )
         self.raster = src
         self.geotransform = src.GetGeoTransform()
+        self.driver_type = src.GetDriver().GetDescription()
+        self.cell_size = self.geotransform[1]
         self.proj = src.GetProjection()
         self.row = src.RasterYSize
         self.columns = src.RasterXSize
@@ -79,7 +86,7 @@ class Raster:
         Parameters
         ----------
         path : [str]
-            Path of file to open.
+            Path of file to open(works for ascii, geotiff).
         read_only : [bool]
             File mode, set to False to open in "update" mode.
 
@@ -136,115 +143,115 @@ class Raster:
 
         return dst
 
-    @classmethod
-    def readASCII(cls, path: str, epsg: int = 4326, dtype: int = 1):
-        """readASCII.
-
-            - readASCII reads an ASCII file.
-            - The functions searches for the .prj file in the same directory of the ascii file,
-            if it finds it, it will use it to define the projection for the raster object.
-            - If the .prj file does not exist in the same directory as the given file, the function
-            will use the epsg parameter given (Default is 4326).
-
-        Parameters
-        ----------
-        path: [str]
-            name of the ASCII file you want to convert and the name
-            should include the extension ".asc"
-        epsg: [int]
-            epsg number. Default is 4326 for WGS84.
-        dtype: [Integer]
-            type of the data to be stored in the pixels,default is 1 (float32)
-            for example pixel type of flow direction raster is unsigned integer
-            1 for float32
-            2 for float64
-            3 for Unsigned integer 16
-            4 for Unsigned integer 32
-            5 for integer 16
-            6 for integer 32
-
-        Returns
-        -------
-        ascii_values: [numpy array]
-            2D arrays containing the values stored in the ASCII file
-        ascii_details: [List]
-            list of the six spatial information of the ASCII file
-            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-            CellSize, NoValue]
-
-        Examples
-        --------
-        >>> src_obj = Raster.readASCII("dem.asc", 1)
-        """
-        if not isinstance(path, str):
-            raise TypeError("path input should be string type")
-
-        if not isinstance(dtype, int):
-            raise TypeError(
-                "pixel type input should be integer type please check documentations"
-            )
-
-        if not os.path.exists(path):
-            raise FileNotFoundError("ASCII file path you have provided does not exist")
-
-        ### read the ASCII file
-        File = open(path)
-        whole_file = File.readlines()
-        File.close()
-
-        cols = int(whole_file[0].split()[1])
-        rows = int(whole_file[1].split()[1])
-
-        x_left_side = float(whole_file[2].split()[1])
-        y_lower_side = float(whole_file[3].split()[1])
-        cell_size = float(whole_file[4].split()[1])
-        no_data_value = float(whole_file[5].split()[1])
-
-        # calculate Geotransform coordinates for the raster
-        y_upper_side = y_lower_side + rows * cell_size
-        geotransform = (x_left_side, cell_size, 0.0, y_upper_side, 0.0, -1 * cell_size)
-
-        arr = np.ones((rows, cols), dtype=np.float32)
-        # TODO: improve reading the ascii, the loop below
-        #  https://gis.stackexchange.com/questions/347692/reading-ascii-grid-file-cell-value-for-given-long-lat-coordinates
-        try:
-            for i in range(rows):
-                x = whole_file[6 + i].split()
-                arr[i, :] = list(map(float, x))
-        except:
-            try:
-                for j in range(len(x)):
-                    float(x[j])
-            except:
-                print(
-                    f"Error reading the ARCII file please check row {i + 6 + 1}, column {j}"
-                )
-                print(f"A value of {x[j]} , is stored in the ASCII file ")
-
-        # cehck if the projection .prj file exist in the same directory
-        srs = osr.SpatialReference()
-        prj_file = f"{path.split('.')[0]}.prj"
-        if os.path.exists(prj_file):
-            prj_text = open(prj_file, "r").read()
-            if srs.ImportFromWkt(prj_text):
-                raise ValueError(f"Error importing PRJ information from: {prj_file}")
-        else:
-            srs.ImportFromEPSG(epsg)
-            logger.warning(
-                "There is no projection found for the ascii file, and the epsg parameter"
-                f"to the function will be used to define projection: epsg: {epsg} is used"
-            )
-
-        src = Raster._createDataset(cols, rows, 1, dtype, driver="MEM")
-
-        # Set the projection.
-        src.SetGeoTransform(geotransform)
-        src.SetProjection(srs.ExportToWkt())
-        src_obj = cls(src)
-        src_obj.setNoDataValue(no_data_value=no_data_value)
-        src_obj.raster.GetRasterBand(1).WriteArray(arr)
-
-        return src_obj
+    # @classmethod
+    # def readASCII(cls, path: str, epsg: int = 4326, dtype: int = 1):
+    #     """readASCII.
+    #
+    #         - readASCII reads an ASCII file.
+    #         - The functions searches for the .prj file in the same directory of the ascii file,
+    #         if it finds it, it will use it to define the projection for the raster object.
+    #         - If the .prj file does not exist in the same directory as the given file, the function
+    #         will use the epsg parameter given (Default is 4326).
+    #
+    #     Parameters
+    #     ----------
+    #     path: [str]
+    #         name of the ASCII file you want to convert and the name
+    #         should include the extension ".asc"
+    #     epsg: [int]
+    #         epsg number. Default is 4326 for WGS84.
+    #     dtype: [Integer]
+    #         type of the data to be stored in the pixels,default is 1 (float32)
+    #         for example pixel type of flow direction raster is unsigned integer
+    #         1 for float32
+    #         2 for float64
+    #         3 for Unsigned integer 16
+    #         4 for Unsigned integer 32
+    #         5 for integer 16
+    #         6 for integer 32
+    #
+    #     Returns
+    #     -------
+    #     ascii_values: [numpy array]
+    #         2D arrays containing the values stored in the ASCII file
+    #     ascii_details: [List]
+    #         list of the six spatial information of the ASCII file
+    #         [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+    #         CellSize, NoValue]
+    #
+    #     Examples
+    #     --------
+    #     >>> src_obj = Raster.readASCII("dem.asc", 1)
+    #     """
+    #     if not isinstance(path, str):
+    #         raise TypeError("path input should be string type")
+    #
+    #     if not isinstance(dtype, int):
+    #         raise TypeError(
+    #             "pixel type input should be integer type please check documentations"
+    #         )
+    #
+    #     if not os.path.exists(path):
+    #         raise FileNotFoundError("ASCII file path you have provided does not exist")
+    #
+    #     ### read the ASCII file
+    #     File = open(path)
+    #     whole_file = File.readlines()
+    #     File.close()
+    #
+    #     cols = int(whole_file[0].split()[1])
+    #     rows = int(whole_file[1].split()[1])
+    #
+    #     x_left_side = float(whole_file[2].split()[1])
+    #     y_lower_side = float(whole_file[3].split()[1])
+    #     cell_size = float(whole_file[4].split()[1])
+    #     no_data_value = float(whole_file[5].split()[1])
+    #
+    #     # calculate Geotransform coordinates for the raster
+    #     y_upper_side = y_lower_side + rows * cell_size
+    #     geotransform = (x_left_side, cell_size, 0.0, y_upper_side, 0.0, -1 * cell_size)
+    #
+    #     arr = np.ones((rows, cols), dtype=np.float32)
+    #     # TODO: improve reading the ascii, the loop below
+    #     #  https://gis.stackexchange.com/questions/347692/reading-ascii-grid-file-cell-value-for-given-long-lat-coordinates
+    #     try:
+    #         for i in range(rows):
+    #             x = whole_file[6 + i].split()
+    #             arr[i, :] = list(map(float, x))
+    #     except:
+    #         try:
+    #             for j in range(len(x)):
+    #                 float(x[j])
+    #         except:
+    #             print(
+    #                 f"Error reading the ARCII file please check row {i + 6 + 1}, column {j}"
+    #             )
+    #             print(f"A value of {x[j]} , is stored in the ASCII file ")
+    #
+    #     # cehck if the projection .prj file exist in the same directory
+    #     srs = osr.SpatialReference()
+    #     prj_file = f"{path.split('.')[0]}.prj"
+    #     if os.path.exists(prj_file):
+    #         prj_text = open(prj_file, "r").read()
+    #         if srs.ImportFromWkt(prj_text):
+    #             raise ValueError(f"Error importing PRJ information from: {prj_file}")
+    #     else:
+    #         srs.ImportFromEPSG(epsg)
+    #         logger.warning(
+    #             "There is no projection found for the ascii file, and the epsg parameter"
+    #             f"to the function will be used to define projection: epsg: {epsg} is used"
+    #         )
+    #
+    #     src = Raster._createDataset(cols, rows, 1, dtype, driver="MEM")
+    #
+    #     # Set the projection.
+    #     src.SetGeoTransform(geotransform)
+    #     src.SetProjection(srs.ExportToWkt())
+    #     src_obj = cls(src)
+    #     src_obj.setNoDataValue(no_data_value=no_data_value)
+    #     src_obj.raster.GetRasterBand(1).WriteArray(arr)
+    #
+    #     return src_obj
 
     def getRasterData(self, band: int = 1) -> Tuple[np.ndarray, Union[int, float]]:
         """get the basic data inside a raster (the array and the nodatavalue)
@@ -308,10 +315,10 @@ class Raster:
                     raise TypeError(
                         "The path to save the created raster should end with .tif"
                     )
-
+            # LZW is a lossless compression method achieve the highst compression but with lot of computation
             src = gdal.GetDriverByName(driver).Create(
                 path, cols, rows, bands, dtype, ["COMPRESS=LZW"]
-            )  # LZW is a lossless compression method achieve the highst compression but with lot of computation
+            )
         else:
             # for memory drivers
             driver = "MEM"
@@ -398,9 +405,9 @@ class Raster:
     @classmethod
     def rasterLike(
         cls,
-        src: gdal.Dataset,
+        src,
         array: np.ndarray,
-        driver: str = "GTiff",
+        driver: str = "MEM",
         path: str = None,
     ) -> Union[gdal.Dataset, None]:
         """rasterLike.
@@ -439,17 +446,12 @@ class Raster:
         >>> src = gdal.Open("DEM.tif")
         >>> dst = Raster.rasterLike(src, array, driver="MEM")
         """
-        if not isinstance(src, gdal.Dataset):
-            raise TypeError(
-                "src should be read using gdal (gdal dataset please read it using gdal library) "
-            )
-
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
 
         bands = 1
         dtype = numpy_to_gdal_dtype(array)
-        src_obj = cls(src)
+        src_obj = cls(src.raster)
         cols, rows, prj, _, gt, no_data_value, _ = src_obj.getRasterDetails()
 
         dst = Raster._createDataset(cols, rows, bands, dtype, driver=driver, path=path)
@@ -461,7 +463,7 @@ class Raster:
         dst_obj.setNoDataValue(no_data_value=no_data_value[0])
 
         dst_obj.raster.GetRasterBand(1).WriteArray(array)
-        if driver == "GTiff":
+        if path is not None:
             dst_obj.raster.FlushCache()
             dst_obj = None
 
@@ -523,40 +525,6 @@ class Raster:
 
         return cols, rows, prj, bands, gt, no_data_value, dtype
 
-    # TODO: replace it  with getRasterData
-    @staticmethod
-    def openArrayInfo(fname: str = ""):
-        """openArrayInfo.
-
-        Opening a tiff info, for example size of array, projection and transform matrix.
-
-        Parameters
-        ----------
-        fname: [str]
-            path to the tiff file
-
-        Returns
-        -------
-        geotransform: [Tuple]
-            geotransform data of the upper left corner of the raster
-            (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
-        proj: [str]
-            projection as a well known text.
-        cols: [float]
-            number of columns
-        rows: [float]
-            number of rows
-        """
-        src = gdal.Open(fname)
-        if src is None:
-            raise FileNotFoundError(f"{fname} does not exists")
-
-        geo = src.GetGeoTransform()
-        proj = src.GetProjection()
-        cols = src.RasterXSize
-        rows = src.RasterYSize
-
-        return geo, proj, cols, rows
 
     def getEPSG(self) -> int:
         """GetEPSG.
@@ -637,7 +605,11 @@ class Raster:
         return names
 
     def setNoDataValue(self, no_data_value=DEFAULT_NO_DATA_VALUE):
-        """Set the no data value in a all raster bands.
+        """setNoDataValue.
+
+            - Set the no data value in a all raster bands.
+            - Fills the whole raster with the no_data_value.
+            - used only when creating an empty driver.
 
         Parameters
         ----------
@@ -661,6 +633,54 @@ class Raster:
                     f"no_data_value now is et to {DEFAULT_NO_DATA_VALUE} in the raster"
                 )
                 self.no_data_value[band - 1] = DEFAULT_NO_DATA_VALUE
+
+    # # TODO: Not used
+    # def changeNoDataValue(self, mask: gdal.Dataset, band: int = 1):
+    #     """ChangeNoDataValue.
+    #
+    #     ChangeNoDataValue changes the cells of nodata value in a dst raster to match
+    #     a src raster.
+    #
+    #     Parameters
+    #     ----------
+    #     mask: [Raster]
+    #         raster to get the location of the NoDataValue and
+    #         where it is in the array
+    #     band: [int]
+    #         band you want to crop
+    #
+    #     Returns
+    #     -------
+    #     Raster
+    #     """
+    #     # input data validation
+    #     # data type
+    #     src_noval = mask.raster.GetRasterBand(1).GetNoDataValue()
+    #
+    #     dtype = self.dtype[band - 1 ]
+    #     dst_noval = self.no_data_value[band - 1]
+    #
+    #     dst_array = self.raster.ReadAsArray()
+    #
+    #     for i in range(dst_array.shape[0]):
+    #         for j in range(dst_array.shape[1]):
+    #             if np.isclose(dst_array[i, j], dst_noval, rtol=0.001):
+    #                 dst_array[i, j] = src_noval
+    #
+    #     dst = Raster._createDataset(self.columns, self.row, band, dtype, driver="MEM")
+    #
+    #     # set the geotransform
+    #     dst.SetGeoTransform(self.geotransform)
+    #     # set the projection
+    #     dst.SetProjection(self.proj)
+    #     # set the no data value
+    #     no_data_value = mask.raster.GetRasterBand(1).GetNoDataValue()
+    #     dst_obj = Raster(dst)
+    #     dst_obj.setNoDataValue(no_data_value)
+    #     dst_obj.raster.GetRasterBand(band).WriteArray(dst_array)
+    #
+    #     return dst_obj
+
 
     def getCellCoords(
         self, location: str = "center", mask: bool = False
@@ -823,7 +843,7 @@ class Raster:
         gdf["id"] = gdf.index
         return gdf
 
-    def to_geotiff(self, path: str) -> None:
+    def ToGeotiff(self, path: str) -> None:
         """saveRaster.
 
             saveRaster saves a raster to a path
@@ -855,9 +875,54 @@ class Raster:
         dst_ds = driver.CreateCopy(path, self.raster, 0)
         dst_ds = None  # Flush the dataset to disk
         # print to go around the assigned but never used pre-commit issue
-        print(dst_ds)
+        # print(dst_ds)
 
-    def mapAlgebra(self, fun, band: int = 1) -> gdal.Dataset:
+    def ToASCII(self, path: str, band: int = 1) -> None:
+        """writeASCII.
+
+            writeASCII reads an ASCII file the spatial information
+
+        Parameters
+        ----------
+        path: [str]
+            name of the ASCII file you want to convert and the name
+            should include the extension ".asc"
+        band: [int]
+            band index.
+
+        Examples
+        --------
+        >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
+        """
+        if not isinstance(path, str):
+            raise TypeError("path input should be string type")
+
+        if not path.endswith(".asc"):
+            raise ValueError("please add the extension at the end of the path input")
+
+        if os.path.exists(path):
+            raise FileExistsError(
+                f"path you have provided does not exist please check {path}"
+            )
+
+        y_lower_side = self.geotransform[3] - self.row * self.cell_size
+        # write the the ASCII file details
+        File = open(path, "w")
+        File.write("ncols         " + str(self.columns) + "\n")
+        File.write("nrows         " + str(self.row) + "\n")
+        File.write("xllcorner     " + str(self.geotransform[0]) + "\n")
+        File.write("yllcorner     " + str(y_lower_side) + "\n")
+        File.write("cellsize      " + str(self.cell_size) + "\n")
+        File.write("NODATA_value  " + str(self.no_data_value[band - 1]) + "\n")
+        arr = self.raster.ReadAsArray()
+        # write the array
+        for i in range(np.shape(arr)[0]):
+            File.writelines(list(map(Raster.stringSpace, arr[i, :])))
+            File.write("\n")
+
+        File.close()
+
+    def mapAlgebra(self, fun, band: int = 1):
         """mapAlgebra.
 
         - mapAlgebra executes a mathematical operation on raster array and returns
@@ -917,7 +982,7 @@ class Raster:
         return dst_obj
 
     def fill(
-        self, val: Union[float, int], driver: str = "GTiff", path: str = None
+        self, val: Union[float, int], driver: str = "MEM", path: str = None
     ) -> Union[None, gdal.Dataset]:
         """Fill.
 
@@ -948,12 +1013,12 @@ class Raster:
             src_array[~np.isclose(src_array, NoDataVal, rtol=0.001)] = val
         else:
             src_array[~np.isnan(src_array)] = val
-        dst = Raster.rasterLike(self.raster, src_array, driver=driver, path=path)
+        dst = Raster.rasterLike(self, src_array, driver=driver, path=path)
         return dst
 
     def resample(
-        self, cell_size: Union[int, float], resample_technique: str = "Nearest"
-    ) -> gdal.Dataset:
+        self, cell_size: Union[int, float], method: str = "Nearest"
+    ) :
         """resampleRaster.
 
         resampleRaster reproject a raster to any projection
@@ -965,7 +1030,7 @@ class Raster:
         cell_size : [integer]
              new cell size to resample the raster.
             (default empty so raster will not be resampled)
-        resample_technique : [String]
+        method : [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
             "Nearest" for nearest neighbour,"cubic" for cubic convolution,
@@ -976,17 +1041,18 @@ class Raster:
         raster : [gdal.Dataset]
              gdal object (you can read it by ReadAsArray)
         """
-        if not isinstance(resample_technique, str):
+        if not isinstance(method, str):
             raise TypeError(
-                " please enter correct resample_technique more information see docmentation "
+                " please enter correct method more information see docmentation "
             )
 
-        if resample_technique == "Nearest":
-            resample_technique = gdal.GRA_NearestNeighbour
-        elif resample_technique == "cubic":
-            resample_technique = gdal.GRA_Cubic
-        elif resample_technique == "bilinear":
-            resample_technique = gdal.GRA_Bilinear
+        if method == "Nearest":
+            method = gdal.GRA_NearestNeighbour
+        elif method == "cubic":
+            method = gdal.GRA_Cubic
+        elif method == "bilinear":
+            method = gdal.GRA_Bilinear
+        #TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
 
         sr_src = osr.SpatialReference(wkt=self.proj)
 
@@ -1026,14 +1092,14 @@ class Raster:
             dst_obj.raster,
             sr_src.ExportToWkt(),
             sr_src.ExportToWkt(),
-            resample_technique,
+            method,
         )
 
         return dst_obj
 
     def reproject(
-        self, to_epsg: int, resample_technique: str = "Nearest", option: int = 2
-    ) -> gdal.Dataset:
+        self, to_epsg: int, method: str = "Nearest", option: int = 2
+    ):
         """projectRaster.
 
         projectRaster reprojects a raster to any projection
@@ -1045,7 +1111,7 @@ class Raster:
         to_epsg: [integer]
             reference number to the new projection (https://epsg.io/)
             (default 3857 the reference no of WGS84 web mercator )
-        resample_technique: [String]
+        method: [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
             "Nearest" for nearest neighbour,"cubic" for cubic convolution,
@@ -1060,25 +1126,27 @@ class Raster:
 
         Examples
         --------
-        >>> projected_raster = Raster.reproject(src, to_epsg=3857)
+        >>> from pyramids.raster import Raster
+        >>> src = Raster.openRaster("path/raster_name.tif")
+        >>> projected_raster = src.reproject(to_epsg=3857)
         """
         if not isinstance(to_epsg, int):
             raise TypeError(
                 "please enter correct integer number for to_epsg more information "
                 f"https://epsg.io/, given {type(to_epsg)}"
             )
-        if not isinstance(resample_technique, str):
+        if not isinstance(method, str):
             raise TypeError(
-                "please enter correct resample_technique more information see "
+                "please enter correct method more information see "
                 "docmentation "
             )
 
-        if resample_technique == "Nearest":
-            resample_technique = gdal.GRA_NearestNeighbour
-        elif resample_technique == "cubic":
-            resample_technique = gdal.GRA_Cubic
-        elif resample_technique == "bilinear":
-            resample_technique = gdal.GRA_Bilinear
+        if method == "Nearest":
+            method = gdal.GRA_NearestNeighbour
+        elif method == "cubic":
+            method = gdal.GRA_Cubic
+        elif method == "bilinear":
+            method = gdal.GRA_Bilinear
 
         if option == 1:
             src_proj = self.proj
@@ -1172,7 +1240,7 @@ class Raster:
                 dst_obj.raster,
                 src_sr.ExportToWkt(),
                 dst_sr.ExportToWkt(),
-                resample_technique,
+                method,
             )
 
         else:
@@ -1218,16 +1286,15 @@ class Raster:
             exactly the same like src raster
         """
         # check the mask
-        if isinstance(mask, gdal.Dataset):
-            mask_gt = mask.GetGeoTransform()
-            mask_proj = mask.GetProjection()
-            mask_sref = osr.SpatialReference(wkt=mask_proj)
-            mask_epsg = int(mask_sref.GetAttrValue("AUTHORITY", 1))
-
-            row = mask.RasterYSize
-            col = mask.RasterXSize
-            mask_noval = mask.GetRasterBand(1).GetNoDataValue()
-            mask_array = mask.ReadAsArray()
+        if isinstance(mask, Raster):
+            mask_gt = mask.geotransform
+            # mask_proj = mask.proj
+            # mask_sref = osr.SpatialReference(wkt=mask_proj)
+            mask_epsg = mask.epsg
+            row = mask.row
+            col = mask.columns
+            mask_noval = mask.no_data_value[band - 1]
+            mask_array = mask.raster.ReadAsArray()
         elif isinstance(mask, np.ndarray):
             if mask_noval is None:
                 raise ValueError(
@@ -1260,7 +1327,7 @@ class Raster:
             )
 
         # if both inputs are rasters
-        if isinstance(mask, gdal.Dataset) and isinstance(self.raster, gdal.Dataset):
+        if isinstance(mask, Raster):
             if not self.geotransform == mask_gt:
                 raise ValueError(
                     "location of upper left corner of both rasters are not the same or cell size is "
@@ -1324,7 +1391,7 @@ class Raster:
                 # set the geotransform
                 dst.SetGeoTransform(mask_gt)
                 # set the projection
-                dst.SetProjection(mask_sref.ExportToWkt())
+                dst.SetProjection(mask.proj)
             except UnboundLocalError:
                 dst.SetGeoTransform(self.geotransform)
                 dst.SetProjection(src_sref.ExportToWkt())
@@ -1339,7 +1406,7 @@ class Raster:
 
     def matchRasterAlignment(
         self,
-        alignment_src: Union[gdal.Dataset, str],
+        alignment_src,
     ) -> gdal.Dataset:
         """matchRasterAlignment.
 
@@ -1370,24 +1437,22 @@ class Raster:
         >>> B = gdal.Open("examples/GIS/data/soil_raster.tif")
         >>> RasterBMatched = Raster.matchRasterAlignment(A,B)
         """
-        if isinstance(alignment_src, gdal.Dataset):
+        if isinstance(alignment_src, Raster):
             src = alignment_src
         elif isinstance(alignment_src, str):
-            src = gdal.Open(alignment_src)
+            src = Raster.openRaster(alignment_src)
         else:
             raise TypeError(
-                "First parameter should be a raster read using gdal (gdal dataset please read it "
-                f"using gdal library) or a path to the raster, given {type(alignment_src)}"
+                "First parameter should be a Raster read using Raster.openRaster or a path to the raster, "
+                f"given {type(alignment_src)}"
             )
-
-        src = Raster(src)
 
         # we need number of rows and cols from src A and data from src B to store both in dst
         cols, rows, prj, bands, gt, no_data_value, dtypes = src.getRasterDetails()
 
-        src_sr = osr.SpatialReference(wkt=prj)
-        src_epsg = int(src_sr.GetAttrValue("AUTHORITY", 1))
-
+        # src_sr = osr.SpatialReference(wkt=prj)
+        # src_epsg = int(src_sr.GetAttrValue("AUTHORITY", 1))
+        src_epsg = src.getEPSG()
         # reproject the raster to match the projection of alignment_src
         reprojected_RasterB = self.reproject(src_epsg)
 
@@ -1396,25 +1461,25 @@ class Raster:
         # set the geotransform
         dst.SetGeoTransform(gt)
         # set the projection
-        dst.SetProjection(src_sr.ExportToWkt())
+        dst.SetProjection(prj)
         # set the no data value
         no_data_value = src.raster.GetRasterBand(1).GetNoDataValue()
         dst_obj = Raster(dst)
         dst_obj.setNoDataValue(no_data_value)
         # perform the projection & resampling
-        resample_technique = gdal.GRA_NearestNeighbour
+        method = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
         gdal.ReprojectImage(
             reprojected_RasterB.raster,
             dst_obj.raster,
-            src_sr.ExportToWkt(),
-            src_sr.ExportToWkt(),
-            resample_technique,
+            prj,
+            prj,
+            method,
         )
 
         return dst_obj
 
-    def crop(
+    def _crop_un_aligned(
         self,
         mask: Union[gdal.Dataset, str],
     ) -> gdal.Dataset:
@@ -1437,8 +1502,8 @@ class Raster:
         """
         # get information from the mask raster
         if isinstance(mask, str):
-            mask = gdal.Open(mask)
-        elif isinstance(mask, gdal.Dataset):
+            mask = Raster.openRaster(mask)
+        elif isinstance(mask, Raster):
             mask = mask
         else:
             raise TypeError(
@@ -1446,316 +1511,303 @@ class Raster:
             )
 
         # first align the mask with the src raster
-        mask_obj = Raster(mask)
-        mask_aligned = mask_obj.matchRasterAlignment(self.raster)
+        mask_aligned = mask.matchRasterAlignment(self)
         # crop the src raster with the aligned mask
-        dst_obj = self.cropAlligned(mask_aligned.raster)
+        dst_obj = self.cropAlligned(mask_aligned)
 
         return dst_obj
 
-    @staticmethod
-    def clipRasterWithPolygon(
-        raster_path: str,
-        shapefile_path: str,
-        save: bool = False,
-        output_path: str = None,
-    ) -> gdal.Dataset:
-        """ClipRasterWithPolygon.
+    def _cropWithPolygon(self, poly: GeoDataFrame):
+        """cropWithPolygon.
 
-            ClipRasterWithPolygon method clip a raster using polygon shapefile
+            clip the Raster object using a polygon vector.
 
         Parameters
         ----------
-        raster_path : [String]
-            path to the input raster including the raster extension (.tif)
-        shapefile_path : [String]
-            path to the input shapefile including the shapefile extension (.shp)
-        save : [Boolen]
-            True or False to decide whether to save the clipped raster or not
-            default is False
-        output_path : [String]
-            path to the place in your drive you want to save the clipped raster
-            including the raster name & extension (.tif), default is None
-
+        poly: [Polygon GeoDataFrame]
+            GeodataFrame with a geometry of polygon type.
         Returns
         -------
-        projected_raster:
-            [gdal object] clipped raster
-        if save is True function is going to save the clipped raster to the output_path
-
-        Examples
-        --------
-        >>> src_path = r"data/Evaporation_ERA-Interim_2009.01.01.tif"
-        >>> shp_path = "data/"+"Outline.shp"
-        >>> clipped_raster = Raster.clipRasterWithPolygon(raster_path,shapefile_path)
-        or
-        >>> dst_path = r"data/cropped.tif"
-        >>> clipped_raster = Raster.clipRasterWithPolygon(src_path, shp_path, True, dst_path)
+        Raster
         """
-        if isinstance(raster_path, str):
-            src = gdal.Open(raster_path)
-        elif isinstance(raster_path, gdal.Dataset):
-            src = raster_path
-        else:
-            raise TypeError("Raster_path input should be string type")
+        if not isinstance(poly, GeoDataFrame):
+            raise TypeError("The second parameter: poly should be of type GeoDataFrame ")
 
-        if isinstance(shapefile_path, str):
-            poly = gpd.read_file(shapefile_path)
-        elif isinstance(shapefile_path, gpd.geodataframe.GeoDataFrame):
-            poly = shapefile_path
-        else:
-            raise TypeError("shapefile_path input should be string type")
+        poly_epsg = poly.crs.to_epsg()
+        src_epsg = self.epsg
+        if poly_epsg != src_epsg :
+            raise ValueError("Projection Error: the raster and vector polygon have different projection please "
+                             "unify projection")
 
-        if not isinstance(save, bool):
-            raise TypeError("save input should be bool type (True or False)")
+        xmin, ymin, xmax, ymax = poly.bounds.values.tolist()[0]
+        window = (xmin, ymax, xmax, ymin)
+        # gdal.TranslateOptions(dst, ss, projWin=window)
+        # copy the src raster
+        drv = gdal.GetDriverByName("MEM")
+        dst = drv.CreateCopy("", self.raster, 0)
+        try:
+            gdal.Translate(dst, self.raster, projWin=window)
+        except RuntimeError:
+            pass
 
-        if save:
-            if not isinstance(output_path, str):
-                raise ValueError("Pleaase enter a path to save the clipped raster")
-        # inputs value
-        if save:
-            ext = output_path[-4:]
-            if not ext == ".tif":
-                raise TypeError(
-                    "please add the extention at the end of the output_path input"
-                )
+        cropped_obj = Raster(dst)
 
-        proj = src.GetProjection()
-        src_epsg = osr.SpatialReference(wkt=proj)
-        gt = src.GetGeoTransform()
+        return cropped_obj
 
-        # first check if the crs is GCS if yes check whether the long is greater than 180
-        # geopandas read -ve longitude values if location is west of the prime meridian
-        # while rasterio and gdal not
-        if src_epsg.GetAttrValue("AUTHORITY", 1) == "4326" and gt[0] > 180:
-            # reproject the raster to web mercator crs
-            raster = Raster.reprojectDataset(src)
-            out_transformed = os.environ["Temp"] + "/transformed.tif"
-            # save the raster with the new crs
-            Raster.saveRaster(raster, out_transformed)
-            raster = rasterio.open(out_transformed)
-            # delete the transformed raster
-            os.remove(out_transformed)
-        else:
-            # crs of the raster was not GCS or longitudes less than 180
-            if isinstance(raster_path, str):
-                raster = rasterio.open(raster_path)
-            else:
-                raster = rasterio.open(raster_path.GetDescription())
+    def crop(self, mask: Union[GeoDataFrame]):
+        """
 
-        ### Cropping the raster with the shapefile
-        # Re-project into the same coordinate system as the raster data
-        shpfile = poly.to_crs(crs=raster.crs.data)
-
-        # Get the geometry coordinates by using the function.
-        coords = Vector.getFeatures(shpfile)
-
-        out_img, out_transform = rio_mask(dataset=raster, shapes=coords, crop=True)
-
-        # copy the metadata from the original data file.
-        out_meta = raster.meta.copy()
-
-        # Next we need to parse the EPSG value from the CRS so that we can create
-        # a Proj4 string using PyCRS library (to ensure that the projection information is saved correctly).
-        epsg_code = int(raster.crs.data["init"][5:])
-
-        # close the transformed raster
-        raster.close()
-
-        # Now we need to update the metadata with new dimensions, transform (affine) and CRS (as Proj4 text)
-        out_meta.update(
-            {
-                "driver": "GTiff",
-                "height": out_img.shape[1],
-                "width": out_img.shape[2],
-                "transform": out_transform,
-                "crs": pyproj.CRS.from_epsg(epsg_code).to_wkt(),
-            }
-        )
-
-        # save the clipped raster.
-        temp_path = os.environ["Temp"] + "/cropped.tif"
-        with rasterio.open(temp_path, "w", **out_meta) as dest:
-            dest.write(out_img)
-            dest.close()
-            dest = None
-
-        # read the clipped raster
-        raster = gdal.Open(temp_path, gdal.GA_ReadOnly)
-        # reproject the clipped raster back to its original crs
-        projected_raster = Raster.projectRaster(
-            raster, int(src_epsg.GetAttrValue("AUTHORITY", 1))
-        )
-        raster = None
-        # delete the clipped raster
-        # try:
-        # TODO: fix ClipRasterWithPolygon as it does not delete the the cropped.tif raster from the temp_path
-        # the following line through an error
-        os.remove(temp_path)
-        # except:
-        #     print(temp_path + " - could not be deleted")
-
-        # write the raster to the file
-        if save:
-            Raster.saveRaster(projected_raster, output_path)
-
-        return projected_raster
-
-    @staticmethod
-    def clip2(
-        src: Union[rasterio.io.DatasetReader, str],
-        poly: Union[GeoDataFrame, str],
-        save: bool = False,
-        output_path: str = "masked.tif",
-    ) -> gdal.Dataset:
-        """Clip2.
-
-            Clip function takes a rasterio object and clip it with a given geodataframe
-            containing a polygon shapely object
+            clip the Raster object using a polygon/another raster (both rasters does not have to be aligned).
 
         Parameters
         ----------
-        src : [rasterio.io.DatasetReader]
-            the raster read by rasterio .
-        poly : [geodataframe]
-            geodataframe containing the polygon you want clip the raster based on.
-        save : [Bool], optional
-            to save the clipped raster to your drive. The default is False.
-        output_path : [String], optional
-            path iincluding the extention (.tif). The default is 'masked.tif'.
+        mask: [Polygon GeoDataFrame/Raster object]
+            GeodataFrame with a geometry of polygon type
 
         Returns
         -------
-        out_img : [rasterio object]
-            the clipped raster.
-        metadata : [dictionay]
-                dictionary containing number of bands, coordinate reference system crs
-                dtype, geotransform, height and width of the raster
+        Raster Object
         """
-        ### 1- Re-project the polygon into the same coordinate system as the raster data.
-        # We can access the crs of the raster using attribute .crs.data:
-        if isinstance(poly, str):
-            # read the shapefile
-            poly = gpd.read_file(poly)
-        elif isinstance(poly, gpd.geodataframe.GeoDataFrame):
-            poly = poly
+        if isinstance(mask, GeoDataFrame):
+            cropped_raster = self._cropWithPolygon(mask)
+        elif isinstance(mask, Raster):
+            cropped_raster = self._crop_un_aligned(mask)
         else:
-            raise TypeError("Polygongdf input should be string type")
+            raise TypeError(f"The second parameter: mask could be either GeoDataFrame or Raster object")
 
-        if isinstance(src, str):
-            src = rasterio.open(src)
-        elif isinstance(src, rasterio.io.DatasetReader):
-            src = src
-        else:
-            raise TypeError("Rasterobj input should be string type")
+        return cropped_raster
 
-        # Project the Polygon into same CRS as the grid
-        poly = poly.to_crs(crs=src.crs.data)
+    # def clipRasterWithPolygon(
+    #     self,
+    #     vector_psth: str,
+    #     save: bool = False,
+    #     output_path: str = None,
+    # ) -> gdal.Dataset:
+    #     """ClipRasterWithPolygon.
+    #
+    #         ClipRasterWithPolygon method clip a raster using polygon shapefile
+    #
+    #     Parameters
+    #     ----------
+    #     raster_path : [String]
+    #         path to the input raster including the raster extension (.tif)
+    #     vector_psth : [String]
+    #         path to the input shapefile including the shapefile extension (.shp)
+    #     save : [Boolen]
+    #         True or False to decide whether to save the clipped raster or not
+    #         default is False
+    #     output_path : [String]
+    #         path to the place in your drive you want to save the clipped raster
+    #         including the raster name & extension (.tif), default is None
+    #
+    #     Returns
+    #     -------
+    #     projected_raster:
+    #         [gdal object] clipped raster
+    #     if save is True function is going to save the clipped raster to the output_path
+    #
+    #     Examples
+    #     --------
+    #     >>> src_path = r"data/Evaporation_ERA-Interim_2009.01.01.tif"
+    #     >>> shp_path = "data/"+"Outline.shp"
+    #     >>> clipped_raster = Raster.clipRasterWithPolygon(raster_path,vector_psth)
+    #     or
+    #     >>> dst_path = r"data/cropped.tif"
+    #     >>> clipped_raster = Raster.clipRasterWithPolygon(src_path, shp_path, True, dst_path)
+    #     """
+    #     if isinstance(vector_psth, str):
+    #         poly = gpd.read_file(vector_psth)
+    #     elif isinstance(vector_psth, gpd.geodataframe.GeoDataFrame):
+    #         poly = vector_psth
+    #     else:
+    #         raise TypeError("vector_psth input should be string type")
+    #
+    #     if not isinstance(save, bool):
+    #         raise TypeError("save input should be bool type (True or False)")
+    #
+    #     if save:
+    #         if not isinstance(output_path, str):
+    #             raise ValueError("Pleaase enter a path to save the clipped raster")
+    #     # inputs value
+    #     if save:
+    #         ext = output_path[-4:]
+    #         if not ext == ".tif":
+    #             raise TypeError(
+    #                 "please add the extention at the end of the output_path input"
+    #             )
+    #
+    #     src_epsg = self.epsg
+    #     gt = self.geotransform
+    #
+    #     # first check if the crs is GCS if yes check whether the long is greater than 180
+    #     # geopandas read -ve longitude values if location is west of the prime meridian
+    #     # while rasterio and gdal not
+    #     if src_epsg == "4326" and gt[0] > 180:
+    #         # reproject the raster to web mercator crs
+    #         raster = self.reproject()
+    #         out_transformed = os.environ["Temp"] + "/transformed.tif"
+    #         # save the raster with the new crs
+    #         raster.to_geotiff(out_transformed)
+    #         raster = rasterio.open(out_transformed)
+    #         # delete the transformed raster
+    #         os.remove(out_transformed)
+    #     else:
+    #         # crs of the raster was not GCS or longitudes less than 180
+    #         if isinstance(raster_path, str):
+    #             raster = rasterio.open(raster_path)
+    #         else:
+    #             raster = rasterio.open(raster_path.GetDescription())
+    #
+    #     ### Cropping the raster with the shapefile
+    #     # Re-project into the same coordinate system as the raster data
+    #     shpfile = poly.to_crs(crs=raster.crs.data)
+    #
+    #     # Get the geometry coordinates by using the function.
+    #     coords = Vector.getFeatures(shpfile)
+    #
+    #     out_img, out_transform = rio_mask(dataset=raster, shapes=coords, crop=True)
+    #
+    #     # copy the metadata from the original data file.
+    #     out_meta = raster.meta.copy()
+    #
+    #     # Next we need to parse the EPSG value from the CRS so that we can create
+    #     # a Proj4 string using PyCRS library (to ensure that the projection information is saved correctly).
+    #     epsg_code = int(raster.crs.data["init"][5:])
+    #
+    #     # close the transformed raster
+    #     raster.close()
+    #
+    #     # Now we need to update the metadata with new dimensions, transform (affine) and CRS (as Proj4 text)
+    #     out_meta.update(
+    #         {
+    #             "driver": "GTiff",
+    #             "height": out_img.shape[1],
+    #             "width": out_img.shape[2],
+    #             "transform": out_transform,
+    #             "crs": pyproj.CRS.from_epsg(epsg_code).to_wkt(),
+    #         }
+    #     )
+    #
+    #     # save the clipped raster.
+    #     temp_path = os.environ["Temp"] + "/cropped.tif"
+    #     with rasterio.open(temp_path, "w", **out_meta) as dest:
+    #         dest.write(out_img)
+    #         dest.close()
+    #         dest = None
+    #
+    #     # read the clipped raster
+    #     raster = gdal.Open(temp_path, gdal.GA_ReadOnly)
+    #     # reproject the clipped raster back to its original crs
+    #     projected_raster = Raster.projectRaster(
+    #         raster, int(src_epsg.GetAttrValue("AUTHORITY", 1))
+    #     )
+    #     raster = None
+    #     # delete the clipped raster
+    #     # try:
+    #     # TODO: fix ClipRasterWithPolygon as it does not delete the the cropped.tif raster from the temp_path
+    #     # the following line through an error
+    #     os.remove(temp_path)
+    #     # except:
+    #     #     print(temp_path + " - could not be deleted")
+    #
+    #     # write the raster to the file
+    #     if save:
+    #         Raster.saveRaster(projected_raster, output_path)
+    #
+    #     return projected_raster
 
-        # Print crs
-        # geo.crs
-        ### 2- Convert the polygon into GeoJSON format for rasterio.
-
-        # Get the geometry coordinates by using the function.
-        coords = [json.loads(poly.to_json())["features"][0]["geometry"]]
-
-        # print(coords)
-
-        ### 3-Clip the raster with Polygon
-        out_img, out_transform = rasterio.mask.mask(
-            dataset=src, shapes=coords, crop=True
-        )
-
-        ### 4- update the metadata
-        # Copy the old metadata
-        out_meta = src.meta.copy()
-        # print(out_meta)
-
-        # Next we need to parse the EPSG value from the CRS so that we can create
-        # a Proj4 -string using PyCRS library (to ensure that the projection
-        # information is saved correctly).
-
-        # Parse EPSG code
-        epsg_code = int(src.crs.data["init"][5:])
-        # print(epsg_code)
-
-        out_meta.update(
-            {
-                "driver": "GTiff",
-                "height": out_img.shape[1],
-                "width": out_img.shape[2],
-                "transform": out_transform,
-                "crs": pyproj.CRS.from_epsg(epsg_code).to_wkt(),
-            }
-        )
-        if save:
-            with rasterio.open(output_path, "w", **out_meta) as dest:
-                dest.write(out_img)
-
-        return out_img, out_meta
-
-    @staticmethod
-    def changeNoDataValue(src: gdal.Dataset, dst: gdal.Dataset) -> gdal.Dataset:
-        """ChangeNoDataValue.
-
-        ChangeNoDataValue changes the cells of nodata value in a dst raster to match
-        a src raster.
-
-        Parameters
-        ----------
-        src: [gdal.dataset]
-            source raster to get the location of the NoDataValue and
-            where it is in the array
-        dst: [gdal.dataset]
-            raster you want to store NoDataValue in its cells
-            exactly the same like src raster
-
-        Returns
-        -------
-        dst: [gdal.dataset]
-            the second raster with NoDataValue stored in its cells
-            exactly the same like src raster
-        """
-        # input data validation
-        # data type
-        assert (
-            type(src) == gdal.Dataset
-        ), "src should be read using gdal (gdal dataset please read it using gdal library) "
-        assert (
-            type(dst) == gdal.Dataset
-        ), "dst should be read using gdal (gdal dataset please read it using gdal library) "
-
-        src_noval = np.float32(src.GetRasterBand(1).GetNoDataValue())
-
-        dst_gt = dst.GetGeoTransform()
-        dst_proj = dst.GetProjection()
-        dst_row = dst.RasterYSize
-        dst_col = dst.RasterXSize
-        dtype = dst.GetRasterBand(1).DataType
-        dst_noval = np.float32(dst.GetRasterBand(1).GetNoDataValue())
-        dst_sref = osr.SpatialReference(wkt=dst_proj)
-        #    dst_epsg = int(dst_sref.GetAttrValue('AUTHORITY',1))
-
-        dst_array = dst.ReadAsArray()
-
-        for i in range(dst_array.shape[0]):
-            for j in range(dst_array.shape[1]):
-                if np.isclose(dst_array[i, j], dst_noval, rtol=0.001):
-                    dst_array[i, j] = src_noval
-
-        # dst_array[dst_array==dst_noval]=src_noval
-        dst = Raster._createDataset(dst_col, dst_row, 1, dtype, driver="MEM")
-
-        # set the geotransform
-        dst.SetGeoTransform(dst_gt)
-        # set the projection
-        dst.SetProjection(dst_sref.ExportToWkt())
-        # set the no data value
-        no_data_value = src.GetRasterBand(1).GetNoDataValue()
-        dst = Raster.setNoDataValue(dst, no_data_value)
-        dst.GetRasterBand(1).WriteArray(dst_array)
-
-        return dst
+    # @staticmethod
+    # def clip2(
+    #     src: Union[rasterio.io.DatasetReader, str],
+    #     poly: Union[GeoDataFrame, str],
+    #     save: bool = False,
+    #     output_path: str = "masked.tif",
+    # ) -> gdal.Dataset:
+    #     """Clip2.
+    #
+    #         Clip function takes a rasterio object and clip it with a given geodataframe
+    #         containing a polygon shapely object
+    #
+    #     Parameters
+    #     ----------
+    #     src : [rasterio.io.DatasetReader]
+    #         the raster read by rasterio .
+    #     poly : [geodataframe]
+    #         geodataframe containing the polygon you want clip the raster based on.
+    #     save : [Bool], optional
+    #         to save the clipped raster to your drive. The default is False.
+    #     output_path : [String], optional
+    #         path iincluding the extention (.tif). The default is 'masked.tif'.
+    #
+    #     Returns
+    #     -------
+    #     out_img : [rasterio object]
+    #         the clipped raster.
+    #     metadata : [dictionay]
+    #             dictionary containing number of bands, coordinate reference system crs
+    #             dtype, geotransform, height and width of the raster
+    #     """
+    #     ### 1- Re-project the polygon into the same coordinate system as the raster data.
+    #     # We can access the crs of the raster using attribute .crs.data:
+    #     if isinstance(poly, str):
+    #         # read the shapefile
+    #         poly = gpd.read_file(poly)
+    #     elif isinstance(poly, gpd.geodataframe.GeoDataFrame):
+    #         poly = poly
+    #     else:
+    #         raise TypeError("Polygongdf input should be string type")
+    #
+    #     if isinstance(src, str):
+    #         src = rasterio.open(src)
+    #     elif isinstance(src, rasterio.io.DatasetReader):
+    #         src = src
+    #     else:
+    #         raise TypeError("Rasterobj input should be string type")
+    #
+    #     # Project the Polygon into same CRS as the grid
+    #     poly = poly.to_crs(crs=src.crs.data)
+    #
+    #     # Print crs
+    #     # geo.crs
+    #     ### 2- Convert the polygon into GeoJSON format for rasterio.
+    #
+    #     # Get the geometry coordinates by using the function.
+    #     coords = [json.loads(poly.to_json())["features"][0]["geometry"]]
+    #
+    #     # print(coords)
+    #
+    #     ### 3-Clip the raster with Polygon
+    #     out_img, out_transform = rasterio.mask.mask(
+    #         dataset=src, shapes=coords, crop=True
+    #     )
+    #
+    #     ### 4- update the metadata
+    #     # Copy the old metadata
+    #     out_meta = src.meta.copy()
+    #     # print(out_meta)
+    #
+    #     # Next we need to parse the EPSG value from the CRS so that we can create
+    #     # a Proj4 -string using PyCRS library (to ensure that the projection
+    #     # information is saved correctly).
+    #
+    #     # Parse EPSG code
+    #     epsg_code = int(src.crs.data["init"][5:])
+    #     # print(epsg_code)
+    #
+    #     out_meta.update(
+    #         {
+    #             "driver": "GTiff",
+    #             "height": out_img.shape[1],
+    #             "width": out_img.shape[2],
+    #             "transform": out_transform,
+    #             "crs": pyproj.CRS.from_epsg(epsg_code).to_wkt(),
+    #         }
+    #     )
+    #     if save:
+    #         with rasterio.open(output_path, "w", **out_meta) as dest:
+    #             dest.write(out_img)
+    #
+    #     return out_img, out_meta
 
     @staticmethod
     def nearestNeighbour(
@@ -1763,9 +1815,9 @@ class Raster:
     ) -> np.ndarray:
         """nearestNeighbour.
 
-            - nearestNeighbour fills the cells of a given indices in rows and cols with the value of the nearest
+            - fills the cells of a given indices in rows and cols with the value of the nearest
             neighbour.
-            - Ss the raster grid is square so the 4 perpendicular direction are of the same close so the function
+            - Ss the raster grid is square so the 4 perpendicular direction are of the same proximity so the function
             gives priority to the right then left then bottom then top and the same for 45 degree inclined direction
             right bottom then left bottom then left Top then right Top.
 
@@ -1866,233 +1918,6 @@ class Raster:
         return str(inp) + "  "
 
     @staticmethod
-    def writeASCII(path: str, geotransform: tuple, arr: np.ndarray) -> None:
-        """writeASCII.
-
-            writeASCII reads an ASCII file the spatial information
-
-        Parameters
-        ----------
-        path: [str]
-            name of the ASCII file you want to convert and the name
-            should include the extension ".asc"
-        geotransform: [tuple]
-            list of the six spatial information of the ASCII file
-            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-            CellSize, NoValue]
-        arr: [np.ndarray]
-            [numpy array] 2D arrays containing the values stored in the ASCII
-            file
-
-        Returns
-        -------
-        None
-
-        Examples
-        --------
-        >>> Elevation_values, DEMSpatialDetails = Raster.readASCII("dem.asc",1)
-        """
-        if not isinstance(path, str):
-            raise TypeError("path input should be string type")
-
-        # input values
-        ASCIIExt = path[-4:]
-        if not ASCIIExt == ".asc":
-            raise ValueError("please add the extension at the end of the path input")
-
-        try:
-            File = open(path, "w")
-        except FileExistsError:
-            raise FileExistsError(
-                f"path you have provided does not exist please check {path}"
-            )
-
-        # write the the ASCII file details
-        File.write("ncols         " + str(geotransform[1]) + "\n")
-        File.write("nrows         " + str(geotransform[0]) + "\n")
-        File.write("xllcorner     " + str(geotransform[2]) + "\n")
-        File.write("yllcorner     " + str(geotransform[3]) + "\n")
-        File.write("cellsize      " + str(geotransform[4]) + "\n")
-        File.write("NODATA_value  " + str(geotransform[5]) + "\n")
-
-        # write the array
-        for i in range(np.shape(arr)[0]):
-            File.writelines(list(map(Raster.stringSpace, arr[i, :])))
-            File.write("\n")
-
-        File.close()
-
-    @staticmethod
-    def gdal_merge(
-        src: List[str],
-        dst: str,
-        no_data_value: Union[float, int, str] = "0",
-        init: Union[float, int, str] = "nan",
-        n: Union[float, int, str] = "nan",
-    ):
-        """merge.
-
-            merges group of rasters into one raster
-
-        Parameters
-        ----------
-        src: List[str]
-            list of the path to all input raster
-        dst: [str]
-            path to the output raster
-        no_data_value: [float/int]
-            Assign a specified nodata value to output bands.
-        init: [float/int]
-            Pre-initialize the output image bands with these values. However, it is not marked as the nodata value
-            in the output file. If only one value is given, the same value is used in all the bands.
-        n: [float/int]
-            Ignore pixels from files being merged in with this pixel value.
-
-        Returns
-        -------
-        None
-        """
-        # run the command
-        # cmd = "gdal_merge.py -o merged_image_1.tif"
-        # subprocess.call(cmd.split() + file_list)
-        # vrt = gdal.BuildVRT("merged.vrt",file_list)
-        # src = gdal.Translate("merged_image.tif",vrt)
-
-        parameters = (
-            ["", "-o", dst]
-            + src
-            + [
-                "-co",
-                "COMPRESS=LZW",
-                "-init",
-                str(init),
-                "-a_nodata",
-                str(no_data_value),
-                "-n",
-                str(n),
-            ]
-        )  # '-separate'
-        gdal_merge.main(parameters)
-
-    @staticmethod
-    def rasterio_merge(
-        raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"
-    ):
-        """mosaic.
-
-        Parameters
-        ----------
-        raster_list : [list]
-            list of the raster files to mosaic.
-        save : [Bool], optional
-            to save the clipped raster to your drive. The default is False.
-        path : [String], optional
-            Path iincluding the extention (.tif). The default is 'MosaicedRaster.tif'.
-
-        Returns
-        -------
-        Mosaiced raster: [Rasterio object]
-            the whole mosaiced raster
-        metadata : [dictionay]
-            dictionary containing number of bands, coordinate reference system crs
-            dtype, geotransform, height and width of the raster
-        """
-        # List for the source files
-        RasterioObjects = []
-
-        # Iterate over raster files and add them to source -list in 'read mode'
-        for file in raster_list:
-            src = rasterio.open(file)
-            RasterioObjects.append(src)
-
-        # Merge function returns a single mosaic array and the transformation info
-        dst, dst_trans = rasterio.merge.merge(RasterioObjects)
-
-        # Copy the metadata
-        dst_meta = src.meta.copy()
-        epsg_code = int(src.crs.data["init"][5:])
-        # Update the metadata
-        dst_meta.update(
-            {
-                "driver": "GTiff",
-                "height": dst.shape[1],
-                "width": dst.shape[2],
-                "transform": dst_trans,
-                "crs": pyproj.CRS.from_epsg(epsg_code).to_wkt(),
-            }
-        )
-
-        if save:
-            # Write the mosaic raster to disk
-            with rasterio.open(path, "w", **dst_meta) as dest:
-                dest.write(dst)
-
-        return dst, dst_meta
-
-    @staticmethod
-    def matchDataAlignment(src_alignment: str, rasters_dir: str, save_to: str):
-        """matchDataAlignment.
-
-        this function matches the coordinate system and the number of of rows & columns
-        between two rasters
-        Raster A is the source of the coordinate system, no of rows and no of columns & cell size
-        rasters_dir is path to the folder where Raster B exist where  Raster B is
-        the source of data values in cells
-        the result will be a raster with the same structure like RasterA but with
-        values from RasterB using Nearest Neighbour interpolation algorithm
-
-        Parameters
-        ----------
-        src_alignment: [String]
-            path to the spatial information source raster to get the spatial information
-            (coordinate system, no of rows & columns) src_alignment should include the name of the raster
-            and the extension like "data/dem.tif"
-        rasters_dir: [String]
-            path of the folder of the rasters (Raster B) you want to adjust their
-            no of rows, columns and resolution (alignment) like raster A
-            the folder should not have any other files except the rasters
-        save_to: [String]
-            path where new rasters are going to be saved with exact
-            same old names
-
-        Returns
-        -------
-        new rasters:
-            ٌRasters have the values from rasters in rasters_dir with the same
-            cell size, no of rows & columns, coordinate system and alignment like raster A
-
-        Examples
-        --------
-        >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
-        >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
-        >>> prec_out_path = "02Precipitation/4km/"
-        >>> Raster.matchDataAlignment(dem_path,prec_in_path,prec_out_path)
-        """
-        # input data validation
-        # data type
-        assert type(src_alignment) == str, "src_alignment input should be string type"
-        assert type(rasters_dir) == str, "rasters_dir input should be string type"
-        assert type(save_to) == str, "save_to input should be string type"
-        # input values
-        ext = src_alignment[-4:]
-        assert (
-            ext == ".tif"
-        ), "please add the extension(.tif) at the end of the path input"
-
-        A = gdal.Open(src_alignment)
-        files_list = os.listdir(rasters_dir)
-        if "desktop.ini" in files_list:
-            files_list.remove("desktop.ini")
-
-        print(f"New Path- {save_to}")
-        for i in range(len(files_list)):
-            if files_list[i][-4:] == ".tif":
-                print(f"{i + 1}/{len(files_list)} - {save_to} files_list[i]")
-                B = gdal.Open(rasters_dir + files_list[i])
-                new_B = Raster.matchRasterAlignment(A, B)
-                Raster.saveRaster(new_B, save_to + files_list[i])
-
-    @staticmethod
     def extractValues(
         path: str,
         exclude_value,
@@ -2101,23 +1926,20 @@ class Raster:
     ):
         """extractValues.
 
-        this function is written to extract and return a list of all the values
-        in a map
-        #TODO (an ASCII for now to be extended later to read also raster)
+            - this function is written to extract and return a list of all the values in a map.
+            #TODO (an ASCII for now to be extended later to read also raster)
 
         Parameters
         ----------
-        path: [String]
+        path: [str]
             a path includng the name of the ASCII and extention like
-            path="data/cropped.asc"
+            >>> path = "data/cropped.asc"
         exclude_value: [Numeric]
             values you want to exclude from exteacted values
         compressed: [Bool]
              if the map you provided is compressed
         occupied_Cells_only:
         """
-        # input data validation
-        # data type
         assert type(path) == str, "path input should be string type" + str(path)
         assert type(compressed) == bool, "compressed input should be Boolen type"
         # input values
@@ -2546,6 +2368,36 @@ class Dataset:
                 arr_3d[:, :, i[0]] = f.GetRasterBand(band).ReadAsArray()
         cls(sample, files, arr_3d)
 
+
+    @staticmethod
+    def readNC(
+            path,
+            save_to: str,
+            separator: str = "_",
+            time_var_name: str = None,
+            prefix: str = None,
+    ):
+
+        if isinstance(path, str):
+            nc = netCDF4.Dataset(path)
+        elif isinstance(path, list):
+            nc = netCDF4.MFDataset(path)
+        else:
+            raise TypeError(
+                "First parameter to the nctoTiff function should be either str or list"
+            )
+
+        # get the variable
+        Var = list(nc.variables.keys())[-1]
+        # extract the data
+        dataset = nc[Var]
+        # get the details of the file
+        geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.getNCDetails(
+            nc, time_var_name=time_var_name
+        )
+        print("sss")
+
+
     @staticmethod
     def readASCIIsFolder(path: str, pixel_type: int):
         """readASCIIsFolder.
@@ -2558,7 +2410,7 @@ class Dataset:
 
         Parameters
         ----------
-        path: [String]
+        path: [str]
             path of the folder that contains all the rasters.
         pixel_type: [int]
 
@@ -2894,6 +2746,178 @@ class Dataset:
                 B = gdal.Open(src_dir + files_list[i])
                 new_B = Raster.cropAlligned(B, mask)
                 Raster.saveRaster(new_B, saveto + files_list[i])
+
+    @staticmethod
+    def matchDataAlignment(src_alignment: str, rasters_dir: str, save_to: str):
+        """matchDataAlignment.
+
+        this function matches the coordinate system and the number of of rows & columns
+        between two rasters
+        Raster A is the source of the coordinate system, no of rows and no of columns & cell size
+        rasters_dir is path to the folder where Raster B exist where  Raster B is
+        the source of data values in cells
+        the result will be a raster with the same structure like RasterA but with
+        values from RasterB using Nearest Neighbour interpolation algorithm
+
+        Parameters
+        ----------
+        src_alignment: [String]
+            path to the spatial information source raster to get the spatial information
+            (coordinate system, no of rows & columns) src_alignment should include the name of the raster
+            and the extension like "data/dem.tif"
+        rasters_dir: [String]
+            path of the folder of the rasters (Raster B) you want to adjust their
+            no of rows, columns and resolution (alignment) like raster A
+            the folder should not have any other files except the rasters
+        save_to: [String]
+            path where new rasters are going to be saved with exact
+            same old names
+
+        Returns
+        -------
+        new rasters:
+            ٌRasters have the values from rasters in rasters_dir with the same
+            cell size, no of rows & columns, coordinate system and alignment like raster A
+
+        Examples
+        --------
+        >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
+        >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
+        >>> prec_out_path = "02Precipitation/4km/"
+        >>> Raster.matchDataAlignment(dem_path,prec_in_path,prec_out_path)
+        """
+        # input data validation
+        # data type
+        assert type(src_alignment) == str, "src_alignment input should be string type"
+        assert type(rasters_dir) == str, "rasters_dir input should be string type"
+        assert type(save_to) == str, "save_to input should be string type"
+        # input values
+        ext = src_alignment[-4:]
+        assert (
+                ext == ".tif"
+        ), "please add the extension(.tif) at the end of the path input"
+
+        A = gdal.Open(src_alignment)
+        files_list = os.listdir(rasters_dir)
+        if "desktop.ini" in files_list:
+            files_list.remove("desktop.ini")
+
+        print(f"New Path- {save_to}")
+        for i in range(len(files_list)):
+            if files_list[i][-4:] == ".tif":
+                print(f"{i + 1}/{len(files_list)} - {save_to} files_list[i]")
+                B = gdal.Open(rasters_dir + files_list[i])
+                new_B = Raster.matchRasterAlignment(A, B)
+                Raster.saveRaster(new_B, save_to + files_list[i])
+
+
+    @staticmethod
+    def gdal_merge(
+            src: List[str],
+            dst: str,
+            no_data_value: Union[float, int, str] = "0",
+            init: Union[float, int, str] = "nan",
+            n: Union[float, int, str] = "nan",
+    ):
+        """merge.
+
+            merges group of rasters into one raster
+
+        Parameters
+        ----------
+        src: List[str]
+            list of the path to all input raster
+        dst: [str]
+            path to the output raster
+        no_data_value: [float/int]
+            Assign a specified nodata value to output bands.
+        init: [float/int]
+            Pre-initialize the output image bands with these values. However, it is not marked as the nodata value
+            in the output file. If only one value is given, the same value is used in all the bands.
+        n: [float/int]
+            Ignore pixels from files being merged in with this pixel value.
+
+        Returns
+        -------
+        None
+        """
+        # run the command
+        # cmd = "gdal_merge.py -o merged_image_1.tif"
+        # subprocess.call(cmd.split() + file_list)
+        # vrt = gdal.BuildVRT("merged.vrt",file_list)
+        # src = gdal.Translate("merged_image.tif",vrt)
+
+        parameters = (
+                ["", "-o", dst]
+                + src
+                + [
+                    "-co",
+                    "COMPRESS=LZW",
+                    "-init",
+                    str(init),
+                    "-a_nodata",
+                    str(no_data_value),
+                    "-n",
+                    str(n),
+                ]
+        )  # '-separate'
+        gdal_merge.main(parameters)
+
+
+    # @staticmethod
+    # def rasterio_merge(
+    #     raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"
+    # ):
+    #     """mosaic.
+    #
+    #     Parameters
+    #     ----------
+    #     raster_list : [list]
+    #         list of the raster files to mosaic.
+    #     save : [Bool], optional
+    #         to save the clipped raster to your drive. The default is False.
+    #     path : [String], optional
+    #         Path iincluding the extention (.tif). The default is 'MosaicedRaster.tif'.
+    #
+    #     Returns
+    #     -------
+    #     Mosaiced raster: [Rasterio object]
+    #         the whole mosaiced raster
+    #     metadata : [dictionay]
+    #         dictionary containing number of bands, coordinate reference system crs
+    #         dtype, geotransform, height and width of the raster
+    #     """
+    #     # List for the source files
+    #     RasterioObjects = []
+    #
+    #     # Iterate over raster files and add them to source -list in 'read mode'
+    #     for file in raster_list:
+    #         src = rasterio.open(file)
+    #         RasterioObjects.append(src)
+    #
+    #     # Merge function returns a single mosaic array and the transformation info
+    #     dst, dst_trans = rasterio.merge.merge(RasterioObjects)
+    #
+    #     # Copy the metadata
+    #     dst_meta = src.meta.copy()
+    #     epsg_code = int(src.crs.data["init"][5:])
+    #     # Update the metadata
+    #     dst_meta.update(
+    #         {
+    #             "driver": "GTiff",
+    #             "height": dst.shape[1],
+    #             "width": dst.shape[2],
+    #             "transform": dst_trans,
+    #             "crs": pyproj.CRS.from_epsg(epsg_code).to_wkt(),
+    #         }
+    #     )
+    #
+    #     if save:
+    #         # Write the mosaic raster to disk
+    #         with rasterio.open(path, "w", **dst_meta) as dest:
+    #             dest.write(dst)
+    #
+    #     return dst, dst_meta
 
     @staticmethod
     def folderCalculator(rasters_dir: str, save_to: str, function):
