@@ -3,7 +3,8 @@
 @author: Mostafa
 """
 import datetime as dt
-import json
+
+# import json
 import os
 import zipfile
 from typing import Any, Dict, List, Tuple, Union
@@ -12,12 +13,14 @@ from loguru import logger
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-import pyproj
+
+# import pyproj
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr  # gdalconst,
 from osgeo.osr import SpatialReference
-import netCDF4
-from pyramids.netcdf import NC
+
+# import netCDF4
+# from pyramids.netcdf import NC
 
 try:
     from osgeo_utils import gdal_merge
@@ -525,7 +528,6 @@ class Raster:
 
         return cols, rows, prj, bands, gt, no_data_value, dtype
 
-
     def getEPSG(self) -> int:
         """GetEPSG.
 
@@ -680,7 +682,6 @@ class Raster:
     #     dst_obj.raster.GetRasterBand(band).WriteArray(dst_array)
     #
     #     return dst_obj
-
 
     def getCellCoords(
         self, location: str = "center", mask: bool = False
@@ -875,7 +876,7 @@ class Raster:
         dst_ds = driver.CreateCopy(path, self.raster, 0)
         dst_ds = None  # Flush the dataset to disk
         # print to go around the assigned but never used pre-commit issue
-        # print(dst_ds)
+        print(dst_ds)
 
     def ToASCII(self, path: str, band: int = 1) -> None:
         """writeASCII.
@@ -1016,9 +1017,7 @@ class Raster:
         dst = Raster.rasterLike(self, src_array, driver=driver, path=path)
         return dst
 
-    def resample(
-        self, cell_size: Union[int, float], method: str = "Nearest"
-    ) :
+    def resample(self, cell_size: Union[int, float], method: str = "Nearest"):
         """resampleRaster.
 
         resampleRaster reproject a raster to any projection
@@ -1052,8 +1051,7 @@ class Raster:
             method = gdal.GRA_Cubic
         elif method == "bilinear":
             method = gdal.GRA_Bilinear
-        #TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
-
+        # TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
         sr_src = osr.SpatialReference(wkt=self.proj)
 
         ulx = self.geotransform[0]
@@ -1097,9 +1095,7 @@ class Raster:
 
         return dst_obj
 
-    def reproject(
-        self, to_epsg: int, method: str = "Nearest", option: int = 2
-    ):
+    def reproject(self, to_epsg: int, method: str = "Nearest", option: int = 2):
         """projectRaster.
 
         projectRaster reprojects a raster to any projection
@@ -1137,8 +1133,7 @@ class Raster:
             )
         if not isinstance(method, str):
             raise TypeError(
-                "please enter correct method more information see "
-                "docmentation "
+                "please enter correct method more information see " "docmentation "
             )
 
         if method == "Nearest":
@@ -1531,13 +1526,17 @@ class Raster:
         Raster
         """
         if not isinstance(poly, GeoDataFrame):
-            raise TypeError("The second parameter: poly should be of type GeoDataFrame ")
+            raise TypeError(
+                "The second parameter: poly should be of type GeoDataFrame "
+            )
 
         poly_epsg = poly.crs.to_epsg()
         src_epsg = self.epsg
-        if poly_epsg != src_epsg :
-            raise ValueError("Projection Error: the raster and vector polygon have different projection please "
-                             "unify projection")
+        if poly_epsg != src_epsg:
+            raise ValueError(
+                "Projection Error: the raster and vector polygon have different projection please "
+                "unify projection"
+            )
 
         xmin, ymin, xmax, ymax = poly.bounds.values.tolist()[0]
         window = (xmin, ymax, xmax, ymin)
@@ -1573,7 +1572,9 @@ class Raster:
         elif isinstance(mask, Raster):
             cropped_raster = self._crop_un_aligned(mask)
         else:
-            raise TypeError(f"The second parameter: mask could be either GeoDataFrame or Raster object")
+            raise TypeError(
+                "The second parameter: mask could be either GeoDataFrame or Raster object"
+            )
 
         return cropped_raster
 
@@ -2368,35 +2369,33 @@ class Dataset:
                 arr_3d[:, :, i[0]] = f.GetRasterBand(band).ReadAsArray()
         cls(sample, files, arr_3d)
 
-
-    @staticmethod
-    def readNC(
-            path,
-            save_to: str,
-            separator: str = "_",
-            time_var_name: str = None,
-            prefix: str = None,
-    ):
-
-        if isinstance(path, str):
-            nc = netCDF4.Dataset(path)
-        elif isinstance(path, list):
-            nc = netCDF4.MFDataset(path)
-        else:
-            raise TypeError(
-                "First parameter to the nctoTiff function should be either str or list"
-            )
-
-        # get the variable
-        Var = list(nc.variables.keys())[-1]
-        # extract the data
-        dataset = nc[Var]
-        # get the details of the file
-        geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.getNCDetails(
-            nc, time_var_name=time_var_name
-        )
-        print("sss")
-
+    # @staticmethod
+    # def readNC(
+    #         path,
+    #         save_to: str,
+    #         separator: str = "_",
+    #         time_var_name: str = None,
+    #         prefix: str = None,
+    # ):
+    #
+    #     if isinstance(path, str):
+    #         nc = netCDF4.Dataset(path)
+    #     elif isinstance(path, list):
+    #         nc = netCDF4.MFDataset(path)
+    #     else:
+    #         raise TypeError(
+    #             "First parameter to the nctoTiff function should be either str or list"
+    #         )
+    #
+    #     # get the variable
+    #     Var = list(nc.variables.keys())[-1]
+    #     # extract the data
+    #     dataset = nc[Var]
+    #     # get the details of the file
+    #     geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.getNCDetails(
+    #         nc, time_var_name=time_var_name
+    #     )
+    #     print("sss")
 
     @staticmethod
     def readASCIIsFolder(path: str, pixel_type: int):
@@ -2794,7 +2793,7 @@ class Dataset:
         # input values
         ext = src_alignment[-4:]
         assert (
-                ext == ".tif"
+            ext == ".tif"
         ), "please add the extension(.tif) at the end of the path input"
 
         A = gdal.Open(src_alignment)
@@ -2810,14 +2809,13 @@ class Dataset:
                 new_B = Raster.matchRasterAlignment(A, B)
                 Raster.saveRaster(new_B, save_to + files_list[i])
 
-
     @staticmethod
     def gdal_merge(
-            src: List[str],
-            dst: str,
-            no_data_value: Union[float, int, str] = "0",
-            init: Union[float, int, str] = "nan",
-            n: Union[float, int, str] = "nan",
+        src: List[str],
+        dst: str,
+        no_data_value: Union[float, int, str] = "0",
+        init: Union[float, int, str] = "nan",
+        n: Union[float, int, str] = "nan",
     ):
         """merge.
 
@@ -2848,21 +2846,20 @@ class Dataset:
         # src = gdal.Translate("merged_image.tif",vrt)
 
         parameters = (
-                ["", "-o", dst]
-                + src
-                + [
-                    "-co",
-                    "COMPRESS=LZW",
-                    "-init",
-                    str(init),
-                    "-a_nodata",
-                    str(no_data_value),
-                    "-n",
-                    str(n),
-                ]
+            ["", "-o", dst]
+            + src
+            + [
+                "-co",
+                "COMPRESS=LZW",
+                "-init",
+                str(init),
+                "-a_nodata",
+                str(no_data_value),
+                "-n",
+                str(n),
+            ]
         )  # '-separate'
         gdal_merge.main(parameters)
-
 
     # @staticmethod
     # def rasterio_merge(

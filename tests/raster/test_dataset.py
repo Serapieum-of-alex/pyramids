@@ -1,7 +1,9 @@
 import os
 import numpy as np
+
 # from osgeo.gdal import Dataset
 from pyramids.raster import Raster, Dataset
+
 
 class TestReadDataset:
     def test_read_all_inside_folder_without_order(
@@ -52,15 +54,15 @@ class TestReadDataset:
             rasters_folder_between_dates_raster_number,
         )
 
+
 def test_from_netcdf(nc_path: str):
     Dataset.readNC(nc_path, "", separator="_")
+
 
 def test_crop_folder(
     src: Dataset,
     crop_aligned_folder_path: str,
     crop_aligned_folder_saveto: str,
 ):
-    Raster.cropAlignedFolder(
-        crop_aligned_folder_path, src, crop_aligned_folder_saveto
-    )
+    Raster.cropAlignedFolder(crop_aligned_folder_path, src, crop_aligned_folder_saveto)
     assert len(os.listdir(crop_aligned_folder_saveto)) == 3
