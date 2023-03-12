@@ -1,15 +1,14 @@
 import os
 from typing import List, Tuple
 
-# import geopandas as gpd
+import geopandas as gpd
 import numpy as np
 import pytest
 from osgeo import gdal, osr
 from osgeo.gdal import Dataset
-
 from pyramids.raster import Raster
 
-# @pytest.fixture(scope="module")
+
 class TestCreateRasterObject:
     def test_from_gdal_dataset(
         self,
@@ -25,7 +24,8 @@ class TestCreateRasterObject:
         ascii_shape: tuple,
         ascii_geotransform: tuple,
     ):
-        src_obj = Raster.readASCII(ascii_file_path, dtype=1)
+        # src_obj = Raster.readASCII(ascii_file_path, dtype=1)
+        src_obj = Raster.openRaster(ascii_file_path)
         assert src_obj.band_count == 1
         assert src_obj.epsg == 6326
         assert isinstance(src_obj.raster, Dataset)
@@ -229,9 +229,19 @@ class TestSave:
         save_raster_path: str,
     ):
         src = Raster(src)
-        src.to_geotiff(save_raster_path)
+        src.ToGeotiff(save_raster_path)
         assert os.path.exists(save_raster_path)
         os.remove(save_raster_path)
+
+    def test_save_ascii(
+        self,
+        src: Dataset,
+        ascii_file_save_to: str,
+    ):
+        src = Raster(src)
+        src.ToASCII(ascii_file_save_to)
+        assert os.path.exists(ascii_file_save_to)
+        os.remove(ascii_file_save_to)
 
 
 class TestMathOperations:
@@ -339,9 +349,23 @@ class TestReproject:
         assert dst_arr.shape == src_shape
 
 
-# TODO: test ReprojectDataset
-class TestCropAlligned:
-    # TODO: still create a test for the case that the src and the mask does not have the same alignments
+def test_match_raster_alignment(
+    src: Dataset,
+    src_shape: tuple,
+    src_no_data_value: float,
+    src_geotransform: tuple,
+    soil_raster: Dataset,
+):
+    soil_raster_obj = Raster(soil_raster)
+    soil_aligned = soil_raster_obj.matchRasterAlignment(src)
+    assert soil_aligned.raster.ReadAsArray().shape == src_shape
+    nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
+    assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
+    geotransform = soil_aligned.raster.GetGeoTransform()
+    assert src_geotransform == geotransform
+
+
+class TestCrop:
     def test_crop_gdal_obj_with_gdal_obj(
         self,
         src: Dataset,
@@ -384,44 +408,34 @@ class TestCropAlligned:
     #     dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
     #     assert (dst_arr_cropped == src_arr).all()
 
+    def test_crop_un_aligned(
+        self,
+        soil_raster: Dataset,
+        aligned_raster: Dataset,
+        crop_saveto: str,
+    ):
+        # the soil raster has epsg=2116 and
+        # Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
+        # the aligned_raster has a epsg = 32618 and
+        # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
+        aligned_raster = Raster(aligned_raster)
+        aligned_raster._crop_un_aligned(soil_raster)
 
-def test_match_raster_alignment(
-    src: Dataset,
-    src_shape: tuple,
-    src_no_data_value: float,
-    src_geotransform: tuple,
-    soil_raster: Dataset,
-):
-    soil_raster_obj = Raster(soil_raster)
-    soil_aligned = soil_raster_obj.matchRasterAlignment(src)
-    assert soil_aligned.raster.ReadAsArray().shape == src_shape
-    nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
-    assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
-    geotransform = soil_aligned.raster.GetGeoTransform()
-    assert src_geotransform == geotransform
-
-
-def test_crop(
-    soil_raster: Dataset,
-    aligned_raster: Dataset,
-    crop_saveto: str,
-):
-    # the soil raster has epsg=2116 and
-    # Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
-    # the aligned_raster has a epsg = 32618 and
-    # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
-    aligned_raster = Raster(aligned_raster)
-    aligned_raster.crop(soil_raster)
+    def test_crop_with_polygon(
+        self,
+        soil_raster: gdal.Dataset,
+        basin_polygon: gpd.GeoDataFrame,
+    ):
+        epsg = basin_polygon.crs.to_epsg()
+        src_obj = Raster(soil_raster)
+        src_reprojected = src_obj.reproject(epsg)
+        cropped_raster = src_reprojected._cropWithPolygon(basin_polygon)
+        assert isinstance(cropped_raster.raster, gdal.Dataset)
+        assert cropped_raster.geotransform == src_reprojected.geotransform
+        assert cropped_raster.no_data_value[0] == src_reprojected.no_data_value[0]
 
 
 # def test_ClipRasterWithPolygon():
-
-
-class TestASCII:
-    def test_write_ascii(self, ascii_geotransform: tuple, ascii_file_save_to: str):
-        arr = np.ones(shape=(13, 14)) * 0.03
-        Raster.writeASCII(ascii_file_save_to, ascii_geotransform, arr)
-        assert os.path.exists(ascii_file_save_to)
 
 
 def test_merge(
