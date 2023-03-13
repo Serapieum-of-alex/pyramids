@@ -38,6 +38,7 @@ DEFAULT_NO_DATA_VALUE = -9999
 # value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
 # this behavior in GDAL and OGR by calling the UseExceptions()
 gdal.UseExceptions()
+# gdal.ErrorReset()
 
 
 class Raster:
@@ -63,6 +64,7 @@ class Raster:
         self.geotransform = src.GetGeoTransform()
         self.driver_type = src.GetDriver().GetDescription()
         self.cell_size = self.geotransform[1]
+        # src.GetDriver().GetMetadata()
         self.proj = src.GetProjection()
         self.row = src.RasterYSize
         self.columns = src.RasterXSize
@@ -75,16 +77,29 @@ class Raster:
         ]
         self.epsg = self.getEPSG()
         self.band_names = self.getBandNames()
-        # count cells inside the domain
-        # arr = self.raster.ReadAsArray()
-        # self.domain_count = np.size(arr[:, :]) - np.count_nonzero(
-        #     (arr[np.isclose(arr, self.no_data_value[0], rtol=0.001)])
-        # )
+
         pass
 
+    def count_domain_cells(self):
+        """Count cells inside the domain
+
+        Returns
+        -------
+        int:
+            Number of cells
+        """
+        # count cells inside the domain
+        arr = self.raster.ReadAsArray()
+        domain_count = np.size(arr[:, :]) - np.count_nonzero(
+            (arr[np.isclose(arr, self.no_data_value[0], rtol=0.001)])
+        )
+        return domain_count
+
     @classmethod
-    def openRaster(cls, path: str, read_only=True):
-        """Open a geotiff file.
+    def open(cls, path: str, read_only=True):
+        """Open file.
+
+            - for a geotiff and ASCII files.
 
         Parameters
         ----------
@@ -1123,7 +1138,7 @@ class Raster:
         Examples
         --------
         >>> from pyramids.raster import Raster
-        >>> src = Raster.openRaster("path/raster_name.tif")
+        >>> src = Raster.open("path/raster_name.tif")
         >>> projected_raster = src.reproject(to_epsg=3857)
         """
         if not isinstance(to_epsg, int):
@@ -1435,7 +1450,7 @@ class Raster:
         if isinstance(alignment_src, Raster):
             src = alignment_src
         elif isinstance(alignment_src, str):
-            src = Raster.openRaster(alignment_src)
+            src = Raster.open(alignment_src)
         else:
             raise TypeError(
                 "First parameter should be a Raster read using Raster.openRaster or a path to the raster, "
@@ -1497,7 +1512,7 @@ class Raster:
         """
         # get information from the mask raster
         if isinstance(mask, str):
-            mask = Raster.openRaster(mask)
+            mask = Raster.open(mask)
         elif isinstance(mask, Raster):
             mask = mask
         else:
@@ -2205,35 +2220,44 @@ class Dataset:
         list of geotiff files' names
     """
 
-    def __init__(self, src, arr: np.ndarray, files: List[str] = None):
+    def __init__(
+        self,
+        src: gdal.Dataset,
+        arr: np.ndarray,
+        files: List[str] = None,
+        no_data_value=None,
+    ):
         self.files = files
         self.raster = Raster(src)
         self.array = arr
+        self.time_lenth, self.rows, self.columns = arr.shape
+        self.no_data_value = no_data_value
+
         pass
 
     @classmethod
-    def readDataset(
+    def read_separate_files(
         cls,
-        path: str,
+        path: Union[str, List[str]],
         band: int = 1,
         with_order: bool = True,
-        start: str = "",
-        end: str = "",
-        fmt: str = "",
+        start: str = None,
+        end: str = None,
+        fmt: str = None,
         freq: str = "daily",
         # separator: str = "."
     ):
-        """ReadRastersFolder.
+        """read_separate_files.
 
-        this function reads rasters from a folder and creates a 3d array with the same
-        2d dimensions of the first raster in the folder and len as the number of files
+            - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
+            the folder and len as the number of files
 
         inside the folder.
-        - all rasters should have the same dimensions
-        - folder should only contain raster files
-        - raster file name should have the date at the end of the file name before the extension directly
-          with the YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD
-          >>> "50_MSWEP_1979.01.01.tif"
+            - All rasters should have the same dimensions
+            - Folder should only contain raster files
+            - raster file name should have the date at the end of the file name before the extension directly
+              with the YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD
+              >>> "50_MSWEP_1979.01.01.tif"
 
         Parameters
         ----------
@@ -2244,7 +2268,13 @@ class Dataset:
             number of the band you want to read default is 1.
         with_order: [bool]
             True if the rasters follows a certain order, then the rasters names should have a
-            number at the beginning indicating the order.
+            number at the beginning of the file name indicating the order.
+            >>> "01_MSWEP_1979.01.01.tif"
+            >>> "02_MSWEP_1979.01.02.tif"
+            >>> ...
+            >>> "20_MSWEP_1979.01.20.tif"
+            - currently the function depends mainly on the separator "_" that separate the order number from the rest of
+            file name.
         fmt: [str]
             format of the given date
         start: [str]
@@ -2263,13 +2293,14 @@ class Dataset:
 
         Example
         -------
+        >>> from pyramids.raster import Dataset
         >>> raster_folder = "examples/GIS/data/raster-folder"
-        >>> prec = Dataset.readRastersFolder(raster_folder)
+        >>> prec = Dataset.read_separate_files(raster_folder)
 
         >>> import glob
         >>> search_criteria = "*.tif"
         >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Dataset.read(file_list, with_order=False)
+        >>> prec = Dataset.read_separate_files(file_list, with_order=False)
         """
         if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")
@@ -2285,59 +2316,54 @@ class Dataset:
             # check whether there are files or not inside the folder
             if len(files) < 1:
                 raise FileNotFoundError("The path you have provided is empty")
-
-            if "desktop.ini" in files:
-                files.remove("desktop.ini")
         else:
             files = path[:]
-
         # to sort the files in the same order as the first number in the name
         if with_order:
             try:
                 filesNo = [int(i.split("_")[0]) for i in files]
             except ValueError:
-                ErrorMsg = (
+                raise ValueError(
                     "please include a number at the beginning of the"
                     "rasters name to indicate the order of the rasters. to do so please"
                     "use the Inputs.RenameFiles method to solve this issue and don't "
                     "include any other files in the folder with the rasters"
                 )
-                assert False, ErrorMsg
 
-            filetuple = sorted(zip(filesNo, files))
-            files = [x for _, x in filetuple]
+            file_tuple = sorted(zip(filesNo, files))
+            files = [x for _, x in file_tuple]
 
-        if start != "" or end != "":
+        if start is not None or end is not None:
             start = dt.datetime.strptime(start, fmt)
             end = dt.datetime.strptime(end, fmt)
 
             # get the dates for each file
             dates = list()
-            for i in range(len(files)):
+            for i, file_i in enumerate(files):
                 if freq == "daily":
-                    l = len(files[i]) - 4
-                    day = int(files[i][l - 2 : l])
-                    month = int(files[i][l - 5 : l - 3])
-                    year = int(files[i][l - 10 : l - 6])
+                    l = len(file_i) - 4
+                    day = int(file_i[l - 2 : l])
+                    month = int(file_i[l - 5 : l - 3])
+                    year = int(file_i[l - 10 : l - 6])
                     dates.append(dt.datetime(year, month, day))
                 elif freq == "hourly":
-                    year = int(files[i].split("_")[-4])
-                    month = int(files[i].split("_")[-3])
-                    day = int(files[i].split("_")[-2])
-                    hour = int(files[i].split("_")[-1].split(".")[0])
+                    year = int(file_i.split("_")[-4])
+                    month = int(file_i.split("_")[-3])
+                    day = int(file_i.split("_")[-2])
+                    hour = int(file_i.split("_")[-1].split(".")[0])
                     dates.append(dt.datetime(year, month, day, hour))
 
             starti = dates.index(start)
             endi = dates.index(end) + 1
             assert all(
-                f.endswith(".tif") for f in files[starti:endi]
+                file_i.endswith(".tif") for file_i in files[starti:endi]
             ), "all files in the given folder should have .tif extension"
         else:
             starti = 0
             endi = len(files)
             # check that folder only contains rasters
             assert all(
-                f.endswith(".tif") for f in files
+                file_i.endswith(".tif") for file_i in files
             ), "all files in the given folder should have .tif extension"
         # create a 3d array with the 2d dimension of the first raster and the len
         # of the number of rasters in the folder
@@ -2352,22 +2378,29 @@ class Dataset:
             )
 
         dim = sample.GetRasterBand(band).ReadAsArray().shape
-        naval = sample.GetRasterBand(band).GetNoDataValue()
-        # fill the array with noval data
-        arr_3d = np.ones((dim[0], dim[1], len(range(starti, endi))))
-        arr_3d[:, :, :] = naval
+        no_data_value = sample.GetRasterBand(band).GetNoDataValue()
+        # fill the array with no_data_value data
+        arr_3d = np.ones(
+            (
+                len(range(starti, endi)),
+                dim[0],
+                dim[1],
+            )
+        )
+        arr_3d[:, :, :] = no_data_value
 
-        if type(path) == list:
+        if isinstance(path, list):
             for i in range(starti, endi):
                 # read the tif file
                 f = gdal.Open(files[i])
-                arr_3d[:, :, i] = f.GetRasterBand(band).ReadAsArray()
+                arr_3d[i, :, :] = f.GetRasterBand(band).ReadAsArray()
         else:
             for i in enumerate(range(starti, endi)):
                 # read the tif file
-                f = gdal.Open(path + "/" + files[i[1]])
-                arr_3d[:, :, i[0]] = f.GetRasterBand(band).ReadAsArray()
-        cls(sample, files, arr_3d)
+                f = gdal.Open(f"{path}/{files[i[1]]}")
+                arr_3d[i[0], :, :] = f.GetRasterBand(band).ReadAsArray()
+
+        return cls(sample, arr_3d, files, no_data_value)
 
     # @staticmethod
     # def readNC(
