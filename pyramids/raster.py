@@ -2245,7 +2245,7 @@ class Dataset:
         end: str = None,
         fmt: str = None,
         freq: str = "daily",
-        # separator: str = "."
+        separator: str = "_"
     ):
         """read_separate_files.
 
@@ -2275,14 +2275,22 @@ class Dataset:
             >>> "20_MSWEP_1979.01.20.tif"
             - currently the function depends mainly on the separator "_" that separate the order number from the rest of
             file name.
+            - the separator between the date parts YYYY.MM.DD ir YYYY_MM_DD or any other separator does not matter,
+            however the separator has to be only one letter.
         fmt: [str]
             format of the given date
         start: [str]
-            start date if you want to read the input temperature for a specific period only,
+            start date if you want to read the input raster for a specific period only and not all rasters,
             if not given all rasters in the given path will be read.
+            Hint:
+                The date in the raster file name should be the last string befor the file extension
+                >>> "20_MSWEP_YYYY.MM.DD.tif"
         end: [str]
             end date if you want to read the input temperature for a specific period only,
             if not given all rasters in the given path will be read.
+            Hint:
+                The date in the raster file name should be the last string befor the file extension
+                >>> "20_MSWEP_YYYY.MM.DD.tif"
         freq: [str]
             frequency of the rasters "daily", Hourly, monthly
 
@@ -2321,7 +2329,7 @@ class Dataset:
         # to sort the files in the same order as the first number in the name
         if with_order:
             try:
-                filesNo = [int(i.split("_")[0]) for i in files]
+                filesNo = [int(i.split(separator)[0]) for i in files]
             except ValueError:
                 raise ValueError(
                     "please include a number at the beginning of the"
@@ -2392,13 +2400,13 @@ class Dataset:
         if isinstance(path, list):
             for i in range(starti, endi):
                 # read the tif file
-                f = gdal.Open(files[i])
-                arr_3d[i, :, :] = f.GetRasterBand(band).ReadAsArray()
+                raster_i = gdal.Open(files[i])
+                arr_3d[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
         else:
-            for i in enumerate(range(starti, endi)):
+            for i in range(starti, endi):
                 # read the tif file
-                f = gdal.Open(f"{path}/{files[i[1]]}")
-                arr_3d[i[0], :, :] = f.GetRasterBand(band).ReadAsArray()
+                raster_i = gdal.Open(f"{path}/{files[i]}")
+                arr_3d[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
 
         return cls(sample, arr_3d, files, no_data_value)
 
