@@ -2293,6 +2293,9 @@ class Dataset:
                 >>> "20_MSWEP_YYYY.MM.DD.tif"
         freq: [str]
             frequency of the rasters "daily", Hourly, monthly
+        separator: [str]
+            separator between the order in the beginning of the raster file name and the rest of the file
+            name. Default is "_".
 
         Returns
         -------
