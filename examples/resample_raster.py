@@ -3,7 +3,7 @@ from pyramids.raster import Raster
 
 src_path = "examples/data/acc4000.tif"
 #%%
-src = Raster.openDataset(src_path)
+src = Raster.open(src_path)
 arr = src.ReadAsArray()
 ros, cos, proj, bands, gt, no_data_value, dtype = Raster.getRasterDetails(src)
 print(f"current cell size is {gt[1]} m")

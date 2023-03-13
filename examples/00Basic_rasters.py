@@ -28,7 +28,7 @@ also if you have installed qgis define the directory to the bin folder inside th
 of qgis in the environment variable with a name "qgis"
 """
 # %% read the raster
-src = gdal.Open(RasterAPath)
+src = Raster.open(RasterAPath)
 fig, ax = Map.plot(src, title="Flow Accumulation")
 # %% GetRasterData
 """
@@ -47,7 +47,7 @@ Outputs:
     2- no_val: [numeric]
         value stored in novalue cells
 """
-arr, nodataval = Raster.getRasterData(src)
+arr, nodataval = src.getRasterData()
 # %%
 """GetProjectionData.
 
@@ -66,7 +66,7 @@ Returns:
         geotransform data (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation,
                             pixelsize). The default is ''.
 """
-epsg, geo = Raster.getProjectionData(src)
+epsg, geo = src.getProjectionData()
 print("EPSG = " + str(epsg))
 print(geo)
 # %% GetCoords
@@ -89,7 +89,7 @@ mat_range : array
     Array with all the centres of cells in the domain of the DEM
 
 """
-coords, centerscoords = Raster.getCellCoords(src)
+coords = src.getCellCoords()
 # %% SaveRaster
 """SaveRaster.
 
@@ -111,8 +111,8 @@ EX:
 ----------
     SaveRaster(raster,output_path)
 """
-path = datapath + "/save_raster_test.tif"
-Raster.saveRaster(src, path)
+path = f"{datapath}/save_raster_test.tif"
+src.ToGeotiff(path)
 # %%` CreateRaster
 """
 We will recreate the raster that we have already read using the 'GetRasterData' method at the
@@ -146,8 +146,8 @@ Returns
             a gdal.Dataset will be returned.
 """
 
-src = Raster.createRaster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
-Map.plot(src, title="Flow Accumulation")
+src_new = Raster.createRaster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
+Map.plot(src_new, title="Flow Accumulation")
 # %%` RasterLike
 """RasterLike.
 
@@ -164,7 +164,7 @@ inputs:
         [numpy array]to store in the new raster
     3- path : [String]
         path to save the new raster including new raster name and extension (.tif)
-    4- pixel_type : [integer]
+    4- dtype : [integer]
         type of the data to be stored in the pixels,default is 1 (float32)
         for example pixel type of flow direction raster is unsigned integer
         1 for float32
@@ -193,9 +193,9 @@ arr2 = np.ones(shape=arr.shape, dtype=np.float64) * nodataval
 arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
 
 path = datapath + "/rasterlike.tif"
-Raster.rasterLike(src, arr2, path)
+src_new = Raster.rasterLike(src, arr2, path=path)
 
-dst = gdal.Open(path)
+dst = Raster.open(path)
 Map.plot(dst, title="Flow Accumulation", color_scale=1)
 # %%
 """MapAlgebra.
@@ -234,7 +234,7 @@ def func1(val):
     return val
 
 
-dst = Raster.mapAlgebra(src, func1)
+dst = src.mapAlgebra(func1)
 Map.plot(dst, title="Classes", color_scale=4, ticks_spacing=1)
 # %%
 """RasterFill.
@@ -256,12 +256,12 @@ Returns:
     1- raster : [saved on disk]
         the raster will be saved directly to the path you provided.
 """
-path = datapath + "/fillrasterexample.tif"
+path = f"{datapath}/fillrasterexample.tif"
 value = 20
-Raster.rasterFill(src, value, save_to=path)
+dst = src.fill(value, path=path)
 
 "now the resulted raster is saved to disk"
-dst = gdal.Open(path)
+dst = Raster.open(path)
 Map.plot(dst, title="Flow Accumulation")
 # %%
 """ResampleRaster.
@@ -290,10 +290,10 @@ Outputs:
 """
 print("Original Cell Size =" + str(geo[1]))
 cell_size = 100
-dst = Raster.resampleRaster(src, cell_size, resample_technique="bilinear")
+dst = src.resample(cell_size, method="bilinear")
 
-dst_arr, _ = Raster.getRasterData(dst)
-_, newgeo = Raster.getProjectionData(dst)
+dst_arr, _ = dst.getRasterData()
+_, newgeo = dst.getProjectionData()
 print("New cell size is " + str(newgeo[1]))
 Map.plot(dst, title="Flow Accumulation")
 # %%
@@ -329,14 +329,14 @@ Example :
 """
 print("current EPSG - " + str(epsg))
 to_epsg = 4326
-dst = Raster.projectRaster(src, to_epsg=to_epsg, option=1)
-newepsg, newgeo = Raster.getProjectionData(dst)
+dst = src.reproject(to_epsg=to_epsg, option=1)
+newepsg, newgeo = dst.getProjectionData()
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
 """Option 2"""
 print("Option 2")
-dst = Raster.projectRaster(src, to_epsg=to_epsg, option=2)
-newepsg, newgeo = Raster.getProjectionData(dst)
+dst = src.reproject(to_epsg=to_epsg, option=2)
+newepsg, newgeo = dst.getProjectionData()
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
 # %%
@@ -402,8 +402,8 @@ Outputs:
         exactly the same like src raster
 """
 # crop array using a raster
-dst = gdal.Open(aligned_raster)
-dst_arr, dst_nodataval = Raster.getRasterData(dst)
+dst = Raster.open(aligned_raster)
+dst_arr, dst_nodataval = dst.getRasterData()
 
 Map.plot(
     dst_arr,
@@ -412,20 +412,20 @@ Map.plot(
     color_scale=1,
     ticks_spacing=0.01,
 )
-dst_arr_cropped = Raster.cropAlligned(dst_arr, src)
-Map.plot(
-    dst_arr_cropped,
-    nodataval=nodataval,
-    title="Cropped array",
-    color_scale=1,
-    ticks_spacing=0.01,
-)
+# dst_arr_cropped = Raster.cropAlligned(dst_arr, src)
+# Map.plot(
+#     dst_arr_cropped,
+#     nodataval=nodataval,
+#     title="Cropped array",
+#     color_scale=1,
+#     ticks_spacing=0.01,
+# )
 # %% clip raster using another raster while preserving the alignment
 """
 cropping rasters may  change the alignment of the cells and to keep the alignment during cropping a raster
 we will crop the same previous raster but will give the input to the function as a gdal.dataset object
 """
-dst_cropped = Raster.cropAlligned(dst, src)
+dst_cropped = dst.cropAlligned(src)
 Map.plot(dst_cropped, title="Cropped raster", color_scale=1, ticks_spacing=0.01)
 # %% crop raster using array
 """
@@ -433,7 +433,7 @@ we can also crop a raster using an array in condition that we enter the value of
 array
 we can repeat the previous example but
 """
-dst_cropped = Raster.cropAlligned(dst, arr, mask_noval=nodataval)
+dst_cropped = dst.cropAlligned(arr, mask_noval=nodataval)
 Map.plot(dst_cropped, title="Cropped array", color_scale=1, ticks_spacing=0.01)
 # %% clip a folder of rasters using another raster while preserving the alignment
 """
@@ -474,7 +474,7 @@ Example:
 
 """
 saveto = datapath + "/crop_aligned_folder/"
-Raster.cropAlignedFolder(aligned_raster_folder, src, saveto)
+# Raster.cropAlignedFolder(aligned_raster_folder, src, saveto)
 # %%
 """MatchRasterAlignment.
 
@@ -505,15 +505,15 @@ Example:
     matched_raster = MatchRasterAlignment(A,B)
 """
 # we want to align the soil raster similar to the alignment in the src raster
-soil_raster = gdal.Open(soilmappath)
-epsg, geotransform = Raster.getProjectionData(soil_raster)
+soil_raster = Raster.open(soilmappath)
+epsg, geotransform = soil_raster.getProjectionData()
 print("Before alignment EPSG = " + str(epsg))
 print("Before alignment Geotransform = " + str(geotransform))
 # cell_size = geotransform[1]
 Map.plot(soil_raster, title="To be aligned", color_scale=1, ticks_spacing=1)
 
-soil_aligned = Raster.matchRasterAlignment(src, soil_raster)
-New_epsg, New_geotransform = Raster.getProjectionData(soil_aligned)
+soil_aligned = soil_raster.matchRasterAlignment(src)
+New_epsg, New_geotransform = soil_aligned.getProjectionData()
 print("After alignment EPSG = " + str(New_epsg))
 print("After alignment Geotransform = " + str(New_geotransform))
 Map.plot(soil_aligned, title="After alignment", color_scale=1, ticks_spacing=1)
@@ -541,8 +541,8 @@ Output:
         the cropped raster will also be saved to disk in the OutputPath
         directory.
 """
-RasterA = gdal.Open(aligned_raster)
-epsg, geotransform = Raster.getProjectionData(RasterA)
+RasterA = Raster.open(aligned_raster)
+epsg, geotransform = RasterA.getProjectionData()
 print("Raster EPSG = " + str(epsg))
 print("Raster Geotransform = " + str(geotransform))
 Map.plot(RasterA, title="Raster to be cropped", color_scale=1, ticks_spacing=1)
@@ -550,13 +550,14 @@ Map.plot(RasterA, title="Raster to be cropped", color_scale=1, ticks_spacing=1)
 We will use the soil raster from the previous example as a mask
 so the projection is different between the raster and the mask and the cell size is also different
 """
-dst = Raster.crop(RasterA, soil_raster)
+soil_raster = Raster.open(soilmappath)
+dst = RasterA._crop_un_aligned(soil_raster)
 dst_epsg, dst_geotransform = Raster.getProjectionData(dst)
 print("resulted EPSG = " + str(dst_epsg))
 print("resulted Geotransform = " + str(dst_geotransform))
 Map.plot(dst, title="Cropped Raster", color_scale=1, ticks_spacing=1)
 # %%
-src_aligned = gdal.Open(aligned_raster)
+src_aligned = Raster.open(aligned_raster)
 # # arr, nodataval = Raster.GetRasterData(src_aligned)
 Map.plot(
     src_aligned,
@@ -598,11 +599,10 @@ EX:
     clipped_raster=ClipRasterWithPolygon(Raster_path,shapefile_path,True,output_path)
 """
 shp = gpd.read_file(Basinshp)
-src = gdal.Open(aligned_raster)
+shp.plot()
+src = Raster.open(aligned_raster)
 
-dst = Raster.clipRasterWithPolygon(
-    aligned_raster, Basinshp, save=False, output_path=None
-)
+dst = src.clipRasterWithPolygon(aligned_raster, Basinshp, save=False, output_path=None)
 dst = Raster.clip2(aligned_raster, Basinshp, save=False, output_path=None)
 Map.plot(
     dst,
@@ -620,7 +620,7 @@ Inputs:
         [String] name of the ASCII file you want to convert and the name
         should include the extension ".asc"
 
-    2-pixel_type:
+    2-dtype:
         [Integer] type of the data to be stored in the pixels,default is 1 (float32)
         for example pixel type of flow direction raster is unsigned integer
         1 for float32
@@ -642,7 +642,7 @@ Example:
     Elevation_values,DEMSpatialDetails = ReadASCII("dem.asc",1)
 """
 path = datapath + r"/asci_example.asc"
-arr, geotransform = Raster.readASCII(path, pixel_type=1)
+arr, geotransform = Raster.readASCII(path, dtype=1)
 fig, ax = Map.plot(
     arr,
     geotransform[-1],
@@ -654,7 +654,7 @@ fig, ax = Map.plot(
 
 arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
 path2 = datapath + r"/roughness.asc"
-Raster.writeASCII(path2, geotransform, arr)
+Raster.ToASCII(path2, geotransform, arr)
 # %% read the points
 points = pd.read_csv(pointsPath)
 points["row"] = np.nan
