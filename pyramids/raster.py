@@ -50,7 +50,7 @@ class Raster:
     dtype: List[Union[float, int]]
     geotransform: Tuple[float, float, float, float]
     proj: str
-    row: int
+    rows: int
     columns: int
     band_count: int
 
@@ -64,9 +64,11 @@ class Raster:
         self.geotransform = src.GetGeoTransform()
         self.driver_type = src.GetDriver().GetDescription()
         self.cell_size = self.geotransform[1]
-        # src.GetDriver().GetMetadata()
+        self.meta_data = src.GetMetadata()
         self.proj = src.GetProjection()
-        self.row = src.RasterYSize
+        self.subsets = src.GetSubDatasets()
+        self.variables = self.get_nc_variables()
+        self.rows = src.RasterYSize
         self.columns = src.RasterXSize
         self.band_count = self.raster.RasterCount
         self.no_data_value = [
@@ -242,7 +244,7 @@ class Raster:
     #                 float(x[j])
     #         except:
     #             print(
-    #                 f"Error reading the ARCII file please check row {i + 6 + 1}, column {j}"
+    #                 f"Error reading the ARCII file please check rows {i + 6 + 1}, column {j}"
     #             )
     #             print(f"A value of {x[j]} , is stored in the ASCII file ")
     #
@@ -271,8 +273,10 @@ class Raster:
     #
     #     return src_obj
 
-    def getRasterData(self, band: int = 1) -> Tuple[np.ndarray, Union[int, float]]:
-        """get the basic data inside a raster (the array and the nodatavalue)
+    def read_array(self, band: int = None) -> np.ndarray:
+        """Read Array
+
+            - read the values stored in a given band.
 
         Parameters
         ----------
@@ -283,14 +287,21 @@ class Raster:
         -------
         array : [array]
             array with all the values in the raster.
-        nodataval : [numeric]
-            value stored in novalue cells
         """
-        # get the value stores in novalue cells
-        nodatavalue = self.raster.GetRasterBand(band).GetNoDataValue()
-        arr = self.raster.GetRasterBand(band).ReadAsArray()
+        if band is None:
+            arr = np.ones(
+                (
+                    self.band_count,
+                    self.rows,
+                    self.columns,
+                )
+            )
+            for i in range(self.band_count):
+                arr[i, :, :] = self.raster.GetRasterBand(i + 1).ReadAsArray()
+        else:
+            arr = self.raster.GetRasterBand(band).ReadAsArray()
 
-        return arr, nodatavalue
+        return arr
 
     @staticmethod
     def _createDataset(
@@ -558,6 +569,18 @@ class Raster:
 
         return epsg
 
+    def get_nc_variables(self):
+        """
+
+        Returns
+        -------
+
+        """
+        variables = []
+        for var in self.subsets:
+            variables.append(var[1].split(" ")[1])
+        return variables
+
     @staticmethod
     def _createSRfromEPSG(epsg: int = "") -> SpatialReference:
         """Create a spatial reference object from epsg number.
@@ -684,7 +707,7 @@ class Raster:
     #             if np.isclose(dst_array[i, j], dst_noval, rtol=0.001):
     #                 dst_array[i, j] = src_noval
     #
-    #     dst = Raster._createDataset(self.columns, self.row, band, dtype, driver="MEM")
+    #     dst = Raster._createDataset(self.columns, self.rows, band, dtype, driver="MEM")
     #
     #     # set the geotransform
     #     dst.SetGeoTransform(self.geotransform)
@@ -921,11 +944,11 @@ class Raster:
                 f"path you have provided does not exist please check {path}"
             )
 
-        y_lower_side = self.geotransform[3] - self.row * self.cell_size
+        y_lower_side = self.geotransform[3] - self.rows * self.cell_size
         # write the the ASCII file details
         File = open(path, "w")
         File.write("ncols         " + str(self.columns) + "\n")
-        File.write("nrows         " + str(self.row) + "\n")
+        File.write("nrows         " + str(self.rows) + "\n")
         File.write("xllcorner     " + str(self.geotransform[0]) + "\n")
         File.write("yllcorner     " + str(y_lower_side) + "\n")
         File.write("cellsize      " + str(self.cell_size) + "\n")
@@ -1073,7 +1096,7 @@ class Raster:
         uly = self.geotransform[3]
         # transform the right lower corner point
         lrx = self.geotransform[0] + self.geotransform[1] * self.columns
-        lry = self.geotransform[3] + self.geotransform[5] * self.row
+        lry = self.geotransform[3] + self.geotransform[5] * self.rows
 
         pixel_spacing = cell_size
         # new geotransform
@@ -1162,7 +1185,7 @@ class Raster:
             src_proj = self.proj
             src_gt = self.geotransform
             src_x = self.columns
-            src_y = self.row
+            src_y = self.rows
 
             src_sr = osr.SpatialReference(wkt=src_proj)
             src_epsg = src_sr.GetAttrValue("AUTHORITY", 1)
@@ -1301,7 +1324,7 @@ class Raster:
             # mask_proj = mask.proj
             # mask_sref = osr.SpatialReference(wkt=mask_proj)
             mask_epsg = mask.epsg
-            row = mask.row
+            row = mask.rows
             col = mask.columns
             mask_noval = mask.no_data_value[band - 1]
             mask_array = mask.raster.ReadAsArray()
@@ -1844,7 +1867,7 @@ class Raster:
         nodatavalue: [float32]
             value stored in cells that is out of the domain
         rows: [List]
-            list of the row index of the cells you want to fill it with
+            list of the rows index of the cells you want to fill it with
             nearest neighbour.
         cols: [List]
             list of the column index of the cells you want to fill it with
@@ -2212,7 +2235,7 @@ class Raster:
         print("\n")
 
 
-class Dataset:
+class Dataset(Raster):
     files: List[str]
 
     """
@@ -2223,15 +2246,12 @@ class Dataset:
     def __init__(
         self,
         src: gdal.Dataset,
-        arr: np.ndarray,
+        time_length: int,
         files: List[str] = None,
-        no_data_value=None,
     ):
+        super().__init__(src)
         self.files = files
-        self.raster = Raster(src)
-        self.array = arr
-        self.time_lenth, self.rows, self.columns = arr.shape
-        self.no_data_value = no_data_value
+        self.time_lenth = time_length
 
         pass
 
@@ -2239,13 +2259,12 @@ class Dataset:
     def read_separate_files(
         cls,
         path: Union[str, List[str]],
-        band: int = 1,
         with_order: bool = True,
         start: str = None,
         end: str = None,
         fmt: str = None,
         freq: str = "daily",
-        separator: str = "_"
+        separator: str = "_",
     ):
         """read_separate_files.
 
@@ -2264,8 +2283,6 @@ class Dataset:
         path:[String/list]
             path of the folder that contains all the rasters or
             a list contains the paths of the rasters to read.
-        band: [int]
-            number of the band you want to read default is 1.
         with_order: [bool]
             True if the rasters follows a certain order, then the rasters names should have a
             number at the beginning of the file name indicating the order.
@@ -2376,42 +2393,53 @@ class Dataset:
             assert all(
                 file_i.endswith(".tif") for file_i in files
             ), "all files in the given folder should have .tif extension"
+
+        # files to be read
+        files = files[starti:endi]
+        if not isinstance(path, list):
+            # add the path to all the files
+            files = [f"{path}/{i}" for i in files]
         # create a 3d array with the 2d dimension of the first raster and the len
         # of the number of rasters in the folder
-        if isinstance(path, list):
-            sample = gdal.Open(files[starti])
-        else:
-            sample = gdal.Open(f"{path}/{files[starti]}")
-        # check the given band number
-        if band > sample.RasterCount:
-            raise ValueError(
-                f"the raster has only {sample.RasterCount} check the given band number"
-            )
+        sample = gdal.Open(files[0])
 
-        dim = sample.GetRasterBand(band).ReadAsArray().shape
-        no_data_value = sample.GetRasterBand(band).GetNoDataValue()
+        return cls(sample, len(files), files)
+
+    def read_array(self, band: int = 1) -> np.ndarray:
+        """Read array.
+
+            Read values form the given bands as Arrays for all files
+
+        Parameters
+        ----------
+        band: [int]
+            number of the band you want to read default is 1.
+
+        Returns
+        -------
+        Array
+        """
+        # check the given band number
+        if band > self.band_count:
+            raise ValueError(
+                f"the raster has only {self.band_count} check the given band number"
+            )
         # fill the array with no_data_value data
-        arr_3d = np.ones(
+        arr = np.ones(
             (
-                len(range(starti, endi)),
-                dim[0],
-                dim[1],
+                self.time_lenth,
+                self.rows,
+                self.columns,
             )
         )
-        arr_3d[:, :, :] = no_data_value
+        arr[:, :, :] = self.no_data_value
 
-        if isinstance(path, list):
-            for i in range(starti, endi):
-                # read the tif file
-                raster_i = gdal.Open(files[i])
-                arr_3d[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
-        else:
-            for i in range(starti, endi):
-                # read the tif file
-                raster_i = gdal.Open(f"{path}/{files[i]}")
-                arr_3d[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
+        for i, file_i in enumerate(self.files):
+            # read the tif file
+            raster_i = gdal.Open(f"{file_i}")
+            arr[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
 
-        return cls(sample, arr_3d, files, no_data_value)
+        return arr
 
     # @staticmethod
     # def readNC(
@@ -2432,7 +2460,7 @@ class Dataset:
     #         )
     #
     #     # get the variable
-    #     Var = list(nc.variables.keys())[-1]
+    #     Var = list(nc.subsets.keys())[-1]
     #     # extract the data
     #     dataset = nc[Var]
     #     # get the details of the file
@@ -2441,69 +2469,69 @@ class Dataset:
     #     )
     #     print("sss")
 
-    @staticmethod
-    def readASCIIsFolder(path: str, pixel_type: int):
-        """readASCIIsFolder.
-
-        this function reads rasters from a folder and creates a 3d arraywith the same
-        2d dimensions of the first raster in the folder and len as the number of files
-        inside the folder.
-        - all rasters should have the same dimensions
-        - folder should only contain raster files
-
-        Parameters
-        ----------
-        path: [str]
-            path of the folder that contains all the rasters.
-        pixel_type: [int]
-
-        Returns
-        -------
-        arr_3d: [numpy.ndarray]
-            3d array contains arrays read from all rasters in the folder.
-
-        ASCIIDetails: [List]
-            list of the six spatial information of the ASCII file
-            [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-            CellSize, NoValue]
-        files: [list]
-            list of names of all files inside the folder
-
-        Examples
-        --------
-        >>> raster_dir = "ASCII folder/"
-        >>> dtype = 1
-        >>> ASCIIArray, ASCIIDetails, NameList = Dataset.readASCIIsFolder(raster_dir, dtype)
-        """
-        # input data validation
-        # data type
-        assert type(path) == str, "A_path input should be string type"
-        # input values
-        # check wether the path exist or not
-        assert os.path.exists(path), "the path you have provided does not exist"
-        # check whether there are files or not inside the folder
-        assert os.listdir(path) != "", "the path you have provided is empty"
-        # get list of all files
-        files = os.listdir(path)
-        if "desktop.ini" in files:
-            files.remove("desktop.ini")
-        # check that folder only contains rasters
-        assert all(
-            f.endswith(".asc") for f in files
-        ), "all files in the given folder should have .tif extension"
-        # create a 3d array with the 2d dimension of the first raster and the len
-        # of the number of rasters in the folder
-        ASCIIValues, ASCIIDetails = Raster.readASCII(path + "/" + files[0], pixel_type)
-        noval = ASCIIDetails[5]
-        # fill the array with noval data
-        arr_3d = np.ones((ASCIIDetails[0], ASCIIDetails[1], len(files))) * noval
-
-        for i in range(len(files)):
-            # read the tif file
-            f, _ = Raster.readASCII(path + "/" + files[0], pixel_type)
-            arr_3d[:, :, i] = f
-
-        return arr_3d, ASCIIDetails, files
+    # @staticmethod
+    # def readASCIIsFolder(path: str, pixel_type: int):
+    #     """readASCIIsFolder.
+    #
+    #     this function reads rasters from a folder and creates a 3d arraywith the same
+    #     2d dimensions of the first raster in the folder and len as the number of files
+    #     inside the folder.
+    #     - all rasters should have the same dimensions
+    #     - folder should only contain raster files
+    #
+    #     Parameters
+    #     ----------
+    #     path: [str]
+    #         path of the folder that contains all the rasters.
+    #     pixel_type: [int]
+    #
+    #     Returns
+    #     -------
+    #     arr_3d: [numpy.ndarray]
+    #         3d array contains arrays read from all rasters in the folder.
+    #
+    #     ASCIIDetails: [List]
+    #         list of the six spatial information of the ASCII file
+    #         [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+    #         CellSize, NoValue]
+    #     files: [list]
+    #         list of names of all files inside the folder
+    #
+    #     Examples
+    #     --------
+    #     >>> raster_dir = "ASCII folder/"
+    #     >>> dtype = 1
+    #     >>> ASCIIArray, ASCIIDetails, NameList = Dataset.readASCIIsFolder(raster_dir, dtype)
+    #     """
+    #     # input data validation
+    #     # data type
+    #     assert type(path) == str, "A_path input should be string type"
+    #     # input values
+    #     # check wether the path exist or not
+    #     assert os.path.exists(path), "the path you have provided does not exist"
+    #     # check whether there are files or not inside the folder
+    #     assert os.listdir(path) != "", "the path you have provided is empty"
+    #     # get list of all files
+    #     files = os.listdir(path)
+    #     if "desktop.ini" in files:
+    #         files.remove("desktop.ini")
+    #     # check that folder only contains rasters
+    #     assert all(
+    #         f.endswith(".asc") for f in files
+    #     ), "all files in the given folder should have .tif extension"
+    #     # create a 3d array with the 2d dimension of the first raster and the len
+    #     # of the number of rasters in the folder
+    #     ASCIIValues, ASCIIDetails = Raster.readASCII(path + "/" + files[0], pixel_type)
+    #     noval = ASCIIDetails[5]
+    #     # fill the array with noval data
+    #     arr_3d = np.ones((ASCIIDetails[0], ASCIIDetails[1], len(files))) * noval
+    #
+    #     for i in range(len(files)):
+    #         # read the tif file
+    #         f, _ = Raster.readASCII(path + "/" + files[0], pixel_type)
+    #         arr_3d[:, :, i] = f
+    #
+    #     return arr_3d, ASCIIDetails, files
 
     @staticmethod
     def rastersLike(src: gdal.Dataset, array: np.ndarray, path: List[str] = None):

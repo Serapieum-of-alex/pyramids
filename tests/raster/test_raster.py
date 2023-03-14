@@ -12,10 +12,25 @@ from pyramids.raster import Raster
 class TestCreateRasterObject:
     def test_from_gdal_dataset(
         self,
-        src: str,
+        src: gdal.Dataset,
         src_no_data_value: float,
     ):
         src = Raster(src)
+        assert hasattr(src, "subsets")
+        assert hasattr(src, "meta_data")
+        assert hasattr(src, "variables")
+        assert isinstance(src, Raster)
+
+    def test_from_gdal_dataset_multi_band(
+        self,
+        multi_band: gdal.Dataset,
+        src_no_data_value: float,
+    ):
+        src = Raster(multi_band)
+        assert hasattr(src, "subsets")
+        assert hasattr(src, "meta_data")
+        assert hasattr(src, "variables")
+        assert src.band_count == 13
         assert isinstance(src, Raster)
 
     def test_from_open_ascii_file(
@@ -25,7 +40,7 @@ class TestCreateRasterObject:
         ascii_geotransform: tuple,
     ):
         # src_obj = Raster.readASCII(ascii_file_path, dtype=1)
-        src_obj = Raster.openRaster(ascii_file_path)
+        src_obj = Raster.open(ascii_file_path)
         assert src_obj.band_count == 1
         assert src_obj.epsg == 6326
         assert isinstance(src_obj.raster, Dataset)
@@ -109,15 +124,24 @@ class TestCreateRasterObject:
 
 
 class TestSpatialProperties:
-    def test_GetRasterData(
+    def test_read_array(
         self,
         src: Dataset,
-        src_no_data_value: float,
+        src_shape: tuple,
+        src_arr: np.ndarray,
     ):
         src = Raster(src)
-        arr, nodataval = src.getRasterData()
-        assert np.isclose(src_no_data_value, nodataval, rtol=0.001)
-        assert isinstance(arr, np.ndarray)
+        arr = src.read_array()
+        assert arr.shape == src_shape
+        assert np.array_equal(src_arr, arr)
+
+    def test_read_array_multi_bands(
+        self,
+        multi_band: Dataset,
+    ):
+        src = Raster(multi_band)
+        arr = src.read_array()
+        assert np.array_equal(multi_band.ReadAsArray(), arr)
 
     def test_get_raster_details(self, src: Dataset, src_shape: tuple):
         src = Raster(src)
