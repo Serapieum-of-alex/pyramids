@@ -58,7 +58,7 @@ class TestCreateRasterObject:
         src: Dataset,
         src_no_data_value: float,
     ):
-        src = Raster.createEmptyDriver(src)
+        src = Raster.create_empty_driver(src)
         assert isinstance(src, Raster)
 
     def test_create_raster(
@@ -68,7 +68,7 @@ class TestCreateRasterObject:
         src_epsg: int,
         src_no_data_value: float,
     ):
-        src = Raster.createRaster(
+        src = Raster.create_raster(
             arr=src_arr,
             geo=src_geotransform,
             epsg=src_epsg,
@@ -94,7 +94,7 @@ class TestCreateRasterObject:
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
 
-            Raster.rasterLike(src, arr2, driver="GTiff", path=raster_like_path)
+            Raster.raster_like(src, arr2, driver="GTiff", path=raster_like_path)
             assert os.path.exists(raster_like_path)
             dst = gdal.Open(raster_like_path)
             arr = dst.ReadAsArray()
@@ -113,7 +113,7 @@ class TestCreateRasterObject:
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
 
-            dst = Raster.rasterLike(src, arr2, driver="MEM")
+            dst = Raster.raster_like(src, arr2, driver="MEM")
 
             arr = dst.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
@@ -145,7 +145,7 @@ class TestSpatialProperties:
 
     def test_get_raster_details(self, src: Dataset, src_shape: tuple):
         src = Raster(src)
-        cols, rows, prj, bands, gt, no_data_value, dtypes = src.getRasterDetails()
+        cols, rows, prj, bands, gt, no_data_value, dtypes = src.get_details()
         assert cols == src_shape[1]
         assert rows == src_shape[0]
         assert isinstance(no_data_value, list)
@@ -159,13 +159,13 @@ class TestSpatialProperties:
         src_geotransform: tuple,
     ):
         src = Raster(src)
-        epsg, geo = src.getProjectionData()
+        epsg, geo = src.get_projection_data()
         assert epsg == src_epsg
         assert geo == src_geotransform
 
     def test_get_band_names(self, src: Dataset):
         src = Raster(src)
-        names = src.getBandNames()
+        names = src.get_band_names()
         assert isinstance(names, list)
         assert names == ["Band_1"]
 
@@ -175,7 +175,7 @@ class TestSpatialProperties:
         src_no_data_value: float,
     ):
         src = Raster(src)
-        src.setNoDataValue(5)
+        src.set_no_data_value(5)
         # check if the no_data_value in the Dataset object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
         # check if the no_data_value of the Raster object is set
@@ -192,7 +192,7 @@ class TestSpatialProperties:
         ):
             """get center coordinates of all cells."""
             src = Raster(src)
-            coords = src.getCellCoords(location="center", mask=False)
+            coords = src.get_cell_coords(location="center", mask=False)
             assert len(coords) == src_shape[0] * src_shape[1]
             assert np.isclose(
                 coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001
@@ -211,7 +211,7 @@ class TestSpatialProperties:
             src_cells_corner_coords_last4,
         ):
             src = Raster(src)
-            coords = src.getCellCoords(location="corner")
+            coords = src.get_cell_coords(location="corner")
             assert np.isclose(
                 coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
             ).all()
@@ -224,7 +224,7 @@ class TestSpatialProperties:
         ):
             """get cell coordinates from cells inside the domain only."""
             src = Raster(src)
-            coords = src.getCellCoords(location="center", mask=True)
+            coords = src.get_cell_coords(location="center", mask=True)
             assert coords.shape[0] == src_masked_values_len
             assert np.isclose(
                 coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
@@ -234,13 +234,13 @@ class TestSpatialProperties:
 class TestCreateCellGeometry:
     def test_create_cell_polygon(self, src: Dataset, src_shape: Tuple, src_epsg: int):
         src = Raster(src)
-        gdf = src.getCellPolygons()
+        gdf = src.get_cell_polygons()
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
 
     def test_create_cell_points(self, src: Dataset, src_shape: Tuple, src_epsg: int):
         src = Raster(src)
-        gdf = src.getCellPoints()
+        gdf = src.get_cell_points()
         # check the size
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
@@ -253,7 +253,7 @@ class TestSave:
         save_raster_path: str,
     ):
         src = Raster(src)
-        src.ToGeotiff(save_raster_path)
+        src.to_geotiff(save_raster_path)
         assert os.path.exists(save_raster_path)
         os.remove(save_raster_path)
 
@@ -263,7 +263,7 @@ class TestSave:
         ascii_file_save_to: str,
     ):
         src = Raster(src)
-        src.ToASCII(ascii_file_save_to)
+        src.to_ascii(ascii_file_save_to)
         assert os.path.exists(ascii_file_save_to)
         os.remove(ascii_file_save_to)
 
@@ -275,7 +275,7 @@ class TestMathOperations:
         mapalgebra_function,
     ):
         src = Raster(src)
-        dst = src.mapAlgebra(mapalgebra_function)
+        dst = src.apply(mapalgebra_function)
         arr = dst.raster.ReadAsArray()
         nodataval = dst.raster.GetRasterBand(1).GetNoDataValue()
         vals = arr[~np.isclose(arr, nodataval, rtol=0.00000000000001)]
@@ -381,7 +381,7 @@ def test_match_raster_alignment(
     soil_raster: Dataset,
 ):
     soil_raster_obj = Raster(soil_raster)
-    soil_aligned = soil_raster_obj.matchRasterAlignment(src)
+    soil_aligned = soil_raster_obj.match_alignment(src)
     assert soil_aligned.raster.ReadAsArray().shape == src_shape
     nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
     assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
@@ -398,7 +398,7 @@ class TestCrop:
         src_no_data_value: float,
     ):
         aligned_raster = Raster(aligned_raster)
-        croped = aligned_raster.cropAlligned(src)
+        croped = aligned_raster.crop_alligned(src)
         dst_arr_cropped = croped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -412,7 +412,7 @@ class TestCrop:
         src_no_data_value: float,
     ):
         aligned_raster = Raster(aligned_raster)
-        croped = aligned_raster.cropAlligned(src_arr, mask_noval=src_no_data_value)
+        croped = aligned_raster.crop_alligned(src_arr, mask_noval=src_no_data_value)
         dst_arr_cropped = croped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -453,7 +453,7 @@ class TestCrop:
         epsg = basin_polygon.crs.to_epsg()
         src_obj = Raster(soil_raster)
         src_reprojected = src_obj.reproject(epsg)
-        cropped_raster = src_reprojected._cropWithPolygon(basin_polygon)
+        cropped_raster = src_reprojected._crop_with_polygon(basin_polygon)
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.geotransform == src_reprojected.geotransform
         assert cropped_raster.no_data_value[0] == src_reprojected.no_data_value[0]

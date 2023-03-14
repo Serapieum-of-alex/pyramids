@@ -20,6 +20,11 @@ def src() -> Dataset:
 
 
 @pytest.fixture(scope="module")
+def multi_band() -> Dataset:
+    return gdal.Open("tests/data/geotiff/multi_bands.tif")
+
+
+@pytest.fixture(scope="module")
 def nc_path() -> str:
     return "examples/data/MSWEP_1979010100.nc"
 

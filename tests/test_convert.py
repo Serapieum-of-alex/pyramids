@@ -63,11 +63,11 @@ class TestPolygonToRaster:
             f"following path: {raster_to_df_path}"
         )
         src = gdal.Open(rasterized_mask_path)
-        assert Raster.getEPSG(src) == 32618
+        assert Raster.get_epsg(src) == 32618
         geo = src.GetGeoTransform()
         geo_source = raster_to_df_dataset.GetGeoTransform()
         assert geo == geo_source
-        arr, no_vata_val = Raster.getRasterData(src)
+        arr, no_vata_val = Raster._getRasterData(src)
         assert no_vata_val == 0.0
         values = arr[arr[:, :] == 1.0]
         assert values.shape[0] == 16
@@ -101,11 +101,11 @@ class TestPolygonToRaster:
             f"following path: {raster_to_df_path}"
         )
         src = gdal.Open(rasterized_mask_path)
-        assert Raster.getEPSG(src) == 32618
+        assert Raster.get_epsg(src) == 32618
         geo = src.GetGeoTransform()
         geo_source = raster_to_df_dataset.GetGeoTransform()
         assert geo == geo_source
-        arr, no_vata_val = Raster.getRasterData(src)
+        arr, no_vata_val = Raster._getRasterData(src)
         assert no_vata_val == 0.0
         values = arr[arr[:, :] == 1.0]
         assert values.shape[0] == 16
@@ -130,11 +130,11 @@ class TestPolygonToRaster:
         rasterized_mask_array
         """
         src = Convert.polygonToRaster(vector_mask_path, raster_to_df_path)
-        assert Raster.getEPSG(src) == 32618
+        assert Raster.get_epsg(src) == 32618
         geo = src.GetGeoTransform()
         geo_source = raster_to_df_dataset.GetGeoTransform()
         assert geo == geo_source
-        arr, no_vata_val = Raster.getRasterData(src)
+        arr, no_vata_val = Raster._getRasterData(src)
         assert no_vata_val == 0.0
         values = arr[arr[:, :] == 1.0]
         assert values.shape[0] == 16
