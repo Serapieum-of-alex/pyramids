@@ -43,7 +43,7 @@ class Catchment:
         ----------
             1- flow_direction_cell:
                 [numpy array] with the same dimensions of the raster and 2 layers
-                first layer for row index and second row for column index
+                first layer for rows index and second rows for column index
             2-elev_sinkless:
                 [numpy array] DEM after filling sinks
         """
@@ -126,7 +126,7 @@ class Catchment:
                     )[0][0]
                     slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
-        # first row without corners
+        # first rows without corners
         for i in [0]:
             for j in range(1, no_columns - 1):  # all columns
                 if not np.isnan(elev[i, j]):
@@ -156,7 +156,7 @@ class Catchment:
                     )[0][0]
                     slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
-        # last row without corners
+        # last rows without corners
         for i in [no_rows - 1]:
             for j in range(1, no_columns - 1):  # all columns
                 if not np.isnan(elev[i, j]):
@@ -356,7 +356,7 @@ class Catchment:
         for i in range(no_rows):
             for j in range(no_columns):
                 if flow_direction[i, j] == 0:
-                    flow_direction_cell[i, j, 0] = i  # index of the row
+                    flow_direction_cell[i, j, 0] = i  # index of the rows
                     flow_direction_cell[i, j, 1] = j + 1  # index of the column
                 elif flow_direction[i, j] == 1:
                     flow_direction_cell[i, j, 0] = i - 1
@@ -396,7 +396,7 @@ class Catchment:
         ----------
             1-fd_indices:
                 [numpy array] with the same dimensions of the raster and 2 layers
-                first layer for row index and second row for column index
+                first layer for rows index and second rows for column index
 
         Example:
         ----------
@@ -434,7 +434,7 @@ class Catchment:
         for i in range(rows):
             for j in range(cols):
                 if fd[i, j] == 1:
-                    fd_cell[i, j, 0] = i  # index of the row
+                    fd_cell[i, j, 0] = i  # index of the rows
                     fd_cell[i, j, 1] = j + 1  # index of the column
                 elif fd[i, j] == 128:
                     fd_cell[i, j, 0] = i - 1
@@ -575,7 +575,7 @@ class Catchment:
                 if basins_A[i, j] != no_val and basins_A[i, j] != basins_val[0]:
                     basins_A[i, j] = no_val
 
-        raster.rasterLike(basins, basins_A, pathout)
+        raster.raster_like(basins, basins_A, pathout)
 
     @staticmethod
     def nearestCell(
@@ -584,7 +584,7 @@ class Catchment:
     ) -> DataFrame:
         """nearestCell.
 
-            nearestCell calculates the the indices (row, col) of nearest cell in a given
+            nearestCell calculates the the indices (rows, col) of nearest cell in a given
             raster to a station
             coordinate system of the raster has to be projected to be able to calculate
             the distance
@@ -641,7 +641,7 @@ class Catchment:
         # X_coordinate= upperleft corner x+ index* cell size+celsize/2
         coox = np.ones((rows, cols))
         cooy = np.ones((rows, cols))
-        for i in range(rows):  # iteration by row
+        for i in range(rows):  # iteration by rows
             for j in range(cols):  # iteration by column
                 coox[i, j] = (
                     geo_trans[0] + geo_trans[1] / 2 + j * geo_trans[1]
@@ -653,7 +653,7 @@ class Catchment:
         Dist = np.ones((rows, cols))
         for no in range(len(StCoord["x"])):
             # calculate the distance from the station to all cells
-            for i in range(rows):  # iteration by row
+            for i in range(rows):  # iteration by rows
                 for j in range(cols):  # iteration by column
                     Dist[i, j] = np.sqrt(
                         np.power((StCoord.loc[StCoord.index[no], "x"] - coox[i, j]), 2)

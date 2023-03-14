@@ -33,7 +33,7 @@ Dst_Array = dst.ReadAsArray()
 print("Shape of distnation raster Before matching = " + str(Dst_Array.shape))
 
 ### Match the alignment of both rasters
-NewRasterB = Raster.matchRasterAlignment(src, dst)
+NewRasterB = Raster.match_alignment(src, dst)
 NewRasterB_array = NewRasterB.ReadAsArray()
 print("Shape of distnation  raster after matching = " + str(NewRasterB_array.shape))
 
@@ -45,7 +45,7 @@ assert (
 
 # %% Match the NODataValue
 # TODO : fix bug in nearestneighbor
-NewRasterB_ND = Raster.cropAlligned(src, NewRasterB)
+NewRasterB_ND = Raster.crop_alligned(src, NewRasterB)
 
 NoDataValue = NewRasterB_ND.GetRasterBand(1).GetNoDataValue()
 

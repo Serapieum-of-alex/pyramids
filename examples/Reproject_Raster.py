@@ -26,7 +26,7 @@ RasterA = gdal.Open(RasterApath)
 RasterB = gdal.Open(RasterBpath)
 #%%
 # get the array and the nodatavalue in the raster
-RasterA_arr, nodataval = Raster.getRasterData(RasterA, band=1)
+RasterA_arr, nodataval = Raster._getRasterData(RasterA, band=1)
 
 plt.imshow(RasterA_arr, cmap="CMRmap", vmax=RasterA_arr.max(), vmin=RasterA_arr.min())
 plt.colorbar()

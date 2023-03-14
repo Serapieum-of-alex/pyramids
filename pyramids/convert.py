@@ -142,9 +142,9 @@ class Convert:
 
             assert (
                 ASCIIRows == RasterRows and ASCIIColumns == RasterColumns
-            ), " Data in both ASCII file and Raster file should have the same number of row and columns"
+            ), " Data in both ASCII file and Raster file should have the same number of rows and columns"
 
-            Raster.rasterLike(src, ASCIIValues, save_path)
+            Raster.raster_like(src, ASCIIValues, save_path)
         elif epsg is not None:
             assert (
                 type(epsg) == int
@@ -239,13 +239,13 @@ class Convert:
         >>> ascii_file = "soiltype.asc"
         >>> RasterFile = "DEM.tif"
         >>> savePath = "Soil_raster.tif"
-        >>> pixel_type = 1
-        >>> Convert.asciiFoldertoRaster(ascii_file,  savePath, pixel_type, RasterFile)
+        >>> dtype = 1
+        >>> Convert.asciiFoldertoRaster(ascii_file,  savePath, dtype, RasterFile)
         ASCII to Raster given an EPSG number
         >>> ascii_file = "soiltype.asc"
         >>> savePath = "Soil_raster.tif"
-        >>> pixel_type = 1
-        >>> Convert.asciiFoldertoRaster(path, savePath, pixel_type=5, epsg=4647)
+        >>> dtype = 1
+        >>> Convert.asciiFoldertoRaster(path, savePath, dtype=5, epsg=4647)
         """
         assert type(path) == str, "A_path input should be string type"
         # input values
@@ -402,12 +402,12 @@ class Convert:
                     ["COMPRESS=LZW"],
                 )
 
-            sr = Raster._createSRfromEPSG(epsg=epsg)
+            sr = Raster._create_sr_from_epsg(epsg=epsg)
             # set the geotransform
             dst.SetGeoTransform(geo)
             # set the projection
             dst.SetProjection(sr.ExportToWkt())
-            dst = Raster.setNoDataValue(dst)
+            dst = Raster.set_no_data_value(dst)
             dst.GetRasterBand(1).WriteArray(data)
             dst.FlushCache()
             dst = None
@@ -444,7 +444,7 @@ class Convert:
             Single band raster with vector geometries burned.
         """
         if isinstance(raster, str):
-            src = Raster.openDataset(raster)
+            src = Raster.open(raster)
         else:
             src = raster
 
@@ -464,7 +464,7 @@ class Convert:
             vector = vector_path
 
         # Check EPSG are same, if not reproject vector.
-        src_epsg = Raster.getEPSG(src)
+        src_epsg = Raster.get_epsg(src)
         ds_epsg = Vector.getEPSG(ds)
         if src_epsg != ds_epsg:
             # TODO: reproject the vector to the raster projection instead of raising an error.
@@ -472,7 +472,7 @@ class Convert:
                 f"Raster and vector are not the same EPSG. {src_epsg} != {ds_epsg}"
             )
 
-        src = Raster.createEmptyDriver(src, path, bands=1, no_data_value=0)
+        src = Raster.create_empty_driver(src, path, bands=1, no_data_value=0)
 
         if vector_field is None:
             # Use a constant value for all features.
@@ -597,9 +597,9 @@ class Convert:
 
         # Get raster band names. open the dataset using gdal.Open
         if isinstance(src, str):
-            src = Raster.openDataset(src)
+            src = Raster.open(src)
 
-        band_names = Raster.getBandNames(src)
+        band_names = Raster.get_band_names(src)
 
         # Create a mask from the pixels touched by the vector.
         if vector is not None:
@@ -613,7 +613,7 @@ class Convert:
             elif isinstance(vector, GeoDataFrame):
                 gdf = vector
 
-            # add a unique value for each row to use it to rasterize the vector
+            # add a unique value for each rows to use it to rasterize the vector
             gdf["burn_value"] = list(range(1, len(gdf) + 1))
             # save the new vector to disk to read it with ogr later
             gdf.to_file(new_vector_path, driver="GeoJSON")
@@ -625,9 +625,9 @@ class Convert:
             )  # rasterized_vector_path,
             if add_geometry:
                 if add_geometry.lower() == "point":
-                    coords = Raster.getCellPoints(rasterized_vector, mask=True)
+                    coords = Raster.get_cell_points(rasterized_vector, mask=True)
                 else:
-                    coords = Raster.getCellPolygons(rasterized_vector, mask=True)
+                    coords = Raster.get_cell_polygons(rasterized_vector, mask=True)
 
             # Loop over mask values to extract pixels.
             # DataFrames of each tile.
@@ -681,9 +681,9 @@ class Convert:
 
             if add_geometry:
                 if add_geometry.lower() == "point":
-                    coords = Raster.getCellPoints(src, mask=True)
+                    coords = Raster.get_cell_points(src, mask=True)
                 else:
-                    coords = Raster.getCellPolygons(src, mask=True)
+                    coords = Raster.get_cell_polygons(src, mask=True)
 
         out_df = out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
         if add_geometry:

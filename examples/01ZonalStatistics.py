@@ -7,21 +7,20 @@ currunt_work_directory = Hapi/Example
 """
 # import os
 import numpy as np
-
 from pyramids.raster import Raster as R
 
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
 
-Path = "examples/data/ZonalStatistics/"
+Path = "examples/data/ZonalStatistics"
 SavePath = Path
-BaseMapF = Path + "classes.tif"
+BaseMapF = f"{Path}/classes.tif"
 
 ExcludedValue = 0
 Compressed = True
 OccupiedCellsOnly = False
 #%% one map
-ExtractedValues, NonZeroCells = R.overlayMap(
-    Path + "maps/Map1.zip", BaseMapF, ExcludedValue, Compressed, OccupiedCellsOnly
+ExtractedValues, NonZeroCells = R.overlay(
+    f"{Path}/maps/Map1.zip", BaseMapF, ExcludedValue, Compressed, OccupiedCellsOnly
 )
 
 MapPrefix = "Map"

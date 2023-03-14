@@ -47,7 +47,8 @@ Outputs:
     2- no_val: [numeric]
         value stored in novalue cells
 """
-arr, nodataval = src.getRasterData()
+arr = src.read_array()
+nodataval = src.no_data_value[0]
 # %%
 """GetProjectionData.
 
@@ -66,7 +67,7 @@ Returns:
         geotransform data (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation,
                             pixelsize). The default is ''.
 """
-epsg, geo = src.getProjectionData()
+epsg, geo = src.get_projection_data()
 print("EPSG = " + str(epsg))
 print(geo)
 # %% GetCoords
@@ -89,7 +90,7 @@ mat_range : array
     Array with all the centres of cells in the domain of the DEM
 
 """
-coords = src.getCellCoords()
+coords = src.get_cell_coords()
 # %% SaveRaster
 """SaveRaster.
 
@@ -112,7 +113,7 @@ EX:
     SaveRaster(raster,output_path)
 """
 path = f"{datapath}/save_raster_test.tif"
-src.ToGeotiff(path)
+src.to_geotiff(path)
 # %%` CreateRaster
 """
 We will recreate the raster that we have already read using the 'GetRasterData' method at the
@@ -146,7 +147,7 @@ Returns
             a gdal.Dataset will be returned.
 """
 
-src_new = Raster.createRaster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
+src_new = Raster.create_raster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
 Map.plot(src_new, title="Flow Accumulation")
 # %%` RasterLike
 """RasterLike.
@@ -193,7 +194,7 @@ arr2 = np.ones(shape=arr.shape, dtype=np.float64) * nodataval
 arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
 
 path = datapath + "/rasterlike.tif"
-src_new = Raster.rasterLike(src, arr2, path=path)
+src_new = Raster.raster_like(src, arr2, path=path)
 
 dst = Raster.open(path)
 Map.plot(dst, title="Flow Accumulation", color_scale=1)
@@ -234,7 +235,7 @@ def func1(val):
     return val
 
 
-dst = src.mapAlgebra(func1)
+dst = src.apply(func1)
 Map.plot(dst, title="Classes", color_scale=4, ticks_spacing=1)
 # %%
 """RasterFill.
@@ -292,8 +293,8 @@ print("Original Cell Size =" + str(geo[1]))
 cell_size = 100
 dst = src.resample(cell_size, method="bilinear")
 
-dst_arr, _ = dst.getRasterData()
-_, newgeo = dst.getProjectionData()
+dst_arr = dst.read_array()
+_, newgeo = dst.get_projection_data()
 print("New cell size is " + str(newgeo[1]))
 Map.plot(dst, title="Flow Accumulation")
 # %%
@@ -330,13 +331,13 @@ Example :
 print("current EPSG - " + str(epsg))
 to_epsg = 4326
 dst = src.reproject(to_epsg=to_epsg, option=1)
-newepsg, newgeo = dst.getProjectionData()
+newepsg, newgeo = dst.get_projection_data()
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
 """Option 2"""
 print("Option 2")
 dst = src.reproject(to_epsg=to_epsg, option=2)
-newepsg, newgeo = dst.getProjectionData()
+newepsg, newgeo = dst.get_projection_data()
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
 # %%
@@ -403,7 +404,8 @@ Outputs:
 """
 # crop array using a raster
 dst = Raster.open(aligned_raster)
-dst_arr, dst_nodataval = dst.getRasterData()
+dst_arr = dst.read_array()
+dst_nodataval = dst.no_data_value[0]
 
 Map.plot(
     dst_arr,
@@ -425,7 +427,7 @@ Map.plot(
 cropping rasters may  change the alignment of the cells and to keep the alignment during cropping a raster
 we will crop the same previous raster but will give the input to the function as a gdal.dataset object
 """
-dst_cropped = dst.cropAlligned(src)
+dst_cropped = dst.crop_alligned(src)
 Map.plot(dst_cropped, title="Cropped raster", color_scale=1, ticks_spacing=0.01)
 # %% crop raster using array
 """
@@ -433,7 +435,7 @@ we can also crop a raster using an array in condition that we enter the value of
 array
 we can repeat the previous example but
 """
-dst_cropped = dst.cropAlligned(arr, mask_noval=nodataval)
+dst_cropped = dst.crop_alligned(arr, mask_noval=nodataval)
 Map.plot(dst_cropped, title="Cropped array", color_scale=1, ticks_spacing=0.01)
 # %% clip a folder of rasters using another raster while preserving the alignment
 """
@@ -506,14 +508,14 @@ Example:
 """
 # we want to align the soil raster similar to the alignment in the src raster
 soil_raster = Raster.open(soilmappath)
-epsg, geotransform = soil_raster.getProjectionData()
+epsg, geotransform = soil_raster.get_projection_data()
 print("Before alignment EPSG = " + str(epsg))
 print("Before alignment Geotransform = " + str(geotransform))
 # cell_size = geotransform[1]
 Map.plot(soil_raster, title="To be aligned", color_scale=1, ticks_spacing=1)
 
-soil_aligned = soil_raster.matchRasterAlignment(src)
-New_epsg, New_geotransform = soil_aligned.getProjectionData()
+soil_aligned = soil_raster.match_alignment(src)
+New_epsg, New_geotransform = soil_aligned.get_projection_data()
 print("After alignment EPSG = " + str(New_epsg))
 print("After alignment Geotransform = " + str(New_geotransform))
 Map.plot(soil_aligned, title="After alignment", color_scale=1, ticks_spacing=1)
@@ -542,7 +544,7 @@ Output:
         directory.
 """
 RasterA = Raster.open(aligned_raster)
-epsg, geotransform = RasterA.getProjectionData()
+epsg, geotransform = RasterA.get_projection_data()
 print("Raster EPSG = " + str(epsg))
 print("Raster Geotransform = " + str(geotransform))
 Map.plot(RasterA, title="Raster to be cropped", color_scale=1, ticks_spacing=1)
@@ -552,7 +554,7 @@ so the projection is different between the raster and the mask and the cell size
 """
 soil_raster = Raster.open(soilmappath)
 dst = RasterA._crop_un_aligned(soil_raster)
-dst_epsg, dst_geotransform = Raster.getProjectionData(dst)
+dst_epsg, dst_geotransform = Raster.get_projection_data(dst)
 print("resulted EPSG = " + str(dst_epsg))
 print("resulted Geotransform = " + str(dst_geotransform))
 Map.plot(dst, title="Cropped Raster", color_scale=1, ticks_spacing=1)
@@ -654,9 +656,9 @@ fig, ax = Map.plot(
 
 arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
 path2 = datapath + r"/roughness.asc"
-Raster.ToASCII(path2, geotransform, arr)
+Raster.to_ascii(path2, geotransform, arr)
 # %% read the points
 points = pd.read_csv(pointsPath)
-points["row"] = np.nan
+points["rows"] = np.nan
 points["col"] = np.nan
-points.loc[:, ["row", "col"]] = GC.nearestCell(src, points[["x", "y"]][:]).values
+points.loc[:, ["rows", "col"]] = GC.nearestCell(src, points[["x", "y"]][:]).values
