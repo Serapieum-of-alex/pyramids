@@ -106,7 +106,7 @@ class Raster:
         return domain_count
 
     @classmethod
-    def open(cls, path: str, read_only=True):
+    def read(cls, path: str, read_only=True):
         """Open file.
 
             - for a geotiff and ASCII files.
@@ -979,7 +979,7 @@ class Raster:
 
         Examples
         --------
-        >>> raster_obj = Raster.open("path/to/file/***.tif")
+        >>> raster_obj = Raster.read("path/to/file/***.tif")
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
         >>> raster_obj.to_geotiff(output_path)
         """
@@ -1422,7 +1422,7 @@ class Raster:
         Examples
         --------
         >>> from pyramids.raster import Raster
-        >>> src = Raster.open("path/raster_name.tif")
+        >>> src = Raster.read("path/raster_name.tif")
         >>> projected_raster = src.to_epsg(to_epsg=3857)
         """
         if not isinstance(to_epsg, int):
@@ -1732,7 +1732,7 @@ class Raster:
         if isinstance(alignment_src, Raster):
             src = alignment_src
         elif isinstance(alignment_src, str):
-            src = Raster.open(alignment_src)
+            src = Raster.read(alignment_src)
         else:
             raise TypeError(
                 "First parameter should be a Raster read using Raster.openRaster or a path to the raster, "
@@ -1789,7 +1789,7 @@ class Raster:
         """
         # get information from the mask raster
         if isinstance(mask, str):
-            mask = Raster.open(mask)
+            mask = Raster.read(mask)
         elif isinstance(mask, Raster):
             mask = mask
         else:

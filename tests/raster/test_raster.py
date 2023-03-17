@@ -42,7 +42,7 @@ class TestCreateRasterObject:
         ascii_geotransform: tuple,
     ):
         # src_obj = Raster.readASCII(ascii_file_path, dtype=1)
-        src_obj = Raster.open(ascii_file_path)
+        src_obj = Raster.read(ascii_file_path)
         assert src_obj.band_count == 1
         assert src_obj.epsg == 6326
         assert isinstance(src_obj.raster, Dataset)
@@ -102,7 +102,7 @@ class TestCreateRasterObject:
             src_obj = Raster(src)
             Raster.raster_like(src_obj, arr2, driver="GTiff", path=raster_like_path)
             assert os.path.exists(raster_like_path)
-            dst_obj = Raster.open(raster_like_path)
+            dst_obj = Raster.read(raster_like_path)
             arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
             assert np.isclose(
