@@ -189,6 +189,37 @@ class TestSpatialProperties:
         # check if the no_data_value of the Raster object is set
         assert src.no_data_value[0] == 5
 
+    def test_set_no_data_value(
+        self,
+        src_update: Dataset,
+        src_no_data_value: float,
+    ):
+        src = Raster(src_update)
+        src._set_no_data_value(5)
+        # check if the no_data_value in the Dataset object is set
+        assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
+        # check if the no_data_value of the Raster object is set
+        assert src.no_data_value[0] == 5
+
+    def test_change_no_data_value(
+        self,
+        src: Dataset,
+        src_no_data_value: float,
+    ):
+        src = Raster(src)
+        arr = src.read_array()
+        old_value = arr[0, 0]
+        new_val = -6666
+        src.change_no_data_value(new_val, old_value)
+        # check if the no_data_value in the Dataset object is set
+        assert src.raster.GetRasterBand(1).GetNoDataValue() == new_val
+        # check if the no_data_value of the Raster object is set
+        assert src.no_data_value[0] == new_val
+        # check if the new_val for the no_data_value is set in the bands
+        arr = src.read_array(0)
+        val = arr[0, 0]
+        assert val == new_val
+
 
 class TestGetCellCoordsAndCreateCellGeometry:
     def test_cell_center_all_cells(

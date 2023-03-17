@@ -627,45 +627,6 @@ class Raster:
 
         return names
 
-    # def change_no_data_value(self, new_value: Any, old_value : Any = None):
-    #     """change_no_data_value.
-    #
-    #         - Set the no data value in a all raster bands.
-    #         - Fills the whole raster with the no_data_value.
-    #         - used only when creating an empty driver.
-    #
-    #     Parameters
-    #     ----------
-    #     new_value: [numeric]
-    #         no data value to setin the raster bands
-    #     """
-    #     if not isinstance(new_value, list):
-    #         new_value = [new_value] * self.band_count
-    #
-    #     if old_value is not None and not isinstance(old_value, list):
-    #         old_value = [old_value] * self.band_count
-    #
-    #     if len(new_value) != len(old_value) != self.band_count:
-    #         raise ValueError("")
-    #
-    #     # first set the no_data_value attribute to the new value, then fill the whole array to this value.
-    #     # currently the _set_no_data_value takes one value and set it for all bands
-    #     self._set_no_data_value(new_value)
-    #     for band in range(1, self.band_count + 1):
-    #         arr = self.read_array(band)
-    #         # arr2 = np.full_like(arr, np.nan).flatten()
-    #
-    #         def fn(val):
-    #             if np.isclose(val, old_value[band - 1], rtol=0.001):
-    #                 return new_value[band - 1]
-    #             else:
-    #                 pass
-    #         # loop over the array and replace the old by the new no_data_value.
-    #         fn_vec = np.vectorize(fn)
-    #         fn_vec()
-    #
-    #         # self.raster.GetRasterBand(band).WriteArray(arr)
-
     def _set_no_data_value(
         self, no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE
     ):
@@ -759,8 +720,43 @@ class Raster:
                 )
         self.no_data_value[band] = no_data_value
 
-    # # TODO: Not used
-    # def changeNoDataValue(self, mask: gdal.Dataset, band: int = 1):
+    def change_no_data_value(self, new_value: Any, old_value: Any = None):
+        """change_no_data_value.
+
+            - Set the no data value in a all raster bands.
+            - Fills the whole raster with the no_data_value.
+            - used only when creating an empty driver.
+
+        Parameters
+        ----------
+        new_value: [numeric]
+            no data value to set in the raster bands.
+
+        old_value: [numeric]
+            old no data value that are already in the raster bands.
+        """
+        if not isinstance(new_value, list):
+            new_value = [new_value] * self.band_count
+
+        if old_value is not None and not isinstance(old_value, list):
+            old_value = [old_value] * self.band_count
+
+        if len(new_value) != len(old_value) != self.band_count:
+            raise ValueError("")
+
+        dst = gdal.GetDriverByName("MEM").CreateCopy("", self.raster, 0)
+        for band in range(self.band_count):
+            arr = self.read_array(band)
+            arr[np.isclose(arr, old_value, rtol=0.001)] = new_value[band]
+            dst.GetRasterBand(band + 1).WriteArray(arr)
+
+        self.raster = dst
+
+        for band in range(self.band_count):
+            self.change_no_data_value_attr(band, new_value[band])
+
+    # TODO: Not used
+    # def changeNoDataValue(self, mask: gdal.Dataset, band: int = 0):
     #     """ChangeNoDataValue.
     #
     #     ChangeNoDataValue changes the cells of nodata value in a dst raster to match
@@ -778,12 +774,10 @@ class Raster:
     #     -------
     #     Raster
     #     """
-    #     # input data validation
-    #     # data type
-    #     src_noval = mask.raster.GetRasterBand(1).GetNoDataValue()
+    #     src_noval = self.no_data_value[band]
     #
-    #     dtype = self.dtype[band - 1 ]
-    #     dst_noval = self.no_data_value[band - 1]
+    #     dtype = self.dtype[band]
+    #     dst_noval = self.no_data_value[band]
     #
     #     dst_array = self.raster.ReadAsArray()
     #
@@ -1455,7 +1449,7 @@ class Raster:
             src_y = self.rows
 
             src_sr = osr.SpatialReference(wkt=src_proj)
-            src_epsg = src_sr.GetAttrValue("AUTHORITY", 1)
+            src_epsg = self.get_epsg()
 
             ### distination raster
             # spatial ref
@@ -1465,7 +1459,7 @@ class Raster:
             # in case the source crs is GCS and longitude is in the west hemisphere gdal
             # reads longitude from 0 to 360 and transformation factor wont work with values
             # greater than 180
-            if src_epsg != str(to_epsg):
+            if src_epsg != to_epsg:
                 if src_epsg == "4326" and src_gt[0] > 180:
                     lng_new = src_gt[0] - 360
                     # transformation factors
@@ -1502,8 +1496,6 @@ class Raster:
                 new_ys, new_xs = Vector.reprojectPoints(
                     ys, xs, from_epsg=from_epsg, to_epsg=to_epsg, precision=6
                 )  # int(dst_epsg.GetAttrValue('AUTHORITY',1))
-                # new_xs, new_ys= Vector.ReprojectPoints_2(ys,xs,from_epsg=int(src_epsg.GetAttrValue('AUTHORITY',1)),
-                #                                  to_epsg=int(dst_epsg.GetAttrValue('AUTHORITY',1)))
             else:
                 new_xs = xs
                 # new_ys = ys
