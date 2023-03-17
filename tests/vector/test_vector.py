@@ -118,9 +118,7 @@ class TestPolygonToRaster:
             os.remove(rasterized_mask_path)
 
         src = Raster.read(raster_to_df_path)
-        Vector.to_raster(
-            vector_mask_path, src, rasterized_mask_path
-        )
+        Vector.to_raster(vector_mask_path, src, rasterized_mask_path)
         assert os.path.exists(rasterized_mask_path), (
             "The output raster should have been saved to disk at the "
             f"following path: {raster_to_df_path}"
@@ -160,9 +158,7 @@ class TestPolygonToRaster:
             os.remove(rasterized_mask_path)
 
         src = Raster.read(raster_to_df_path)
-        Vector.to_raster(
-            vector_mask_gdf, src, rasterized_mask_path
-        )
+        Vector.to_raster(vector_mask_gdf, src, rasterized_mask_path)
         assert os.path.exists(rasterized_mask_path), (
             "The output raster should have been saved to disk at the "
             f"following path: {raster_to_df_path}"
@@ -204,3 +200,14 @@ class TestPolygonToRaster:
         assert src.no_data_value[0] == 0.0
         values = arr[arr[:, :] == 1.0]
         assert values.shape[0] == 16
+
+
+class TestConvertDataSourceAndGDF:
+    def test_ds_to_gdf(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
+        gdf = Vector._ogrDataSourceToGeoDF(data_source)
+        assert all(gdf == ds_geodataframe)
+
+    def test_gdf_to_ds(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
+        ds = Vector._gdfToOgrDataSource(ds_geodataframe)
+        assert isinstance(ds, DataSource)
+        assert ds.name == "memory"

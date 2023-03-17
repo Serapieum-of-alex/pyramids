@@ -282,8 +282,10 @@ class Vector:
         from pyramids.raster import Raster
 
         if not isinstance(src, Raster):
-            raise TypeError("The second parameter should be a Raster object (check how to read a raster using the "
-                            "Raster module)")
+            raise TypeError(
+                "The second parameter should be a Raster object (check how to read a raster using the "
+                "Raster module)"
+            )
 
         if not isinstance(vector, GeoDataFrame):
             # if the given vector is a path

@@ -12,13 +12,3 @@ from pyramids.raster import Raster
 
 
 
-
-class TestConvertDataSourceAndGDF:
-    def test_ds_to_gdf(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
-        gdf = Convert._ogrDataSourceToGeoDF(data_source)
-        assert all(gdf == ds_geodataframe)
-
-    def test_gdf_to_ds(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
-        ds = Convert._gdfToOgrDataSource(ds_geodataframe)
-        assert isinstance(ds, DataSource)
-        assert ds.name == "memory"
