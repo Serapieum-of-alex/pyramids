@@ -1,8 +1,10 @@
-"""Created on Sun Jul 01 17:07:40 2018. ogr classes: https://gdal.org/java/org/gdal/ogr/package-summary.html ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
-
-@author: Mostafa
 """
-
+ogr classes: https://gdal.org/java/org/gdal/ogr/package-summary.html
+ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
+"""
+import os
+import tempfile
+import uuid
 import json
 import warnings
 from typing import Dict, List, Tuple, Union
@@ -13,7 +15,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import ogr, osr
+from osgeo import ogr, osr, gdal
 from osgeo.ogr import DataSource
 from pyproj import Proj, transform
 from shapely.geometry import Point, Polygon
@@ -66,7 +68,7 @@ class Vector:
         return catalog
 
     @staticmethod
-    def openVector(
+    def open(
         path: str, geodataframe: bool = False, read_only: bool = True
     ) -> DataSource:
         """Open a vector dataset using OGR or GeoPandas.
@@ -101,7 +103,7 @@ class Vector:
         Parameters
         ----------
         driver: [str]
-            driver type ["GeoJSON", "MEMORY"]
+            driver type ["GeoJSON", "memory"]
         path: [str]
             path to save the vector driver.
 
@@ -109,7 +111,8 @@ class Vector:
         -------
         ogr DataSource
         """
-        if driver == "MEMORY":
+        if driver.lower() == "memory":
+            driver = "MEMORY"
             path = "memData"
         elif driver == "GeoJSON":
             if not path.endswith(".geojson"):
@@ -186,6 +189,151 @@ class Vector:
         return ogr.Open(gdf.to_json())
 
     @staticmethod
+    def _ogrDataSourceToGeoDF(ds: DataSource) -> GeoDataFrame:
+        """Convert ogr DataSource object to a GeoDataFrame.
+
+        Parameters
+        ----------
+        ds: [ogr.DataSource]
+            ogr DataSource
+
+        Returns
+        -------
+        GeoDataFrame
+        """
+        # # TODO: not complete yet the function needs to take an ogr.DataSource and then write it to disk and then read
+        # #  it using the gdal.OpenEx as below
+        # # but this way if i write the vector to disk i can just read it ysing geopandas as df directly.
+        # # https://gis.stackexchange.com/questions/227737/python-gdal-ogr-2-x-read-vectors-with-gdal-openex-or-ogr-open
+        #
+        # # read the vector using gdal not ogr
+        # ds = gdal.OpenEx(path)  # , gdal.OF_READONLY
+        # layer = ds.GetLayer(0)
+        # layer_name = layer.GetName()
+        # mempath = "/vsimem/test.geojson"
+        # # convert the vector read as a gdal dataset to memory
+        # # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.VectorTranslateOptions
+        # gdal.VectorTranslate(mempath, ds)  # , SQLStatement=f"SELECT * FROM {layer_name}", layerName=layer_name
+        # # reading the memory file using fiona
+        # f = fiona.open(mempath, driver='geojson')
+        # gdf = gpd.GeoDataFrame.from_features(f, crs=f.crs)
+
+        # till i manage to do the above way just write the ogr.DataSource to disk and then read it using geopandas
+
+        # Create a temporary directory for files.
+        temp_dir = tempfile.mkdtemp()
+        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        Vector.saveVector(ds, new_vector_path)
+        gdf = gpd.read_file(new_vector_path)
+        return gdf
+
+    @staticmethod
+    def _gdfToOgrDataSource(gdf: GeoDataFrame) -> DataSource:
+        """Convert ogr DataSource object to a GeoDataFrame.
+
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            ogr DataSource
+
+        Returns
+        -------
+        ogr.DataSource
+        """
+        # Create a temporary directory for files.
+        temp_dir = tempfile.mkdtemp()
+        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        gdf.to_file(new_vector_path)
+        ds = Vector.open(new_vector_path)
+        ds = Vector.copyDriverToMemory(ds)
+        return ds
+
+    @staticmethod
+    def to_raster(
+        vector: Union[str, GeoDataFrame],
+        src: Union[str, gdal.Dataset],
+        path: str = None,
+        vector_field=None,
+    ) -> Union[None, gdal.Dataset]:
+        """Covert a vector into raster.
+
+            - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
+            - all the new raster geotransform data will be copied from the given raster.
+            - raster and vector should have the same projection
+
+        Parameters
+        ----------
+        vector : [str/ogr DataSource/GeoDataFrame]
+            vector path
+        src : [str/gdal Dataset]
+            raster path, or gdal Dataset, the raster will only be used as a source for the geotransform (
+            projection, rows, columns, location) data to be copied to the rasterized vector.
+        path : [str]
+            Path for output raster. if given the resulted raster will be saved to disk.
+        vector_field : str or None
+            Name of a field in the vector to burn values from. If None, all vector
+            features are burned with a constant value of 1.
+
+        Returns
+        -------
+        gdal.Dataset
+            Single band raster with vector geometries burned.
+        """
+        from pyramids.raster import Raster
+
+        # if isinstance(raster, str):
+        #     src = Raster.open(raster)
+        # else:
+        #     src = raster
+
+        if not isinstance(vector, GeoDataFrame):
+            # if the given vector is a path
+            if isinstance(vector, str):
+                ds = Vector.open(vector)
+            else:
+                # if the given vector is a ogr.DataSource
+                ds = vector
+        else:
+            # if the given vector is a geodataframe, convert it to ogr datasource
+            ds = Vector._gdfToOgrDataSource(vector)
+            # then save it to disk and get the path
+            vector_path = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}.geojson")
+            vector.to_file(vector_path)
+            vector = vector_path
+
+        # Check EPSG are same, if not reproject vector.
+        ds_epsg = Vector.getEPSG(ds)
+        if src.epsg != ds_epsg:
+            # TODO: reproject the vector to the raster projection instead of raising an error.
+            raise ValueError(
+                f"Raster and vector are not the same EPSG. {src.epsg} != {ds_epsg}"
+            )
+
+        src = Raster.create_empty_driver(src.raster, path, bands=1, no_data_value=0)
+
+        if vector_field is None:
+            # Use a constant value for all features.
+            burn_values = [1]
+            attribute = None
+        else:
+            # Use the values given in the vector field.
+            burn_values = None
+            attribute = vector_field
+
+        rasterize_opts = gdal.RasterizeOptions(
+            bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
+        )
+        _ = gdal.Rasterize(src.raster, vector, options=rasterize_opts)
+
+        if path:
+            src.raster.FlushCache()
+            src.raster = None
+        else:
+            # read the rasterized vector
+            # src = Raster.openDataset(path)
+            return src
+
+    @staticmethod
     def _getDsEPSG(ds: DataSource):
         """Get epsg for a given ogr Datasource.
 
@@ -248,18 +396,22 @@ class Vector:
 
         Examples
         --------
-        >>> src = gdal.Open("path/to/raster.tif")
+        >>> from pyramids.raster import Raster
+        >>> src = Raster.read("path/to/raster.tif")
         >>> prj = src.GetProjection()
         >>> epsg = Vector.getEPSGfromPrj(prj)
         """
-        srs = Vector._createSRfromProj(prj)
-        response = srs.AutoIdentifyEPSG()
-        if response == 0:
-            epsg = int(srs.GetAuthorityCode(None))
+        if prj != "":
+            srs = Vector._createSRfromProj(prj)
+            response = srs.AutoIdentifyEPSG()
+            if response == 0:
+                epsg = int(srs.GetAuthorityCode(None))
+            else:
+                # the GetAuthorityCode failed to identify the epsg number https://gdal.org/doxygen/classOGRSpatialReference.html
+                # srs.FindMatches()
+                epsg = int(srs.GetAttrValue("AUTHORITY", 1))
         else:
-            # the GetAuthorityCode failed to identify the epsg number https://gdal.org/doxygen/classOGRSpatialReference.html
-            # srs.FindMatches()
-            epsg = int(srs.GetAttrValue("AUTHORITY", 1))
+            epsg = 4326
         return epsg
 
     @staticmethod
@@ -404,7 +556,7 @@ class Vector:
         Parameters
         ----------
         dataframe_row: [data frame series]
-            the dataframe row that its geometry type is Multipolygon
+            the dataframe rows that its geometry type is Multipolygon
 
         Returns
         -------
@@ -551,10 +703,10 @@ class Vector:
         -------
         x :[dataframe column]
             column contains the x coordinates of all the votices of the geometry
-            object in each row
+            object in each rows
         y :[dataframe column]
             column contains the y coordinates of all the votices of the geometry
-            object in each row
+            object in each rows
         """
         # get the x & y coordinates for all types of geometries except multi_polygon
         input_dataframe["x"] = input_dataframe.apply(
@@ -573,7 +725,7 @@ class Vector:
                 # get number of the polygons inside the multipolygon class
                 recs = len(row.geometry)
                 multdf = multdf.append([row] * recs, ignore_index=True)
-                # for each row assign each polygon
+                # for each rows assign each polygon
                 for geom in range(recs):
                     multdf.loc[geom, "geometry"] = row.geometry[geom]
                 input_dataframe = input_dataframe.append(multdf, ignore_index=True)
