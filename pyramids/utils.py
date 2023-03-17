@@ -1,6 +1,6 @@
 import gzip
 import os
-
+from loguru import logger
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
 from osgeo.gdal import Dataset
@@ -101,3 +101,10 @@ def extractFromGZ(input_file: str, output_file: str, delete=False):
 
     if delete:
         os.remove(input_file)
+
+
+class ReadOnlyError(Exception):
+    def __init__(self, error_message: str) -> object:
+        logger.error(error_message)
+
+    pass
