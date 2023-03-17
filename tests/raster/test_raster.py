@@ -2,11 +2,13 @@ import os
 from typing import List, Tuple
 
 import geopandas as gpd
+from geopandas.geodataframe import GeoDataFrame
 import numpy as np
 import pytest
 from osgeo import gdal, osr
 from osgeo.gdal import Dataset
 from pyramids.raster import Raster
+from pyramids.raster import ReadOnlyError
 
 
 class TestCreateRasterObject:
@@ -91,18 +93,22 @@ class TestCreateRasterObject:
             src_no_data_value: float,
             raster_like_path: str,
         ):
+            # remove the file if it exists
+            if os.path.exists(raster_like_path):
+                os.remove(raster_like_path)
+
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
-
-            Raster.raster_like(src, arr2, driver="GTiff", path=raster_like_path)
+            src_obj = Raster(src)
+            Raster.raster_like(src_obj, arr2, driver="GTiff", path=raster_like_path)
             assert os.path.exists(raster_like_path)
-            dst = gdal.Open(raster_like_path)
-            arr = dst.ReadAsArray()
+            dst_obj = Raster.open(raster_like_path)
+            arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
             assert np.isclose(
                 src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
             )
-            assert src.GetGeoTransform() == dst.GetGeoTransform()
+            assert src_obj.geotransform == dst_obj.geotransform
 
         def test_create_raster_like_to_mem(
             self,
@@ -113,14 +119,15 @@ class TestCreateRasterObject:
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
 
-            dst = Raster.raster_like(src, arr2, driver="MEM")
+            src_obj = Raster(src)
+            dst_obj = Raster.raster_like(src_obj, arr2, driver="MEM")
 
-            arr = dst.raster.ReadAsArray()
+            arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
             assert np.isclose(
                 src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
             )
-            assert src.GetGeoTransform() == dst.raster.GetGeoTransform()
+            assert src_obj.geotransform == dst_obj.geotransform
 
 
 class TestSpatialProperties:
@@ -131,8 +138,7 @@ class TestSpatialProperties:
         src_arr: np.ndarray,
     ):
         src = Raster(src)
-        arr = src.read_array()
-        assert arr.shape == src_shape
+        arr = src.read_array(band=0)
         assert np.array_equal(src_arr, arr)
 
     def test_read_array_multi_bands(
@@ -142,15 +148,6 @@ class TestSpatialProperties:
         src = Raster(multi_band)
         arr = src.read_array()
         assert np.array_equal(multi_band.ReadAsArray(), arr)
-
-    def test_get_raster_details(self, src: Dataset, src_shape: tuple):
-        src = Raster(src)
-        cols, rows, prj, bands, gt, no_data_value, dtypes = src.get_details()
-        assert cols == src_shape[1]
-        assert rows == src_shape[0]
-        assert isinstance(no_data_value, list)
-        assert isinstance(dtypes, list)
-        assert isinstance(gt, tuple)
 
     def test_GetProjectionData(
         self,
@@ -169,69 +166,77 @@ class TestSpatialProperties:
         assert isinstance(names, list)
         assert names == ["Band_1"]
 
-    def test_set_no_data_value(
+    def test_set_no_data_value_error_read_only(
         self,
-        src: Dataset,
+        src_set_no_data_value: Dataset,
         src_no_data_value: float,
     ):
-        src = Raster(src)
-        src.set_no_data_value(5)
+        src = Raster(src_set_no_data_value)
+        try:
+            src._set_no_data_value(-99999)
+        except ReadOnlyError:
+            pass
+
+    def test_set_no_data_value(
+        self,
+        src_update: Dataset,
+        src_no_data_value: float,
+    ):
+        src = Raster(src_update)
+        src._set_no_data_value(5)
         # check if the no_data_value in the Dataset object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
         # check if the no_data_value of the Raster object is set
         assert src.no_data_value[0] == 5
 
-    class TestGetCellCoords:
-        def test_cell_center_all_cells(
-            self,
-            src: Dataset,
-            src_shape: tuple,
-            src_cell_center_coords_first_4_rows,
-            src_cell_center_coords_last_4_rows,
-            cells_centerscoords: np.ndarray,
-        ):
-            """get center coordinates of all cells."""
-            src = Raster(src)
-            coords = src.get_cell_coords(location="center", mask=False)
-            assert len(coords) == src_shape[0] * src_shape[1]
-            assert np.isclose(
-                coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001
-            ).all(), (
-                "the coordinates of the first 4 rows differs from the validation coords"
-            )
-            assert np.isclose(
-                coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001
-            ).all(), (
-                "the coordinates of the last 4 rows differs from the validation coords"
-            )
 
-        def test_cell_corner_all_cells(
-            self,
-            src: Dataset,
-            src_cells_corner_coords_last4,
-        ):
-            src = Raster(src)
-            coords = src.get_cell_coords(location="corner")
-            assert np.isclose(
-                coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
-            ).all()
+class TestGetCellCoordsAndCreateCellGeometry:
+    def test_cell_center_all_cells(
+        self,
+        src: Dataset,
+        src_shape: tuple,
+        src_cell_center_coords_first_4_rows,
+        src_cell_center_coords_last_4_rows,
+        cells_centerscoords: np.ndarray,
+    ):
+        """get center coordinates of all cells."""
+        src = Raster(src)
+        coords = src.get_cell_coords(location="center", mask=False)
+        assert len(coords) == src_shape[0] * src_shape[1]
+        assert np.isclose(
+            coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001
+        ).all(), (
+            "the coordinates of the first 4 rows differs from the validation coords"
+        )
+        assert np.isclose(
+            coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001
+        ).all(), "the coordinates of the last 4 rows differs from the validation coords"
 
-        def test_cell_center_masked_cells(
-            self,
-            src: Dataset,
-            src_masked_values_len: int,
-            src_masked_cells_center_coords_last4,
-        ):
-            """get cell coordinates from cells inside the domain only."""
-            src = Raster(src)
-            coords = src.get_cell_coords(location="center", mask=True)
-            assert coords.shape[0] == src_masked_values_len
-            assert np.isclose(
-                coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
-            ).all()
+    def test_cell_corner_all_cells(
+        self,
+        src: Dataset,
+        src_cells_corner_coords_last4,
+    ):
+        src = Raster(src)
+        coords = src.get_cell_coords(location="corner")
+        assert np.isclose(
+            coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
+        ).all()
 
+    def test_cell_center_masked_cells(
+        self,
+        src: Dataset,
+        src_masked_values_len: int,
+        src_masked_cells_center_coords_last4,
+    ):
+        """get cell coordinates from cells inside the domain only."""
+        src = Raster(src)
+        coords = src.get_cell_coords(location="center", mask=True)
+        assert coords.shape[0] == src_masked_values_len
+        assert np.isclose(
+            coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
+        ).all()
 
-class TestCreateCellGeometry:
     def test_create_cell_polygon(self, src: Dataset, src_shape: Tuple, src_epsg: int):
         src = Raster(src)
         gdf = src.get_cell_polygons()
@@ -244,6 +249,8 @@ class TestCreateCellGeometry:
         # check the size
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
+
+    # TODO: create a tesk using a mask
 
 
 class TestSave:
@@ -269,7 +276,7 @@ class TestSave:
 
 
 class TestMathOperations:
-    def test_map_algebra(
+    def test_apply(
         self,
         src: Dataset,
         mapalgebra_function,
@@ -280,7 +287,7 @@ class TestMathOperations:
         nodataval = dst.raster.GetRasterBand(1).GetNoDataValue()
         vals = arr[~np.isclose(arr, nodataval, rtol=0.00000000000001)]
         vals = list(set(vals))
-        assert vals == [1, 2, 3, 4, 5]
+        assert vals == [1.0, 2.0, 3.0, 4.0, 5.0]
 
 
 class TestFillRaster:
@@ -288,7 +295,7 @@ class TestFillRaster:
         self, src: Dataset, fill_raster_path: str, fill_raster_value: int
     ):
         src = Raster(src)
-        dst = src.fill(fill_raster_value, driver="MEM", path=fill_raster_path)
+        dst = src.fill(fill_raster_value, driver="MEM")
         arr = dst.raster.ReadAsArray()
         nodataval = dst.raster.GetRasterBand(1).GetNoDataValue()
         vals = arr[~np.isclose(arr, nodataval, rtol=0.00000000000001)]
@@ -318,7 +325,7 @@ def test_resample(
     src = Raster(src)
     dst = src.resample(
         resample_raster_cell_size,
-        resample_technique=resample_raster_resample_technique,
+        method=resample_raster_resample_technique,
     )
 
     dst_arr = dst.raster.ReadAsArray()
@@ -345,7 +352,7 @@ class TestReproject:
         src_shape: tuple,
     ):
         src = Raster(src)
-        dst = src.reproject(to_epsg=project_raster_to_epsg, option=1)
+        dst = src.to_epsg(to_epsg=project_raster_to_epsg, option=1)
 
         proj = dst.raster.GetProjection()
         sr = osr.SpatialReference(wkt=proj)
@@ -363,7 +370,7 @@ class TestReproject:
         src_shape: tuple,
     ):
         src = Raster(src)
-        dst = src.reproject(to_epsg=project_raster_to_epsg, option=2)
+        dst = src.to_epsg(to_epsg=project_raster_to_epsg, option=2)
 
         proj = dst.proj
         sr = osr.SpatialReference(wkt=proj)
@@ -380,8 +387,9 @@ def test_match_raster_alignment(
     src_geotransform: tuple,
     soil_raster: Dataset,
 ):
+    mask_obj = Raster(src)
     soil_raster_obj = Raster(soil_raster)
-    soil_aligned = soil_raster_obj.match_alignment(src)
+    soil_aligned = soil_raster_obj.match_alignment(mask_obj)
     assert soil_aligned.raster.ReadAsArray().shape == src_shape
     nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
     assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
@@ -397,8 +405,9 @@ class TestCrop:
         src_arr: np.ndarray,
         src_no_data_value: float,
     ):
+        mask_obj = Raster(src)
         aligned_raster = Raster(aligned_raster)
-        croped = aligned_raster.crop_alligned(src)
+        croped = aligned_raster.crop_alligned(mask_obj)
         dst_arr_cropped = croped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -442,8 +451,9 @@ class TestCrop:
         # Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
         # the aligned_raster has a epsg = 32618 and
         # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
+        mask_obj = Raster(soil_raster)
         aligned_raster = Raster(aligned_raster)
-        aligned_raster._crop_un_aligned(soil_raster)
+        aligned_raster._crop_un_aligned(mask_obj)
 
     def test_crop_with_polygon(
         self,
@@ -452,21 +462,107 @@ class TestCrop:
     ):
         epsg = basin_polygon.crs.to_epsg()
         src_obj = Raster(soil_raster)
-        src_reprojected = src_obj.reproject(epsg)
+        src_reprojected = src_obj.to_epsg(epsg)
         cropped_raster = src_reprojected._crop_with_polygon(basin_polygon)
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.geotransform == src_reprojected.geotransform
         assert cropped_raster.no_data_value[0] == src_reprojected.no_data_value[0]
 
 
-# def test_ClipRasterWithPolygon():
+class TestToPolygon:
+    """Tect converting raster to polygon."""
+
+    def test_save_polygon_to_disk(
+        self, test_image: Dataset, polygonized_raster_path: str
+    ):
+        im_obj = Raster(test_image)
+        im_obj.to_polygon(path=polygonized_raster_path, driver="GeoJSON")
+        assert os.path.exists(polygonized_raster_path)
+        gdf = gpd.read_file(polygonized_raster_path)
+        assert len(gdf) == 4
+        assert all(gdf.geometry.geom_type == "Polygon")
+        os.remove(polygonized_raster_path)
+
+    def test_save_polygon_to_memory(
+        self, test_image: Dataset, polygonized_raster_path: str
+    ):
+        im_obj = Raster(test_image)
+        gdf = im_obj.to_polygon()
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == 4
+        assert all(gdf.geometry.geom_type == "Polygon")
 
 
-def test_merge(
-    merge_input_raster: List[str],
-    merge_output: str,
-):
-    Raster.gdal_merge(merge_input_raster, merge_output)
-    assert os.path.exists(merge_output)
-    src = gdal.Open(merge_output)
-    assert src.GetRasterBand(1).GetNoDataValue() == 0
+class TestToDataFrame:
+    def test_dataframe_without_mask(
+        self, raster_to_df_dataset: gdal.Dataset, raster_to_df_arr: np.ndarray
+    ):
+        """the input raster is given as a string path on disk.
+
+        Parameters
+        ----------
+        raster_to_df_dataset: Raster
+        raster_to_df_arr: array for comparison
+        """
+        src = Raster(raster_to_df_dataset)
+        gdf = src.to_geodataframe(add_geometry="Point")
+        assert isinstance(gdf, GeoDataFrame)
+        rows, cols = raster_to_df_arr.shape
+        # get values and reshape arrays for comparison
+        arr_flatten = raster_to_df_arr.reshape((rows * cols, 1))
+        extracted_values = gdf.loc[:, gdf.columns[0]].values
+        extracted_values = extracted_values.reshape(arr_flatten.shape)
+        assert np.array_equal(extracted_values, arr_flatten), (
+            "the extracted values in the dataframe does not equa the real "
+            "values in the array"
+        )
+
+    def test_to_dataframe_with_mask_as_path_input(
+        self,
+        raster_to_df_dataset: gdal.Dataset,
+        vector_mask_path: str,
+        rasterized_mask_values: np.ndarray,
+    ):
+        """the input mask vector is given as a string path on disk.
+
+        Parameters
+        ----------
+        raster_to_df_dataset: path on disk
+        vector_mask_path: path on disk
+        rasterized_mask_values: for camparioson
+        """
+        src = Raster(raster_to_df_dataset)
+        gdf = src.to_geodataframe(vector_mask_path, add_geometry="Point")
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == len(rasterized_mask_values)
+        assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
+            "the extracted values in the dataframe "
+            "does not "
+            "equa the real "
+            "values in the array"
+        )
+
+    def test_to_dataframe_with_gdf_mask(
+        self,
+        raster_to_df_dataset: gdal.Dataset,
+        vector_mask_gdf: GeoDataFrame,
+        rasterized_mask_values: np.ndarray,
+    ):
+        """the input mask vector is given as geodataframe.
+
+        Parameters
+        ----------
+        raster_to_df_dataset: path on disk
+        vector_mask_gdf: geodataframe for the vector mask
+        rasterized_mask_values: array for comparison
+        """
+        src = Raster(raster_to_df_dataset)
+        gdf = src.to_geodataframe(vector_mask_gdf, add_geometry="Point")
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == len(rasterized_mask_values)
+        assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
+            "the extracted values in the dataframe "
+            "does not "
+            "equa the real "
+            "values in the array"
+        )

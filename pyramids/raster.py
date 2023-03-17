@@ -1325,7 +1325,7 @@ class Raster:
     def resample(self, cell_size: Union[int, float], method: str = "Nearest"):
         """resampleRaster.
 
-        resampleRaster reproject a raster to any projection
+        resample method reproject a raster to any projection
         (default the WGS84 web mercator projection, without resampling)
         The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
@@ -1400,7 +1400,7 @@ class Raster:
 
         return dst_obj
 
-    def reproject(self, to_epsg: int, method: str = "Nearest", option: int = 2):
+    def to_epsg(self, to_epsg: int, method: str = "Nearest", option: int = 2):
         """projectRaster.
 
         projectRaster reprojects a raster to any projection
@@ -1429,7 +1429,7 @@ class Raster:
         --------
         >>> from pyramids.raster import Raster
         >>> src = Raster.open("path/raster_name.tif")
-        >>> projected_raster = src.reproject(to_epsg=3857)
+        >>> projected_raster = src.to_epsg(to_epsg=3857)
         """
         if not isinstance(to_epsg, int):
             raise TypeError(
@@ -1749,7 +1749,7 @@ class Raster:
 
         src_epsg = src.get_epsg()
         # reproject the raster to match the projection of alignment_src
-        reprojected_RasterB = self.reproject(src_epsg)
+        reprojected_RasterB = self.to_epsg(src_epsg)
         # create a new raster
         dst = Raster._create_dataset(
             src.columns, src.rows, 1, src.dtype[0], driver="MEM"
