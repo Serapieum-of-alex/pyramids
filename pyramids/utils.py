@@ -106,6 +106,7 @@ def extractFromGZ(input_file: str, output_file: str, delete=False):
 
 class ReadOnlyError(Exception):
     """ReadOnlyError"""
+
     def __init__(self, error_message: str):
         logger.error(error_message)
 
