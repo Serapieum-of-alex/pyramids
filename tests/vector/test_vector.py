@@ -11,12 +11,12 @@ from pyramids.vector import Vector
 
 class TestOpenVector:
     def test_open_vector(self, test_vector_path: str):
-        ds = Vector.openVector(test_vector_path)
+        ds = Vector.open(test_vector_path)
         assert isinstance(ds, DataSource)
         assert ds.name == test_vector_path
 
     def test_open_geodataframe(self, test_vector_path: str):
-        gdf = Vector.openVector(test_vector_path, geodataframe=True)
+        gdf = Vector.open(test_vector_path, geodataframe=True)
         assert isinstance(gdf, GeoDataFrame)
 
 
