@@ -1,3 +1,4 @@
+"""Utility module"""
 import gzip
 import os
 from loguru import logger
@@ -104,7 +105,8 @@ def extractFromGZ(input_file: str, output_file: str, delete=False):
 
 
 class ReadOnlyError(Exception):
-    def __init__(self, error_message: str) -> object:
+    """ReadOnlyError"""
+    def __init__(self, error_message: str):
         logger.error(error_message)
 
     pass
