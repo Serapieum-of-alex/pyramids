@@ -149,16 +149,6 @@ class TestSpatialProperties:
         arr = src.read_array()
         assert np.array_equal(multi_band.ReadAsArray(), arr)
 
-    def test_GetProjectionData(
-        self,
-        src: Dataset,
-        src_epsg: int,
-        src_geotransform: tuple,
-    ):
-        src = Raster(src)
-        epsg, geo = src.get_projection_data()
-        assert epsg == src_epsg
-        assert geo == src_geotransform
 
     def test_get_band_names(self, src: Dataset):
         src = Raster(src)

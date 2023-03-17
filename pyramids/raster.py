@@ -517,26 +517,6 @@ class Raster:
 
         return dst_obj
 
-    def get_projection_data(self) -> Tuple[int, tuple]:
-        """GetProjectionData.
-
-        GetProjectionData returns the projection details of a given gdal.Dataset
-
-        Returns
-        -------
-        epsg: [integer]
-             integer reference number that defines the projection (https://epsg.io/)
-        geo: [tuple]
-            geotransform data of the upper left corner of the raster
-            (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
-        """
-        geo = self.raster.GetGeoTransform()
-        src_proj = self.raster.GetProjection()
-        sr_src = osr.SpatialReference(wkt=src_proj)
-        epsg = int(sr_src.GetAttrValue("AUTHORITY", 1))
-
-        return epsg, geo
-
     def get_epsg(self) -> int:
         """GetEPSG.
 
@@ -674,12 +654,10 @@ class Raster:
 
         Parameters
         ----------
-        band_i
-        no_data_value
-
-        Returns
-        -------
-
+        band_i:
+            band index, starts from 0.
+        no_data_value:
+            Numerical value.
         """
         self.change_no_data_value_attr(band_i, no_data_value)
         # initialize the band with the nodata value instead of 0
@@ -725,7 +703,7 @@ class Raster:
 
             - Set the no data value in a all raster bands.
             - Fills the whole raster with the no_data_value.
-            - used only when creating an empty driver.
+            - Change the no_data_value in the array in all bands.
 
         Parameters
         ----------
@@ -754,51 +732,6 @@ class Raster:
 
         for band in range(self.band_count):
             self.change_no_data_value_attr(band, new_value[band])
-
-    # TODO: Not used
-    # def changeNoDataValue(self, mask: gdal.Dataset, band: int = 0):
-    #     """ChangeNoDataValue.
-    #
-    #     ChangeNoDataValue changes the cells of nodata value in a dst raster to match
-    #     a src raster.
-    #
-    #     Parameters
-    #     ----------
-    #     mask: [Raster]
-    #         raster to get the location of the NoDataValue and
-    #         where it is in the array
-    #     band: [int]
-    #         band you want to crop
-    #
-    #     Returns
-    #     -------
-    #     Raster
-    #     """
-    #     src_noval = self.no_data_value[band]
-    #
-    #     dtype = self.dtype[band]
-    #     dst_noval = self.no_data_value[band]
-    #
-    #     dst_array = self.raster.ReadAsArray()
-    #
-    #     for i in range(dst_array.shape[0]):
-    #         for j in range(dst_array.shape[1]):
-    #             if np.isclose(dst_array[i, j], dst_noval, rtol=0.001):
-    #                 dst_array[i, j] = src_noval
-    #
-    #     dst = Raster._createDataset(self.columns, self.rows, band, dtype, driver="MEM")
-    #
-    #     # set the geotransform
-    #     dst.SetGeoTransform(self.geotransform)
-    #     # set the projection
-    #     dst.SetProjection(self.proj)
-    #     # set the no data value
-    #     no_data_value = mask.raster.GetRasterBand(1).GetNoDataValue()
-    #     dst_obj = Raster(dst)
-    #     dst_obj.setNoDataValue(no_data_value)
-    #     dst_obj.raster.GetRasterBand(band).WriteArray(dst_array)
-    #
-    #     return dst_obj
 
     def get_cell_coords(
         self, location: str = "center", mask: bool = False
@@ -2852,7 +2785,7 @@ class Dataset(Raster):
         src: gdal.Dataset,
         to_epsg: int = 3857,
         cell_size: int = [],
-        resample_technique: str = "Nearest",
+        method: str = "Nearest",
     ) -> gdal.Dataset:
         """ReprojectDataset.
 
@@ -2869,7 +2802,7 @@ class Dataset(Raster):
         cell_size: [integer]
              number to resample the raster cell size to a new cell size
             (default empty so raster will not be resampled)
-        resample_technique: [String]
+        method: [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
             "Nearest" for nearest neighbour,"cubic" for cubic convolution,
@@ -2890,9 +2823,9 @@ class Dataset(Raster):
                 "please enter correct integer number for to_epsg more information "
                 f"https://epsg.io/, given {type(to_epsg)}"
             )
-        if not isinstance(resample_technique, str):
+        if not isinstance(method, str):
             raise TypeError(
-                "please enter correct resample_technique more information see "
+                "please enter correct method more information see "
                 "docmentation "
             )
 
@@ -2901,12 +2834,12 @@ class Dataset(Raster):
                 cell_size, float
             ), "please enter an integer or float cell size"
 
-        if resample_technique == "Nearest":
-            resample_technique = gdal.GRA_NearestNeighbour
-        elif resample_technique == "cubic":
-            resample_technique = gdal.GRA_Cubic
-        elif resample_technique == "bilinear":
-            resample_technique = gdal.GRA_Bilinear
+        if method == "Nearest":
+            method = gdal.GRA_NearestNeighbour
+        elif method == "cubic":
+            method = gdal.GRA_Cubic
+        elif method == "bilinear":
+            method = gdal.GRA_Bilinear
 
         src_proj = src.GetProjection()
         src_gt = src.GetGeoTransform()
@@ -2975,16 +2908,16 @@ class Dataset(Raster):
         dst = Raster._set_no_data_value(dst, no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
-            src, dst, src_sr.ExportToWkt(), dst_epsg.ExportToWkt(), resample_technique
+            src, dst, src_sr.ExportToWkt(), dst_epsg.ExportToWkt(), method
         )
 
         return dst
 
     @staticmethod
-    def cropAlignedFolder(
+    def crop_aligned(
         src_dir: str,
         mask: Union[gdal.Dataset, str],
-        saveto: str,
+        path: str,
     ) -> None:
         """cropAlignedFolder.
 
@@ -3004,7 +2937,7 @@ class Dataset(Raster):
             and it location in the array) Mask should include the name of the raster and the
             extension like "data/dem.tif", or you can read the mask raster using gdal and use
             is the first parameter to the function.
-        saveto : [String]
+        path : [String]
             path where new rasters are going to be saved with exact
             same old names
 
@@ -3018,7 +2951,7 @@ class Dataset(Raster):
         >>> dem_path = "examples/GIS/data/acc4000.tif"
         >>> src_path = "examples/GIS/data/aligned_rasters/"
         >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-        >>> Raster.cropAlignedFolder(dem_path, src_path, out_path)
+        >>> Dataset.crop_aligned(dem_path, src_path, out_path)
         """
         # if the mask is a string
         if isinstance(mask, str):
@@ -3042,8 +2975,8 @@ class Dataset(Raster):
         if not isinstance(src_dir, str):
             raise TypeError("src_dir input should be string type")
 
-        if not isinstance(saveto, str):
-            raise TypeError("saveto input should be string type")
+        if not isinstance(path, str):
+            raise TypeError("path input should be string type")
 
         # check wether the path exists or not
         if not os.path.exists(src_dir):
@@ -3051,9 +2984,9 @@ class Dataset(Raster):
                 f"the {src_dir} path you have provided does not exist"
             )
 
-        if not os.path.exists(saveto):
+        if not os.path.exists(path):
             raise FileNotFoundError(
-                f"the {saveto} path you have provided does not exist"
+                f"the {path} path you have provided does not exist"
             )
         # check wether the folder has the rasters or not
         if not len(os.listdir(src_dir)) > 0:
@@ -3063,13 +2996,13 @@ class Dataset(Raster):
         if "desktop.ini" in files_list:
             files_list.remove("desktop.ini")
 
-        print("New Path- " + saveto)
+        print("New Path- " + path)
         for i in range(len(files_list)):
             if files_list[i][-4:] == ".tif":
-                print(f"{i + 1}/{len(files_list)} - {saveto}{files_list[i]}")
-                B = gdal.Open(src_dir + files_list[i])
-                new_B = Raster.crop_alligned(B, mask)
-                Raster.saveRaster(new_B, saveto + files_list[i])
+                print(f"{i + 1}/{len(files_list)} - {path}{files_list[i]}")
+                B = Raster.read(f"{src_dir}{files_list[i]}")
+                new_B = B.crop_alligned(mask)
+                new_B.to_geotiff(path + files_list[i])
 
     @staticmethod
     def matchDataAlignment(src_alignment: str, rasters_dir: str, save_to: str):
