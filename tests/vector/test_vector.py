@@ -1,22 +1,24 @@
 import os
 from typing import List, Tuple
-
+import numpy as np
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import ogr
+from osgeo import ogr, gdal
+from osgeo.gdal import Dataset
 from osgeo.ogr import DataSource
 from shapely.geometry.polygon import Polygon
 
 from pyramids.vector import Vector
+from pyramids.raster import Raster
 
 
 class TestOpenVector:
     def test_open_vector(self, test_vector_path: str):
-        ds = Vector.open(test_vector_path)
+        ds = Vector.read(test_vector_path)
         assert isinstance(ds, DataSource)
         assert ds.name == test_vector_path
 
     def test_open_geodataframe(self, test_vector_path: str):
-        gdf = Vector.open(test_vector_path, geodataframe=True)
+        gdf = Vector.read(test_vector_path, geodataframe=True)
         assert isinstance(gdf, GeoDataFrame)
 
 
@@ -87,3 +89,118 @@ class TestCreatePoint:
         point_list = Vector.createPoint(coordinates)
         assert isinstance(point_list, list)
         assert len(point_list) == len(coordinates)
+
+
+class TestPolygonToRaster:
+    def test_disk_inputs_and_outputs(
+        self,
+        vector_mask_path,
+        raster_to_df_path,
+        raster_to_df_dataset: Dataset,
+        rasterized_mask_path: str,
+        rasterized_mask_array: np.ndarray,
+    ):
+        """All inputs are in disk.
+
+            - The inputs to the function are in disk.
+            - The output will be written to disk.
+
+        Parameters
+        ----------
+        vector_mask_path
+        raster_to_df_path
+        raster_to_df_dataset
+        rasterized_mask_path
+        rasterized_mask_array
+        """
+        # remove the file if exists
+        if os.path.exists(rasterized_mask_path):
+            os.remove(rasterized_mask_path)
+
+        src = Raster.read(raster_to_df_path)
+        Vector.to_raster(
+            vector_mask_path, src, rasterized_mask_path
+        )
+        assert os.path.exists(rasterized_mask_path), (
+            "The output raster should have been saved to disk at the "
+            f"following path: {raster_to_df_path}"
+        )
+        src = Raster.read(rasterized_mask_path)
+        assert src.epsg == 32618
+        geo_source = raster_to_df_dataset.GetGeoTransform()
+        assert src.geotransform == geo_source
+        assert src.no_data_value[0] == 0.0
+        arr = src.read_array()
+        values = arr[arr[:, :] == 1.0]
+        assert values.shape[0] == 16
+
+    def test_gdf_input(
+        self,
+        vector_mask_gdf: GeoDataFrame,
+        raster_to_df_path: str,
+        raster_to_df_dataset: Dataset,
+        rasterized_mask_path: str,
+        rasterized_mask_array: np.ndarray,
+    ):
+        """Geodataframe input polygon.
+
+            - The inputs to the function are in disk.
+            - The output will be written to disk.
+
+        Parameters
+        ----------
+        vector_mask_gdf
+        raster_to_df_path
+        raster_to_df_dataset
+        rasterized_mask_path
+        rasterized_mask_array
+        """
+        # remove the file if exists
+        if os.path.exists(rasterized_mask_path):
+            os.remove(rasterized_mask_path)
+
+        src = Raster.read(raster_to_df_path)
+        Vector.to_raster(
+            vector_mask_gdf, src, rasterized_mask_path
+        )
+        assert os.path.exists(rasterized_mask_path), (
+            "The output raster should have been saved to disk at the "
+            f"following path: {raster_to_df_path}"
+        )
+        src = Raster.read(rasterized_mask_path)
+        assert src.epsg == 32618
+        geo_source = raster_to_df_dataset.GetGeoTransform()
+        assert src.geotransform == geo_source
+        arr = src.read_array()
+        assert src.no_data_value[0] == 0.0
+        values = arr[arr[:, :] == 1.0]
+        assert values.shape[0] == 16
+
+    def test_return_output(
+        self,
+        vector_mask_path: str,
+        raster_to_df_path: str,
+        raster_to_df_dataset: Dataset,
+        rasterized_mask_array: np.ndarray,
+    ):
+        """Geodataframe input polygon.
+
+            - The inputs to the function are in disk,
+            - The output will be returned as gdal.Dataset.
+
+        Parameters
+        ----------
+        vector_mask_path
+        raster_to_df_path
+        raster_to_df_dataset
+        rasterized_mask_array
+        """
+        src_obj = Raster.read(raster_to_df_path)
+        src = Vector.to_raster(vector_mask_path, src_obj)
+        assert src.epsg == 32618
+        geo_source = raster_to_df_dataset.GetGeoTransform()
+        assert src.geotransform == geo_source
+        arr = src.read_array()
+        assert src.no_data_value[0] == 0.0
+        values = arr[arr[:, :] == 1.0]
+        assert values.shape[0] == 16

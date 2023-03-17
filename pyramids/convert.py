@@ -1,25 +1,11 @@
 """Convert data from one form to another."""
 import os
-import shutil
-import tempfile
-import uuid
-from typing import Any, Union
-
-import geopandas as gpd
 import netCDF4
 import numpy as np
-import pandas as pd
-from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, ogr, osr
-from osgeo.gdal import Dataset
-from osgeo.ogr import DataSource
-from pandas import DataFrame
+from osgeo import gdal
 
-from pyramids.array import getPixels
 from pyramids.netcdf import NC
 from pyramids.raster import Raster
-from pyramids.utils import gdal_to_ogr_dtype
-from pyramids.vector import Vector
 
 
 class Convert:
@@ -29,171 +15,171 @@ class Convert:
         # self.vector_catalog: Dict[str, str] = Vector.getCatalog()
         pass
 
-    @staticmethod
-    def asciiToRaster(
-        ascii_file: str,
-        save_path: str,
-        pixel_type: int = 1,
-        raster_file=None,
-        epsg=None,
-    ):
-        """ASCIItoRaster.
-
-            ASCIItoRaster convert an ASCII file into a raster format and in takes  all
-            the spatial reference information (projection, coordinates of the corner point), and
-            number of rows and columns from raster file or you have to define the epsg corresponding
-            to the you coordinate system and projection
-
-        Parameters
-        ----------
-        ascii_file: [str]
-            name of the ASCII file you want to convert and the name
-            should include the extension ".asc"
-        save_path: [str]
-            path to save the new raster including new raster name and extension (.tif)
-        pixel_type: [int]
-            type of the data to be stored in the pixels,default is 1 (float32)
-            for example pixel type of flow direction raster is unsigned integer
-            1 for float32
-            2 for float64
-            3 for Unsigned integer 16
-            4 for Unsigned integer 32
-            5 for integer 16
-            6 for integer 32
-
-        raster_file: [str]
-            source raster to get the spatial information, both ASCII
-            file and source raster should have the same number of rows, and
-            same number of columns default value is [None].
-
-        epsg:
-            EPSG stands for European Petroleum Survey Group and is an organization
-            that maintains a geodetic parameter database with standard codes,
-            the EPSG codes, for coordinate systems, datums, spheroids, units
-            and such alike (https://epsg.io/) default value is [None].
-
-        Returns
-        -------
-        a New Raster will be saved in the savePath containing the values
-        of the ASCII file
-
-        Example
-        -------
-        1- ASCII to raster given a raster file:
-        >>> asc_file = "soiltype.asc"
-        >>> raster_file = "DEM.tif"
-        >>> save_to = "Soil_raster.tif"
-        >>> pixeltype = 1
-        >>> Convert.asciiToRaster(asc_file,  save_to, pixeltype, raster_file)
-        2- ASCII to Raster given an EPSG number
-        >>> asc_file = "soiltype.asc"
-        >>> save_to = "Soil_raster.tif"
-        >>> pixeltype = 1
-        >>> epsg_number = 4647
-        >>> Convert.asciiToRaster(asc_file, save_to, pixeltype, epsg = epsg_number)
-        """
-        if not isinstance(ascii_file, str):
-            raise TypeError(
-                f"ascii_file input should be string type - given{type(ascii_file)}"
-            )
-
-        if not isinstance(save_path, str):
-            raise TypeError(
-                f"save_path input should be string type - given {type(save_path)}"
-            )
-
-        if not isinstance(pixel_type, int):
-            raise TypeError(
-                f"pixel type input should be integer type please check documentations "
-                f"- given {pixel_type}"
-            )
-
-        # input values
-        ASCIIExt = ascii_file[-4:]
-        if not ASCIIExt == ".asc":
-            raise ValueError("please add the extension at the end of the path input")
-
-        message = """ you have to enter one of the following inputs
-            - raster_file : if you have a raster with the same spatial information
-                (projection, coordinate system), and have the same number of rows,
-                and columns
-            - epsg : if you have the EPSG number (https://epsg.io/) refering to
-                the spatial information of the ASCII file
-            """
-        assert raster_file is not None or epsg is not None, message
-
-        ### read the ASCII file
-        ASCIIValues, ASCIIDetails = Raster.readASCII(ascii_file, pixel_type)
-        ASCIIRows = ASCIIDetails[0]
-        ASCIIColumns = ASCIIDetails[1]
-
-        # check the optional inputs
-        if raster_file is not None:
-            assert type(raster_file) == str, "raster_file input should be string type"
-
-            RasterExt = raster_file[-4:]
-            assert (
-                RasterExt == ".tif"
-            ), "please add the extension at the end of the path input"
-            # read the raster file
-            src = gdal.Open(raster_file)
-            RasterColumns = src.RasterXSize
-            RasterRows = src.RasterYSize
-
-            assert (
-                ASCIIRows == RasterRows and ASCIIColumns == RasterColumns
-            ), " Data in both ASCII file and Raster file should have the same number of rows and columns"
-
-            Raster.raster_like(src, ASCIIValues, save_path)
-        elif epsg is not None:
-            assert (
-                type(epsg) == int
-            ), "epsg input should be integer type please check documentations"
-            # coordinates of the lower left corner
-            XLeftSide = ASCIIDetails[2]
-            #        YLowSide = ASCIIDetails[3]
-
-            CellSize = ASCIIDetails[4]
-            NoValue = ASCIIDetails[5]
-            # calculate Geotransform coordinates for the raster
-            YUpperSide = ASCIIDetails[3] + ASCIIRows * CellSize
-
-            dst_gt = (XLeftSide, CellSize, 0.0, YUpperSide, 0.0, -1 * CellSize)
-            dst_epsg = osr.SpatialReference()
-            dst_epsg.ImportFromEPSG(epsg)
-
-            if pixel_type == 1:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float32
-                )
-            elif pixel_type == 2:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float64
-                )
-            elif pixel_type == 3:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt16
-                )
-            elif pixel_type == 4:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt32
-                )
-            elif pixel_type == 5:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int16
-                )
-            elif pixel_type == 6:
-                dst = gdal.GetDriverByName("GTiff").Create(
-                    save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int32
-                )
-
-            dst.SetGeoTransform(dst_gt)
-            dst.SetProjection(dst_epsg.ExportToWkt())
-            dst.GetRasterBand(1).SetNoDataValue(NoValue)
-            dst.GetRasterBand(1).Fill(NoValue)
-            dst.GetRasterBand(1).WriteArray(ASCIIValues)
-            dst.FlushCache()
-            dst = None
+    # @staticmethod
+    # def asciiToRaster(
+    #     ascii_file: str,
+    #     save_path: str,
+    #     pixel_type: int = 1,
+    #     raster_file=None,
+    #     epsg=None,
+    # ):
+    #     """ASCIItoRaster.
+    #
+    #         ASCIItoRaster convert an ASCII file into a raster format and in takes  all
+    #         the spatial reference information (projection, coordinates of the corner point), and
+    #         number of rows and columns from raster file or you have to define the epsg corresponding
+    #         to the you coordinate system and projection
+    #
+    #     Parameters
+    #     ----------
+    #     ascii_file: [str]
+    #         name of the ASCII file you want to convert and the name
+    #         should include the extension ".asc"
+    #     save_path: [str]
+    #         path to save the new raster including new raster name and extension (.tif)
+    #     pixel_type: [int]
+    #         type of the data to be stored in the pixels,default is 1 (float32)
+    #         for example pixel type of flow direction raster is unsigned integer
+    #         1 for float32
+    #         2 for float64
+    #         3 for Unsigned integer 16
+    #         4 for Unsigned integer 32
+    #         5 for integer 16
+    #         6 for integer 32
+    #
+    #     raster_file: [str]
+    #         source raster to get the spatial information, both ASCII
+    #         file and source raster should have the same number of rows, and
+    #         same number of columns default value is [None].
+    #
+    #     epsg:
+    #         EPSG stands for European Petroleum Survey Group and is an organization
+    #         that maintains a geodetic parameter database with standard codes,
+    #         the EPSG codes, for coordinate systems, datums, spheroids, units
+    #         and such alike (https://epsg.io/) default value is [None].
+    #
+    #     Returns
+    #     -------
+    #     a New Raster will be saved in the savePath containing the values
+    #     of the ASCII file
+    #
+    #     Example
+    #     -------
+    #     1- ASCII to raster given a raster file:
+    #     >>> asc_file = "soiltype.asc"
+    #     >>> raster_file = "DEM.tif"
+    #     >>> save_to = "Soil_raster.tif"
+    #     >>> pixeltype = 1
+    #     >>> Convert.asciiToRaster(asc_file,  save_to, pixeltype, raster_file)
+    #     2- ASCII to Raster given an EPSG number
+    #     >>> asc_file = "soiltype.asc"
+    #     >>> save_to = "Soil_raster.tif"
+    #     >>> pixeltype = 1
+    #     >>> epsg_number = 4647
+    #     >>> Convert.asciiToRaster(asc_file, save_to, pixeltype, epsg = epsg_number)
+    #     """
+    #     if not isinstance(ascii_file, str):
+    #         raise TypeError(
+    #             f"ascii_file input should be string type - given{type(ascii_file)}"
+    #         )
+    #
+    #     if not isinstance(save_path, str):
+    #         raise TypeError(
+    #             f"save_path input should be string type - given {type(save_path)}"
+    #         )
+    #
+    #     if not isinstance(pixel_type, int):
+    #         raise TypeError(
+    #             f"pixel type input should be integer type please check documentations "
+    #             f"- given {pixel_type}"
+    #         )
+    #
+    #     # input values
+    #     ASCIIExt = ascii_file[-4:]
+    #     if not ASCIIExt == ".asc":
+    #         raise ValueError("please add the extension at the end of the path input")
+    #
+    #     message = """ you have to enter one of the following inputs
+    #         - raster_file : if you have a raster with the same spatial information
+    #             (projection, coordinate system), and have the same number of rows,
+    #             and columns
+    #         - epsg : if you have the EPSG number (https://epsg.io/) refering to
+    #             the spatial information of the ASCII file
+    #         """
+    #     assert raster_file is not None or epsg is not None, message
+    #
+    #     ### read the ASCII file
+    #     ASCIIValues, ASCIIDetails = Raster.readASCII(ascii_file, pixel_type)
+    #     ASCIIRows = ASCIIDetails[0]
+    #     ASCIIColumns = ASCIIDetails[1]
+    #
+    #     # check the optional inputs
+    #     if raster_file is not None:
+    #         assert type(raster_file) == str, "raster_file input should be string type"
+    #
+    #         RasterExt = raster_file[-4:]
+    #         assert (
+    #             RasterExt == ".tif"
+    #         ), "please add the extension at the end of the path input"
+    #         # read the raster file
+    #         src = gdal.Open(raster_file)
+    #         RasterColumns = src.RasterXSize
+    #         RasterRows = src.RasterYSize
+    #
+    #         assert (
+    #             ASCIIRows == RasterRows and ASCIIColumns == RasterColumns
+    #         ), " Data in both ASCII file and Raster file should have the same number of rows and columns"
+    #
+    #         Raster.raster_like(src, ASCIIValues, save_path)
+    #     elif epsg is not None:
+    #         assert (
+    #             type(epsg) == int
+    #         ), "epsg input should be integer type please check documentations"
+    #         # coordinates of the lower left corner
+    #         XLeftSide = ASCIIDetails[2]
+    #         #        YLowSide = ASCIIDetails[3]
+    #
+    #         CellSize = ASCIIDetails[4]
+    #         NoValue = ASCIIDetails[5]
+    #         # calculate Geotransform coordinates for the raster
+    #         YUpperSide = ASCIIDetails[3] + ASCIIRows * CellSize
+    #
+    #         dst_gt = (XLeftSide, CellSize, 0.0, YUpperSide, 0.0, -1 * CellSize)
+    #         dst_epsg = osr.SpatialReference()
+    #         dst_epsg.ImportFromEPSG(epsg)
+    #
+    #         if pixel_type == 1:
+    #             dst = gdal.GetDriverByName("GTiff").Create(
+    #                 save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float32
+    #             )
+    #         elif pixel_type == 2:
+    #             dst = gdal.GetDriverByName("GTiff").Create(
+    #                 save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Float64
+    #             )
+    #         elif pixel_type == 3:
+    #             dst = gdal.GetDriverByName("GTiff").Create(
+    #                 save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt16
+    #             )
+    #         elif pixel_type == 4:
+    #             dst = gdal.GetDriverByName("GTiff").Create(
+    #                 save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_UInt32
+    #             )
+    #         elif pixel_type == 5:
+    #             dst = gdal.GetDriverByName("GTiff").Create(
+    #                 save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int16
+    #             )
+    #         elif pixel_type == 6:
+    #             dst = gdal.GetDriverByName("GTiff").Create(
+    #                 save_path, ASCIIColumns, ASCIIRows, 1, gdal.GDT_Int32
+    #             )
+    #
+    #         dst.SetGeoTransform(dst_gt)
+    #         dst.SetProjection(dst_epsg.ExportToWkt())
+    #         dst.GetRasterBand(1).SetNoDataValue(NoValue)
+    #         dst.GetRasterBand(1).Fill(NoValue)
+    #         dst.GetRasterBand(1).WriteArray(ASCIIValues)
+    #         dst.FlushCache()
+    #         dst = None
 
     @staticmethod
     def asciiFoldertoRaster(
@@ -204,11 +190,11 @@ class Convert:
         Parameters
         ----------
         path: [str]
-            [String] path to the folder containing the ASCII files
+            path to the folder containing the ASCII files.
         save_path:
-            [String] path to save the new raster including new raster name and extension (.tif)
-        pixel_type:
-            [Integer] type of the data to be stored in the pixels,default is 1 (float32)
+            path to save the new raster including new raster name and extension (.tif).
+        pixel_type: [int]
+            type of the data to be stored in the pixels,default is 1 (float32)
             for example pixel type of flow direction raster is unsigned integer
             1 for float32
             2 for float64
@@ -407,353 +393,7 @@ class Convert:
             dst.SetGeoTransform(geo)
             # set the projection
             dst.SetProjection(sr.ExportToWkt())
-            dst = Raster.set_no_data_value(dst)
+            dst = Raster._set_no_data_value(dst)
             dst.GetRasterBand(1).WriteArray(data)
             dst.FlushCache()
             dst = None
-
-    @staticmethod
-    def polygonToRaster(
-        vector: Union[str, GeoDataFrame],
-        raster: Union[str, Dataset],
-        path: str = None,
-        vector_field=None,
-    ) -> Union[None, Dataset]:
-        """Covert a vector into raster.
-
-            - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
-            - all the new raster geotransform data will be copied from the given raster.
-            - raster and vector should have the same projection
-
-        Parameters
-        ----------
-        vector : [str/ogr DataSource/GeoDataFrame]
-            vector path
-        raster : [str/gdal Dataset]
-            raster path, or gdal Dataset, the raster will only be used as a source for the geotransform (
-            projection, rows, columns, location) data to be copied to the rasterized vector.
-        path : [str]
-            Path for output raster. if given the resulted raster will be saved to disk.
-        vector_field : str or None
-            Name of a field in the vector to burn values from. If None, all vector
-            features are burned with a constant value of 1.
-
-        Returns
-        -------
-        gdal.Dataset
-            Single band raster with vector geometries burned.
-        """
-        if isinstance(raster, str):
-            src = Raster.open(raster)
-        else:
-            src = raster
-
-        if not isinstance(vector, GeoDataFrame):
-            # if the given vector is a path
-            if isinstance(vector, str):
-                ds = Vector.openVector(vector)
-            else:
-                # if the given vector is a ogr.DataSource
-                ds = vector
-        else:
-            # if the given vector is a geodataframe, convert it to ogr datasource
-            ds = Convert._gdfToOgrDataSource(vector)
-            # then save it to disk and get the path
-            vector_path = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}.geojson")
-            vector.to_file(vector_path)
-            vector = vector_path
-
-        # Check EPSG are same, if not reproject vector.
-        src_epsg = Raster.get_epsg(src)
-        ds_epsg = Vector.getEPSG(ds)
-        if src_epsg != ds_epsg:
-            # TODO: reproject the vector to the raster projection instead of raising an error.
-            raise ValueError(
-                f"Raster and vector are not the same EPSG. {src_epsg} != {ds_epsg}"
-            )
-
-        src = Raster.create_empty_driver(src, path, bands=1, no_data_value=0)
-
-        if vector_field is None:
-            # Use a constant value for all features.
-            burn_values = [1]
-            attribute = None
-        else:
-            # Use the values given in the vector field.
-            burn_values = None
-            attribute = vector_field
-
-        rasterize_opts = gdal.RasterizeOptions(
-            bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
-        )
-        _ = gdal.Rasterize(src, vector, options=rasterize_opts)
-
-        if path:
-            src.FlushCache()
-            src = None
-        else:
-            # read the rasterized vector
-            # src = Raster.openDataset(path)
-            return src
-
-    @staticmethod
-    def rasterToPolygon(
-        src: Dataset,
-        path: str = None,
-        band: int = 1,
-        col_name: Any = "id",
-        driver: str = "MEMORY",
-    ) -> Union[GeoDataFrame, None]:
-        """polygonize.
-
-            RasterToPolygon takes a gdal Dataset object and group neighboring cells with the same value into one
-            polygon, the resulted vector will be saved to disk as a geojson file
-
-        Parameters
-        ----------
-        src:
-            gdal Dataset
-        band: [int]
-            raster band index [1,2,3,..]
-        path:[str]
-            path where you want to save the polygon, the path should include the extension at the end
-            (i.e. path/vector_name.geojson)
-        col_name:
-            name of the column where the raster data will be stored.
-        driver: [str]
-            vector driver, for all possible drivers check https://gdal.org/drivers/vector/index.html .
-            Default is "GeoJSON".
-
-        Returns
-        -------
-        None
-        """
-        band = src.GetRasterBand(band)
-        prj = src.GetProjection()
-        srs = osr.SpatialReference(wkt=prj)
-        if path is None:
-            dst_layername = "id"
-        else:
-            dst_layername = path.split(".")[0].split("/")[-1]
-
-        dst_ds = Vector.createDataSource(driver, path)
-        dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
-        dtype = gdal_to_ogr_dtype(src)
-        newField = ogr.FieldDefn(col_name, dtype)
-        dst_layer.CreateField(newField)
-        gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
-        if path:
-            dst_layer = None
-            dst_ds = None
-        else:
-            gdf = Convert._ogrDataSourceToGeoDF(dst_ds)
-            return gdf
-
-    @staticmethod
-    def rasterToGeoDataFrame(
-        src: str,
-        vector: Union[str, GeoDataFrame] = None,
-        add_geometry: str = None,
-        tile: bool = False,
-        tile_size: int = 1500,
-    ) -> Union[DataFrame, GeoDataFrame]:
-        """Convert a raster to a GeoDataFrame.
-
-            The function do the following
-            - Flatten the array in each band in the raster then mask the values if a vector
-            file is given otherwise it will flatten all values.
-            - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
-            data in the raster band exists, an index number will be used [1, 2, 3, ...]
-            - The function has a add_geometry parameter with two possible values ["point", "polygon"], which you can
-            specify the type of shapely geometry you want to create from each cell,
-                - If point is chosen, the created point will be at the center of each cell
-                - If a polygon is chosen, a square polygon will be created that covers the entire cell.
-
-        Parameters
-        ----------
-        src : [str/gdal Dataset]
-            Path to raster file.
-        vector : Optional[GeoDataFrame/str]
-            GeoDataFrame for the vector file path to vector file. If given, it will be used to clip the raster
-        add_geometry: [str]
-            "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
-            Default is None.
-        tile: [bool]
-            True to use tiles in extracting the values from the raster. Default is False.
-        tile_size: [int]
-            tile size. Default is 1500.
-
-        Returns
-        -------
-        DataFrame/GeoDataFrame
-            columndL:
-                >>> print(gdf.columns)
-                >>> Index(['Band_1', 'geometry'], dtype='object')
-
-        the resulted geodataframe will have the band value under the name of the band (if the raster file has a metadata,
-        if not, the bands will be indexed from 1 to the number of bands)
-        """
-        temp_dir = None
-
-        # Get raster band names. open the dataset using gdal.Open
-        if isinstance(src, str):
-            src = Raster.open(src)
-
-        band_names = Raster.get_band_names(src)
-
-        # Create a mask from the pixels touched by the vector.
-        if vector is not None:
-            # Create a temporary directory for files.
-            temp_dir = tempfile.mkdtemp()
-            new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}")
-
-            # read the vector with geopandas
-            if isinstance(vector, str):
-                gdf = Vector.openVector(vector, geodataframe=True)
-            elif isinstance(vector, GeoDataFrame):
-                gdf = vector
-
-            # add a unique value for each rows to use it to rasterize the vector
-            gdf["burn_value"] = list(range(1, len(gdf) + 1))
-            # save the new vector to disk to read it with ogr later
-            gdf.to_file(new_vector_path, driver="GeoJSON")
-
-            # rasterize the vector by burning the unique values as cell values.
-            # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
-            rasterized_vector: Dataset = Convert.polygonToRaster(
-                new_vector_path, src, vector_field="burn_value"
-            )  # rasterized_vector_path,
-            if add_geometry:
-                if add_geometry.lower() == "point":
-                    coords = Raster.get_cell_points(rasterized_vector, mask=True)
-                else:
-                    coords = Raster.get_cell_polygons(rasterized_vector, mask=True)
-
-            # Loop over mask values to extract pixels.
-            # DataFrames of each tile.
-            df_list = []
-            mask_arr = rasterized_vector.GetRasterBand(1).ReadAsArray()
-
-            for arr in Raster.getTile(src, tile_size):
-
-                mask_dfs = []
-                for mask_val in gdf["burn_value"].values:
-                    # Extract only masked pixels.
-                    flatten_masked_values = getPixels(
-                        arr, mask_arr, mask_val=mask_val
-                    ).transpose()
-                    fid_px = np.ones(flatten_masked_values.shape[0]) * mask_val
-
-                    # Create a DataFrame of masked flatten_masked_values and their FID.
-                    mask_df = pd.DataFrame(flatten_masked_values, columns=band_names)
-                    mask_df["burn_value"] = fid_px
-                    mask_dfs.append(mask_df)
-
-                # Concat the mask DataFrames.
-                mask_df = pd.concat(mask_dfs)
-
-                # Join with pixels with vector attributes using the FID.
-                df_list.append(mask_df.merge(gdf, how="left", on="burn_value"))
-
-            # Merge all the tiles.
-            out_df = pd.concat(df_list)
-        else:
-            if tile:
-                df_list = []  # DataFrames of each tile.
-                for arr in Raster.getTile(src):
-                    # Assume multiband
-                    idx = (1, 2)
-                    if arr.ndim == 2:
-                        # Handle single band rasters
-                        idx = (0, 1)
-
-                    mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
-                    pixels = getPixels(arr, mask_arr).transpose()
-                    df_list.append(pd.DataFrame(pixels, columns=band_names))
-
-                # Merge all the tiles.
-                out_df = pd.concat(df_list)
-            else:
-                # Warning: not checked yet for multi bands
-                arr = src.ReadAsArray()
-                pixels = arr.flatten()
-                out_df = pd.DataFrame(pixels, columns=band_names)
-
-            if add_geometry:
-                if add_geometry.lower() == "point":
-                    coords = Raster.get_cell_points(src, mask=True)
-                else:
-                    coords = Raster.get_cell_polygons(src, mask=True)
-
-        out_df = out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
-        if add_geometry:
-            out_df = gpd.GeoDataFrame(out_df, geometry=coords["geometry"])
-
-        # TODO mask no data values.
-
-        # Remove temporary files.
-        if temp_dir is not None:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-
-        # Return dropping any extra cols.
-        return out_df
-
-    @staticmethod
-    def _ogrDataSourceToGeoDF(ds: DataSource) -> GeoDataFrame:
-        """Convert ogr DataSource object to a GeoDataFrame.
-
-        Parameters
-        ----------
-        ds: [ogr.DataSource]
-            ogr DataSource
-
-        Returns
-        -------
-        GeoDataFrame
-        """
-        # # TODO: not complete yet the function needs to take an ogr.DataSource and then write it to disk and then read
-        # #  it using the gdal.OpenEx as below
-        # # but this way if i write the vector to disk i can just read it ysing geopandas as df directly.
-        # # https://gis.stackexchange.com/questions/227737/python-gdal-ogr-2-x-read-vectors-with-gdal-openex-or-ogr-open
-        #
-        # # read the vector using gdal not ogr
-        # ds = gdal.OpenEx(path)  # , gdal.OF_READONLY
-        # layer = ds.GetLayer(0)
-        # layer_name = layer.GetName()
-        # mempath = "/vsimem/test.geojson"
-        # # convert the vector read as a gdal dataset to memory
-        # # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.VectorTranslateOptions
-        # gdal.VectorTranslate(mempath, ds)  # , SQLStatement=f"SELECT * FROM {layer_name}", layerName=layer_name
-        # # reading the memory file using fiona
-        # f = fiona.open(mempath, driver='geojson')
-        # gdf = gpd.GeoDataFrame.from_features(f, crs=f.crs)
-
-        # till i manage to do the above way just write the ogr.DataSource to disk and then read it using geopandas
-
-        # Create a temporary directory for files.
-        temp_dir = tempfile.mkdtemp()
-        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
-        Vector.saveVector(ds, new_vector_path)
-        gdf = gpd.read_file(new_vector_path)
-        return gdf
-
-    @staticmethod
-    def _gdfToOgrDataSource(gdf: GeoDataFrame) -> DataSource:
-        """Convert ogr DataSource object to a GeoDataFrame.
-
-        Parameters
-        ----------
-        gdf: [GeoDataFrame]
-            ogr DataSource
-
-        Returns
-        -------
-        ogr.DataSource
-        """
-        # Create a temporary directory for files.
-        temp_dir = tempfile.mkdtemp()
-        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
-        gdf.to_file(new_vector_path)
-        ds = Vector.openVector(new_vector_path)
-        ds = Vector.copyDriverToMemory(ds)
-        return ds

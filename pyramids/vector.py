@@ -68,7 +68,7 @@ class Vector:
         return catalog
 
     @staticmethod
-    def open(
+    def read(
         path: str, geodataframe: bool = False, read_only: bool = True
     ) -> DataSource:
         """Open a vector dataset using OGR or GeoPandas.
@@ -244,7 +244,7 @@ class Vector:
         temp_dir = tempfile.mkdtemp()
         new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
         gdf.to_file(new_vector_path)
-        ds = Vector.open(new_vector_path)
+        ds = Vector.read(new_vector_path)
         ds = Vector.copyDriverToMemory(ds)
         return ds
 
@@ -281,15 +281,14 @@ class Vector:
         """
         from pyramids.raster import Raster
 
-        # if isinstance(raster, str):
-        #     src = Raster.open(raster)
-        # else:
-        #     src = raster
+        if not isinstance(src, Raster):
+            raise TypeError("The second parameter should be a Raster object (check how to read a raster using the "
+                            "Raster module)")
 
         if not isinstance(vector, GeoDataFrame):
             # if the given vector is a path
             if isinstance(vector, str):
-                ds = Vector.open(vector)
+                ds = Vector.read(vector)
             else:
                 # if the given vector is a ogr.DataSource
                 ds = vector
