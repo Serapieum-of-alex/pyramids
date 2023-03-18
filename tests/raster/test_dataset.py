@@ -5,8 +5,6 @@ import shutil
 from osgeo import gdal
 from pyramids.raster import Raster, Dataset
 
-delete = lambda x: os.remove(x)
-
 
 class TestReadDataset:
     def test_read_all_without_order(

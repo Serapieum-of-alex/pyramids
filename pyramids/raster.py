@@ -58,7 +58,7 @@ class Raster:
     columns: int
     band_count: int
 
-    def __init__(self, src: gdal.Dataset) -> object:
+    def __init__(self, src: gdal.Dataset):
         if not isinstance(src, gdal.Dataset):
             raise TypeError(
                 "src should be read using gdal (gdal dataset please read it using gdal"
@@ -2437,7 +2437,6 @@ class Dataset:
         time_length: int,
         files: List[str] = None,
     ):
-        # super().__init__(src)
         self.sample = Raster(src)
         self.files = files
         self.time_lenth = time_length
