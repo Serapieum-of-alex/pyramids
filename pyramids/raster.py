@@ -23,7 +23,7 @@ from osgeo.osr import SpatialReference
 
 # import netCDF4
 # from pyramids.netcdf import NC
-from pyramids.utils import gdal_to_ogr_dtype, ReadOnlyError
+from pyramids.utils import gdal_to_ogr_dtype, ReadOnlyError, DatasetNoFoundError
 
 try:
     from osgeo_utils import gdal_merge
@@ -58,7 +58,7 @@ class Raster:
     columns: int
     band_count: int
 
-    def __init__(self, src: gdal.Dataset):
+    def __init__(self, src: gdal.Dataset) -> object:
         if not isinstance(src, gdal.Dataset):
             raise TypeError(
                 "src should be read using gdal (gdal dataset please read it using gdal"
@@ -89,21 +89,6 @@ class Raster:
         self.band_names = self.get_band_names()
 
         pass
-
-    def count_domain_cells(self):
-        """Count cells inside the domain
-
-        Returns
-        -------
-        int:
-            Number of cells
-        """
-        # count cells inside the domain
-        arr = self.raster.ReadAsArray()
-        domain_count = np.size(arr[:, :]) - np.count_nonzero(
-            (arr[np.isclose(arr, self.no_data_value[0], rtol=0.001)])
-        )
-        return domain_count
 
     @classmethod
     def read(cls, path: str, read_only=True):
@@ -380,10 +365,10 @@ class Raster:
         nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
         bands: int = 1,
     ) -> Union[gdal.Dataset, None]:
-        """createRaster.
+        """create_raster.
 
-        createRaster method creates a raster from a given array and geotransform data
-        and save the tif file if a Path is given or it will return the gdal.Dataset
+            - create_raster method creates a raster from a given array and geotransform data
+            and save the tif file if a Path is given or it will return the gdal.Dataset
 
         Parameters
         ----------
@@ -543,6 +528,21 @@ class Raster:
         for var in self.subsets:
             variables.append(var[1].split(" ")[1])
         return variables
+
+    def count_domain_cells(self):
+        """Count cells inside the domain
+
+        Returns
+        -------
+        int:
+            Number of cells
+        """
+        # count cells inside the domain
+        arr = self.raster.ReadAsArray()
+        domain_count = np.size(arr[:, :]) - np.count_nonzero(
+            (arr[np.isclose(arr, self.no_data_value[0], rtol=0.001)])
+        )
+        return domain_count
 
     @staticmethod
     def _create_sr_from_epsg(epsg: int = "") -> SpatialReference:
@@ -918,9 +918,8 @@ class Raster:
         """
         if not isinstance(path, str):
             raise TypeError("Raster_path input should be string type")
-        # input values
-        ext = path[-4:]
-        if not ext == ".tif":
+
+        if not path.endswith(".tif"):
             raise ValueError("please add the extension at the end of the path input")
 
         driver = gdal.GetDriverByName("GTiff")
@@ -1073,7 +1072,7 @@ class Raster:
 
             # read the vector with geopandas
             if isinstance(vector_mask, str):
-                gdf = Vector.open(vector_mask, geodataframe=True)
+                gdf = Vector.read(vector_mask, geodataframe=True)
             elif isinstance(vector_mask, GeoDataFrame):
                 gdf = vector_mask
 
@@ -2421,8 +2420,11 @@ class Raster:
         print("\n")
 
 
-class Dataset(Raster):
+class Dataset:
+    sample: Raster
     files: List[str]
+    time_length: int
+    array: np.ndarray
 
     """
     files:
@@ -2435,7 +2437,8 @@ class Dataset(Raster):
         time_length: int,
         files: List[str] = None,
     ):
-        super().__init__(src)
+        # super().__init__(src)
+        self.sample = Raster(src)
         self.files = files
         self.time_lenth = time_length
 
@@ -2451,6 +2454,7 @@ class Dataset(Raster):
         fmt: str = None,
         freq: str = "daily",
         separator: str = "_",
+        extension: str = ".tif",
     ):
         """read_separate_files.
 
@@ -2499,6 +2503,8 @@ class Dataset(Raster):
         separator: [str]
             separator between the order in the beginning of the raster file name and the rest of the file
             name. Default is "_".
+        extension: [str]
+            the extension of the files you want to read from the given path. Default is ".tif".
 
         Returns
         -------
@@ -2525,7 +2531,7 @@ class Dataset(Raster):
                 raise FileNotFoundError("The path you have provided does not exist")
             # get list of all files
             files = os.listdir(path)
-            files = [i for i in files if i.endswith(".tif")]
+            files = [i for i in files if i.endswith(extension)]
             # files = glob.glob(os.path.join(path, "*.tif"))
             # check whether there are files or not inside the folder
             if len(files) < 1:
@@ -2577,7 +2583,7 @@ class Dataset(Raster):
             endi = len(files)
             # check that folder only contains rasters
             assert all(
-                file_i.endswith(".tif") for file_i in files
+                file_i.endswith(extension) for file_i in files
             ), "all files in the given folder should have .tif extension"
 
         # files to be read
@@ -2591,7 +2597,7 @@ class Dataset(Raster):
 
         return cls(sample, len(files), files)
 
-    def read_array(self, band: int = 1) -> np.ndarray:
+    def read_dataset(self, band: int = 1):
         """Read array.
 
             Read values form the given bands as Arrays for all files
@@ -2606,26 +2612,94 @@ class Dataset(Raster):
         Array
         """
         # check the given band number
-        if band > self.band_count:
+        if band > self.sample.band_count:
             raise ValueError(
-                f"the raster has only {self.band_count} check the given band number"
+                f"the raster has only {self.sample.band_count} check the given band number"
             )
         # fill the array with no_data_value data
-        arr = np.ones(
+        self.array = np.ones(
             (
                 self.time_lenth,
-                self.rows,
-                self.columns,
+                self.sample.rows,
+                self.sample.columns,
             )
         )
-        arr[:, :, :] = self.no_data_value
+        self.array[:, :, :] = np.nan
 
         for i, file_i in enumerate(self.files):
             # read the tif file
             raster_i = gdal.Open(f"{file_i}")
-            arr[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
+            self.array[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
 
-        return arr
+    def iloc(self, i):
+        """iloc.
+
+            - Access dataset array using index.
+
+        Parameters
+        ----------
+        i: [int]
+            index
+
+        Returns
+        -------
+        Raster:
+            Raster object.
+        """
+        if not hasattr(self, "array"):
+            raise DatasetNoFoundError("please read the dataset first")
+        arr = self.array[i, :, :]
+        dst = gdal.GetDriverByName("MEM").CreateCopy("", self.sample.raster, 0)
+        dst.GetRasterBand(1).WriteArray(arr)
+        return Raster(dst)
+
+    def to_geotiff(self, path: str):
+        """Save to geotiff format.
+
+            saveRaster saves a raster to a path
+
+        Parameters
+        ----------
+        path: [string]
+            a path includng the name of the raster and extention.
+            >>> path = "data/cropped.tif"
+
+        Examples
+        --------
+        >>> raster_obj = Raster.read("path/to/file/***.tif")
+        >>> output_path = "examples/GIS/data/save_raster_test.tif"
+        >>> raster_obj.to_geotiff(output_path)
+        """
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        for i in range(self.time_lenth):
+            src = self.iloc(i)
+            src.to_geotiff(f"{path}/{i}.tif")
+
+    def to_ascii(self, path: str):
+        """Save to geotiff format.
+
+            saveRaster saves a raster to a path
+
+        Parameters
+        ----------
+        path: [string]
+            a path includng the name of the raster and extention.
+            >>> path = "data/cropped.tif"
+
+        Examples
+        --------
+        >>> raster_obj = Raster.read("path/to/file/***.tif")
+        >>> output_path = "examples/GIS/data/save_raster_test.tif"
+        >>> raster_obj.to_geotiff(output_path)
+        """
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        for i in range(self.time_lenth):
+            src = self.iloc(i)
+            src.to_ascii(f"{path}/{i}.asc")
 
     # @staticmethod
     # def readNC(
@@ -2748,7 +2822,7 @@ class Dataset(Raster):
         --------
         >>> src_raster = gdal.Open("DEM.tif")
         >>> name = ["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
-        >>> Raster.rastersLike(src_raster, data, name)
+        >>> Dataset.rastersLike(src_raster, data, name)
         """
         # length of the 3rd dimension of the array
         try:
@@ -2781,13 +2855,13 @@ class Dataset(Raster):
     # TODO: merge ReprojectDataset and ProjectRaster they are almost the same
     # TODO: still needs to be tested
     @staticmethod
-    def reprojectDataset(
+    def to_epsg(
         src: gdal.Dataset,
         to_epsg: int = 3857,
         cell_size: int = [],
         method: str = "Nearest",
     ) -> gdal.Dataset:
-        """ReprojectDataset.
+        """to_epsg.
 
         ReprojectDataset reprojects and resamples a folder of rasters to any projection
         (default the WGS84 web mercator projection, without resampling)
@@ -2825,8 +2899,7 @@ class Dataset(Raster):
             )
         if not isinstance(method, str):
             raise TypeError(
-                "please enter correct method more information see "
-                "docmentation "
+                "please enter correct method more information see " "docmentation "
             )
 
         if cell_size:
@@ -2985,9 +3058,7 @@ class Dataset(Raster):
             )
 
         if not os.path.exists(path):
-            raise FileNotFoundError(
-                f"the {path} path you have provided does not exist"
-            )
+            raise FileNotFoundError(f"the {path} path you have provided does not exist")
         # check wether the folder has the rasters or not
         if not len(os.listdir(src_dir)) > 0:
             raise FileNotFoundError(f"{src_dir} folder you have provided is empty")
