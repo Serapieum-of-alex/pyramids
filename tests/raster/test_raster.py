@@ -149,7 +149,6 @@ class TestSpatialProperties:
         arr = src.read_array()
         assert np.array_equal(multi_band.ReadAsArray(), arr)
 
-
     def test_get_band_names(self, src: Dataset):
         src = Raster(src)
         names = src.get_band_names()
