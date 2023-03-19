@@ -34,8 +34,14 @@ NUMPY_GDAL_DATA_TYPES = {
     "complex64": 10,
     "complex128": 11,
 }
+INTERPOLATION_METHODS = {
+    "nearest neibour": gdal.GRA_NearestNeighbour,
+    "cubic": gdal.GRA_Cubic,
+    "bilinear": gdal.GRA_Bilinear,
+}
 
 
+# TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
 def numpy_to_gdal_dtype(arr: np.ndarray):
     """mapping functiuon between numpy and gdal data types.
 
@@ -54,6 +60,21 @@ def numpy_to_gdal_dtype(arr: np.ndarray):
     return gdal_type
 
     # return GDAL_NUMPY_DATA_TYPES[list(NUMPY_GDAL_DATA_TYPES.keys())[loc]]
+
+
+def gdal_to_numpy_dtype(dtype: int):
+    """converts gdal dtype into numpy dtype
+
+    Parameters
+    ----------
+    dtype: [int]
+
+    Returns
+    -------
+    str
+    """
+    ind = list(NUMPY_GDAL_DATA_TYPES.values()).index(dtype)
+    return list(NUMPY_GDAL_DATA_TYPES.keys())[ind]
 
 
 def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
@@ -115,6 +136,15 @@ class ReadOnlyError(Exception):
 
 class DatasetNoFoundError(Exception):
     """DatasetNoFoundError"""
+
+    def __init__(self, error_message: str):
+        logger.error(error_message)
+
+    pass
+
+
+class NoDataValueError(Exception):
+    """NoDataValueError"""
 
     def __init__(self, error_message: str):
         logger.error(error_message)
