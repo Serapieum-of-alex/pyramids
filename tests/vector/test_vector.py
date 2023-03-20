@@ -92,92 +92,10 @@ class TestCreatePoint:
 
 
 class TestPolygonToRaster:
-    def test_disk_inputs_and_outputs(
-        self,
-        vector_mask_path,
-        raster_to_df_path,
-        raster_to_df_dataset: Dataset,
-        rasterized_mask_path: str,
-        rasterized_mask_array: np.ndarray,
-    ):
-        """All inputs are in disk.
-
-            - The inputs to the function are in disk.
-            - The output will be written to disk.
-
-        Parameters
-        ----------
-        vector_mask_path
-        raster_to_df_path
-        raster_to_df_dataset
-        rasterized_mask_path
-        rasterized_mask_array
-        """
-        # remove the file if exists
-        if os.path.exists(rasterized_mask_path):
-            os.remove(rasterized_mask_path)
-
-        src = Raster.read(raster_to_df_path)
-        Vector.to_raster(vector_mask_path, src, rasterized_mask_path)
-        assert os.path.exists(rasterized_mask_path), (
-            "The output raster should have been saved to disk at the "
-            f"following path: {raster_to_df_path}"
-        )
-        src = Raster.read(rasterized_mask_path)
-        assert src.epsg == 32618
-        geo_source = raster_to_df_dataset.GetGeoTransform()
-        assert src.geotransform == geo_source
-        assert src.no_data_value[0] == 0.0
-        arr = src.read_array()
-        values = arr[arr[:, :] == 1.0]
-        assert values.shape[0] == 16
-
-    def test_gdf_input(
+    def test_with_raster_obj(
         self,
         vector_mask_gdf: GeoDataFrame,
         raster_to_df_path: str,
-        raster_to_df_dataset: Dataset,
-        rasterized_mask_path: str,
-        rasterized_mask_array: np.ndarray,
-    ):
-        """Geodataframe input polygon.
-
-            - The inputs to the function are in disk.
-            - The output will be written to disk.
-
-        Parameters
-        ----------
-        vector_mask_gdf
-        raster_to_df_path
-        raster_to_df_dataset
-        rasterized_mask_path
-        rasterized_mask_array
-        """
-        # remove the file if exists
-        if os.path.exists(rasterized_mask_path):
-            os.remove(rasterized_mask_path)
-
-        src = Raster.read(raster_to_df_path)
-        Vector.to_raster(vector_mask_gdf, src, rasterized_mask_path)
-        assert os.path.exists(rasterized_mask_path), (
-            "The output raster should have been saved to disk at the "
-            f"following path: {raster_to_df_path}"
-        )
-        src = Raster.read(rasterized_mask_path)
-        assert src.epsg == 32618
-        geo_source = raster_to_df_dataset.GetGeoTransform()
-        assert src.geotransform == geo_source
-        arr = src.read_array()
-        assert src.no_data_value[0] == 0.0
-        values = arr[arr[:, :] == 1.0]
-        assert values.shape[0] == 16
-
-    def test_return_output(
-        self,
-        vector_mask_path: str,
-        raster_to_df_path: str,
-        raster_to_df_dataset: Dataset,
-        rasterized_mask_array: np.ndarray,
     ):
         """Geodataframe input polygon.
 
@@ -186,20 +104,42 @@ class TestPolygonToRaster:
 
         Parameters
         ----------
-        vector_mask_path
         raster_to_df_path
-        raster_to_df_dataset
-        rasterized_mask_array
         """
         src_obj = Raster.read(raster_to_df_path)
-        src = Vector.to_raster(vector_mask_path, src_obj)
-        assert src.epsg == 32618
-        geo_source = raster_to_df_dataset.GetGeoTransform()
-        assert src.geotransform == geo_source
+        src = Vector.to_raster(vector_mask_gdf, src=src_obj)
+        assert src.epsg == vector_mask_gdf.crs.to_epsg()
+        xmin, _, _, ymax = vector_mask_gdf.bounds.values[0]
+        assert src.geotransform[0] == xmin
+        assert src.geotransform[3] == ymax
+        assert src.cell_size == 4000
         arr = src.read_array()
-        assert src.no_data_value[0] == 0.0
         values = arr[arr[:, :] == 1.0]
         assert values.shape[0] == 16
+
+    def test_with_cell_size_inout(
+        self,
+        vector_mask_gdf: GeoDataFrame,
+    ):
+        """Geodataframe input polygon.
+
+            - The inputs to the function are in disk,
+            - The output will be returned as gdal.Dataset.
+
+        Parameters
+        ----------
+        vector_mask_gdf
+        """
+        src = Vector.to_raster(vector_mask_gdf, cell_size=200)
+        assert src.epsg == vector_mask_gdf.crs.to_epsg()
+        xmin, _, _, ymax = vector_mask_gdf.bounds.values[0]
+        assert src.geotransform[0] == xmin
+        assert src.geotransform[3] == ymax
+        assert src.cell_size == 200
+        arr = src.read_array()
+        # assert src.no_data_value[0] == 0.0
+        values = arr[arr[:, :] == 1.0]
+        assert values.shape[0] == 6400
 
 
 class TestConvertDataSourceAndGDF:

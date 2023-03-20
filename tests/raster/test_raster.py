@@ -162,7 +162,7 @@ class TestSpatialProperties:
     ):
         src = Raster(src_set_no_data_value)
         try:
-            src._set_no_data_value(-99999)
+            src._set_no_data_value(-99999.0)
         except ReadOnlyError:
             pass
 
@@ -172,19 +172,7 @@ class TestSpatialProperties:
         src_no_data_value: float,
     ):
         src = Raster(src_update)
-        src._set_no_data_value(5)
-        # check if the no_data_value in the Dataset object is set
-        assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
-        # check if the no_data_value of the Raster object is set
-        assert src.no_data_value[0] == 5
-
-    def test_set_no_data_value(
-        self,
-        src_update: Dataset,
-        src_no_data_value: float,
-    ):
-        src = Raster(src_update)
-        src._set_no_data_value(5)
+        src._set_no_data_value(5.0)
         # check if the no_data_value in the Dataset object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
         # check if the no_data_value of the Raster object is set
@@ -325,6 +313,8 @@ class TestFillRaster:
     def test_disk_raster(
         self, src: Dataset, fill_raster_path: str, fill_raster_value: int
     ):
+        if os.path.exists(fill_raster_path):
+            os.remove(fill_raster_path)
         src = Raster(src)
         src.fill(fill_raster_value, driver="GTiff", path=fill_raster_path)
         "now the resulted raster is saved to disk"
@@ -363,7 +353,7 @@ def test_resample(
 
 
 class TestReproject:
-    def test_option1(
+    def test_option_maintain_alighment(
         self,
         src: Dataset,
         project_raster_to_epsg: int,
@@ -372,7 +362,7 @@ class TestReproject:
         src_shape: tuple,
     ):
         src = Raster(src)
-        dst = src.to_epsg(to_epsg=project_raster_to_epsg, option=1)
+        dst = src.to_epsg(to_epsg=project_raster_to_epsg, maintain_alighment=True)
 
         proj = dst.raster.GetProjection()
         sr = osr.SpatialReference(wkt=proj)
@@ -381,7 +371,7 @@ class TestReproject:
         dst_arr = dst.raster.ReadAsArray()
         assert dst_arr.shape == src_shape
 
-    def test_option2(
+    def test_option_donot_maintain_alighment(
         self,
         src: Dataset,
         project_raster_to_epsg: int,
@@ -390,7 +380,7 @@ class TestReproject:
         src_shape: tuple,
     ):
         src = Raster(src)
-        dst = src.to_epsg(to_epsg=project_raster_to_epsg, option=2)
+        dst = src.to_epsg(to_epsg=project_raster_to_epsg, maintain_alighment=False)
 
         proj = dst.proj
         sr = osr.SpatialReference(wkt=proj)
@@ -475,18 +465,18 @@ class TestCrop:
         aligned_raster = Raster(aligned_raster)
         aligned_raster._crop_un_aligned(mask_obj)
 
+
+class TestCropWithPolygon:
     def test_crop_with_polygon(
         self,
-        soil_raster: gdal.Dataset,
-        basin_polygon: gpd.GeoDataFrame,
+        rhine_raster: gdal.Dataset,
+        polygon_mask: gpd.GeoDataFrame,
     ):
-        epsg = basin_polygon.crs.to_epsg()
-        src_obj = Raster(soil_raster)
-        src_reprojected = src_obj.to_epsg(epsg)
-        cropped_raster = src_reprojected._crop_with_polygon(basin_polygon)
+        src_obj = Raster(rhine_raster)
+        cropped_raster = src_obj._crop_with_polygon(polygon_mask)
         assert isinstance(cropped_raster.raster, gdal.Dataset)
-        assert cropped_raster.geotransform == src_reprojected.geotransform
-        assert cropped_raster.no_data_value[0] == src_reprojected.no_data_value[0]
+        assert cropped_raster.geotransform == src_obj.geotransform
+        assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
 
 class TestToPolygon:
