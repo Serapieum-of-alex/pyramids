@@ -11,12 +11,22 @@ from osgeo.gdal import Dataset
 
 @pytest.fixture(scope="module")
 def src_path() -> str:
-    return "examples/data/acc4000.tif"
+    return "tests/data/acc4000.tif"
 
 
 @pytest.fixture(scope="module")
-def src() -> Dataset:
-    return gdal.Open("examples/data/acc4000.tif")
+def src(src_path: str) -> Dataset:
+    return gdal.Open(src_path)
+
+
+@pytest.fixture(scope="module")
+def src_set_no_data_value() -> Dataset:
+    return gdal.Open("tests/data/src-set_no_data_value.tif")
+
+
+@pytest.fixture(scope="module")
+def src_update() -> Dataset:
+    return gdal.Open("tests/data/acc4000-update.tif", gdal.GA_Update)
 
 
 @pytest.fixture(scope="module")
@@ -208,7 +218,7 @@ def crop_aligned_folder_path() -> str:
 
 @pytest.fixture(scope="module")
 def crop_aligned_folder_saveto() -> str:
-    return "examples/data/crop_aligned_folder/"
+    return "tests/data/crop_aligned_folder/"
 
 
 @pytest.fixture(scope="module")
@@ -218,7 +228,17 @@ def crop_saveto() -> str:
 
 @pytest.fixture(scope="module")
 def rasters_folder_path() -> str:
-    return "examples/data/raster-folder"
+    return "tests/data/raster-folder"
+
+
+@pytest.fixture(scope="module")
+def rhine_raster(rasters_folder_path: str) -> Dataset:
+    return gdal.Open(f"{rasters_folder_path}/1_MSWEP_1979.01.02.tif")
+
+
+@pytest.fixture(scope="module")
+def ascii_folder_path() -> str:
+    return "tests/data/ascii-folder"
 
 
 @pytest.fixture(scope="module")
@@ -249,6 +269,16 @@ def rasters_folder_date_fmt() -> str:
 @pytest.fixture(scope="module")
 def rasters_folder_between_dates_raster_number() -> int:
     return 4
+
+
+@pytest.fixture(scope="module")
+def polygon_mask() -> gpd.GeoDataFrame:
+    return gpd.read_file("tests/data/polygon_germany.geojson")
+
+
+@pytest.fixture(scope="module")
+def raster_mask() -> Dataset:
+    return gdal.Open("tests/data/raster_mask.tif")
 
 
 @pytest.fixture(scope="module")

@@ -198,34 +198,34 @@ class TestCrop:
         dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         dataset.crop(mask)
-        # dataset.to_geotiff(crop_aligned_folder_saveto)
+        # dataset.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
         arr = dataset.array[0, :, :]
         no_data_value = dataset.sample.no_data_value[0]
         arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
         assert arr1.shape[0] == 720
         # shutil.rmtree(crop_aligned_folder_saveto)
 
-    # def test_crop_with_polygon(
-    #         self,
-    #         polygon_mask: gpd.GeoDataFrame,
-    #         rasters_folder_path: str,
-    #         crop_aligned_folder_saveto: str,
-    # ):
-    #     # if os.path.exists(crop_aligned_folder_saveto):
-    #     #     shutil.rmtree(crop_aligned_folder_saveto)
-    #     #     os.mkdir(crop_aligned_folder_saveto)
-    #     # else:
-    #     #     os.mkdir(crop_aligned_folder_saveto)
-    #
-    #     dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
-    #     dataset.read_dataset()
-    #     dataset.crop(polygon_mask)
-    #     dataset.to_geotiff(crop_aligned_folder_saveto)
-    #     arr = dataset.array[0, :, :]
-    #     no_data_value = dataset.sample.no_data_value[0]
-    #     arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
-    #     assert arr1.shape[0] == 720
-    #     # shutil.rmtree(crop_aligned_folder_saveto)
+    def test_crop_with_polygon(
+            self,
+            polygon_mask: gpd.GeoDataFrame,
+            rasters_folder_path: str,
+            crop_aligned_folder_saveto: str,
+    ):
+        # if os.path.exists(crop_aligned_folder_saveto):
+        #     shutil.rmtree(crop_aligned_folder_saveto)
+        #     os.mkdir(crop_aligned_folder_saveto)
+        # else:
+        #     os.mkdir(crop_aligned_folder_saveto)
+
+        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+        dataset.crop(polygon_mask)
+        # dataset.to_geotiff(crop_aligned_folder_saveto)
+        arr = dataset.array[0, :, :]
+        no_data_value = dataset.sample.no_data_value[0]
+        arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
+        assert arr1.shape[0] == 775
+        # shutil.rmtree(crop_aligned_folder_saveto)
 
 
 def test_merge(
