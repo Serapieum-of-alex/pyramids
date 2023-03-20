@@ -49,9 +49,10 @@ class Vector:
         17- WriteShapefile
     """
 
-    def __init__(self):
+    def __init__(self, gdf: GeoDataFrame):
         # read the drivers catalog
         self.catalog = self.getCatalog()
+        self.gdf = gdf
         pass
 
     @staticmethod
@@ -251,8 +252,8 @@ class Vector:
     @staticmethod
     def to_raster(
         vector: Union[str, GeoDataFrame],
-        src: Union[str, gdal.Dataset],
-        path: str = None,
+        cell_size: int = None,
+        src=None,
         vector_field=None,
     ) -> Union[None, gdal.Dataset]:
         """Covert a vector into raster.
@@ -263,13 +264,13 @@ class Vector:
 
         Parameters
         ----------
-        vector : [str/ogr DataSource/GeoDataFrame]
+        vector: [GeoDataFrame]
             vector path
-        src : [str/gdal Dataset]
-            raster path, or gdal Dataset, the raster will only be used as a source for the geotransform (
+        cell_size: [int]
+            cell size.
+        src : [gdal Dataset]
+            Raster object, the raster will only be used as a source for the geotransform (
             projection, rows, columns, location) data to be copied to the rasterized vector.
-        path : [str]
-            Path for output raster. if given the resulted raster will be saved to disk.
         vector_field : str or None
             Name of a field in the vector to burn values from. If None, all vector
             features are burned with a constant value of 1.
@@ -281,58 +282,79 @@ class Vector:
         """
         from pyramids.raster import Raster
 
-        if not isinstance(src, Raster):
-            raise TypeError(
-                "The second parameter should be a Raster object (check how to read a raster using the "
-                "Raster module)"
-            )
-
         if not isinstance(vector, GeoDataFrame):
-            # if the given vector is a path
-            if isinstance(vector, str):
-                ds = Vector.read(vector)
-            else:
-                # if the given vector is a ogr.DataSource
-                ds = vector
-        else:
-            # if the given vector is a geodataframe, convert it to ogr datasource
-            ds = Vector._gdfToOgrDataSource(vector)
-            # then save it to disk and get the path
-            vector_path = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}.geojson")
-            vector.to_file(vector_path)
-            vector = vector_path
-
-        # Check EPSG are same, if not reproject vector.
-        ds_epsg = Vector.getEPSG(ds)
-        if src.epsg != ds_epsg:
-            # TODO: reproject the vector to the raster projection instead of raising an error.
-            raise ValueError(
-                f"Raster and vector are not the same EPSG. {src.epsg} != {ds_epsg}"
+            raise TypeError(
+                f"The first parameter should be a GeoDataFrame, given: {type(vector)}"
             )
+        if cell_size is None and src is None:
+            raise ValueError("You have to enter either cell size of Raster object")
 
-        src = Raster.create_empty_driver(src.raster, path, bands=1, no_data_value=0)
+        if src is not None:
+            if not isinstance(src, Raster):
+                raise TypeError(
+                    "The second parameter should be a Raster object (check how to read a raster using the "
+                    "Raster module)"
+                )
+
+        xmin, ymin, xmax, ymax = vector.bounds.values[0]
 
         if vector_field is None:
             # Use a constant value for all features.
             burn_values = [1]
             attribute = None
+            dtype = 5
         else:
             # Use the values given in the vector field.
             burn_values = None
             attribute = vector_field
+            dtype = 7
+
+        if isinstance(src, Raster):
+            no_data_value = src.no_data_value[0]
+            rows = src.rows
+            columns = src.columns
+            cell_size = src.cell_size
+        else:
+            no_data_value = Raster.default_no_data_value
+            columns = int(np.ceil((xmax - xmin) / cell_size))
+            rows = int(np.ceil((ymax - ymin) / cell_size))
+
+        # save the geodataframe to disk and get the path
+        vector_path = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}.geojson")
+        vector.to_file(vector_path)
+        # vector = vector_path
+        # if the given vector is a geodataframe, convert it to ogr datasource
+        vector = Vector._gdfToOgrDataSource(vector)
+
+        # Check EPSG are same, if not reproject vector.
+        ds_epsg = Vector.getEPSG(vector)
+        if src is not None:
+            if src.epsg != ds_epsg:
+                # TODO: reproject the vector to the raster projection instead of raising an error.
+                raise ValueError(
+                    f"Raster and vector are not the same EPSG. {src.epsg} != {ds_epsg}"
+                )
+
+        top_left_coords = (xmin, ymax)
+        # TODO: enable later multi bands
+        bands = 1
+        src = Raster.create_driver_from_scratch(
+            cell_size,
+            rows,
+            columns,
+            dtype,
+            bands,
+            top_left_coords,
+            ds_epsg,
+            no_data_value,
+        )
 
         rasterize_opts = gdal.RasterizeOptions(
             bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
         )
-        _ = gdal.Rasterize(src.raster, vector, options=rasterize_opts)
+        _ = gdal.Rasterize(src.raster, vector_path, options=rasterize_opts)
 
-        if path:
-            src.raster.FlushCache()
-            src.raster = None
-        else:
-            # read the rasterized vector
-            # src = Raster.openDataset(path)
-            return src
+        return src
 
     @staticmethod
     def _getDsEPSG(ds: DataSource):
