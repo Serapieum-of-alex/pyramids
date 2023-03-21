@@ -3,16 +3,14 @@ from pyramids.raster import Raster
 
 src_path = "examples/data/acc4000.tif"
 #%%
-src = Raster.open(src_path)
+src = Raster.read(src_path)
 arr = src.ReadAsArray()
-ros, cos, proj, bands, gt, no_data_value, dtype = Raster.get_details(src)
-print(f"current cell size is {gt[1]} m")
+print(f"current cell size is {src.cell_size} m")
 
 resample_raster_cell_size = 100
 resample_raster_resample_technique = "bilinear"
 
-dst = Raster.resampleRaster(
-    src,
+dst = src.resample(
     resample_raster_cell_size,
-    resample_technique=resample_raster_resample_technique,
+    method=resample_raster_resample_technique,
 )

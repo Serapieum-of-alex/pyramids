@@ -277,6 +277,9 @@ class TestSave:
         src: Dataset,
         ascii_file_save_to: str,
     ):
+        if os.path.exists(ascii_file_save_to):
+            os.remove(ascii_file_save_to)
+
         src = Raster(src)
         src.to_ascii(ascii_file_save_to)
         assert os.path.exists(ascii_file_save_to)

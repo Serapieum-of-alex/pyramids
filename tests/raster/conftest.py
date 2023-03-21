@@ -316,3 +316,8 @@ def merge_input_raster() -> List[str]:
 @pytest.fixture(scope="module")
 def merge_output() -> str:
     return r"tests/data/merge/merged_raster.tif"
+
+
+@pytest.fixture(scope="module")
+def match_alignment_dataset() -> str:
+    return "tests/data/match-align-dataset"

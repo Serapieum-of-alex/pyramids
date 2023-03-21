@@ -5,8 +5,7 @@ import netCDF4
 import numpy as np
 import pandas as pd
 from netCDF4._netCDF4 import Dataset
-
-from pyramids.raster import Raster
+from osgeo import gdal
 
 
 class NC:
@@ -45,7 +44,7 @@ class NC:
         temporal_resolution : [integer]
             temporal_resolution varialble in the netcdf file
         """
-        # list if variables
+        # list if subsets
         if var is None:
             var = list(nc.variables.keys())[-1]
 
@@ -74,16 +73,16 @@ class NC:
         # get lats and lons
         try:
             lats = nc.variables["latitude"][:]
-            # Geo6 = nc.variables['latitude'].res
+            # Geo6 = nc.subsets['latitude'].res
         except KeyError:
             lats = nc.variables["lat"][:]
-            # Geo6 = nc.variables['lat'].res
+            # Geo6 = nc.subsets['lat'].res
 
         try:
             lons = nc.variables["longitude"][:]
         except KeyError:
             lons = nc.variables["lon"][:]
-            # Geo2 = nc.variables['lon'].size
+            # Geo2 = nc.subsets['lon'].size
 
         # try to get the resolutio of the file
         try:
@@ -165,25 +164,60 @@ class NC:
         """
         if time_var_name is None:
             try:
-                time_var = nc.variables["temporal_resolution"]
+                time_var = nc.subsets["temporal_resolution"]
                 time_arr = time_var[:]
                 # convert  temporal_resolution numbers to dates
                 time_arr = netCDF4.num2date(time_arr[:], time_var.units)
             except KeyError:
                 # try to t as the time variable name
                 try:
-                    time_arr = nc.variables["t"][:]
+                    time_arr = nc.subsets["t"][:]
                 except KeyError:
                     # if non of the temporal_resolution and t are the name of the time variable print all the variable
-                    print(f"{nc.variables}")
+                    print(f"{nc.subsets}")
                     raise KeyError("Please enter the time_var_name for the nctoTiff")
-                # temporal_resolution = nc.variables['t'].units[11:]
+                # temporal_resolution = nc.subsets['t'].units[11:]
         else:
-            time_var = nc.variables[time_var_name]
+            time_var = nc.subsets[time_var_name]
             time_arr = time_var[:]
             time_arr = netCDF4.num2date(time_arr[:], time_var.units)
 
         return time_arr
+
+    # TODO: replace it  with read_array
+    @staticmethod
+    def openArrayInfo(fname: str = ""):
+        """openArrayInfo.
+
+        Opening a tiff info, for example size of array, projection and transform matrix.
+
+        Parameters
+        ----------
+        fname: [str]
+            path to the tiff file
+
+        Returns
+        -------
+        geotransform: [Tuple]
+            geotransform data of the upper left corner of the raster
+            (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
+        proj: [str]
+            projection as a well known text.
+        cols: [float]
+            number of columns
+        rows: [float]
+            number of rows
+        """
+        src = gdal.Open(fname)
+        if src is None:
+            raise FileNotFoundError(f"{fname} does not exists")
+
+        geo = src.GetGeoTransform()
+        proj = src.GetProjection()
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+
+        return geo, proj, cols, rows
 
     @staticmethod
     def saveNC(
@@ -230,7 +264,7 @@ class NC:
         if not os.path.exists(namenc):
 
             # Get raster information
-            geo_out, proj, size_X, size_Y = Raster.openArrayInfo(Reference_filename)
+            geo_out, proj, size_X, size_Y = NC.openArrayInfo(Reference_filename)
 
             # Create the lat/lon rasters
             lon = np.arange(size_X) * geo_out[1] + geo_out[0] - 0.5 * geo_out[1]
@@ -240,7 +274,7 @@ class NC:
             nco = netCDF4.Dataset(namenc, "w", format="NETCDF4_CLASSIC")
             nco.description = "%s data" % Var
 
-            # Create dimensions, variables and attributes:
+            # Create dimensions, subsets and attributes:
             nco.createDimension("longitude", size_X)
             nco.createDimension("latitude", size_Y)
 

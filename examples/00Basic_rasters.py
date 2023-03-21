@@ -12,8 +12,8 @@ from pyramids.raster import Raster
 
 #%% Paths
 datapath = "examples/data"
-RasterAPath = f"{datapath}/acc4000.tif"
-RasterBPath = f"{datapath}/dem_100_f.tif"
+raster_a_path = f"{datapath}/acc4000.tif"
+raster_b_path = f"{datapath}/dem_100_f.tif"
 pointsPath = f"{datapath}/points.csv"
 aligned_raster_folder = f"{datapath}/aligned_rasters/"
 aligned_raster = f"{datapath}/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
@@ -28,7 +28,32 @@ also if you have installed qgis define the directory to the bin folder inside th
 of qgis in the environment variable with a name "qgis"
 """
 # %% read the raster
-src = Raster.open(RasterAPath)
+src = Raster.read(raster_a_path)
+
+
+arr = src.read_array()
+old_value = arr[0, 0]
+new_val = src.no_data_value[0]
+# src.change_no_data_value(new_val)
+src.change_no_data_value(new_val, old_value)
+# src.change_no_data_value_attr(0, new_value)
+# src.to_geotiff(raster_a_path)
+#%%
+arr1 = arr.flatten()
+# arr2 = np.full_like(arr, np.nan).flatten()
+#
+def fn(val):
+    if np.isclose(val, val1, rtol=0.001):
+        return new_value[band - 1]
+    else:
+        pass
+
+
+#%%
+val = src.raster.ReadAsArray()[0, 0]
+print(src.no_data_value)
+src._set_no_data_value(val)
+#%%
 fig, ax = Map.plot(src, title="Flow Accumulation")
 # %% GetRasterData
 """
@@ -196,7 +221,7 @@ arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
 path = datapath + "/rasterlike.tif"
 src_new = Raster.raster_like(src, arr2, path=path)
 
-dst = Raster.open(path)
+dst = Raster.read(path)
 Map.plot(dst, title="Flow Accumulation", color_scale=1)
 # %%
 """MapAlgebra.
@@ -262,7 +287,7 @@ value = 20
 dst = src.fill(value, path=path)
 
 "now the resulted raster is saved to disk"
-dst = Raster.open(path)
+dst = Raster.read(path)
 Map.plot(dst, title="Flow Accumulation")
 # %%
 """ResampleRaster.
@@ -278,7 +303,7 @@ inputs:
     3-cell_size : [integer]
          new cell size to resample the raster.
         (default empty so raster will not be resampled)
-    4- resample_technique : [String]
+    4- method : [String]
         resampling technique default is "Nearest"
         https://gisgeography.com/raster-resampling/
         "Nearest" for nearest neighbour,"cubic" for cubic convolution,
@@ -311,7 +336,7 @@ inputs:
     2-to_epsg: [integer]
         reference number to the new projection (https://epsg.io/)
         (default 3857 the reference no of WGS84 web mercator )
-    3- resample_technique: [String]
+    3- method: [String]
         resampling technique default is "Nearest"
         https://gisgeography.com/raster-resampling/
         "Nearest" for nearest neighbour,"cubic" for cubic convolution,
@@ -330,13 +355,13 @@ Example :
 """
 print("current EPSG - " + str(epsg))
 to_epsg = 4326
-dst = src.reproject(to_epsg=to_epsg, option=1)
+dst = src.to_epsg(to_epsg=to_epsg, option=1)
 newepsg, newgeo = dst.get_projection_data()
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
 """Option 2"""
 print("Option 2")
-dst = src.reproject(to_epsg=to_epsg, option=2)
+dst = src.to_epsg(to_epsg=to_epsg, option=2)
 newepsg, newgeo = dst.get_projection_data()
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
@@ -357,7 +382,7 @@ inputs:
     3-cell_size:
         integer number to resample the raster cell size to a new cell size
         (default empty so raster will not be resampled)
-    4- resample_technique:
+    4- method:
         [String] resampling technique default is "Nearest"
         https://gisgeography.com/raster-resampling/
         "Nearest" for nearest neighbour,"cubic" for cubic convolution,
@@ -370,7 +395,7 @@ Outputs:
 """
 # to_epsg = 4326
 # cell_size = 0.05
-# dst = Raster.ReprojectDataset(src, to_epsg=to_epsg, cell_size=cell_size, resample_technique="Nearest")
+# dst = Raster.ReprojectDataset(src, to_epsg=to_epsg, cell_size=cell_size, method="Nearest")
 # arr , noval = Raster.GetRasterData(dst)
 # newepsg, newgeo = Raster.GetProjectionData(dst)
 # print("New EPSG - " + str(newepsg))
@@ -403,7 +428,7 @@ Outputs:
         exactly the same like src raster
 """
 # crop array using a raster
-dst = Raster.open(aligned_raster)
+dst = Raster.read(aligned_raster)
 dst_arr = dst.read_array()
 dst_nodataval = dst.no_data_value[0]
 
@@ -507,7 +532,7 @@ Example:
     matched_raster = MatchRasterAlignment(A,B)
 """
 # we want to align the soil raster similar to the alignment in the src raster
-soil_raster = Raster.open(soilmappath)
+soil_raster = Raster.read(soilmappath)
 epsg, geotransform = soil_raster.get_projection_data()
 print("Before alignment EPSG = " + str(epsg))
 print("Before alignment Geotransform = " + str(geotransform))
@@ -543,7 +568,7 @@ Output:
         the cropped raster will also be saved to disk in the OutputPath
         directory.
 """
-RasterA = Raster.open(aligned_raster)
+RasterA = Raster.read(aligned_raster)
 epsg, geotransform = RasterA.get_projection_data()
 print("Raster EPSG = " + str(epsg))
 print("Raster Geotransform = " + str(geotransform))
@@ -552,14 +577,14 @@ Map.plot(RasterA, title="Raster to be cropped", color_scale=1, ticks_spacing=1)
 We will use the soil raster from the previous example as a mask
 so the projection is different between the raster and the mask and the cell size is also different
 """
-soil_raster = Raster.open(soilmappath)
+soil_raster = Raster.read(soilmappath)
 dst = RasterA._crop_un_aligned(soil_raster)
 dst_epsg, dst_geotransform = Raster.get_projection_data(dst)
 print("resulted EPSG = " + str(dst_epsg))
 print("resulted Geotransform = " + str(dst_geotransform))
 Map.plot(dst, title="Cropped Raster", color_scale=1, ticks_spacing=1)
 # %%
-src_aligned = Raster.open(aligned_raster)
+src_aligned = Raster.read(aligned_raster)
 # # arr, nodataval = Raster.GetRasterData(src_aligned)
 Map.plot(
     src_aligned,
@@ -602,7 +627,7 @@ EX:
 """
 shp = gpd.read_file(Basinshp)
 shp.plot()
-src = Raster.open(aligned_raster)
+src = Raster.read(aligned_raster)
 
 dst = src.clipRasterWithPolygon(aligned_raster, Basinshp, save=False, output_path=None)
 dst = Raster.clip2(aligned_raster, Basinshp, save=False, output_path=None)

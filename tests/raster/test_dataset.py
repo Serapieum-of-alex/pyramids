@@ -178,6 +178,18 @@ class TestReproject:
         assert dataset.base.epsg == to_epsg
 
 
+def test_match_alignment(
+    match_alignment_dataset: str,
+    src: Dataset,
+):
+    dataset = Dataset.read_separate_files(match_alignment_dataset, with_order=False)
+    dataset.read_dataset()
+    mask_obj = Raster(src)
+    dataset.match_alignment(mask_obj)
+    assert dataset.base.rows == mask_obj.rows
+    assert dataset.base.columns == mask_obj.columns
+
+
 class TestSaveDataset:
     def test_to_geotiff(
         self,

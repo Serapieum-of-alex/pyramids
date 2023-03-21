@@ -923,7 +923,7 @@ class Raster:
 
         if os.path.exists(path):
             raise FileExistsError(
-                f"path you have provided does not exist please check {path}"
+                f"There is a file with the same path you have provided: {path}"
             )
 
         y_lower_side = self.geotransform[3] - self.rows * self.cell_size
@@ -3029,8 +3029,7 @@ class Dataset:
     #
     #     return dst
 
-    @staticmethod
-    def matchDataAlignment(src_alignment: str, rasters_dir: str, save_to: str):
+    def match_alignment(self, alignment_src: Raster):
         """matchDataAlignment.
 
         this function matches the coordinate system and the number of of rows & columns
@@ -3043,17 +3042,10 @@ class Dataset:
 
         Parameters
         ----------
-        src_alignment: [String]
+        alignment_src: [String]
             path to the spatial information source raster to get the spatial information
-            (coordinate system, no of rows & columns) src_alignment should include the name of the raster
+            (coordinate system, no of rows & columns) alignment_src should include the name of the raster
             and the extension like "data/dem.tif"
-        rasters_dir: [String]
-            path of the folder of the rasters (Raster B) you want to adjust their
-            no of rows, columns and resolution (alignment) like raster A
-            the folder should not have any other files except the rasters
-        save_to: [String]
-            path where new rasters are going to be saved with exact
-            same old names
 
         Returns
         -------
@@ -3066,31 +3058,32 @@ class Dataset:
         >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
         >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
         >>> prec_out_path = "02Precipitation/4km/"
-        >>> Raster.matchDataAlignment(dem_path,prec_in_path,prec_out_path)
+        >>> Raster.match_alignment(dem_path,prec_in_path,prec_out_path)
         """
-        # input data validation
-        # data type
-        assert type(src_alignment) == str, "src_alignment input should be string type"
-        assert type(rasters_dir) == str, "rasters_dir input should be string type"
-        assert type(save_to) == str, "save_to input should be string type"
-        # input values
-        ext = src_alignment[-4:]
-        assert (
-            ext == ".tif"
-        ), "please add the extension(.tif) at the end of the path input"
+        if not isinstance(alignment_src, Raster):
+            raise TypeError("alignment_src input should be a Raster object")
 
-        A = gdal.Open(src_alignment)
-        files_list = os.listdir(rasters_dir)
-        if "desktop.ini" in files_list:
-            files_list.remove("desktop.ini")
+        for i in range(self.time_length):
+            src = self.iloc(i)
+            dst = src.match_alignment(alignment_src)
+            arr = dst.read_array()
+            if i == 0:
+                # create the array
+                array = (
+                    np.ones(
+                        (
+                            self.time_length,
+                            arr.shape[0],
+                            arr.shape[1],
+                        )
+                    )
+                    * np.nan
+                )
+            array[i, :, :] = arr
 
-        print(f"New Path- {save_to}")
-        for i in range(len(files_list)):
-            if files_list[i][-4:] == ".tif":
-                print(f"{i + 1}/{len(files_list)} - {save_to} files_list[i]")
-                B = gdal.Open(rasters_dir + files_list[i])
-                new_B = Raster.match_alignment(A, B)
-                Raster.saveRaster(new_B, save_to + files_list[i])
+        self._data = array
+        # use the last src as
+        self._base = dst
 
     @staticmethod
     def gdal_merge(

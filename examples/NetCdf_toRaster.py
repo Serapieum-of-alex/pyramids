@@ -5,43 +5,27 @@
 make sure to change the directory to the examples folder in the repo
 """
 import os
-
 import matplotlib
 
 matplotlib.use("TkAgg")
-import rasterio
-
 from pyramids.convert import Convert
 
 # import matplotlib.pyplot as plt
 # from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-
-rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
-ParentPath = f"{rpath}/examples/"
+rdir = f"examples/"
 # %% Netcdf file that contains only one layer
-FileName = ParentPath + "/data/MSWEP_1979010100.nc"
-SaveTo = ParentPath + "/data/"
+FileName = f"{rdir}/data/MSWEP_1979010100.nc"
+SaveTo = f"{rdir}/data/"
 # VarName = None
 Convert.nctoTiff(FileName, SaveTo, separator="_")
-# %% plot
-src = rasterio.open(SaveTo + "MSWEP_1979010100.nc")
-# fig = plt.figure(figsize=(12, 8))
-# im = plt.imshow(src.read(1) / 100.0, cmap="gist_rainbow")
-# plt.title("Monthly mean sea level pressure")
-# divider = make_axes_locatable(plt.gca())
-# cax = divider.append_axes("right", "5%", pad="3%")
-# plt.colorbar(im, cax=cax)
-# plt.tight_layout()
-# plt.show()
 # %% Netcdf file that contains multiple layer
-FileName = ParentPath + "/data/precip.1979.nc"
-SaveTo = ParentPath + "/data/Save_prec_netcdf_multiple/"
+FileName = f"{rdir}/data/precip.1979.nc"
+SaveTo = f"{rdir}/data/Save_prec_netcdf_multiple/"
 
 Convert.nctoTiff(FileName, SaveTo, separator=".")
 # %% list of files
-Path = ParentPath + "/data/GIS/netcdf files/"
-SaveTo = ParentPath + "/data/GIS/Save_prec_netcdf_multiple/"
+Path = rdir + "/data/GIS/netcdf files/"
+SaveTo = rdir + "/data/GIS/Save_prec_netcdf_multiple/"
 
 files = os.listdir(Path)
 Paths = [Path + i for i in files]

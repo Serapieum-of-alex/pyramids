@@ -2,12 +2,14 @@ import numpy as np
 from pyramids.raster import Raster
 from digitalearth.static import Map
 from osgeo import gdal
+
 datapath = "examples/data"
-path = rf"{datapath}/asci_example.asc"
+# path = rf"{datapath}/asci_example.asc"
+path = rf"{datapath}/zip/asci_example.asc"
 gdal.UseExceptions()
 # %% read ascii
 # arr, geotransform = Raster.readASCII(path, dtype=1)
-src_obj = Raster.open(path)
+src_obj = Raster.read(path)
 assert src_obj.band_count == 1
 assert src_obj.epsg == 6326
 assert isinstance(src_obj.raster, gdal.Dataset)

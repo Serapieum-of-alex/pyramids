@@ -16,7 +16,7 @@ polygonized_raster_path = "examples/data/convert_data/polygonized.geojson"
 """
 return the result polygon
 """
-gdf = Convert.rasterToPolygon(src_path)
+gdf = Convert.raster_to_polygon(src_path)
 #%%
 """
 test convert polygon into raster
@@ -55,7 +55,7 @@ file is given otherwise it will flatten all values.
 
 - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
     data in the raster band exists, an index number will be used [1, 2, 3, ...]
-- The values in the dataframe will be ordered row by row from top to bottom
+- The values in the dataframe will be ordered rows by rows from top to bottom
 - The function has a add_geometry parameter with two possible values ["point", "polygon"], which you can
     specify the type of shapely geometry you want to create from each cell,
         - If point is chosen, the created point will be at the center of each cell
