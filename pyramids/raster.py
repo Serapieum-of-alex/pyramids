@@ -769,7 +769,7 @@ class Raster:
                 "The no data value does not exit in the band, so all the cells will be cosidered and the "
                 "mask will not be cosidered."
             )
-
+        # TODO: check how the domain cell indexes are obtained in the extract function
         # calculate the coordinates of all cells
         x = np.array([x_init + cell_size_x * (i + add_value) for i in range(cols)])
         y = np.array([y_init + cell_size_y * (i + add_value) for i in range(rows)])
@@ -2132,12 +2132,9 @@ class Raster:
     def stringSpace(inp):
         return str(inp) + "  "
 
-    @staticmethod
     def extract(
-        path: str,
+        self,
         exclude_value,
-        compressed: bool = True,
-        occupied_Cells_only: bool = True,
     ):
         """extractValues.
 
@@ -2146,73 +2143,24 @@ class Raster:
 
         Parameters
         ----------
-        path: [str]
-            a path includng the name of the ASCII and extention like
-            >>> path = "data/cropped.asc"
         exclude_value: [Numeric]
             values you want to exclude from exteacted values
-        compressed: [Bool]
-             if the map you provided is compressed
-        occupied_Cells_only:
         """
-        assert type(path) == str, "path input should be string type" + str(path)
-        assert type(compressed) == bool, "compressed input should be Boolen type"
-        # input values
-        # check wether the path exist or not
-        assert os.path.exists(path), "the path you have provided does not exist" + str(
-            path
+        arr = self.read_array()
+        # NonZeroCells = np.count_nonzero(arr)
+        # get the position of cells that is not zeros
+        mask = np.logical_and(
+            ~np.isclose(arr, self.no_data_value[0], rtol=0.001),
+            ~np.isclose(arr, exclude_value, rtol=0.001),
         )
-        # check wether the path has the extention or not
-        if compressed:
-            assert path.endswith(".zip"), "file" + path + " should have .asc extension"
-        else:
-            assert path.endswith(".asc"), "file" + path + " should have .asc extension"
 
-        ExtractedValues = list()
+        rows = np.where(mask)[0]
+        cols = np.where(mask)[1]
+        ind = zip(rows, cols)
+        fn = lambda x: arr[x[0], x[1]]
+        values = list(map(fn, ind))
 
-        try:
-            # open the zip file
-            if compressed:
-                Compressedfile = zipfile.ZipFile(path)
-                # get the file name
-                fname = Compressedfile.infolist()[0]
-                # ASCIIF = Compressedfile.open(fname)
-                # SpatialRef = ASCIIF.readlines()[:6]
-                ASCIIF = Compressedfile.open(fname)
-                ASCIIRaw = ASCIIF.readlines()[6:]
-                rows = len(ASCIIRaw)
-                cols = len(ASCIIRaw[0].split())
-                MapValues = np.ones((rows, cols), dtype=np.float32) * 0
-                # read the ascii file
-                for i in range(rows):
-                    x = ASCIIRaw[i].split()
-                    MapValues[i, :] = list(map(float, x))
-
-            else:
-                MapValues, SpatialRef = Raster.readASCII(path)
-
-            # count nonzero cells
-            NonZeroCells = np.count_nonzero(MapValues)
-
-            if occupied_Cells_only:
-                ExtractedValues = 0
-                return ExtractedValues, NonZeroCells
-
-            # get the position of cells that is not zeros
-            rows = np.where(MapValues[:, :] != exclude_value)[0]
-            cols = np.where(MapValues[:, :] != exclude_value)[1]
-
-        except:
-            print("Error Opening the compressed file")
-            NonZeroCells = -1
-            ExtractedValues = -1
-            return ExtractedValues, NonZeroCells
-
-        # get the values of the filtered cells
-        for i in range(len(rows)):
-            ExtractedValues.append(MapValues[rows[i], cols[i]])
-
-        return ExtractedValues, NonZeroCells
+        return values
 
     @staticmethod
     def overlay(

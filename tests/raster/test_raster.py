@@ -579,3 +579,25 @@ class TestToDataFrame:
             "equa the real "
             "values in the array"
         )
+
+
+def test_extract(
+    src: gdal.Dataset,
+    src_no_data_value: float,
+):
+    src = Raster(src)
+    values = src.extract(exclude_value=0)
+    assert len(values) == 46
+
+
+# import zipfile
+#
+#
+# path = "tests/data/asci_example.zip"
+# # path = "tests/data/acc4000-update.zip"
+# Compressedfile = zipfile.ZipFile(path)
+# fname = Compressedfile.infolist()[0]
+# file = Compressedfile.open(fname)
+# file.readlines()
+# src = gdal.Open(file.readlines())
+# Raster.read(file.readlines())
