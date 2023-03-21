@@ -15,10 +15,10 @@ class TestReadDataset:
         rasters_folder_dim: tuple,
     ):
         dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
-        assert isinstance(dataset.sample, Raster)
-        assert dataset.sample.no_data_value[0] == 2147483648.0
+        assert isinstance(dataset.base, Raster)
+        assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
-        assert dataset.time_lenth == rasters_folder_rasters_number
+        assert dataset.time_length == rasters_folder_rasters_number
         assert dataset.sample.rows == rasters_folder_dim[0]
         assert dataset.sample.columns == rasters_folder_dim[1]
 
@@ -32,7 +32,7 @@ class TestReadDataset:
         assert isinstance(dataset.sample, Raster)
         assert dataset.sample.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
-        assert dataset.time_lenth == rasters_folder_rasters_number
+        assert dataset.time_length == rasters_folder_rasters_number
         assert dataset.sample.rows == rasters_folder_dim[0]
         assert dataset.sample.columns == rasters_folder_dim[1]
 
@@ -55,7 +55,7 @@ class TestReadDataset:
         assert isinstance(dataset.sample, Raster)
         assert dataset.sample.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
-        assert dataset.time_lenth == rasters_folder_between_dates_raster_number
+        assert dataset.time_length == rasters_folder_between_dates_raster_number
         assert dataset.sample.rows == rasters_folder_dim[0]
         assert dataset.sample.columns == rasters_folder_dim[1]
 
@@ -73,15 +73,15 @@ class TestAscii:
         dataset = Dataset.read_separate_files(
             ascii_folder_path, with_order=False, extension=".asc"
         )
-        assert isinstance(dataset.sample, Raster)
-        assert dataset.sample.no_data_value[0] == 2147483648.0
+        assert isinstance(dataset.base, Raster)
+        assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
-        assert dataset.time_lenth == rasters_folder_rasters_number
-        assert dataset.sample.rows == rasters_folder_dim[0]
-        assert dataset.sample.columns == rasters_folder_dim[1]
+        assert dataset.time_length == rasters_folder_rasters_number
+        assert dataset.base.rows == rasters_folder_dim[0]
+        assert dataset.base.columns == rasters_folder_dim[1]
 
 
-class TestReadArray:
+class TestReadDataset:
     def test_geotiff(
         self,
         rasters_folder_path: str,
@@ -90,7 +90,7 @@ class TestReadArray:
     ):
         dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
-        assert dataset.array.shape == (
+        assert dataset.data.shape == (
             rasters_folder_rasters_number,
             rasters_folder_dim[0],
             rasters_folder_dim[1],
@@ -106,11 +106,44 @@ class TestReadArray:
             ascii_folder_path, with_order=False, extension=".asc"
         )
         dataset.read_dataset()
-        assert dataset.array.shape == (
+        assert dataset.data.shape == (
             rasters_folder_rasters_number,
             rasters_folder_dim[0],
             rasters_folder_dim[1],
         )
+
+
+class TestUpdateDataset:
+    def test_different_dimensions(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_rasters_number: int,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+        # access the data attribute
+        arr = dataset.data
+        # modify the array
+        arr = arr[0:4, :, :] * np.nan
+        try:
+            dataset.update_dataset(arr)
+        except ValueError:
+            pass
+
+    def test_same_dimensions(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_rasters_number: int,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+        # access the data attribute
+        arr = dataset.data
+        # modify the array
+        arr = arr * np.nan
+        dataset.update_dataset(arr)
 
 
 class TestAccessDataset:
@@ -137,12 +170,12 @@ class TestReproject:
         dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         dataset.to_epsg(to_epsg)
-        assert dataset.sample.epsg == to_epsg
-        arr = dataset.array
-        assert dataset.sample.rows == arr.shape[1]
-        assert dataset.sample.columns == arr.shape[2]
-        assert dataset.time_lenth == arr.shape[0]
-        assert dataset.sample.epsg == to_epsg
+        assert dataset.base.epsg == to_epsg
+        arr = dataset.data
+        assert dataset.base.rows == arr.shape[1]
+        assert dataset.base.columns == arr.shape[2]
+        assert dataset.time_length == arr.shape[0]
+        assert dataset.base.epsg == to_epsg
 
 
 class TestSaveDataset:
@@ -199,17 +232,17 @@ class TestCrop:
         dataset.read_dataset()
         dataset.crop(mask)
         # dataset.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
-        arr = dataset.array[0, :, :]
-        no_data_value = dataset.sample.no_data_value[0]
+        arr = dataset.data[0, :, :]
+        no_data_value = dataset.base.no_data_value[0]
         arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
         assert arr1.shape[0] == 720
         # shutil.rmtree(crop_aligned_folder_saveto)
 
     def test_crop_with_polygon(
-            self,
-            polygon_mask: gpd.GeoDataFrame,
-            rasters_folder_path: str,
-            crop_aligned_folder_saveto: str,
+        self,
+        polygon_mask: gpd.GeoDataFrame,
+        rasters_folder_path: str,
+        crop_aligned_folder_saveto: str,
     ):
         # if os.path.exists(crop_aligned_folder_saveto):
         #     shutil.rmtree(crop_aligned_folder_saveto)
@@ -221,8 +254,8 @@ class TestCrop:
         dataset.read_dataset()
         dataset.crop(polygon_mask)
         # dataset.to_geotiff(crop_aligned_folder_saveto)
-        arr = dataset.array[0, :, :]
-        no_data_value = dataset.sample.no_data_value[0]
+        arr = dataset.data[0, :, :]
+        no_data_value = dataset.base.no_data_value[0]
         arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
         assert arr1.shape[0] == 775
         # shutil.rmtree(crop_aligned_folder_saveto)
