@@ -277,7 +277,18 @@ def test_merge(
     merge_input_raster: List[str],
     merge_output: str,
 ):
-    Dataset.gdal_merge(merge_input_raster, merge_output)
+    Dataset.merge(merge_input_raster, merge_output)
     assert os.path.exists(merge_output)
     src = gdal.Open(merge_output)
     assert src.GetRasterBand(1).GetNoDataValue() == 0
+
+
+class TestApply:
+    def test_1(
+        self,
+        rasters_folder_path: str,
+    ):
+        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+        func = np.abs
+        dataset.apply(func)

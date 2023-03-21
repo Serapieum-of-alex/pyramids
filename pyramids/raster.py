@@ -8,7 +8,7 @@ from pathlib import Path
 # import json
 import os
 import zipfile
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union, Callable
 from loguru import logger
 import shutil
 import tempfile
@@ -1171,6 +1171,7 @@ class Raster:
         # fill the new array with the nodata value
         new_array = np.ones((self.rows, self.columns)) * no_data_value
         # execute the function on each cell
+        # TODO: optimize executing a function over a whole array
         for i in range(self.rows):
             for j in range(self.columns):
                 if not np.isclose(src_array[i, j], no_data_value, rtol=0.001):
@@ -3087,7 +3088,7 @@ class Dataset:
         self._base = dst
 
     @staticmethod
-    def gdal_merge(
+    def merge(
         src: List[str],
         dst: str,
         no_data_value: Union[float, int, str] = "0",
@@ -3193,8 +3194,7 @@ class Dataset:
     #
     #     return dst, dst_meta
 
-    @staticmethod
-    def folderCalculator(rasters_dir: str, save_to: str, function):
+    def apply(self, ufunc: Callable):
         """folderCalculator.
 
         this function matches the location of nodata value from src raster to dst
@@ -3205,13 +3205,10 @@ class Dataset:
 
         Parameters
         ----------
-        rasters_dir: [String]
-            path of the folder of rasters you want to execute a certain function on all
-            of them
-        save_to: [String]
-            path of the folder where resulted raster will be saved
-        function: [function]
-            callable function (builtin or user defined)
+        ufunc: [function]
+            callable universal function ufunc (builtin or user defined)
+            https://numpy.org/doc/stable/reference/ufuncs.html
+            - to create a ufunc from a normal function (https://numpy.org/doc/stable/reference/generated/numpy.frompyfunc.html)
 
         Returns
         -------
@@ -3219,55 +3216,19 @@ class Dataset:
 
         Examples
         --------
-        >>> def func(args):
-        ...    A = args[0]
-        ...    funcion = np.abs
-        ...    path = args[1]
-        ...    B = Raster.apply(A, funcion)
-        ...    Raster.saveRaster(B, path)
-
-        >>> rasters_dir = "03Weather_Data/new/4km_f/evap/"
-        >>> save_to = "03Weather_Data/new/4km_f/new_evap/"
-        >>> Raster.folderCalculator(rasters_dir, save_to, func)
+        >>> def func(val):
+        >>>    return val%2
+        >>> ufunc = np.frompyfunc(func, 1, 1)
+        >>> dataset.apply(ufunc)
         """
-        assert type(rasters_dir) == str, "A_path input should be string type"
-        assert type(save_to) == str, "B_input_path input should be string type"
-        assert callable(function), "second argument should be a function"
-
-        if not os.path.exists(rasters_dir):
-            raise FileNotFoundError(
-                f"{rasters_dir} the path you have provided does not exist"
-            )
-
-        if not os.path.exists(save_to):
-            raise FileNotFoundError(
-                f"{save_to} the path you have provided does not exist"
-            )
-
-        # check whether there are files or not inside the folder
-        assert os.listdir(rasters_dir) != "", (
-            rasters_dir + "the path you have provided is empty"
-        )
-
-        # check if you can create the folder
-        # try:
-        #     os.makedirs(os.path.join(os.environ['TEMP'],"AllignedRasters"))
-        # except WindowsError :
-        #     # if not able to create the folder delete the folder with the same name and create one empty
-        #     shutil.rmtree(os.path.join(os.environ['TEMP']+"/AllignedRasters"))
-        #     os.makedirs(os.path.join(os.environ['TEMP'],"AllignedRasters"))
-
-        # get names of rasters
-        files_list = os.listdir(rasters_dir)
-        if "desktop.ini" in files_list:
-            files_list.remove("desktop.ini")
-
+        if not callable(ufunc):
+            raise TypeError("second argument should be a function")
+        arr = self.data
+        no_data_value = self.base.no_data_value[0]
         # execute the function on each raster
-        for i in range(len(files_list)):
-            print(str(i + 1) + "/" + str(len(files_list)) + " - " + files_list[i])
-            B = gdal.Open(rasters_dir + files_list[i])
-            args = [B, save_to + files_list[i]]
-            function(args)
+        arr[~np.isclose(arr, no_data_value, rtol=0.001)] = ufunc(
+            arr[~np.isclose(arr, no_data_value, rtol=0.001)]
+        )
 
     @staticmethod
     def overlayMaps(
