@@ -3,6 +3,7 @@ raster contains python functions to handle raster data align them together based
 algebric operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
 import datetime as dt
+from pathlib import Path
 
 # import json
 import os
@@ -2751,8 +2752,8 @@ class Dataset:
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
         >>> raster_obj.to_geotiff(output_path)
         """
-        if not os.path.exists(path):
-            os.mkdir(path)
+        if not Path(path).exists():
+            Path(path).mkdir(parents=True, exist_ok=True)
 
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -2775,8 +2776,8 @@ class Dataset:
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
         >>> raster_obj.to_geotiff(output_path)
         """
-        if not os.path.exists(path):
-            os.mkdir(path)
+        if not Path(path).exists():
+            Path(path).mkdir(parents=True, exist_ok=True)
 
         for i in range(self.time_length):
             src = self.iloc(i)
