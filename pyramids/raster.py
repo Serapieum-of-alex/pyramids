@@ -2292,7 +2292,7 @@ class Raster:
                     MapValues[row, :] = list(map(float, x))
 
             else:
-                MapValues, SpatialRef = Raster.readASCII(path)
+                MapValues, SpatialRef = Raster.read(path)
             # count number of nonzero cells
             NonZeroCells = np.count_nonzero(MapValues)
 
@@ -2409,10 +2409,10 @@ class Raster:
 
 
 class Dataset:
-    sample: Raster
+    base: Raster
     files: List[str]
     time_length: int
-    array: np.ndarray
+    data: np.ndarray
 
     """
     files:
@@ -2421,15 +2421,73 @@ class Dataset:
 
     def __init__(
         self,
-        src: gdal.Dataset,
+        src: Raster,
         time_length: int,
         files: List[str] = None,
     ):
-        self.sample = Raster(src)
+        self._base = src
         self.files = files
-        self.time_lenth = time_length
+        self._time_length = time_length
 
         pass
+
+    @property
+    def base(self) -> Raster:
+        """base.
+
+        Base Raster
+        """
+        return self._base
+
+    @property
+    def time_length(self) -> int:
+        """length of the dataset."""
+        return self._time_length
+
+    @classmethod
+    def create_dataset(cls, src: Raster, dataset_length: int):
+        """Create Dataset.
+
+            - Create Dataset from a sample raster and
+
+        Parameters
+        ----------
+        src: [Raster]
+            RAster Object
+        dataset_length: [int]
+            length of the dataset.
+
+        Returns
+        -------
+        Dataset object.
+        """
+        return cls(src, dataset_length)
+
+    def update_dataset(self, array: np.ndarray):
+        """Update dataset data.
+
+            - This function creates a Geotiff raster like another input raster, new raster will have the same
+            projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number
+            of rows and columns
+            - the raster and the given array should have the same number of columns and rows.
+
+        Parameters
+        ----------
+        array: [numpy array]
+            3D array to be stores as a rasters, the dimensions should be
+            [rows, columns, timeseries length]
+
+        Returns
+        -------
+        save the new raster to the given path
+
+        Examples
+        --------
+        >>> src_raster = gdal.Open("DEM.tif")
+        >>> name = ["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
+        >>> Dataset.rastersLike(src_raster, data, name)
+        """
+        self.data = array
 
     @classmethod
     def read_separate_files(
@@ -2580,7 +2638,7 @@ class Dataset:
             files = [f"{path}/{i}" for i in files]
         # create a 3d array with the 2d dimension of the first raster and the len
         # of the number of rasters in the folder
-        sample = gdal.Open(files[0])
+        sample = Raster.read(files[0])
 
         return cls(sample, len(files), files)
 
@@ -2599,24 +2657,60 @@ class Dataset:
         Array
         """
         # check the given band number
-        if band > self.sample.band_count:
+        if not hasattr(self, "base"):
             raise ValueError(
-                f"the raster has only {self.sample.band_count} check the given band number"
+                "please use the read_separate_files method to get the files (tiff/ascii) in the"
+                "dataset directory"
+            )
+        if band > self.base.band_count:
+            raise ValueError(
+                f"the raster has only {self.base.band_count} check the given band number"
             )
         # fill the array with no_data_value data
-        self.array = np.ones(
+        self._data = np.ones(
             (
-                self.time_lenth,
-                self.sample.rows,
-                self.sample.columns,
+                self.time_length,
+                self.base.rows,
+                self.base.columns,
             )
         )
-        self.array[:, :, :] = np.nan
+        self._data[:, :, :] = np.nan
 
         for i, file_i in enumerate(self.files):
             # read the tif file
             raster_i = gdal.Open(f"{file_i}")
-            self.array[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
+            self._data[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
+
+    @property
+    def data(self) -> np.ndarray:
+        """data attribute.
+
+        - The attribute where the dataset array is stored.
+        - the 3D numpy array, [dataset length, rows, cols], [dataset length, lons, lats]
+        """
+        return self._data
+
+    @data.setter
+    def data(self, val):
+        """Data attribute.
+
+        - setting the data (array) does not allow different dimension from the dimension that have been
+        defined increating the dataset.
+        """
+        # if the attribute is defined before check the dimension
+        if hasattr(self, "data"):
+            if self._data.shape != val.shape:
+                raise ValueError(
+                    f"The dimension of the new data: {val.shape}, differs from the dimension of the "
+                    f"original dataset: {self._data.shape}, please redefine the base Raster and "
+                    f"dataset_length first"
+                )
+
+        self._data = val
+
+    @data.deleter
+    def data(self):
+        self._data = None
 
     def iloc(self, i):
         """iloc.
@@ -2633,10 +2727,10 @@ class Dataset:
         Raster:
             Raster object.
         """
-        if not hasattr(self, "array"):
+        if not hasattr(self, "data"):
             raise DatasetNoFoundError("please read the dataset first")
-        arr = self.array[i, :, :]
-        dst = gdal.GetDriverByName("MEM").CreateCopy("", self.sample.raster, 0)
+        arr = self._data[i, :, :]
+        dst = gdal.GetDriverByName("MEM").CreateCopy("", self.base.raster, 0)
         dst.GetRasterBand(1).WriteArray(arr)
         return Raster(dst)
 
@@ -2660,7 +2754,7 @@ class Dataset:
         if not os.path.exists(path):
             os.mkdir(path)
 
-        for i in range(self.time_lenth):
+        for i in range(self.time_length):
             src = self.iloc(i)
             src.to_geotiff(f"{path}/{i}.tif")
 
@@ -2684,7 +2778,7 @@ class Dataset:
         if not os.path.exists(path):
             os.mkdir(path)
 
-        for i in range(self.time_lenth):
+        for i in range(self.time_length):
             src = self.iloc(i)
             src.to_ascii(f"{path}/{i}.asc")
 
@@ -2723,7 +2817,7 @@ class Dataset:
         >>> src = Raster.read("path/raster_name.tif")
         >>> projected_raster = src.to_epsg(to_epsg=3857)
         """
-        for i in range(self.time_lenth):
+        for i in range(self.time_length):
             src = self.iloc(i)
             dst = src.to_epsg(
                 to_epsg, method=method, maintain_alighment=maintain_alighment
@@ -2734,7 +2828,7 @@ class Dataset:
                 array = (
                     np.ones(
                         (
-                            self.time_lenth,
+                            self.time_length,
                             arr.shape[0],
                             arr.shape[1],
                         )
@@ -2743,9 +2837,9 @@ class Dataset:
                 )
             array[i, :, :] = arr
 
-        self.array = array
+        self._data = array
         # use the last src as
-        self.sample = dst
+        self._base = dst
 
     def crop(
         self,
@@ -2778,7 +2872,7 @@ class Dataset:
         >>> out_path = "examples/GIS/data/crop_aligned_folder/"
         >>> Dataset.crop(dem_path, src_path, out_path)
         """
-        for i in range(self.time_lenth):
+        for i in range(self.time_length):
             src = self.iloc(i)
             dst = src.crop(mask)
             arr = dst.read_array()
@@ -2787,7 +2881,7 @@ class Dataset:
                 array = (
                     np.ones(
                         (
-                            self.time_lenth,
+                            self.time_length,
                             arr.shape[0],
                             arr.shape[1],
                         )
@@ -2796,54 +2890,9 @@ class Dataset:
                 )
             array[i, :, :] = arr
 
-        self.array = array
+        self._data = array
         # use the last src as
-        self.sample = dst
-
-        # # if the mask is a string
-        # if isinstance(mask, str):
-        #     # check wether the path exists or not
-        #     if not os.path.exists(mask):
-        #         raise FileNotFoundError(
-        #             "source raster you have provided does not exist"
-        #         )
-        #
-        #     mask = Raster.read(mask)
-        # elif isinstance(mask, Raster):
-        #     mask = mask
-        # else:
-        #     raise TypeError("The mask parameter should be either a path or a Raster object")
-        #
-        # # assert isinstance(Mask_path, str), "Mask_path input should be string type"
-        # if not isinstance(src_dir, str):
-        #     raise TypeError("src_dir input should be string type")
-        #
-        # if not isinstance(path, str):
-        #     raise TypeError("path input should be string type")
-        #
-        # # check wether the path exists or not
-        # if not os.path.exists(src_dir):
-        #     raise FileNotFoundError(
-        #         f"the {src_dir} path you have provided does not exist"
-        #     )
-        #
-        # if not os.path.exists(path):
-        #     raise FileNotFoundError(f"the {path} path you have provided does not exist")
-        # # check wether the folder has the rasters or not
-        # if not len(os.listdir(src_dir)) > 0:
-        #     raise FileNotFoundError(f"{src_dir} folder you have provided is empty")
-        #
-        # files_list = os.listdir(src_dir)
-        # if "desktop.ini" in files_list:
-        #     files_list.remove("desktop.ini")
-        #
-        # print(f"New Path- {path}")
-        # for i in range(len(files_list)):
-        #     if files_list[i][-4:] == ".tif":
-        #         print(f"{i + 1}/{len(files_list)} - {path}{files_list[i]}")
-        #         B = Raster.read(f"{src_dir}{files_list[i]}")
-        #         new_B = B.crop_alligned(mask)
-        #         new_B.to_geotiff(path + files_list[i])
+        self._base = dst
 
     # # TODO: merge ReprojectDataset and ProjectRaster they are almost the same
     # # TODO: still needs to be tested
@@ -2981,65 +3030,6 @@ class Dataset:
     #     return dst
 
     @staticmethod
-    def rastersLike(src: gdal.Dataset, array: np.ndarray, path: List[str] = None):
-        """Create Raster like other source raster with a given array.
-
-            - This function creates a Geotiff raster like another input raster, new raster will have the same
-            projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number
-            of rows and columns
-            - the raster and the given array should have the same number of columns and rows.
-
-        Parameters
-        ----------
-        src: [gdal.dataset]
-            source raster to get the spatial information
-        array: [numpy array]
-            3D array to be stores as a rasters, the dimensions should be
-            [rows, columns, timeseries length]
-        path: [String]
-            list of names to save the new rasters
-            like ["results/surfaceDischarge_2012_08_13_23.tif","results/surfaceDischarge_2012_08_14_00.tif"]
-            Default value is None
-
-        Returns
-        -------
-        save the new raster to the given path
-
-        Examples
-        --------
-        >>> src_raster = gdal.Open("DEM.tif")
-        >>> name = ["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
-        >>> Dataset.rastersLike(src_raster, data, name)
-        """
-        # length of the 3rd dimension of the array
-        try:
-            l = np.shape(array)[2]
-        except IndexError:
-            raise IndexError(
-                "the array you have entered is 2D you have to use RasterLike function not RastersLike"
-            )
-
-        # check length of the list of names to be equal to 3rd dimension of the array
-        if path is not None:  # paths are given
-            assert len(path) == np.shape(array)[2], (
-                f"length of list of names {len(path)} should equal the 3d "
-                f"dimension of the array-{np.shape(array)[2]}"
-            )
-        else:  # paths are not given
-            # try to create a folder called results at the current working directory to store resulted rasters
-            try:
-                os.makedirs(os.path.join(os.getcwd(), "result_rasters"))
-            except WindowsError:
-                assert (
-                    False
-                ), "please either to provide your own paths including folder name and rasternames.tif in a list or rename the folder called result_rasters"
-            # careate list of names
-            path = ["result_rasters/" + str(i) + ".tif" for i in range(l)]
-
-        for i in range(l):
-            Raster.raster_like(src, array[:, :, i], path[i])
-
-    @staticmethod
     def matchDataAlignment(src_alignment: str, rasters_dir: str, save_to: str):
         """matchDataAlignment.
 
@@ -3135,8 +3125,8 @@ class Dataset:
         # run the command
         # cmd = "gdal_merge.py -o merged_image_1.tif"
         # subprocess.call(cmd.split() + file_list)
-        # vrt = gdal.BuildVRT("merged.vrt",file_list)
-        # src = gdal.Translate("merged_image.tif",vrt)
+        # vrt = gdal.BuildVRT("merged.vrt", file_list)
+        # src = gdal.Translate("merged_image.tif", vrt)
 
         parameters = (
             ["", "-o", dst]
