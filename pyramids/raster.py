@@ -30,6 +30,8 @@ from pyramids.utils import (
     INTERPOLATION_METHODS,
     NUMPY_GDAL_DATA_TYPES,
     gdal_to_numpy_dtype,
+    numpy_to_gdal_dtype,
+    AlignmentError,
 )
 
 try:
@@ -39,7 +41,6 @@ except ModuleNotFoundError:
         "osgeo_utils module does not exist try install pip install osgeo-utils "
     )
 
-from pyramids.utils import numpy_to_gdal_dtype
 from pyramids.array import get_pixels, _get_indeces2, _get_pixels2
 from pyramids.vector import Vector
 
@@ -2167,7 +2168,7 @@ class Raster:
 
     def overlay(
         self,
-        classes_map: Union[str, np.ndarray],
+        classes_map,
         exclude_value: Union[float, int] = None,
     ) -> Dict[List[float], List[float]]:
         """OverlayMap.
@@ -2178,19 +2179,22 @@ class Raster:
 
         Parameters
         ----------
-        classes_map: [str/array]
-            a path includng the name of the ASCII and extention, or an array
-            >>> path = "classes.asc"
+        classes_map: [Raster]
+            Raster Object fpr the raster that have classes you want to overlay with the raster.
         exclude_value: [Numeric]
             values you want to exclude from extracted values.
 
         Returns
         -------
-        ExtractedValues: [Dict]
-            dictonary with a list of values in the basemap as keys
-                and for each key a list of all the intersected values in the
-                maps from the path.
+        Dictionary:
+            dictonary with a list of values in the basemap as keys and for each key a list of all the intersected
+            values in the maps from the path.
         """
+        if not self._check_alignment(classes_map):
+            raise AlignmentError(
+                "The class Raster is not aligned with the current raster, plase use the method "
+                "'align' to align both rasters."
+            )
         arr = self.read_array()
         mask = (
             [self.no_data_value[0], exclude_value]
@@ -3114,113 +3118,42 @@ class Dataset:
             arr[~np.isclose(arr, no_data_value, rtol=0.001)]
         )
 
-    @staticmethod
     def overlay(
-        path: str,
-        basemap_file: str,
-        file_prefix: str,
-        exclude_value: Union[float, int],
-        compressed: bool = False,
-        occupied_cells_only: bool = True,
-    ):
+        self,
+        classes_map,
+        exclude_value: Union[float, int] = None,
+    ) -> Dict[List[float], List[float]]:
         """this function is written to extract and return a list of all the values in an ASCII file.
 
         Parameters
         ----------
-        path: [String]
-            a path to the folder includng the maps.
-        basemap_file: [String]
-            a path includng the name of the ASCII and extention like
-            path="data/cropped.asc"
-        file_prefix: [String]
-            a string that make the files you want to filter in the folder
-            uniq
+        classes_map: [Raster]
+            Raster Object fpr the raster that have classes you want to overlay with the raster.
         exclude_value: [Numeric]
-            values you want to exclude from exteacted values
-        compressed:
-            [Bool] if the map you provided is compressed
-        occupied_cells_only:
-            [Bool] if you want to count only cells that is not zero
+            values you want to exclude from extracted values.
 
         Returns
         -------
-        ExtractedValues:
-            [Dict] dictonary with a list of values in the basemap as keys
-                and for each key a list of all the intersected values in the
-                maps from the path
-        NonZeroCells:
-            [dataframe] dataframe with the first column as the "file" name
-            and the second column is the number of cells in each map
+        Dictionary:
+            dictonary with a list of values in the basemap as keys and for each key a list of all the intersected
+            values in the maps from the path.
         """
-        assert type(path) == str, "Path input should be string type"
-        assert type(file_prefix) == str, "Path input should be string type"
-        assert type(compressed) == bool, "Compressed input should be Boolen type"
-        assert type(basemap_file) == str, "basemap_file input should be string type"
-        # input values
-        # check wether the path exist or not
-        assert os.path.exists(path), "the path you have provided does not exist"
-        # check whether there are files or not inside the folder
-        assert os.listdir(path) != "", "the path you have provided is empty"
-        # get list of all files
-        Files = os.listdir(path)
+        values = {}
+        for i in range(self.time_length):
+            src = self.iloc(i)
+            dict_i = src.overlay(classes_map, exclude_value)
 
-        FilteredList = list()
+            # these are the destinct values from the BaseMap which are keys in the
+            # ExtractedValuesi dict with each one having a list of values
+            classes = list(dict_i.keys())
 
-        # filter file list with the File prefix input
-        for i in range(len(Files)):
-            if Files[i].startswith(file_prefix):
-                FilteredList.append(Files[i])
+            for class_i in classes:
+                if class_i not in values.keys():
+                    values[class_i] = list()
 
-        NonZeroCells = pd.DataFrame()
-        NonZeroCells["files"] = FilteredList
-        NonZeroCells["cells"] = 0
-        # read the base map
-        if basemap_file.endswith(".asc"):
-            BaseMapV, _ = Raster.readASCII(basemap_file)
-        else:
-            BaseMap = gdal.Open(basemap_file)
-            BaseMapV = BaseMap.ReadAsArray()
+                values[class_i] = values[class_i] + dict_i[class_i]
 
-        ExtractedValues = dict()
-        FilesNotOpened = list()
-
-        for i in range(len(FilteredList)):
-            print("File " + FilteredList[i])
-            if occupied_cells_only:
-                ExtractedValuesi, NonZeroCells.loc[i, "cells"] = Raster.overlay(
-                    path + "/" + FilteredList[i],
-                    BaseMapV,
-                    exclude_value,
-                    compressed,
-                    occupied_cells_only,
-                )
-            else:
-                ExtractedValuesi, NonZeroCells.loc[i, "cells"] = Raster.overlay(
-                    path + "/" + FilteredList[i],
-                    BaseMapV,
-                    exclude_value,
-                    compressed,
-                    occupied_cells_only,
-                )
-
-                # these are the destinct values from the BaseMap which are keys in the
-                # ExtractedValuesi dict with each one having a list of values
-                BaseMapValues = list(ExtractedValuesi.keys())
-
-                for j in range(len(BaseMapValues)):
-                    if BaseMapValues[j] not in list(ExtractedValues.keys()):
-                        ExtractedValues[BaseMapValues[j]] = list()
-
-                    ExtractedValues[BaseMapValues[j]] = (
-                        ExtractedValues[BaseMapValues[j]]
-                        + ExtractedValuesi[BaseMapValues[j]]
-                    )
-
-            if ExtractedValuesi == -1 or NonZeroCells.loc[i, "cells"] == -1:
-                FilesNotOpened.append(FilteredList[i])
-                continue
-
-        return ExtractedValues, NonZeroCells
+        return values
 
     # @staticmethod
     # def readNC(

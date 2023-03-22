@@ -292,3 +292,17 @@ class TestApply:
         dataset.read_dataset()
         func = np.abs
         dataset.apply(func)
+
+
+def test_overlay(rasters_folder_path: str, germany_classes: str):
+    dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+    dataset.read_dataset()
+
+    classes_src = Raster.read(germany_classes)
+    class_dict = dataset.overlay(classes_src)
+    arr = classes_src.read_array()
+    class_values = np.unique(arr)
+    assert len(class_dict.keys()) == len(class_values) - 1
+    extracted_classes = list(class_dict.keys())
+    real_classes = class_values.tolist()[:-1]
+    assert all(i in real_classes for i in extracted_classes)
