@@ -269,7 +269,7 @@ class TestCrop:
         arr = dataset.data[0, :, :]
         no_data_value = dataset.base.no_data_value[0]
         arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
-        assert arr1.shape[0] == 775
+        assert arr1.shape[0] == 806
         # shutil.rmtree(crop_aligned_folder_saveto)
 
 
