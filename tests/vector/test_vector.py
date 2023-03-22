@@ -109,7 +109,8 @@ class TestPolygonToRaster:
         src_obj = Raster.read(raster_to_df_path)
         src = Vector.to_raster(vector_mask_gdf, src=src_obj)
         assert src.epsg == vector_mask_gdf.crs.to_epsg()
-        xmin, _, _, ymax = vector_mask_gdf.bounds.values[0]
+
+        xmin, _, _, ymax, _, _ = src_obj.geotransform
         assert src.geotransform[0] == xmin
         assert src.geotransform[3] == ymax
         assert src.cell_size == 4000
