@@ -185,7 +185,7 @@ def test_match_alignment(
     dataset = Dataset.read_separate_files(match_alignment_dataset, with_order=False)
     dataset.read_dataset()
     mask_obj = Raster(src)
-    dataset.match_alignment(mask_obj)
+    dataset.align(mask_obj)
     assert dataset.base.rows == mask_obj.rows
     assert dataset.base.columns == mask_obj.columns
 

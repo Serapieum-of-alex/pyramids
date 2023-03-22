@@ -5,9 +5,7 @@ algebric operation on cell's values. gdal class: https://gdal.org/java/org/gdal/
 import datetime as dt
 from pathlib import Path
 
-# import json
 import os
-import zipfile
 from typing import Any, Dict, List, Tuple, Union, Callable
 from loguru import logger
 import shutil
@@ -42,7 +40,7 @@ except ModuleNotFoundError:
     )
 
 from pyramids.utils import numpy_to_gdal_dtype
-from pyramids.array import getPixels
+from pyramids.array import get_pixels, _get_indeces2, _get_pixels2
 from pyramids.vector import Vector
 
 DEFAULT_NO_DATA_VALUE = -9999
@@ -1077,7 +1075,7 @@ class Raster:
                 mask_dfs = []
                 for mask_val in gdf["burn_value"].values:
                     # Extract only masked pixels.
-                    flatten_masked_values = getPixels(
+                    flatten_masked_values = get_pixels(
                         arr, mask_arr, mask_val=mask_val
                     ).transpose()
                     fid_px = np.ones(flatten_masked_values.shape[0]) * mask_val
@@ -1106,7 +1104,7 @@ class Raster:
                         idx = (0, 1)
 
                     mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
-                    pixels = getPixels(arr, mask_arr).transpose()
+                    pixels = get_pixels(arr, mask_arr).transpose()
                     df_list.append(pd.DataFrame(pixels, columns=band_names))
 
                 # Merge all the tiles.
@@ -1591,7 +1589,7 @@ class Raster:
                 ]
             # interpolate those missing cells by nearest neighbour
             if elem_mask > elem_src:
-                src_array = Raster.nearest_neighbour(src_array, mask_noval, rows, cols)
+                src_array = Raster._nearest_neighbour(src_array, mask_noval, rows, cols)
 
         # if the dst is a raster
         if isinstance(self.raster, gdal.Dataset):
@@ -1616,7 +1614,7 @@ class Raster:
         else:
             return src_array
 
-    def match_alignment(
+    def align(
         self,
         alignment_src,
     ) -> gdal.Dataset:
@@ -1647,7 +1645,7 @@ class Raster:
         --------
         >>> A = gdal.Open("examples/GIS/data/acc4000.tif")
         >>> B = gdal.Open("examples/GIS/data/soil_raster.tif")
-        >>> RasterBMatched = Raster.match_alignment(A,B)
+        >>> RasterBMatched = Raster.align(A,B)
         """
         if isinstance(alignment_src, Raster):
             src = alignment_src
@@ -1718,7 +1716,7 @@ class Raster:
             )
 
         # first align the mask with the src raster
-        mask_aligned = mask.match_alignment(self)
+        mask_aligned = mask.align(self)
         # crop the src raster with the aligned mask
         dst_obj = self.crop_alligned(mask_aligned)
 
@@ -2025,7 +2023,7 @@ class Raster:
     #     return out_img, out_meta
 
     @staticmethod
-    def nearest_neighbour(
+    def _nearest_neighbour(
         array: np.ndarray, nodatavalue: Union[float, int], rows: list, cols: list
     ) -> np.ndarray:
         """nearestNeighbour.
@@ -2059,7 +2057,7 @@ class Raster:
         >>> raster = gdal.Open("dem.tif")
         >>> req_rows = [3,12]
         >>> req_cols = [9,2]
-        >>> new_array = Raster.nearest_neighbour(raster, req_rows, req_cols)
+        >>> new_array = Raster._nearest_neighbour(raster, req_rows, req_cols)
         """
         if not isinstance(array, np.ndarray):
             raise TypeError(
@@ -2135,7 +2133,7 @@ class Raster:
     def extract(
         self,
         exclude_value,
-    ):
+    ) -> List:
         """extractValues.
 
             - this function is written to extract and return a list of all the values in a map.
@@ -2148,28 +2146,16 @@ class Raster:
         """
         arr = self.read_array()
         # NonZeroCells = np.count_nonzero(arr)
-        # get the position of cells that is not zeros
-        mask = np.logical_and(
-            ~np.isclose(arr, self.no_data_value[0], rtol=0.001),
-            ~np.isclose(arr, exclude_value, rtol=0.001),
-        )
-
-        rows = np.where(mask)[0]
-        cols = np.where(mask)[1]
-        ind = zip(rows, cols)
-        fn = lambda x: arr[x[0], x[1]]
-        values = list(map(fn, ind))
+        mask = [self.no_data_value[0], exclude_value]
+        values = _get_pixels2(arr, mask)
 
         return values
 
-    @staticmethod
     def overlay(
-        path: str,
+        self,
         classes_map: Union[str, np.ndarray],
         exclude_value: Union[float, int],
-        compressed: bool = False,
-        occupied_cells_only: bool = True,
-    ) -> Tuple[Dict[List[float], List[float]], int]:
+    ) -> Dict[List[float], List[float]]:
         """OverlayMap.
 
             OverlayMap extracts and return a list of all the values in an ASCII file,
@@ -2178,17 +2164,11 @@ class Raster:
 
         Parameters
         ----------
-        path: [str]
-            a path to ascii file.
         classes_map: [str/array]
             a path includng the name of the ASCII and extention, or an array
             >>> path = "classes.asc"
         exclude_value: [Numeric]
             values you want to exclude from extracted values.
-        compressed: [Bool]
-            if the map you provided is compressed.
-        occupied_cells_only: [Bool]
-            if you want to count only cells that is not zero.
 
         Returns
         -------
@@ -2196,85 +2176,23 @@ class Raster:
             dictonary with a list of values in the basemap as keys
                 and for each key a list of all the intersected values in the
                 maps from the path.
-        NonZeroCells: [dataframe]
-            the number of cells in the map.
         """
-        if not isinstance(path, str):
-            raise TypeError(f"Path input should be string type - given{type(path)}")
-
-        if not isinstance(compressed, bool):
-            raise TypeError(
-                f"Compressed input should be Boolen type given {type(compressed)}"
-            )
-
-        # check wether the path exist or not
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"the path {path} you have provided does not exist")
-
-        # read the base map
-        if isinstance(classes_map, str):
-            if classes_map.endswith(".asc"):
-                BaseMapV, _ = Raster.readASCII(classes_map)
-            else:
-                BaseMap = gdal.Open(classes_map)
-                BaseMapV = BaseMap.ReadAsArray()
-        else:
-            BaseMapV = classes_map
-
-        ExtractedValues = dict()
-
-        try:
-            # open the zip file
-            if compressed:
-                Compressedfile = zipfile.ZipFile(path)
-                # get the file name
-                fname = Compressedfile.infolist()[0]
-                ASCIIF = Compressedfile.open(fname)
-                #                SpatialRef = ASCIIF.readlines()[:6]
-                ASCIIF = Compressedfile.open(fname)
-                ASCIIRaw = ASCIIF.readlines()[6:]
-                rows = len(ASCIIRaw)
-                cols = len(ASCIIRaw[0].split())
-                MapValues = np.ones((rows, cols), dtype=np.float32) * 0
-                # read the ascii file
-                for row in range(rows):
-                    x = ASCIIRaw[row].split()
-                    MapValues[row, :] = list(map(float, x))
-
-            else:
-                MapValues, SpatialRef = Raster.read(path)
-            # count number of nonzero cells
-            NonZeroCells = np.count_nonzero(MapValues)
-
-            if occupied_cells_only:
-                ExtractedValues = 0
-                return ExtractedValues, NonZeroCells
-
-            # get the position of cells that is not zeros
-            rows = np.where(MapValues[:, :] != exclude_value)[0]
-            cols = np.where(MapValues[:, :] != exclude_value)[1]
-
-        except:
-            print("Error Opening the compressed file")
-            NonZeroCells = -1
-            ExtractedValues = -1
-            return ExtractedValues, NonZeroCells
+        arr = self.read_array()
+        mask = [self.no_data_value[0], exclude_value]
+        ind = _get_indeces2(arr, mask)
+        classes = classes_map.read_array()
+        values = dict()
 
         # extract values
-        for i in range(len(rows)):
+        for i, ind_i in enumerate(ind):
             # first check if the sub-basin has a list in the dict if not create a list
-            if BaseMapV[rows[i], cols[i]] not in list(ExtractedValues.keys()):
-                ExtractedValues[BaseMapV[rows[i], cols[i]]] = list()
+            key = classes[ind_i[0], ind_i[1]]
+            if key not in list(values.keys()):
+                values[key] = list()
 
-            #            if not np.isnan(MapValues[rows[i],cols[i]]):
-            ExtractedValues[BaseMapV[rows[i], cols[i]]].append(
-                MapValues[rows[i], cols[i]]
-            )
-        #            else:
-        # if the value is nan
-        #                NanList.append(FilteredList[i])
+            values[key].append(arr[ind_i[0], ind_i[1]])
 
-        return ExtractedValues, NonZeroCells
+        return values
 
     @staticmethod
     def normalize(array: np.ndarray):
@@ -2979,7 +2897,7 @@ class Dataset:
     #
     #     return dst
 
-    def match_alignment(self, alignment_src: Raster):
+    def align(self, alignment_src: Raster):
         """matchDataAlignment.
 
         this function matches the coordinate system and the number of of rows & columns
@@ -3008,14 +2926,14 @@ class Dataset:
         >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
         >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
         >>> prec_out_path = "02Precipitation/4km/"
-        >>> Raster.match_alignment(dem_path,prec_in_path,prec_out_path)
+        >>> Raster.align(dem_path,prec_in_path,prec_out_path)
         """
         if not isinstance(alignment_src, Raster):
             raise TypeError("alignment_src input should be a Raster object")
 
         for i in range(self.time_length):
             src = self.iloc(i)
-            dst = src.match_alignment(alignment_src)
+            dst = src.align(alignment_src)
             arr = dst.read_array()
             if i == 0:
                 # create the array
@@ -3179,7 +3097,7 @@ class Dataset:
         )
 
     @staticmethod
-    def overlayMaps(
+    def overlay(
         path: str,
         basemap_file: str,
         file_prefix: str,

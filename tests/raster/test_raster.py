@@ -402,7 +402,7 @@ def test_match_raster_alignment(
 ):
     mask_obj = Raster(src)
     soil_raster_obj = Raster(soil_raster)
-    soil_aligned = soil_raster_obj.match_alignment(mask_obj)
+    soil_aligned = soil_raster_obj.align(mask_obj)
     assert soil_aligned.raster.ReadAsArray().shape == src_shape
     nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
     assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
@@ -590,6 +590,7 @@ def test_extract(
     assert len(values) == 46
 
 
+# import zipfile
 # import zipfile
 #
 #
