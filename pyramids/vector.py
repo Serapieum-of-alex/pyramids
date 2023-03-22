@@ -295,8 +295,13 @@ class Vector:
                     "The second parameter should be a Raster object (check how to read a raster using the "
                     "Raster module)"
                 )
-
-        xmin, ymin, xmax, ymax = vector.bounds.values[0]
+            # if the raster is given the top left corner of the raster will be taken as the top left corner for
+            # the rasterized polygon
+            xmin, _, _, ymax, _, _ = src.geotransform
+        else:
+            # if a raster is not given the xmin and ymax will be taken as the top left corner for the rasterized
+            # polygon.
+            xmin, ymin, xmax, ymax = vector.bounds.values[0]
 
         if vector_field is None:
             # Use a constant value for all features.
