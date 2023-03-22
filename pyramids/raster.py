@@ -1461,7 +1461,7 @@ class Raster:
         )
         return dst_obj
 
-    def crop_alligned(
+    def _crop_alligned(
         self,
         mask: Union[gdal.Dataset, np.ndarray],
         mask_noval: Union[int, float] = None,
@@ -1614,6 +1614,13 @@ class Raster:
         else:
             return src_array
 
+    def _check_alignment(self, mask) -> bool:
+        """Check if raster is aligned with a given mask raster"""
+        if not isinstance(mask, Raster):
+            raise TypeError("The second parameter should be a Raster")
+
+        return self.rows == mask.rows and self.columns == mask.columns
+
     def align(
         self,
         alignment_src,
@@ -1684,7 +1691,7 @@ class Raster:
 
         return dst_obj
 
-    def _crop_un_aligned(
+    def _crop_with_raster(
         self,
         mask: Union[gdal.Dataset, str],
     ) -> gdal.Dataset:
@@ -1714,11 +1721,11 @@ class Raster:
             raise TypeError(
                 "Second parameter has to be either path to the mask raster or a gdal.Dataset object"
             )
-
-        # first align the mask with the src raster
-        mask_aligned = mask.align(self)
+        if not self._check_alignment(mask):
+            # first align the mask with the src raster
+            mask = mask.align(self)
         # crop the src raster with the aligned mask
-        dst_obj = self.crop_alligned(mask_aligned)
+        dst_obj = self._crop_alligned(mask)
 
         return dst_obj
 
@@ -1748,7 +1755,7 @@ class Raster:
                 "unify projection"
             )
         mask = Vector.to_raster(poly, src=self)
-        cropped_obj = self._crop_un_aligned(mask)
+        cropped_obj = self._crop_with_raster(mask)
 
         # xmin, ymin, xmax, ymax = poly.bounds.values.tolist()[0]
         # window = (xmin, ymax, xmax, ymin)
@@ -1782,7 +1789,7 @@ class Raster:
         if isinstance(mask, GeoDataFrame):
             dst = self._crop_with_polygon(mask)
         elif isinstance(mask, Raster):
-            dst = self._crop_un_aligned(mask)
+            dst = self._crop_with_raster(mask)
         else:
             raise TypeError(
                 "The second parameter: mask could be either GeoDataFrame or Raster object"

@@ -420,7 +420,7 @@ class TestCrop:
     ):
         mask_obj = Raster(src)
         aligned_raster = Raster(aligned_raster)
-        croped = aligned_raster.crop_alligned(mask_obj)
+        croped = aligned_raster._crop_alligned(mask_obj)
         dst_arr_cropped = croped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -434,7 +434,7 @@ class TestCrop:
         src_no_data_value: float,
     ):
         aligned_raster = Raster(aligned_raster)
-        croped = aligned_raster.crop_alligned(src_arr, mask_noval=src_no_data_value)
+        croped = aligned_raster._crop_alligned(src_arr, mask_noval=src_no_data_value)
         dst_arr_cropped = croped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -466,7 +466,7 @@ class TestCrop:
         # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
         mask_obj = Raster(soil_raster)
         aligned_raster = Raster(aligned_raster)
-        aligned_raster._crop_un_aligned(mask_obj)
+        aligned_raster._crop_with_raster(mask_obj)
 
 
 class TestCropWithPolygon:
