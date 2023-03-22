@@ -56,15 +56,15 @@ gdal.UseExceptions()
 class Raster:
     """Raster class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
 
-    raster: gdal.Dataset
+    # raster: gdal.Dataset
     array: np.ndarray
     no_data_value: List[Union[float, int]]
     dtype: List[Union[float, int]]
-    geotransform: Tuple[float, float, float, float]
-    proj: str
-    rows: int
-    columns: int
-    band_count: int
+    # geotransform: Tuple[float, float, float, float]
+    # proj: str
+    # rows: int
+    # _columns: int
+    # _band_count: int
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
     def __init__(self, src: gdal.Dataset):
@@ -73,31 +73,96 @@ class Raster:
                 "src should be read using gdal (gdal dataset please read it using gdal"
                 f" library) given {type(src)}"
             )
-        self.raster = src
-        self.geotransform = src.GetGeoTransform()
+        self._raster = src
+        self._geotransform = src.GetGeoTransform()
         self.driver_type = src.GetDriver().GetDescription()
-        self.cell_size = self.geotransform[1]
-        self.meta_data = src.GetMetadata()
+        self._cell_size = self.geotransform[1]
+        self._meta_data = src.GetMetadata()
         # projection data
-        self.proj = src.GetProjection()
-        self.epsg = self.get_epsg()
+        self._proj = src.GetProjection()
+        self._epsg = self.get_epsg()
         # variables and subsets
         self.subsets = src.GetSubDatasets()
-        self.variables = self.get_variables()
+        self._variables = self.get_variables()
         # array and dimensions
-        self.rows = src.RasterYSize
-        self.columns = src.RasterXSize
-        self.band_count = self.raster.RasterCount
-        self.no_data_value = [
+        self._rows = src.RasterYSize
+        self._columns = src.RasterXSize
+        self._band_count = self.raster.RasterCount
+        self._no_data_value = [
             src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
         ]
-        self.dtype = [
+        self._dtype = [
             src.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
         ]
 
-        self.band_names = self.get_band_names()
+        self._band_names = self.get_band_names()
 
-        pass
+    @property
+    def raster(self):
+        return self._raster
+
+    @raster.setter
+    def raster(self, value: gdal.Dataset):
+        self._raster = value
+
+    @property
+    def rows(self):
+        """Number of rows in the raster array."""
+        return self._rows
+
+    @property
+    def columns(self):
+        """Number of columns in the raster array."""
+        return self._columns
+
+    @property
+    def proj(self):
+        """WKT projection."""
+        return self._proj
+
+    @property
+    def geotransform(self):
+        """WKT projection."""
+        return self._geotransform
+
+    @property
+    def epsg(self):
+        """WKT projection."""
+        return self._epsg
+
+    @property
+    def cell_size(self):
+        """Cell size."""
+        return self._cell_size
+
+    @property
+    def band_count(self):
+        """Number of bands in the raster."""
+        return self._band_count
+
+    @property
+    def band_names(self):
+        """Band names."""
+        return self._band_names
+
+    @property
+    def variables(self):
+        """Variables in the raster (resambles the variables in netcdf files.)"""
+        return self._variables
+
+    @property
+    def no_data_value(self):
+        """No data value that marks the cells out of the domain"""
+        return self._no_data_value
+
+    @property
+    def meta_data(self):
+        """Meta data"""
+        return self._meta_data
+
+    @property
+    def dtype(self):
+        return self._dtype
 
     @classmethod
     def read(cls, path: str, read_only=True):
@@ -709,7 +774,7 @@ class Raster:
             arr[np.isclose(arr, old_value, rtol=0.001)] = new_value[band]
             dst.GetRasterBand(band + 1).WriteArray(arr)
 
-        self.raster = dst
+        self._raster = dst
 
         for band in range(self.band_count):
             self.change_no_data_value_attr(band, new_value[band])
