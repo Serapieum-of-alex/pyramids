@@ -590,6 +590,18 @@ def test_extract(
     assert len(values) == 46
 
 
+def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
+    src_obj = Raster(rhine_raster)
+    classes_src = Raster.read(germany_classes)
+    class_dict = src_obj.overlay(classes_src)
+    arr = classes_src.read_array()
+    class_values = np.unique(arr)
+    assert len(class_dict.keys()) == len(class_values) - 1
+    extracted_classes = list(class_dict.keys())
+    real_classes = class_values.tolist()[:-1]
+    assert all(i in real_classes for i in extracted_classes)
+
+
 # import zipfile
 # import zipfile
 #

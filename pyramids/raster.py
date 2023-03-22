@@ -2168,7 +2168,7 @@ class Raster:
     def overlay(
         self,
         classes_map: Union[str, np.ndarray],
-        exclude_value: Union[float, int],
+        exclude_value: Union[float, int] = None,
     ) -> Dict[List[float], List[float]]:
         """OverlayMap.
 
@@ -2192,7 +2192,11 @@ class Raster:
                 maps from the path.
         """
         arr = self.read_array()
-        mask = [self.no_data_value[0], exclude_value]
+        mask = (
+            [self.no_data_value[0], exclude_value]
+            if exclude_value is not None
+            else [self.no_data_value[0]]
+        )
         ind = _get_indeces2(arr, mask)
         classes = classes_map.read_array()
         values = dict()

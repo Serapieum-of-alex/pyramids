@@ -73,10 +73,13 @@ def _get_indeces2(arr: np.ndarray, mask: List) -> List[Tuple[int, int]]:
 
     """
     # get the position of cells that is not zeros
-    mask = np.logical_and(
-        ~np.isclose(arr, mask[0], rtol=0.001),
-        ~np.isclose(arr, mask[1], rtol=0.001),
-    )
+    if len(mask) > 1:
+        mask = np.logical_and(
+            ~np.isclose(arr, mask[0], rtol=0.001),
+            ~np.isclose(arr, mask[1], rtol=0.001),
+        )
+    else:
+        mask = ~np.isclose(arr, mask[0], rtol=0.001)
 
     rows = np.where(mask)[0]
     cols = np.where(mask)[1]

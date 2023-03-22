@@ -321,3 +321,8 @@ def merge_output() -> str:
 @pytest.fixture(scope="module")
 def match_alignment_dataset() -> str:
     return "tests/data/match-align-dataset"
+
+
+@pytest.fixture(scope="module")
+def germany_classes() -> str:
+    return "tests/data/germany-classes.tif"
