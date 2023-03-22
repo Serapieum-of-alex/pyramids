@@ -223,7 +223,7 @@ class Raster:
         dst.SetProjection(sr.ExportToWkt())
         dst = cls(dst)
         if no_data_value is not None:
-            dst._set_no_data_value(no_data_value=float(no_data_value))
+            dst._set_no_data_value(no_data_value=no_data_value)
 
         return dst
 
@@ -583,6 +583,13 @@ class Raster:
         """
         if not isinstance(no_data_value, list):
             no_data_value = [no_data_value] * self.band_count
+        for i, val in enumerate(self.dtype):
+            if gdal_to_numpy_dtype(val).__contains__("float"):
+                no_data_value[i] = float(no_data_value[i])
+            elif gdal_to_numpy_dtype(val).__contains__("int"):
+                no_data_value[i] = int(no_data_value[i])
+            else:
+                raise TypeError("NoDataValue has a complex data type")
 
         for band in range(self.band_count):
             try:
