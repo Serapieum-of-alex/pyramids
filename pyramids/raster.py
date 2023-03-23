@@ -32,6 +32,7 @@ from pyramids.utils import (
     gdal_to_numpy_dtype,
     numpy_to_gdal_dtype,
     AlignmentError,
+    create_time_conversion_func,
 )
 
 try:
@@ -57,9 +58,9 @@ class Raster:
     """Raster class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
 
     # raster: gdal.Dataset
-    array: np.ndarray
-    no_data_value: List[Union[float, int]]
-    dtype: List[Union[float, int]]
+    # array: np.ndarray
+    # no_data_value: List[Union[float, int]]
+    # dtype: List[Union[float, int]]
     # geotransform: Tuple[float, float, float, float]
     # proj: str
     # rows: int
@@ -78,6 +79,7 @@ class Raster:
         self.driver_type = src.GetDriver().GetDescription()
         self._cell_size = self.geotransform[1]
         self._meta_data = src.GetMetadata()
+        self._file_name = src.GetDescription()
         # projection data
         self._proj = src.GetProjection()
         self._epsg = self.get_epsg()
@@ -87,7 +89,11 @@ class Raster:
         # array and dimensions
         self._rows = src.RasterYSize
         self._columns = src.RasterXSize
-        self._band_count = self.raster.RasterCount
+        self._band_count = src.RasterCount
+        if len(self.subsets) > 0:
+            self._time_stamp = self._get_time_variable()
+            self.lat, self.lon = self._get_lat_lon()
+
         self._no_data_value = [
             src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
         ]
@@ -163,6 +169,20 @@ class Raster:
     @property
     def dtype(self):
         return self._dtype
+
+    @property
+    def file_name(self):
+        """file name"""
+        if self._file_name.startswith("NETCDF"):
+            name = self._file_name.split(":")[1][1:-1]
+        else:
+            name = self._file_name
+        return name
+
+    @property
+    def time_stamp(self):
+        """Time stamp"""
+        return self._time_stamp
 
     @classmethod
     def read(cls, path: str, read_only=True):
@@ -317,7 +337,7 @@ class Raster:
                 )
             )
             for i in range(self.band_count):
-                arr[i, :, :] = self.raster.GetRasterBand(i + 1).ReadAsArray()
+                arr[i, :, :] = self._raster.GetRasterBand(i + 1).ReadAsArray()
         else:
             if band is None:
                 band = 0
@@ -329,6 +349,34 @@ class Raster:
             arr = self.raster.GetRasterBand(band + 1).ReadAsArray()
 
         return arr
+
+    def _get_time_variable(self):
+        """
+
+        Returns
+        -------
+
+        """
+        # time_vars = [(i, self.meta_data.get(i)) for i in self.meta_data.keys() if i.startswith("time")]
+        # time_var_name = time_vars[0][0].split("#")[0]
+        extra_dim = self.meta_data.get("NETCDF_DIM_EXTRA")
+        if extra_dim is not None:
+            time_var_name = extra_dim.replace("{", "").replace("}", "")
+            units = self.meta_data.get(f"{time_var_name}#units")
+            func = create_time_conversion_func(units)
+            time_vals = self._read_variable(time_var_name)
+            time_stamp = list(map(func, time_vals[0]))
+        else:
+            time_stamp = None
+        return time_stamp
+
+    def _get_lat_lon(self):
+        lon = self._read_variable("lon")
+        lat = self._read_variable("lat")
+        return lat, lon
+
+    def _read_variable(self, var: str):
+        return gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
 
     @staticmethod
     def _create_dataset(
@@ -550,9 +598,12 @@ class Raster:
         -------
 
         """
-        variables = []
-        for var in self.subsets:
-            variables.append(var[1].split(" ")[1])
+        variables = {}
+        for i, var in enumerate(self.subsets):
+            name = var[1].split(" ")[1]
+            src = gdal.Open(self.subsets[i][0])
+            variables[name] = Raster(src)
+
         return variables
 
     def count_domain_cells(self):
@@ -968,11 +1019,38 @@ class Raster:
         if not path.endswith(".tif"):
             raise ValueError("please add the extension at the end of the path input")
 
-        driver = gdal.GetDriverByName("GTiff")
-        dst_ds = driver.CreateCopy(path, self.raster, 0)
-        dst_ds = None  # Flush the dataset to disk
+        dst = gdal.GetDriverByName("GTiff").CreateCopy(path, self.raster, 0)
+        dst = None  # Flush the dataset to disk
         # print to go around the assigned but never used pre-commit issue
-        print(dst_ds)
+        print(dst)
+
+    def to_netcdf(self, path: str) -> None:
+        """Save to geotiff format.
+
+            saveRaster saves a raster to a path
+
+        Parameters
+        ----------
+        path: [string]
+            a path includng the name of the raster and extention.
+            >>> path = "data/cropped.tif"
+
+        Examples
+        --------
+        >>> raster_obj = Raster.read("path/to/file/***.tif")
+        >>> output_path = "examples/GIS/data/save_raster_test.tif"
+        >>> raster_obj.to_geotiff(output_path)
+        """
+        if not isinstance(path, str):
+            raise TypeError("Raster_path input should be string type")
+
+        if not path.endswith(".nc"):
+            raise ValueError("please add the extension at the end of the path input")
+
+        dst = gdal.GetDriverByName("NETCDF").CreateCopy(path, self.raster, 0)
+        dst = None  # Flush the dataset to disk
+        # print to go around the assigned but never used pre-commit issue
+        print(dst)
 
     def to_ascii(self, path: str, band: int = 1) -> None:
         """write raster into ascii file.

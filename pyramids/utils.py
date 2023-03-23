@@ -2,6 +2,7 @@
 import gzip
 import os
 from loguru import logger
+import datetime as dt
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
 from osgeo.gdal import Dataset
@@ -159,3 +160,41 @@ class AlignmentError(Exception):
         logger.error(error_message)
 
     pass
+
+
+def create_time_conversion_func(time: str) -> callable:
+    """Create a function to convert the ordinal time to gregorian date
+
+    Parameters
+    ----------
+    time: [str]
+        time unit string extracted from netcdf file
+        >>> 'seconds since 1970-01-01'
+
+    Returns
+    -------
+    callacle
+    """
+    time_unit, start = time.split(" since ")
+    datum = dt.datetime.strptime(start, "%Y-%m-%d")
+
+    def ordinal_to_date(time_step: int):
+        if time_unit == "microseconds":
+            gregorian = datum + dt.timedelta(microseconds=time_step)
+        elif time_unit == "milliseconds":
+            gregorian = datum + dt.timedelta(milliseconds=time_step)
+        if time_unit == "seconds":
+            gregorian = datum + dt.timedelta(seconds=time_step)
+        elif time_unit == "hours":
+            gregorian = datum + dt.timedelta(hours=time_step)
+        elif time_unit == "minutes":
+            gregorian = datum + dt.timedelta(minutes=time_step)
+        elif time_unit == "hours":
+            gregorian = datum + dt.timedelta(hours=time_step)
+        elif time_unit == "days":
+            gregorian = datum + dt.timedelta(days=time_step)
+        else:
+            raise ValueError(f"The given time unit is not available: {time_unit}")
+        return gregorian
+
+    return ordinal_to_date
