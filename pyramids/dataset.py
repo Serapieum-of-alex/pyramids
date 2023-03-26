@@ -75,7 +75,7 @@ class Dataset:
         self._file_name = src.GetDescription()
         # projection data
         self._proj = src.GetProjection()
-        self._epsg = self.get_epsg()
+        self._epsg = self._get_epsg()
         # variables and subsets
         self.subsets = src.GetSubDatasets()
         self._variables = self.get_variables()
@@ -612,7 +612,7 @@ class Dataset:
 
         return dst_obj
 
-    def get_epsg(self) -> int:
+    def _get_epsg(self) -> int:
         """GetEPSG.
 
             This function reads the projection of a GEOGCS file or tiff file
@@ -974,7 +974,7 @@ class Dataset:
         """
         coords = self.get_cell_coords(location="corner", mask=mask)
         cell_size = self.geotransform[1]
-        epsg = self.get_epsg()
+        epsg = self._get_epsg()
         x = np.zeros((coords.shape[0], 4))
         y = np.zeros((coords.shape[0], 4))
         # fill the top left corner point
@@ -1023,7 +1023,7 @@ class Dataset:
             with two columns, geometry, and id
         """
         coords = self.get_cell_coords(location=location, mask=mask)
-        epsg = self.get_epsg()
+        epsg = self._get_epsg()
 
         coords_tuples = list(zip(coords[:, 0], coords[:, 1]))
         points = Vector.createPoint(coords_tuples)
@@ -1532,7 +1532,7 @@ class Dataset:
         src_y = self.rows
 
         src_sr = osr.SpatialReference(wkt=src_proj)
-        src_epsg = self.get_epsg()
+        src_epsg = self._get_epsg()
 
         ### distination raster
         # spatial ref
@@ -1830,7 +1830,7 @@ class Dataset:
                 f"given {type(alignment_src)}"
             )
 
-        src_epsg = src.get_epsg()
+        src_epsg = src._get_epsg()
         # reproject the raster to match the projection of alignment_src
         reprojected_RasterB = self.to_crs(src_epsg)
         # create a new raster
@@ -2457,9 +2457,8 @@ class Dataset:
 
 
 class Datacube:
-    base: Dataset
+
     files: List[str]
-    time_length: int
     data: np.ndarray
 
     """
