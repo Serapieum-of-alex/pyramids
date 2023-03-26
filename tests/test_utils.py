@@ -28,9 +28,13 @@ class TestCatalog:
         catalog = Catalog()
         assert catalog.exists("memory")
         assert not catalog.exists("MEM")
-        assert not catalog.exists("MEM")
 
     def test_get_extension(self):
         catalog = Catalog()
         ext = catalog.get_extension("geotiff")
         assert ext == "tif"
+
+    def test_get_driver_name(self):
+        catalog = Catalog()
+        name = catalog.get_driver_name("AAIGrid")
+        assert name == "ascii"
