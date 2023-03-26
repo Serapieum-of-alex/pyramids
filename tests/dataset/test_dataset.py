@@ -1,308 +1,616 @@
-from typing import List
 import os
-import numpy as np
-import shutil
-from osgeo import gdal
+from typing import List, Tuple
+
 import geopandas as gpd
-from pyramids.dataset import Dataset, Datacube
+from geopandas.geodataframe import GeoDataFrame
+import numpy as np
+import pytest
+from osgeo import gdal, osr
+from osgeo.gdal import Dataset
+from pyramids.dataset import Dataset
+from pyramids.dataset import ReadOnlyError
 
 
-class TestReadDataset:
-    def test_read_all_without_order(
+class TestCreateRasterObject:
+    def test_from_gdal_dataset(
         self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
+        src: gdal.Dataset,
+        src_no_data_value: float,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        assert isinstance(dataset.base, Dataset)
-        assert dataset.base.no_data_value[0] == 2147483648.0
-        assert isinstance(dataset.files, list)
-        assert dataset.time_length == rasters_folder_rasters_number
-        assert dataset.sample.rows == rasters_folder_dim[0]
-        assert dataset.sample.columns == rasters_folder_dim[1]
+        src = Dataset(src)
+        assert hasattr(src, "subsets")
+        assert hasattr(src, "meta_data")
+        assert hasattr(src, "variables")
+        assert isinstance(src, Dataset)
 
-    def test_read_all_with_order(
+    def test_from_gdal_dataset_multi_band(
         self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
+        multi_band: gdal.Dataset,
+        src_no_data_value: float,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=True)
-        assert isinstance(dataset.sample, Dataset)
-        assert dataset.sample.no_data_value[0] == 2147483648.0
-        assert isinstance(dataset.files, list)
-        assert dataset.time_length == rasters_folder_rasters_number
-        assert dataset.sample.rows == rasters_folder_dim[0]
-        assert dataset.sample.columns == rasters_folder_dim[1]
+        src = Dataset(multi_band)
+        assert hasattr(src, "subsets")
+        assert hasattr(src, "meta_data")
+        assert hasattr(src, "variables")
+        assert src.band_count == 13
+        assert isinstance(src, Dataset)
 
-    def test_read_between_dates(
+    def test_from_open_ascii_file(
         self,
-        rasters_folder_path: str,
-        rasters_folder_start_date: str,
-        rasters_folder_end_date: str,
-        rasters_folder_date_fmt: str,
-        rasters_folder_dim: tuple,
-        rasters_folder_between_dates_raster_number: int,
+        ascii_file_path: str,
+        ascii_shape: tuple,
+        ascii_geotransform: tuple,
     ):
-        dataset = Datacube.read_separate_files(
-            rasters_folder_path,
-            with_order=True,
-            start=rasters_folder_start_date,
-            end=rasters_folder_end_date,
-            fmt=rasters_folder_date_fmt,
-        )
-        assert isinstance(dataset.sample, Dataset)
-        assert dataset.sample.no_data_value[0] == 2147483648.0
-        assert isinstance(dataset.files, list)
-        assert dataset.time_length == rasters_folder_between_dates_raster_number
-        assert dataset.sample.rows == rasters_folder_dim[0]
-        assert dataset.sample.columns == rasters_folder_dim[1]
-
-    # def test_from_netcdf(nc_path: str):
-    #     Datacube.readNC(nc_path, "", separator="_")
-
-
-class TestAscii:
-    def test_read_all_without_order(
-        self,
-        ascii_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
-    ):
-        dataset = Datacube.read_separate_files(
-            ascii_folder_path, with_order=False, extension=".asc"
-        )
-        assert isinstance(dataset.base, Dataset)
-        assert dataset.base.no_data_value[0] == 2147483648.0
-        assert isinstance(dataset.files, list)
-        assert dataset.time_length == rasters_folder_rasters_number
-        assert dataset.base.rows == rasters_folder_dim[0]
-        assert dataset.base.columns == rasters_folder_dim[1]
-
-
-class TestReadDataset:
-    def test_geotiff(
-        self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
-    ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        assert dataset.data.shape == (
-            rasters_folder_rasters_number,
-            rasters_folder_dim[0],
-            rasters_folder_dim[1],
+        # src_obj = Dataset.readASCII(ascii_file_path, dtype=1)
+        src_obj = Dataset.read_file(ascii_file_path)
+        assert src_obj.band_count == 1
+        assert src_obj.epsg == 6326
+        assert isinstance(src_obj.raster, gdal.Dataset)
+        assert src_obj.geotransform == (
+            432968.1206170588,
+            4000.0,
+            0.0,
+            520007.787999178,
+            0.0,
+            -4000.0,
         )
 
-    def test_ascii(
+    def test_from_create_empty_driver(
         self,
-        ascii_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
+        src: Dataset,
+        src_no_data_value: float,
     ):
-        dataset = Datacube.read_separate_files(
-            ascii_folder_path, with_order=False, extension=".asc"
+        src = Dataset.create_empty_driver(src)
+        assert isinstance(src, Dataset)
+
+    def test_create_raster(
+        self,
+        src_arr: np.ndarray,
+        src_geotransform: tuple,
+        src_epsg: int,
+        src_no_data_value: float,
+    ):
+        src = Dataset.create_dataset(
+            arr=src_arr,
+            geo=src_geotransform,
+            epsg=src_epsg,
+            nodatavalue=src_no_data_value,
         )
-        dataset.read_dataset()
-        assert dataset.data.shape == (
-            rasters_folder_rasters_number,
-            rasters_folder_dim[0],
-            rasters_folder_dim[1],
+        assert isinstance(src.raster, gdal.Dataset)
+        assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
+        assert np.isclose(
+            src.raster.GetRasterBand(1).GetNoDataValue(),
+            src_no_data_value,
+            rtol=0.00001,
         )
+        assert src.raster.GetGeoTransform() == src_geotransform
+
+    class TestRasterLike:
+        def test_create_raster_like_to_disk(
+            self,
+            src: Dataset,
+            src_arr: np.ndarray,
+            src_no_data_value: float,
+            raster_like_path: str,
+        ):
+            # remove the file if it exists
+            if os.path.exists(raster_like_path):
+                os.remove(raster_like_path)
+
+            arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
+            arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+            src_obj = Dataset(src)
+            Dataset.raster_like(src_obj, arr2, driver="GTiff", path=raster_like_path)
+            assert os.path.exists(raster_like_path)
+            dst_obj = Dataset.read_file(raster_like_path)
+            arr = dst_obj.raster.ReadAsArray()
+            assert arr.shape == src_arr.shape
+            assert np.isclose(
+                src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
+            )
+            assert src_obj.geotransform == dst_obj.geotransform
+
+        def test_create_raster_like_to_mem(
+            self,
+            src: Dataset,
+            src_arr: np.ndarray,
+            src_no_data_value: float,
+        ):
+            arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
+            arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+
+            src_obj = Dataset(src)
+            dst_obj = Dataset.raster_like(src_obj, arr2, driver="MEM")
+
+            arr = dst_obj.raster.ReadAsArray()
+            assert arr.shape == src_arr.shape
+            assert np.isclose(
+                src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
+            )
+            assert src_obj.geotransform == dst_obj.geotransform
 
 
-class TestUpdateDataset:
-    def test_different_dimensions(
+class TestSpatialProperties:
+    def test_read_array(
         self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
+        src: Dataset,
+        src_shape: tuple,
+        src_arr: np.ndarray,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        # access the data attribute
-        arr = dataset.data
-        # modify the array
-        arr = arr[0:4, :, :] * np.nan
+        src = Dataset(src)
+        arr = src.read_array(band=0)
+        assert np.array_equal(src_arr, arr)
+
+    def test_read_array_multi_bands(
+        self,
+        multi_band: Dataset,
+    ):
+        src = Dataset(multi_band)
+        arr = src.read_array()
+        assert np.array_equal(multi_band.ReadAsArray(), arr)
+
+    def test_get_band_names(self, src: Dataset):
+        src = Dataset(src)
+        names = src.get_band_names()
+        assert isinstance(names, list)
+        assert names == ["Band_1"]
+
+    def test_set_no_data_value_error_read_only(
+        self,
+        src_set_no_data_value: Dataset,
+        src_no_data_value: float,
+    ):
+        src = Dataset(src_set_no_data_value)
         try:
-            dataset.update_cube(arr)
-        except ValueError:
+            src._set_no_data_value(-99999.0)
+        except ReadOnlyError:
             pass
 
-    def test_same_dimensions(
+    def test_set_no_data_value(
         self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
+        src_update: Dataset,
+        src_no_data_value: float,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        # access the data attribute
-        arr = dataset.data
-        # modify the array
-        arr = arr * np.nan
-        dataset.update_cube(arr)
+        src = Dataset(src_update)
+        src._set_no_data_value(5.0)
+        # check if the no_data_value in the Datacube object is set
+        assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
+        # check if the no_data_value of the Dataset object is set
+        assert src.no_data_value[0] == 5
 
-
-class TestAccessDataset:
-    def test_iloc(
+    def test_change_no_data_value(
         self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
+        src: Dataset,
+        src_no_data_value: float,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        src = dataset.iloc(2)
-        assert isinstance(src, Dataset)
+        src = Dataset(src)
         arr = src.read_array()
-        assert isinstance(arr, np.ndarray)
+        old_value = arr[0, 0]
+        new_val = -6666
+        src.change_no_data_value(new_val, old_value)
+        # check if the no_data_value in the Datacube object is set
+        assert src.raster.GetRasterBand(1).GetNoDataValue() == new_val
+        # check if the no_data_value of the Dataset object is set
+        assert src.no_data_value[0] == new_val
+        # check if the new_val for the no_data_value is set in the bands
+        arr = src.read_array(0)
+        val = arr[0, 0]
+        assert val == new_val
+
+
+class TestGetCellCoordsAndCreateCellGeometry:
+    def test_cell_center_all_cells(
+        self,
+        src: Dataset,
+        src_shape: tuple,
+        src_cell_center_coords_first_4_rows,
+        src_cell_center_coords_last_4_rows,
+        cells_centerscoords: np.ndarray,
+    ):
+        """get center coordinates of all cells."""
+        src = Dataset(src)
+        coords = src.get_cell_coords(location="center", mask=False)
+        assert len(coords) == src_shape[0] * src_shape[1]
+        assert np.isclose(
+            coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001
+        ).all(), (
+            "the coordinates of the first 4 rows differs from the validation coords"
+        )
+        assert np.isclose(
+            coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001
+        ).all(), "the coordinates of the last 4 rows differs from the validation coords"
+
+    def test_cell_corner_all_cells(
+        self,
+        src: Dataset,
+        src_cells_corner_coords_last4,
+    ):
+        src = Dataset(src)
+        coords = src.get_cell_coords(location="corner")
+        assert np.isclose(
+            coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
+        ).all()
+
+    def test_cell_center_masked_cells(
+        self,
+        src: Dataset,
+        src_masked_values_len: int,
+        src_masked_cells_center_coords_last4,
+    ):
+        """get cell coordinates from cells inside the domain only."""
+        src = Dataset(src)
+        coords = src.get_cell_coords(location="center", mask=True)
+        assert coords.shape[0] == src_masked_values_len
+        assert np.isclose(
+            coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
+        ).all()
+
+    def test_create_cell_polygon(self, src: Dataset, src_shape: Tuple, src_epsg: int):
+        src = Dataset(src)
+        gdf = src.get_cell_polygons()
+        assert len(gdf) == src_shape[0] * src_shape[1]
+        assert gdf.crs.to_epsg() == src_epsg
+
+    def test_create_cell_points(self, src: Dataset, src_shape: Tuple, src_epsg: int):
+        src = Dataset(src)
+        gdf = src.get_cell_points()
+        # check the size
+        assert len(gdf) == src_shape[0] * src_shape[1]
+        assert gdf.crs.to_epsg() == src_epsg
+
+    # TODO: create a tesk using a mask
+
+
+class TestSave:
+    def test_save_rasters(
+        self,
+        src: Dataset,
+        save_raster_path: str,
+    ):
+        src = Dataset(src)
+        src.to_file(save_raster_path)
+        assert os.path.exists(save_raster_path)
+        os.remove(save_raster_path)
+
+    def test_save_ascii(
+        self,
+        src: Dataset,
+        ascii_file_save_to: str,
+    ):
+        if os.path.exists(ascii_file_save_to):
+            os.remove(ascii_file_save_to)
+
+        src = Dataset(src)
+        src._to_ascii(ascii_file_save_to)
+        assert os.path.exists(ascii_file_save_to)
+        os.remove(ascii_file_save_to)
+
+
+class TestMathOperations:
+    def test_apply(
+        self,
+        src: Dataset,
+        mapalgebra_function,
+    ):
+        src = Dataset(src)
+        dst = src.apply(mapalgebra_function)
+        arr = dst.raster.ReadAsArray()
+        nodataval = dst.raster.GetRasterBand(1).GetNoDataValue()
+        vals = arr[~np.isclose(arr, nodataval, rtol=0.00000000000001)]
+        vals = list(set(vals))
+        assert vals == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+
+class TestFillRaster:
+    def test_memory_raster(
+        self, src: Dataset, fill_raster_path: str, fill_raster_value: int
+    ):
+        src = Dataset(src)
+        dst = src.fill(fill_raster_value, driver="MEM")
+        arr = dst.raster.ReadAsArray()
+        nodataval = dst.raster.GetRasterBand(1).GetNoDataValue()
+        vals = arr[~np.isclose(arr, nodataval, rtol=0.00000000000001)]
+        vals = list(set(vals))
+        assert vals[0] == fill_raster_value
+
+    def test_disk_raster(
+        self, src: Dataset, fill_raster_path: str, fill_raster_value: int
+    ):
+        if os.path.exists(fill_raster_path):
+            os.remove(fill_raster_path)
+        src = Dataset(src)
+        src.fill(fill_raster_value, driver="GTiff", path=fill_raster_path)
+        "now the resulted raster is saved to disk"
+        dst = gdal.Open(fill_raster_path)
+        arr = dst.ReadAsArray()
+        nodataval = dst.GetRasterBand(1).GetNoDataValue()
+        vals = arr[~np.isclose(arr, nodataval, rtol=0.00000000000001)]
+        vals = list(set(vals))
+        assert vals[0] == fill_raster_value
+
+
+def test_resample(
+    src: Dataset,
+    resample_raster_cell_size: int,
+    resample_raster_resample_technique: str,
+    resample_raster_result_dims: tuple,
+):
+    src = Dataset(src)
+    dst = src.resample(
+        resample_raster_cell_size,
+        method=resample_raster_resample_technique,
+    )
+
+    dst_arr = dst.raster.ReadAsArray()
+    assert dst_arr.shape == resample_raster_result_dims
+    assert (
+        dst.raster.GetGeoTransform()[1] == resample_raster_cell_size
+        and dst.raster.GetGeoTransform()[-1] == -1 * resample_raster_cell_size
+    )
+    assert np.isclose(
+        dst.raster.GetRasterBand(1).GetNoDataValue(),
+        src.raster.GetRasterBand(1).GetNoDataValue(),
+        rtol=0.00001,
+    )
+    assert dst.raster.GetProjection() == src.raster.GetProjection()
 
 
 class TestReproject:
-    def test_to_epsg(
+    def test_option_maintain_alighment(
         self,
-        rasters_folder_path: str,
+        src: Dataset,
+        project_raster_to_epsg: int,
+        resample_raster_cell_size: int,
+        resample_raster_resample_technique: str,
+        src_shape: tuple,
     ):
-        to_epsg = 4326
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        dataset.to_crs(to_epsg)
-        assert dataset.base.epsg == to_epsg
-        arr = dataset.data
-        assert dataset.base.rows == arr.shape[1]
-        assert dataset.base.columns == arr.shape[2]
-        assert dataset.time_length == arr.shape[0]
-        assert dataset.base.epsg == to_epsg
+        src = Dataset(src)
+        dst = src.to_crs(to_epsg=project_raster_to_epsg, maintain_alighment=True)
+
+        proj = dst.raster.GetProjection()
+        sr = osr.SpatialReference(wkt=proj)
+        epsg = int(sr.GetAttrValue("AUTHORITY", 1))
+        assert epsg == project_raster_to_epsg
+        dst_arr = dst.raster.ReadAsArray()
+        assert dst_arr.shape == src_shape
+
+    def test_option_donot_maintain_alighment(
+        self,
+        src: Dataset,
+        project_raster_to_epsg: int,
+        resample_raster_cell_size: int,
+        resample_raster_resample_technique: str,
+        src_shape: tuple,
+    ):
+        src = Dataset(src)
+        dst = src.to_crs(to_epsg=project_raster_to_epsg, maintain_alighment=False)
+
+        proj = dst.proj
+        sr = osr.SpatialReference(wkt=proj)
+        epsg = int(sr.GetAttrValue("AUTHORITY", 1))
+        assert epsg == project_raster_to_epsg
+        dst_arr = dst.raster.ReadAsArray()
+        assert dst_arr.shape == src_shape
 
 
-def test_match_alignment(
-    match_alignment_dataset: str,
-    src: Datacube,
+def test_match_raster_alignment(
+    src: Dataset,
+    src_shape: tuple,
+    src_no_data_value: float,
+    src_geotransform: tuple,
+    soil_raster: Dataset,
 ):
-    dataset = Datacube.read_separate_files(match_alignment_dataset, with_order=False)
-    dataset.read_dataset()
     mask_obj = Dataset(src)
-    dataset.align(mask_obj)
-    assert dataset.base.rows == mask_obj.rows
-    assert dataset.base.columns == mask_obj.columns
-
-
-class TestSaveDataset:
-    def test_to_geotiff(
-        self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
-    ):
-        path = "tests/data/dataset/save_geotiff"
-        if os.path.exists(path):
-            shutil.rmtree(path)
-
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        dataset.to_file(path)
-        files = os.listdir(path)
-        assert len(files) == 6
-        shutil.rmtree(path)
-
-    def test_to_ascii(
-        self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
-    ):
-        path = "tests/data/dataset/save_ascii"
-        if os.path.exists(path):
-            shutil.rmtree(path)
-
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        dataset.to_file(path, driver="ascii", band=1)
-        files = os.listdir(path)
-        assert len(files) == 6
-        shutil.rmtree(path)
+    soil_raster_obj = Dataset(soil_raster)
+    soil_aligned = soil_raster_obj.align(mask_obj)
+    assert soil_aligned.raster.ReadAsArray().shape == src_shape
+    nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
+    assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
+    geotransform = soil_aligned.raster.GetGeoTransform()
+    assert src_geotransform == geotransform
 
 
 class TestCrop:
-    def test_crop_with_raster(
+    def test_crop_gdal_obj_with_gdal_obj(
         self,
-        raster_mask: Datacube,
-        rasters_folder_path: str,
-        crop_aligned_folder_saveto: str,
+        src: Dataset,
+        aligned_raster,
+        src_arr: np.ndarray,
+        src_no_data_value: float,
     ):
-        # if os.path.exists(crop_aligned_folder_saveto):
-        #     shutil.rmtree(crop_aligned_folder_saveto)
-        #     os.mkdir(crop_aligned_folder_saveto)
-        # else:
-        #     os.mkdir(crop_aligned_folder_saveto)
+        mask_obj = Dataset(src)
+        aligned_raster = Dataset(aligned_raster)
+        croped = aligned_raster._crop_alligned(mask_obj)
+        dst_arr_cropped = croped.raster.ReadAsArray()
+        # check that all the places of the nodatavalue are the same in both arrays
+        src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+        dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
+        assert (dst_arr_cropped == src_arr).all()
 
-        mask = Dataset(raster_mask)
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        dataset.crop(mask)
-        # dataset.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
-        arr = dataset.data[0, :, :]
-        no_data_value = dataset.base.no_data_value[0]
-        arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
-        assert arr1.shape[0] == 720
-        # shutil.rmtree(crop_aligned_folder_saveto)
+    def test_crop_gdal_obj_with_array(
+        self,
+        aligned_raster,
+        src_arr: np.ndarray,
+        src_no_data_value: float,
+    ):
+        aligned_raster = Dataset(aligned_raster)
+        croped = aligned_raster._crop_alligned(src_arr, mask_noval=src_no_data_value)
+        dst_arr_cropped = croped.raster.ReadAsArray()
+        # check that all the places of the nodatavalue are the same in both arrays
+        src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+        dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
+        assert (dst_arr_cropped == src_arr).all()
 
+    # def test_crop_arr_with_gdal_obj(
+    #     self,
+    #     src: Datacube,
+    #     aligned_raster_arr,
+    #     src_arr: np.ndarray,
+    #     src_no_data_value: float,
+    # ):
+    #     dst_arr_cropped = src.cropAlligned(aligned_raster_arr, src)
+    #     # check that all the places of the nodatavalue are the same in both arrays
+    #     src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+    #     dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
+    #     assert (dst_arr_cropped == src_arr).all()
+
+    def test_crop_un_aligned(
+        self,
+        soil_raster: Dataset,
+        aligned_raster: Dataset,
+        crop_saveto: str,
+    ):
+        # the soil raster has epsg=2116 and
+        # Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
+        # the aligned_raster has a epsg = 32618 and
+        # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
+        mask_obj = Dataset(soil_raster)
+        aligned_raster = Dataset(aligned_raster)
+        aligned_raster._crop_with_raster(mask_obj)
+
+
+class TestCropWithPolygon:
     def test_crop_with_polygon(
         self,
+        rhine_raster: gdal.Dataset,
         polygon_mask: gpd.GeoDataFrame,
-        rasters_folder_path: str,
-        crop_aligned_folder_saveto: str,
     ):
-        # if os.path.exists(crop_aligned_folder_saveto):
-        #     shutil.rmtree(crop_aligned_folder_saveto)
-        #     os.mkdir(crop_aligned_folder_saveto)
-        # else:
-        #     os.mkdir(crop_aligned_folder_saveto)
-
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        dataset.crop(polygon_mask)
-        # dataset.to_geotiff(crop_aligned_folder_saveto)
-        arr = dataset.data[0, :, :]
-        no_data_value = dataset.base.no_data_value[0]
-        arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
-        assert arr1.shape[0] == 806
-        # shutil.rmtree(crop_aligned_folder_saveto)
+        src_obj = Dataset(rhine_raster)
+        cropped_raster = src_obj._crop_with_polygon(polygon_mask)
+        assert isinstance(cropped_raster.raster, gdal.Dataset)
+        assert cropped_raster.geotransform == src_obj.geotransform
+        assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
 
-def test_merge(
-    merge_input_raster: List[str],
-    merge_output: str,
-):
-    Datacube.merge(merge_input_raster, merge_output)
-    assert os.path.exists(merge_output)
-    src = gdal.Open(merge_output)
-    assert src.GetRasterBand(1).GetNoDataValue() == 0
+class TestToPolygon:
+    """Tect converting raster to polygon."""
+
+    def test_save_polygon_to_disk(
+        self, test_image: Dataset, polygonized_raster_path: str
+    ):
+        im_obj = Dataset(test_image)
+        im_obj.to_polygon(path=polygonized_raster_path, driver="GeoJSON")
+        assert os.path.exists(polygonized_raster_path)
+        gdf = gpd.read_file(polygonized_raster_path)
+        assert len(gdf) == 4
+        assert all(gdf.geometry.geom_type == "Polygon")
+        os.remove(polygonized_raster_path)
+
+    def test_save_polygon_to_memory(
+        self, test_image: Dataset, polygonized_raster_path: str
+    ):
+        im_obj = Dataset(test_image)
+        gdf = im_obj.to_polygon()
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == 4
+        assert all(gdf.geometry.geom_type == "Polygon")
 
 
-class TestApply:
-    def test_1(
+class TestToDataFrame:
+    def test_dataframe_without_mask(
+        self, raster_to_df_dataset: gdal.Dataset, raster_to_df_arr: np.ndarray
+    ):
+        """the input raster is given as a string path on disk.
+
+        Parameters
+        ----------
+        raster_to_df_dataset: Dataset
+        raster_to_df_arr: array for comparison
+        """
+        src = Dataset(raster_to_df_dataset)
+        gdf = src.to_geodataframe(add_geometry="Point")
+        assert isinstance(gdf, GeoDataFrame)
+        rows, cols = raster_to_df_arr.shape
+        # get values and reshape arrays for comparison
+        arr_flatten = raster_to_df_arr.reshape((rows * cols, 1))
+        extracted_values = gdf.loc[:, gdf.columns[0]].values
+        extracted_values = extracted_values.reshape(arr_flatten.shape)
+        assert np.array_equal(extracted_values, arr_flatten), (
+            "the extracted values in the dataframe does not equa the real "
+            "values in the array"
+        )
+
+    def test_to_dataframe_with_mask_as_path_input(
         self,
-        rasters_folder_path: str,
+        raster_to_df_dataset: gdal.Dataset,
+        vector_mask_path: str,
+        rasterized_mask_values: np.ndarray,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
-        func = np.abs
-        dataset.apply(func)
+        """the input mask vector is given as a string path on disk.
+
+        Parameters
+        ----------
+        raster_to_df_dataset: path on disk
+        vector_mask_path: path on disk
+        rasterized_mask_values: for camparioson
+        """
+        src = Dataset(raster_to_df_dataset)
+        gdf = src.to_geodataframe(vector_mask_path, add_geometry="Point")
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == len(rasterized_mask_values)
+        assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
+            "the extracted values in the dataframe "
+            "does not "
+            "equa the real "
+            "values in the array"
+        )
+
+    def test_to_dataframe_with_gdf_mask(
+        self,
+        raster_to_df_dataset: gdal.Dataset,
+        vector_mask_gdf: GeoDataFrame,
+        rasterized_mask_values: np.ndarray,
+    ):
+        """the input mask vector is given as geodataframe.
+
+        Parameters
+        ----------
+        raster_to_df_dataset: path on disk
+        vector_mask_gdf: geodataframe for the vector mask
+        rasterized_mask_values: array for comparison
+        """
+        src = Dataset(raster_to_df_dataset)
+        gdf = src.to_geodataframe(vector_mask_gdf, add_geometry="Point")
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == len(rasterized_mask_values)
+        assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
+            "the extracted values in the dataframe "
+            "does not "
+            "equa the real "
+            "values in the array"
+        )
 
 
-def test_overlay(rasters_folder_path: str, germany_classes: str):
-    dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-    dataset.read_dataset()
+def test_extract(
+    src: gdal.Dataset,
+    src_no_data_value: float,
+):
+    src = Dataset(src)
+    values = src.extract(exclude_value=0)
+    assert len(values) == 46
 
+
+def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
+    src_obj = Dataset(rhine_raster)
     classes_src = Dataset.read_file(germany_classes)
-    class_dict = dataset.overlay(classes_src)
+    class_dict = src_obj.overlay(classes_src)
     arr = classes_src.read_array()
     class_values = np.unique(arr)
     assert len(class_dict.keys()) == len(class_values) - 1
     extracted_classes = list(class_dict.keys())
     real_classes = class_values.tolist()[:-1]
     assert all(i in real_classes for i in extracted_classes)
+
+
+# import zipfile
+# import zipfile
+#
+#
+# path = "tests/data/asci_example.zip"
+# # path = "tests/data/acc4000-update.zip"
+# Compressedfile = zipfile.ZipFile(path)
+# fname = Compressedfile.infolist()[0]
+# file = Compressedfile.open(fname)
+# file.readlines()
+# src = gdal.Open(file.readlines())
+# Dataset.read(file.readlines())
