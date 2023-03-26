@@ -11,7 +11,7 @@ from shapely import wkt
 from shapely.geometry import Polygon
 
 from tests.catchment.conftest import *
-from tests.raster.conftest import *
+from tests.dataset.conftest import *
 from tests.utils.conftest import *
 from tests.vector.conftest import *
 
