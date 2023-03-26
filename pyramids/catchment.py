@@ -10,7 +10,7 @@ from osgeo import gdal
 from osgeo.gdal import Dataset
 from pandas import DataFrame
 
-from pyramids.raster import Raster as raster
+from pyramids.dataset import Dataset as raster
 
 
 class Catchment:
@@ -36,7 +36,7 @@ class Catchment:
 
         inputs:
         ----------
-            1-Raster:
+            1-Dataset:
                 [Gdal object] DEM
 
         Outputs:
@@ -607,7 +607,7 @@ class Catchment:
         >>> data = dict(id = [0,1,2,3], x = [1,2,3,6], y = [5,4,7,8])
         >>> stations = pd.DataFrame(data)
         >>> coordinates = stations[['id','x','y']][:]
-        >>> coordinates.loc[:,["cell_row","cell_col"]] = Catchment.nearestCell(Raster, StCoord).values
+        >>> coordinates.loc[:,["cell_row","cell_col"]] = Catchment.nearestCell(Dataset, StCoord).values
         """
         if not isinstance(Raster, gdal.Dataset):
             raise TypeError(
