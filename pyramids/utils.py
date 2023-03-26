@@ -1,11 +1,12 @@
 """Utility module"""
 import gzip
 import os
-from loguru import logger
+import yaml
 import datetime as dt
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
 from osgeo.gdal import Dataset
+from pyramids import __path__
 
 # mapping between gdal type and ogr field type
 GDAL_OGR_DATA_TYPES = {
@@ -43,6 +44,8 @@ INTERPOLATION_METHODS = {
 
 
 # TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
+
+
 def numpy_to_gdal_dtype(arr: np.ndarray):
     """mapping functiuon between numpy and gdal data types.
 
@@ -84,7 +87,7 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
     Parameters
     ----------
     src: [DataSet]
-        gdal Dataset
+        gdal Datacube
     band: [gda Band]
         gdal band
 
@@ -126,42 +129,6 @@ def extractFromGZ(input_file: str, output_file: str, delete=False):
         os.remove(input_file)
 
 
-class ReadOnlyError(Exception):
-    """ReadOnlyError"""
-
-    def __init__(self, error_message: str):
-        logger.error(error_message)
-
-    pass
-
-
-class DatasetNoFoundError(Exception):
-    """DatasetNoFoundError"""
-
-    def __init__(self, error_message: str):
-        logger.error(error_message)
-
-    pass
-
-
-class NoDataValueError(Exception):
-    """NoDataValueError"""
-
-    def __init__(self, error_message: str):
-        logger.error(error_message)
-
-    pass
-
-
-class AlignmentError(Exception):
-    """Alignment Error"""
-
-    def __init__(self, error_message: str):
-        logger.error(error_message)
-
-    pass
-
-
 def create_time_conversion_func(time: str) -> callable:
     """Create a function to convert the ordinal time to gregorian date
 
@@ -183,7 +150,7 @@ def create_time_conversion_func(time: str) -> callable:
             gregorian = datum + dt.timedelta(microseconds=time_step)
         elif time_unit == "milliseconds":
             gregorian = datum + dt.timedelta(milliseconds=time_step)
-        if time_unit == "seconds":
+        elif time_unit == "seconds":
             gregorian = datum + dt.timedelta(seconds=time_step)
         elif time_unit == "hours":
             gregorian = datum + dt.timedelta(hours=time_step)
@@ -198,3 +165,32 @@ def create_time_conversion_func(time: str) -> callable:
         return gregorian
 
     return ordinal_to_date
+
+
+class Catalog:
+    def __init__(self):
+        self.catalog = self._get_gdal_catalog()
+
+    def _get_gdal_catalog(self):
+        with open(f"{__path__[0]}/gdal_drivers.yaml", "r") as stream:
+            gdal_catalog = yaml.safe_load(stream)
+
+        return gdal_catalog
+
+    def get_driver(self, driver: str):
+        """get Driver data from the catalog"""
+        return self.catalog.get(driver)
+
+    def get_gdal_name(self, driver: str):
+        """Get GDAL name"""
+        driver = self.get_driver(driver)
+        return driver.get("GDAL Name")
+
+    def exists(self, driver: str):
+        """check if the driver exist in the catalog"""
+        return driver in self.catalog.keys()
+
+    def get_extension(self, driver: str):
+        """Get driver extension."""
+        driver = self.get_driver(driver)
+        return driver.get("extension")
