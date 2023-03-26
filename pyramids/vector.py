@@ -280,20 +280,20 @@ class Vector:
         gdal.Dataset
             Single band raster with vector geometries burned.
         """
-        from pyramids.raster import Raster
+        from pyramids.dataset import Dataset
 
         if not isinstance(vector, GeoDataFrame):
             raise TypeError(
                 f"The first parameter should be a GeoDataFrame, given: {type(vector)}"
             )
         if cell_size is None and src is None:
-            raise ValueError("You have to enter either cell size of Raster object")
+            raise ValueError("You have to enter either cell size of Dataset object")
 
         if src is not None:
-            if not isinstance(src, Raster):
+            if not isinstance(src, Dataset):
                 raise TypeError(
-                    "The second parameter should be a Raster object (check how to read a raster using the "
-                    "Raster module)"
+                    "The second parameter should be a Dataset object (check how to read a raster using the "
+                    "Dataset module)"
                 )
             # if the raster is given the top left corner of the raster will be taken as the top left corner for
             # the rasterized polygon
@@ -314,13 +314,13 @@ class Vector:
             attribute = vector_field
             dtype = 7
 
-        if isinstance(src, Raster):
+        if isinstance(src, Dataset):
             no_data_value = src.no_data_value[0]
             rows = src.rows
             columns = src.columns
             cell_size = src.cell_size
         else:
-            no_data_value = Raster.default_no_data_value
+            no_data_value = Dataset.default_no_data_value
             columns = int(np.ceil((xmax - xmin) / cell_size))
             rows = int(np.ceil((ymax - ymin) / cell_size))
 
@@ -337,13 +337,13 @@ class Vector:
             if src.epsg != ds_epsg:
                 # TODO: reproject the vector to the raster projection instead of raising an error.
                 raise ValueError(
-                    f"Raster and vector are not the same EPSG. {src.epsg} != {ds_epsg}"
+                    f"Dataset and vector are not the same EPSG. {src.epsg} != {ds_epsg}"
                 )
 
         top_left_coords = (xmin, ymax)
         # TODO: enable later multi bands
         bands = 1
-        src = Raster.create_driver_from_scratch(
+        src = Dataset.create_driver_from_scratch(
             cell_size,
             rows,
             columns,
@@ -424,8 +424,8 @@ class Vector:
 
         Examples
         --------
-        >>> from pyramids.raster import Raster
-        >>> src = Raster.read("path/to/raster.tif")
+        >>> from pyramids.dataset import Dataset
+        >>> src = Dataset.read_file("path/to/raster.tif")
         >>> prj = src.GetProjection()
         >>> epsg = Vector.getEPSGfromPrj(prj)
         """
