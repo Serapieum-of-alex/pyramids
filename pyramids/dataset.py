@@ -626,7 +626,7 @@ class Dataset:
         """Get coordinate reference system."""
         return self.raster.GetProjection()
 
-    def set_crs(self, crs: Optional = None, epsg: int=None):
+    def set_crs(self, crs: Optional = None, epsg: int = None):
         """set_crs.
 
             Set the Coordinate Reference System (CRS) of a
@@ -657,8 +657,6 @@ class Dataset:
                 sr = Dataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
                 self._epsg = epsg
-
-
 
     def _get_epsg(self) -> int:
         """GetEPSG.
@@ -964,8 +962,6 @@ class Dataset:
                 logger.warning(
                     f"The given raster does not have a square cells, the cell size is {cell_size_x}*{cell_size_y} "
                 )
-
-        rows, cols = self.rows, self.columns
 
         # data in the array
         no_val = self.no_data_value[0]
