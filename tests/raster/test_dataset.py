@@ -4,7 +4,7 @@ import numpy as np
 import shutil
 from osgeo import gdal
 import geopandas as gpd
-from pyramids.raster import Raster, Dataset
+from pyramids.dataset import Dataset, Datacube
 
 
 class TestReadDataset:
@@ -14,8 +14,8 @@ class TestReadDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
-        assert isinstance(dataset.base, Raster)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
+        assert isinstance(dataset.base, Dataset)
         assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
         assert dataset.time_length == rasters_folder_rasters_number
@@ -28,8 +28,8 @@ class TestReadDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=True)
-        assert isinstance(dataset.sample, Raster)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=True)
+        assert isinstance(dataset.sample, Dataset)
         assert dataset.sample.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
         assert dataset.time_length == rasters_folder_rasters_number
@@ -45,14 +45,14 @@ class TestReadDataset:
         rasters_folder_dim: tuple,
         rasters_folder_between_dates_raster_number: int,
     ):
-        dataset = Dataset.read_separate_files(
+        dataset = Datacube.read_separate_files(
             rasters_folder_path,
             with_order=True,
             start=rasters_folder_start_date,
             end=rasters_folder_end_date,
             fmt=rasters_folder_date_fmt,
         )
-        assert isinstance(dataset.sample, Raster)
+        assert isinstance(dataset.sample, Dataset)
         assert dataset.sample.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
         assert dataset.time_length == rasters_folder_between_dates_raster_number
@@ -60,7 +60,7 @@ class TestReadDataset:
         assert dataset.sample.columns == rasters_folder_dim[1]
 
     # def test_from_netcdf(nc_path: str):
-    #     Dataset.readNC(nc_path, "", separator="_")
+    #     Datacube.readNC(nc_path, "", separator="_")
 
 
 class TestAscii:
@@ -70,10 +70,10 @@ class TestAscii:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Dataset.read_separate_files(
+        dataset = Datacube.read_separate_files(
             ascii_folder_path, with_order=False, extension=".asc"
         )
-        assert isinstance(dataset.base, Raster)
+        assert isinstance(dataset.base, Dataset)
         assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
         assert dataset.time_length == rasters_folder_rasters_number
@@ -88,7 +88,7 @@ class TestReadDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         assert dataset.data.shape == (
             rasters_folder_rasters_number,
@@ -102,7 +102,7 @@ class TestReadDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Dataset.read_separate_files(
+        dataset = Datacube.read_separate_files(
             ascii_folder_path, with_order=False, extension=".asc"
         )
         dataset.read_dataset()
@@ -120,7 +120,7 @@ class TestUpdateDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         # access the data attribute
         arr = dataset.data
@@ -137,7 +137,7 @@ class TestUpdateDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         # access the data attribute
         arr = dataset.data
@@ -153,10 +153,10 @@ class TestAccessDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         src = dataset.iloc(2)
-        assert isinstance(src, Raster)
+        assert isinstance(src, Dataset)
         arr = src.read_array()
         assert isinstance(arr, np.ndarray)
 
@@ -167,7 +167,7 @@ class TestReproject:
         rasters_folder_path: str,
     ):
         to_epsg = 4326
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         dataset.to_epsg(to_epsg)
         assert dataset.base.epsg == to_epsg
@@ -180,11 +180,11 @@ class TestReproject:
 
 def test_match_alignment(
     match_alignment_dataset: str,
-    src: Dataset,
+    src: Datacube,
 ):
-    dataset = Dataset.read_separate_files(match_alignment_dataset, with_order=False)
+    dataset = Datacube.read_separate_files(match_alignment_dataset, with_order=False)
     dataset.read_dataset()
-    mask_obj = Raster(src)
+    mask_obj = Dataset(src)
     dataset.align(mask_obj)
     assert dataset.base.rows == mask_obj.rows
     assert dataset.base.columns == mask_obj.columns
@@ -201,9 +201,9 @@ class TestSaveDataset:
         if os.path.exists(path):
             shutil.rmtree(path)
 
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
-        dataset.to_geotiff(path)
+        dataset.to_file(path)
         files = os.listdir(path)
         assert len(files) == 6
         shutil.rmtree(path)
@@ -218,9 +218,9 @@ class TestSaveDataset:
         if os.path.exists(path):
             shutil.rmtree(path)
 
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
-        dataset.to_ascii(path)
+        dataset.to_file(path, driver="ascii", band=1)
         files = os.listdir(path)
         assert len(files) == 6
         shutil.rmtree(path)
@@ -229,7 +229,7 @@ class TestSaveDataset:
 class TestCrop:
     def test_crop_with_raster(
         self,
-        raster_mask: Dataset,
+        raster_mask: Datacube,
         rasters_folder_path: str,
         crop_aligned_folder_saveto: str,
     ):
@@ -239,8 +239,8 @@ class TestCrop:
         # else:
         #     os.mkdir(crop_aligned_folder_saveto)
 
-        mask = Raster(raster_mask)
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        mask = Dataset(raster_mask)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         dataset.crop(mask)
         # dataset.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
@@ -262,7 +262,7 @@ class TestCrop:
         # else:
         #     os.mkdir(crop_aligned_folder_saveto)
 
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         dataset.crop(polygon_mask)
         # dataset.to_geotiff(crop_aligned_folder_saveto)
@@ -277,7 +277,7 @@ def test_merge(
     merge_input_raster: List[str],
     merge_output: str,
 ):
-    Dataset.merge(merge_input_raster, merge_output)
+    Datacube.merge(merge_input_raster, merge_output)
     assert os.path.exists(merge_output)
     src = gdal.Open(merge_output)
     assert src.GetRasterBand(1).GetNoDataValue() == 0
@@ -288,17 +288,17 @@ class TestApply:
         self,
         rasters_folder_path: str,
     ):
-        dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         func = np.abs
         dataset.apply(func)
 
 
 def test_overlay(rasters_folder_path: str, germany_classes: str):
-    dataset = Dataset.read_separate_files(rasters_folder_path, with_order=False)
+    dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
     dataset.read_dataset()
 
-    classes_src = Raster.read(germany_classes)
+    classes_src = Dataset.read_file(germany_classes)
     class_dict = dataset.overlay(classes_src)
     arr = classes_src.read_array()
     class_values = np.unique(arr)
