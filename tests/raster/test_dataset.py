@@ -169,7 +169,7 @@ class TestReproject:
         to_epsg = 4326
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
-        dataset.to_epsg(to_epsg)
+        dataset.to_crs(to_epsg)
         assert dataset.base.epsg == to_epsg
         arr = dataset.data
         assert dataset.base.rows == arr.shape[1]

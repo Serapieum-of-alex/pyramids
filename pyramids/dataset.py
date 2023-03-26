@@ -1464,7 +1464,7 @@ class Dataset:
 
         return dst_obj
 
-    def to_epsg(
+    def to_crs(
         self,
         to_epsg: int,
         method: str = "nearest neibour",
@@ -1474,7 +1474,6 @@ class Dataset:
 
         to_epsg reprojects a raster to any projection
         (default the WGS84 web mercator projection, without resampling)
-
 
         Parameters
         ----------
@@ -1498,7 +1497,7 @@ class Dataset:
         --------
         >>> from pyramids.dataset import Dataset
         >>> src = Dataset.read_file("path/raster_name.tif")
-        >>> projected_raster = src.to_epsg(to_epsg=3857)
+        >>> projected_raster = src.to_crs(to_epsg=3857)
         """
         if not isinstance(to_epsg, int):
             raise TypeError(
@@ -1833,7 +1832,7 @@ class Dataset:
 
         src_epsg = src.get_epsg()
         # reproject the raster to match the projection of alignment_src
-        reprojected_RasterB = self.to_epsg(src_epsg)
+        reprojected_RasterB = self.to_crs(src_epsg)
         # create a new raster
         dst = Dataset._create_dataset(
             src.columns, src.rows, 1, src.dtype[0], driver="MEM"
@@ -2812,7 +2811,7 @@ class Datacube:
             src = self.iloc(i)
             src.to_file(f"{path}/{i}.{ext}", driver=driver, band=band)
 
-    def to_epsg(
+    def to_crs(
         self,
         to_epsg: int = 3857,
         method: str = "nearest neibour",
@@ -2845,11 +2844,11 @@ class Datacube:
         --------
         >>> from pyramids.dataset import Dataset
         >>> src = Dataset.read_file("path/raster_name.tif")
-        >>> projected_raster = src.to_epsg(to_epsg=3857)
+        >>> projected_raster = src.to_crs(to_epsg=3857)
         """
         for i in range(self.time_length):
             src = self.iloc(i)
-            dst = src.to_epsg(
+            dst = src.to_crs(
                 to_epsg, method=method, maintain_alighment=maintain_alighment
             )
             arr = dst.read_array()

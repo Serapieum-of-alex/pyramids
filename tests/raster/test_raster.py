@@ -365,7 +365,7 @@ class TestReproject:
         src_shape: tuple,
     ):
         src = Dataset(src)
-        dst = src.to_epsg(to_epsg=project_raster_to_epsg, maintain_alighment=True)
+        dst = src.to_crs(to_epsg=project_raster_to_epsg, maintain_alighment=True)
 
         proj = dst.raster.GetProjection()
         sr = osr.SpatialReference(wkt=proj)
@@ -383,7 +383,7 @@ class TestReproject:
         src_shape: tuple,
     ):
         src = Dataset(src)
-        dst = src.to_epsg(to_epsg=project_raster_to_epsg, maintain_alighment=False)
+        dst = src.to_crs(to_epsg=project_raster_to_epsg, maintain_alighment=False)
 
         proj = dst.proj
         sr = osr.SpatialReference(wkt=proj)
