@@ -8,7 +8,7 @@ from osgeo.ogr import DataSource
 from shapely.geometry.polygon import Polygon
 
 from pyramids.vector import Vector
-from pyramids.raster import Raster
+from pyramids.dataset import Dataset
 
 
 class TestOpenVector:
@@ -100,13 +100,13 @@ class TestPolygonToRaster:
         """Geodataframe input polygon.
 
             - The inputs to the function are in disk,
-            - The output will be returned as gdal.Dataset.
+            - The output will be returned as gdal.Datacube.
 
         Parameters
         ----------
         raster_to_df_path
         """
-        src_obj = Raster.read(raster_to_df_path)
+        src_obj = Dataset.read_file(raster_to_df_path)
         src = Vector.to_raster(vector_mask_gdf, src=src_obj)
         assert src.epsg == vector_mask_gdf.crs.to_epsg()
 
@@ -125,7 +125,7 @@ class TestPolygonToRaster:
         """Geodataframe input polygon.
 
             - The inputs to the function are in disk,
-            - The output will be returned as gdal.Dataset.
+            - The output will be returned as gdal.Datacube.
 
         Parameters
         ----------
