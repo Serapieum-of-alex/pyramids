@@ -20,6 +20,11 @@ def src(src_path: str) -> Dataset:
 
 
 @pytest.fixture(scope="module")
+def src_reset_crs() -> Dataset:
+    return gdal.Open("tests/data/reset_crs.tif")
+
+
+@pytest.fixture(scope="module")
 def src_set_no_data_value() -> Dataset:
     return gdal.Open("tests/data/src-set_no_data_value.tif")
 
@@ -289,6 +294,11 @@ def basin_polygon() -> gpd.GeoDataFrame:
 @pytest.fixture(scope="module")
 def ascii_file_path() -> str:
     return "tests/data/asci_example.asc"
+
+
+@pytest.fixture(scope="module")
+def ascii_without_projection() -> str:
+    return "tests/data/asci__without_projection.asc"
 
 
 @pytest.fixture(scope="module")
