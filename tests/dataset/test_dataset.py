@@ -199,10 +199,11 @@ class TestSpatialProperties:
         sr = Dataset._create_sr_from_epsg(4326)
         assert sr.GetAuthorityCode(None) == f"{4326}"
 
+
 class TestSetCRS:
     def test_geotiff_using_epsg(
-            self,
-            src_reset_crs: gdal.Dataset,
+        self,
+        src_reset_crs: gdal.Dataset,
     ):
         proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
         proj_epsg = 4326
@@ -212,8 +213,8 @@ class TestSetCRS:
         assert dataset.raster.GetProjection() == proj
 
     def test_geotiff_using_wkt(
-            self,
-            src_reset_crs: gdal.Dataset,
+        self,
+        src_reset_crs: gdal.Dataset,
     ):
         proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
         proj_epsg = 4326
@@ -223,8 +224,8 @@ class TestSetCRS:
         assert dataset.raster.GetProjection() == proj
 
     def test_ascii(
-            self,
-            ascii_without_projection: str,
+        self,
+        ascii_without_projection: str,
     ):
         proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
         dataset = Dataset.read_file(ascii_without_projection)
@@ -235,7 +236,6 @@ class TestSetCRS:
 
 
 class TestGetCellCoordsAndCreateCellGeometry:
-
     def test_cell_center_masked_cells(
         self,
         src: gdal.Dataset,
@@ -282,14 +282,17 @@ class TestGetCellCoordsAndCreateCellGeometry:
             coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
         ).all()
 
-
-    def test_create_cell_polygon(self, src: gdal.Dataset, src_shape: Tuple, src_epsg: int):
+    def test_create_cell_polygon(
+        self, src: gdal.Dataset, src_shape: Tuple, src_epsg: int
+    ):
         src = Dataset(src)
         gdf = src.get_cell_polygons()
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
 
-    def test_create_cell_points(self, src: gdal.Dataset, src_shape: Tuple, src_epsg: int):
+    def test_create_cell_points(
+        self, src: gdal.Dataset, src_shape: Tuple, src_epsg: int
+    ):
         src = Dataset(src)
         gdf = src.get_cell_points()
         # check the size
