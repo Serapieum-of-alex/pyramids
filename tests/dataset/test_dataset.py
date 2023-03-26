@@ -385,7 +385,7 @@ class TestReproject:
         src = Dataset(src)
         dst = src.to_crs(to_epsg=project_raster_to_epsg, maintain_alighment=False)
 
-        proj = dst.proj
+        proj = dst.crs
         sr = osr.SpatialReference(wkt=proj)
         epsg = int(sr.GetAttrValue("AUTHORITY", 1))
         assert epsg == project_raster_to_epsg

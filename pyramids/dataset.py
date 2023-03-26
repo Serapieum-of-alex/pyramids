@@ -74,7 +74,7 @@ class Dataset:
         self._meta_data = src.GetMetadata()
         self._file_name = src.GetDescription()
         # projection data
-        self._proj = src.GetProjection()
+        # self._proj = src.GetProjection()
         self._epsg = self._get_epsg()
         # variables and subsets
         self.subsets = src.GetSubDatasets()
@@ -134,7 +134,7 @@ class Dataset:
             self.columns,
             self._no_data_value[0],
             self.dtype[0],
-            self.proj,
+            self.crs,
             self.meta_data,
         )
         return message
@@ -158,11 +158,6 @@ class Dataset:
         return self._columns
 
     @property
-    def proj(self):
-        """WKT projection."""
-        return self._proj
-
-    @property
     def geotransform(self):
         """WKT projection."""
         return self._geotransform
@@ -171,6 +166,11 @@ class Dataset:
     def epsg(self):
         """WKT projection."""
         return self._epsg
+
+    @property
+    def crs(self):
+        """Coordinate reference system."""
+        return self._get_crs()
 
     @property
     def cell_size(self):
@@ -600,7 +600,7 @@ class Dataset:
         )
 
         dst.SetGeoTransform(src.geotransform)
-        dst.SetProjection(src.proj)
+        dst.SetProjection(src.crs)
         # setting the NoDataValue does not accept double precision numbers
         dst_obj = cls(dst)
         dst_obj._set_no_data_value(no_data_value=src.no_data_value[0])
@@ -612,6 +612,10 @@ class Dataset:
 
         return dst_obj
 
+    def _get_crs(self) -> str:
+        """get coordinate reference system."""
+        return self.raster.GetProjection()
+
     def _get_epsg(self) -> int:
         """GetEPSG.
 
@@ -622,7 +626,7 @@ class Dataset:
         epsg : [integer]
             epsg number
         """
-        prj = self.raster.GetProjection()
+        prj = self._get_crs()
         epsg = Vector.getEPSGfromPrj(prj)
 
         return epsg
@@ -1137,7 +1141,7 @@ class Dataset:
         None
         """
         band = self.raster.GetRasterBand(band)
-        srs = osr.SpatialReference(wkt=self.proj)
+        srs = osr.SpatialReference(wkt=self.crs)
         if path is None:
             dst_layername = "id"
         else:
@@ -1345,7 +1349,7 @@ class Dataset:
         # set the geotransform
         dst.SetGeoTransform(self.geotransform)
         # set the projection
-        dst.SetProjection(self.proj)
+        dst.SetProjection(self.crs)
         dst_obj = Dataset(dst)
         dst_obj._set_no_data_value(no_data_value=no_data_value)
         dst_obj.raster.GetRasterBand(band + 1).WriteArray(new_array)
@@ -1421,7 +1425,7 @@ class Dataset:
 
         method = INTERPOLATION_METHODS.get(method)
 
-        sr_src = osr.SpatialReference(wkt=self.proj)
+        sr_src = osr.SpatialReference(wkt=self.crs)
 
         ulx = self.geotransform[0]
         uly = self.geotransform[3]
@@ -1526,7 +1530,7 @@ class Dataset:
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neibour"
     ) -> object:
-        src_proj = self.proj
+        src_proj = self.crs
         src_gt = self.geotransform
         src_x = self.columns
         src_y = self.rows
@@ -1686,7 +1690,7 @@ class Dataset:
         src_noval = self.no_data_value[band - 1]
         dtype = self.dtype[band - 1]
 
-        src_sref = osr.SpatialReference(wkt=self.proj)
+        src_sref = osr.SpatialReference(wkt=self.crs)
         src_array = self.raster.ReadAsArray()
         # Warning: delete later the self.raster will never be an array
         if isinstance(self.raster, np.ndarray):
@@ -1767,7 +1771,7 @@ class Dataset:
                 # set the geotransform
                 dst.SetGeoTransform(mask_gt)
                 # set the projection
-                dst.SetProjection(mask.proj)
+                dst.SetProjection(mask.crs)
             except UnboundLocalError:
                 dst.SetGeoTransform(self.geotransform)
                 dst.SetProjection(src_sref.ExportToWkt())
@@ -1840,7 +1844,7 @@ class Dataset:
         # set the geotransform
         dst.SetGeoTransform(src.geotransform)
         # set the projection
-        dst.SetProjection(src.proj)
+        dst.SetProjection(src.crs)
         # set the no data value
         dst_obj = Dataset(dst)
         dst_obj._set_no_data_value(src.no_data_value[0])
@@ -1850,8 +1854,8 @@ class Dataset:
         gdal.ReprojectImage(
             reprojected_RasterB.raster,
             dst_obj.raster,
-            src.proj,
-            src.proj,
+            src.crs,
+            src.crs,
             method,
         )
 
