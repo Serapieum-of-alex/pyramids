@@ -1,6 +1,6 @@
 from osgeo import gdal
 from pyramids.dataset import Dataset
-from pyramids.array import _get_indeces2
+from pyramids.array import _get_indices2
 
 
 class TestGetIndeces2:
@@ -11,7 +11,7 @@ class TestGetIndeces2:
         dataset = Dataset(src)
         arr = dataset.read_array()
         no_data_value = dataset.no_data_value[0]
-        indices = _get_indeces2(arr, [no_data_value])
+        indices = _get_indices2(arr, [no_data_value])
 
         inds = [
             (1, 5),
@@ -114,7 +114,7 @@ class TestGetIndeces2:
         dataset = Dataset(src)
         arr = dataset.read_array()
         no_data_value = dataset.no_data_value[0]
-        indices = _get_indeces2(arr, mask=None)
+        indices = _get_indices2(arr, mask=None)
 
         inds = [
             (0, 0),
@@ -130,6 +130,7 @@ class TestGetIndeces2:
             (0, 10),
             (0, 11),
             (0, 12),
+            (0, 13),
             (1, 0),
             (1, 1),
             (1, 2),
@@ -143,6 +144,7 @@ class TestGetIndeces2:
             (1, 10),
             (1, 11),
             (1, 12),
+            (1, 13),
             (2, 0),
             (2, 1),
             (2, 2),
@@ -156,6 +158,7 @@ class TestGetIndeces2:
             (2, 10),
             (2, 11),
             (2, 12),
+            (2, 13),
             (3, 0),
             (3, 1),
             (3, 2),
@@ -169,6 +172,7 @@ class TestGetIndeces2:
             (3, 10),
             (3, 11),
             (3, 12),
+            (3, 13),
             (4, 0),
             (4, 1),
             (4, 2),
@@ -182,6 +186,7 @@ class TestGetIndeces2:
             (4, 10),
             (4, 11),
             (4, 12),
+            (4, 13),
             (5, 0),
             (5, 1),
             (5, 2),
@@ -195,6 +200,7 @@ class TestGetIndeces2:
             (5, 10),
             (5, 11),
             (5, 12),
+            (5, 13),
             (6, 0),
             (6, 1),
             (6, 2),
@@ -208,6 +214,7 @@ class TestGetIndeces2:
             (6, 10),
             (6, 11),
             (6, 12),
+            (6, 13),
             (7, 0),
             (7, 1),
             (7, 2),
@@ -221,6 +228,7 @@ class TestGetIndeces2:
             (7, 10),
             (7, 11),
             (7, 12),
+            (7, 13),
             (8, 0),
             (8, 1),
             (8, 2),
@@ -234,6 +242,7 @@ class TestGetIndeces2:
             (8, 10),
             (8, 11),
             (8, 12),
+            (8, 13),
             (9, 0),
             (9, 1),
             (9, 2),
@@ -247,6 +256,7 @@ class TestGetIndeces2:
             (9, 10),
             (9, 11),
             (9, 12),
+            (9, 13),
             (10, 0),
             (10, 1),
             (10, 2),
@@ -260,6 +270,7 @@ class TestGetIndeces2:
             (10, 10),
             (10, 11),
             (10, 12),
+            (10, 13),
             (11, 0),
             (11, 1),
             (11, 2),
@@ -273,6 +284,7 @@ class TestGetIndeces2:
             (11, 10),
             (11, 11),
             (11, 12),
+            (11, 13),
             (12, 0),
             (12, 1),
             (12, 2),
@@ -286,19 +298,7 @@ class TestGetIndeces2:
             (12, 10),
             (12, 11),
             (12, 12),
-            (13, 0),
-            (13, 1),
-            (13, 2),
-            (13, 3),
-            (13, 4),
-            (13, 5),
-            (13, 6),
-            (13, 7),
-            (13, 8),
-            (13, 9),
-            (13, 10),
-            (13, 11),
-            (13, 12),
+            (12, 13),
         ]
 
         assert indices == inds
