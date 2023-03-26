@@ -6,7 +6,6 @@ from geopandas.geodataframe import GeoDataFrame
 import numpy as np
 import pytest
 from osgeo import gdal, osr
-from osgeo.gdal import Dataset
 from pyramids.dataset import Dataset
 from pyramids.dataset import ReadOnlyError
 
@@ -41,7 +40,6 @@ class TestCreateRasterObject:
         ascii_shape: tuple,
         ascii_geotransform: tuple,
     ):
-        # src_obj = Dataset.readASCII(ascii_file_path, dtype=1)
         src_obj = Dataset.read_file(ascii_file_path)
         assert src_obj.band_count == 1
         assert src_obj.epsg == 6326
@@ -57,7 +55,7 @@ class TestCreateRasterObject:
 
     def test_from_create_empty_driver(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         src_no_data_value: float,
     ):
         src = Dataset.create_empty_driver(src)
@@ -88,7 +86,7 @@ class TestCreateRasterObject:
     class TestRasterLike:
         def test_create_raster_like_to_disk(
             self,
-            src: Dataset,
+            src: gdal.Dataset,
             src_arr: np.ndarray,
             src_no_data_value: float,
             raster_like_path: str,
@@ -112,7 +110,7 @@ class TestCreateRasterObject:
 
         def test_create_raster_like_to_mem(
             self,
-            src: Dataset,
+            src: gdal.Dataset,
             src_arr: np.ndarray,
             src_no_data_value: float,
         ):
@@ -143,13 +141,13 @@ class TestSpatialProperties:
 
     def test_read_array_multi_bands(
         self,
-        multi_band: Dataset,
+        multi_band: gdal.Dataset,
     ):
         src = Dataset(multi_band)
         arr = src.read_array()
         assert np.array_equal(multi_band.ReadAsArray(), arr)
 
-    def test_get_band_names(self, src: Dataset):
+    def test_get_band_names(self, src: gdal.Dataset):
         src = Dataset(src)
         names = src.get_band_names()
         assert isinstance(names, list)
@@ -157,7 +155,7 @@ class TestSpatialProperties:
 
     def test_set_no_data_value_error_read_only(
         self,
-        src_set_no_data_value: Dataset,
+        src_set_no_data_value: gdal.Dataset,
         src_no_data_value: float,
     ):
         src = Dataset(src_set_no_data_value)
@@ -168,7 +166,7 @@ class TestSpatialProperties:
 
     def test_set_no_data_value(
         self,
-        src_update: Dataset,
+        src_update: gdal.Dataset,
         src_no_data_value: float,
     ):
         src = Dataset(src_update)
@@ -180,7 +178,7 @@ class TestSpatialProperties:
 
     def test_change_no_data_value(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         src_no_data_value: float,
     ):
         src = Dataset(src)
@@ -197,11 +195,64 @@ class TestSpatialProperties:
         val = arr[0, 0]
         assert val == new_val
 
+    def test_create_sr_from_epsg(self):
+        sr = Dataset._create_sr_from_epsg(4326)
+        assert sr.GetAuthorityCode(None) == f"{4326}"
+
+class TestSetCRS:
+    def test_geotiff_using_epsg(
+            self,
+            src_reset_crs: gdal.Dataset,
+    ):
+        proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
+        proj_epsg = 4326
+        dataset = Dataset(src_reset_crs)
+        dataset.set_crs(epsg=proj_epsg)
+        assert dataset.epsg == proj_epsg
+        assert dataset.raster.GetProjection() == proj
+
+    def test_geotiff_using_wkt(
+            self,
+            src_reset_crs: gdal.Dataset,
+    ):
+        proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
+        proj_epsg = 4326
+        dataset = Dataset(src_reset_crs)
+        dataset.set_crs(crs=proj)
+        assert dataset.epsg == proj_epsg
+        assert dataset.raster.GetProjection() == proj
+
+    def test_ascii(
+            self,
+            ascii_without_projection: str,
+    ):
+        proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
+        dataset = Dataset.read_file(ascii_without_projection)
+        try:
+            dataset.set_crs(crs=proj)
+        except TypeError:
+            pass
+
 
 class TestGetCellCoordsAndCreateCellGeometry:
+
+    def test_cell_center_masked_cells(
+        self,
+        src: gdal.Dataset,
+        src_masked_values_len: int,
+        src_masked_cells_center_coords_last4,
+    ):
+        """get cell coordinates from cells inside the domain only."""
+        src = Dataset(src)
+        coords = src.get_cell_coords(location="center", mask=True)
+        assert coords.shape[0] == src_masked_values_len
+        assert np.isclose(
+            coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
+        ).all()
+
     def test_cell_center_all_cells(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         src_shape: tuple,
         src_cell_center_coords_first_4_rows,
         src_cell_center_coords_last_4_rows,
@@ -222,7 +273,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
 
     def test_cell_corner_all_cells(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         src_cells_corner_coords_last4,
     ):
         src = Dataset(src)
@@ -231,27 +282,14 @@ class TestGetCellCoordsAndCreateCellGeometry:
             coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
         ).all()
 
-    def test_cell_center_masked_cells(
-        self,
-        src: Dataset,
-        src_masked_values_len: int,
-        src_masked_cells_center_coords_last4,
-    ):
-        """get cell coordinates from cells inside the domain only."""
-        src = Dataset(src)
-        coords = src.get_cell_coords(location="center", mask=True)
-        assert coords.shape[0] == src_masked_values_len
-        assert np.isclose(
-            coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
-        ).all()
 
-    def test_create_cell_polygon(self, src: Dataset, src_shape: Tuple, src_epsg: int):
+    def test_create_cell_polygon(self, src: gdal.Dataset, src_shape: Tuple, src_epsg: int):
         src = Dataset(src)
         gdf = src.get_cell_polygons()
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
 
-    def test_create_cell_points(self, src: Dataset, src_shape: Tuple, src_epsg: int):
+    def test_create_cell_points(self, src: gdal.Dataset, src_shape: Tuple, src_epsg: int):
         src = Dataset(src)
         gdf = src.get_cell_points()
         # check the size
@@ -264,7 +302,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
 class TestSave:
     def test_save_rasters(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         save_raster_path: str,
     ):
         src = Dataset(src)
@@ -274,7 +312,7 @@ class TestSave:
 
     def test_save_ascii(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         ascii_file_save_to: str,
     ):
         if os.path.exists(ascii_file_save_to):
@@ -289,7 +327,7 @@ class TestSave:
 class TestMathOperations:
     def test_apply(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         mapalgebra_function,
     ):
         src = Dataset(src)
@@ -303,7 +341,7 @@ class TestMathOperations:
 
 class TestFillRaster:
     def test_memory_raster(
-        self, src: Dataset, fill_raster_path: str, fill_raster_value: int
+        self, src: gdal.Dataset, fill_raster_path: str, fill_raster_value: int
     ):
         src = Dataset(src)
         dst = src.fill(fill_raster_value, driver="MEM")
@@ -314,7 +352,7 @@ class TestFillRaster:
         assert vals[0] == fill_raster_value
 
     def test_disk_raster(
-        self, src: Dataset, fill_raster_path: str, fill_raster_value: int
+        self, src: gdal.Dataset, fill_raster_path: str, fill_raster_value: int
     ):
         if os.path.exists(fill_raster_path):
             os.remove(fill_raster_path)
@@ -330,7 +368,7 @@ class TestFillRaster:
 
 
 def test_resample(
-    src: Dataset,
+    src: gdal.Dataset,
     resample_raster_cell_size: int,
     resample_raster_resample_technique: str,
     resample_raster_result_dims: tuple,
@@ -358,7 +396,7 @@ def test_resample(
 class TestReproject:
     def test_option_maintain_alighment(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         project_raster_to_epsg: int,
         resample_raster_cell_size: int,
         resample_raster_resample_technique: str,
@@ -376,7 +414,7 @@ class TestReproject:
 
     def test_option_donot_maintain_alighment(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         project_raster_to_epsg: int,
         resample_raster_cell_size: int,
         resample_raster_resample_technique: str,
@@ -394,11 +432,11 @@ class TestReproject:
 
 
 def test_match_raster_alignment(
-    src: Dataset,
+    src: gdal.Dataset,
     src_shape: tuple,
     src_no_data_value: float,
     src_geotransform: tuple,
-    soil_raster: Dataset,
+    soil_raster: gdal.Dataset,
 ):
     mask_obj = Dataset(src)
     soil_raster_obj = Dataset(soil_raster)
@@ -413,7 +451,7 @@ def test_match_raster_alignment(
 class TestCrop:
     def test_crop_gdal_obj_with_gdal_obj(
         self,
-        src: Dataset,
+        src: gdal.Dataset,
         aligned_raster,
         src_arr: np.ndarray,
         src_no_data_value: float,
@@ -456,8 +494,8 @@ class TestCrop:
 
     def test_crop_un_aligned(
         self,
-        soil_raster: Dataset,
-        aligned_raster: Dataset,
+        soil_raster: gdal.Dataset,
+        aligned_raster: gdal.Dataset,
         crop_saveto: str,
     ):
         # the soil raster has epsg=2116 and
@@ -486,7 +524,7 @@ class TestToPolygon:
     """Tect converting raster to polygon."""
 
     def test_save_polygon_to_disk(
-        self, test_image: Dataset, polygonized_raster_path: str
+        self, test_image: gdal.Dataset, polygonized_raster_path: str
     ):
         im_obj = Dataset(test_image)
         im_obj.to_polygon(path=polygonized_raster_path, driver="GeoJSON")
@@ -497,7 +535,7 @@ class TestToPolygon:
         os.remove(polygonized_raster_path)
 
     def test_save_polygon_to_memory(
-        self, test_image: Dataset, polygonized_raster_path: str
+        self, test_image: gdal.Dataset, polygonized_raster_path: str
     ):
         im_obj = Dataset(test_image)
         gdf = im_obj.to_polygon()
@@ -514,7 +552,7 @@ class TestToDataFrame:
 
         Parameters
         ----------
-        raster_to_df_dataset: Dataset
+        raster_to_df_dataset: gdal.Dataset
         raster_to_df_arr: array for comparison
         """
         src = Dataset(raster_to_df_dataset)

@@ -6,7 +6,7 @@ import datetime as dt
 from pathlib import Path
 
 import os
-from typing import Any, Dict, List, Tuple, Union, Callable
+from typing import Any, Dict, List, Tuple, Union, Callable, Optional
 from loguru import logger
 import shutil
 import tempfile
@@ -43,7 +43,7 @@ except ModuleNotFoundError:
         "osgeo_utils module does not exist try install pip install osgeo-utils "
     )
 
-from pyramids.array import get_pixels, _get_indeces2, _get_pixels2
+from pyramids.array import get_pixels, _get_indices2, _get_pixels2
 from pyramids.vector import Vector
 
 DEFAULT_NO_DATA_VALUE = -9999
@@ -69,12 +69,12 @@ class Dataset:
             )
         self._raster = src
         self._geotransform = src.GetGeoTransform()
-        self.driver_type = src.GetDriver().GetDescription()
         self._cell_size = self.geotransform[1]
         self._meta_data = src.GetMetadata()
         self._file_name = src.GetDescription()
         # projection data
-        # self._proj = src.GetProjection()
+        # the epsg property returns the value of the _epsg attribute so if the projection changes in any function the
+        # function should also change the value of the _epsg attribute.
         self._epsg = self._get_epsg()
         # variables and subsets
         self.subsets = src.GetSubDatasets()
@@ -172,6 +172,11 @@ class Dataset:
         """Coordinate reference system."""
         return self._get_crs()
 
+    @crs.setter
+    def crs(self, value):
+        """Coordinate reference system."""
+        self.set_crs(value)
+
     @property
     def cell_size(self):
         """Cell size."""
@@ -219,6 +224,12 @@ class Dataset:
     def time_stamp(self):
         """Time stamp"""
         return self._time_stamp
+
+    @property
+    def driver_type(self):
+        """Driver Type"""
+        driver_type = self.raster.GetDriver().GetDescription()
+        return CATALOG.get_driver_name(driver_type)
 
     @classmethod
     def read_file(cls, path: str, read_only=True):
@@ -337,8 +348,7 @@ class Dataset:
             0,
             -1 * cell_size,
         )
-        sr = osr.SpatialReference()
-        sr.ImportFromEPSG(epsg)
+        sr = Dataset._create_sr_from_epsg(epsg)
 
         # Set the projection.
         dst.SetGeoTransform(geotransform)
@@ -613,8 +623,42 @@ class Dataset:
         return dst_obj
 
     def _get_crs(self) -> str:
-        """get coordinate reference system."""
+        """Get coordinate reference system."""
         return self.raster.GetProjection()
+
+    def set_crs(self, crs: Optional = None, epsg: int=None):
+        """set_crs.
+
+            Set the Coordinate Reference System (CRS) of a
+
+        Parameters
+        ----------
+        crs: [str]
+            optional if epsg is specified
+            WKT string.
+            i.e. 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],
+            AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",
+            0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
+        epsg: [int]
+            optional if crs is specified
+            EPSG code specifying the projection.
+        """
+        # first change the projection of the gdal dataset object
+        # second change the epsg attribute of the Dataset object
+        if self.driver_type == "ascii":
+            raise TypeError(
+                "Setting CRS for ASCII file is not possible, you can save the files to a geotiff and then reset the crs"
+            )
+        else:
+            if crs is not None:
+                self.raster.SetProjection(crs)
+                self._epsg = Vector.get_epsg_from_Prj(crs)
+            else:
+                sr = Dataset._create_sr_from_epsg(epsg)
+                self.raster.SetProjection(sr.ExportToWkt())
+                self._epsg = epsg
+
+
 
     def _get_epsg(self) -> int:
         """GetEPSG.
@@ -627,7 +671,7 @@ class Dataset:
             epsg number
         """
         prj = self._get_crs()
-        epsg = Vector.getEPSGfromPrj(prj)
+        epsg = Vector.get_epsg_from_Prj(prj)
 
         return epsg
 
@@ -662,8 +706,10 @@ class Dataset:
         return domain_count
 
     @staticmethod
-    def _create_sr_from_epsg(epsg: int = "") -> SpatialReference:
+    def _create_sr_from_epsg(epsg: int = None) -> SpatialReference:
         """Create a spatial reference object from epsg number.
+
+        https://gdal.org/tutorials/osr_api_tut.html
 
         Parameters
         ----------
@@ -675,23 +721,24 @@ class Dataset:
         SpatialReference object
         """
         sr = osr.SpatialReference()
+        sr.ImportFromEPSG(int(epsg))
 
-        if epsg == "":
-            sr.SetWellKnownGeogCS("WGS84")
-        else:
-            try:
-                if not sr.SetWellKnownGeogCS(epsg) == 6:
-                    sr.SetWellKnownGeogCS(epsg)
-                else:
-                    try:
-                        sr.ImportFromEPSG(int(epsg))
-                    except:
-                        sr.ImportFromWkt(epsg)
-            except:
-                try:
-                    sr.ImportFromEPSG(int(epsg))
-                except:
-                    sr.ImportFromWkt(epsg)
+        # if epsg is None:
+        #     sr.SetWellKnownGeogCS("WGS84")
+        # else:
+        #     try:
+        #         if not sr.SetWellKnownGeogCS(epsg) == 6:
+        #             sr.SetWellKnownGeogCS(epsg)
+        #         else:
+        #             try:
+        #                 sr.ImportFromEPSG(int(epsg))
+        #             except:
+        #                 sr.ImportFromWkt(epsg)
+        #     except:
+        #         try:
+        #             sr.ImportFromEPSG(int(epsg))
+        #         except:
+        #             sr.ImportFromWkt(epsg)
         return sr
 
     def get_band_names(self) -> List[str]:
@@ -856,9 +903,6 @@ class Dataset:
         if old_value is not None and not isinstance(old_value, list):
             old_value = [old_value] * self.band_count
 
-        if len(new_value) != len(old_value) != self.band_count:
-            raise ValueError("")
-
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.raster, 0)
         for band in range(self.band_count):
             arr = self.read_array(band)
@@ -928,38 +972,22 @@ class Dataset:
         arr = self.read_array(band=0)
         if mask is not None and no_val not in arr:
             logger.warning(
-                "The no data value does not exit in the band, so all the cells will be cosidered and the "
+                "The no data value does not exist in the band, so all the cells will be cosidered and the "
                 "mask will not be cosidered."
             )
-        # TODO: check how the domain cell indexes are obtained in the extract function
-        # calculate the coordinates of all cells
-        x = np.array([x_init + cell_size_x * (i + add_value) for i in range(cols)])
-        y = np.array([y_init + cell_size_y * (i + add_value) for i in range(rows)])
-        all_cells = [[(xi, yi) for yi in y] for xi in x]
 
         if mask:
-            # execlude the no_data_values cells.
-            masked_cells = []
-
-            for i in range(rows):
-                for j in range(cols):
-                    if not np.isclose(arr[i, j], no_val, rtol=0.001):
-                        masked_cells.append(all_cells[j][i])
-
-            coords = np.array(masked_cells)
+            mask = [no_val]
         else:
-            cells = []
-            # get coordinates of all cells
-            for i in range(rows):
-                for j in range(cols):
-                    cells.append(all_cells[j][i])
+            mask = None
+        indices = _get_indices2(arr, mask=mask)
 
-            coords = np.array(cells)
-            # FixME: the below line gives error
-            # coords = np.array(all_cells)
-            # x = coords[:, :, 0].flatten()
-            # y = coords[:, :, 1].flatten()
-            # coords = np.array([x, y])#.transpose()
+        # execlude the no_data_values cells.
+        f1 = [i[0] for i in indices]
+        f2 = [i[1] for i in indices]
+        x = [x_init + cell_size_x * (i + add_value) for i in f2]
+        y = [y_init + cell_size_y * (i + add_value) for i in f1]
+        coords = np.array(list(zip(x, y)))
 
         return coords
 
@@ -1540,8 +1568,7 @@ class Dataset:
 
         ### distination raster
         # spatial ref
-        dst_sr = osr.SpatialReference()
-        dst_sr.ImportFromEPSG(to_epsg)
+        dst_sr = self._create_sr_from_epsg(to_epsg)
 
         # in case the source crs is GCS and longitude is in the west hemisphere gdal
         # reads longitude from 0 to 360 and transformation factor wont work with values
@@ -1834,9 +1861,8 @@ class Dataset:
                 f"given {type(alignment_src)}"
             )
 
-        src_epsg = src._get_epsg()
         # reproject the raster to match the projection of alignment_src
-        reprojected_RasterB = self.to_crs(src_epsg)
+        reprojected_RasterB = self.to_crs(src.epsg)
         # create a new raster
         dst = Dataset._create_dataset(
             src.columns, src.rows, 1, src.dtype[0], driver="MEM"
@@ -2363,7 +2389,7 @@ class Dataset:
             if exclude_value is not None
             else [self.no_data_value[0]]
         )
-        ind = _get_indeces2(arr, mask)
+        ind = _get_indices2(arr, mask)
         classes = classes_map.read_array()
         values = dict()
 
