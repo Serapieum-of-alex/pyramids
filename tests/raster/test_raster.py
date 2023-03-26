@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 from osgeo import gdal, osr
 from osgeo.gdal import Dataset
-from pyramids.raster import Raster
-from pyramids.raster import ReadOnlyError
+from pyramids.dataset import Dataset
+from pyramids.dataset import ReadOnlyError
 
 
 class TestCreateRasterObject:
@@ -17,23 +17,23 @@ class TestCreateRasterObject:
         src: gdal.Dataset,
         src_no_data_value: float,
     ):
-        src = Raster(src)
+        src = Dataset(src)
         assert hasattr(src, "subsets")
         assert hasattr(src, "meta_data")
         assert hasattr(src, "variables")
-        assert isinstance(src, Raster)
+        assert isinstance(src, Dataset)
 
     def test_from_gdal_dataset_multi_band(
         self,
         multi_band: gdal.Dataset,
         src_no_data_value: float,
     ):
-        src = Raster(multi_band)
+        src = Dataset(multi_band)
         assert hasattr(src, "subsets")
         assert hasattr(src, "meta_data")
         assert hasattr(src, "variables")
         assert src.band_count == 13
-        assert isinstance(src, Raster)
+        assert isinstance(src, Dataset)
 
     def test_from_open_ascii_file(
         self,
@@ -41,11 +41,11 @@ class TestCreateRasterObject:
         ascii_shape: tuple,
         ascii_geotransform: tuple,
     ):
-        # src_obj = Raster.readASCII(ascii_file_path, dtype=1)
-        src_obj = Raster.read(ascii_file_path)
+        # src_obj = Dataset.readASCII(ascii_file_path, dtype=1)
+        src_obj = Dataset.read_file(ascii_file_path)
         assert src_obj.band_count == 1
         assert src_obj.epsg == 6326
-        assert isinstance(src_obj.raster, Dataset)
+        assert isinstance(src_obj.raster, gdal.Dataset)
         assert src_obj.geotransform == (
             432968.1206170588,
             4000.0,
@@ -60,8 +60,8 @@ class TestCreateRasterObject:
         src: Dataset,
         src_no_data_value: float,
     ):
-        src = Raster.create_empty_driver(src)
-        assert isinstance(src, Raster)
+        src = Dataset.create_empty_driver(src)
+        assert isinstance(src, Dataset)
 
     def test_create_raster(
         self,
@@ -70,13 +70,13 @@ class TestCreateRasterObject:
         src_epsg: int,
         src_no_data_value: float,
     ):
-        src = Raster.create_raster(
+        src = Dataset.create_raster(
             arr=src_arr,
             geo=src_geotransform,
             epsg=src_epsg,
             nodatavalue=src_no_data_value,
         )
-        assert isinstance(src.raster, Dataset)
+        assert isinstance(src.raster, gdal.Dataset)
         assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
         assert np.isclose(
             src.raster.GetRasterBand(1).GetNoDataValue(),
@@ -99,10 +99,10 @@ class TestCreateRasterObject:
 
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
-            src_obj = Raster(src)
-            Raster.raster_like(src_obj, arr2, driver="GTiff", path=raster_like_path)
+            src_obj = Dataset(src)
+            Dataset.raster_like(src_obj, arr2, driver="GTiff", path=raster_like_path)
             assert os.path.exists(raster_like_path)
-            dst_obj = Raster.read(raster_like_path)
+            dst_obj = Dataset.read_file(raster_like_path)
             arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
             assert np.isclose(
@@ -119,8 +119,8 @@ class TestCreateRasterObject:
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
 
-            src_obj = Raster(src)
-            dst_obj = Raster.raster_like(src_obj, arr2, driver="MEM")
+            src_obj = Dataset(src)
+            dst_obj = Dataset.raster_like(src_obj, arr2, driver="MEM")
 
             arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
@@ -137,7 +137,7 @@ class TestSpatialProperties:
         src_shape: tuple,
         src_arr: np.ndarray,
     ):
-        src = Raster(src)
+        src = Dataset(src)
         arr = src.read_array(band=0)
         assert np.array_equal(src_arr, arr)
 
@@ -145,12 +145,12 @@ class TestSpatialProperties:
         self,
         multi_band: Dataset,
     ):
-        src = Raster(multi_band)
+        src = Dataset(multi_band)
         arr = src.read_array()
         assert np.array_equal(multi_band.ReadAsArray(), arr)
 
     def test_get_band_names(self, src: Dataset):
-        src = Raster(src)
+        src = Dataset(src)
         names = src.get_band_names()
         assert isinstance(names, list)
         assert names == ["Band_1"]
@@ -160,7 +160,7 @@ class TestSpatialProperties:
         src_set_no_data_value: Dataset,
         src_no_data_value: float,
     ):
-        src = Raster(src_set_no_data_value)
+        src = Dataset(src_set_no_data_value)
         try:
             src._set_no_data_value(-99999.0)
         except ReadOnlyError:
@@ -171,11 +171,11 @@ class TestSpatialProperties:
         src_update: Dataset,
         src_no_data_value: float,
     ):
-        src = Raster(src_update)
+        src = Dataset(src_update)
         src._set_no_data_value(5.0)
-        # check if the no_data_value in the Dataset object is set
+        # check if the no_data_value in the Datacube object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
-        # check if the no_data_value of the Raster object is set
+        # check if the no_data_value of the Dataset object is set
         assert src.no_data_value[0] == 5
 
     def test_change_no_data_value(
@@ -183,14 +183,14 @@ class TestSpatialProperties:
         src: Dataset,
         src_no_data_value: float,
     ):
-        src = Raster(src)
+        src = Dataset(src)
         arr = src.read_array()
         old_value = arr[0, 0]
         new_val = -6666
         src.change_no_data_value(new_val, old_value)
-        # check if the no_data_value in the Dataset object is set
+        # check if the no_data_value in the Datacube object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == new_val
-        # check if the no_data_value of the Raster object is set
+        # check if the no_data_value of the Dataset object is set
         assert src.no_data_value[0] == new_val
         # check if the new_val for the no_data_value is set in the bands
         arr = src.read_array(0)
@@ -208,7 +208,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
         cells_centerscoords: np.ndarray,
     ):
         """get center coordinates of all cells."""
-        src = Raster(src)
+        src = Dataset(src)
         coords = src.get_cell_coords(location="center", mask=False)
         assert len(coords) == src_shape[0] * src_shape[1]
         assert np.isclose(
@@ -225,7 +225,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
         src: Dataset,
         src_cells_corner_coords_last4,
     ):
-        src = Raster(src)
+        src = Dataset(src)
         coords = src.get_cell_coords(location="corner")
         assert np.isclose(
             coords[-4:, :], src_cells_corner_coords_last4, rtol=0.000001
@@ -238,7 +238,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
         src_masked_cells_center_coords_last4,
     ):
         """get cell coordinates from cells inside the domain only."""
-        src = Raster(src)
+        src = Dataset(src)
         coords = src.get_cell_coords(location="center", mask=True)
         assert coords.shape[0] == src_masked_values_len
         assert np.isclose(
@@ -246,13 +246,13 @@ class TestGetCellCoordsAndCreateCellGeometry:
         ).all()
 
     def test_create_cell_polygon(self, src: Dataset, src_shape: Tuple, src_epsg: int):
-        src = Raster(src)
+        src = Dataset(src)
         gdf = src.get_cell_polygons()
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
 
     def test_create_cell_points(self, src: Dataset, src_shape: Tuple, src_epsg: int):
-        src = Raster(src)
+        src = Dataset(src)
         gdf = src.get_cell_points()
         # check the size
         assert len(gdf) == src_shape[0] * src_shape[1]
@@ -267,8 +267,8 @@ class TestSave:
         src: Dataset,
         save_raster_path: str,
     ):
-        src = Raster(src)
-        src.to_geotiff(save_raster_path)
+        src = Dataset(src)
+        src.to_file(save_raster_path)
         assert os.path.exists(save_raster_path)
         os.remove(save_raster_path)
 
@@ -280,8 +280,8 @@ class TestSave:
         if os.path.exists(ascii_file_save_to):
             os.remove(ascii_file_save_to)
 
-        src = Raster(src)
-        src.to_ascii(ascii_file_save_to)
+        src = Dataset(src)
+        src._to_ascii(ascii_file_save_to)
         assert os.path.exists(ascii_file_save_to)
         os.remove(ascii_file_save_to)
 
@@ -292,7 +292,7 @@ class TestMathOperations:
         src: Dataset,
         mapalgebra_function,
     ):
-        src = Raster(src)
+        src = Dataset(src)
         dst = src.apply(mapalgebra_function)
         arr = dst.raster.ReadAsArray()
         nodataval = dst.raster.GetRasterBand(1).GetNoDataValue()
@@ -305,7 +305,7 @@ class TestFillRaster:
     def test_memory_raster(
         self, src: Dataset, fill_raster_path: str, fill_raster_value: int
     ):
-        src = Raster(src)
+        src = Dataset(src)
         dst = src.fill(fill_raster_value, driver="MEM")
         arr = dst.raster.ReadAsArray()
         nodataval = dst.raster.GetRasterBand(1).GetNoDataValue()
@@ -318,7 +318,7 @@ class TestFillRaster:
     ):
         if os.path.exists(fill_raster_path):
             os.remove(fill_raster_path)
-        src = Raster(src)
+        src = Dataset(src)
         src.fill(fill_raster_value, driver="GTiff", path=fill_raster_path)
         "now the resulted raster is saved to disk"
         dst = gdal.Open(fill_raster_path)
@@ -335,7 +335,7 @@ def test_resample(
     resample_raster_resample_technique: str,
     resample_raster_result_dims: tuple,
 ):
-    src = Raster(src)
+    src = Dataset(src)
     dst = src.resample(
         resample_raster_cell_size,
         method=resample_raster_resample_technique,
@@ -364,7 +364,7 @@ class TestReproject:
         resample_raster_resample_technique: str,
         src_shape: tuple,
     ):
-        src = Raster(src)
+        src = Dataset(src)
         dst = src.to_epsg(to_epsg=project_raster_to_epsg, maintain_alighment=True)
 
         proj = dst.raster.GetProjection()
@@ -382,7 +382,7 @@ class TestReproject:
         resample_raster_resample_technique: str,
         src_shape: tuple,
     ):
-        src = Raster(src)
+        src = Dataset(src)
         dst = src.to_epsg(to_epsg=project_raster_to_epsg, maintain_alighment=False)
 
         proj = dst.proj
@@ -400,8 +400,8 @@ def test_match_raster_alignment(
     src_geotransform: tuple,
     soil_raster: Dataset,
 ):
-    mask_obj = Raster(src)
-    soil_raster_obj = Raster(soil_raster)
+    mask_obj = Dataset(src)
+    soil_raster_obj = Dataset(soil_raster)
     soil_aligned = soil_raster_obj.align(mask_obj)
     assert soil_aligned.raster.ReadAsArray().shape == src_shape
     nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
@@ -418,8 +418,8 @@ class TestCrop:
         src_arr: np.ndarray,
         src_no_data_value: float,
     ):
-        mask_obj = Raster(src)
-        aligned_raster = Raster(aligned_raster)
+        mask_obj = Dataset(src)
+        aligned_raster = Dataset(aligned_raster)
         croped = aligned_raster._crop_alligned(mask_obj)
         dst_arr_cropped = croped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
@@ -433,7 +433,7 @@ class TestCrop:
         src_arr: np.ndarray,
         src_no_data_value: float,
     ):
-        aligned_raster = Raster(aligned_raster)
+        aligned_raster = Dataset(aligned_raster)
         croped = aligned_raster._crop_alligned(src_arr, mask_noval=src_no_data_value)
         dst_arr_cropped = croped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
@@ -443,7 +443,7 @@ class TestCrop:
 
     # def test_crop_arr_with_gdal_obj(
     #     self,
-    #     src: Dataset,
+    #     src: Datacube,
     #     aligned_raster_arr,
     #     src_arr: np.ndarray,
     #     src_no_data_value: float,
@@ -464,8 +464,8 @@ class TestCrop:
         # Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
         # the aligned_raster has a epsg = 32618 and
         # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
-        mask_obj = Raster(soil_raster)
-        aligned_raster = Raster(aligned_raster)
+        mask_obj = Dataset(soil_raster)
+        aligned_raster = Dataset(aligned_raster)
         aligned_raster._crop_with_raster(mask_obj)
 
 
@@ -475,7 +475,7 @@ class TestCropWithPolygon:
         rhine_raster: gdal.Dataset,
         polygon_mask: gpd.GeoDataFrame,
     ):
-        src_obj = Raster(rhine_raster)
+        src_obj = Dataset(rhine_raster)
         cropped_raster = src_obj._crop_with_polygon(polygon_mask)
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.geotransform == src_obj.geotransform
@@ -488,7 +488,7 @@ class TestToPolygon:
     def test_save_polygon_to_disk(
         self, test_image: Dataset, polygonized_raster_path: str
     ):
-        im_obj = Raster(test_image)
+        im_obj = Dataset(test_image)
         im_obj.to_polygon(path=polygonized_raster_path, driver="GeoJSON")
         assert os.path.exists(polygonized_raster_path)
         gdf = gpd.read_file(polygonized_raster_path)
@@ -499,7 +499,7 @@ class TestToPolygon:
     def test_save_polygon_to_memory(
         self, test_image: Dataset, polygonized_raster_path: str
     ):
-        im_obj = Raster(test_image)
+        im_obj = Dataset(test_image)
         gdf = im_obj.to_polygon()
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == 4
@@ -514,10 +514,10 @@ class TestToDataFrame:
 
         Parameters
         ----------
-        raster_to_df_dataset: Raster
+        raster_to_df_dataset: Dataset
         raster_to_df_arr: array for comparison
         """
-        src = Raster(raster_to_df_dataset)
+        src = Dataset(raster_to_df_dataset)
         gdf = src.to_geodataframe(add_geometry="Point")
         assert isinstance(gdf, GeoDataFrame)
         rows, cols = raster_to_df_arr.shape
@@ -544,7 +544,7 @@ class TestToDataFrame:
         vector_mask_path: path on disk
         rasterized_mask_values: for camparioson
         """
-        src = Raster(raster_to_df_dataset)
+        src = Dataset(raster_to_df_dataset)
         gdf = src.to_geodataframe(vector_mask_path, add_geometry="Point")
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == len(rasterized_mask_values)
@@ -569,7 +569,7 @@ class TestToDataFrame:
         vector_mask_gdf: geodataframe for the vector mask
         rasterized_mask_values: array for comparison
         """
-        src = Raster(raster_to_df_dataset)
+        src = Dataset(raster_to_df_dataset)
         gdf = src.to_geodataframe(vector_mask_gdf, add_geometry="Point")
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == len(rasterized_mask_values)
@@ -585,14 +585,14 @@ def test_extract(
     src: gdal.Dataset,
     src_no_data_value: float,
 ):
-    src = Raster(src)
+    src = Dataset(src)
     values = src.extract(exclude_value=0)
     assert len(values) == 46
 
 
 def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
-    src_obj = Raster(rhine_raster)
-    classes_src = Raster.read(germany_classes)
+    src_obj = Dataset(rhine_raster)
+    classes_src = Dataset.read_file(germany_classes)
     class_dict = src_obj.overlay(classes_src)
     arr = classes_src.read_array()
     class_values = np.unique(arr)
@@ -613,4 +613,4 @@ def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
 # file = Compressedfile.open(fname)
 # file.readlines()
 # src = gdal.Open(file.readlines())
-# Raster.read(file.readlines())
+# Dataset.read(file.readlines())
