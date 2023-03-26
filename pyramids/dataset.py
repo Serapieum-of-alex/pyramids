@@ -466,7 +466,7 @@ class Dataset:
         return src
 
     @classmethod
-    def create_raster(
+    def create_dataset(
         cls,
         path: str = None,
         arr: Union[str, gdal.Dataset, np.ndarray] = "",
