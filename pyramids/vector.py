@@ -332,7 +332,7 @@ class Vector:
         vector = Vector._gdfToOgrDataSource(vector)
 
         # Check EPSG are same, if not reproject vector.
-        ds_epsg = Vector.getEPSG(vector)
+        ds_epsg = Vector.get_epsg(vector)
         if src is not None:
             if src.epsg != ds_epsg:
                 # TODO: reproject the vector to the raster projection instead of raising an error.
@@ -382,7 +382,7 @@ class Vector:
         return epsg
 
     @staticmethod
-    def _createSRfromProj(prj: str, string_type: str = None):
+    def _create_sr_from_proj(prj: str, string_type: str = None):
         """Create spatial reference object from projection.
 
         Parameters
@@ -410,7 +410,7 @@ class Vector:
         return srs
 
     @staticmethod
-    def getEPSGfromPrj(prj: str) -> int:
+    def get_epsg_from_Prj(prj: str) -> int:
         """create spatial reference from the projection then auto identify the epsg using the osr object.
 
         Parameters
@@ -427,10 +427,10 @@ class Vector:
         >>> from pyramids.dataset import Dataset
         >>> src = Dataset.read_file("path/to/raster.tif")
         >>> prj = src.GetProjection()
-        >>> epsg = Vector.getEPSGfromPrj(prj)
+        >>> epsg = Vector.get_epsg_from_Prj(prj)
         """
         if prj != "":
-            srs = Vector._createSRfromProj(prj)
+            srs = Vector._create_sr_from_proj(prj)
             response = srs.AutoIdentifyEPSG()
             if response == 0:
                 epsg = int(srs.GetAuthorityCode(None))
@@ -443,7 +443,7 @@ class Vector:
         return epsg
 
     @staticmethod
-    def _getGdfEPSG(gdf: GeoDataFrame):
+    def _get_gdf_epsg(gdf: GeoDataFrame):
         """Get epsg for a given geodataframe.
 
         Parameters
@@ -457,11 +457,11 @@ class Vector:
             epsg number
         """
         prj = Proj(gdf.crs).srs
-        epsg = Vector.getEPSGfromPrj(prj)
+        epsg = Vector.get_epsg_from_Prj(prj)
         return epsg
 
     @staticmethod
-    def getEPSG(vector_obj: Union[DataSource, GeoDataFrame]) -> int:
+    def get_epsg(vector_obj: Union[DataSource, GeoDataFrame]) -> int:
         """getEPSG.
 
         Parameters
@@ -477,7 +477,7 @@ class Vector:
         if isinstance(vector_obj, ogr.DataSource):
             epsg = Vector._getDsEPSG(vector_obj)
         elif isinstance(vector_obj, gpd.GeoDataFrame):
-            epsg = Vector._getGdfEPSG(vector_obj)
+            epsg = Vector._get_gdf_epsg(vector_obj)
         else:
             raise ValueError(
                 f"Unable to get EPSG from: {type(vector_obj)}, only ogr.Datasource and "
