@@ -15,13 +15,10 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-# import pyproj
 from geopandas.geodataframe import GeoDataFrame, DataFrame
 from osgeo import gdal, osr, ogr  # gdalconst,
 from osgeo.osr import SpatialReference
 
-# import netCDF4
-# from pyramids.netcdf import NC
 from pyramids.utils import (
     gdal_to_ogr_dtype,
     INTERPOLATION_METHODS,
@@ -29,13 +26,14 @@ from pyramids.utils import (
     gdal_to_numpy_dtype,
     numpy_to_gdal_dtype,
     create_time_conversion_func,
-    RASTER_DRIVERS
+    Catalog,
 )
 from pyramids.errors import (
     ReadOnlyError,
     DatasetNoFoundError,
     NoDataValueError,
-    AlignmentError
+    AlignmentError,
+    DriverNotExistError,
 )
 
 try:
@@ -49,6 +47,7 @@ from pyramids.array import get_pixels, _get_indeces2, _get_pixels2
 from pyramids.vector import Vector
 
 DEFAULT_NO_DATA_VALUE = -9999
+CATALOG = Catalog()
 
 # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead they return an error
 # value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
@@ -57,8 +56,8 @@ gdal.UseExceptions()
 # gdal.ErrorReset()
 
 
-class Raster:
-    """Raster class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
+class Dataset:
+    """Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
 
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
@@ -96,6 +95,7 @@ class Raster:
         ]
 
         self._band_names = self.get_band_names()
+
     def __str__(self):
         message = f"""
             File: {self.file_name}
@@ -124,8 +124,18 @@ class Raster:
             projection: {10}
             Metadata: {11}
         """.format(
-            self.file_name, self.cell_size, self.epsg, self.variables, self.band_count, self.band_names, self.rows,
-            self.columns, self._no_data_value[0], self.dtype[0], self.proj, self.meta_data
+            self.file_name,
+            self.cell_size,
+            self.epsg,
+            self.variables,
+            self.band_count,
+            self.band_names,
+            self.rows,
+            self.columns,
+            self._no_data_value[0],
+            self.dtype[0],
+            self.proj,
+            self.meta_data,
         )
         return message
 
@@ -211,7 +221,7 @@ class Raster:
         return self._time_stamp
 
     @classmethod
-    def read(cls, path: str, read_only=True):
+    def read_file(cls, path: str, read_only=True):
         """Open file.
 
             - for a geotiff and ASCII files.
@@ -318,7 +328,7 @@ class Raster:
         gdal.DataSet
         """
         # Create the driver.
-        dst = Raster._create_dataset(columns, rows, bands, dtype, path=path)
+        dst = Dataset._create_dataset(columns, rows, bands, dtype, path=path)
         geotransform = (
             top_left_coords[0],
             cell_size,
@@ -473,7 +483,7 @@ class Raster:
         Parameters
         ----------
         path : [str], optional
-            Path to save the Raster, if '' is given a memory raster will be returned. The default is ''.
+            Path to save the Dataset, if '' is given a memory raster will be returned. The default is ''.
         arr : [array], optional
             numpy array. The default is ''.
         geo : [list], optional
@@ -513,11 +523,11 @@ class Raster:
         cols = int(arr.shape[1])
         rows = int(arr.shape[0])
         dtype = numpy_to_gdal_dtype(arr)
-        dst_ds = Raster._create_dataset(
+        dst_ds = Dataset._create_dataset(
             cols, rows, bands, dtype, driver=driver_type, path=path
         )
 
-        srse = Raster._create_sr_from_epsg(epsg=epsg)
+        srse = Dataset._create_sr_from_epsg(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
         dst_obj = cls(dst_ds)
         dst_obj._set_no_data_value(no_data_value=nodatavalue)
@@ -569,11 +579,11 @@ class Raster:
         >>> array = np.load("RAIN_5k.npy")
         >>> src = gdal.Open("DEM.tif")
         >>> name = "rain.tif"
-        >>> Raster.raster_like(src, array, driver="GTiff", path=name)
+        >>> Dataset.raster_like(src, array, driver="GTiff", path=name)
         - or create a raster in memory
         >>> array = np.load("RAIN_5k.npy")
         >>> src = gdal.Open("DEM.tif")
-        >>> dst = Raster.raster_like(src, array, driver="MEM")
+        >>> dst = Dataset.raster_like(src, array, driver="MEM")
         """
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
@@ -585,7 +595,7 @@ class Raster:
 
         dtype = numpy_to_gdal_dtype(array)
 
-        dst = Raster._create_dataset(
+        dst = Dataset._create_dataset(
             src.columns, src.rows, bands, dtype, driver=driver, path=path
         )
 
@@ -628,7 +638,7 @@ class Raster:
         for i, var in enumerate(self.subsets):
             name = var[1].split(" ")[1]
             src = gdal.Open(self.subsets[i][0])
-            variables[name] = Raster(src)
+            variables[name] = Dataset(src)
 
         return variables
 
@@ -742,7 +752,7 @@ class Raster:
                     "Attempt to write to read only dataset in GDALRasterBand::Fill()."
                 ):
                     raise ReadOnlyError(
-                        "The Raster is open with a read only, please read the raster using update "
+                        "The Dataset is open with a read only, please read the raster using update "
                         "access mode"
                     )
                 elif str(e).__contains__(
@@ -785,14 +795,14 @@ class Raster:
         self.change_no_data_value_attr(band_i, no_data_value)
         # initialize the band with the nodata value instead of 0
         self.raster.GetRasterBand(band_i + 1).Fill(no_data_value)
-        # update the no_data_value in the Raster object
+        # update the no_data_value in the Dataset object
         self.no_data_value[band_i] = no_data_value
 
     def change_no_data_value_attr(self, band: int, no_data_value):
         """Change the no_data_value attribute.
 
             - Change only the no_data_value attribute in the gdal Datacube object.
-            - Change the no_data_value in the Raster object for the given band index.
+            - Change the no_data_value in the Dataset object for the given band index.
             - The corresponding value in the array will not be changed.
             - Band index starts from 0
 
@@ -810,7 +820,7 @@ class Raster:
                 "Attempt to write to read only dataset in GDALRasterBand::Fill()."
             ):
                 raise ReadOnlyError(
-                    "The Raster is open with a read only, please read the raster using update "
+                    "The Dataset is open with a read only, please read the raster using update "
                     "access mode"
                 )
             elif str(e).__contains__(
@@ -1022,7 +1032,7 @@ class Raster:
         gdf["id"] = gdf.index
         return gdf
 
-    def to_file(self, path: str, driver: str = "geotiff") -> None:
+    def to_file(self, path: str, driver: str = "geotiff", band: int = 1) -> None:
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
@@ -1033,54 +1043,33 @@ class Raster:
             a path includng the name of the raster and extention.
             >>> path = "data/cropped.tif"
         driver: [str]
-            driver = "geotiff"
+            driver = "geotiff".
+        band: [int]
+            band index, needed only in case of ascii drivers. Default is 1.
 
         Examples
         --------
-        >>> raster_obj = Raster.read("path/to/file/***.tif")
+        >>> raster_obj = Dataset.read_file("path/to/file/***.tif")
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
         >>> raster_obj.to_file(output_path)
         """
         if not isinstance(path, str):
             raise TypeError("Raster_path input should be string type")
 
-        if not path.endswith(".tif"):
-            raise ValueError("please add the extension at the end of the path input")
+        if not CATALOG.exists(driver):
+            raise DriverNotExistError(f"The given driver: {driver} does not exist")
 
-        dst = gdal.GetDriverByName("GTiff").CreateCopy(path, self.raster, 0)
-        dst = None  # Flush the dataset to disk
-        # print to go around the assigned but never used pre-commit issue
-        print(dst)
+        driver_name = CATALOG.get_gdal_name(driver)
 
-    def to_netcdf(self, path: str) -> None:
-        """Save to geotiff format.
+        if driver == "ascii":
+            self._to_ascii(path, band=band)
+        else:
+            dst = gdal.GetDriverByName(driver_name).CreateCopy(path, self.raster, 0)
+            dst = None  # Flush the dataset to disk
+            # print to go around the assigned but never used pre-commit issue
+            print(dst)
 
-            saveRaster saves a raster to a path
-
-        Parameters
-        ----------
-        path: [string]
-            a path includng the name of the raster and extention.
-            >>> path = "data/cropped.tif"
-
-        Examples
-        --------
-        >>> raster_obj = Raster.read("path/to/file/***.tif")
-        >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_file(output_path)
-        """
-        if not isinstance(path, str):
-            raise TypeError("Raster_path input should be string type")
-
-        if not path.endswith(".nc"):
-            raise ValueError("please add the extension at the end of the path input")
-
-        dst = gdal.GetDriverByName("NETCDF").CreateCopy(path, self.raster, 0)
-        dst = None  # Flush the dataset to disk
-        # print to go around the assigned but never used pre-commit issue
-        print(dst)
-
-    def to_ascii(self, path: str, band: int = 1) -> None:
+    def _to_ascii(self, path: str, band: int = 1) -> None:
         """write raster into ascii file.
 
             to_ascii reads writes the raster to disk into an ascii format.
@@ -1095,9 +1084,6 @@ class Raster:
         """
         if not isinstance(path, str):
             raise TypeError("path input should be string type")
-
-        if not path.endswith(".asc"):
-            raise ValueError("please add the extension at the end of the path input")
 
         if os.path.exists(path):
             raise FileExistsError(
@@ -1116,7 +1102,7 @@ class Raster:
         arr = self.raster.ReadAsArray()
         # write the array
         for i in range(np.shape(arr)[0]):
-            File.writelines(list(map(Raster.stringSpace, arr[i, :])))
+            File.writelines(list(map(Dataset.stringSpace, arr[i, :])))
             File.write("\n")
 
         File.close()
@@ -1275,7 +1261,7 @@ class Raster:
         else:
             if tile:
                 df_list = []  # DataFrames of each tile.
-                for arr in Raster.get_tile(self.raster):
+                for arr in Dataset.get_tile(self.raster):
                     # Assume multiband
                     idx = (1, 2)
                     if arr.ndim == 2:
@@ -1336,7 +1322,7 @@ class Raster:
         --------
         >>> src_raster = gdal.Open("evap.tif")
         >>> func = np.abs
-        >>> new_raster = Raster.apply(src_raster, func)
+        >>> new_raster = Dataset.apply(src_raster, func)
         """
         if not callable(fun):
             raise TypeError("second argument should be a function")
@@ -1355,12 +1341,12 @@ class Raster:
                     new_array[i, j] = fun(src_array[i, j])
 
         # create the output raster
-        dst = Raster._create_dataset(self.columns, self.rows, 1, dtype, driver="MEM")
+        dst = Dataset._create_dataset(self.columns, self.rows, 1, dtype, driver="MEM")
         # set the geotransform
         dst.SetGeoTransform(self.geotransform)
         # set the projection
         dst.SetProjection(self.proj)
-        dst_obj = Raster(dst)
+        dst_obj = Dataset(dst)
         dst_obj._set_no_data_value(no_data_value=no_data_value)
         dst_obj.raster.GetRasterBand(band + 1).WriteArray(new_array)
 
@@ -1398,7 +1384,7 @@ class Raster:
             src_array[~np.isclose(src_array, no_data_value, rtol=0.000001)] = val
         else:
             src_array[~np.isnan(src_array)] = val
-        dst = Raster.raster_like(self, src_array, driver=driver, path=path)
+        dst = Dataset.raster_like(self, src_array, driver=driver, path=path)
         return dst
 
     def resample(self, cell_size: Union[int, float], method: str = "nearest neibour"):
@@ -1458,12 +1444,12 @@ class Raster:
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
         dtype = self.raster.GetRasterBand(1).DataType
 
-        dst = Raster._create_dataset(cols, rows, 1, dtype)
+        dst = Dataset._create_dataset(cols, rows, 1, dtype)
         # set the geotransform
         dst.SetGeoTransform(new_geo)
         # set the projection
         dst.SetProjection(sr_src.ExportToWkt())
-        dst_obj = Raster(dst)
+        dst_obj = Dataset(dst)
         # set the no data value
         no_data_value = self.raster.GetRasterBand(1).GetNoDataValue()
         dst_obj._set_no_data_value(no_data_value)
@@ -1510,8 +1496,8 @@ class Raster:
 
         Examples
         --------
-        >>> from pyramids.raster import Raster
-        >>> src = Raster.read("path/raster_name.tif")
+        >>> from pyramids.dataset import Dataset
+        >>> src = Dataset.read_file("path/raster_name.tif")
         >>> projected_raster = src.to_epsg(to_epsg=3857)
         """
         if not isinstance(to_epsg, int):
@@ -1534,7 +1520,7 @@ class Raster:
             dst_obj = self._reproject_with_ReprojectImage(to_epsg, method)
         else:
             dst = gdal.Warp("", self.raster, dstSRS=f"EPSG:{to_epsg}", format="VRT")
-            dst_obj = Raster(dst)
+            dst_obj = Dataset(dst)
 
         return dst_obj
 
@@ -1611,7 +1597,7 @@ class Raster:
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
         dtype = self.dtype[0]
-        dst = Raster._create_dataset(cols, rows, 1, dtype)
+        dst = Dataset._create_dataset(cols, rows, 1, dtype)
 
         # new geotransform
         new_geo = (
@@ -1628,7 +1614,7 @@ class Raster:
         dst.SetProjection(dst_sr.ExportToWkt())
         # set the no data value
         no_data_value = self.raster.GetRasterBand(1).GetNoDataValue()
-        dst_obj = Raster(dst)
+        dst_obj = Dataset(dst)
         dst_obj._set_no_data_value(no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
@@ -1675,7 +1661,7 @@ class Raster:
             exactly the same like src raster
         """
         # check the mask
-        if isinstance(mask, Raster):
+        if isinstance(mask, Dataset):
             mask_gt = mask.geotransform
             # mask_proj = mask.proj
             # mask_sref = osr.SpatialReference(wkt=mask_proj)
@@ -1716,7 +1702,7 @@ class Raster:
             )
 
         # if both inputs are rasters
-        if isinstance(mask, Raster):
+        if isinstance(mask, Dataset):
             if not self.geotransform == mask_gt:
                 raise ValueError(
                     "location of upper left corner of both rasters are not the same or cell size is "
@@ -1725,7 +1711,7 @@ class Raster:
 
             if not mask_epsg == self.epsg:
                 raise ValueError(
-                    "Raster A & B are using different coordinate system please reproject one of them to "
+                    "Dataset A & B are using different coordinate system please reproject one of them to "
                     "the other raster coordinate system"
                 )
 
@@ -1768,11 +1754,13 @@ class Raster:
                 ]
             # interpolate those missing cells by nearest neighbour
             if elem_mask > elem_src:
-                src_array = Raster._nearest_neighbour(src_array, mask_noval, rows, cols)
+                src_array = Dataset._nearest_neighbour(
+                    src_array, mask_noval, rows, cols
+                )
 
         # if the dst is a raster
         if isinstance(self.raster, gdal.Dataset):
-            dst = Raster._create_dataset(col, row, 1, dtype, driver="MEM")
+            dst = Dataset._create_dataset(col, row, 1, dtype, driver="MEM")
             # but with lot of computation
             # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
             # are aligned so they have the sam gt
@@ -1785,7 +1773,7 @@ class Raster:
                 dst.SetGeoTransform(self.geotransform)
                 dst.SetProjection(src_sref.ExportToWkt())
 
-            dst_obj = Raster(dst)
+            dst_obj = Dataset(dst)
             # set the no data value
             dst_obj._set_no_data_value(mask_noval)
             dst_obj.raster.GetRasterBand(1).WriteArray(src_array)
@@ -1795,8 +1783,8 @@ class Raster:
 
     def _check_alignment(self, mask) -> bool:
         """Check if raster is aligned with a given mask raster"""
-        if not isinstance(mask, Raster):
-            raise TypeError("The second parameter should be a Raster")
+        if not isinstance(mask, Dataset):
+            raise TypeError("The second parameter should be a Dataset")
 
         return self.rows == mask.rows and self.columns == mask.columns
 
@@ -1831,15 +1819,15 @@ class Raster:
         --------
         >>> A = gdal.Open("examples/GIS/data/acc4000.tif")
         >>> B = gdal.Open("examples/GIS/data/soil_raster.tif")
-        >>> RasterBMatched = Raster.align(A,B)
+        >>> RasterBMatched = Dataset.align(A,B)
         """
-        if isinstance(alignment_src, Raster):
+        if isinstance(alignment_src, Dataset):
             src = alignment_src
         elif isinstance(alignment_src, str):
-            src = Raster.read(alignment_src)
+            src = Dataset.read_file(alignment_src)
         else:
             raise TypeError(
-                "First parameter should be a Raster read using Raster.openRaster or a path to the raster, "
+                "First parameter should be a Dataset read using Dataset.openRaster or a path to the raster, "
                 f"given {type(alignment_src)}"
             )
 
@@ -1847,7 +1835,7 @@ class Raster:
         # reproject the raster to match the projection of alignment_src
         reprojected_RasterB = self.to_epsg(src_epsg)
         # create a new raster
-        dst = Raster._create_dataset(
+        dst = Dataset._create_dataset(
             src.columns, src.rows, 1, src.dtype[0], driver="MEM"
         )
         # set the geotransform
@@ -1855,7 +1843,7 @@ class Raster:
         # set the projection
         dst.SetProjection(src.proj)
         # set the no data value
-        dst_obj = Raster(dst)
+        dst_obj = Dataset(dst)
         dst_obj._set_no_data_value(src.no_data_value[0])
         # perform the projection & resampling
         method = gdal.GRA_NearestNeighbour
@@ -1880,21 +1868,21 @@ class Raster:
 
         Parameters
         -----------
-        mask : [string/Raster]
+        mask : [string/Dataset]
             the raster you want to use as a mask to crop other raster,
             the mask can be also a path or a gdal object.
 
         Returns
         -------
-        dst : [Raster]
+        dst : [Dataset]
             the cropped raster will be returned, if the save parameter was True,
             the cropped raster will also be saved to disk in the OutputPath
             directory.
         """
         # get information from the mask raster
         if isinstance(mask, str):
-            mask = Raster.read(mask)
-        elif isinstance(mask, Raster):
+            mask = Dataset.read_file(mask)
+        elif isinstance(mask, Dataset):
             mask = mask
         else:
             raise TypeError(
@@ -1919,7 +1907,7 @@ class Raster:
             GeodataFrame with a geometry of polygon type.
         Returns
         -------
-        Raster
+        Dataset
         """
         if not isinstance(poly, GeoDataFrame):
             raise TypeError(
@@ -1947,31 +1935,31 @@ class Raster:
         # except RuntimeError:
         #     pass
 
-        # cropped_obj = Raster(dst)
+        # cropped_obj = Dataset(dst)
 
         return cropped_obj
 
     def crop(self, mask: Union[GeoDataFrame]):
         """
 
-            clip the Raster object using a polygon/another raster (both rasters does not have to be aligned).
+            clip the Dataset object using a polygon/another raster (both rasters does not have to be aligned).
 
         Parameters
         ----------
-        mask: [Polygon GeoDataFrame/Raster object]
+        mask: [Polygon GeoDataFrame/Dataset object]
             GeodataFrame with a geometry of polygon type
 
         Returns
         -------
-        Raster Object
+        Dataset Object
         """
         if isinstance(mask, GeoDataFrame):
             dst = self._crop_with_polygon(mask)
-        elif isinstance(mask, Raster):
+        elif isinstance(mask, Dataset):
             dst = self._crop_with_raster(mask)
         else:
             raise TypeError(
-                "The second parameter: mask could be either GeoDataFrame or Raster object"
+                "The second parameter: mask could be either GeoDataFrame or Dataset object"
             )
 
         return dst
@@ -2009,10 +1997,10 @@ class Raster:
     #     --------
     #     >>> src_path = r"data/Evaporation_ERA-Interim_2009.01.01.tif"
     #     >>> shp_path = "data/"+"Outline.shp"
-    #     >>> clipped_raster = Raster.clipRasterWithPolygon(raster_path,vector_psth)
+    #     >>> clipped_raster = Dataset.clipRasterWithPolygon(raster_path,vector_psth)
     #     or
     #     >>> dst_path = r"data/cropped.tif"
-    #     >>> clipped_raster = Raster.clipRasterWithPolygon(src_path, shp_path, True, dst_path)
+    #     >>> clipped_raster = Dataset.clipRasterWithPolygon(src_path, shp_path, True, dst_path)
     #     """
     #     if isinstance(vector_psth, str):
     #         poly = gpd.read_file(vector_psth)
@@ -2097,7 +2085,7 @@ class Raster:
     #     # read the clipped raster
     #     raster = gdal.Open(temp_path, gdal.GA_ReadOnly)
     #     # reproject the clipped raster back to its original crs
-    #     projected_raster = Raster.projectRaster(
+    #     projected_raster = Dataset.projectRaster(
     #         raster, int(src_epsg.GetAttrValue("AUTHORITY", 1))
     #     )
     #     raster = None
@@ -2111,7 +2099,7 @@ class Raster:
     #
     #     # write the raster to the file
     #     if save:
-    #         Raster.saveRaster(projected_raster, output_path)
+    #         Dataset.saveRaster(projected_raster, output_path)
     #
     #     return projected_raster
 
@@ -2243,7 +2231,7 @@ class Raster:
         >>> raster = gdal.Open("dem.tif")
         >>> req_rows = [3,12]
         >>> req_cols = [9,2]
-        >>> new_array = Raster._nearest_neighbour(raster, req_rows, req_cols)
+        >>> new_array = Dataset._nearest_neighbour(raster, req_rows, req_cols)
         """
         if not isinstance(array, np.ndarray):
             raise TypeError(
@@ -2350,8 +2338,8 @@ class Raster:
 
         Parameters
         ----------
-        classes_map: [Raster]
-            Raster Object fpr the raster that have classes you want to overlay with the raster.
+        classes_map: [Dataset]
+            Dataset Object fpr the raster that have classes you want to overlay with the raster.
         exclude_value: [Numeric]
             values you want to exclude from extracted values.
 
@@ -2363,7 +2351,7 @@ class Raster:
         """
         if not self._check_alignment(classes_map):
             raise AlignmentError(
-                "The class Raster is not aligned with the current raster, plase use the method "
+                "The class Dataset is not aligned with the current raster, plase use the method "
                 "'align' to align both rasters."
             )
         arr = self.read_array()
@@ -2409,7 +2397,7 @@ class Raster:
 
     @staticmethod
     def _window(src: gdal.Dataset, size: int = 256):
-        """Raster square window size/offsets.
+        """Dataset square window size/offsets.
 
         Parameters
         ----------
@@ -2445,7 +2433,7 @@ class Raster:
         Yields
         ------
         np.ndarray
-            Raster array in form [band][y][x].
+            Dataset array in form [band][y][x].
         """
         for xsize, ysize, xoff, yoff in self._window(self.raster, size=size):
             # read the array at a certain indeces
@@ -2470,7 +2458,7 @@ class Raster:
 
 
 class Datacube:
-    base: Raster
+    base: Dataset
     files: List[str]
     time_length: int
     data: np.ndarray
@@ -2482,7 +2470,7 @@ class Datacube:
 
     def __init__(
         self,
-        src: Raster,
+        src: Dataset,
         time_length: int,
         files: List[str] = None,
     ):
@@ -2493,10 +2481,10 @@ class Datacube:
         pass
 
     @property
-    def base(self) -> Raster:
+    def base(self) -> Dataset:
         """base.
 
-        Base Raster
+        Base Dataset
         """
         return self._base
 
@@ -2506,14 +2494,14 @@ class Datacube:
         return self._time_length
 
     @classmethod
-    def create_dataset(cls, src: Raster, dataset_length: int):
+    def create_dataset(cls, src: Dataset, dataset_length: int):
         """Create Datacube.
 
             - Create Datacube from a sample raster and
 
         Parameters
         ----------
-        src: [Raster]
+        src: [Dataset]
             RAster Object
         dataset_length: [int]
             length of the dataset.
@@ -2619,7 +2607,7 @@ class Datacube:
 
         Example
         -------
-        >>> from pyramids.raster import Datacube
+        >>> from pyramids.dataset import Datacube
         >>> raster_folder = "examples/GIS/data/raster-folder"
         >>> prec = Datacube.read_separate_files(raster_folder)
 
@@ -2699,7 +2687,7 @@ class Datacube:
             files = [f"{path}/{i}" for i in files]
         # create a 3d array with the 2d dimension of the first raster and the len
         # of the number of rasters in the folder
-        sample = Raster.read(files[0])
+        sample = Dataset.read_file(files[0])
 
         return cls(sample, len(files), files)
 
@@ -2763,7 +2751,7 @@ class Datacube:
             if self._data.shape != val.shape:
                 raise ValueError(
                     f"The dimension of the new data: {val.shape}, differs from the dimension of the "
-                    f"original dataset: {self._data.shape}, please redefine the base Raster and "
+                    f"original dataset: {self._data.shape}, please redefine the base Dataset and "
                     f"dataset_length first"
                 )
 
@@ -2785,17 +2773,17 @@ class Datacube:
 
         Returns
         -------
-        Raster:
-            Raster object.
+        Dataset:
+            Dataset object.
         """
         if not hasattr(self, "data"):
             raise DatasetNoFoundError("please read the dataset first")
         arr = self._data[i, :, :]
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.base.raster, 0)
         dst.GetRasterBand(1).WriteArray(arr)
-        return Raster(dst)
+        return Dataset(dst)
 
-    def to_geotiff(self, path: str):
+    def to_file(self, path: str, driver: str = "geotiff", band: int = 1):
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
@@ -2805,43 +2793,24 @@ class Datacube:
         path: [string]
             a path includng the name of the raster and extention.
             >>> path = "data/cropped.tif"
+        driver: [str]
+            driver = "geotiff".
+        band: [int]
+            band index, needed only in case of ascii drivers. Default is 1.
 
         Examples
         --------
-        >>> raster_obj = Raster.read("path/to/file/***.tif")
+        >>> raster_obj = Dataset.read_file("path/to/file/***.tif")
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
         >>> raster_obj.to_file(output_path)
         """
         if not Path(path).exists():
             Path(path).mkdir(parents=True, exist_ok=True)
+        ext = CATALOG.get_extension(driver)
 
         for i in range(self.time_length):
             src = self.iloc(i)
-            src.to_file(f"{path}/{i}.tif")
-
-    def to_ascii(self, path: str):
-        """Save to geotiff format.
-
-            saveRaster saves a raster to a path
-
-        Parameters
-        ----------
-        path: [string]
-            a path includng the name of the raster and extention.
-            >>> path = "data/cropped.tif"
-
-        Examples
-        --------
-        >>> raster_obj = Raster.read("path/to/file/***.tif")
-        >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_file(output_path)
-        """
-        if not Path(path).exists():
-            Path(path).mkdir(parents=True, exist_ok=True)
-
-        for i in range(self.time_length):
-            src = self.iloc(i)
-            src.to_ascii(f"{path}/{i}.asc")
+            src.to_file(f"{path}/{i}.{ext}", driver=driver, band=band)
 
     def to_epsg(
         self,
@@ -2874,8 +2843,8 @@ class Datacube:
 
         Examples
         --------
-        >>> from pyramids.raster import Raster
-        >>> src = Raster.read("path/raster_name.tif")
+        >>> from pyramids.dataset import Dataset
+        >>> src = Dataset.read_file("path/raster_name.tif")
         >>> projected_raster = src.to_epsg(to_epsg=3857)
         """
         for i in range(self.time_length):
@@ -2904,7 +2873,7 @@ class Datacube:
 
     def crop(
         self,
-        mask: Union[Raster, str],
+        mask: Union[Dataset, str],
     ) -> None:
         """cropAlignedFolder.
 
@@ -2915,8 +2884,8 @@ class Datacube:
 
         Parameters
         ----------
-        mask : [str/Raster]
-            path/Raster object of the mask raster to crop the rasters (to get the NoData value
+        mask : [str/Dataset]
+            path/Dataset object of the mask raster to crop the rasters (to get the NoData value
             and it location in the array) Mask should include the name of the raster and the
             extension like "data/dem.tif", or you can read the mask raster using gdal and use
             is the first parameter to the function.
@@ -3072,7 +3041,7 @@ class Datacube:
     #     # create a new raster
     #     cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
     #     rows = int(np.round(abs(uly - lry) / pixel_spacing))
-    #     dst = Raster._create_dataset(cols, rows, 1, dtype, driver="MEM")
+    #     dst = Dataset._create_dataset(cols, rows, 1, dtype, driver="MEM")
     #
     #     # new geotransform
     #     new_geo = (ulx, pixel_spacing, src_gt[2], uly, src_gt[4], -pixel_spacing)
@@ -3082,7 +3051,7 @@ class Datacube:
     #     dst.SetProjection(dst_epsg.ExportToWkt())
     #     # set the no data value
     #     no_data_value = src.GetRasterBand(1).GetNoDataValue()
-    #     dst = Raster._set_no_data_value(dst, no_data_value)
+    #     dst = Dataset._set_no_data_value(dst, no_data_value)
     #     # perform the projection & resampling
     #     gdal.ReprojectImage(
     #         src, dst, src_sr.ExportToWkt(), dst_epsg.ExportToWkt(), method
@@ -3090,7 +3059,7 @@ class Datacube:
     #
     #     return dst
 
-    def align(self, alignment_src: Raster):
+    def align(self, alignment_src: Dataset):
         """matchDataAlignment.
 
         this function matches the coordinate system and the number of of rows & columns
@@ -3119,10 +3088,10 @@ class Datacube:
         >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
         >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
         >>> prec_out_path = "02Precipitation/4km/"
-        >>> Raster.align(dem_path,prec_in_path,prec_out_path)
+        >>> Dataset.align(dem_path,prec_in_path,prec_out_path)
         """
-        if not isinstance(alignment_src, Raster):
-            raise TypeError("alignment_src input should be a Raster object")
+        if not isinstance(alignment_src, Dataset):
+            raise TypeError("alignment_src input should be a Dataset object")
 
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -3258,8 +3227,8 @@ class Datacube:
 
         this function matches the location of nodata value from src raster to dst
         raster
-        Raster A is where the NoDatavalue will be taken and the location of this value
-        B_input_path is path to the folder where Raster B exist where  we need to put
+        Dataset A is where the NoDatavalue will be taken and the location of this value
+        B_input_path is path to the folder where Dataset B exist where  we need to put
         the NoDataValue of RasterA in RasterB at the same locations
 
         Parameters
@@ -3298,8 +3267,8 @@ class Datacube:
 
         Parameters
         ----------
-        classes_map: [Raster]
-            Raster Object fpr the raster that have classes you want to overlay with the raster.
+        classes_map: [Dataset]
+            Dataset Object fpr the raster that have classes you want to overlay with the raster.
         exclude_value: [Numeric]
             values you want to exclude from extracted values.
 
