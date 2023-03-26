@@ -298,7 +298,7 @@ def ascii_file_path() -> str:
 
 @pytest.fixture(scope="module")
 def ascii_without_projection() -> str:
-    return "tests/data/asci__without_projection.asc"
+    return "tests/data/asci_without_projection.asc"
 
 
 @pytest.fixture(scope="module")
