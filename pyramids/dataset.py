@@ -2494,7 +2494,7 @@ class Datacube:
         return self._time_length
 
     @classmethod
-    def create_dataset(cls, src: Dataset, dataset_length: int):
+    def create_cube(cls, src: Dataset, dataset_length: int):
         """Create Datacube.
 
             - Create Datacube from a sample raster and
@@ -2512,7 +2512,7 @@ class Datacube:
         """
         return cls(src, dataset_length)
 
-    def update_dataset(self, array: np.ndarray):
+    def update_cube(self, array: np.ndarray):
         """Update dataset data.
 
             - This function creates a Geotiff raster like another input raster, new raster will have the same

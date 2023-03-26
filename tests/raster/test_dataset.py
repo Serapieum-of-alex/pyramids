@@ -127,7 +127,7 @@ class TestUpdateDataset:
         # modify the array
         arr = arr[0:4, :, :] * np.nan
         try:
-            dataset.update_dataset(arr)
+            dataset.update_cube(arr)
         except ValueError:
             pass
 
@@ -143,7 +143,7 @@ class TestUpdateDataset:
         arr = dataset.data
         # modify the array
         arr = arr * np.nan
-        dataset.update_dataset(arr)
+        dataset.update_cube(arr)
 
 
 class TestAccessDataset:
