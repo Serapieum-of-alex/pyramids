@@ -1,5 +1,6 @@
 from loguru import logger
 
+
 class ReadOnlyError(Exception):
     """ReadOnlyError"""
 
@@ -35,7 +36,9 @@ class AlignmentError(Exception):
 
     pass
 
+
 class DriverNotExistError(Exception):
+    """Driver Not exist Error"""
 
     def __init__(self, error_message: str):
         logger.error(error_message)
