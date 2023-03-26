@@ -24,15 +24,18 @@ from osgeo.osr import SpatialReference
 # from pyramids.netcdf import NC
 from pyramids.utils import (
     gdal_to_ogr_dtype,
-    ReadOnlyError,
-    DatasetNoFoundError,
-    NoDataValueError,
     INTERPOLATION_METHODS,
     NUMPY_GDAL_DATA_TYPES,
     gdal_to_numpy_dtype,
     numpy_to_gdal_dtype,
-    AlignmentError,
     create_time_conversion_func,
+    RASTER_DRIVERS
+)
+from pyramids.errors import (
+    ReadOnlyError,
+    DatasetNoFoundError,
+    NoDataValueError,
+    AlignmentError
 )
 
 try:
@@ -57,15 +60,6 @@ gdal.UseExceptions()
 class Raster:
     """Raster class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
 
-    # raster: gdal.Dataset
-    # array: np.ndarray
-    # no_data_value: List[Union[float, int]]
-    # dtype: List[Union[float, int]]
-    # geotransform: Tuple[float, float, float, float]
-    # proj: str
-    # rows: int
-    # _columns: int
-    # _band_count: int
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
     def __init__(self, src: gdal.Dataset):
@@ -102,6 +96,38 @@ class Raster:
         ]
 
         self._band_names = self.get_band_names()
+    def __str__(self):
+        message = f"""
+            File: {self.file_name}
+            Cell size: {self.cell_size}
+            EPSG: {self.epsg}
+            Variables: {self.variables}
+            Number of Bands: {self.band_count}
+            Band names: {self.band_names}
+            Dimension: {self.rows * self.columns}
+            Mask: {self._no_data_value[0]}
+            Data type: {self.dtype[0]}
+        """
+        return message
+
+    def __repr__(self):
+        message = """
+            File: {0}
+            Cell size: {1}
+            EPSG: {2}
+            Variables: {3}
+            Number of Bands: {4}
+            Band names: {5}
+            Dimension: {6} * {7}
+            Mask: {8}
+            Data type: {9}
+            projection: {10}
+            Metadata: {11}
+        """.format(
+            self.file_name, self.cell_size, self.epsg, self.variables, self.band_count, self.band_names, self.rows,
+            self.columns, self._no_data_value[0], self.dtype[0], self.proj, self.meta_data
+        )
+        return message
 
     @property
     def raster(self):
@@ -222,7 +248,7 @@ class Raster:
 
         Parameters
         ----------
-        src : [gdal.Dataset]
+        src : [gdal.Datacube]
             gdal dataset
         path : str
         bands : int or None
@@ -442,7 +468,7 @@ class Raster:
         """create_raster.
 
             - create_raster method creates a raster from a given array and geotransform data
-            and save the tif file if a Path is given or it will return the gdal.Dataset
+            and save the tif file if a Path is given or it will return the gdal.Datacube
 
         Parameters
         ----------
@@ -463,9 +489,9 @@ class Raster:
 
         Returns
         -------
-        dst : [gdal.Dataset/save raster to drive].
+        dst : [gdal.Datacube/save raster to drive].
             if a path is given the created raster will be saved to drive, if not
-            a gdal.Dataset will be returned.
+            a gdal.Datacube will be returned.
         """
         try:
             if np.isnan(nodatavalue):
@@ -535,7 +561,7 @@ class Raster:
         -------
         None:
             if the driver is "GTiff" the function will save the new raster to the given path.
-        Dataset:
+        Datacube:
             if the driver is "MEM" the function will return the created raster in memory.
 
         Example
@@ -765,7 +791,7 @@ class Raster:
     def change_no_data_value_attr(self, band: int, no_data_value):
         """Change the no_data_value attribute.
 
-            - Change only the no_data_value attribute in the gdal Dataset object.
+            - Change only the no_data_value attribute in the gdal Datacube object.
             - Change the no_data_value in the Raster object for the given band index.
             - The corresponding value in the array will not be changed.
             - Band index starts from 0
@@ -996,7 +1022,7 @@ class Raster:
         gdf["id"] = gdf.index
         return gdf
 
-    def to_geotiff(self, path: str) -> None:
+    def to_file(self, path: str, driver: str = "geotiff") -> None:
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
@@ -1006,12 +1032,14 @@ class Raster:
         path: [string]
             a path includng the name of the raster and extention.
             >>> path = "data/cropped.tif"
+        driver: [str]
+            driver = "geotiff"
 
         Examples
         --------
         >>> raster_obj = Raster.read("path/to/file/***.tif")
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_geotiff(output_path)
+        >>> raster_obj.to_file(output_path)
         """
         if not isinstance(path, str):
             raise TypeError("Raster_path input should be string type")
@@ -1039,7 +1067,7 @@ class Raster:
         --------
         >>> raster_obj = Raster.read("path/to/file/***.tif")
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_geotiff(output_path)
+        >>> raster_obj.to_file(output_path)
         """
         if not isinstance(path, str):
             raise TypeError("Raster_path input should be string type")
@@ -1102,7 +1130,7 @@ class Raster:
     ) -> Union[GeoDataFrame, None]:
         """polygonize.
 
-            RasterToPolygon takes a gdal Dataset object and group neighboring cells with the same value into one
+            RasterToPolygon takes a gdal Datacube object and group neighboring cells with the same value into one
             polygon, the resulted vector will be saved to disk as a geojson file
 
         Parameters
@@ -1301,7 +1329,7 @@ class Raster:
 
         Returns
         -------
-        Dataset
+        Datacube
             gdal dataset object
 
         Examples
@@ -1356,9 +1384,9 @@ class Raster:
 
         Returns
         -------
-        raster : [None/gdal.Dataset]
+        raster : [None/gdal.Datacube]
             if the raster is saved directly to the path you provided the returned value will be None, otherwise the
-            returned value will be the gdal.Dataset itself.
+            returned value will be the gdal.Datacube itself.
         """
         no_data_value = self.no_data_value[0]
         src_array = self.raster.ReadAsArray()
@@ -1393,7 +1421,7 @@ class Raster:
 
         Returns
         -------
-        raster : [gdal.Dataset]
+        raster : [gdal.Datacube]
              gdal object (you can read it by ReadAsArray)
         """
         if not isinstance(method, str):
@@ -1665,7 +1693,7 @@ class Raster:
             row, col = mask.shape
         else:
             raise TypeError(
-                "The second parameter 'mask' has to be either gdal.Dataset or numpy array"
+                "The second parameter 'mask' has to be either gdal.Datacube or numpy array"
                 f"given - {type(mask)}"
             )
 
@@ -1870,7 +1898,7 @@ class Raster:
             mask = mask
         else:
             raise TypeError(
-                "Second parameter has to be either path to the mask raster or a gdal.Dataset object"
+                "Second parameter has to be either path to the mask raster or a gdal.Datacube object"
             )
         if not self._check_alignment(mask):
             # first align the mask with the src raster
@@ -1953,7 +1981,7 @@ class Raster:
     #     vector_psth: str,
     #     save: bool = False,
     #     output_path: str = None,
-    # ) -> gdal.Dataset:
+    # ) -> gdal.Datacube:
     #     """ClipRasterWithPolygon.
     #
     #         ClipRasterWithPolygon method clip a raster using polygon shapefile
@@ -2093,7 +2121,7 @@ class Raster:
     #     poly: Union[GeoDataFrame, str],
     #     save: bool = False,
     #     output_path: str = "masked.tif",
-    # ) -> gdal.Dataset:
+    # ) -> gdal.Datacube:
     #     """Clip2.
     #
     #         Clip function takes a rasterio object and clip it with a given geodataframe
@@ -2385,8 +2413,8 @@ class Raster:
 
         Parameters
         ----------
-        src : [gdal.Dataset]
-            gdal Dataset object.
+        src : [gdal.Datacube]
+            gdal Datacube object.
         size : [int]
             Size of window in pixels. One value required which is used for both the
             x and y size. E.g 256 means a 256x256 window.
@@ -2441,7 +2469,7 @@ class Raster:
         print("\n")
 
 
-class Dataset:
+class Datacube:
     base: Raster
     files: List[str]
     time_length: int
@@ -2479,9 +2507,9 @@ class Dataset:
 
     @classmethod
     def create_dataset(cls, src: Raster, dataset_length: int):
-        """Create Dataset.
+        """Create Datacube.
 
-            - Create Dataset from a sample raster and
+            - Create Datacube from a sample raster and
 
         Parameters
         ----------
@@ -2492,7 +2520,7 @@ class Dataset:
 
         Returns
         -------
-        Dataset object.
+        Datacube object.
         """
         return cls(src, dataset_length)
 
@@ -2518,7 +2546,7 @@ class Dataset:
         --------
         >>> src_raster = gdal.Open("DEM.tif")
         >>> name = ["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
-        >>> Dataset.rastersLike(src_raster, data, name)
+        >>> Datacube.rastersLike(src_raster, data, name)
         """
         self.data = array
 
@@ -2591,14 +2619,14 @@ class Dataset:
 
         Example
         -------
-        >>> from pyramids.raster import Dataset
+        >>> from pyramids.raster import Datacube
         >>> raster_folder = "examples/GIS/data/raster-folder"
-        >>> prec = Dataset.read_separate_files(raster_folder)
+        >>> prec = Datacube.read_separate_files(raster_folder)
 
         >>> import glob
         >>> search_criteria = "*.tif"
         >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Dataset.read_separate_files(file_list, with_order=False)
+        >>> prec = Datacube.read_separate_files(file_list, with_order=False)
         """
         if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")
@@ -2782,14 +2810,14 @@ class Dataset:
         --------
         >>> raster_obj = Raster.read("path/to/file/***.tif")
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_geotiff(output_path)
+        >>> raster_obj.to_file(output_path)
         """
         if not Path(path).exists():
             Path(path).mkdir(parents=True, exist_ok=True)
 
         for i in range(self.time_length):
             src = self.iloc(i)
-            src.to_geotiff(f"{path}/{i}.tif")
+            src.to_file(f"{path}/{i}.tif")
 
     def to_ascii(self, path: str):
         """Save to geotiff format.
@@ -2806,7 +2834,7 @@ class Dataset:
         --------
         >>> raster_obj = Raster.read("path/to/file/***.tif")
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_geotiff(output_path)
+        >>> raster_obj.to_file(output_path)
         """
         if not Path(path).exists():
             Path(path).mkdir(parents=True, exist_ok=True)
@@ -2903,7 +2931,7 @@ class Dataset:
         >>> dem_path = "examples/GIS/data/acc4000.tif"
         >>> src_path = "examples/GIS/data/aligned_rasters/"
         >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-        >>> Dataset.crop(dem_path, src_path, out_path)
+        >>> Datacube.crop(dem_path, src_path, out_path)
         """
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -2931,12 +2959,12 @@ class Dataset:
     # # TODO: still needs to be tested
     # @staticmethod
     # def to_epsg(
-    #         src: gdal.Dataset,
+    #         src: gdal.Datacube,
     #         to_epsg: int = 3857,
     #         cell_size: int = [],
     #         method: str = "Nearest",
     #
-    # ) -> gdal.Dataset:
+    # ) -> gdal.Datacube:
     #     """to_epsg.
     #
     #         - to_epsg reprojects and resamples a folder of rasters to any projection
@@ -2960,10 +2988,10 @@ class Dataset:
     #
     #     Returns
     #     -------
-    #     raster: [gdal Dataset]
+    #     raster: [gdal Datacube]
     #          a GDAL in-memory file object, where you can ReadAsArray etc.
     #     """
-    #     if not isinstance(src, gdal.Dataset):
+    #     if not isinstance(src, gdal.Datacube):
     #         raise TypeError(
     #             "src should be read using gdal (gdal dataset please read it using gdal"
     #             f" library) given {type(src)}"
@@ -3308,7 +3336,7 @@ class Dataset:
     # ):
     #
     #     if isinstance(path, str):
-    #         nc = netCDF4.Dataset(path)
+    #         nc = netCDF4.Datacube(path)
     #     elif isinstance(path, list):
     #         nc = netCDF4.MFDataset(path)
     #     else:
