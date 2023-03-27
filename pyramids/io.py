@@ -1,17 +1,24 @@
 import os
 import zipfile
 import gzip
+
 import warnings
 from osgeo import gdal
 from pyramids.errors import FileFormatNoSupported
 gdal.UseExceptions()
 
-COMPRESSED_FILES_EXTENSIONS = [".zip", ".gz", ".7z"]
+COMPRESSED_FILES_EXTENSIONS = [".zip", ".gz", ".tar"]
+DOES_NOT_SUPPORT_INTERNAL = [".gz"]
+
+# def _import_
 def _is_zip(path: str):
     return path.endswith(".zip") or path.__contains__(".zip")
 
 def _is_gzip(path: str):
     return path.endswith(".gz") or path.__contains__(".gz")
+
+def _is_tar(path: str):
+    return path.endswith(".tar") or path.__contains__(".tar")
 
 def _get_zip_path(path: str, file_i: int = 0):
     """Get Zip Path.
@@ -70,6 +77,31 @@ def _get_gzip_path(path: str):
         vsi_path = f"/vsigzip/{path}"
     return vsi_path
 
+def _get_tar_path(path: str):
+    """Get Zip Path.
+
+        - check if the given path contains a .gz in it
+        - if the path contains a gz but does not end with gz (xxxx.gz/1.asc), so the path contains the
+        internal path inside the gz file, so just add the prefix
+        - anything else just add the prefix.
+
+    Parameters
+    ----------
+    path: [str]
+        path to the zip file.
+
+    Returns
+    -------
+    str path to gdal to read the zipped file.
+    """
+    # get list of files inside the compressed file
+    if path.__contains__(".tar") and not path.endswith(".tar"):
+        vsi_path = f"/vsitar/{path}"
+    else:
+        vsi_path = f"/vsitar/{path}"
+    return vsi_path
+
+
 def _parse_path(path: str, file_i: int = 0) -> str:
     """Parse Path
 
@@ -90,6 +122,8 @@ def _parse_path(path: str, file_i: int = 0) -> str:
         new_path =  _get_zip_path(path, file_i=file_i)
     elif _is_gzip(path):
         new_path = _get_gzip_path(path)
+    elif _is_tar(path):
+        new_path = _get_tar_path(path)
     else:
         new_path = path
     return new_path
@@ -151,10 +185,10 @@ def read_file(path: str, read_only: bool = True):
                     "files. Currently it is not supported to read gzip files with multiple compressed internal "
                     "files"
                 )
-        elif path.__contains__(".gz") and not path.endswith(".gz"):
+        elif any(path.__contains__(i) for i in DOES_NOT_SUPPORT_INTERNAL) and not any(path.endswith(i) for i in DOES_NOT_SUPPORT_INTERNAL):
             raise FileFormatNoSupported(
-                "File format is not supported, if you provided a gzip compressed file with multiple internal "
-                "files. Currently it is not supported to read gzip files with multiple compressed internal "
+                "File format is not supported, if you provided a gzip/7z compressed file with multiple internal "
+                "files. Currently it is not supported to read gzip/7z files with multiple compressed internal "
                 "files"
             )
         else:

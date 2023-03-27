@@ -75,13 +75,14 @@ class TestReadZip:
         src = read_file(multiple_compressed_file_zip)
         assert isinstance(src, gdal.Dataset)
 
+class TestReadGzip:
     def test_read_single_compressed_gzip(self, one_compressed_file_gzip: str):
         src = read_file(one_compressed_file_gzip)
         assert isinstance(src, gdal.Dataset)
 
     def test_multiple_compressed_gzip_file_error(self, multiple_compressed_file_gzip: str):
         try:
-            src = read_file(multiple_compressed_file_gzip)
+            read_file(multiple_compressed_file_gzip)
         except FileFormatNoSupported:
             pass
 
@@ -92,6 +93,23 @@ class TestReadZip:
     ):
         first_file = multiple_compressed_file_gzip_content[0]
         try:
-            src = read_file(f"{multiple_compressed_file_gzip}/{first_file}")
+            read_file(f"{multiple_compressed_file_gzip}/{first_file}")
         except FileFormatNoSupported:
             pass
+
+
+class TestReadTar:
+    def test_read_single_compressed(self, one_compressed_file_tar: str):
+        src = read_file(one_compressed_file_tar)
+        assert isinstance(src, gdal.Dataset)
+
+    def test_multiple_compressed_tar_file_with_internal_path(
+            self,
+            multiple_compressed_file_tar: str,
+            multiple_compressed_file_gzip_content: List[str]
+    ):
+        first_file = multiple_compressed_file_gzip_content[0]
+        src = read_file(f"{multiple_compressed_file_tar}/{first_file}")
+        assert isinstance(src, gdal.Dataset)
+
+
