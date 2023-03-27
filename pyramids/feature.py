@@ -261,6 +261,7 @@ class Feature:
         self.to_file(new_vector_path, driver="geojson")
         gdf = gpd.read_file(new_vector_path)
 
+        shutil.rmtree(temp_dir, ignore_errors=True)
         if inplace:
             self.__init__(gdf, engine="geopandas")
             gdf = None
@@ -376,9 +377,7 @@ class Feature:
         )
         _ = gdal.Rasterize(src.raster, vector_path, options=rasterize_opts)
 
-        # Remove temporary files.
-        if temp_dir is not None:
-            shutil.rmtree(temp_dir, ignore_errors=True)
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
         return src
 
