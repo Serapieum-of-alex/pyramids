@@ -12,7 +12,7 @@ from shapely.geometry import Polygon
 
 from tests.catchment.conftest import *
 from tests.dataset.conftest import *
-from tests.vector.conftest import *
+from tests.feature.conftest import *
 
 
 @pytest.fixture(scope="session")
