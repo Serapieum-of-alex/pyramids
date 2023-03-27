@@ -1238,7 +1238,7 @@ class Dataset:
 
             # rasterize the vector by burning the unique values as cell values.
             # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
-            rasterized_vector = vector.to_raster(
+            rasterized_vector = vector.to_dataset(
                 src=self, vector_field="burn_value"
             )  # rasterized_vector_path,
             if add_geometry:
@@ -1938,7 +1938,7 @@ class Dataset:
                 "unify projection"
             )
         vector = Feature(poly)
-        mask = vector.to_raster(src=self)
+        mask = vector.to_dataset(src=self)
         cropped_obj = self._crop_with_raster(mask)
 
         # xmin, ymin, xmax, ymax = poly.bounds.values.tolist()[0]

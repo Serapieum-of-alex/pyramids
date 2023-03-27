@@ -146,7 +146,7 @@ class TestCreatePoint:
         assert len(point_list) == len(coordinates)
 
 
-class TestPolygonToRaster:
+class TestToRaster:
     def test_with_raster_obj(
         self,
         vector_mask_gdf: GeoDataFrame,
@@ -163,7 +163,7 @@ class TestPolygonToRaster:
         """
         dataset = Dataset.read_file(raster_to_df_path)
         vector = Feature(vector_mask_gdf)
-        src = vector.to_raster(src=dataset)
+        src = vector.to_dataset(src=dataset)
         assert src.epsg == vector_mask_gdf.crs.to_epsg()
 
         xmin, _, _, ymax, _, _ = dataset.geotransform
@@ -188,7 +188,7 @@ class TestPolygonToRaster:
         vector_mask_gdf
         """
         vector = Feature(vector_mask_gdf)
-        src = vector.to_raster(cell_size=200)
+        src = vector.to_dataset(cell_size=200)
         assert src.epsg == vector_mask_gdf.crs.to_epsg()
         xmin, _, _, ymax = vector_mask_gdf.bounds.values[0]
         assert src.geotransform[0] == xmin

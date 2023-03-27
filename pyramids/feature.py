@@ -9,6 +9,7 @@ import os
 import tempfile
 import uuid
 import json
+import shutil
 import warnings
 from typing import List, Tuple, Union
 
@@ -266,7 +267,7 @@ class Feature:
 
         return gdf
 
-    def to_raster(
+    def to_dataset(
         self,
         cell_size: int = None,
         src=None,
@@ -349,7 +350,8 @@ class Feature:
             rows = int(np.ceil((ymax - ymin) / cell_size))
 
         # save the geodataframe to disk and get the path
-        vector_path = os.path.join(tempfile.mkdtemp(), f"{uuid.uuid1()}.geojson")
+        temp_dir = tempfile.mkdtemp()
+        vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
         vector.to_file(vector_path)
 
         # if the given vector is a geodataframe, convert it to ogr datasource
@@ -373,6 +375,10 @@ class Feature:
             bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
         )
         _ = gdal.Rasterize(src.raster, vector_path, options=rasterize_opts)
+
+        # Remove temporary files.
+        if temp_dir is not None:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
         return src
 
