@@ -1169,7 +1169,8 @@ class Dataset:
             dst_layer = None
             dst_ds = None
         else:
-            gdf = Vector._ds_to_gdf(dst_ds)
+            vector = Vector(dst_ds)
+            gdf = vector._ds_to_gdf()
             return gdf
 
     def to_geodataframe(
@@ -1226,19 +1227,19 @@ class Dataset:
 
             # read the vector with geopandas
             if isinstance(vector_mask, str):
-                gdf = Vector.read_file(vector_mask, engine="geodataframe")
+                vector = Vector.read_file(vector_mask, engine="geopandas")
             elif isinstance(vector_mask, GeoDataFrame):
-                gdf = vector_mask
+                vector = Vector(vector_mask)
 
             # add a unique value for each rows to use it to rasterize the vector
-            gdf["burn_value"] = list(range(1, len(gdf) + 1))
+            vector.feature["burn_value"] = list(range(1, len(vector.feature) + 1))
             # save the new vector to disk to read it with ogr later
-            gdf.to_file(new_vector_path, driver="GeoJSON")
+            vector.feature.to_file(new_vector_path, driver="GeoJSON")
 
             # rasterize the vector by burning the unique values as cell values.
             # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
-            rasterized_vector = Vector.to_raster(
-                gdf, src=self, vector_field="burn_value"
+            rasterized_vector = vector.to_raster(
+                src=self, vector_field="burn_value"
             )  # rasterized_vector_path,
             if add_geometry:
                 if add_geometry.lower() == "point":
@@ -1254,7 +1255,7 @@ class Dataset:
             for arr in self.get_tile(tile_size):
 
                 mask_dfs = []
-                for mask_val in gdf["burn_value"].values:
+                for mask_val in vector.feature["burn_value"].values:
                     # Extract only masked pixels.
                     flatten_masked_values = get_pixels(
                         arr, mask_arr, mask_val=mask_val
@@ -1270,7 +1271,9 @@ class Dataset:
                 mask_df = pd.concat(mask_dfs)
 
                 # Join with pixels with vector attributes using the FID.
-                df_list.append(mask_df.merge(gdf, how="left", on="burn_value"))
+                df_list.append(
+                    mask_df.merge(vector.feature, how="left", on="burn_value")
+                )
 
             # Merge all the tiles.
             out_df = pd.concat(df_list)
@@ -1934,7 +1937,8 @@ class Dataset:
                 "Projection Error: the raster and vector polygon have different projection please "
                 "unify projection"
             )
-        mask = Vector.to_raster(poly, src=self)
+        vector = Vector(poly)
+        mask = vector.to_raster(src=self)
         cropped_obj = self._crop_with_raster(mask)
 
         # xmin, ymin, xmax, ymax = poly.bounds.values.tolist()[0]
