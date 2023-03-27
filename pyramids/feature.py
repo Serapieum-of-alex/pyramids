@@ -185,43 +185,48 @@ class Feature:
         else:
             self.feature.to_file(path, driver=driver_gdal_name)
 
-    @staticmethod
-    def gdf_to_ds(gdf: DataSource):
+    def _gdf_to_ds(self, inplace: bool = False) -> Union[DataSource, None]:
         """convert a geopandas geodataframe into ogr DataSource.
 
         Parameters
         ----------
-        gdf: [GeoDataFrame]
-            geopandas geodataframe
+        inplace: [bool]
+            convert the geodataframe to datasource inplace. Default is False.
 
         Returns
         -------
         ogr.DataSource
         """
-        return ogr.Open(gdf.to_json())
-
-    def _gdf_to_ds(self, inplace=False) -> DataSource:
-        """Convert ogr DataSource object to a GeoDataFrame.
-
-        Returns
-        -------
-        ogr.DataSource
-        """
-        # Create a temporary directory for files.
-        temp_dir = tempfile.mkdtemp()
-        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
-        if isinstance(self.feature, GeoDataFrame):
-            self.feature.to_file(new_vector_path)
-            ds = Feature.read_file(new_vector_path, engine="ogr")
-            ds = Feature._copy_driver_to_memory(ds.feature)
-        else:
-            ds = Feature._copy_driver_to_memory(self.feature)
+        # if isinstance(self.feature, GeoDataFrame):
+        ds = ogr.Open(self.feature.to_json())
 
         if inplace:
             self.__init__(ds, engine="ogr")
             ds = None
-
         return ds
+
+    # def _gdf_to_ds(self, inplace=False) -> DataSource:
+    #     """Convert ogr DataSource object to a GeoDataFrame.
+    #
+    #     Returns
+    #     -------
+    #     ogr.DataSource
+    #     """
+    #     # Create a temporary directory for files.
+    #     temp_dir = tempfile.mkdtemp()
+    #     new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+    #     if isinstance(self.feature, GeoDataFrame):
+    #         self.feature.to_file(new_vector_path)
+    #         ds = Feature.read_file(new_vector_path, engine="ogr")
+    #         ds = Feature._copy_driver_to_memory(ds.feature)
+    #     else:
+    #         ds = Feature._copy_driver_to_memory(self.feature)
+    #
+    #     if inplace:
+    #         self.__init__(ds, engine="ogr")
+    #         ds = None
+    #
+    #     return ds
 
     def _ds_to_gdf(self, inplace: bool = False) -> GeoDataFrame:
         """Convert ogr DataSource object to a GeoDataFrame.
@@ -299,6 +304,15 @@ class Feature:
         if cell_size is None and src is None:
             raise ValueError("You have to enter either cell size of Dataset object")
 
+        # Check EPSG are same, if not reproject vector.
+        ds_epsg = self.epsg
+        if src is not None:
+            if src.epsg != ds_epsg:
+                # TODO: reproject the vector to the raster projection instead of raising an error.
+                raise ValueError(
+                    f"Dataset and vector are not the same EPSG. {src.epsg} != {ds_epsg}"
+                )
+
         if src is not None:
             if not isinstance(src, Dataset):
                 raise TypeError(
@@ -339,16 +353,7 @@ class Feature:
         vector.to_file(vector_path)
 
         # if the given vector is a geodataframe, convert it to ogr datasource
-        vector = Feature(vector)._gdf_to_ds()
-
-        # Check EPSG are same, if not reproject vector.
-        ds_epsg = Feature(vector).epsg
-        if src is not None:
-            if src.epsg != ds_epsg:
-                # TODO: reproject the vector to the raster projection instead of raising an error.
-                raise ValueError(
-                    f"Dataset and vector are not the same EPSG. {src.epsg} != {ds_epsg}"
-                )
+        # vector = Feature(vector)._gdf_to_ds()
 
         top_left_coords = (xmin, ymax)
         # TODO: enable later multi bands
@@ -466,9 +471,7 @@ class Feature:
         int:
             epsg number
         """
-        prj = Proj(gdf.crs).srs
-        epsg = Feature.get_epsg_from_Prj(prj)
-        return epsg
+        return gdf.crs.to_epsg()
 
     def _get_epsg(self) -> int:
         """getEPSG.
