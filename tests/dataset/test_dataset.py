@@ -53,6 +53,25 @@ class TestCreateRasterObject:
             -4000.0,
         )
 
+    def test_from_read_file_zip_file(
+        self,
+        ascii_file_path: str,
+        ascii_shape: tuple,
+        ascii_geotransform: tuple,
+    ):
+        src_obj = Dataset.read_file(ascii_file_path)
+        assert src_obj.band_count == 1
+        assert src_obj.epsg == 6326
+        assert isinstance(src_obj.raster, gdal.Dataset)
+        assert src_obj.geotransform == (
+            432968.1206170588,
+            4000.0,
+            0.0,
+            520007.787999178,
+            0.0,
+            -4000.0,
+        )
+
     def test_from_create_empty_driver(
         self,
         src: gdal.Dataset,
@@ -641,17 +660,3 @@ def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
     extracted_classes = list(class_dict.keys())
     real_classes = class_values.tolist()[:-1]
     assert all(i in real_classes for i in extracted_classes)
-
-
-# import zipfile
-# import zipfile
-#
-#
-# path = "tests/data/asci_example.zip"
-# # path = "tests/data/acc4000-update.zip"
-# Compressedfile = zipfile.ZipFile(path)
-# fname = Compressedfile.infolist()[0]
-# file = Compressedfile.open(fname)
-# file.readlines()
-# src = gdal.Open(file.readlines())
-# Dataset.read(file.readlines())
