@@ -140,9 +140,11 @@ def unzip_gzip_file_name() -> str:
 def multiple_compressed_file_gzip() -> str:
     return "tests/data/multiple_compressed_files.gz"
 
+
 @pytest.fixture(scope="module")
 def multiple_compressed_file_gzip_content() -> List[str]:
     return ["1.asc", "2.asc"]
+
 
 @pytest.fixture(scope="module")
 def one_compressed_file_zip() -> str:
@@ -157,3 +159,23 @@ def multiple_compressed_file_zip() -> str:
 @pytest.fixture(scope="module")
 def multiple_compressed_file_zip_content() -> List[str]:
     return ["1.asc", "2.asc"]
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_7z() -> str:
+    return "tests/data/multiple_compressed_files.7z"
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_tar() -> str:
+    return "tests/data/multiple_compressed_files.tar"
+
+
+@pytest.fixture(scope="module")
+def one_compressed_file_7z() -> str:
+    return "tests/data/one_compressed_file.7z"
+
+
+@pytest.fixture(scope="module")
+def one_compressed_file_tar() -> str:
+    return "tests/data/one_compressed_file.tar"
