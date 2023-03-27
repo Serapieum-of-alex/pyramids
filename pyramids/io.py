@@ -5,20 +5,24 @@ import gzip
 import warnings
 from osgeo import gdal
 from pyramids.errors import FileFormatNoSupported
+
 gdal.UseExceptions()
 
 COMPRESSED_FILES_EXTENSIONS = [".zip", ".gz", ".tar"]
 DOES_NOT_SUPPORT_INTERNAL = [".gz"]
 
-# def _import_
+
 def _is_zip(path: str):
     return path.endswith(".zip") or path.__contains__(".zip")
+
 
 def _is_gzip(path: str):
     return path.endswith(".gz") or path.__contains__(".gz")
 
+
 def _is_tar(path: str):
     return path.endswith(".tar") or path.__contains__(".tar")
+
 
 def _get_zip_path(path: str, file_i: int = 0):
     """Get Zip Path.
@@ -48,6 +52,7 @@ def _get_zip_path(path: str, file_i: int = 0):
         vsi_path = f"/vsizip/{path}/{file_list[file_i]}"
     return vsi_path
 
+
 def _get_gzip_path(path: str):
     """Get Zip Path.
 
@@ -76,6 +81,7 @@ def _get_gzip_path(path: str):
     else:
         vsi_path = f"/vsigzip/{path}"
     return vsi_path
+
 
 def _get_tar_path(path: str):
     """Get Zip Path.
@@ -119,7 +125,7 @@ def _parse_path(path: str, file_i: int = 0) -> str:
     file path
     """
     if _is_zip(path):
-        new_path =  _get_zip_path(path, file_i=file_i)
+        new_path = _get_zip_path(path, file_i=file_i)
     elif _is_gzip(path):
         new_path = _get_gzip_path(path)
     elif _is_tar(path):
@@ -185,7 +191,9 @@ def read_file(path: str, read_only: bool = True):
                     "files. Currently it is not supported to read gzip files with multiple compressed internal "
                     "files"
                 )
-        elif any(path.__contains__(i) for i in DOES_NOT_SUPPORT_INTERNAL) and not any(path.endswith(i) for i in DOES_NOT_SUPPORT_INTERNAL):
+        elif any(path.__contains__(i) for i in DOES_NOT_SUPPORT_INTERNAL) and not any(
+            path.endswith(i) for i in DOES_NOT_SUPPORT_INTERNAL
+        ):
             raise FileFormatNoSupported(
                 "File format is not supported, if you provided a gzip/7z compressed file with multiple internal "
                 "files. Currently it is not supported to read gzip/7z files with multiple compressed internal "
