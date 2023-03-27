@@ -78,11 +78,29 @@ class TestConvert:
         assert isinstance(gdf, GeoDataFrame)
         assert all(gdf == ds_geodataframe)
 
+    def test_ds_to_gdf_inplace(
+        self, data_source: DataSource, ds_geodataframe: GeoDataFrame
+    ):
+        vector = Feature(data_source)
+        gdf = vector._ds_to_gdf(inplace=True)
+        assert gdf is None
+        assert isinstance(vector.feature, GeoDataFrame)
+        assert all(vector.feature == ds_geodataframe)
+
     def test_gdf_to_ds(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
         vector = Feature(ds_geodataframe)
         ds = vector._gdf_to_ds()
         assert isinstance(ds, DataSource)
         assert ds.name == "memory"
+
+    def test_gdf_to_ds_inplace(
+        self, data_source: DataSource, ds_geodataframe: GeoDataFrame
+    ):
+        vector = Feature(ds_geodataframe)
+        ds = vector._gdf_to_ds(inplace=True)
+        assert ds is None
+        assert isinstance(vector.feature, DataSource)
+        assert vector.feature.name == "memory"
 
 
 # def test_geodataframe_to_datasource(gdf: GeoDataFrame):

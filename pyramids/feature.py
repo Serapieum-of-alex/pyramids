@@ -55,11 +55,38 @@ class Feature:
 
     def __init__(self, gdf: Union[GeoDataFrame, DataSource], engine: str = "geopandas"):
         # read the drivers catalog
-        self.feature = gdf
-        self.engine = engine
+        self._feature = gdf
+        self._engine = engine
 
-    # @property
-    # def featu
+    def __str__(self):
+        message = f"""
+            Feature: {self.feature}
+            Engine: {self.engine}
+        """
+        # EPSG: {self.epsg}
+        # Variables: {self.variables}
+        # Number of Bands: {self.band_count}
+        # Band names: {self.band_names}
+        # Dimension: {self.rows * self.columns}
+        # Mask: {self._no_data_value[0]}
+        # Data type: {self.dtype[0]}
+        return message
+
+    @property
+    def feature(self):
+        """GeoDataFrame or DataSource"""
+        return self._feature
+
+    @property
+    def engine(self):
+        """GeoDataFrame or DataSource"""
+        return self._engine
+
+    @property
+    def epsg(self):
+        """EPSG number"""
+        return self._get_epsg()
+
     @classmethod
     def read_file(cls, path: str, engine: str = "geopandas", read_only: bool = True):
         """Open a vector dataset using OGR or GeoPandas.
@@ -173,7 +200,7 @@ class Feature:
         """
         return ogr.Open(gdf.to_json())
 
-    def _gdf_to_ds(self) -> DataSource:
+    def _gdf_to_ds(self, inplace=False) -> DataSource:
         """Convert ogr DataSource object to a GeoDataFrame.
 
         Returns
@@ -189,9 +216,14 @@ class Feature:
             ds = Feature._copy_driver_to_memory(ds.feature)
         else:
             ds = Feature._copy_driver_to_memory(self.feature)
+
+        if inplace:
+            self.__init__(ds, engine="ogr")
+            ds = None
+
         return ds
 
-    def _ds_to_gdf(self) -> GeoDataFrame:
+    def _ds_to_gdf(self, inplace: bool = False) -> GeoDataFrame:
         """Convert ogr DataSource object to a GeoDataFrame.
 
         Returns
@@ -222,6 +254,11 @@ class Feature:
         new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
         self.to_file(new_vector_path, driver="geojson")
         gdf = gpd.read_file(new_vector_path)
+
+        if inplace:
+            self.__init__(gdf, engine="geopandas")
+            gdf = None
+
         return gdf
 
     def to_raster(
@@ -305,7 +342,7 @@ class Feature:
         vector = Feature(vector)._gdf_to_ds()
 
         # Check EPSG are same, if not reproject vector.
-        ds_epsg = Feature._get_epsg(vector)
+        ds_epsg = Feature(vector).epsg
         if src is not None:
             if src.epsg != ds_epsg:
                 # TODO: reproject the vector to the raster projection instead of raising an error.
@@ -433,20 +470,15 @@ class Feature:
         epsg = Feature.get_epsg_from_Prj(prj)
         return epsg
 
-    @staticmethod
-    def _get_epsg(vector_obj: Union[DataSource, GeoDataFrame]) -> int:
+    def _get_epsg(self) -> int:
         """getEPSG.
-
-        Parameters
-        ----------
-        vector_obj: [ogr.DataSource/GeoDataFrame]
-            vector file read by ogr or geopandas.
 
         Returns
         -------
         int:
             epsg number
         """
+        vector_obj = self.feature
         if isinstance(vector_obj, ogr.DataSource):
             epsg = Feature._get_ds_epsg(vector_obj)
         elif isinstance(vector_obj, gpd.GeoDataFrame):
