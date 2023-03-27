@@ -6,6 +6,14 @@ memory:
   Build requirements: Built-in by default
   extension: None
 
+geojson:
+  GDAL Name: GeoJSON
+  Long name: GeoJSON
+  Creation: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+  extension: .geojson
+
 arrow:
   GDAL Name: Arrow
   Long name: GeoArrow IPC File Format / Stream
@@ -30,14 +38,6 @@ flat geobuf:
   Build requirements: Built-in by default
   extension: None
 
-geojson:
-  GDAL Name: GeoJSON
-  Long name: GeoJSON
-  Creation: yes
-  Geo-referencing: yes
-  Build requirements: Built-in by default
-  extension: None
-
 gpkg:
   GDAL Name: GPKG
   Long name: GeoPackage vector
@@ -48,7 +48,7 @@ gpkg:
 
 netcdf:
   GDAL Name: netCDF
-  Long name: Vector
+  Long name: Feature
   Creation: yes
   Geo-referencing: yes
   Build requirements: libnetcdf
@@ -232,7 +232,7 @@ ms sql spatial:
 
 mvt:
   GDAL Name: MVT
-  Long name: MVT Mapbox Vector Tiles
+  Long name: MVT Mapbox Feature Tiles
   Creation: yes
   Geo-referencing: yes
   Build requirements: requires SQLite and GEOS for write support

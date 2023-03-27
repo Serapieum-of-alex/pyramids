@@ -8,24 +8,24 @@ from osgeo.gdal import Dataset
 from osgeo.ogr import DataSource
 from shapely.geometry.polygon import Polygon
 
-from pyramids.vector import Vector
+from pyramids.feature import Feature
 from pyramids.dataset import Dataset
 
 
 class TestReadFile:
     def test_open_vector(self, test_vector_path: str):
-        ds = Vector.read_file(test_vector_path, engine="ogr")
+        ds = Feature.read_file(test_vector_path, engine="ogr")
         assert isinstance(ds.feature, DataSource)
         assert ds.feature.name == test_vector_path
 
     def test_open_geodataframe(self, test_vector_path: str):
-        vector = Vector.read_file(test_vector_path, engine="geopandas")
+        vector = Feature.read_file(test_vector_path, engine="geopandas")
         assert isinstance(vector.feature, GeoDataFrame)
 
 
 class TestToFile:
     def test_save_ds(self, data_source: DataSource, test_save_vector_path: str):
-        vector = Vector(data_source)
+        vector = Feature(data_source)
         vector.to_file(test_save_vector_path)
         assert os.path.exists(test_save_vector_path), "The vector file does not exist"
         # read the vector to check it
@@ -34,7 +34,7 @@ class TestToFile:
         os.remove(test_save_vector_path)
 
     def test_save_gdf(self, gdf: GeoDataFrame, test_save_vector_path: str):
-        vector = Vector(gdf)
+        vector = Feature(gdf)
         vector.to_file(test_save_vector_path)
         assert os.path.exists(test_save_vector_path), "The vector file does not exist"
         # clean
@@ -45,7 +45,7 @@ class TestCreateDataSource:
     def test_create_geojson_data_source(self, create_vector_path: str):
         if os.path.exists(create_vector_path):
             os.remove(create_vector_path)
-        ds = Vector.create_ds(driver="geojson", path=create_vector_path)
+        ds = Feature.create_ds(driver="geojson", path=create_vector_path)
         assert isinstance(ds, DataSource)
         ds = None
         assert os.path.exists(
@@ -57,7 +57,7 @@ class TestCreateDataSource:
     def test_create_memory_data_source(
         self,
     ):
-        ds = Vector.create_ds(driver="memory")
+        ds = Feature.create_ds(driver="memory")
         assert isinstance(
             ds, DataSource
         ), "the in memory ogr data source object was not created correctly"
@@ -66,27 +66,27 @@ class TestCreateDataSource:
 
 def test_copy_driver_to_memory(data_source: DataSource):
     name = "test_copy_datasource"
-    ds = Vector._copy_driver_to_memory(data_source, name)
+    ds = Feature._copy_driver_to_memory(data_source, name)
     assert isinstance(ds, DataSource)
     assert ds.name == name
 
 
 class TestConvert:
     def test_ds_to_gdf(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
-        vector = Vector(data_source)
+        vector = Feature(data_source)
         gdf = vector._ds_to_gdf()
         assert isinstance(gdf, GeoDataFrame)
         assert all(gdf == ds_geodataframe)
 
     def test_gdf_to_ds(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
-        vector = Vector(ds_geodataframe)
+        vector = Feature(ds_geodataframe)
         ds = vector._gdf_to_ds()
         assert isinstance(ds, DataSource)
         assert ds.name == "memory"
 
 
 # def test_geodataframe_to_datasource(gdf: GeoDataFrame):
-#     ds = Vector.GeoDataFrameToOgr(gdf)
+#     ds = Feature.GeoDataFrameToOgr(gdf)
 #     ds.name
 #     print("sss")
 
@@ -98,7 +98,7 @@ class TestCreatePolygon:
         coordinates_wkt: str,
     ):
         """Test create the wkt from coordinates."""
-        coords = Vector.create_polygon(coordinates, wkt=True)
+        coords = Feature.create_polygon(coordinates, wkt=True)
         assert isinstance(coords, str)
         assert coords == coordinates_wkt
 
@@ -108,13 +108,13 @@ class TestCreatePolygon:
         coordinates_wkt: str,
     ):
         """Test create the wkt from coordinates."""
-        coords = Vector.create_polygon(coordinates)
+        coords = Feature.create_polygon(coordinates)
         assert isinstance(coords, Polygon)
 
 
 class TestCreatePoint:
     def test_create_point_geometries(self, coordinates: List[Tuple[int, int]]):
-        point_list = Vector.create_point(coordinates)
+        point_list = Feature.create_point(coordinates)
         assert isinstance(point_list, list)
         assert len(point_list) == len(coordinates)
 
@@ -135,7 +135,7 @@ class TestPolygonToRaster:
         raster_to_df_path
         """
         dataset = Dataset.read_file(raster_to_df_path)
-        vector = Vector(vector_mask_gdf)
+        vector = Feature(vector_mask_gdf)
         src = vector.to_raster(src=dataset)
         assert src.epsg == vector_mask_gdf.crs.to_epsg()
 
@@ -160,7 +160,7 @@ class TestPolygonToRaster:
         ----------
         vector_mask_gdf
         """
-        vector = Vector(vector_mask_gdf)
+        vector = Feature(vector_mask_gdf)
         src = vector.to_raster(cell_size=200)
         assert src.epsg == vector_mask_gdf.crs.to_epsg()
         xmin, _, _, ymax = vector_mask_gdf.bounds.values[0]
