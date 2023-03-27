@@ -298,11 +298,6 @@ class Feature:
         """
         from pyramids.dataset import Dataset
 
-        if not isinstance(self.feature, GeoDataFrame):
-            vector = self._ds_to_gdf()
-        else:
-            vector = self.feature
-
         if cell_size is None and src is None:
             raise ValueError("You have to enter either cell size of Dataset object")
 
@@ -327,7 +322,7 @@ class Feature:
         else:
             # if a raster is not given the xmin and ymax will be taken as the top left corner for the rasterized
             # polygon.
-            xmin, ymin, xmax, ymax = vector.bounds.values[0]
+            xmin, ymin, xmax, ymax = self.feature.bounds.values[0]
 
         if vector_field is None:
             # Use a constant value for all features.
@@ -353,10 +348,7 @@ class Feature:
         # save the geodataframe to disk and get the path
         temp_dir = tempfile.mkdtemp()
         vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
-        vector.to_file(vector_path)
-
-        # if the given vector is a geodataframe, convert it to ogr datasource
-        # vector = Feature(vector)._gdf_to_ds()
+        self.feature.to_file(vector_path)
 
         top_left_coords = (xmin, ymax)
         # TODO: enable later multi bands
@@ -375,8 +367,12 @@ class Feature:
         rasterize_opts = gdal.RasterizeOptions(
             bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
         )
+        # the second parameter to the Rasterize function if str is read using gdal.OpenEX inside the function,
+        # so the second parameter if not str should be a dataset, if you try to use ogr.DataSource it will give an error
+        # for future trial to remove writing the vector to disk and enter the second parameter as a path, try to find
+        # a way to convert the ogr.DataSource or GeoDataFrame into a similar object to the object resulting from
+        # gdal.OpenEx which is a dataset
         _ = gdal.Rasterize(src.raster, vector_path, options=rasterize_opts)
-
         shutil.rmtree(temp_dir, ignore_errors=True)
 
         return src
