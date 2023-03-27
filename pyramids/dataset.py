@@ -18,7 +18,6 @@ import pandas as pd
 from geopandas.geodataframe import GeoDataFrame, DataFrame
 from osgeo import gdal, osr, ogr  # gdalconst,
 from osgeo.osr import SpatialReference
-
 from pyramids.utils import (
     gdal_to_ogr_dtype,
     INTERPOLATION_METHODS,
@@ -45,9 +44,10 @@ except ModuleNotFoundError:
 
 from pyramids.array import get_pixels, _get_indices2, _get_pixels2
 from pyramids.vector import Vector
+from pyramids import io
 
 DEFAULT_NO_DATA_VALUE = -9999
-CATALOG = Catalog()
+CATALOG = Catalog(raster_driver=True)
 
 # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead they return an error
 # value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
@@ -233,9 +233,7 @@ class Dataset:
 
     @classmethod
     def read_file(cls, path: str, read_only=True):
-        """Open file.
-
-            - for a geotiff and ASCII files.
+        """read file.
 
         Parameters
         ----------
@@ -248,17 +246,7 @@ class Dataset:
         -------
         GDAL dataset
         """
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"The given file:{path} does not exist")
-
-        access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
-        src = gdal.OpenShared(path, access)
-        if src is None:
-            raise ValueError(
-                f"The raster path: {path} you enter gives a None gdal Object check the read premission, maybe "
-                f"the raster is being used by other software"
-            )
-
+        src = io.read_file(path, read_only)
         return cls(src)
 
     @classmethod
@@ -1029,7 +1017,7 @@ class Dataset:
             )
             for i in range(len(x))
         ]
-        polygons = list(map(Vector.createPolygon, polys_coords))
+        polygons = list(map(Vector.create_polygon, polys_coords))
         gdf = gpd.GeoDataFrame(geometry=polygons)
         gdf.set_crs(epsg=epsg, inplace=True)
         gdf["id"] = gdf.index
@@ -1054,7 +1042,7 @@ class Dataset:
         epsg = self._get_epsg()
 
         coords_tuples = list(zip(coords[:, 0], coords[:, 1]))
-        points = Vector.createPoint(coords_tuples)
+        points = Vector.create_point(coords_tuples)
         gdf = gpd.GeoDataFrame(geometry=points)
         gdf.set_crs(epsg=epsg, inplace=True)
         gdf["id"] = gdf.index
@@ -1171,7 +1159,7 @@ class Dataset:
         else:
             dst_layername = path.split(".")[0].split("/")[-1]
 
-        dst_ds = Vector.createDataSource(driver, path)
+        dst_ds = Vector.create_ds(driver, path)
         dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
         dtype = gdal_to_ogr_dtype(self.raster)
         newField = ogr.FieldDefn(col_name, dtype)
@@ -1181,7 +1169,7 @@ class Dataset:
             dst_layer = None
             dst_ds = None
         else:
-            gdf = Vector._ogrDataSourceToGeoDF(dst_ds)
+            gdf = Vector._ds_to_gdf(dst_ds)
             return gdf
 
     def to_geodataframe(
@@ -1238,7 +1226,7 @@ class Dataset:
 
             # read the vector with geopandas
             if isinstance(vector_mask, str):
-                gdf = Vector.read(vector_mask, geodataframe=True)
+                gdf = Vector.read_file(vector_mask, engine="geodataframe")
             elif isinstance(vector_mask, GeoDataFrame):
                 gdf = vector_mask
 
@@ -1584,7 +1572,7 @@ class Dataset:
                 xs = [src_gt[0], src_gt[0] + src_gt[1] * src_x]
                 ys = [src_gt[3], src_gt[3] + src_gt[5] * src_y]
 
-                [uly, lry], [ulx, lrx] = Vector.reprojectPoints(
+                [uly, lry], [ulx, lrx] = Vector.reproject_points(
                     ys, xs, from_epsg=src_epsg, to_epsg=to_epsg
                 )
                 # old transform
@@ -1609,7 +1597,7 @@ class Dataset:
 
         if src_epsg != to_epsg:
             # transform the two points coordinates to the new crs to calculate the new cell size
-            new_ys, new_xs = Vector.reprojectPoints(
+            new_ys, new_xs = Vector.reproject_points(
                 ys, xs, from_epsg=src_epsg, to_epsg=to_epsg, precision=6
             )
         else:
