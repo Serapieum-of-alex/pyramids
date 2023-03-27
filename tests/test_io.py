@@ -1,6 +1,7 @@
 import os
 from typing import List
 from osgeo import gdal
+from pyramids.errors import FileFormatNoSupported
 from pyramids.io import _parse_path, extract_from_gz, read_file
 
 
@@ -78,8 +79,19 @@ class TestReadZip:
         src = read_file(one_compressed_file_gzip)
         assert isinstance(src, gdal.Dataset)
 
-    def test_multiple_compressed_gzip_file(self, multiple_compressed_file_gzip: str):
+    def test_multiple_compressed_gzip_file_error(self, multiple_compressed_file_gzip: str):
         try:
             src = read_file(multiple_compressed_file_gzip)
-        except ValueError:
+        except FileFormatNoSupported:
+            pass
+
+    def test_multiple_compressed_gzip_file_with_internal_path(
+            self,
+            multiple_compressed_file_gzip: str,
+            multiple_compressed_file_gzip_content: List[str]
+    ):
+        first_file = multiple_compressed_file_gzip_content[0]
+        try:
+            src = read_file(f"{multiple_compressed_file_gzip}/{first_file}")
+        except FileFormatNoSupported:
             pass

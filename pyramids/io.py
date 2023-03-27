@@ -1,9 +1,12 @@
 import os
 import zipfile
 import gzip
+import warnings
 from osgeo import gdal
+from pyramids.errors import FileFormatNoSupported
+gdal.UseExceptions()
 
-
+COMPRESSED_FILES_EXTENSIONS = [".zip", ".gz", ".7z"]
 def _is_zip(path: str):
     return path.endswith(".zip") or path.__contains__(".zip")
 
@@ -38,7 +41,7 @@ def _get_zip_path(path: str, file_i: int = 0):
         vsi_path = f"/vsizip/{path}/{file_list[file_i]}"
     return vsi_path
 
-def _get_gzip_path(path: str, file_i: int = 0):
+def _get_gzip_path(path: str):
     """Get Zip Path.
 
         - check if the given path contains a .gz in it
@@ -50,14 +53,17 @@ def _get_gzip_path(path: str, file_i: int = 0):
     ----------
     path: [str]
         path to the zip file.
-    file_i: [int]
-        index to the file inside the compressed file you want to read.
 
     Returns
     -------
     str path to gdal to read the zipped file.
     """
     # get list of files inside the compressed file
+    warnings.warn(
+        "gzip compressed files does not support getting internal file list, if the compressed file contains more than "
+        "one file error will be given, you have to provide the internal path (i.e. "
+        "path/file-name.gz/internal-file.ext)"
+    )
     if path.__contains__(".gz") and not path.endswith(".gz"):
         vsi_path = f"/vsigzip/{path}"
     else:
@@ -83,7 +89,7 @@ def _parse_path(path: str, file_i: int = 0) -> str:
     if _is_zip(path):
         new_path =  _get_zip_path(path, file_i=file_i)
     elif _is_gzip(path):
-        new_path = _get_gzip_path(path, file_i=file_i)
+        new_path = _get_gzip_path(path)
     else:
         new_path = path
     return new_path
@@ -135,7 +141,24 @@ def read_file(path: str, read_only: bool = True):
     """
     path = _parse_path(path)
     access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
-    src = gdal.OpenShared(path, access)
+    try:
+        src = gdal.OpenShared(path, access)
+    except Exception as e:
+        if str(e).__contains__(" not recognized as a supported file format."):
+            if any(path.endswith(i) for i in COMPRESSED_FILES_EXTENSIONS):
+                raise FileFormatNoSupported(
+                    "File format is not supported, if you provided a gzip compressed file with multiple internal "
+                    "files. Currently it is not supported to read gzip files with multiple compressed internal "
+                    "files"
+                )
+        elif path.__contains__(".gz") and not path.endswith(".gz"):
+            raise FileFormatNoSupported(
+                "File format is not supported, if you provided a gzip compressed file with multiple internal "
+                "files. Currently it is not supported to read gzip files with multiple compressed internal "
+                "files"
+            )
+        else:
+            raise e
     if src is None:
         raise ValueError(
             f"The raster path: {path} you enter gives a None gdal Object check the read premission, maybe "
