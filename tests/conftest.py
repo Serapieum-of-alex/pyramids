@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List
 
 import geopandas as gpd
 import numpy as np
@@ -12,7 +12,6 @@ from shapely.geometry import Polygon
 
 from tests.catchment.conftest import *
 from tests.dataset.conftest import *
-from tests.utils.conftest import *
 from tests.vector.conftest import *
 
 
@@ -125,3 +124,33 @@ def point_gdf() -> GeoDataFrame:
     gdf["hex"] = hex_index
     gdf.set_crs(epsg=4326, inplace=True)
     return gdf
+
+
+@pytest.fixture(scope="module")
+def one_compressed_file_gzip() -> str:
+    return "tests/data/one_compressed_file.gz"
+
+
+@pytest.fixture(scope="module")
+def unzip_gzip_file_name() -> str:
+    return "tests/data/chirps-v2.0.2009.01.01.tif"
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_gzip() -> str:
+    return "tests/data/multiple_compressed_files.tar.gz"
+
+
+@pytest.fixture(scope="module")
+def one_compressed_file_zip() -> str:
+    return "tests/data/one_compressed_file.zip"
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_zip() -> str:
+    return "tests/data/multiple_compressed_files.zip"
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_zip_content() -> List[str]:
+    return ["1.asc", "2.asc"]

@@ -1,12 +1,12 @@
 """Utility module"""
-import gzip
-import os
 import yaml
 import datetime as dt
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
 from osgeo.gdal import Dataset
 from pyramids import __path__
+
+# from urllib.parse import urlparse as parse_url
 
 # mapping between gdal type and ogr field type
 GDAL_OGR_DATA_TYPES = {
@@ -101,34 +101,6 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
     return GDAL_OGR_DATA_TYPES[key]
 
 
-def extractFromGZ(input_file: str, output_file: str, delete=False):
-    """ExtractFromGZ method extract data from the zip/.gz files, save the data.
-
-    Parameters
-    ----------
-    input_file : [str]
-        zipped file name .
-    output_file : [str]
-        directory where the unzipped data must be
-                            stored.
-    delete : [bool]
-        True if you want to delete the zipped file after the extracting the data
-    Returns
-    -------
-    None.
-    """
-    with gzip.GzipFile(input_file, "rb") as zf:
-        content = zf.read()
-        save_file_content = open(output_file, "wb")
-        save_file_content.write(content)
-
-    save_file_content.close()
-    zf.close()
-
-    if delete:
-        os.remove(input_file)
-
-
 def create_time_conversion_func(time: str) -> callable:
     """Create a function to convert the ordinal time to gregorian date
 
@@ -168,11 +140,17 @@ def create_time_conversion_func(time: str) -> callable:
 
 
 class Catalog:
-    def __init__(self):
-        self.catalog = self._get_gdal_catalog()
+    """Data Catalog."""
 
-    def _get_gdal_catalog(self):
-        with open(f"{__path__[0]}/gdal_drivers.yaml", "r") as stream:
+    def __init__(self, raster_driver=True):
+        if raster_driver:
+            path = "gdal_drivers.yaml"
+        else:
+            path = "ogr_drivers.yaml"
+        self.catalog = self._get_gdal_catalog(path)
+
+    def _get_gdal_catalog(self, path: str):
+        with open(f"{__path__[0]}/{path}", "r") as stream:
             gdal_catalog = yaml.safe_load(stream)
 
         return gdal_catalog
