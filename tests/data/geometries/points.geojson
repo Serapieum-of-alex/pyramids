@@ -1,0 +1,142 @@
+{
+    "type": "FeatureCollection",
+    "name": "points",
+    "crs": {
+        "type": "name",
+        "properties": {
+            "name": "urn:ogc:def:crs:EPSG::32618"
+        }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 1
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    457856.6918398032,
+                    510972.0740411434
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 2
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    448255.85541663575,
+                    499571.9536268496
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 3
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    440500.9672129543,
+                    483558.6933188144
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 4
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    452283.9324929529,
+                    479106.24112878833
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 5
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    459949.3802651774,
+                    488578.97325903317
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 6
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    469463.53644710156,
+                    494864.7273634825
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 7
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    480065.4150477293,
+                    481107.7946766518
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 8
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    471982.66728088923,
+                    477336.23141282354
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 9
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    486715.13473294827,
+                    476997.17491253157
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 10
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    478295.75897145265,
+                    473979.8313082285
+                ]
+            }
+        }
+    ]
+}

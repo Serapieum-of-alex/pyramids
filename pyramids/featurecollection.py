@@ -82,9 +82,9 @@ class FeatureCollection:
         return self._get_epsg()
 
     @property
-    def bound(self):
+    def bounds(self):
         """bounding coordinates"""
-        return self.feature.bounds.values[0]
+        return list(self.feature.bounds.values[0])
 
     @classmethod
     def read_file(cls, path: str):
@@ -687,7 +687,7 @@ class FeatureCollection:
             return coord_arrays
 
     @staticmethod
-    def get_coords(row, geom_col: str, coord_type: str):
+    def _get_coords(row, geom_col: str, coord_type: str):
         """getCoords.
 
         Returns coordinates ('x' or 'y') of a geometry (Point, LineString or Polygon)
@@ -731,18 +731,12 @@ class FeatureCollection:
         """Function to parse features from GeoDataFrame in such a manner that rasterio wants them."""
         return [json.loads(gdf.to_json())["features"][0]["geometry"]]
 
-    @staticmethod
-    def xy(input_dataframe):
+    def xy(self):
         """XY.
 
         XY function takes a geodataframe and process the geometry column and return
         the x and y coordinates of all the votrices
 
-        parameters
-        ----------
-        input_dataframe:[geodataframe]
-            geodataframe contains the Shapely geometry object in a column name
-            "geometry"
         Returns
         -------
         x :[dataframe column]
@@ -753,17 +747,16 @@ class FeatureCollection:
             object in each rows
         """
         # get the x & y coordinates for all types of geometries except multi_polygon
-        input_dataframe["x"] = input_dataframe.apply(
-            FeatureCollection.get_coords, geom_col="geometry", coord_type="x", axis=1
-        )
-        input_dataframe["y"] = input_dataframe.apply(
-            FeatureCollection.get_coords, geom_col="geometry", coord_type="y", axis=1
-        )
-
+        # self._feature["x"] = self._feature.apply(
+        #     self._get_coords, geom_col="geometry", coord_type="x", axis=1
+        # )
+        # self._feature["y"] = self._feature.apply(
+        #     self._get_coords, geom_col="geometry", coord_type="y", axis=1
+        # )
         # if the Geometry of type MultiPolygon
         # explode the multi_polygon into polygon
-        for idx, row in input_dataframe.iterrows():
-            if type(row.geometry) == MultiPolygon:
+        for idx, row in self._feature.iterrows():
+            if isinstance(row.geometry, MultiPolygon):
                 # create a new geodataframe
                 multdf = gpd.GeoDataFrame()  # columns=indf.columns
                 # get number of the polygons inside the multipolygon class
@@ -772,20 +765,18 @@ class FeatureCollection:
                 # for each rows assign each polygon
                 for geom in range(recs):
                     multdf.loc[geom, "geometry"] = row.geometry[geom]
-                input_dataframe = input_dataframe.append(multdf, ignore_index=True)
+                self._feature = self._feature.append(multdf, ignore_index=True)
 
         # get the x & y coordinates of the exploded multi_polygons
-        input_dataframe["x"] = input_dataframe.apply(
-            FeatureCollection.get_coords, geom_col="geometry", coord_type="x", axis=1
+        self._feature["x"] = self._feature.apply(
+            self._get_coords, geom_col="geometry", coord_type="x", axis=1
         )
-        input_dataframe["y"] = input_dataframe.apply(
-            FeatureCollection.get_coords, geom_col="geometry", coord_type="y", axis=1
+        self._feature["y"] = self._feature.apply(
+            self._get_coords, geom_col="geometry", coord_type="y", axis=1
         )
 
-        to_delete = np.where(input_dataframe["x"] == 999)[0]
-        input_dataframe = input_dataframe.drop(to_delete)
-
-        return input_dataframe
+        to_delete = np.where(self._feature["x"] == 999)[0]
+        self._feature = self._feature.drop(to_delete)
 
     @staticmethod
     def create_polygon(coords: List[Tuple[float, float]], wkt: bool = False):
@@ -817,19 +808,11 @@ class FeatureCollection:
         >>> new_geometry = gpd.GeoDataFrame()
         >>> new_geometry.loc[0,'geometry'] = FeatureCollection.create_polygon(coordinates, wkt=False)
         """
+        poly = Polygon(coords)
         if wkt:
-            # create a ring
-            ring = ogr.Geometry(ogr.wkbLinearRing)
-            for coord in coords:
-                ring.AddPoint(np.double(coord[0]), np.double(coord[1]))
-
-            # Create polygon
-            poly = ogr.Geometry(ogr.wkbPolygon)
-
-            poly.AddGeometry(ring)
-            return poly.ExportToWkt()
+            return poly.wkt
         else:
-            poly = Polygon(coords)
+
             return poly
 
     @staticmethod
@@ -857,9 +840,7 @@ class FeatureCollection:
         >>> new_geometry = gpd.GeoDataFrame()
         >>> new_geometry.loc[:, 'geometry'] = point_list
         """
-        points = list()
-        for i in range(len(coords)):
-            points.append(Point(coords[i]))
+        points = list(map(Point, coords))
 
         return points
 

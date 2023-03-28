@@ -1,5 +1,7 @@
 import os
 from typing import List, Tuple
+
+import numpy as np
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr
 from osgeo.gdal import Dataset
@@ -9,9 +11,11 @@ from shapely.geometry.polygon import Polygon
 from pyramids.featurecollection import FeatureCollection
 from pyramids.dataset import Dataset
 
-# class TestAttributes:
-# def test_bound(self):
-#     vector = FeatureCollection(data_source)
+
+class TestAttributes:
+    def test_bound(self, gdf: GeoDataFrame, gdf_bound: List):
+        feature = FeatureCollection(gdf)
+        assert feature.bounds == gdf_bound
 
 
 class TestReadFile:
@@ -195,3 +199,13 @@ class TestToRaster:
         # assert src.no_data_value[0] == 0.0
         values = arr[arr[:, :] == 1.0]
         assert values.shape[0] == 6400
+
+
+class TestXY:
+    def test_points(
+        self, points_gdf: GeoDataFrame, points_gdf_x: list, points_gdf_y: list
+    ):
+        feature = FeatureCollection(points_gdf)
+        feature.xy()
+        assert all(np.isclose(feature.feature["y"].values, points_gdf_y, rtol=0.000001))
+        assert all(np.isclose(feature.feature["x"].values, points_gdf_x, rtol=0.000001))
