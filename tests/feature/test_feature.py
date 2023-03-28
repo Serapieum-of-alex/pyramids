@@ -7,6 +7,7 @@ from osgeo import ogr
 from osgeo.gdal import Dataset
 from osgeo.ogr import DataSource
 from shapely.geometry.polygon import Polygon
+from shapely import wkt
 
 from pyramids.featurecollection import FeatureCollection
 from pyramids.dataset import Dataset
@@ -202,13 +203,27 @@ class TestToRaster:
 
 
 class TestXY:
-    def test_points(
-        self, points_gdf: GeoDataFrame, points_gdf_x: list, points_gdf_y: list
-    ):
+    def test_points(self, points_gdf: GeoDataFrame, points_gdf_x, points_gdf_y):
         feature = FeatureCollection(points_gdf)
         feature.xy()
         assert all(np.isclose(feature.feature["y"].values, points_gdf_y, rtol=0.000001))
         assert all(np.isclose(feature.feature["x"].values, points_gdf_x, rtol=0.000001))
+
+    def test_multi_points(
+        self, multi_points_gdf: GeoDataFrame, multi_points_gdf_x, multi_points_gdf_y
+    ):
+        feature = FeatureCollection(multi_points_gdf)
+        feature.xy()
+        assert all(
+            np.isclose(
+                feature.feature.loc[0, "y"], multi_points_gdf_y[0][0], rtol=0.000001
+            )
+        )
+        assert all(
+            np.isclose(
+                feature.feature.loc[0, "x"], multi_points_gdf_x[0][0], rtol=0.000001
+            )
+        )
 
     def test_polygons(
         self, polygons_gdf: GeoDataFrame, polygon_gdf_x: list, polygon_gdf_y: list
@@ -222,3 +237,30 @@ class TestXY:
         assert all(
             np.isclose(feature.feature.loc[0, "x"], polygon_gdf_x, rtol=0.000001)
         )
+
+
+class Test_multi_geom_handler:
+    def test_multi_points_with_multiple_point(
+        self, multi_point_wkt: str, point_coords: list
+    ):
+        geom = wkt.loads(multi_point_wkt)
+        coord_type = "x"
+        gtype = "MultiPoint"
+        res = FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
+        assert all(np.isclose(res, [point_coords[0], point_coords[0]], rtol=0.00001))
+
+    def test_multi_points_with_one_point(
+        self, multi_point_one_point_wkt: str, point_coords: list
+    ):
+        geom = wkt.loads(multi_point_one_point_wkt)
+        coord_type = "x"
+        gtype = "MultiPoint"
+        res = FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
+        assert np.isclose(res[0], point_coords[0], rtol=0.00001)
+
+    def test_multi_polygons(self, multi_polygon_wkt: str, multi_polygon_coords_x: list):
+        geom = wkt.loads(multi_polygon_wkt)
+        coord_type = "x"
+        gtype = "MultiPolygon"
+        res = FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
+        assert res == multi_polygon_coords_x

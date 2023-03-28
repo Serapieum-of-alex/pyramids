@@ -98,6 +98,38 @@ def points_gdf_y() -> list:
 
 
 @pytest.fixture(scope="module")
+def multi_points_gdf_x() -> list:
+    return [
+        [455243.8492871],
+        [449352.86247269],
+        [457010.31748332],
+        [453309.62867196],
+        [449940.67615038],
+        [450021.25667651],
+        [465841.24623257],
+        [462389.17611447],
+        [447490.01431479],
+        [468536.80929769],
+    ]
+
+
+@pytest.fixture(scope="module")
+def multi_points_gdf_y() -> list:
+    return [
+        [503677.19079414],
+        [504100.0349884],
+        [501998.91152385],
+        [506194.27378391],
+        [502003.00927511],
+        [496216.196409],
+        [487569.94865028],
+        [485726.42324731],
+        [486573.17656299],
+        [492600.7403421],
+    ]
+
+
+@pytest.fixture(scope="module")
 def polygons_gdf() -> GeoDataFrame:
     return gpd.read_file("tests/data/geometries/polygons.geojson")
 
@@ -124,3 +156,33 @@ def polygon_gdf_x() -> list:
         462651.74958306097,
         460717.3717217822,
     ]
+
+
+@pytest.fixture(scope="module")
+def multi_points_gdf() -> GeoDataFrame:
+    return gpd.read_file("tests/data/geometries/multi-points.geojson")
+
+
+@pytest.fixture(scope="module")
+def point_coords() -> list:
+    return [455243.8492871, 503677.19079413556]
+
+
+@pytest.fixture(scope="module")
+def multi_point_wkt(point_coords: list) -> str:
+    return f"MULTIPOINT (({point_coords[0]} {point_coords[1]}), ({point_coords[0]} {point_coords[1]}))"
+
+
+@pytest.fixture(scope="module")
+def multi_point_one_point_wkt(point_coords: list) -> str:
+    return f"MULTIPOINT ({point_coords[0]} {point_coords[1]})"
+
+
+@pytest.fixture(scope="module")
+def multi_polygon_wkt() -> str:
+    return "MULTIPOLYGON(((40 40, 20 45, 45 30, 40 40)), ((20 35, 10 30, 10 10, 30 5, 45 20, 20 35), (30 20, 20 15, 20 25, 30 20)))"
+
+
+@pytest.fixture(scope="module")
+def multi_polygon_coords_x() -> List:
+    return [[40.0, 20.0, 45.0, 40.0], [20.0, 10.0, 10.0, 30.0, 45.0, 20.0]]

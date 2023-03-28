@@ -21,8 +21,10 @@ from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr, osr, gdal
 from osgeo.ogr import DataSource
 from pyproj import Proj, transform
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point, Polygon, LineString
 from shapely.geometry.multipolygon import MultiPolygon
+from shapely.geometry.multipoint import MultiPoint
+from shapely.geometry.multilinestring import MultiLineString
 from pyramids.utils import Catalog
 from pyramids.errors import DriverNotExistError
 
@@ -488,7 +490,7 @@ class FeatureCollection:
         return epsg
 
     @staticmethod
-    def _get_xy_coords(geometry, coord_type: str):
+    def _get_xy_coords(geometry, coord_type: str) -> List:
         """getXYCoords.
 
            Returns either x or y coordinates from  geometry coordinate sequence.
@@ -507,12 +509,14 @@ class FeatureCollection:
             contains x coordinates or y coordinates of all edges of the shapefile
         """
         if coord_type == "x":
-            return geometry.coords.xy[0]
+            coords = geometry.coords.xy[0].tolist()
         elif coord_type == "y":
-            return geometry.coords.xy[1]
+            coords = geometry.coords.xy[1].tolist()
+
+        return coords
 
     @staticmethod
-    def _get_point_coords(geometry, coord_type: str):
+    def _get_point_coords(geometry: Point, coord_type: str) -> Union[float, int]:
         """GetPointCoords.
 
         Returns Coordinates of Point object.
@@ -530,12 +534,14 @@ class FeatureCollection:
             contains x coordinates or y coordinates of all edges of the shapefile
         """
         if coord_type == "x":
-            return geometry.x
+            coord = geometry.x
         if coord_type == "y":
-            return geometry.y
+            coord = geometry.y
+
+        return coord
 
     @staticmethod
-    def _get_line_coords(geometry, coord_type: str):
+    def _get_line_coords(geometry: LineString, coord_type: str):
         """getLineCoords.
 
         Returns Coordinates of Linestring object.
@@ -555,7 +561,7 @@ class FeatureCollection:
         return FeatureCollection._get_xy_coords(geometry, coord_type)
 
     @staticmethod
-    def _get_poly_coords(geometry, coord_type: str):
+    def _get_poly_coords(geometry: Polygon, coord_type: str) -> List:
         """getPolyCoords.
 
             Returns Coordinates of Polygon using the Exterior of the Polygon.
@@ -578,14 +584,14 @@ class FeatureCollection:
         return FeatureCollection._get_xy_coords(ext, coord_type)
 
     @staticmethod
-    def _explode(dataframe_row):
+    def _explode(multi_polygon: MultiPolygon):
         """Explode.
 
         explode function converts the multipolygon into a polygons
 
         Parameters
         ----------
-        dataframe_row: [data frame series]
+        multi_polygon: [data frame series]
             the dataframe rows that its geometry type is Multipolygon
 
         Returns
@@ -593,17 +599,21 @@ class FeatureCollection:
         outdf: [dataframe]
             the dataframe of the created polygons
         """
-        row = dataframe_row
-        outdf = gpd.GeoDataFrame()
-        multdf = gpd.GeoDataFrame()
-        recs = len(row)
-        multdf = multdf.append([row] * recs, ignore_index=True)
-        for geom in range(recs):
-            multdf.loc[geom, "geometry"] = row.geometry[geom]
-        outdf = outdf.append(multdf, ignore_index=True)
+        # outdf = gpd.GeoDataFrame()
+        # multdf = gpd.GeoDataFrame()
+        # multdf["geometry"] = list(multi_polygon)
+        # n_rows = len(multi_polygon)
+        # multdf = multdf.append([multi_polygon] * n_rows, ignore_index=True)
+        # for i, poly in enumerate(multi_polygon):
+        #     multdf.loc[i, "geometry"] = poly
+        return list(multi_polygon)
 
     @staticmethod
-    def _multi_geom_handler(multi_geometry, coord_type: str, geom_type: str):
+    def _multi_geom_handler(
+        multi_geometry: Union[MultiPolygon, MultiPoint, MultiLineString],
+        coord_type: str,
+        geom_type: str,
+    ):
         """multiGeomHandler.
 
         Function for handling multi-geometries. Can be MultiPoint, MultiLineString or MultiPolygon.
@@ -625,66 +635,22 @@ class FeatureCollection:
         array: [ndarray]
             contains x coordinates or y coordinates of all edges of the shapefile
         """
+        coord_arrays = []
         if geom_type == "MultiPoint" or geom_type == "MultiLineString":
             for i, part in enumerate(multi_geometry):
-                # On the first part of the Multi-geometry initialize the coord_array (np.array)
-                if i == 0:
-                    if geom_type == "MultiPoint":
-                        coord_arrays = FeatureCollection._get_point_coords(
-                            part, coord_type
-                        )
-                    elif geom_type == "MultiLineString":
-                        coord_arrays = FeatureCollection._get_line_coords(
-                            part, coord_type
-                        )
-                else:
-                    if geom_type == "MultiPoint":
-                        coord_arrays = np.concatenate(
-                            [
-                                coord_arrays,
-                                FeatureCollection._get_point_coords(part, coord_type),
-                            ]
-                        )
-                    elif geom_type == "MultiLineString":
-                        coord_arrays = np.concatenate(
-                            [
-                                coord_arrays,
-                                FeatureCollection._get_line_coords(part, coord_type),
-                            ]
-                        )
-
+                if geom_type == "MultiPoint":
+                    vals = FeatureCollection._get_point_coords(part, coord_type)
+                    coord_arrays.append(vals)
+                elif geom_type == "MultiLineString":
+                    vals = (FeatureCollection._get_line_coords(part, coord_type),)
+                    coord_arrays.append(vals)
         elif geom_type == "MultiPolygon":
             for i, part in enumerate(multi_geometry):
-                if i == 0:
-                    multi_2_single = FeatureCollection._explode(multi_geometry)
-                    for j in range(len(multi_2_single)):
-                        if j == 0:
-                            coord_arrays = FeatureCollection._get_poly_coords(
-                                multi_2_single[j], coord_type
-                            )
-                        else:
-                            coord_arrays = np.concatenate(
-                                [
-                                    coord_arrays,
-                                    FeatureCollection._get_poly_coords(
-                                        multi_2_single[j], coord_type
-                                    ),
-                                ]
-                            )
-                else:
-                    # explode the multipolygon into polygons
-                    multi_2_single = FeatureCollection._explode(part)
-                    for j in range(len(multi_2_single)):
-                        coord_arrays = np.concatenate(
-                            [
-                                coord_arrays,
-                                FeatureCollection._get_poly_coords(
-                                    multi_2_single[j], coord_type
-                                ),
-                            ]
-                        )
-            # return the coordinates
-            return coord_arrays
+                # multi_2_single = FeatureCollection._explode(part) if part.type.startswith("MULTI") else part
+                vals = FeatureCollection._get_poly_coords(part, coord_type)
+                coord_arrays.append(vals)
+        # for multigeometres that has one geometry inside 'MULTIPOINT (1 1)' the returned value is single not a list
+        return coord_arrays
 
     @staticmethod
     def _get_coords(row, geom_col: str, coord_type: str):
@@ -724,7 +690,7 @@ class FeatureCollection:
             return 999
         # Multi geometries
         else:
-            return list(FeatureCollection._multi_geom_handler(geom, coord_type, gtype))
+            return FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
 
     @staticmethod
     def get_features(gdf):
