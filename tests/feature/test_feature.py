@@ -7,7 +7,6 @@ from osgeo import ogr
 from osgeo.gdal import Dataset
 from osgeo.ogr import DataSource
 from shapely.geometry.polygon import Polygon
-from shapely import wkt
 
 from pyramids.featurecollection import FeatureCollection
 from pyramids.dataset import Dataset
@@ -241,26 +240,33 @@ class TestXY:
 
 class Test_multi_geom_handler:
     def test_multi_points_with_multiple_point(
-        self, multi_point_wkt: str, point_coords: list
+        self, multi_point_geom, point_coords: list
     ):
-        geom = wkt.loads(multi_point_wkt)
         coord_type = "x"
         gtype = "MultiPoint"
-        res = FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
+        res = FeatureCollection._multi_geom_handler(multi_point_geom, coord_type, gtype)
         assert all(np.isclose(res, [point_coords[0], point_coords[0]], rtol=0.00001))
 
     def test_multi_points_with_one_point(
-        self, multi_point_one_point_wkt: str, point_coords: list
+        self, multi_point_one_point_geom, point_coords: list
     ):
-        geom = wkt.loads(multi_point_one_point_wkt)
         coord_type = "x"
         gtype = "MultiPoint"
-        res = FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
+        res = FeatureCollection._multi_geom_handler(
+            multi_point_one_point_geom, coord_type, gtype
+        )
         assert np.isclose(res[0], point_coords[0], rtol=0.00001)
 
-    def test_multi_polygons(self, multi_polygon_wkt: str, multi_polygon_coords_x: list):
-        geom = wkt.loads(multi_polygon_wkt)
+    def test_multi_polygons(self, multi_polygon_geom, multi_polygon_coords_x: list):
         coord_type = "x"
         gtype = "MultiPolygon"
-        res = FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
+        res = FeatureCollection._multi_geom_handler(
+            multi_polygon_geom, coord_type, gtype
+        )
         assert res == multi_polygon_coords_x
+
+    def test_multi_linestring(self, multi_line_geom, multi_linestring_coords_x: list):
+        coord_type = "x"
+        gtype = "MULTILINESTRING"
+        res = FeatureCollection._multi_geom_handler(multi_line_geom, coord_type, gtype)
+        assert res == multi_linestring_coords_x

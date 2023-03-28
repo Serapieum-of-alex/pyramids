@@ -4,9 +4,8 @@ from typing import List, Tuple
 import geopandas as gpd
 import pytest
 from geopandas.geodataframe import GeoDataFrame
-
-# import datetime as dt
 from osgeo import ogr
+from shapely import wkt
 from osgeo.ogr import DataSource
 
 
@@ -169,20 +168,35 @@ def point_coords() -> list:
 
 
 @pytest.fixture(scope="module")
-def multi_point_wkt(point_coords: list) -> str:
-    return f"MULTIPOINT (({point_coords[0]} {point_coords[1]}), ({point_coords[0]} {point_coords[1]}))"
+def multi_point_geom(point_coords: list) -> str:
+    return wkt.loads(
+        f"MULTIPOINT (({point_coords[0]} {point_coords[1]}), ({point_coords[0]} {point_coords[1]}))"
+    )
 
 
 @pytest.fixture(scope="module")
-def multi_point_one_point_wkt(point_coords: list) -> str:
-    return f"MULTIPOINT ({point_coords[0]} {point_coords[1]})"
+def multi_point_one_point_geom(point_coords: list):
+    return wkt.loads(f"MULTIPOINT ({point_coords[0]} {point_coords[1]})")
 
 
 @pytest.fixture(scope="module")
-def multi_polygon_wkt() -> str:
-    return "MULTIPOLYGON(((40 40, 20 45, 45 30, 40 40)), ((20 35, 10 30, 10 10, 30 5, 45 20, 20 35), (30 20, 20 15, 20 25, 30 20)))"
+def multi_polygon_geom():
+    return wkt.loads(
+        "MULTIPOLYGON(((40 40, 20 45, 45 30, 40 40)), ((20 35, 10 30, 10 10, 30 5, 45 20, 20 35), "
+        "(30 20, 20 15, 20 25, 30 20)))"
+    )
 
 
 @pytest.fixture(scope="module")
 def multi_polygon_coords_x() -> List:
     return [[40.0, 20.0, 45.0, 40.0], [20.0, 10.0, 10.0, 30.0, 45.0, 20.0]]
+
+
+@pytest.fixture(scope="module")
+def multi_line_geom():
+    return wkt.loads("MULTILINESTRING ((30 20, 45 40, 10 40), (15 5, 40 10, 10 20))")
+
+
+@pytest.fixture(scope="module")
+def multi_linestring_coords_x() -> List:
+    return [[30.0, 45.0, 10.0], [15.0, 40.0, 10.0]]

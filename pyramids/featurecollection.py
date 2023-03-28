@@ -636,15 +636,16 @@ class FeatureCollection:
             contains x coordinates or y coordinates of all edges of the shapefile
         """
         coord_arrays = []
-        if geom_type == "MultiPoint" or geom_type == "MultiLineString":
+        geom_type = geom_type.lower()
+        if geom_type == "multipoint" or geom_type == "multilinestring":
             for i, part in enumerate(multi_geometry):
-                if geom_type == "MultiPoint":
+                if geom_type == "multipoint":
                     vals = FeatureCollection._get_point_coords(part, coord_type)
                     coord_arrays.append(vals)
-                elif geom_type == "MultiLineString":
-                    vals = (FeatureCollection._get_line_coords(part, coord_type),)
+                elif geom_type == "multilinestring":
+                    vals = FeatureCollection._get_line_coords(part, coord_type)
                     coord_arrays.append(vals)
-        elif geom_type == "MultiPolygon":
+        elif geom_type == "multipolygon":
             for i, part in enumerate(multi_geometry):
                 # multi_2_single = FeatureCollection._explode(part) if part.type.startswith("MULTI") else part
                 vals = FeatureCollection._get_poly_coords(part, coord_type)
