@@ -201,43 +201,6 @@ class TestToRaster:
         assert values.shape[0] == 6400
 
 
-class TestXY:
-    def test_points(self, points_gdf: GeoDataFrame, points_gdf_x, points_gdf_y):
-        feature = FeatureCollection(points_gdf)
-        feature.xy()
-        assert all(np.isclose(feature.feature["y"].values, points_gdf_y, rtol=0.000001))
-        assert all(np.isclose(feature.feature["x"].values, points_gdf_x, rtol=0.000001))
-
-    def test_multi_points(
-        self, multi_points_gdf: GeoDataFrame, multi_points_gdf_x, multi_points_gdf_y
-    ):
-        feature = FeatureCollection(multi_points_gdf)
-        feature.xy()
-        assert all(
-            np.isclose(
-                feature.feature.loc[0, "y"], multi_points_gdf_y[0][0], rtol=0.000001
-            )
-        )
-        assert all(
-            np.isclose(
-                feature.feature.loc[0, "x"], multi_points_gdf_x[0][0], rtol=0.000001
-            )
-        )
-
-    def test_polygons(
-        self, polygons_gdf: GeoDataFrame, polygon_gdf_x: list, polygon_gdf_y: list
-    ):
-        feature = FeatureCollection(polygons_gdf)
-        feature.xy()
-        assert isinstance(feature.feature.loc[0, "y"], list)
-        assert all(
-            np.isclose(feature.feature.loc[0, "y"], polygon_gdf_y, rtol=0.000001)
-        )
-        assert all(
-            np.isclose(feature.feature.loc[0, "x"], polygon_gdf_x, rtol=0.000001)
-        )
-
-
 class Test_multi_geom_handler:
     def test_multi_points_with_multiple_point(
         self, multi_point_geom, point_coords: list
@@ -270,3 +233,67 @@ class Test_multi_geom_handler:
         gtype = "MULTILINESTRING"
         res = FeatureCollection._multi_geom_handler(multi_line_geom, coord_type, gtype)
         assert res == multi_linestring_coords_x
+
+
+class TestXY:
+    def test_points(self, points_gdf: GeoDataFrame, points_gdf_x, points_gdf_y):
+        feature = FeatureCollection(points_gdf)
+        feature.xy()
+        assert all(np.isclose(feature.feature["y"].values, points_gdf_y, rtol=0.000001))
+        assert all(np.isclose(feature.feature["x"].values, points_gdf_x, rtol=0.000001))
+
+    def test_multi_points(
+        self, multi_points_gdf: GeoDataFrame, multi_points_gdf_x, multi_points_gdf_y
+    ):
+        feature = FeatureCollection(multi_points_gdf)
+        feature.xy()
+        assert all(
+            np.isclose(
+                feature.feature.loc[0, "y"], multi_points_gdf_y[0][0], rtol=0.000001
+            )
+        )
+        assert all(
+            np.isclose(
+                feature.feature.loc[0, "x"], multi_points_gdf_x[0][0], rtol=0.000001
+            )
+        )
+
+    def test_multi_points_2(self, multi_points_gdf_2: GeoDataFrame, point_coords_2):
+        feature = FeatureCollection(multi_points_gdf_2)
+        feature.xy()
+        assert feature.feature.loc[0, "x"] == [
+            point_coords_2[0][0],
+            point_coords_2[1][0],
+        ]
+        assert feature.feature.loc[0, "y"] == [
+            point_coords_2[0][1],
+            point_coords_2[1][1],
+        ]
+
+    def test_polygons(
+        self, polygons_gdf: GeoDataFrame, polygon_gdf_x: list, polygon_gdf_y: list
+    ):
+        feature = FeatureCollection(polygons_gdf)
+        feature.xy()
+        assert isinstance(feature.feature.loc[0, "y"], list)
+        assert all(
+            np.isclose(feature.feature.loc[0, "y"], polygon_gdf_y, rtol=0.000001)
+        )
+        assert all(
+            np.isclose(feature.feature.loc[0, "x"], polygon_gdf_x, rtol=0.000001)
+        )
+
+    def test_multi_polygons(
+        self,
+        multi_polygon_gdf: GeoDataFrame,
+        polygon_gdf_x: list,
+        multi_polygon_gdf_coords_x: list,
+    ):
+        feature = FeatureCollection(multi_polygon_gdf)
+        feature.xy()
+        assert isinstance(feature.feature.loc[0, "x"], list)
+        assert all(
+            np.isclose(
+                feature.feature.loc[0, "x"], multi_polygon_gdf_coords_x, rtol=0.000001
+            )
+        )

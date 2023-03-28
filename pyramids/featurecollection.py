@@ -679,15 +679,15 @@ class FeatureCollection:
         # get geometry object
         geom = row[geom_col]
         # check the geometry type
-        gtype = geom.geom_type
+        gtype = geom.geom_type.lower()
         # "Normal" geometries
-        if gtype == "Point":
+        if gtype == "point":
             return FeatureCollection._get_point_coords(geom, coord_type)
-        elif gtype == "LineString":
+        elif gtype == "linestring":
             return list(FeatureCollection._get_line_coords(geom, coord_type))
-        elif gtype == "Polygon":
+        elif gtype == "polygon":
             return list(FeatureCollection._get_poly_coords(geom, coord_type))
-        elif gtype == "MultiPolygon":
+        elif gtype == "multipolygon":
             return 999
         # Multi geometries
         else:
@@ -725,7 +725,7 @@ class FeatureCollection:
         for idx, row in self._feature.iterrows():
             if isinstance(row.geometry, MultiPolygon):
                 # create a new geodataframe
-                multdf = gpd.GeoDataFrame()  # columns=indf.columns
+                multdf = gpd.GeoDataFrame()
                 # get number of the polygons inside the multipolygon class
                 recs = len(row.geometry)
                 multdf = multdf.append([row] * recs, ignore_index=True)
@@ -743,7 +743,8 @@ class FeatureCollection:
         )
 
         to_delete = np.where(self._feature["x"] == 999)[0]
-        self._feature = self._feature.drop(to_delete)
+        self._feature.drop(to_delete, inplace=True)
+        self._feature.reset_index(drop=True, inplace=True)
 
     @staticmethod
     def create_polygon(coords: List[Tuple[float, float]], wkt: bool = False):

@@ -159,12 +159,24 @@ def polygon_gdf_x() -> list:
 
 @pytest.fixture(scope="module")
 def multi_points_gdf() -> GeoDataFrame:
+    """the geometry type is multi point but each geometry has only one point inside"""
     return gpd.read_file("tests/data/geometries/multi-points.geojson")
+
+
+@pytest.fixture(scope="module")
+def multi_points_gdf_2() -> GeoDataFrame:
+    """multipoint geometry type and there is multiple points inside"""
+    return gpd.read_file("tests/data/geometries/multi-points-2.geojson")
 
 
 @pytest.fixture(scope="module")
 def point_coords() -> list:
     return [455243.8492871, 503677.19079413556]
+
+
+@pytest.fixture(scope="module")
+def point_coords_2() -> list:
+    return [[100, 0], [101, 1]]
 
 
 @pytest.fixture(scope="module")
@@ -200,3 +212,14 @@ def multi_line_geom():
 @pytest.fixture(scope="module")
 def multi_linestring_coords_x() -> List:
     return [[30.0, 45.0, 10.0], [15.0, 40.0, 10.0]]
+
+
+@pytest.fixture(scope="module")
+def multi_polygon_gdf() -> GeoDataFrame:
+    """multipoint geometry type and there is multiple points inside"""
+    return gpd.read_file("tests/data/geometries/multi-polygons.geojson")
+
+
+@pytest.fixture(scope="module")
+def multi_polygon_gdf_coords_x() -> List:
+    return [102.0, 103.0, 103.0, 102.0, 102.0]
