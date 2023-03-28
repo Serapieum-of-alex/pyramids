@@ -8,7 +8,6 @@ gpd.io.file._EXTENSION_TO_DRIVER
 import os
 import tempfile
 import uuid
-import json
 import shutil
 import warnings
 from typing import List, Tuple, Union
@@ -693,11 +692,6 @@ class FeatureCollection:
         else:
             return FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
 
-    @staticmethod
-    def get_features(gdf):
-        """Function to parse features from GeoDataFrame in such a manner that rasterio wants them."""
-        return [json.loads(gdf.to_json())["features"][0]["geometry"]]
-
     def xy(self):
         """XY.
 
@@ -713,13 +707,6 @@ class FeatureCollection:
             column contains the y coordinates of all the votices of the geometry
             object in each rows
         """
-        # get the x & y coordinates for all types of geometries except multi_polygon
-        # self._feature["x"] = self._feature.apply(
-        #     self._get_coords, geom_col="geometry", coord_type="x", axis=1
-        # )
-        # self._feature["y"] = self._feature.apply(
-        #     self._get_coords, geom_col="geometry", coord_type="y", axis=1
-        # )
         # if the Geometry of type MultiPolygon
         # explode the multi_polygon into polygon
         for idx, row in self._feature.iterrows():
