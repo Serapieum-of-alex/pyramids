@@ -209,3 +209,16 @@ class TestXY:
         feature.xy()
         assert all(np.isclose(feature.feature["y"].values, points_gdf_y, rtol=0.000001))
         assert all(np.isclose(feature.feature["x"].values, points_gdf_x, rtol=0.000001))
+
+    def test_polygons(
+        self, polygons_gdf: GeoDataFrame, polygon_gdf_x: list, polygon_gdf_y: list
+    ):
+        feature = FeatureCollection(polygons_gdf)
+        feature.xy()
+        assert isinstance(feature.feature.loc[0, "y"], list)
+        assert all(
+            np.isclose(feature.feature.loc[0, "y"], polygon_gdf_y, rtol=0.000001)
+        )
+        assert all(
+            np.isclose(feature.feature.loc[0, "x"], polygon_gdf_x, rtol=0.000001)
+        )

@@ -95,3 +95,32 @@ def points_gdf_y() -> list:
         476997.17491253,
         473979.83130823,
     ]
+
+
+@pytest.fixture(scope="module")
+def polygons_gdf() -> GeoDataFrame:
+    return gpd.read_file("tests/data/geometries/polygons.geojson")
+
+
+@pytest.fixture(scope="module")
+def polygon_gdf_y() -> list:
+    return [
+        509964.21257697075,
+        509631.2332886145,
+        507701.8140655741,
+        506861.91622624977,
+        507531.1843646694,
+        509964.21257697075,
+    ]
+
+
+@pytest.fixture(scope="module")
+def polygon_gdf_x() -> list:
+    return [
+        460717.3717217822,
+        456004.5874004898,
+        456929.2331169145,
+        459285.1699671757,
+        462651.74958306097,
+        460717.3717217822,
+    ]
