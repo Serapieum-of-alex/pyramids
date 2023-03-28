@@ -16,11 +16,11 @@ class NC:
 
     @staticmethod
     def getNCDetails(nc: Dataset, var: str = None, time_var_name: str = None) -> Tuple:
-        """ncDetails takes a netcdf Dataset and return the geottansform data of the bottom left corner.
+        """ncDetails takes a netcdf Datacube and return the geottansform data of the bottom left corner.
 
         Parameters
         ----------
-        nc : [netcdf Dataset]
+        nc : [netcdf Datacube]
             netcdf object .
         var : [str], optional
             the variable you want to read from the netcdf file if None is given the
@@ -149,11 +149,11 @@ class NC:
 
     @staticmethod
     def get_time(nc, time_var_name: str = None) -> np.ndarray:
-        """Get the time variable from the netcdf Dataset.
+        """Get the time variable from the netcdf Datacube.
 
         Parameters
         ----------
-        nc: [Dataset]
+        nc: [Datacube]
             netcdf object .
         time_var_name: [str]
             name of the time variable in the dataset, as it does not have a unified name. the function will check

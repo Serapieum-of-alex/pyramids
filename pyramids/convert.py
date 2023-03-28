@@ -5,14 +5,14 @@ import numpy as np
 from osgeo import gdal
 
 from pyramids.netcdf import NC
-from pyramids.raster import Raster
+from pyramids.dataset import Dataset
 
 
 class Convert:
     """Convert data from one form to another."""
 
     def __init__(self):
-        # self.vector_catalog: Dict[str, str] = Vector.getCatalog()
+        # self.vector_catalog: Dict[str, str] = Feature.getCatalog()
         pass
 
     @staticmethod
@@ -146,12 +146,12 @@ class Convert:
                     ["COMPRESS=LZW"],
                 )
 
-            sr = Raster._create_sr_from_epsg(epsg=epsg)
+            sr = Dataset._create_sr_from_epsg(epsg=epsg)
             # set the geotransform
             dst.SetGeoTransform(geo)
             # set the projection
             dst.SetProjection(sr.ExportToWkt())
-            dst = Raster._set_no_data_value(dst)
+            dst = Dataset._set_no_data_value(dst)
             dst.GetRasterBand(1).WriteArray(data)
             dst.FlushCache()
             dst = None

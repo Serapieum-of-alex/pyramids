@@ -3,7 +3,7 @@ import sys
 
 from osgeo import gdal
 
-from pyramids.catchment import Catchment as GC
+from pyramids.dem import DEM as GC
 
 # Path = "F:/04Private/990110182315.csv"  # Book1.csv
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"

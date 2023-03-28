@@ -1,4 +1,4 @@
-from pyramids.raster import Raster
+from pyramids.dataset import Dataset
 from pyramids.convert import Convert
 import geopandas as gpd
 
@@ -13,7 +13,7 @@ single_band_raster = f"tests/mo/raster_to_df/oneband.tif"
 vector_mask = Convert.polygonToRaster(
     raster_wgs84_path, vector_path, rasterized_vector_path, vector_field="value"
 )
-src = Raster.read(raster_wgs84_path)
+src = Dataset.read_file(raster_wgs84_path)
 arr = src.ReadAsArray()
 tile_arr = src.ReadAsArray(xoff=0, yoff=0, xsize=58, ysize=39)
 # out_df = Convert.rasterToDataframe(raster_wgs84_path, vector_path=vector_path)

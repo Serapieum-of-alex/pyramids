@@ -2,7 +2,7 @@ import numpy as np
 from osgeo.gdal import Dataset
 from pandas import DataFrame
 
-from pyramids.catchment import Catchment as GC
+from pyramids.dem import DEM
 
 
 def test_nearest_cell(
@@ -12,7 +12,7 @@ def test_nearest_cell(
 ):
     points["row"] = np.nan
     points["col"] = np.nan
-    loc = GC.nearestCell(src, points[["x", "y"]][:])
+    loc = DEM.nearestCell(src, points[["x", "y"]][:])
     assert ["cell_row", "cell_col"] == loc.columns.to_list()
     assert (
         loc.loc[:, "cell_row"].to_list()

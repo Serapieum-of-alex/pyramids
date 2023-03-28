@@ -10,7 +10,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from osgeo import gdal, osr
 
-from pyramids.raster import Raster
+from pyramids.dataset import Dataset
 
 #%% directory of the examples folder
 "chenge the current path to the examples directory inside the repo"
@@ -26,7 +26,7 @@ RasterA = gdal.Open(RasterApath)
 RasterB = gdal.Open(RasterBpath)
 #%%
 # get the array and the nodatavalue in the raster
-RasterA_arr, nodataval = Raster._getRasterData(RasterA, band=1)
+RasterA_arr, nodataval = Dataset._getRasterData(RasterA, band=1)
 
 plt.imshow(RasterA_arr, cmap="CMRmap", vmax=RasterA_arr.max(), vmin=RasterA_arr.min())
 plt.colorbar()
@@ -36,7 +36,7 @@ RasterA_proj = RasterA.GetProjection()
 RasterA_epsg = osr.SpatialReference(wkt=RasterA_proj)
 
 to_epsg = int(RasterA_epsg.GetAttrValue("AUTHORITY", 1))
-RasterB_reprojected = Raster.projectRaster(
+RasterB_reprojected = Dataset.projectRaster(
     RasterB, to_epsg, resample_technique="cubic", option=1
 )
 # GET THE GEOTRANSFORM
@@ -60,13 +60,13 @@ RasterB_reprojected_epsg = osr.SpatialReference(wkt=RasterB_reprojected_proj)
 
 RasterB_reprojected_array = RasterB_reprojected.ReadAsArray()
 #%% save the raster
-Raster.saveRaster(RasterB_reprojected, SaveTo)
+Dataset.saveRaster(RasterB_reprojected, SaveTo)
 #%%
-RasterB_reprojected = Raster.projectRaster(
+RasterB_reprojected = Dataset.projectRaster(
     RasterB,
     int(RasterA_epsg.GetAttrValue("AUTHORITY", 1)),
     resample_technique="cubic",
     option=2,
 )
 SaveTo = "data/GIS/MSWEP_1979010100_reprojected2.tif"
-Raster.saveRaster(RasterB_reprojected, SaveTo)
+Dataset.saveRaster(RasterB_reprojected, SaveTo)

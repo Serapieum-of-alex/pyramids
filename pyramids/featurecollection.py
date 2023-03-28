@@ -29,10 +29,10 @@ from pyramids.errors import DriverNotExistError
 CATALOG = Catalog(raster_driver=False)
 
 
-class Feature:
-    """Feature.
+class FeatureCollection:
+    """FeatureCollection.
 
-    Feature class contains different methods to deal with shapefiles
+    FeatureCollection class contains different methods to deal with shapefiles
 
     Methods:
         1- GetXYCoords
@@ -54,15 +54,13 @@ class Feature:
         17- WriteShapefile
     """
 
-    def __init__(self, gdf: Union[GeoDataFrame, DataSource], engine: str = "geopandas"):
+    def __init__(self, gdf: GeoDataFrame):
         # read the drivers catalog
         self._feature = gdf
-        self._engine = engine
 
     def __str__(self):
         message = f"""
             Feature: {self.feature}
-            Engine: {self.engine}
         """
         # EPSG: {self.epsg}
         # Variables: {self.variables}
@@ -79,39 +77,34 @@ class Feature:
         return self._feature
 
     @property
-    def engine(self):
-        """GeoDataFrame or DataSource"""
-        return self._engine
-
-    @property
     def epsg(self):
         """EPSG number"""
         return self._get_epsg()
 
+    @property
+    def bound(self):
+        """bounding coordinates"""
+        return self.feature.bounds.values[0]
+
     @classmethod
-    def read_file(cls, path: str, engine: str = "geopandas", read_only: bool = True):
+    def read_file(cls, path: str):
         """Open a vector dataset using OGR or GeoPandas.
 
         Parameters
         ----------
         path : str
             Path to vector file.
-        engine : [str]
-            Set to 'geopandas' to open with geopandas, else use ogr.
-        read_only : bool
-            If opening with OGR, set to False to open in "update" mode.
 
         Returns
         -------
         GeoDataFrame if ``with_geopandas`` else OGR datsource.
         """
-        if engine == "geopandas":
-            ds = gpd.read_file(path)
-        else:
-            update = False if read_only else True
-            ds = ogr.OpenShared(path, update=update)
-            # ds = gdal.OpenEx(path)
-        return cls(ds, engine)
+        gdf = gpd.read_file(path)
+
+        # update = False if read_only else True
+        # ds = ogr.OpenShared(path, update=update)
+        # # ds = gdal.OpenEx(path)
+        return cls(gdf)
 
     @staticmethod
     def create_ds(driver: str = "geojson", path: str = None) -> Union[DataSource, None]:
@@ -137,7 +130,7 @@ class Feature:
         if driver == "memory":
             path = "memData"
 
-        ds = Feature._create_driver(gdal_name, path)
+        ds = FeatureCollection._create_driver(gdal_name, path)
         return ds
 
     @staticmethod
@@ -165,7 +158,7 @@ class Feature:
         return ogr.GetDriverByName("Memory").CopyDataSource(ds, name)
 
     def to_file(self, path: str, driver: str = "geojson"):
-        """Save Feature to disk.
+        """Save FeatureCollection to disk.
 
             Currently saves ogr DataSource to disk
 
@@ -202,7 +195,7 @@ class Feature:
         ds = ogr.Open(self.feature.to_json())
 
         if inplace:
-            self.__init__(ds, engine="ogr")
+            self.__init__(ds)
             ds = None
         return ds
 
@@ -218,10 +211,10 @@ class Feature:
     #     new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
     #     if isinstance(self.feature, GeoDataFrame):
     #         self.feature.to_file(new_vector_path)
-    #         ds = Feature.read_file(new_vector_path, engine="ogr")
-    #         ds = Feature._copy_driver_to_memory(ds.feature)
+    #         ds = FeatureCollection.read_file(new_vector_path, engine="ogr")
+    #         ds = FeatureCollection._copy_driver_to_memory(ds.feature)
     #     else:
-    #         ds = Feature._copy_driver_to_memory(self.feature)
+    #         ds = FeatureCollection._copy_driver_to_memory(self.feature)
     #
     #     if inplace:
     #         self.__init__(ds, engine="ogr")
@@ -263,7 +256,7 @@ class Feature:
 
         shutil.rmtree(temp_dir, ignore_errors=True)
         if inplace:
-            self.__init__(gdf, engine="geopandas")
+            self.__init__(gdf)
             gdf = None
 
         return gdf
@@ -443,10 +436,10 @@ class Feature:
         >>> from pyramids.dataset import Dataset
         >>> src = Dataset.read_file("path/to/raster.tif")
         >>> prj = src.GetProjection()
-        >>> epsg = Feature.get_epsg_from_Prj(prj)
+        >>> epsg = FeatureCollection.get_epsg_from_Prj(prj)
         """
         if prj != "":
-            srs = Feature._create_sr_from_proj(prj)
+            srs = FeatureCollection._create_sr_from_proj(prj)
             response = srs.AutoIdentifyEPSG()
             if response == 0:
                 epsg = int(srs.GetAuthorityCode(None))
@@ -484,9 +477,9 @@ class Feature:
         """
         vector_obj = self.feature
         if isinstance(vector_obj, ogr.DataSource):
-            epsg = Feature._get_ds_epsg(vector_obj)
+            epsg = FeatureCollection._get_ds_epsg(vector_obj)
         elif isinstance(vector_obj, gpd.GeoDataFrame):
-            epsg = Feature._get_gdf_epsg(vector_obj)
+            epsg = FeatureCollection._get_gdf_epsg(vector_obj)
         else:
             raise ValueError(
                 f"Unable to get EPSG from: {type(vector_obj)}, only ogr.Datasource and "
@@ -559,7 +552,7 @@ class Feature:
         array:
             contains x coordinates or y coordinates of all edges of the shapefile
         """
-        return Feature._get_xy_coords(geometry, coord_type)
+        return FeatureCollection._get_xy_coords(geometry, coord_type)
 
     @staticmethod
     def _get_poly_coords(geometry, coord_type: str):
@@ -582,7 +575,7 @@ class Feature:
         # convert the polygon into lines
         ext = geometry.exterior  # type = LinearRing
 
-        return Feature._get_xy_coords(ext, coord_type)
+        return FeatureCollection._get_xy_coords(ext, coord_type)
 
     @staticmethod
     def _explode(dataframe_row):
@@ -637,45 +630,57 @@ class Feature:
                 # On the first part of the Multi-geometry initialize the coord_array (np.array)
                 if i == 0:
                     if geom_type == "MultiPoint":
-                        coord_arrays = Feature._get_point_coords(part, coord_type)
+                        coord_arrays = FeatureCollection._get_point_coords(
+                            part, coord_type
+                        )
                     elif geom_type == "MultiLineString":
-                        coord_arrays = Feature._get_line_coords(part, coord_type)
+                        coord_arrays = FeatureCollection._get_line_coords(
+                            part, coord_type
+                        )
                 else:
                     if geom_type == "MultiPoint":
                         coord_arrays = np.concatenate(
-                            [coord_arrays, Feature._get_point_coords(part, coord_type)]
+                            [
+                                coord_arrays,
+                                FeatureCollection._get_point_coords(part, coord_type),
+                            ]
                         )
                     elif geom_type == "MultiLineString":
                         coord_arrays = np.concatenate(
-                            [coord_arrays, Feature._get_line_coords(part, coord_type)]
+                            [
+                                coord_arrays,
+                                FeatureCollection._get_line_coords(part, coord_type),
+                            ]
                         )
 
         elif geom_type == "MultiPolygon":
             for i, part in enumerate(multi_geometry):
                 if i == 0:
-                    multi_2_single = Feature._explode(multi_geometry)
+                    multi_2_single = FeatureCollection._explode(multi_geometry)
                     for j in range(len(multi_2_single)):
                         if j == 0:
-                            coord_arrays = Feature._get_poly_coords(
+                            coord_arrays = FeatureCollection._get_poly_coords(
                                 multi_2_single[j], coord_type
                             )
                         else:
                             coord_arrays = np.concatenate(
                                 [
                                     coord_arrays,
-                                    Feature._get_poly_coords(
+                                    FeatureCollection._get_poly_coords(
                                         multi_2_single[j], coord_type
                                     ),
                                 ]
                             )
                 else:
                     # explode the multipolygon into polygons
-                    multi_2_single = Feature._explode(part)
+                    multi_2_single = FeatureCollection._explode(part)
                     for j in range(len(multi_2_single)):
                         coord_arrays = np.concatenate(
                             [
                                 coord_arrays,
-                                Feature._get_poly_coords(multi_2_single[j], coord_type),
+                                FeatureCollection._get_poly_coords(
+                                    multi_2_single[j], coord_type
+                                ),
                             ]
                         )
             # return the coordinates
@@ -710,16 +715,16 @@ class Feature:
         gtype = geom.geom_type
         # "Normal" geometries
         if gtype == "Point":
-            return Feature._get_point_coords(geom, coord_type)
+            return FeatureCollection._get_point_coords(geom, coord_type)
         elif gtype == "LineString":
-            return list(Feature._get_line_coords(geom, coord_type))
+            return list(FeatureCollection._get_line_coords(geom, coord_type))
         elif gtype == "Polygon":
-            return list(Feature._get_poly_coords(geom, coord_type))
+            return list(FeatureCollection._get_poly_coords(geom, coord_type))
         elif gtype == "MultiPolygon":
             return 999
         # Multi geometries
         else:
-            return list(Feature._multi_geom_handler(geom, coord_type, gtype))
+            return list(FeatureCollection._multi_geom_handler(geom, coord_type, gtype))
 
     @staticmethod
     def get_features(gdf):
@@ -749,10 +754,10 @@ class Feature:
         """
         # get the x & y coordinates for all types of geometries except multi_polygon
         input_dataframe["x"] = input_dataframe.apply(
-            Feature.get_coords, geom_col="geometry", coord_type="x", axis=1
+            FeatureCollection.get_coords, geom_col="geometry", coord_type="x", axis=1
         )
         input_dataframe["y"] = input_dataframe.apply(
-            Feature.get_coords, geom_col="geometry", coord_type="y", axis=1
+            FeatureCollection.get_coords, geom_col="geometry", coord_type="y", axis=1
         )
 
         # if the Geometry of type MultiPolygon
@@ -771,10 +776,10 @@ class Feature:
 
         # get the x & y coordinates of the exploded multi_polygons
         input_dataframe["x"] = input_dataframe.apply(
-            Feature.get_coords, geom_col="geometry", coord_type="x", axis=1
+            FeatureCollection.get_coords, geom_col="geometry", coord_type="x", axis=1
         )
         input_dataframe["y"] = input_dataframe.apply(
-            Feature.get_coords, geom_col="geometry", coord_type="y", axis=1
+            FeatureCollection.get_coords, geom_col="geometry", coord_type="y", axis=1
         )
 
         to_delete = np.where(input_dataframe["x"] == 999)[0]
@@ -805,12 +810,12 @@ class Feature:
         Examples
         --------
         >>> coordinates = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
-        >>> Feature.create_polygon(coordinates, wkt=True)
+        >>> FeatureCollection.create_polygon(coordinates, wkt=True)
         it will give
         >>> 'POLYGON ((24.95 60.16 0,24.95 60.16 0,24.95 60.17 0,24.95 60.16 0))'
         while
         >>> new_geometry = gpd.GeoDataFrame()
-        >>> new_geometry.loc[0,'geometry'] = Feature.create_polygon(coordinates, wkt=False)
+        >>> new_geometry.loc[0,'geometry'] = FeatureCollection.create_polygon(coordinates, wkt=False)
         """
         if wkt:
             # create a ring
@@ -847,7 +852,7 @@ class Feature:
         Examples
         --------
         >>> coordinates = [(24.95, 60.16), (24.95, 60.16), (24.95, 60.17), (24.95, 60.16)]
-        >>> point_list = Feature.create_point(coordinates)
+        >>> point_list = FeatureCollection.create_point(coordinates)
         # to assign these objects to a geopandas dataframe
         >>> new_geometry = gpd.GeoDataFrame()
         >>> new_geometry.loc[:, 'geometry'] = point_list
@@ -898,11 +903,11 @@ class Feature:
         Return a geodata frame
         >>> shape_file1 = "Inputs/RIM_sub.shp"
         >>> shape_file2 = "Inputs/addSubs.shp"
-        >>> NewDataFrame = Feature.combine_geometrics(shape_file1, shape_file2, save=False)
+        >>> NewDataFrame = FeatureCollection.combine_geometrics(shape_file1, shape_file2, save=False)
         save a shapefile
         >>> shape_file1 = "Inputs/RIM_sub.shp"
         >>> shape_file2 = "Inputs/addSubs.shp"
-        >>> Feature.combine_geometrics(shape_file1, shape_file2, save=True, save_path="AllBasins.shp")
+        >>> FeatureCollection.combine_geometrics(shape_file1, shape_file2, save=True, save_path="AllBasins.shp")
         """
         assert type(path1) == str, "path1 input should be string type"
         assert type(path2) == str, "path2 input should be string type"
@@ -955,7 +960,7 @@ class Feature:
         --------
         >>> point_1 = (52.22, 21.01)
         >>> point_2 = (52.40, 16.92)
-        >>> distance = Feature.gcs_distance(point_1, point_2)
+        >>> distance = FeatureCollection.gcs_distance(point_1, point_2)
         """
         dist = distance.vincenty(coords_1, coords_2).m
 
@@ -999,7 +1004,7 @@ class Feature:
         # from web mercator to GCS WGS64:
         >>> x_coords = [-8418583.96378159, -8404716.499972705]
         >>> y_coords = [529374.3212213353, 529374.3212213353]
-        >>>  longs, lats = Feature.reproject_points(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
+        >>>  longs, lats = FeatureCollection.reproject_points(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
         """
         # Proj gives a future warning however the from_epsg argument to the functiuon
         # is correct the following couple of code lines are to disable the warning
@@ -1053,7 +1058,7 @@ class Feature:
         # from web mercator to GCS WGS64:
         >>> x_coords = [-8418583.96378159, -8404716.499972705]
         >>> y_coords = [529374.3212213353, 529374.3212213353]
-        >>> longs, lats = Feature.reproject_points2(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
+        >>> longs, lats = FeatureCollection.reproject_points2(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
         """
         source = osr.SpatialReference()
         source.ImportFromEPSG(from_epsg)
@@ -1100,7 +1105,7 @@ class Feature:
     #     >>> NewGeometry = gpd.GeoDataFrame()
     #     >>> coordinates = [(24.950899, 60.169158), (24.953492, 60.169158),
     #     >>>                 (24.953510, 60.170104), (24.950958, 60.169990)]
-    #     >>> NewGeometry.loc[0,'geometry'] = Feature.createPolygon(coordinates,2)
+    #     >>> NewGeometry.loc[0,'geometry'] = FeatureCollection.createPolygon(coordinates,2)
     #     # adding spatial reference system
     #     >>> NewGeometry.crs = from_epsg(4326)
     #     # to check the spatial reference
@@ -1148,10 +1153,10 @@ class Feature:
         --------
         Return a geodata frame
         >>> sub_basins = gpd.read_file("inputs/sub_basins.shp")
-        >>> CenterPointDataFrame = Feature.polygon_center_point(sub_basins, save=False)
+        >>> CenterPointDataFrame = FeatureCollection.polygon_center_point(sub_basins, save=False)
         save a shapefile
         >>> sub_basins = gpd.read_file("Inputs/sub_basins.shp")
-        >>> Feature.polygon_center_point(sub_basins, save=True, save_path="centerpoint.shp")
+        >>> FeatureCollection.polygon_center_point(sub_basins, save=True, save_path="centerpoint.shp")
         """
         assert (
             type(poly) == gpd.geopandas.geodataframe.GeoDataFrame
@@ -1165,7 +1170,7 @@ class Feature:
             assert ext == ".shp", "please add the extension at the end of the savePath"
 
         # get the X, Y coordinates of the points of the polygons and the multipolygons
-        poly = Feature.xy(poly)
+        poly = FeatureCollection.xy(poly)
 
         # re-index the data frame
         poly.index = [i for i in range(len(poly))]
@@ -1185,7 +1190,7 @@ class Feature:
         # create a list of tuples of the coordinates (x,y) or (long, lat)
         # of the points
         CoordinatesList = zip(poly["AvgX"].tolist(), poly["AvgY"].tolist())
-        PointsList = Feature.create_point(CoordinatesList)
+        PointsList = FeatureCollection.create_point(CoordinatesList)
         # set the spatial reference
         MiddlePointdf["geometry"] = PointsList
         MiddlePointdf.crs = poly.crs

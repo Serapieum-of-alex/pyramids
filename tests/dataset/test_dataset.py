@@ -590,31 +590,6 @@ class TestToDataFrame:
             "values in the array"
         )
 
-    def test_to_dataframe_with_mask_as_path_input(
-        self,
-        raster_to_df_dataset: gdal.Dataset,
-        vector_mask_path: str,
-        rasterized_mask_values: np.ndarray,
-    ):
-        """the input mask vector is given as a string path on disk.
-
-        Parameters
-        ----------
-        raster_to_df_dataset: path on disk
-        vector_mask_path: path on disk
-        rasterized_mask_values: for camparioson
-        """
-        src = Dataset(raster_to_df_dataset)
-        gdf = src.to_geodataframe(vector_mask_path, add_geometry="Point")
-        assert isinstance(gdf, GeoDataFrame)
-        assert len(gdf) == len(rasterized_mask_values)
-        assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
-            "the extracted values in the dataframe "
-            "does not "
-            "equa the real "
-            "values in the array"
-        )
-
     def test_to_dataframe_with_gdf_mask(
         self,
         raster_to_df_dataset: gdal.Dataset,

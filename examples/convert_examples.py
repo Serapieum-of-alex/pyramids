@@ -5,7 +5,7 @@ from pyramids.convert import Convert
 
 #%%
 """
-RasterToPolygon takes a gdal Dataset object and group neighboring cells with the same value into one
+RasterToPolygon takes a gdal Datacube object and group neighboring cells with the same value into one
 polygon, the resulted vector will be saved to disk as a geojson file
 """
 src_path = gdal.Open("examples/data/convert_data/test_image.tif")
@@ -47,7 +47,7 @@ src = Convert.polygonToRaster(gdf, src_raster_path)
 type(src)
 #%%
 """
-Raster To DataFrame
+Dataset To DataFrame
 
 The function do the following
 - Flatten the array in each band in the raster then mask the values if a vector
@@ -61,7 +61,7 @@ file is given otherwise it will flatten all values.
         - If point is chosen, the created point will be at the center of each cell
         - If a polygon is chosen, a square polygon will be created that covers the entire cell.
 -
-src : [str/gdal Dataset]
+src : [str/gdal Datacube]
     Path to raster file.
 vector : Optional[GeoDataFrame/str]
     GeoDataFrame for the vector file path to vector file. If given, it will be used to clip the raster

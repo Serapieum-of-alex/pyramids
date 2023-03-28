@@ -10,7 +10,7 @@ from osgeo.gdal import Dataset
 from shapely import wkt
 from shapely.geometry import Polygon
 
-from tests.catchment.conftest import *
+from tests.dem.conftest import *
 from tests.dataset.conftest import *
 from tests.feature.conftest import *
 

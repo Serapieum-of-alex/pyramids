@@ -43,7 +43,7 @@ except ModuleNotFoundError:
     )
 
 from pyramids.array import get_pixels, _get_indices2, _get_pixels2
-from pyramids.feature import Feature
+from pyramids.featurecollection import FeatureCollection
 from pyramids import io
 
 DEFAULT_NO_DATA_VALUE = -9999
@@ -640,7 +640,7 @@ class Dataset:
         else:
             if crs is not None:
                 self.raster.SetProjection(crs)
-                self._epsg = Feature.get_epsg_from_Prj(crs)
+                self._epsg = FeatureCollection.get_epsg_from_Prj(crs)
             else:
                 sr = Dataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
@@ -657,7 +657,7 @@ class Dataset:
             epsg number
         """
         prj = self._get_crs()
-        epsg = Feature.get_epsg_from_Prj(prj)
+        epsg = FeatureCollection.get_epsg_from_Prj(prj)
 
         return epsg
 
@@ -1017,7 +1017,7 @@ class Dataset:
             )
             for i in range(len(x))
         ]
-        polygons = list(map(Feature.create_polygon, polys_coords))
+        polygons = list(map(FeatureCollection.create_polygon, polys_coords))
         gdf = gpd.GeoDataFrame(geometry=polygons)
         gdf.set_crs(epsg=epsg, inplace=True)
         gdf["id"] = gdf.index
@@ -1042,7 +1042,7 @@ class Dataset:
         epsg = self._get_epsg()
 
         coords_tuples = list(zip(coords[:, 0], coords[:, 1]))
-        points = Feature.create_point(coords_tuples)
+        points = FeatureCollection.create_point(coords_tuples)
         gdf = gpd.GeoDataFrame(geometry=points)
         gdf.set_crs(epsg=epsg, inplace=True)
         gdf["id"] = gdf.index
@@ -1159,7 +1159,7 @@ class Dataset:
         else:
             dst_layername = path.split(".")[0].split("/")[-1]
 
-        dst_ds = Feature.create_ds(driver, path)
+        dst_ds = FeatureCollection.create_ds(driver, path)
         dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
         dtype = gdal_to_ogr_dtype(self.raster)
         newField = ogr.FieldDefn(col_name, dtype)
@@ -1169,7 +1169,7 @@ class Dataset:
             dst_layer = None
             dst_ds = None
         else:
-            vector = Feature(dst_ds)
+            vector = FeatureCollection(dst_ds)
             gdf = vector._ds_to_gdf()
             return gdf
 
@@ -1226,10 +1226,15 @@ class Dataset:
             new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}")
 
             # read the vector with geopandas
-            if isinstance(vector_mask, str):
-                vector = Feature.read_file(vector_mask, engine="geopandas")
-            elif isinstance(vector_mask, GeoDataFrame):
-                vector = Feature(vector_mask)
+            if isinstance(vector_mask, GeoDataFrame):
+                vector = FeatureCollection(vector_mask)
+            elif isinstance(vector_mask, FeatureCollection):
+                vector = vector_mask
+            else:
+                raise TypeError(
+                    f"The vector_mask should be of type: [GeoDataFrame/FeatureCollection], given: "
+                    f"{type(vector_mask)}"
+                )
 
             # add a unique value for each rows to use it to rasterize the vector
             vector.feature["burn_value"] = list(range(1, len(vector.feature) + 1))
@@ -1575,7 +1580,7 @@ class Dataset:
                 xs = [src_gt[0], src_gt[0] + src_gt[1] * src_x]
                 ys = [src_gt[3], src_gt[3] + src_gt[5] * src_y]
 
-                [uly, lry], [ulx, lrx] = Feature.reproject_points(
+                [uly, lry], [ulx, lrx] = FeatureCollection.reproject_points(
                     ys, xs, from_epsg=src_epsg, to_epsg=to_epsg
                 )
                 # old transform
@@ -1600,7 +1605,7 @@ class Dataset:
 
         if src_epsg != to_epsg:
             # transform the two points coordinates to the new crs to calculate the new cell size
-            new_ys, new_xs = Feature.reproject_points(
+            new_ys, new_xs = FeatureCollection.reproject_points(
                 ys, xs, from_epsg=src_epsg, to_epsg=to_epsg, precision=6
             )
         else:
@@ -1937,7 +1942,7 @@ class Dataset:
                 "Projection Error: the raster and vector polygon have different projection please "
                 "unify projection"
             )
-        vector = Feature(poly)
+        vector = FeatureCollection(poly)
         mask = vector.to_dataset(src=self)
         cropped_obj = self._crop_with_raster(mask)
 
@@ -3045,7 +3050,7 @@ class Datacube:
     #             coords_1 = (src_gt[3], src_gt[0])
     #             coords_2 = (src_gt[3], src_gt[0] + src_gt[1])
     #             #            pixel_spacing=geopy.distance.vincenty(coords_1, coords_2).m
-    #             pixel_spacing = Feature.GCSDistance(coords_1, coords_2)
+    #             pixel_spacing = FeatureCollection.GCSDistance(coords_1, coords_2)
     #         else:
     #             pixel_spacing = src_gt[1]
     #     else:

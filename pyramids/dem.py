@@ -1,19 +1,13 @@
-"""Created on Sat May 26 04:52:15 2018.
-
-@author: Mostafa
-"""
-
 import numpy as np
 
 # import pandas as pd
 from osgeo import gdal
-from osgeo.gdal import Dataset
 from pandas import DataFrame
 
-from pyramids.dataset import Dataset as raster
+from pyramids.dataset import Dataset
 
 
-class Catchment:
+class DEM(Dataset):
     """GISCatchment class contains methods to deal with the MED and generate the flow direction based on the D8 method and process the DEM.
 
     Methods:
@@ -481,7 +475,7 @@ class Catchment:
         """
         # input data validation
         # validation is inside FlowDirectِِIndex
-        FDI = Catchment.flowDirectionIndex(flow_direct)
+        FDI = DEM.flowDirectionIndex(flow_direct)
 
         rows = flow_direct.RasterYSize
         cols = flow_direct.RasterXSize
@@ -575,11 +569,11 @@ class Catchment:
                 if basins_A[i, j] != no_val and basins_A[i, j] != basins_val[0]:
                     basins_A[i, j] = no_val
 
-        raster.raster_like(basins, basins_A, pathout)
+        Dataset.raster_like(basins, basins_A, pathout)
 
     @staticmethod
     def nearestCell(
-        Raster: Dataset,
+        Raster: gdal.Dataset,
         StCoord: DataFrame,
     ) -> DataFrame:
         """nearestCell.
@@ -607,7 +601,7 @@ class Catchment:
         >>> data = dict(id = [0,1,2,3], x = [1,2,3,6], y = [5,4,7,8])
         >>> stations = pd.DataFrame(data)
         >>> coordinates = stations[['id','x','y']][:]
-        >>> coordinates.loc[:,["cell_row","cell_col"]] = Catchment.nearestCell(Dataset, StCoord).values
+        >>> coordinates.loc[:,["cell_row","cell_col"]] = DEM.nearestCell(Dataset, StCoord).values
         """
         if not isinstance(Raster, gdal.Dataset):
             raise TypeError(
@@ -681,7 +675,7 @@ class Catchment:
             position.append([i + 1, j])
             values.append(array[i + 1, j])
             cluster[i + 1, j] = count
-            Catchment.groupNeighbours(
+            DEM.groupNeighbours(
                 array,
                 i + 1,
                 j,
@@ -702,7 +696,7 @@ class Catchment:
             position.append([i + 1, j + 1])
             values.append(array[i + 1, j + 1])
             cluster[i + 1, j + 1] = count
-            Catchment.groupNeighbours(
+            DEM.groupNeighbours(
                 array,
                 i + 1,
                 j + 1,
@@ -722,7 +716,7 @@ class Catchment:
             position.append([i, j + 1])
             values.append(array[i, j + 1])
             cluster[i, j + 1] = count
-            Catchment.groupNeighbours(
+            DEM.groupNeighbours(
                 array,
                 i,
                 j + 1,
@@ -743,7 +737,7 @@ class Catchment:
             position.append([i - 1, j + 1])
             values.append(array[i - 1, j + 1])
             cluster[i - 1, j + 1] = count
-            Catchment.groupNeighbours(
+            DEM.groupNeighbours(
                 array,
                 i - 1,
                 j + 1,
@@ -763,7 +757,7 @@ class Catchment:
             position.append([i - 1, j])
             values.append(array[i - 1, j])
             cluster[i - 1, j] = count
-            Catchment.groupNeighbours(
+            DEM.groupNeighbours(
                 array,
                 i - 1,
                 j,
@@ -784,7 +778,7 @@ class Catchment:
             position.append([i - 1, j - 1])
             values.append(array[i - 1, j - 1])
             cluster[i - 1, j - 1] = count
-            Catchment.groupNeighbours(
+            DEM.groupNeighbours(
                 array,
                 i - 1,
                 j - 1,
@@ -804,7 +798,7 @@ class Catchment:
             position.append([i, j - 1])
             values.append(array[i, j - 1])
             cluster[i, j - 1] = count
-            Catchment.groupNeighbours(
+            DEM.groupNeighbours(
                 array,
                 i,
                 j - 1,
@@ -825,7 +819,7 @@ class Catchment:
             position.append([i + 1, j - 1])
             values.append(array[i + 1, j - 1])
             cluster[i + 1, j - 1] = count
-            Catchment.groupNeighbours(
+            DEM.groupNeighbours(
                 array,
                 i + 1,
                 j - 1,
@@ -870,7 +864,7 @@ class Catchment:
             for j in range(Data.shape[1]):
 
                 if LowerValue <= Data[i, j] <= UpperValue and cluster[i, j] == 0:
-                    Catchment.groupNeighbours(
+                    DEM.groupNeighbours(
                         Data,
                         i,
                         j,

@@ -7,7 +7,7 @@ currunt_work_directory = Hapi/Example
 """
 # import os
 import numpy as np
-from pyramids.raster import Raster as R
+from pyramids.dataset import Dataset as R
 
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
 

@@ -1,3 +1,5 @@
+import os
+
 import geopandas as gpd
 import matplotlib
 
@@ -7,8 +9,14 @@ import pandas as pd
 from digitalearth.static import Map
 from osgeo import gdal, ogr, osr
 
-from pyramids.catchment import Catchment as GC
-from pyramids.raster import Raster
+gdal.UseExceptions()
+from pyramids.dem import DEM as GC
+from pyramids.dataset import Dataset
+
+#%%
+
+#%% vsimem
+from osgeo.gdal import VSIFReadL
 
 #%% Paths
 datapath = "examples/data"
@@ -28,8 +36,12 @@ also if you have installed qgis define the directory to the bin folder inside th
 of qgis in the environment variable with a name "qgis"
 """
 # %% read the raster
-src = Raster.read(raster_a_path)
+src = Dataset.read_file(raster_a_path)
+arr = src.read_array()
 
+src.change_no_data_value(arr[0, 0], src.no_data_value[0])
+src.to_file("tests/data/ssss.tif", driver="geotiff")
+src.to_netcdf("tests/data/nc/trial3.nc")
 
 arr = src.read_array()
 old_value = arr[0, 0]
@@ -61,8 +73,8 @@ get the basic data inside a raster (the array and the nodatavalue)
 
 Inputs:
 ----------
-    Input: [gdal.Dataset]
-        a gdal.Dataset is a raster already been read using gdal
+    Input: [gdal.Datacube]
+        a gdal.Datacube is a raster already been read using gdal
     band : [integer]
         the band you want to get its data. Default is 1
 Outputs:
@@ -77,11 +89,11 @@ nodataval = src.no_data_value[0]
 # %%
 """GetProjectionData.
 
-GetProjectionData returns the projection details of a given gdal.Dataset
+GetProjectionData returns the projection details of a given gdal.Datacube
 
 Inputs:
 -------
-    1- src : [gdal.Dataset]
+    1- src : [gdal.Datacube]
         raster read by gdal
 
 Returns:
@@ -138,7 +150,7 @@ EX:
     SaveRaster(raster,output_path)
 """
 path = f"{datapath}/save_raster_test.tif"
-src.to_geotiff(path)
+src.to_file(path)
 # %%` CreateRaster
 """
 We will recreate the raster that we have already read using the 'GetRasterData' method at the
@@ -148,12 +160,12 @@ top from the array and the projection data we obtained using the 'GetProjectionD
 """CreateRaster.
 
 CreateRaster method creates a raster from a given array and geotransform data
-and save the tif file if a Path is given or it will return the gdal.Dataset
+and save the tif file if a Path is given or it will return the gdal.Datacube
 
 Parameters
 ----------
 Path : [str], optional
-    Path to save the Raster, if '' is given a memory raster will be returned. The default is ''.
+    Path to save the Dataset, if '' is given a memory raster will be returned. The default is ''.
 arr : [array], optional
     numpy array. The default is ''.
 geo : [list], optional
@@ -167,12 +179,14 @@ EPSG: [integer]
 
 Returns
 -------
-1- dst : [gdal.Dataset/save raster to drive].
+1- dst : [gdal.Datacube/save raster to drive].
             if a path is given the created raster will be saved to drive, if not
-            a gdal.Dataset will be returned.
+            a gdal.Datacube will be returned.
 """
 
-src_new = Raster.create_raster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
+src_new = Dataset.create_dataset(
+    arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval
+)
 Map.plot(src_new, title="Flow Accumulation")
 # %%` RasterLike
 """RasterLike.
@@ -219,9 +233,9 @@ arr2 = np.ones(shape=arr.shape, dtype=np.float64) * nodataval
 arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
 
 path = datapath + "/rasterlike.tif"
-src_new = Raster.raster_like(src, arr2, path=path)
+src_new = Dataset.raster_like(src, arr2, path=path)
 
-dst = Raster.read(path)
+dst = Dataset.read_file(path)
 Map.plot(dst, title="Flow Accumulation", color_scale=1)
 # %%
 """MapAlgebra.
@@ -287,7 +301,7 @@ value = 20
 dst = src.fill(value, path=path)
 
 "now the resulted raster is saved to disk"
-dst = Raster.read(path)
+dst = Dataset.read_file(path)
 Map.plot(dst, title="Flow Accumulation")
 # %%
 """ResampleRaster.
@@ -298,7 +312,7 @@ The function returns a GDAL in-memory file object, where you can ReadAsArray etc
 
 inputs:
 ----------
-    1- raster : [gdal.Dataset]
+    1- raster : [gdal.Datacube]
          gdal raster (src=gdal.Open("dem.tif"))
     3-cell_size : [integer]
          new cell size to resample the raster.
@@ -311,7 +325,7 @@ inputs:
 
 Outputs:
 ----------
-    1-raster : [gdal.Dataset]
+    1-raster : [gdal.Datacube]
          gdal object (you can read it by ReadAsArray)
 """
 print("Original Cell Size =" + str(geo[1]))
@@ -355,13 +369,13 @@ Example :
 """
 print("current EPSG - " + str(epsg))
 to_epsg = 4326
-dst = src.to_epsg(to_epsg=to_epsg, option=1)
+dst = src.to_crs(to_epsg=to_epsg, option=1)
 newepsg, newgeo = dst.get_projection_data()
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
 """Option 2"""
 print("Option 2")
-dst = src.to_epsg(to_epsg=to_epsg, option=2)
+dst = src.to_crs(to_epsg=to_epsg, option=2)
 newepsg, newgeo = dst.get_projection_data()
 print("New EPSG - " + str(newepsg))
 print("New Geotransform - " + str(newgeo))
@@ -395,9 +409,9 @@ Outputs:
 """
 # to_epsg = 4326
 # cell_size = 0.05
-# dst = Raster.ReprojectDataset(src, to_epsg=to_epsg, cell_size=cell_size, method="Nearest")
-# arr , noval = Raster.GetRasterData(dst)
-# newepsg, newgeo = Raster.GetProjectionData(dst)
+# dst = Dataset.ReprojectDataset(src, to_epsg=to_epsg, cell_size=cell_size, method="Nearest")
+# arr , noval = Dataset.GetRasterData(dst)
+# newepsg, newgeo = Dataset.GetProjectionData(dst)
 # print("New EPSG - " + str(newepsg))
 # print("New Geotransform - " + str(newgeo))
 # Map.plot(dst, title="Flow Accumulation")
@@ -428,7 +442,7 @@ Outputs:
         exactly the same like src raster
 """
 # crop array using a raster
-dst = Raster.read(aligned_raster)
+dst = Dataset.read_file(aligned_raster)
 dst_arr = dst.read_array()
 dst_nodataval = dst.no_data_value[0]
 
@@ -439,7 +453,7 @@ Map.plot(
     color_scale=1,
     ticks_spacing=0.01,
 )
-# dst_arr_cropped = Raster.cropAlligned(dst_arr, src)
+# dst_arr_cropped = Dataset.cropAlligned(dst_arr, src)
 # Map.plot(
 #     dst_arr_cropped,
 #     nodataval=nodataval,
@@ -470,8 +484,8 @@ you can perform the previous step on multiple rasters using the CropAlignedFolde
 
 CropAlignedFolder matches the location of nodata value from src raster to dst
 raster
-Raster A is where the NoDatavalue will be taken and the location of this value
-B_input_path is path to the folder where Raster B exist where  we need to put
+Dataset A is where the NoDatavalue will be taken and the location of this value
+B_input_path is path to the folder where Dataset B exist where  we need to put
 the NoDataValue of RasterA in RasterB at the same locations
 
 Inputs:
@@ -481,7 +495,7 @@ Inputs:
         A_path should include the name of the raster and the extension like "data/dem.tif"
     2- src_dir:
         [String] path of the folder of the rasters you want to set Nodata Value
-        on the same location of NodataValue of Raster A, the folder should
+        on the same location of NodataValue of Dataset A, the folder should
         not have any other files except the rasters
     3- new_B_path:
         [String] [String] path where new rasters are going to be saved with exact
@@ -501,7 +515,7 @@ Example:
 
 """
 saveto = datapath + "/crop_aligned_folder/"
-# Raster.cropAlignedFolder(aligned_raster_folder, src, saveto)
+# Dataset.cropAlignedFolder(aligned_raster_folder, src, saveto)
 # %%
 """MatchRasterAlignment.
 
@@ -532,7 +546,7 @@ Example:
     matched_raster = MatchRasterAlignment(A,B)
 """
 # we want to align the soil raster similar to the alignment in the src raster
-soil_raster = Raster.read(soilmappath)
+soil_raster = Dataset.read_file(soilmappath)
 epsg, geotransform = soil_raster.get_projection_data()
 print("Before alignment EPSG = " + str(epsg))
 print("Before alignment Geotransform = " + str(geotransform))
@@ -551,9 +565,9 @@ crop method crops a raster using another raster.
 
 Parameters:
 -----------
-    1-src: [string/gdal.Dataset]
+    1-src: [string/gdal.Datacube]
         the raster you want to crop as a path or a gdal object
-    2- Mask : [string/gdal.Dataset]
+    2- Mask : [string/gdal.Datacube]
         the raster you want to use as a mask to crop other raster,
         the mask can be also a path or a gdal object.
     3- OutputPath : [string]
@@ -563,29 +577,29 @@ Parameters:
         True if you want to save the cropped raster directly to disk.
 Output:
 -------
-    1- dst : [gdal.Dataset]
+    1- dst : [gdal.Datacube]
         the cropped raster will be returned, if the save parameter was True,
         the cropped raster will also be saved to disk in the OutputPath
         directory.
 """
-RasterA = Raster.read(aligned_raster)
+RasterA = Dataset.read_file(aligned_raster)
 epsg, geotransform = RasterA.get_projection_data()
-print("Raster EPSG = " + str(epsg))
-print("Raster Geotransform = " + str(geotransform))
-Map.plot(RasterA, title="Raster to be cropped", color_scale=1, ticks_spacing=1)
+print("Dataset EPSG = " + str(epsg))
+print("Dataset Geotransform = " + str(geotransform))
+Map.plot(RasterA, title="Dataset to be cropped", color_scale=1, ticks_spacing=1)
 """
 We will use the soil raster from the previous example as a mask
 so the projection is different between the raster and the mask and the cell size is also different
 """
-soil_raster = Raster.read(soilmappath)
+soil_raster = Dataset.read_file(soilmappath)
 dst = RasterA._crop_un_aligned(soil_raster)
-dst_epsg, dst_geotransform = Raster.get_projection_data(dst)
+dst_epsg, dst_geotransform = Dataset.get_projection_data(dst)
 print("resulted EPSG = " + str(dst_epsg))
 print("resulted Geotransform = " + str(dst_geotransform))
-Map.plot(dst, title="Cropped Raster", color_scale=1, ticks_spacing=1)
+Map.plot(dst, title="Cropped Dataset", color_scale=1, ticks_spacing=1)
 # %%
-src_aligned = Raster.read(aligned_raster)
-# # arr, nodataval = Raster.GetRasterData(src_aligned)
+src_aligned = Dataset.read_file(aligned_raster)
+# # arr, nodataval = Dataset.GetRasterData(src_aligned)
 Map.plot(
     src_aligned,
     title="Before Cropping-Evapotranspiration",
@@ -627,10 +641,10 @@ EX:
 """
 shp = gpd.read_file(Basinshp)
 shp.plot()
-src = Raster.read(aligned_raster)
+src = Dataset.read_file(aligned_raster)
 
 dst = src.clipRasterWithPolygon(aligned_raster, Basinshp, save=False, output_path=None)
-dst = Raster.clip2(aligned_raster, Basinshp, save=False, output_path=None)
+dst = Dataset.clip2(aligned_raster, Basinshp, save=False, output_path=None)
 Map.plot(
     dst,
     title="After Cropping-Evapotranspiration by a shapefile",
@@ -669,7 +683,7 @@ Example:
     Elevation_values,DEMSpatialDetails = ReadASCII("dem.asc",1)
 """
 path = datapath + r"/asci_example.asc"
-arr, geotransform = Raster.readASCII(path, dtype=1)
+arr, geotransform = Dataset.readASCII(path, dtype=1)
 fig, ax = Map.plot(
     arr,
     geotransform[-1],
@@ -681,7 +695,7 @@ fig, ax = Map.plot(
 
 arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
 path2 = datapath + r"/roughness.asc"
-Raster.to_ascii(path2, geotransform, arr)
+Dataset._to_ascii(path2, geotransform, arr)
 # %% read the points
 points = pd.read_csv(pointsPath)
 points["rows"] = np.nan
