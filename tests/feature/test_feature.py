@@ -7,6 +7,7 @@ from osgeo import ogr
 from osgeo.gdal import Dataset
 from osgeo.ogr import DataSource
 from shapely.geometry.polygon import Polygon
+from shapely.geometry import Point
 
 from pyramids.featurecollection import FeatureCollection
 from pyramids.dataset import Dataset
@@ -329,3 +330,10 @@ class TestConcate:
         assert gdf is None
         assert len(feature.feature) == 2
         assert feature.feature.loc[0, "geometry"].geom_type == "GeometryCollection"
+
+
+def test_center_point(polygons_gdf: GeoDataFrame):
+    feature = FeatureCollection(polygons_gdf)
+    gdf = feature.center_point()
+    assert "center_point" in gdf.columns
+    assert isinstance(gdf.loc[0, "center_point"], Point)

@@ -10,7 +10,7 @@ import tempfile
 import uuid
 import shutil
 import warnings
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Iterable
 
 import geopandas as gpd
 import geopy.distance as distance
@@ -811,7 +811,7 @@ class FeatureCollection:
             return poly
 
     @staticmethod
-    def create_point(coords: List[Tuple[float]]) -> List[Point]:
+    def create_point(coords: Iterable[Tuple[float]]) -> List[Point]:
         """CreatePoint.
 
         CreatePoint takes a list of tuples of coordinates and convert it into
@@ -1026,48 +1026,8 @@ class FeatureCollection:
             y.append(point.GetPoints()[0][1])
         return x, y
 
-    # @staticmethod
-    # def addSpatialReference(gdf: GeoDataFrame, epsg: int):
-    #     """AddSpatialReference.
-    #
-    #     AddSpatialReference takes GeoPandas DataFrame and set the coordinate system
-    #     based on the given epsg input
-    #
-    #     Parameters
-    #     ----------
-    #     gdf: [GeoDataFrame]
-    #         geopandas dataframe
-    #     epsg: [integer]
-    #         EPSG stands for European Petroleum Survey Group and is an organization
-    #         that maintains a geodetic parameter database with standard codes,
-    #         the EPSG codes, for coordinate systems, datums, spheroids, units
-    #         and such alike (https://epsg.io/) default value is [None].
-    #
-    #     Returns
-    #     -------
-    #     gdf: [GeoDataFrame]
-    #         the same input geopandas dataframe but with spatial reference
-    #
-    #     Examples
-    #     --------
-    #     >>> NewGeometry = gpd.GeoDataFrame()
-    #     >>> coordinates = [(24.950899, 60.169158), (24.953492, 60.169158),
-    #     >>>                 (24.953510, 60.170104), (24.950958, 60.169990)]
-    #     >>> NewGeometry.loc[0,'geometry'] = FeatureCollection.createPolygon(coordinates,2)
-    #     # adding spatial reference system
-    #     >>> NewGeometry.crs = from_epsg(4326)
-    #     # to check the spatial reference
-    #     >>> NewGeometry.crs
-    #     >>> {'init': 'epsg:4326', 'no_defs': True}
-    #     """
-    #     # from fiona.crs import from_epsg
-    #     gdf.crs = from_epsg(epsg)
-    #
-    #     return gdf
-
-    @staticmethod
-    def polygon_center_point(
-        poly: GeoDataFrame, save: bool = False, save_path: str = None
+    def center_point(
+        self,
     ):
         """PolygonCenterPoint.
 
@@ -1077,14 +1037,7 @@ class FeatureCollection:
         Parameters
         ----------
         poly: [GeoDataFrame]
-            GeoDataframe containing
-            all the polygons you want to get the center point
-        save: [Boolen]
-            True if you want to save the result shapefile in a certain
-            path "savePath"
-        save_path: [String]
-            a path includng the name of the shapefile and extention like
-            path="data/subbasins.shp"
+            GeoDataframe containing all the polygons you want to get the center point
 
         Returns
         -------
@@ -1104,50 +1057,25 @@ class FeatureCollection:
         >>> CenterPointDataFrame = FeatureCollection.polygon_center_point(sub_basins, save=False)
         save a shapefile
         >>> sub_basins = gpd.read_file("Inputs/sub_basins.shp")
-        >>> FeatureCollection.polygon_center_point(sub_basins, save=True, save_path="centerpoint.shp")
+        >>> FeatureCollection.center_point(sub_basins, save=True, save_path="centerpoint.shp")
         """
-        assert (
-            type(poly) == gpd.geopandas.geodataframe.GeoDataFrame
-        ), "poly input should be GeoDataFrame type"
-        assert type(save) == bool, "savePath input should be string type"
-
-        # input values
-        if save:
-            assert type(save_path) == str, "savePath input should be string type"
-            ext = save_path[-4:]
-            assert ext == ".shp", "please add the extension at the end of the savePath"
-
         # get the X, Y coordinates of the points of the polygons and the multipolygons
-        poly = FeatureCollection.xy(poly)
-
-        # re-index the data frame
-        poly.index = [i for i in range(len(poly))]
+        self.xy()
+        poly = self.feature
         # calculate the average X & Y coordinate for each geometry in the shapefile
-        for i in range(len(poly)):
-            poly.loc[i, "AvgX"] = np.mean(poly.loc[i, "x"])
-            poly.loc[i, "AvgY"] = np.mean(poly.loc[i, "y"])
+        for i, row_i in poly.iterrows():
+            poly.loc[i, "avg_x"] = np.mean(row_i["x"])
+            poly.loc[i, "avg_y"] = np.mean(row_i["y"])
 
-        # create a new geopandas dataframe of points that is in the middle of each
-        # sub-basin
-        poly = poly.drop(["geometry", "x", "y"], axis=1)
+        # poly = poly.drop(["geometry", "x", "y"], axis=1)
+        coords_list = zip(poly["avg_x"].tolist(), poly["avg_y"].tolist())
 
-        MiddlePointdf = gpd.GeoDataFrame()
-        #    MiddlePointdf = poly
+        poly["center_point"] = FeatureCollection.create_point(coords_list)
 
-        MiddlePointdf["geometry"] = None
-        # create a list of tuples of the coordinates (x,y) or (long, lat)
-        # of the points
-        CoordinatesList = zip(poly["AvgX"].tolist(), poly["AvgY"].tolist())
-        PointsList = FeatureCollection.create_point(CoordinatesList)
-        # set the spatial reference
-        MiddlePointdf["geometry"] = PointsList
-        MiddlePointdf.crs = poly.crs
-        MiddlePointdf[poly.columns.tolist()] = poly[poly.columns.tolist()]
+        # gdf.crs = poly.crs
+        # gdf[poly.columns.tolist()] = poly[poly.columns.tolist()]
 
-        if save:
-            MiddlePointdf.to_file(save_path)
-        else:
-            return MiddlePointdf
+        return poly
 
     def listAttributes(self):
         """Print Attributes List."""
