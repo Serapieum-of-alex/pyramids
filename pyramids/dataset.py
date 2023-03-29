@@ -2435,6 +2435,7 @@ class Dataset:
     def extract(
         self,
         exclude_value: Any = None,
+        feature: Union[FeatureCollection, GeoDataFrame] = None,
     ) -> List:
         """Extract Values.
 
@@ -2444,15 +2445,21 @@ class Dataset:
         ----------
         exclude_value: [Numeric]
             values you want to exclude from exteacted values
+        feature: [FeatureCollection/GeoDataFrame]
+            vectpr file contains geometries you want to extract the values at their location. Default is None.
         """
         arr = self.read_array()
-        mask = (
-            [self.no_data_value[0], exclude_value]
-            if exclude_value is not None
-            else [self.no_data_value[0]]
-        )
-        values = _get_pixels2(arr, mask)
 
+        if feature is None:
+            mask = (
+                [self.no_data_value[0], exclude_value]
+                if exclude_value is not None
+                else [self.no_data_value[0]]
+            )
+            values = _get_pixels2(arr, mask)
+        else:
+            indices = self.locate_points(feature)
+            values = arr[indices[:, 0], indices[:, 1]]
         return values
 
     def overlay(

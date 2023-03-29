@@ -631,13 +631,37 @@ class TestToDataFrame:
         )
 
 
-def test_extract(
-    src: gdal.Dataset,
-    src_no_data_value: float,
-):
-    src = Dataset(src)
-    values = src.extract(exclude_value=0)
-    assert len(values) == 46
+class TestExtract:
+    def test_extract(
+        self,
+        src: gdal.Dataset,
+        src_no_data_value: float,
+    ):
+        src = Dataset(src)
+        values = src.extract(exclude_value=0)
+        assert len(values) == 46
+
+    def test_locate_points(
+        self,
+        coello_gauges: DataFrame,
+        src: Dataset,
+        points_location_in_array: GeoDataFrame,
+    ):
+        dataset = Dataset(src)
+        loc = dataset.locate_points(coello_gauges)
+        assert isinstance(loc, np.ndarray)
+        assert np.array_equal(points_location_in_array, loc)
+
+    def test_extract_with_point_geometry_input(
+        self,
+        src: gdal.Dataset,
+        src_no_data_value: float,
+        coello_gauges: GeoDataFrame,
+    ):
+        src = Dataset(src)
+        values = src.extract(exclude_value=0, feature=coello_gauges)
+        assert len(values) == len(coello_gauges)
+        assert np.array_equal(values, [4, 6, 1, 5, 49, 88])
 
 
 def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
@@ -650,15 +674,3 @@ def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
     extracted_classes = list(class_dict.keys())
     real_classes = class_values.tolist()[:-1]
     assert all(i in real_classes for i in extracted_classes)
-
-
-def test_nearest_cell(
-    coello_gauges: DataFrame,
-    src: Dataset,
-    points_location_in_array: DataFrame,
-):
-    dataset = Dataset(src)
-    loc = dataset.locate_points(coello_gauges)
-    assert isinstance(loc, np.ndarray)
-
-    assert np.array_equal(points_location_in_array, loc)
