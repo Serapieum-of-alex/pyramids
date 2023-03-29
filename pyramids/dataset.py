@@ -42,7 +42,7 @@ except ModuleNotFoundError:
         "osgeo_utils module does not exist try install pip install osgeo-utils "
     )
 
-from pyramids.array import get_pixels, _get_indices2, _get_pixels2
+from pyramids.array import get_pixels, _get_indices2, _get_pixels2, locate_values
 from pyramids.featurecollection import FeatureCollection
 from pyramids import io
 
@@ -85,7 +85,7 @@ class Dataset:
         self._band_count = src.RasterCount
         if len(self.subsets) > 0:
             self._time_stamp = self._get_time_variable()
-            self.lat, self.lon = self._get_lat_lon()
+            self._lat, self._lon = self._get_lat_lon()
 
         self._no_data_value = [
             src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
@@ -176,42 +176,60 @@ class Dataset:
     @property
     def lon(self):
         """Longitude coordinates"""
-        pivot_x = self.pivot_point[0]
-        cell_size = self.cell_size
-        x_coords = [
-            pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-        ]
-        return x_coords
+        if not hasattr(self, "_lon"):
+            pivot_x = self.pivot_point[0]
+            cell_size = self.cell_size
+            x_coords = [
+                pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
+            ]
+        else:
+            # in case the lat and lon are read from the netcdf file just read the values from the file
+            x_coords = self._lon
+        return np.array(x_coords)
 
     @property
     def lat(self):
         """Latitude-coordinate"""
-        pivot_y = self.pivot_point[1]
-        cell_size = self.cell_size
-        y_coords = [
-            pivot_y - i * cell_size - cell_size / 2 for i in range(self.columns)
-        ]
-        return y_coords
+        if not hasattr(self, "_lat"):
+            pivot_y = self.pivot_point[1]
+            cell_size = self.cell_size
+            y_coords = [
+                pivot_y - i * cell_size - cell_size / 2 for i in range(self.columns)
+            ]
+        else:
+            # in case the lat and lon are read from the netcdf file just read the values from the file
+            y_coords = self._lat
+        return np.array(y_coords)
 
     @property
     def x(self):
         """x-coordinate"""
-        pivot_x = self.pivot_point[0]
-        cell_size = self.cell_size
-        x_coords = [
-            pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-        ]
-        return x_coords
+        # X_coordinate = upperleft corner x + index * cell size + celsize/2
+        if not hasattr(self, "_lon"):
+            pivot_x = self.pivot_point[0]
+            cell_size = self.cell_size
+            x_coords = [
+                pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
+            ]
+        else:
+            # in case the lat and lon are read from the netcdf file just read the values from the file
+            x_coords = self._lon
+        return np.array(x_coords)
 
     @property
     def y(self):
         """y-coordinate"""
-        pivot_y = self.pivot_point[1]
-        cell_size = self.cell_size
-        y_coords = [
-            pivot_y - i * cell_size - cell_size / 2 for i in range(self.columns)
-        ]
-        return y_coords
+        # X_coordinate = upperleft corner x + index * cell size + celsize/2
+        if not hasattr(self, "_lat"):
+            pivot_y = self.pivot_point[1]
+            cell_size = self.cell_size
+            y_coords = [
+                pivot_y - i * cell_size - cell_size / 2 for i in range(self.columns)
+            ]
+        else:
+            # in case the lat and lon are read from the netcdf file just read the values from the file
+            y_coords = self._lat
+        return np.array(y_coords)
 
     @property
     def crs(self):
@@ -1169,6 +1187,10 @@ class Dataset:
             File.write("\n")
 
         File.close()
+
+    @staticmethod
+    def stringSpace(inp):
+        return str(inp) + "  "
 
     def to_polygon(
         self,
@@ -2372,7 +2394,7 @@ class Dataset:
     def locate_points(
         self,
         points: Union[GeoDataFrame, FeatureCollection],
-    ) -> DataFrame:
+    ) -> np.ndarray:
         """nearestCell.
 
             nearestCell calculates the the indices (rows, col) of nearest cell in a given
@@ -2383,20 +2405,15 @@ class Dataset:
         Parameters
         ----------
         points: [Dataframe]
-            dataframe with two columns "x", "y" contains the coordinates
-            of each station
+            dataframe with POINT geometry.
 
         Returns
         -------
-        points:the same input dataframe with two extra columns "cellx","celly"
-
-        Examples
-        --------
-        >>> soil_type = gdal.Open("DEM.tif")
-        >>> data = dict(id = [0,1,2,3], x = [1,2,3,6], y = [5,4,7,8])
-        >>> stations = pd.DataFrame(data)
-        >>> coordinates = stations[['id','x','y']][:]
-        >>> coordinates.loc[:,["cell_row","cell_col"]] = DEM.locate_points(Dataset, points).values
+        array:
+            array with a shape (any, 2), for the row, column indices in the array.
+            array([[ 5,  4],
+                   [ 2,  9],
+                   [ 5,  9]])
         """
         if isinstance(points, GeoDataFrame):
             points = FeatureCollection(points)
@@ -2407,53 +2424,21 @@ class Dataset:
                 )
         # get the x, y coordinates.
         points.xy()
-        points.feature["cell_row"] = np.nan
-        points.feature["cell_col"] = np.nan
-
-        # geo_trans = self.geotransform
-        pivot_x = self.pivot_point[0]
-        pivot_y = self.pivot_point[1]
-        cell_size = self.cell_size
-        # get the coordinates of the top left corner and cell size [x,dx,y,dy]
-        # X_coordinate = upperleft corner x + index * cell size + celsize/2
-        coox = np.ones((self.rows, self.columns))
-        cooy = np.ones((self.rows, self.columns))
-        for i in range(self.rows):
-            for j in range(self.columns):
-                # calculate x
-                coox[i, j] = pivot_x + cell_size / 2 + j * cell_size
-
-                # calculate y
-                cooy[i, j] = pivot_y - cell_size / 2 - i * cell_size
-
-        dist = np.ones((self.rows, self.columns))
-        for no in range(len(points["x"])):
-            # calculate the distance from the station to all cells
-            for i in range(self.rows):  # iteration by rows
-                for j in range(self.columns):  # iteration by column
-                    dist[i, j] = np.sqrt(
-                        np.power((points.loc[points.index[no], "x"] - coox[i, j]), 2)
-                        + np.power((points.loc[points.index[no], "y"] - cooy[i, j]), 2)
-                    )
-
-            points.loc[no, "cell_row"], points.loc[no, "cell_col"] = np.where(
-                dist == np.min(dist)
-            )
-
-        return points.loc[:, ["cell_row", "cell_col"]]
-
-    @staticmethod
-    def stringSpace(inp):
-        return str(inp) + "  "
+        points = points.feature.loc[:, ["x", "y"]].values
+        grid = np.array([self.x, self.y]).transpose()
+        # since first row is x-coords so the first column in the indices is the column index
+        indices = locate_values(points, grid)
+        # rearrange the columns to make the row index first
+        indices = indices[:, [1, 0]]
+        return indices
 
     def extract(
         self,
         exclude_value,
     ) -> List:
-        """extractValues.
+        """Extract Values.
 
             - this function is written to extract and return a list of all the values in a map.
-            #TODO (an ASCII for now to be extended later to read also raster)
 
         Parameters
         ----------

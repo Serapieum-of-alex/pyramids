@@ -652,19 +652,13 @@ def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
     assert all(i in real_classes for i in extracted_classes)
 
 
-# def test_nearest_cell(
-#     coello_gauges: DataFrame,
-#     src: Dataset,
-#     points_location_in_array: DataFrame,
-# ):
-#     dataset = Dataset(src)
-#     loc = dataset.locate_points(coello_gauges)
-#     assert ["cell_row", "cell_col"] == loc.columns.to_list()
-#     assert (
-#         loc.loc[:, "cell_row"].to_list()
-#         == points_location_in_array.loc[:, "rows"].to_list()
-#     )
-#     assert (
-#         loc.loc[:, "cell_col"].to_list()
-#         == points_location_in_array.loc[:, "cols"].to_list()
-#     )
+def test_nearest_cell(
+    coello_gauges: DataFrame,
+    src: Dataset,
+    points_location_in_array: DataFrame,
+):
+    dataset = Dataset(src)
+    loc = dataset.locate_points(coello_gauges)
+    assert isinstance(loc, np.ndarray)
+
+    assert np.array_equal(points_location_in_array, loc)

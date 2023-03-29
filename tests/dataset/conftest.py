@@ -386,6 +386,5 @@ def coello_gauges() -> GeoDataFrame:
 
 
 @pytest.fixture(scope="module")
-def points_location_in_array() -> DataFrame:
-    data = dict(rows=[4, 9, 9, 4, 8, 10], cols=[5, 2, 5, 7, 7, 13])
-    return pd.DataFrame(data)
+def points_location_in_array() -> np.ndarray:
+    return np.array([[4, 9, 9, 4, 8, 10], [5, 2, 5, 7, 7, 13]]).transpose()

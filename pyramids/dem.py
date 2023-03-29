@@ -1,8 +1,5 @@
 import numpy as np
-
-# import pandas as pd
 from osgeo import gdal
-from pandas import DataFrame
 
 from pyramids.dataset import Dataset
 
@@ -41,8 +38,6 @@ class DEM(Dataset):
             2-elev_sinkless:
                 [numpy array] DEM after filling sinks
         """
-        #        DEM=self.DEM
-
         gt = DEM.GetGeoTransform()
         cellsize = gt[1]
         dist2 = cellsize * np.sqrt(2)
@@ -570,97 +565,6 @@ class DEM(Dataset):
                     basins_A[i, j] = no_val
 
         Dataset.raster_like(basins, basins_A, pathout)
-
-    @staticmethod
-    def nearestCell(
-        Raster: gdal.Dataset,
-        StCoord: DataFrame,
-    ) -> DataFrame:
-        """nearestCell.
-
-            nearestCell calculates the the indices (rows, col) of nearest cell in a given
-            raster to a station
-            coordinate system of the raster has to be projected to be able to calculate
-            the distance
-
-        Parameters
-        ----------
-        Raster: [gdal.dataset]
-            raster to get the spatial information (coordinates of each cell)
-        StCoord: [Dataframe]
-            dataframe with two columns "x", "y" contains the coordinates
-            of each station
-
-        Returns
-        -------
-        StCoord:the same input dataframe with two extra columns "cellx","celly"
-
-        Examples
-        --------
-        >>> soil_type = gdal.Open("DEM.tif")
-        >>> data = dict(id = [0,1,2,3], x = [1,2,3,6], y = [5,4,7,8])
-        >>> stations = pd.DataFrame(data)
-        >>> coordinates = stations[['id','x','y']][:]
-        >>> coordinates.loc[:,["cell_row","cell_col"]] = DEM.nearestCell(Dataset, StCoord).values
-        """
-        if not isinstance(Raster, gdal.Dataset):
-            raise TypeError(
-                "raster should be read using gdal (gdal dataset please read it using gdal library) "
-            )
-
-        if not isinstance(StCoord, DataFrame):
-            raise TypeError(
-                f"please check StCoord input it should be pandas dataframe - given {type(StCoord)}"
-            )
-
-        # check if the user has stored the coordinates in the dataframe with the right names or not
-        if "x" not in StCoord.columns:
-            raise ValueError(
-                "please check the StCoord parameter it should contain a column with the x coordinates"
-                "and the column name should be 'x'"
-            )
-        if "y" not in StCoord.columns:
-            raise ValueError(
-                "please check the StCoord parameter it should contain a column with the y coordinates"
-                "and the column name should be 'y'"
-            )
-
-        StCoord["cell_row"] = np.nan
-        StCoord["cell_col"] = np.nan
-
-        rows = Raster.RasterYSize
-        cols = Raster.RasterXSize
-        geo_trans = Raster.GetGeoTransform()
-        # get the coordinates of the top left corner and cell size [x,dx,y,dy]
-        # X_coordinate= upperleft corner x+ index* cell size+celsize/2
-        coox = np.ones((rows, cols))
-        cooy = np.ones((rows, cols))
-        for i in range(rows):  # iteration by rows
-            for j in range(cols):  # iteration by column
-                coox[i, j] = (
-                    geo_trans[0] + geo_trans[1] / 2 + j * geo_trans[1]
-                )  # calculate x
-                cooy[i, j] = (
-                    geo_trans[3] + geo_trans[5] / 2 + i * geo_trans[5]
-                )  # calculate y
-
-        Dist = np.ones((rows, cols))
-        for no in range(len(StCoord["x"])):
-            # calculate the distance from the station to all cells
-            for i in range(rows):  # iteration by rows
-                for j in range(cols):  # iteration by column
-                    Dist[i, j] = np.sqrt(
-                        np.power((StCoord.loc[StCoord.index[no], "x"] - coox[i, j]), 2)
-                        + np.power(
-                            (StCoord.loc[StCoord.index[no], "y"] - cooy[i, j]), 2
-                        )
-                    )
-
-            StCoord.loc[no, "cell_row"], StCoord.loc[no, "cell_col"] = np.where(
-                Dist == np.min(Dist)
-            )
-
-        return StCoord.loc[:, ["cell_row", "cell_col"]]
 
     @staticmethod
     def groupNeighbours(
