@@ -338,7 +338,7 @@ class Dataset:
         # create the obhect
         src_obj = cls(src)
         # Create the driver.
-        dst = src_obj._create_dataset(
+        dst = src_obj._create_gdal_dataset(
             src_obj.columns, src_obj.rows, bands, src_obj.dtype[0], path=path
         )
 
@@ -392,7 +392,7 @@ class Dataset:
         gdal.DataSet
         """
         # Create the driver.
-        dst = Dataset._create_dataset(columns, rows, bands, dtype, path=path)
+        dst = Dataset._create_gdal_dataset(columns, rows, bands, dtype, path=path)
         geotransform = (
             top_left_coords[0],
             cell_size,
@@ -478,7 +478,7 @@ class Dataset:
         return gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
 
     @staticmethod
-    def _create_dataset(
+    def _create_gdal_dataset(
         cols: int,
         rows: int,
         bands: int,
@@ -586,7 +586,7 @@ class Dataset:
         cols = int(arr.shape[1])
         rows = int(arr.shape[0])
         dtype = numpy_to_gdal_dtype(arr)
-        dst_ds = Dataset._create_dataset(
+        dst_ds = Dataset._create_gdal_dataset(
             cols, rows, bands, dtype, driver=driver_type, path=path
         )
 
@@ -658,7 +658,7 @@ class Dataset:
 
         dtype = numpy_to_gdal_dtype(array)
 
-        dst = Dataset._create_dataset(
+        dst = Dataset._create_gdal_dataset(
             src.columns, src.rows, bands, dtype, driver=driver, path=path
         )
 
@@ -1434,7 +1434,9 @@ class Dataset:
                     new_array[i, j] = fun(src_array[i, j])
 
         # create the output raster
-        dst = Dataset._create_dataset(self.columns, self.rows, 1, dtype, driver="MEM")
+        dst = Dataset._create_gdal_dataset(
+            self.columns, self.rows, 1, dtype, driver="MEM"
+        )
         # set the geotransform
         dst.SetGeoTransform(self.geotransform)
         # set the projection
@@ -1537,7 +1539,7 @@ class Dataset:
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
         dtype = self.raster.GetRasterBand(1).DataType
 
-        dst = Dataset._create_dataset(cols, rows, 1, dtype)
+        dst = Dataset._create_gdal_dataset(cols, rows, 1, dtype)
         # set the geotransform
         dst.SetGeoTransform(new_geo)
         # set the projection
@@ -1688,7 +1690,7 @@ class Dataset:
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
         dtype = self.dtype[0]
-        dst = Dataset._create_dataset(cols, rows, 1, dtype)
+        dst = Dataset._create_gdal_dataset(cols, rows, 1, dtype)
 
         # new geotransform
         new_geo = (
@@ -1851,7 +1853,7 @@ class Dataset:
 
         # if the dst is a raster
         if isinstance(self.raster, gdal.Dataset):
-            dst = Dataset._create_dataset(col, row, 1, dtype, driver="MEM")
+            dst = Dataset._create_gdal_dataset(col, row, 1, dtype, driver="MEM")
             # but with lot of computation
             # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
             # are aligned so they have the sam gt
@@ -1925,7 +1927,7 @@ class Dataset:
         # reproject the raster to match the projection of alignment_src
         reprojected_RasterB = self.to_crs(src.epsg)
         # create a new raster
-        dst = Dataset._create_dataset(
+        dst = Dataset._create_gdal_dataset(
             src.columns, src.rows, 1, src.dtype[0], driver="MEM"
         )
         # set the geotransform
