@@ -2434,7 +2434,7 @@ class Dataset:
 
     def extract(
         self,
-        exclude_value=None,
+        exclude_value: Any = None,
     ) -> List:
         """Extract Values.
 
