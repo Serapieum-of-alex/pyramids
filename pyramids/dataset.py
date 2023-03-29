@@ -605,7 +605,7 @@ class Dataset:
             return
 
     @classmethod
-    def raster_like(
+    def dataset_like(
         cls,
         src,
         array: np.ndarray,
@@ -642,11 +642,11 @@ class Dataset:
         >>> array = np.load("RAIN_5k.npy")
         >>> src = gdal.Open("DEM.tif")
         >>> name = "rain.tif"
-        >>> Dataset.raster_like(src, array, driver="GTiff", path=name)
+        >>> Dataset.dataset_like(src, array, driver="GTiff", path=name)
         - or create a raster in memory
         >>> array = np.load("RAIN_5k.npy")
         >>> src = gdal.Open("DEM.tif")
-        >>> dst = Dataset.raster_like(src, array, driver="MEM")
+        >>> dst = Dataset.dataset_like(src, array, driver="MEM")
         """
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
@@ -1479,7 +1479,7 @@ class Dataset:
             src_array[~np.isclose(src_array, no_data_value, rtol=0.000001)] = val
         else:
             src_array[~np.isnan(src_array)] = val
-        dst = Dataset.raster_like(self, src_array, driver=driver, path=path)
+        dst = Dataset.dataset_like(self, src_array, driver=driver, path=path)
         return dst
 
     def resample(self, cell_size: Union[int, float], method: str = "nearest neibour"):

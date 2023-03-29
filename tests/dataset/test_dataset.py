@@ -132,7 +132,7 @@ class TestCreateRasterObject:
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
             src_obj = Dataset(src)
-            Dataset.raster_like(src_obj, arr2, driver="GTiff", path=raster_like_path)
+            Dataset.dataset_like(src_obj, arr2, driver="GTiff", path=raster_like_path)
             assert os.path.exists(raster_like_path)
             dst_obj = Dataset.read_file(raster_like_path)
             arr = dst_obj.raster.ReadAsArray()
@@ -152,7 +152,7 @@ class TestCreateRasterObject:
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
 
             src_obj = Dataset(src)
-            dst_obj = Dataset.raster_like(src_obj, arr2, driver="MEM")
+            dst_obj = Dataset.dataset_like(src_obj, arr2, driver="MEM")
 
             arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape

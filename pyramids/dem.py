@@ -564,7 +564,7 @@ class DEM(Dataset):
                 if basins_A[i, j] != no_val and basins_A[i, j] != basins_val[0]:
                     basins_A[i, j] = no_val
 
-        Dataset.raster_like(basins, basins_A, pathout)
+        Dataset.dataset_like(basins, basins_A, pathout)
 
     @staticmethod
     def groupNeighbours(
