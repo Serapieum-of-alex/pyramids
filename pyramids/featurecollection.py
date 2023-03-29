@@ -839,7 +839,7 @@ class FeatureCollection:
 
         return points
 
-    def concate(self, gdf: GeoDataFrame, inplace=False):
+    def concate(self, gdf: GeoDataFrame, inplace: bool = False):
         """CombineGeometrics.
 
         CombineGeometrics reads two shapefiles and combine them into one
@@ -850,6 +850,8 @@ class FeatureCollection:
         gdf: [String]
             a path includng the name of the shapefile and extention like
             path="data/subbasins.shp"
+        inplace: [bool]
+            Default is False.
 
         Returns
         -------
