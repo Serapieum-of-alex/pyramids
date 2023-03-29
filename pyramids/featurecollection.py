@@ -347,7 +347,7 @@ class FeatureCollection:
         top_left_coords = (xmin, ymax)
         # TODO: enable later multi bands
         bands = 1
-        src = Dataset.create_driver_from_scratch(
+        src = Dataset._create_driver_from_scratch(
             cell_size,
             rows,
             columns,

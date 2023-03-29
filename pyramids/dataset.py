@@ -352,7 +352,7 @@ class Dataset:
         return dst
 
     @classmethod
-    def create_driver_from_scratch(
+    def _create_driver_from_scratch(
         cls,
         cell_size: int,
         rows: int,
