@@ -223,3 +223,9 @@ def multi_polygon_gdf() -> GeoDataFrame:
 @pytest.fixture(scope="module")
 def multi_polygon_gdf_coords_x() -> List:
     return [102.0, 103.0, 103.0, 102.0, 102.0]
+
+
+@pytest.fixture(scope="module")
+def geometry_collection_gdf() -> GeoDataFrame:
+    """multipoint geometry type and there is multiple points inside"""
+    return gpd.read_file("tests/data/geometries/geometry-collection.geojson")

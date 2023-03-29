@@ -511,6 +511,8 @@ class FeatureCollection:
             coords = geometry.coords.xy[0].tolist()
         elif coord_type == "y":
             coords = geometry.coords.xy[1].tolist()
+        else:
+            raise ValueError("coord_type can only have a value of 'x' or 'y' ")
 
         return coords
 
@@ -534,8 +536,10 @@ class FeatureCollection:
         """
         if coord_type == "x":
             coord = geometry.x
-        if coord_type == "y":
+        elif coord_type == "y":
             coord = geometry.y
+        else:
+            raise ValueError("coord_type can only have a value of 'x' or 'y' ")
 
         return coord
 
@@ -583,7 +587,7 @@ class FeatureCollection:
         return FeatureCollection._get_xy_coords(ext, coord_type)
 
     @staticmethod
-    def _explode(multi_polygon: MultiPolygon):
+    def _explode_multi_geometry(multi_polygon: MultiPolygon):
         """Explode.
 
         explode function converts the multipolygon into a polygons
@@ -606,6 +610,48 @@ class FeatureCollection:
         # for i, poly in enumerate(multi_polygon):
         #     multdf.loc[i, "geometry"] = poly
         return list(multi_polygon)
+
+    @staticmethod
+    def _explode_gdf(gdf: GeoDataFrame, geometry: str = "multipolygon"):
+        """Explode.
+
+        explode function converts the multipolygon into a polygons
+
+        Parameters
+        ----------
+        gdf: [GeoDataFrame]
+            geodataframe
+        geometry: [str]
+            The multi-geometry you want to make is single for each row. Default is "multipolygon".
+
+        Returns
+        -------
+        outdf: [dataframe]
+            the dataframe of the created polygons
+        """
+        # explode the multi_polygon into polygon
+        new_gdf = gpd.GeoDataFrame()
+        to_drop = []
+        for idx, row in gdf.iterrows():
+            geom_type = row.geometry.geom_type.lower()
+            if geom_type == geometry:
+                # get number of the polygons inside the multipolygon class
+                n_rows = len(row.geometry)
+                new_gdf = gpd.GeoDataFrame(pd.concat([new_gdf] + [row] * n_rows))
+                new_gdf.reset_index(drop=True, inplace=True)
+                new_gdf.columns = row.index.values
+                # for each rows assign each polygon
+                for geom in range(n_rows):
+                    new_gdf.loc[geom, "geometry"] = row.geometry[geom]
+                to_drop.append(idx)
+
+        # drop the exploded rows
+        gdf.drop(labels=to_drop, axis=0, inplace=True)
+        # concatinate the exploded rows
+        new_gdf = gpd.GeoDataFrame(pd.concat([gdf] + [new_gdf]))
+        new_gdf.reset_index(drop=True, inplace=True)
+        new_gdf.columns = gdf.columns
+        return new_gdf
 
     @staticmethod
     def _multi_geom_handler(
@@ -649,7 +695,7 @@ class FeatureCollection:
                 # multi_2_single = FeatureCollection._explode(part) if part.type.startswith("MULTI") else part
                 vals = FeatureCollection._get_poly_coords(part, coord_type)
                 coord_arrays.append(vals)
-        # for multigeometres that has one geometry inside 'MULTIPOINT (1 1)' the returned value is single not a list
+
         return coord_arrays
 
     @staticmethod
@@ -687,7 +733,10 @@ class FeatureCollection:
         elif gtype == "polygon":
             return list(FeatureCollection._get_poly_coords(geom, coord_type))
         elif gtype == "multipolygon":
-            return 999
+            # the multipolygon geometry row will be deleted in the xy method
+            return -9999
+        elif gtype == "geometrycollection":
+            return FeatureCollection._geometry_collection(geom, coord_type)
         # Multi geometries
         else:
             return FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
@@ -707,19 +756,10 @@ class FeatureCollection:
             column contains the y coordinates of all the votices of the geometry
             object in each rows
         """
-        # if the Geometry of type MultiPolygon
-        # explode the multi_polygon into polygon
-        for idx, row in self._feature.iterrows():
-            if isinstance(row.geometry, MultiPolygon):
-                # create a new geodataframe
-                multdf = gpd.GeoDataFrame()
-                # get number of the polygons inside the multipolygon class
-                recs = len(row.geometry)
-                multdf = multdf.append([row] * recs, ignore_index=True)
-                # for each rows assign each polygon
-                for geom in range(recs):
-                    multdf.loc[geom, "geometry"] = row.geometry[geom]
-                self._feature = self._feature.append(multdf, ignore_index=True)
+        # explode the gdf if the Geometry of type MultiPolygon
+        gdf = self._explode_gdf(self._feature, geometry="multipolygon")
+        gdf = self._explode_gdf(gdf, geometry="geometrycollection")
+        self._feature = gdf
 
         # get the x & y coordinates of the exploded multi_polygons
         self._feature["x"] = self._feature.apply(
@@ -729,7 +769,7 @@ class FeatureCollection:
             self._get_coords, geom_col="geometry", coord_type="y", axis=1
         )
 
-        to_delete = np.where(self._feature["x"] == 999)[0]
+        to_delete = np.where(self._feature["x"] == -9999)[0]
         self._feature.drop(to_delete, inplace=True)
         self._feature.reset_index(drop=True, inplace=True)
 

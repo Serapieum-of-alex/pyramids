@@ -286,7 +286,6 @@ class TestXY:
     def test_multi_polygons(
         self,
         multi_polygon_gdf: GeoDataFrame,
-        polygon_gdf_x: list,
         multi_polygon_gdf_coords_x: list,
     ):
         feature = FeatureCollection(multi_polygon_gdf)
@@ -297,3 +296,21 @@ class TestXY:
                 feature.feature.loc[0, "x"], multi_polygon_gdf_coords_x, rtol=0.000001
             )
         )
+
+    def test_geometry_collection(
+        self,
+        geometry_collection_gdf: GeoDataFrame,
+        multi_polygon_gdf_coords_x: list,
+    ):
+        feature = FeatureCollection(geometry_collection_gdf)
+        feature.xy()
+        assert feature.feature.loc[0, "x"] == 100.0
+        assert feature.feature.loc[1, "x"] == [101.0, 102.0]
+        assert feature.feature.loc[2, "x"] == [
+            460717.3717217822,
+            456004.5874004898,
+            456929.2331169145,
+            459285.1699671757,
+            462651.74958306097,
+            460717.3717217822,
+        ]
