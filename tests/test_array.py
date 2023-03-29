@@ -1,6 +1,7 @@
+import numpy as np
 from osgeo import gdal
 from pyramids.dataset import Dataset
-from pyramids.array import _get_indices2
+from pyramids.array import _get_indices2, locate_values
 
 
 class TestGetIndeces2:
@@ -302,3 +303,29 @@ class TestGetIndeces2:
         ]
 
         assert indices == inds
+
+
+def test_locate_values():
+    grid = np.array(
+        [
+            [434968, 518007],
+            [438968, 514007],
+            [442968, 510007],
+            [446968, 506007],
+            [450968, 502007],
+            [454968, 498007],
+            [458968, 494007],
+            [462968, 490007],
+            [466968, 486007],
+            [470968, 482007],
+            [474968, 478007],
+            [478968, 474007],
+            [482968, 470007],
+            [486968, 466007],
+        ]
+    )
+
+    points = np.array([[454795, 503143], [443847, 481850], [454044, 481189]])
+    right_indices = np.array([[5, 4], [2, 9], [5, 9]])
+    index = locate_values(points, grid)
+    assert np.array_equal(index, right_indices)

@@ -114,3 +114,59 @@ def _get_pixels2(arr: np.ndarray, mask: List) -> List:
     fn = lambda x: arr[x[0], x[1]]
     values = list(map(fn, ind))
     return values
+
+
+def locate_values(values: np.ndarray, grid: np.ndarray):
+    """Locate values in an array
+
+        locate a value in array, each point has to values (resembling the x & y coordinates), the values array
+        is the grid that we are trying to locate our coordinates in, with the first column being the x
+        coordinate, and the second column being the y coordinates.
+
+    Parameters
+    ----------
+    values: [array]
+        array with a dimension (any, 2), each row has two values x & y coordinates.
+        array([[454795, 503143],
+               [443847, 481850],
+               [454044, 481189]])
+    grid: [array]
+        array with a dimension (any, 2), resembling the x & y coordinates (first and second columns
+        respectively).
+        - The first column is the x coordinates starting from left to righ (west to east), so the first value is the min
+        - The second column is the y coordinates starting from top to bottom (north to south), so the first value is
+        the max
+        np.array([[434968, 518007],
+                   [438968, 514007],
+                   [442968, 510007],
+                   [446968, 506007],
+                   [450968, 502007],
+                   [454968, 498007],
+                   [458968, 494007],
+                   [462968, 490007],
+                   [466968, 486007],
+                   [470968, 482007],
+                   [474968, 478007],
+                   [478968, 474007],
+                   [482968, 470007],
+                   [486968, 466007]])
+
+    Returns
+    -------
+    array:
+        array with a shape (any, 2), for the row, column indices in the array.
+        array([[ 5,  4],
+               [ 2,  9],
+               [ 5,  9]])
+    """
+    x_grid = grid[:, 0]
+    y_grid = grid[:, 1]
+
+    def find(point_i):
+        x_ind = np.abs(point_i[0] - x_grid).argmin()
+        y_ind = np.abs(point_i[1] - y_grid).argmin()
+        return x_ind, y_ind
+
+    indices = np.array(list(map(find, values)))
+
+    return indices
