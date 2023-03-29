@@ -839,10 +839,7 @@ class FeatureCollection:
 
         return points
 
-    @staticmethod
-    def combine_geometrics(
-        path1: str, path2: str, save: bool = False, save_path: str = None
-    ):
+    def concate(self, gdf: GeoDataFrame, inplace=False):
         """CombineGeometrics.
 
         CombineGeometrics reads two shapefiles and combine them into one
@@ -850,17 +847,7 @@ class FeatureCollection:
 
         Parameters
         ----------
-        path1: [String]
-            a path includng the name of the shapefile and extention like
-            path="data/subbasins.shp"
-
-        path2: [String]
-            a path includng the name of the shapefile and extention like
-            path="data/subbasins.shp"
-        save: [Boolen]
-            True if you want to save the result shapefile in a certain
-            path "SavePath"
-        save_path: [String]
+        gdf: [String]
             a path includng the name of the shapefile and extention like
             path="data/subbasins.shp"
 
@@ -879,40 +866,23 @@ class FeatureCollection:
         Return a geodata frame
         >>> shape_file1 = "Inputs/RIM_sub.shp"
         >>> shape_file2 = "Inputs/addSubs.shp"
-        >>> NewDataFrame = FeatureCollection.combine_geometrics(shape_file1, shape_file2, save=False)
+        >>> NewDataFrame = FeatureCollection.concate(shape_file1, shape_file2, save=False)
         save a shapefile
         >>> shape_file1 = "Inputs/RIM_sub.shp"
         >>> shape_file2 = "Inputs/addSubs.shp"
-        >>> FeatureCollection.combine_geometrics(shape_file1, shape_file2, save=True, save_path="AllBasins.shp")
+        >>> FeatureCollection.concate(shape_file2, save=True, save_path="AllBasins.shp")
         """
-        assert type(path1) == str, "path1 input should be string type"
-        assert type(path2) == str, "path2 input should be string type"
-        assert type(save) == bool, "SavePath input should be string type"
-
-        # input values
-        ext = path1[-4:]
-        assert ext == ".shp", "please add the extension at the end of the path1"
-        ext = path2[-4:]
-        assert ext == ".shp", "please add the extension at the end of the path2"
-        if save:
-            assert type(save_path) == str, "SavePath input should be string type"
-            ext = save_path[-4:]
-            assert ext == ".shp", "please add the extension at the end of the SavePath"
-
-        # read shapefiles
-        GeoDataFrame1 = gpd.read_file(path1)
-        GeoDataFrame2 = gpd.read_file(path2)
-
         # concatenate the second shapefile into the first shapefile
-        NewGeoDataFrame = gpd.GeoDataFrame(pd.concat([GeoDataFrame1, GeoDataFrame2]))
+        new_gdf = gpd.GeoDataFrame(pd.concat([self.feature, gdf]))
         # re-index the data frame
-        NewGeoDataFrame.index = [i for i in range(len(NewGeoDataFrame))]
+        new_gdf.index = [i for i in range(len(new_gdf))]
         # take the spatial reference of the first geodataframe
-        NewGeoDataFrame.crs = GeoDataFrame1.crs
-        if save:
-            NewGeoDataFrame.to_file(save_path)
-        else:
-            return NewGeoDataFrame
+        new_gdf.crs = self.feature.crs
+        if inplace:
+            self.__init__(new_gdf)
+            new_gdf = None
+
+        return new_gdf
 
     @staticmethod
     def gcs_distance(coords_1: tuple, coords_2: tuple):

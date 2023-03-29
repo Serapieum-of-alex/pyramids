@@ -314,3 +314,18 @@ class TestXY:
             462651.74958306097,
             460717.3717217822,
         ]
+
+
+class TestConcate:
+    def test_return_new_gdf(self, geometry_collection_gdf: GeoDataFrame):
+        feature = FeatureCollection(geometry_collection_gdf)
+        gdf = feature.concate(geometry_collection_gdf)
+        assert len(gdf) == 2
+        assert gdf.loc[0, "geometry"].geom_type == "GeometryCollection"
+
+    def test_inplace(self, geometry_collection_gdf: GeoDataFrame):
+        feature = FeatureCollection(geometry_collection_gdf)
+        gdf = feature.concate(geometry_collection_gdf, inplace=True)
+        assert gdf is None
+        assert len(feature.feature) == 2
+        assert feature.feature.loc[0, "geometry"].geom_type == "GeometryCollection"
