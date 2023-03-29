@@ -3,6 +3,8 @@ import os
 from typing import List
 
 import geopandas as gpd
+import pandas as pd
+from geopandas.geodataframe import GeoDataFrame, DataFrame
 import numpy as np
 import pytest
 from osgeo import gdal
@@ -17,6 +19,46 @@ def src_path() -> str:
 @pytest.fixture(scope="module")
 def src(src_path: str) -> Dataset:
     return gdal.Open(src_path)
+
+
+@pytest.fixture(scope="module")
+def lon_coords() -> list:
+    return [
+        434968.1206170588,
+        438968.1206170588,
+        442968.1206170588,
+        446968.1206170588,
+        450968.1206170588,
+        454968.1206170588,
+        458968.1206170588,
+        462968.1206170588,
+        466968.1206170588,
+        470968.1206170588,
+        474968.1206170588,
+        478968.1206170588,
+        482968.1206170588,
+        486968.1206170588,
+    ]
+
+
+@pytest.fixture(scope="module")
+def lat_coords() -> list:
+    return [
+        518007.787999178,
+        514007.787999178,
+        510007.787999178,
+        506007.787999178,
+        502007.787999178,
+        498007.787999178,
+        494007.787999178,
+        490007.787999178,
+        486007.787999178,
+        482007.787999178,
+        478007.787999178,
+        474007.787999178,
+        470007.787999178,
+        466007.787999178,
+    ]
 
 
 @pytest.fixture(scope="module")
@@ -336,3 +378,14 @@ def match_alignment_dataset() -> str:
 @pytest.fixture(scope="module")
 def germany_classes() -> str:
     return "tests/data/germany-classes.tif"
+
+
+@pytest.fixture(scope="module")
+def coello_gauges() -> GeoDataFrame:
+    return gpd.read_file("tests/data/coello-gauges.geojson")
+
+
+@pytest.fixture(scope="module")
+def points_location_in_array() -> DataFrame:
+    data = dict(rows=[4, 9, 9, 4, 8, 10], cols=[5, 2, 5, 7, 7, 13])
+    return pd.DataFrame(data)

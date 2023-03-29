@@ -163,9 +163,55 @@ class Dataset:
         return self._geotransform
 
     @property
+    def pivot_point(self):
+        """Top left corner coordinates."""
+        xmin, _, _, ymax, _, _ = self._geotransform
+        return xmin, ymax
+
+    @property
     def epsg(self):
         """WKT projection."""
         return self._epsg
+
+    @property
+    def lon(self):
+        """Longitude coordinates"""
+        pivot_x = self.pivot_point[0]
+        cell_size = self.cell_size
+        x_coords = [
+            pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
+        ]
+        return x_coords
+
+    @property
+    def lat(self):
+        """Latitude-coordinate"""
+        pivot_y = self.pivot_point[1]
+        cell_size = self.cell_size
+        y_coords = [
+            pivot_y - i * cell_size - cell_size / 2 for i in range(self.columns)
+        ]
+        return y_coords
+
+    @property
+    def x(self):
+        """x-coordinate"""
+        pivot_x = self.pivot_point[0]
+        cell_size = self.cell_size
+        x_coords = [
+            pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
+        ]
+        return x_coords
+
+    @property
+    def y(self):
+        """y-coordinate"""
+        pivot_y = self.pivot_point[1]
+        cell_size = self.cell_size
+        y_coords = [
+            pivot_y - i * cell_size - cell_size / 2 for i in range(self.columns)
+        ]
+        return y_coords
 
     @property
     def crs(self):
@@ -209,6 +255,7 @@ class Dataset:
 
     @property
     def dtype(self):
+        """Data Type"""
         return self._dtype
 
     @property
@@ -2321,6 +2368,79 @@ class Dataset:
             else:
                 print("the cell is isolated (No surrounding cells exist)")
         return array
+
+    def locate_points(
+        self,
+        points: Union[GeoDataFrame, FeatureCollection],
+    ) -> DataFrame:
+        """nearestCell.
+
+            nearestCell calculates the the indices (rows, col) of nearest cell in a given
+            raster to a station
+            coordinate system of the raster has to be projected to be able to calculate
+            the distance
+
+        Parameters
+        ----------
+        points: [Dataframe]
+            dataframe with two columns "x", "y" contains the coordinates
+            of each station
+
+        Returns
+        -------
+        points:the same input dataframe with two extra columns "cellx","celly"
+
+        Examples
+        --------
+        >>> soil_type = gdal.Open("DEM.tif")
+        >>> data = dict(id = [0,1,2,3], x = [1,2,3,6], y = [5,4,7,8])
+        >>> stations = pd.DataFrame(data)
+        >>> coordinates = stations[['id','x','y']][:]
+        >>> coordinates.loc[:,["cell_row","cell_col"]] = DEM.locate_points(Dataset, points).values
+        """
+        if isinstance(points, GeoDataFrame):
+            points = FeatureCollection(points)
+        else:
+            if not isinstance(points, FeatureCollection):
+                raise TypeError(
+                    f"please check points input it should be GeoDataFrame/FeatureCollection - given {type(points)}"
+                )
+        # get the x, y coordinates.
+        points.xy()
+        points.feature["cell_row"] = np.nan
+        points.feature["cell_col"] = np.nan
+
+        # geo_trans = self.geotransform
+        pivot_x = self.pivot_point[0]
+        pivot_y = self.pivot_point[1]
+        cell_size = self.cell_size
+        # get the coordinates of the top left corner and cell size [x,dx,y,dy]
+        # X_coordinate = upperleft corner x + index * cell size + celsize/2
+        coox = np.ones((self.rows, self.columns))
+        cooy = np.ones((self.rows, self.columns))
+        for i in range(self.rows):
+            for j in range(self.columns):
+                # calculate x
+                coox[i, j] = pivot_x + cell_size / 2 + j * cell_size
+
+                # calculate y
+                cooy[i, j] = pivot_y - cell_size / 2 - i * cell_size
+
+        dist = np.ones((self.rows, self.columns))
+        for no in range(len(points["x"])):
+            # calculate the distance from the station to all cells
+            for i in range(self.rows):  # iteration by rows
+                for j in range(self.columns):  # iteration by column
+                    dist[i, j] = np.sqrt(
+                        np.power((points.loc[points.index[no], "x"] - coox[i, j]), 2)
+                        + np.power((points.loc[points.index[no], "y"] - cooy[i, j]), 2)
+                    )
+
+            points.loc[no, "cell_row"], points.loc[no, "cell_col"] = np.where(
+                dist == np.min(dist)
+            )
+
+        return points.loc[:, ["cell_row", "cell_col"]]
 
     @staticmethod
     def stringSpace(inp):

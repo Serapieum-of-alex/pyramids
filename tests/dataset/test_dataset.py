@@ -2,12 +2,27 @@ import os
 from typing import List, Tuple
 
 import geopandas as gpd
-from geopandas.geodataframe import GeoDataFrame
+from geopandas.geodataframe import GeoDataFrame, DataFrame
 import numpy as np
 import pytest
 from osgeo import gdal, osr
 from pyramids.dataset import Dataset
 from pyramids.dataset import ReadOnlyError
+
+
+class TestProperties:
+    def test_pivot_point(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        xy = dataset.pivot_point
+        assert xy[0] == 432968.1206170588
+        assert xy[1] == 520007.787999178
+
+    def test_lon_lat(self, src: gdal.Dataset, lon_coords: list, lat_coords: list):
+        dataset = Dataset(src)
+        assert all(np.isclose(dataset.lon, lon_coords, rtol=0.00001))
+        assert all(np.isclose(dataset.x, lon_coords, rtol=0.00001))
+        assert all(np.isclose(dataset.lat, lat_coords, rtol=0.00001))
+        assert all(np.isclose(dataset.y, lat_coords, rtol=0.00001))
 
 
 class TestCreateRasterObject:
@@ -635,3 +650,21 @@ def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
     extracted_classes = list(class_dict.keys())
     real_classes = class_values.tolist()[:-1]
     assert all(i in real_classes for i in extracted_classes)
+
+
+# def test_nearest_cell(
+#     coello_gauges: DataFrame,
+#     src: Dataset,
+#     points_location_in_array: DataFrame,
+# ):
+#     dataset = Dataset(src)
+#     loc = dataset.locate_points(coello_gauges)
+#     assert ["cell_row", "cell_col"] == loc.columns.to_list()
+#     assert (
+#         loc.loc[:, "cell_row"].to_list()
+#         == points_location_in_array.loc[:, "rows"].to_list()
+#     )
+#     assert (
+#         loc.loc[:, "cell_col"].to_list()
+#         == points_location_in_array.loc[:, "cols"].to_list()
+#     )
