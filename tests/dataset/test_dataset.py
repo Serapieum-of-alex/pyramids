@@ -102,7 +102,7 @@ class TestCreateRasterObject:
         src_epsg: int,
         src_no_data_value: float,
     ):
-        src = Dataset.create_dataset(
+        src = Dataset.create_from_array(
             arr=src_arr,
             geo=src_geotransform,
             epsg=src_epsg,

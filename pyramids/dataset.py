@@ -529,7 +529,7 @@ class Dataset:
         return src
 
     @classmethod
-    def create_dataset(
+    def create_from_array(
         cls,
         path: str = None,
         arr: Union[str, gdal.Dataset, np.ndarray] = "",
