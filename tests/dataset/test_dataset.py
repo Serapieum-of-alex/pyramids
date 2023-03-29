@@ -92,7 +92,7 @@ class TestCreateRasterObject:
         src: gdal.Dataset,
         src_no_data_value: float,
     ):
-        src = Dataset.create_empty_driver(src)
+        src = Dataset._create_empty_driver(src)
         assert isinstance(src, Dataset)
 
     def test_create_raster(

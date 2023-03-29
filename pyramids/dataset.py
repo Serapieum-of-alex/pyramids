@@ -315,7 +315,7 @@ class Dataset:
         return cls(src)
 
     @classmethod
-    def create_empty_driver(
+    def _create_empty_driver(
         cls, src: gdal.Dataset, path: str = None, bands: int = 1, no_data_value=None
     ):
         """Create a new empty driver from another dataset.
