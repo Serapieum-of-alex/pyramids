@@ -1149,50 +1149,6 @@ class FeatureCollection:
         else:
             return MiddlePointdf
 
-    @staticmethod
-    def write_shapefile(poly, path: str):
-        """write_shapefile.
-
-        this function takes a polygon geometry and creates a ashapefile and save it
-        (https://gis.stackexchange.com/a/52708/8104)
-
-        parameters
-        ----------
-        poly: [shapely object]
-            polygon, point, or lines or multi
-        path:
-            string, of the path and name of the shapefile
-
-        Returns
-        -------
-        saving the shapefile to the path
-        """
-        # Now convert it to a shapefile with OGR
-        driver = ogr.GetDriverByName("Esri Shapefile")
-        ds = driver.CreateDataSource(path)
-        layer = ds.CreateLayer("", None, ogr.wkbPolygon)
-
-        # Add one attribute
-        layer.CreateField(ogr.FieldDefn("id", ogr.OFTInteger))
-        defn = layer.GetLayerDefn()
-
-        ## If there are multiple geometries, put the "for" loop here
-
-        # Create a new feature (attribute and geometry)
-        feat = ogr.Feature(defn)
-        feat.SetField("id", 123)
-
-        # Make a geometry, from Shapely object
-        geom = ogr.CreateGeometryFromWkb(poly)
-        # geom = ogr.CreateGeometryFromWkb(poly.wkb)
-        feat.SetGeometry(geom)
-
-        layer.CreateFeature(feat)
-        feat = geom = None  # destroy these
-
-        # save and close everything
-        ds = layer = feat = geom = None
-
     def listAttributes(self):
         """Print Attributes List."""
         print("\n")
