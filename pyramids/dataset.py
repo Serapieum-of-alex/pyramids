@@ -2434,7 +2434,7 @@ class Dataset:
 
     def extract(
         self,
-        exclude_value,
+        exclude_value=None,
     ) -> List:
         """Extract Values.
 
@@ -2446,8 +2446,11 @@ class Dataset:
             values you want to exclude from exteacted values
         """
         arr = self.read_array()
-        # NonZeroCells = np.count_nonzero(arr)
-        mask = [self.no_data_value[0], exclude_value]
+        mask = (
+            [self.no_data_value[0], exclude_value]
+            if exclude_value is not None
+            else [self.no_data_value[0]]
+        )
         values = _get_pixels2(arr, mask)
 
         return values
