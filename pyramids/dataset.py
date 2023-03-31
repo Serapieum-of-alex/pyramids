@@ -195,7 +195,7 @@ class Dataset:
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
             y_coords = [
-                pivot_y - i * cell_size - cell_size / 2 for i in range(self.columns)
+                pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
             ]
         else:
             # in case the lat and lon are read from the netcdf file just read the values from the file
@@ -225,12 +225,22 @@ class Dataset:
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
             y_coords = [
-                pivot_y - i * cell_size - cell_size / 2 for i in range(self.columns)
+                pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
             ]
         else:
             # in case the lat and lon are read from the netcdf file just read the values from the file
             y_coords = self._lat
         return np.array(y_coords)
+
+    def _calculate_bounds(self):
+        xmin, ymax = self.pivot_point
+        ymin = ymax - self.rows * self.cell_size
+        xmax = xmin + self.columns * self.cell_size
+        coords = [(xmin, ymax), (xmin, ymin), (xmax, ymin), (xmax, ymax)]
+        poly = FeatureCollection.create_polygon(coords)
+        gdf = gpd.GeoDataFrame(geometry=[poly])
+        gdf.set_crs(epsg=self.epsg, inplace=True)
+        return gdf
 
     @property
     def crs(self):
@@ -2294,9 +2304,8 @@ class Dataset:
         # get the x, y coordinates.
         points.xy()
         points = points.feature.loc[:, ["x", "y"]].values
-        grid = np.array([self.x, self.y]).transpose()
         # since first row is x-coords so the first column in the indices is the column index
-        indices = locate_values(points, grid)
+        indices = locate_values(points, self.x, self.y)
         # rearrange the columns to make the row index first
         indices = indices[:, [1, 0]]
         return indices

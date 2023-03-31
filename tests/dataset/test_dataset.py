@@ -24,6 +24,12 @@ class TestProperties:
         assert all(np.isclose(dataset.lat, lat_coords, rtol=0.00001))
         assert all(np.isclose(dataset.y, lat_coords, rtol=0.00001))
 
+    def test_create_bounds(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
+        dataset = Dataset(src)
+        poly = dataset._calculate_bounds()
+        assert isinstance(poly, GeoDataFrame)
+        assert all(bounds_gdf == poly)
+
 
 class TestCreateRasterObject:
     def test_from_gdal_dataset(
@@ -95,7 +101,7 @@ class TestCreateRasterObject:
         src = Dataset._create_empty_driver(src)
         assert isinstance(src, Dataset)
 
-    def test_create_raster(
+    def test_create_from_array(
         self,
         src_arr: np.ndarray,
         src_geotransform: tuple,

@@ -3,12 +3,12 @@ import os
 from typing import List
 
 import geopandas as gpd
-import pandas as pd
-from geopandas.geodataframe import GeoDataFrame, DataFrame
+from geopandas.geodataframe import GeoDataFrame
 import numpy as np
 import pytest
 from osgeo import gdal
 from osgeo.gdal import Dataset
+from shapely import wkt
 
 
 @pytest.fixture(scope="module")
@@ -57,7 +57,6 @@ def lat_coords() -> list:
         478007.787999178,
         474007.787999178,
         470007.787999178,
-        466007.787999178,
     ]
 
 
@@ -388,3 +387,14 @@ def coello_gauges() -> GeoDataFrame:
 @pytest.fixture(scope="module")
 def points_location_in_array() -> np.ndarray:
     return np.array([[4, 9, 9, 4, 8, 10], [5, 2, 5, 7, 7, 13]]).transpose()
+
+
+@pytest.fixture(scope="module")
+def bounds_gdf() -> GeoDataFrame:
+    poly = wkt.loads(
+        "POLYGON ((432968.1206170588 520007.787999178, 432968.1206170588 468007.787999178, 488968.1206170588 "
+        "468007.787999178, 488968.1206170588 520007.787999178, 432968.1206170588 520007.787999178))"
+    )
+    gdf = gpd.GeoDataFrame(geometry=[poly])
+    gdf.set_crs(epsg=32618, inplace=True)
+    return gdf
