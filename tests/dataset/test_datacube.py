@@ -7,7 +7,7 @@ import geopandas as gpd
 from pyramids.dataset import Dataset, Datacube
 
 
-class TestReadDataset:
+class TestCreateDataCube:
     def test_read_all_without_order(
         self,
         rasters_folder_path: str,
@@ -19,8 +19,8 @@ class TestReadDataset:
         assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
         assert dataset.time_length == rasters_folder_rasters_number
-        assert dataset.sample.rows == rasters_folder_dim[0]
-        assert dataset.sample.columns == rasters_folder_dim[1]
+        assert dataset.base.rows == rasters_folder_dim[0]
+        assert dataset.base.columns == rasters_folder_dim[1]
 
     def test_read_all_with_order(
         self,
@@ -29,12 +29,12 @@ class TestReadDataset:
         rasters_folder_dim: tuple,
     ):
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=True)
-        assert isinstance(dataset.sample, Dataset)
-        assert dataset.sample.no_data_value[0] == 2147483648.0
+        assert isinstance(dataset.base, Dataset)
+        assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
         assert dataset.time_length == rasters_folder_rasters_number
-        assert dataset.sample.rows == rasters_folder_dim[0]
-        assert dataset.sample.columns == rasters_folder_dim[1]
+        assert dataset.base.rows == rasters_folder_dim[0]
+        assert dataset.base.columns == rasters_folder_dim[1]
 
     def test_read_between_dates(
         self,
@@ -52,12 +52,12 @@ class TestReadDataset:
             end=rasters_folder_end_date,
             fmt=rasters_folder_date_fmt,
         )
-        assert isinstance(dataset.sample, Dataset)
-        assert dataset.sample.no_data_value[0] == 2147483648.0
+        assert isinstance(dataset.base, Dataset)
+        assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
         assert dataset.time_length == rasters_folder_between_dates_raster_number
-        assert dataset.sample.rows == rasters_folder_dim[0]
-        assert dataset.sample.columns == rasters_folder_dim[1]
+        assert dataset.base.rows == rasters_folder_dim[0]
+        assert dataset.base.columns == rasters_folder_dim[1]
 
     # def test_from_netcdf(nc_path: str):
     #     Datacube.readNC(nc_path, "", separator="_")
