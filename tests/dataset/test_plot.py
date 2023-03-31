@@ -1,8 +1,8 @@
 import numpy as np
 from pyramids.dataset import Dataset
-import matplotlib
 
-matplotlib.use("TkAgg")
+# import matplotlib
+# matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
 
 
