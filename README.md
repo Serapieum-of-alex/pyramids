@@ -77,3 +77,6 @@ Quick start
 ```
 
 [other code samples](https://pyramids-gis.readthedocs.io/en/latest/?badge=latest)
+
+## Coverage
+[![codecov](https://codecov.io/gh/Serapieum-of-alex/pyramids/branch/main/graphs/sunburst.svg?token=g0DV4dCa8N)](https://codecov.io/gh/Serapieum-of-alex/pyramids)
