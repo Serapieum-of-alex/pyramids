@@ -232,16 +232,6 @@ class Dataset:
             y_coords = self._lat
         return np.array(y_coords)
 
-    def _calculate_bounds(self):
-        xmin, ymax = self.pivot_point
-        ymin = ymax - self.rows * self.cell_size
-        xmax = xmin + self.columns * self.cell_size
-        coords = [(xmin, ymax), (xmin, ymin), (xmax, ymin), (xmax, ymax)]
-        poly = FeatureCollection.create_polygon(coords)
-        gdf = gpd.GeoDataFrame(geometry=[poly])
-        gdf.set_crs(epsg=self.epsg, inplace=True)
-        return gdf
-
     @property
     def crs(self):
         """Coordinate reference system."""
@@ -251,6 +241,10 @@ class Dataset:
     def crs(self, value):
         """Coordinate reference system."""
         self.set_crs(value)
+
+    @property
+    def bounds(self):
+        return self._calculate_bounds()
 
     @property
     def cell_size(self):
@@ -978,6 +972,16 @@ class Dataset:
                         "the type of the given no_data_value differs from the dtype of the raster"
                         f"no_data_value now is set to {DEFAULT_NO_DATA_VALUE} in the raster"
                     )
+
+    def _calculate_bounds(self):
+        xmin, ymax = self.pivot_point
+        ymin = ymax - self.rows * self.cell_size
+        xmax = xmin + self.columns * self.cell_size
+        coords = [(xmin, ymax), (xmin, ymin), (xmax, ymin), (xmax, ymax)]
+        poly = FeatureCollection.create_polygon(coords)
+        gdf = gpd.GeoDataFrame(geometry=[poly])
+        gdf.set_crs(epsg=self.epsg, inplace=True)
+        return gdf
 
     def _set_no_data_value_backend(self, band_i: int, no_data_value: Any):
         """

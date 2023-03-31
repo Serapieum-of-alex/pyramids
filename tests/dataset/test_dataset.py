@@ -30,6 +30,10 @@ class TestProperties:
         assert isinstance(poly, GeoDataFrame)
         assert all(bounds_gdf == poly)
 
+    def test_bounds_property(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
+        dataset = Dataset(src)
+        assert all(dataset.bounds == bounds_gdf)
+
 
 class TestCreateRasterObject:
     def test_from_gdal_dataset(
