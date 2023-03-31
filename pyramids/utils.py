@@ -189,3 +189,11 @@ def import_geopy(message: str):
         import geopy  # noqa
     except ImportError:
         raise OptionalPackageDoesNontExist(message)
+
+
+def import_cleopatra(message: str):
+    """try to import cleopatra."""
+    try:
+        import cleopatra  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNontExist(message)
