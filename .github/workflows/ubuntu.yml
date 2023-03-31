@@ -37,6 +37,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+            pip install git+https://github.com/Serapieum-of-alex/numpy-utils.git@main
             pip install -r requirements.txt -r requirements-dev.txt
             python setup.py install
 
