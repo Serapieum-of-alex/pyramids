@@ -444,7 +444,7 @@ class FeatureCollection:
                 # if could not identify epsg use the authority code.
                 response = srs.AutoIdentifyEPSG()
             except RuntimeError:
-                response = 0
+                response = 6
 
             if response == 0:
                 epsg = int(srs.GetAuthorityCode(None))
