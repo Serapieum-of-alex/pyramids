@@ -42,7 +42,7 @@ except ModuleNotFoundError:
         "osgeo_utils module does not exist try install pip install osgeo-utils "
     )
 
-from pyramids.array import get_pixels, _get_indices2, _get_pixels2, locate_values
+from numpy_utils.filter import get_pixels, get_indices2, get_pixels2, locate_values
 from pyramids.featurecollection import FeatureCollection
 from pyramids import io
 
@@ -531,12 +531,11 @@ class Dataset:
     @classmethod
     def create_from_array(
         cls,
-        path: str = None,
-        arr: Union[str, gdal.Dataset, np.ndarray] = "",
-        geo: Union[str, tuple] = "",
-        epsg: Union[str, int] = "",
+        arr: Union[str, gdal.Dataset, np.ndarray],
+        geo: Union[str, tuple],
+        epsg: Union[str, int],
         nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
-        bands: int = 1,
+        path: str = None,
     ) -> Union[gdal.Dataset, None]:
         """create_raster.
 
@@ -545,8 +544,6 @@ class Dataset:
 
         Parameters
         ----------
-        path : [str], optional
-            Path to save the Dataset, if '' is given a memory raster will be returned. The default is ''.
         arr : [array], optional
             numpy array. The default is ''.
         geo : [list], optional
@@ -559,6 +556,8 @@ class Dataset:
                 (default 3857 the reference no of WGS84 web mercator )
         bands: [int]
             band number.
+        path : [str], optional
+            Path to save the Dataset, if '' is given a memory raster will be returned. The default is ''.
 
         Returns
         -------
@@ -583,8 +582,15 @@ class Dataset:
 
             driver_type = "GTiff"
 
-        cols = int(arr.shape[1])
-        rows = int(arr.shape[0])
+        if len(arr.shape) == 2:
+            bands = 1
+            rows = int(arr.shape[0])
+            cols = int(arr.shape[1])
+        else:
+            bands = arr.shape[0]
+            rows = int(arr.shape[1])
+            cols = int(arr.shape[2])
+
         dtype = numpy_to_gdal_dtype(arr)
         dst_ds = Dataset._create_gdal_dataset(
             cols, rows, bands, dtype, driver=driver_type, path=path
@@ -596,7 +602,11 @@ class Dataset:
         dst_obj._set_no_data_value(no_data_value=nodatavalue)
 
         dst_obj.raster.SetGeoTransform(geo)
-        dst_obj.raster.GetRasterBand(1).WriteArray(arr)
+        if bands == 1:
+            dst_obj.raster.GetRasterBand(1).WriteArray(arr)
+        else:
+            for i in range(bands):
+                dst_obj.raster.GetRasterBand(i + 1).WriteArray(arr[i, :, :])
 
         if path is None:
             return dst_obj
@@ -1029,7 +1039,7 @@ class Dataset:
             mask = [no_val]
         else:
             mask = None
-        indices = _get_indices2(arr, mask=mask)
+        indices = get_indices2(arr, mask=mask)
 
         # execlude the no_data_values cells.
         f1 = [i[0] for i in indices]
@@ -2057,238 +2067,6 @@ class Dataset:
 
         return dst
 
-    # def clipRasterWithPolygon(
-    #     self,
-    #     vector_psth: str,
-    #     save: bool = False,
-    #     output_path: str = None,
-    # ) -> gdal.Datacube:
-    #     """ClipRasterWithPolygon.
-    #
-    #         ClipRasterWithPolygon method clip a raster using polygon shapefile
-    #
-    #     Parameters
-    #     ----------
-    #     raster_path : [String]
-    #         path to the input raster including the raster extension (.tif)
-    #     vector_psth : [String]
-    #         path to the input shapefile including the shapefile extension (.shp)
-    #     save : [Boolen]
-    #         True or False to decide whether to save the clipped raster or not
-    #         default is False
-    #     output_path : [String]
-    #         path to the place in your drive you want to save the clipped raster
-    #         including the raster name & extension (.tif), default is None
-    #
-    #     Returns
-    #     -------
-    #     projected_raster:
-    #         [gdal object] clipped raster
-    #     if save is True function is going to save the clipped raster to the output_path
-    #
-    #     Examples
-    #     --------
-    #     >>> src_path = r"data/Evaporation_ERA-Interim_2009.01.01.tif"
-    #     >>> shp_path = "data/"+"Outline.shp"
-    #     >>> clipped_raster = Dataset.clipRasterWithPolygon(raster_path,vector_psth)
-    #     or
-    #     >>> dst_path = r"data/cropped.tif"
-    #     >>> clipped_raster = Dataset.clipRasterWithPolygon(src_path, shp_path, True, dst_path)
-    #     """
-    #     if isinstance(vector_psth, str):
-    #         poly = gpd.read_file(vector_psth)
-    #     elif isinstance(vector_psth, gpd.geodataframe.GeoDataFrame):
-    #         poly = vector_psth
-    #     else:
-    #         raise TypeError("vector_psth input should be string type")
-    #
-    #     if not isinstance(save, bool):
-    #         raise TypeError("save input should be bool type (True or False)")
-    #
-    #     if save:
-    #         if not isinstance(output_path, str):
-    #             raise ValueError("Pleaase enter a path to save the clipped raster")
-    #     # inputs value
-    #     if save:
-    #         ext = output_path[-4:]
-    #         if not ext == ".tif":
-    #             raise TypeError(
-    #                 "please add the extention at the end of the output_path input"
-    #             )
-    #
-    #     src_epsg = self.epsg
-    #     gt = self.geotransform
-    #
-    #     # first check if the crs is GCS if yes check whether the long is greater than 180
-    #     # geopandas read -ve longitude values if location is west of the prime meridian
-    #     # while rasterio and gdal not
-    #     if src_epsg == "4326" and gt[0] > 180:
-    #         # reproject the raster to web mercator crs
-    #         raster = self.reproject()
-    #         out_transformed = os.environ["Temp"] + "/transformed.tif"
-    #         # save the raster with the new crs
-    #         raster.to_geotiff(out_transformed)
-    #         raster = rasterio.open(out_transformed)
-    #         # delete the transformed raster
-    #         os.remove(out_transformed)
-    #     else:
-    #         # crs of the raster was not GCS or longitudes less than 180
-    #         if isinstance(raster_path, str):
-    #             raster = rasterio.open(raster_path)
-    #         else:
-    #             raster = rasterio.open(raster_path.GetDescription())
-    #
-    #     ### Cropping the raster with the shapefile
-    #     # Re-project into the same coordinate system as the raster data
-    #     shpfile = poly.to_crs(crs=raster.crs.data)
-    #
-    #     # Get the geometry coordinates by using the function.
-    #     coords = Feature.getFeatures(shpfile)
-    #
-    #     out_img, out_transform = rio_mask(dataset=raster, shapes=coords, crop=True)
-    #
-    #     # copy the metadata from the original data file.
-    #     out_meta = raster.meta.copy()
-    #
-    #     # Next we need to parse the EPSG value from the CRS so that we can create
-    #     # a Proj4 string using PyCRS library (to ensure that the projection information is saved correctly).
-    #     epsg_code = int(raster.crs.data["init"][5:])
-    #
-    #     # close the transformed raster
-    #     raster.close()
-    #
-    #     # Now we need to update the metadata with new dimensions, transform (affine) and CRS (as Proj4 text)
-    #     out_meta.update(
-    #         {
-    #             "driver": "GTiff",
-    #             "height": out_img.shape[1],
-    #             "width": out_img.shape[2],
-    #             "transform": out_transform,
-    #             "crs": pyproj.CRS.from_epsg(epsg_code).to_wkt(),
-    #         }
-    #     )
-    #
-    #     # save the clipped raster.
-    #     temp_path = os.environ["Temp"] + "/cropped.tif"
-    #     with rasterio.open(temp_path, "w", **out_meta) as dest:
-    #         dest.write(out_img)
-    #         dest.close()
-    #         dest = None
-    #
-    #     # read the clipped raster
-    #     raster = gdal.Open(temp_path, gdal.GA_ReadOnly)
-    #     # reproject the clipped raster back to its original crs
-    #     projected_raster = Dataset.projectRaster(
-    #         raster, int(src_epsg.GetAttrValue("AUTHORITY", 1))
-    #     )
-    #     raster = None
-    #     # delete the clipped raster
-    #     # try:
-    #     # TODO: fix ClipRasterWithPolygon as it does not delete the the cropped.tif raster from the temp_path
-    #     # the following line through an error
-    #     os.remove(temp_path)
-    #     # except:
-    #     #     print(temp_path + " - could not be deleted")
-    #
-    #     # write the raster to the file
-    #     if save:
-    #         Dataset.saveRaster(projected_raster, output_path)
-    #
-    #     return projected_raster
-
-    # @staticmethod
-    # def clip2(
-    #     src: Union[rasterio.io.DatasetReader, str],
-    #     poly: Union[GeoDataFrame, str],
-    #     save: bool = False,
-    #     output_path: str = "masked.tif",
-    # ) -> gdal.Datacube:
-    #     """Clip2.
-    #
-    #         Clip function takes a rasterio object and clip it with a given geodataframe
-    #         containing a polygon shapely object
-    #
-    #     Parameters
-    #     ----------
-    #     src : [rasterio.io.DatasetReader]
-    #         the raster read by rasterio .
-    #     poly : [geodataframe]
-    #         geodataframe containing the polygon you want clip the raster based on.
-    #     save : [Bool], optional
-    #         to save the clipped raster to your drive. The default is False.
-    #     output_path : [String], optional
-    #         path iincluding the extention (.tif). The default is 'masked.tif'.
-    #
-    #     Returns
-    #     -------
-    #     out_img : [rasterio object]
-    #         the clipped raster.
-    #     metadata : [dictionay]
-    #             dictionary containing number of bands, coordinate reference system crs
-    #             dtype, geotransform, height and width of the raster
-    #     """
-    #     ### 1- Re-project the polygon into the same coordinate system as the raster data.
-    #     # We can access the crs of the raster using attribute .crs.data:
-    #     if isinstance(poly, str):
-    #         # read the shapefile
-    #         poly = gpd.read_file(poly)
-    #     elif isinstance(poly, gpd.geodataframe.GeoDataFrame):
-    #         poly = poly
-    #     else:
-    #         raise TypeError("Polygongdf input should be string type")
-    #
-    #     if isinstance(src, str):
-    #         src = rasterio.open(src)
-    #     elif isinstance(src, rasterio.io.DatasetReader):
-    #         src = src
-    #     else:
-    #         raise TypeError("Rasterobj input should be string type")
-    #
-    #     # Project the Polygon into same CRS as the grid
-    #     poly = poly.to_crs(crs=src.crs.data)
-    #
-    #     # Print crs
-    #     # geo.crs
-    #     ### 2- Convert the polygon into GeoJSON format for rasterio.
-    #
-    #     # Get the geometry coordinates by using the function.
-    #     coords = [json.loads(poly.to_json())["features"][0]["geometry"]]
-    #
-    #     # print(coords)
-    #
-    #     ### 3-Clip the raster with Polygon
-    #     out_img, out_transform = rasterio.mask.mask(
-    #         dataset=src, shapes=coords, crop=True
-    #     )
-    #
-    #     ### 4- update the metadata
-    #     # Copy the old metadata
-    #     out_meta = src.meta.copy()
-    #     # print(out_meta)
-    #
-    #     # Next we need to parse the EPSG value from the CRS so that we can create
-    #     # a Proj4 -string using PyCRS library (to ensure that the projection
-    #     # information is saved correctly).
-    #
-    #     # Parse EPSG code
-    #     epsg_code = int(src.crs.data["init"][5:])
-    #     # print(epsg_code)
-    #
-    #     out_meta.update(
-    #         {
-    #             "driver": "GTiff",
-    #             "height": out_img.shape[1],
-    #             "width": out_img.shape[2],
-    #             "transform": out_transform,
-    #             "crs": pyproj.CRS.from_epsg(epsg_code).to_wkt(),
-    #         }
-    #     )
-    #     if save:
-    #         with rasterio.open(output_path, "w", **out_meta) as dest:
-    #             dest.write(out_img)
-    #
-    #     return out_img, out_meta
-
     @staticmethod
     def _nearest_neighbour(
         array: np.ndarray, nodatavalue: Union[float, int], rows: list, cols: list
@@ -2458,7 +2236,7 @@ class Dataset:
                 if exclude_value is not None
                 else [self.no_data_value[0]]
             )
-            values = _get_pixels2(arr, mask)
+            values = get_pixels2(arr, mask)
         else:
             indices = self.locate_points(feature)
             values = arr[indices[:, 0], indices[:, 1]]
@@ -2499,7 +2277,7 @@ class Dataset:
             if exclude_value is not None
             else [self.no_data_value[0]]
         )
-        ind = _get_indices2(arr, mask)
+        ind = get_indices2(arr, mask)
         classes = classes_map.read_array()
         values = dict()
 
@@ -2680,7 +2458,7 @@ class Datacube:
     def read_separate_files(
         cls,
         path: Union[str, List[str]],
-        with_order: bool = True,
+        with_order: bool = False,
         start: str = None,
         end: str = None,
         fmt: str = None,
@@ -2829,7 +2607,7 @@ class Datacube:
 
         return cls(sample, len(files), files)
 
-    def read_dataset(self, band: int = 1):
+    def read_dataset(self, band: int = 0):
         """Read array.
 
             Read values form the given bands as Arrays for all files
@@ -2837,7 +2615,7 @@ class Datacube:
         Parameters
         ----------
         band: [int]
-            number of the band you want to read default is 1.
+            index of the band you want to read default is 0.
 
         Returns
         -------
@@ -2849,7 +2627,7 @@ class Datacube:
                 "please use the read_separate_files method to get the files (tiff/ascii) in the"
                 "dataset directory"
             )
-        if band > self.base.band_count:
+        if band > self.base.band_count - 1:
             raise ValueError(
                 f"the raster has only {self.base.band_count} check the given band number"
             )
@@ -2866,7 +2644,7 @@ class Datacube:
         for i, file_i in enumerate(self.files):
             # read the tif file
             raster_i = gdal.Open(f"{file_i}")
-            self._data[i, :, :] = raster_i.GetRasterBand(band).ReadAsArray()
+            self._data[i, :, :] = raster_i.GetRasterBand(band + 1).ReadAsArray()
 
     @property
     def data(self) -> np.ndarray:
@@ -3304,61 +3082,6 @@ class Datacube:
             ]
         )  # '-separate'
         gdal_merge.main(parameters)
-
-    # @staticmethod
-    # def rasterio_merge(
-    #     raster_list: list, save: bool = False, path: str = "MosaicedRaster.tif"
-    # ):
-    #     """mosaic.
-    #
-    #     Parameters
-    #     ----------
-    #     raster_list : [list]
-    #         list of the raster files to mosaic.
-    #     save : [Bool], optional
-    #         to save the clipped raster to your drive. The default is False.
-    #     path : [String], optional
-    #         Path iincluding the extention (.tif). The default is 'MosaicedRaster.tif'.
-    #
-    #     Returns
-    #     -------
-    #     Mosaiced raster: [Rasterio object]
-    #         the whole mosaiced raster
-    #     metadata : [dictionay]
-    #         dictionary containing number of bands, coordinate reference system crs
-    #         dtype, geotransform, height and width of the raster
-    #     """
-    #     # List for the source files
-    #     RasterioObjects = []
-    #
-    #     # Iterate over raster files and add them to source -list in 'read mode'
-    #     for file in raster_list:
-    #         src = rasterio.open(file)
-    #         RasterioObjects.append(src)
-    #
-    #     # Merge function returns a single mosaic array and the transformation info
-    #     dst, dst_trans = rasterio.merge.merge(RasterioObjects)
-    #
-    #     # Copy the metadata
-    #     dst_meta = src.meta.copy()
-    #     epsg_code = int(src.crs.data["init"][5:])
-    #     # Update the metadata
-    #     dst_meta.update(
-    #         {
-    #             "driver": "GTiff",
-    #             "height": dst.shape[1],
-    #             "width": dst.shape[2],
-    #             "transform": dst_trans,
-    #             "crs": pyproj.CRS.from_epsg(epsg_code).to_wkt(),
-    #         }
-    #     )
-    #
-    #     if save:
-    #         # Write the mosaic raster to disk
-    #         with rasterio.open(path, "w", **dst_meta) as dest:
-    #             dest.write(dst)
-    #
-    #     return dst, dst_meta
 
     def apply(self, ufunc: Callable):
         """folderCalculator.
