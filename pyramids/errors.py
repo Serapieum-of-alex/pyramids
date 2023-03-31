@@ -53,3 +53,12 @@ class FileFormatNoSupported(Exception):
         logger.error(error_message)
 
     pass
+
+
+class OptionalPackageDoesNontExist(Exception):
+    """Optional Package does not exist"""
+
+    def __init__(self, error_message: str):
+        logger.error(error_message)
+
+    pass

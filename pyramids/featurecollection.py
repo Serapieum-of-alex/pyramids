@@ -13,7 +13,6 @@ import warnings
 from typing import List, Tuple, Union, Iterable
 
 import geopandas as gpd
-import geopy.distance as distance
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
@@ -886,33 +885,36 @@ class FeatureCollection:
 
         return new_gdf
 
-    @staticmethod
-    def gcs_distance(coords_1: tuple, coords_2: tuple):
-        """GCS_distance.
-
-        this function calculates the distance between two points that have
-        geographic coordinate system
-
-        parameters
-        ----------
-        coords_1: [Tuple]
-            tuple of (long, lat) of the first point
-        coords_2: [Tuple]
-            tuple of (long, lat) of the second point
-
-        Returns
-        -------
-        distance between the two points
-
-        Examples
-        --------
-        >>> point_1 = (52.22, 21.01)
-        >>> point_2 = (52.40, 16.92)
-        >>> distance = FeatureCollection.gcs_distance(point_1, point_2)
-        """
-        dist = distance.vincenty(coords_1, coords_2).m
-
-        return dist
+    # @staticmethod
+    # def gcs_distance(coords_1: tuple, coords_2: tuple):
+    #     """GCS_distance.
+    #
+    #     this function calculates the distance between two points that have
+    #     geographic coordinate system
+    #
+    #     parameters
+    #     ----------
+    #     coords_1: [Tuple]
+    #         tuple of (long, lat) of the first point
+    #     coords_2: [Tuple]
+    #         tuple of (long, lat) of the second point
+    #
+    #     Returns
+    #     -------
+    #     distance between the two points
+    #
+    #     Examples
+    #     --------
+    #     >>> point_1 = (52.22, 21.01)
+    #     >>> point_2 = (52.40, 16.92)
+    #     >>> distance = FeatureCollection.gcs_distance(point_1, point_2)
+    #     """
+    #     import_error_msg = f"The triggered function requires geopy package to be install, please install is manually"
+    #     import_geopy(import_error_msg)
+    #     import geopy.distance as distance
+    #     dist = distance.vincenty(coords_1, coords_2).m
+    #
+    #     return dist
 
     @staticmethod
     def reproject_points(
@@ -1034,11 +1036,6 @@ class FeatureCollection:
         PolygonCenterPoint function takes the a geodata frame of polygons and and
         returns the center of each polygon
 
-        Parameters
-        ----------
-        poly: [GeoDataFrame]
-            GeoDataframe containing all the polygons you want to get the center point
-
         Returns
         -------
         saveIng the shapefile or CenterPointDataFrame :
@@ -1067,13 +1064,8 @@ class FeatureCollection:
             poly.loc[i, "avg_x"] = np.mean(row_i["x"])
             poly.loc[i, "avg_y"] = np.mean(row_i["y"])
 
-        # poly = poly.drop(["geometry", "x", "y"], axis=1)
         coords_list = zip(poly["avg_x"].tolist(), poly["avg_y"].tolist())
-
         poly["center_point"] = FeatureCollection.create_point(coords_list)
-
-        # gdf.crs = poly.crs
-        # gdf[poly.columns.tolist()] = poly[poly.columns.tolist()]
 
         return poly
 
