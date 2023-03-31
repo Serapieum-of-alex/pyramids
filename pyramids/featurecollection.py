@@ -440,7 +440,12 @@ class FeatureCollection:
         """
         if prj != "":
             srs = FeatureCollection._create_sr_from_proj(prj)
-            response = srs.AutoIdentifyEPSG()
+            try:
+                # if could not identify epsg use the authority code.
+                response = srs.AutoIdentifyEPSG()
+            except RuntimeError:
+                response = 0
+
             if response == 0:
                 epsg = int(srs.GetAuthorityCode(None))
             else:
