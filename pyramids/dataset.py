@@ -450,7 +450,7 @@ class Dataset:
 
         return arr
 
-    def plot(self, band: int = None, **kwargs):
+    def plot(self, band: int = 0, **kwargs):
         """Read Array
 
             - read the values stored in a given band.
@@ -2742,6 +2742,9 @@ class Datacube:
         - The attribute where the dataset array is stored.
         - the 3D numpy array, [dataset length, rows, cols], [dataset length, lons, lats]
         """
+        if not hasattr(self, "_data"):
+            raise ValueError("please use the read_dataset to read the data first.")
+
         return self._data
 
     @data.setter
@@ -2787,6 +2790,98 @@ class Datacube:
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.base.raster, 0)
         dst.GetRasterBand(1).WriteArray(arr)
         return Dataset(dst)
+
+    def plot(self, band: int = 0, **kwargs):
+        """Read Array
+
+            - read the values stored in a given band.
+
+        Parameters
+        ----------
+        band : [integer]
+            the band you want to get its data. Default is 0
+        **kwargs
+            points : [array]
+                3 column array with the first column as the value you want to display for the point, the second is the rows
+                index of the point in the array, and the third column as the column index in the array.
+                - the second and third column tells the location of the point in the array.
+            point_color: [str]
+                color.
+            point_size: [Any]
+                size of the point.
+            pid_color: [str]
+                the color of the anotation of the point. Default is blue.
+            pid_size: [Any]
+                size of the point annotation.
+            figsize : [tuple], optional
+                figure size. The default is (8,8).
+            title : [str], optional
+                title of the plot. The default is 'Total Discharge'.
+            title_size : [integer], optional
+                title size. The default is 15.
+            orientation : [string], optional
+                orintation of the colorbar horizontal/vertical. The default is 'vertical'.
+            rotation : [number], optional
+                rotation of the colorbar label. The default is -90.
+            orientation : [string], optional
+                orintation of the colorbar horizontal/vertical. The default is 'vertical'.
+            cbar_length : [float], optional
+                ratio to control the height of the colorbar. The default is 0.75.
+            ticks_spacing : [integer], optional
+                Spacing in the colorbar ticks. The default is 2.
+            cbar_label_size : integer, optional
+                size of the color bar label. The default is 12.
+            cbar_label : str, optional
+                label of the color bar. The default is 'Discharge m3/s'.
+            color_scale : integer, optional
+                there are 5 options to change the scale of the colors. The default is 1.
+                1- color_scale 1 is the normal scale
+                2- color_scale 2 is the power scale
+                3- color_scale 3 is the SymLogNorm scale
+                4- color_scale 4 is the PowerNorm scale
+                5- color_scale 5 is the BoundaryNorm scale
+                ------------------------------------------------------------------
+                gamma : [float], optional
+                    value needed for option 2 . The default is 1./2..
+                line_threshold : [float], optional
+                    value needed for option 3. The default is 0.0001.
+                line_scale : [float], optional
+                    value needed for option 3. The default is 0.001.
+                bounds: [List]
+                    a list of number to be used as a discrete bounds for the color scale 4.Default is None,
+                midpoint : [float], optional
+                    value needed for option 5. The default is 0.
+                ------------------------------------------------------------------
+            cmap : [str], optional
+                color style. The default is 'coolwarm_r'.
+            display_cell_value : [bool]
+                True if you want to display the values of the cells as a text
+            num_size : integer, optional
+                size of the numbers plotted intop of each cells. The default is 8.
+            background_color_threshold : [float/integer], optional
+                threshold value if the value of the cell is greater, the plotted
+                numbers will be black and if smaller the plotted number will be white
+                if None given the maxvalue/2 will be considered. The default is None.
+
+        Returns
+        -------
+        axes: [figure axes].
+            the axes of the matplotlib figure
+        fig: [matplotlib figure object]
+            the figure object
+        """
+        import_cleopatra(
+            "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
+            "check https://github.com/Serapieum-of-alex/cleopatra"
+        )
+        from cleopatra.array import Array
+
+        data = self.data
+
+        cleo = Array(data, exculde_value=self.base.no_data_value[band])
+        time = list(range(self.time_length))
+        anim = cleo.animate(time, **kwargs)
+        return anim
 
     def to_file(self, path: str, driver: str = "geotiff", band: int = 1):
         """Save to geotiff format.
