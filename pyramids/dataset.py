@@ -986,12 +986,14 @@ class Dataset:
                     )
 
     def _calculate_bbox(self) -> List:
+        """calculate bounding box"""
         xmin, ymax = self.pivot_point
         ymin = ymax - self.rows * self.cell_size
         xmax = xmin + self.columns * self.cell_size
         return [xmin, ymin, xmax, ymax]
 
     def _calculate_bounds(self) -> GeoDataFrame:
+        """get the bbox as a geodataframe with a polygon geometry"""
         xmin, ymin, xmax, ymax = self._calculate_bbox()
         coords = [(xmin, ymax), (xmin, ymin), (xmax, ymin), (xmax, ymax)]
         poly = FeatureCollection.create_polygon(coords)
