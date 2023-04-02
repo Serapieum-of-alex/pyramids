@@ -108,3 +108,15 @@ class TestReadTar:
         first_file = multiple_compressed_file_gzip_content[0]
         src = read_file(f"{multiple_compressed_file_tar}/{first_file}")
         assert isinstance(src, gdal.Dataset)
+
+
+class TestHttpsrequest:
+    def test_read_from_aws(self):
+        url = (
+            "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/31/U/FU/2020/3"
+            "/S2A_31UFU_20200328_0_L2A/B01.tif"
+        )
+        src = read_file(url)
+        assert src.RasterXSize == 1830
+        assert src.RasterYSize == 1830
+        assert isinstance(src, gdal.Dataset)
