@@ -36,7 +36,7 @@ class TestProperties:
 
     def test_shape(self, src: gdal.Dataset):
         dataset = Dataset(src)
-        assert dataset.shape == (13, 14)
+        assert dataset.shape == (1, 13, 14)
 
 
 class TestCreateRasterObject:

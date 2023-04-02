@@ -162,7 +162,7 @@ class Dataset:
     @property
     def shape(self):
         """Dataset shape"""
-        return self.rows, self.columns
+        return self.band_count, self.rows, self.columns
 
     @property
     def geotransform(self):
