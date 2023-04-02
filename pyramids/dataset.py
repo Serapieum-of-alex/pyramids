@@ -141,7 +141,8 @@ class Dataset:
         return message
 
     @property
-    def raster(self):
+    def raster(self) -> gdal.Dataset:
+        """GDAL Dataset"""
         return self._raster
 
     @raster.setter
@@ -149,12 +150,12 @@ class Dataset:
         self._raster = value
 
     @property
-    def rows(self):
+    def rows(self) -> int:
         """Number of rows in the raster array."""
         return self._rows
 
     @property
-    def columns(self):
+    def columns(self) -> int:
         """Number of columns in the raster array."""
         return self._columns
 
@@ -168,6 +169,11 @@ class Dataset:
         """Top left corner coordinates."""
         xmin, _, _, ymax, _, _ = self._geotransform
         return xmin, ymax
+
+    @property
+    def bounds(self) -> GeoDataFrame:
+        """bounds"""
+        return self._calculate_bounds()
 
     @property
     def epsg(self):
@@ -233,21 +239,17 @@ class Dataset:
         return np.array(y_coords)
 
     @property
-    def crs(self):
+    def crs(self) -> str:
         """Coordinate reference system."""
         return self._get_crs()
 
     @crs.setter
-    def crs(self, value):
+    def crs(self, value: str):
         """Coordinate reference system."""
         self.set_crs(value)
 
     @property
-    def bounds(self):
-        return self._calculate_bounds()
-
-    @property
-    def cell_size(self):
+    def cell_size(self) -> int:
         """Cell size."""
         return self._cell_size
 
@@ -973,7 +975,7 @@ class Dataset:
                         f"no_data_value now is set to {DEFAULT_NO_DATA_VALUE} in the raster"
                     )
 
-    def _calculate_bounds(self):
+    def _calculate_bounds(self) -> GeoDataFrame:
         xmin, ymax = self.pivot_point
         ymin = ymax - self.rows * self.cell_size
         xmax = xmin + self.columns * self.cell_size
