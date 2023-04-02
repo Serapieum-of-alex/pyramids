@@ -160,6 +160,11 @@ class Dataset:
         return self._columns
 
     @property
+    def shape(self):
+        """Dataset shape"""
+        return self.rows, self.columns
+
+    @property
     def geotransform(self):
         """WKT projection."""
         return self._geotransform

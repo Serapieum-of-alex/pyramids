@@ -34,6 +34,10 @@ class TestProperties:
         dataset = Dataset(src)
         assert all(dataset.bounds == bounds_gdf)
 
+    def test_shape(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        assert dataset.shape == (13, 14)
+
 
 class TestCreateRasterObject:
     def test_from_gdal_dataset(
