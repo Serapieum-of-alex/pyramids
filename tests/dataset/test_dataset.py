@@ -30,6 +30,24 @@ class TestProperties:
         assert isinstance(poly, GeoDataFrame)
         assert all(bounds_gdf == poly)
 
+    def test_create_bbox(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
+        dataset = Dataset(src)
+        bbox = dataset._calculate_bbox()
+        assert isinstance(bbox, list)
+        assert bbox == [
+            432968.1206170588,
+            468007.787999178,
+            488968.1206170588,
+            520007.787999178,
+        ]
+        bbox = dataset.bbox
+        assert bbox == [
+            432968.1206170588,
+            468007.787999178,
+            488968.1206170588,
+            520007.787999178,
+        ]
+
     def test_bounds_property(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
         dataset = Dataset(src)
         assert all(dataset.bounds == bounds_gdf)

@@ -181,6 +181,11 @@ class Dataset:
         return self._calculate_bounds()
 
     @property
+    def bbox(self) -> List:
+        """[xmin, ymin, xmax, ymax]"""
+        return self._calculate_bbox()
+
+    @property
     def epsg(self):
         """WKT projection."""
         return self._epsg
@@ -980,10 +985,14 @@ class Dataset:
                         f"no_data_value now is set to {DEFAULT_NO_DATA_VALUE} in the raster"
                     )
 
-    def _calculate_bounds(self) -> GeoDataFrame:
+    def _calculate_bbox(self) -> List:
         xmin, ymax = self.pivot_point
         ymin = ymax - self.rows * self.cell_size
         xmax = xmin + self.columns * self.cell_size
+        return [xmin, ymin, xmax, ymax]
+
+    def _calculate_bounds(self) -> GeoDataFrame:
+        xmin, ymin, xmax, ymax = self._calculate_bbox()
         coords = [(xmin, ymax), (xmin, ymin), (xmax, ymin), (xmax, ymax)]
         poly = FeatureCollection.create_polygon(coords)
         gdf = gpd.GeoDataFrame(geometry=[poly])
