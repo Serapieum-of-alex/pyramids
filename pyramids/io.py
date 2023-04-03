@@ -1,7 +1,7 @@
 import os
 import zipfile
 import gzip
-
+import numpy as np
 import warnings
 from osgeo import gdal
 from pyramids.errors import FileFormatNoSupported
@@ -207,3 +207,56 @@ def read_file(path: str, read_only: bool = True):
             f"the raster is being used by other software"
         )
     return src
+
+
+def stringSpace(inp):
+    return str(inp) + "  "
+
+
+def to_ascii(
+    arr: np.ndarray, cell_size: int, xmin, ymin, no_data_value, path: str
+) -> None:
+    """write raster into ascii file.
+
+        to_ascii reads writes the raster to disk into an ascii format.
+
+    Parameters
+    ----------
+    arr: [np.ndarray]
+        array you want to write to disk.
+    cell_size: [int]
+        cell size.
+    xmin: [float]
+        x coordinate of the lower left corner.
+    ymin: [float]
+        y coordinate of the lower left corner.
+    no_data_value: [numeric]
+        no data vlaue.
+    path: [str]
+        name of the ASCII file you want to convert and the name
+        should include the extension ".asc"
+    """
+    if not isinstance(path, str):
+        raise TypeError("path input should be string type")
+
+    if os.path.exists(path):
+        raise FileExistsError(
+            f"There is a file with the same path you have provided: {path}"
+        )
+    rows = arr.shape[0]
+    columns = arr.shape[1]
+    # y_lower_side = geotransform[3] - rows * cell_size
+    # write the the ASCII file details
+    File = open(path, "w")
+    File.write("ncols         " + str(columns) + "\n")
+    File.write("nrows         " + str(rows) + "\n")
+    File.write("xllcorner     " + str(xmin) + "\n")
+    File.write("yllcorner     " + str(ymin) + "\n")
+    File.write("cellsize      " + str(cell_size) + "\n")
+    File.write("NODATA_value  " + str(no_data_value) + "\n")
+    # write the array
+    for i in range(rows):
+        File.writelines(list(map(stringSpace, arr[i, :])))
+        File.write("\n")
+
+    File.close()

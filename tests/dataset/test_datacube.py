@@ -220,7 +220,7 @@ class TestSaveDataset:
 
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
-        dataset.to_file(path, driver="ascii", band=1)
+        dataset.to_file(path, driver="ascii", band=0)
         files = os.listdir(path)
         assert len(files) == 6
         shutil.rmtree(path)

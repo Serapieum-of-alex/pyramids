@@ -1244,7 +1244,7 @@ class Dataset:
         gdf["id"] = gdf.index
         return gdf
 
-    def to_file(self, path: str, driver: str = "geotiff", band: int = 1) -> None:
+    def to_file(self, path: str, driver: str = "geotiff", band: int = 0) -> None:
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
@@ -1266,7 +1266,7 @@ class Dataset:
         >>> raster_obj.to_file(output_path)
         """
         if not isinstance(path, str):
-            raise TypeError("Raster_path input should be string type")
+            raise TypeError("path input should be string type")
 
         if not CATALOG.exists(driver):
             raise DriverNotExistError(f"The given driver: {driver} does not exist")
@@ -1274,54 +1274,15 @@ class Dataset:
         driver_name = CATALOG.get_gdal_name(driver)
 
         if driver == "ascii":
-            self._to_ascii(path, band=band)
+            arr = self.read_array(band=band)
+            no_data_value = self.no_data_value[band]
+            xmin, ymin, _, _ = self.bbox
+            io.to_ascii(arr, self.cell_size, xmin, ymin, no_data_value, path)
         else:
             dst = gdal.GetDriverByName(driver_name).CreateCopy(path, self.raster, 0)
             dst = None  # Flush the dataset to disk
             # print to go around the assigned but never used pre-commit issue
             print(dst)
-
-    def _to_ascii(self, path: str, band: int = 1) -> None:
-        """write raster into ascii file.
-
-            to_ascii reads writes the raster to disk into an ascii format.
-
-        Parameters
-        ----------
-        path: [str]
-            name of the ASCII file you want to convert and the name
-            should include the extension ".asc"
-        band: [int]
-            band index.
-        """
-        if not isinstance(path, str):
-            raise TypeError("path input should be string type")
-
-        if os.path.exists(path):
-            raise FileExistsError(
-                f"There is a file with the same path you have provided: {path}"
-            )
-
-        y_lower_side = self.geotransform[3] - self.rows * self.cell_size
-        # write the the ASCII file details
-        File = open(path, "w")
-        File.write("ncols         " + str(self.columns) + "\n")
-        File.write("nrows         " + str(self.rows) + "\n")
-        File.write("xllcorner     " + str(self.geotransform[0]) + "\n")
-        File.write("yllcorner     " + str(y_lower_side) + "\n")
-        File.write("cellsize      " + str(self.cell_size) + "\n")
-        File.write("NODATA_value  " + str(self.no_data_value[band - 1]) + "\n")
-        arr = self.raster.ReadAsArray()
-        # write the array
-        for i in range(np.shape(arr)[0]):
-            File.writelines(list(map(Dataset.stringSpace, arr[i, :])))
-            File.write("\n")
-
-        File.close()
-
-    @staticmethod
-    def stringSpace(inp):
-        return str(inp) + "  "
 
     def to_polygon(
         self,
@@ -2914,7 +2875,7 @@ class Datacube:
         anim = cleo.animate(time, **kwargs)
         return anim
 
-    def to_file(self, path: str, driver: str = "geotiff", band: int = 1):
+    def to_file(self, path: str, driver: str = "geotiff", band: int = 0):
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
