@@ -179,6 +179,10 @@ def read_file(path: str, read_only: bool = True):
     -------
     GDAL dataset
     """
+    if not isinstance(path, str):
+        raise TypeError(
+            f"the path parameter should be of string type, given: {type(path)}"
+        )
     path = _parse_path(path)
     access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
     try:
