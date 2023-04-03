@@ -1,9 +1,7 @@
-# import geopandas as gpd
-# import numpy as np
-import pandas as pd
 import pytest
-from pandas import DataFrame
+from osgeo import gdal
 
-# import datetime as dt
-# from osgeo import gdal
-# from osgeo.gdal import Dataset
+
+@pytest.fixture(scope="module")
+def coello_df_4000() -> gdal.Dataset:
+    return gdal.Open("tests/data/dem/fd4000.tif")

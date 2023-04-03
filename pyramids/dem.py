@@ -1,3 +1,4 @@
+from typing import Any, Dict
 import numpy as np
 from osgeo import gdal
 
@@ -18,36 +19,30 @@ class DEM(Dataset):
         8- ListAttributes
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, src: gdal.Dataset):
+        super().__init__(src)
 
-    @staticmethod
-    def D8(DEM):
+    def D8(self):
         """D8 method generate flow direction raster from DEM and fill sinks.
 
-        inputs:
-        ----------
-            1-Dataset:
-                [Gdal object] DEM
-
-        Outputs:
-        ----------
-            1- flow_direction_cell:
-                [numpy array] with the same dimensions of the raster and 2 layers
-                first layer for rows index and second rows for column index
-            2-elev_sinkless:
-                [numpy array] DEM after filling sinks
+        Returns
+        -------
+        flow_direction_cell: [numpy array]
+            with the same dimensions of the raster and 2 layers
+            first layer for rows index and second rows for column index
+        elev_sinkless: [numpy array]
+            DEM after filling sinks
         """
-        gt = DEM.GetGeoTransform()
-        cellsize = gt[1]
+        cellsize = self.cell_size
         dist2 = cellsize * np.sqrt(2)
-        no_columns = DEM.RasterXSize
-        no_rows = DEM.RasterYSize
+        no_columns = self.columns
+        no_rows = self.rows
 
-        elev = DEM.ReadAsArray()
+        elev = self.read_array(band=0)
         # get the value stores in novalue cells
-        dem_no_val = np.float32(DEM.GetRasterBand(1).GetNoDataValue())
-        elev[elev == dem_no_val] = np.nan
+        dem_no_val = self.no_data_value[0]
+        elev = elev.astype(np.float32)
+        elev[np.isclose(elev, dem_no_val, rtol=0.00001)] = np.nan
 
         slopes = np.ones((no_rows, no_columns, 9)) * np.nan
         distances = [cellsize, dist2, cellsize, dist2, cellsize, dist2, cellsize, dist2]
@@ -371,53 +366,37 @@ class DEM(Dataset):
 
         return flow_direction_cell, elev_sinkless
 
-    @staticmethod
-    def flowDirectionIndex(flow_direct):
+    def flowDirectionIndex(self) -> np.ndarray:
         """this function takes flow firection raster and convert codes for the 8 directions (1,2,4,8,16,32,64,128) into indices of the Downstream cell.
 
-        inputs:
-        ----------
-            1- flow_direct:
-                [gdal.dataset] flow direction raster obtained from catchment delineation
-                it only contains values [1,2,4,8,16,32,64,128]
+        flow_direct:
+            [gdal.dataset] flow direction raster obtained from catchment delineation
+            it only contains values [1,2,4,8,16,32,64,128]
 
-        output:
-        ----------
-            1-fd_indices:
-                [numpy array] with the same dimensions of the raster and 2 layers
-                first layer for rows index and second rows for column index
+        Returns
+        -------
+        fd_indices:
+            [numpy array] with the same dimensions of the raster and 2 layers
+            first layer for rows index and second rows for column index
 
         Example:
         ----------
             fd=gdal.Open("Flowdir.tif")
             fd_indices=FlowDirectِِIndex(fd)
         """
-        # input data validation
-        # data type
-        assert (
-            type(flow_direct) == gdal.Dataset
-        ), "src should be read using gdal (gdal dataset please read it using gdal library) "
-
         # check flow direction input raster
-        no_val = np.float32(flow_direct.GetRasterBand(1).GetNoDataValue())
-        cols = flow_direct.RasterXSize
-        rows = flow_direct.RasterYSize
+        no_val = self.no_data_value[0]
+        cols = self.columns
+        rows = self.rows
 
-        fd = flow_direct.ReadAsArray()
-        fd_val = [
-            int(fd[i, j])
-            for i in range(rows)
-            for j in range(cols)
-            if fd[i, j] != no_val
-        ]
-        fd_val = list(set(fd_val))
+        fd = self.read_array(band=0)
+        fd_val = np.unique(fd[~np.isclose(fd, no_val, rtol=0.00001)])
         fd_should = [1, 2, 4, 8, 16, 32, 64, 128]
-        assert all(
-            fd_val[i] in fd_should for i in range(len(fd_val))
-        ), "flow direction raster should contain values 1,2,4,8,16,32,64,128 only "
+        if not all(fd_val[i] in fd_should for i in range(len(fd_val))):
+            raise ValueError(
+                "flow direction raster should contain values 1,2,4,8,16,32,64,128 only "
+            )
 
-        #    fd=np.float32(flow_direct.ReadAsArray())
-        #    fd[fd==no_val]=np.nan
         fd_cell = np.ones((rows, cols, 2)) * np.nan
 
         for i in range(rows):
@@ -449,38 +428,33 @@ class DEM(Dataset):
 
         return fd_cell
 
-    @staticmethod
-    def flowDirectionTable(flow_direct):
-        """this function takes flow direction indices created by FlowDirectِِIndex function and create a dictionary with the cells indices as a key and  indices of directly upstream cells as values (list of tuples)
+    def flowDirectionTable(self) -> Dict:
+        """Flow Direction Table.
+            - This function takes flow direction indices created by FlowDirectِِIndex function and create a
+            dictionary with the cells indices as a key and  indices of directly upstream cells as values (list of tuples)
 
-        Inputs:
-        ----------
-            1- flow_direct:
+
+            flow_direct:
                 [gdal.dataset] flow direction raster obtained from catchment delineation
                 it only contains values [1,2,4,8,16,32,64,128]
 
-        Outputs:
-        ----------
-            1-flowAccTable:
-                [Dict] dictionary with the cells indices as a key and indices of directly
-                upstream cells as values (list of tuples)
-
-        Example:
-        ----------
+        Returns
+        -------
+        flowAccTable:
+            [Dict] dictionary with the cells indices as a key and indices of directly
+            upstream cells as values (list of tuples)
         """
-        # input data validation
-        # validation is inside FlowDirectِِIndex
-        FDI = DEM.flowDirectionIndex(flow_direct)
+        FDI = self.flowDirectionIndex()
 
-        rows = flow_direct.RasterYSize
-        cols = flow_direct.RasterXSize
+        rows = self.rows
+        cols = self.columns
 
         celli = []
         cellj = []
         celli_content = []
         cellj_content = []
-        for i in range(rows):  # rows
-            for j in range(cols):  # columns
+        for i in range(rows):
+            for j in range(cols):
                 if not np.isnan(FDI[i, j, 0]):
                     # store the indexes of not empty cells and the indexes stored inside these cells
                     celli.append(i)
@@ -491,8 +465,8 @@ class DEM(Dataset):
 
         flow_acc_table = {}
         # for each cell store the directly giving cells
-        for i in range(rows):  # rows
-            for j in range(cols):  # columns
+        for i in range(rows):
+            for j in range(cols):
                 if not np.isnan(FDI[i, j, 0]):
                     # get the indexes of the cell and use it as a key in a dictionary
                     name = str(i) + "," + str(j)
@@ -736,7 +710,7 @@ class DEM(Dataset):
             )
 
     @staticmethod
-    def cluster(Data, LowerValue, UpperValue):
+    def cluster(Data: np.ndarray, LowerValue: Any, UpperValue: Any):
         """Cluster method group all the connected values between two numbers in a raster in clusters.
 
         Parameters
