@@ -717,6 +717,16 @@ class TestFootPrint:
     def test_raster_full_of_data(self, test_image: Dataset):
         dataset = Dataset(test_image)
         extent = dataset.footprint()
+        extent.to_file("tests/data/extent1.geojson")
+        # extent column should have one class only
+        assert len(set(extent["id"])) == 1
+        # the class should be 2
+        assert list(set(extent["id"]))[0] == 2
+
+    @pytest.mark.fast
+    def test_max_depth_raster(self, footprint_test: Dataset, replace_values: List):
+        dataset = Dataset(footprint_test)
+        extent = dataset.footprint(exclude_values=replace_values)
 
         # extent column should have one class only
         assert len(set(extent["id"])) == 1
@@ -737,7 +747,7 @@ class TestFootPrint:
     ):
         dataset = Dataset(modis_surf_temp)
         # modis nodatavalue is gdal object is different than the array
-        extent = dataset.footprint(replace=replace_values)
+        extent = dataset.footprint(exclude_values=replace_values)
         # extent column should have one class only
         assert len(set(extent["id"])) == 1
         # the class should be 2
@@ -748,7 +758,7 @@ class TestFootPrint:
         self, era5_image: gdal.Dataset, replace_values: List
     ):
         dataset = Dataset(era5_image)
-        extent = dataset.footprint(replace=replace_values)
+        extent = dataset.footprint(exclude_values=replace_values)
         # extent column should have one class only
         assert len(set(extent["id"])) == 1
         # the class should be 2

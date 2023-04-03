@@ -189,7 +189,7 @@ def one_compressed_file_tar() -> str:
 
 @pytest.fixture(scope="module")
 def replace_values() -> List:
-    return [(0, None)]
+    return [0]
 
 
 @pytest.fixture(scope="module")

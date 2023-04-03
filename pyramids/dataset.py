@@ -2369,7 +2369,7 @@ class Dataset:
     def footprint(
         self,
         band: int = 0,
-        replace: Optional[List[Tuple[Any, Any]]] = None,
+        exclude_values: Optional[List[Tuple[Any, Any]]] = None,
     ) -> Union[GeoDataFrame, None]:
         """footprint.
 
@@ -2379,10 +2379,10 @@ class Dataset:
         ----------
         band: [int]
             band index. Default is 0.
-        replace:
-            if you want to replace a certain value in the raster with another value inter the two values as a list of tuples a
-            [(value_to_be_replaced, new_value)]
-            >>> replace = [(0, None)]
+        exclude_values:
+            if you want to exclude_values a certain value in the raster with another value inter the two values as a list of tuples a
+            [(value_to_be_exclude_valuesd, new_value)]
+            >>> exclude_values = [(0, None)]
             - This parameter is introduced particularly for the case of rasters that has the nodatavalue stored in the
             array does not match the value stored in array, so this option can correct this behavior.
 
@@ -2402,24 +2402,24 @@ class Dataset:
                     " not correct"
                 )
         else:
-            if not (np.isclose(arr, no_data_val, rtol=0.00001)).all():
+            if not (np.isclose(arr, no_data_val, rtol=0.00001)).any():
                 logger.warning(
                     "the nodata values stored in the raster does not exist in the raster "
                     "so either the raster extent is all full with data or the nodatavalue stored in the raster is"
                     " not correct"
                 )
-        # if you want to replace any value in the raster
-        if replace:
-            for val in replace:
-                val1 = val[0]
-                val2 = val[1]
+        # if you want to exclude_values any value in the raster
+        if exclude_values:
+            for val in exclude_values:
+                # val1 = val[0]
+                # val2 = val[1]
                 try:
                     # in case the val2 is None and the array is int type the following line will give error as None
                     # is considered as float
-                    arr[np.isclose(arr, val1)] = val2
+                    arr[np.isclose(arr, val)] = no_data_val
                 except TypeError:
                     arr = arr.astype(np.float32)
-                    arr[np.isclose(arr, val1)] = val2
+                    arr[np.isclose(arr, val)] = no_data_val
 
         # replace all the values with 2
         if no_data_val is None:

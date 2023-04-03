@@ -398,3 +398,8 @@ def bounds_gdf() -> GeoDataFrame:
     gdf = gpd.GeoDataFrame(geometry=[poly])
     gdf.set_crs(epsg=32618, inplace=True)
     return gdf
+
+
+@pytest.fixture(scope="module")
+def footprint_test() -> Dataset:
+    return gdal.Open("tests/data/footprint_test.tif")
