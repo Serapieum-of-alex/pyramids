@@ -150,6 +150,10 @@ class Dataset:
         self._raster = value
 
     @property
+    def values(self) -> np.ndarray:
+        return self.read_array(band=None)
+
+    @property
     def rows(self) -> int:
         """Number of rows in the raster array."""
         return self._rows
@@ -641,9 +645,8 @@ class Dataset:
         arr: Union[str, gdal.Dataset, np.ndarray],
         geo: Union[str, tuple],
         epsg: Union[str, int],
-        nodatavalue: Any = DEFAULT_NO_DATA_VALUE,
-        path: str = None,
-    ) -> Union[gdal.Dataset, None]:
+        no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+    ):
         """create_raster.
 
             - create_raster method creates a raster from a given array and geotransform data
@@ -656,37 +659,17 @@ class Dataset:
         geo : [list], optional
             geotransform list [minimum lon, pixelsize, rotation, maximum lat, rotation,
                 pixelsize]. The default is ''.
-        nodatavalue : TYPE, optional
+        no_data_value : TYPE, optional
             DESCRIPTION. The default is -9999.
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator )
-        path : [str], optional
-            Path to save the Dataset, if '' is given a memory raster will be returned. The default is ''.
 
         Returns
         -------
-        dst : [gdal.Datacube/save raster to drive].
-            if a path is given the created raster will be saved to drive, if not
-            a gdal.Datacube will be returned.
+        dst : [DataSet].
+            Dataset object will be returned.
         """
-        try:
-            if np.isnan(nodatavalue):
-                nodatavalue = DEFAULT_NO_DATA_VALUE
-        except TypeError:
-            # np.isnan fails sometimes with the following error
-            # TypeError: ufunc 'isnan' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''
-            if pd.isnull(nodatavalue):
-                nodatavalue = DEFAULT_NO_DATA_VALUE
-
-        if path is None:
-            driver_type = "MEM"
-        else:
-            if not isinstance(path, str):
-                raise TypeError("first parameter Path should be string")
-
-            driver_type = "GTiff"
-
         if len(arr.shape) == 2:
             bands = 1
             rows = int(arr.shape[0])
@@ -698,13 +681,13 @@ class Dataset:
 
         dtype = numpy_to_gdal_dtype(arr)
         dst_ds = Dataset._create_gdal_dataset(
-            cols, rows, bands, dtype, driver=driver_type, path=path
+            cols, rows, bands, dtype, driver="MEM", path=None
         )
 
         srse = Dataset._create_sr_from_epsg(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
         dst_obj = cls(dst_ds)
-        dst_obj._set_no_data_value(no_data_value=nodatavalue)
+        dst_obj._set_no_data_value(no_data_value=no_data_value)
 
         dst_obj.raster.SetGeoTransform(geo)
         if bands == 1:
@@ -713,11 +696,7 @@ class Dataset:
             for i in range(bands):
                 dst_obj.raster.GetRasterBand(i + 1).WriteArray(arr[i, :, :])
 
-        if path is None:
-            return dst_obj
-        else:
-            dst_ds = None
-            return
+        return dst_obj
 
     @classmethod
     def dataset_like(
@@ -953,11 +932,16 @@ class Dataset:
         """
         if not isinstance(no_data_value, list):
             no_data_value = [no_data_value] * self.band_count
+
         for i, val in enumerate(self.dtype):
             if gdal_to_numpy_dtype(val).__contains__("float"):
-                no_data_value[i] = float(no_data_value[i])
+                no_data_value[i] = (
+                    float(no_data_value[i]) if no_data_value[i] is not None else None
+                )
             elif gdal_to_numpy_dtype(val).__contains__("int"):
-                no_data_value[i] = int(no_data_value[i])
+                no_data_value[i] = (
+                    int(no_data_value[i]) if no_data_value[i] is not None else None
+                )
             else:
                 raise TypeError("NoDataValue has a complex data type")
 
@@ -1019,15 +1003,24 @@ class Dataset:
         ]
         potential_dtypes = [NUMPY_GDAL_DATA_TYPES.get(i) for i in potential_dtypes]
 
-        if not self.dtype[band_i] in potential_dtypes:
-            raise NoDataValueError(
-                f"The dtype of the given no_data_value{no_data_value}: {no_dtype} differs from the dtype of the "
-                f"band: {gdal_to_numpy_dtype(self.dtype[band_i])}"
-            )
+        if no_data_value is not None:
+            if not self.dtype[band_i] in potential_dtypes:
+                raise NoDataValueError(
+                    f"The dtype of the given no_data_value{no_data_value}: {no_dtype} differs from the dtype of the "
+                    f"band: {gdal_to_numpy_dtype(self.dtype[band_i])}"
+                )
 
         self.change_no_data_value_attr(band_i, no_data_value)
         # initialize the band with the nodata value instead of 0
-        self.raster.GetRasterBand(band_i + 1).Fill(no_data_value)
+        try:
+            self.raster.GetRasterBand(band_i + 1).Fill(no_data_value)
+        except Exception as e:
+            if str(e).__contains__(" argument 2 of type 'double'"):
+                self.raster.GetRasterBand(band_i + 1).Fill(np.float64(no_data_value))
+            else:
+                raise ValueError(
+                    f"Failed to fill the band {band_i} with value: {no_data_value}, because of {e}"
+                )
         # update the no_data_value in the Dataset object
         self.no_data_value[band_i] = no_data_value
 
@@ -1286,7 +1279,7 @@ class Dataset:
 
     def to_polygon(
         self,
-        band: int = 1,
+        band: int = 0,
         col_name: Any = "id",
         path: str = None,
         driver: str = "memory",
@@ -1313,7 +1306,7 @@ class Dataset:
         -------
         None
         """
-        band = self.raster.GetRasterBand(band)
+        band = self.raster.GetRasterBand(band + 1)
         srs = osr.SpatialReference(wkt=self.crs)
         if path is None:
             dst_layername = "id"
@@ -2372,6 +2365,84 @@ class Dataset:
             values[key].append(arr[ind_i[0], ind_i[1]])
 
         return values
+
+    def footprint(
+        self,
+        band: int = 0,
+        replace: Optional[List[Tuple[Any, Any]]] = None,
+    ) -> Union[GeoDataFrame, None]:
+        """footprint.
+
+            extract_extent takes a gdal raster object and returns
+
+        Parameters
+        ----------
+        band: [int]
+            band index. Default is 0.
+        replace:
+            if you want to replace a certain value in the raster with another value inter the two values as a list of tuples a
+            [(value_to_be_replaced, new_value)]
+            >>> replace = [(0, None)]
+            - This parameter is introduced particularly for the case of rasters that has the nodatavalue stored in the
+            array does not match the value stored in array, so this option can correct this behavior.
+
+        Returns
+        -------
+        GeoDataFrame containing the polygon representing the extent of the raster.
+        the extent column should contains a value of  2 only.
+        """
+        arr = self.read_array(band=band)
+        no_data_val = self.no_data_value[band]
+
+        if no_data_val is None:
+            if not (np.isnan(arr)).any():
+                logger.warning(
+                    "the nodata values stored in the raster does not exist in the raster "
+                    "so either the raster extent is all full with data or the nodatavalue stored in the raster is"
+                    " not correct"
+                )
+        else:
+            if not (np.isclose(arr, no_data_val, rtol=0.00001)).all():
+                logger.warning(
+                    "the nodata values stored in the raster does not exist in the raster "
+                    "so either the raster extent is all full with data or the nodatavalue stored in the raster is"
+                    " not correct"
+                )
+        # if you want to replace any value in the raster
+        if replace:
+            for val in replace:
+                val1 = val[0]
+                val2 = val[1]
+                try:
+                    # in case the val2 is None and the array is int type the following line will give error as None
+                    # is considered as float
+                    arr[np.isclose(arr, val1)] = val2
+                except TypeError:
+                    arr = arr.astype(np.float32)
+                    arr[np.isclose(arr, val1)] = val2
+
+        # replace all the values with 2
+        if no_data_val is None:
+            # check if the whole raster is full of no_data_value
+            if (np.isnan(arr)).all():
+                logger.warning("the raster is full of no_data_value")
+                return None
+
+            arr[~np.isnan(arr)] = 2
+        else:
+            # check if the whole raster is full of nodatavalue
+            if (np.isclose(arr, no_data_val, rtol=0.00001)).all():
+                logger.warning("the raster is full of no_data_value")
+                return None
+
+            arr[~np.isclose(arr, no_data_val, rtol=0.00001)] = 2
+        new_dataset = self.create_from_array(
+            arr, self.geotransform, self.epsg, self.no_data_value
+        )
+        # then convert the rasater into polygon
+        gdf = new_dataset.to_polygon(band=band)
+
+        return gdf
 
     @staticmethod
     def normalize(array: np.ndarray):

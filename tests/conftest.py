@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Tuple, List
+from typing import Tuple, List
 
 import geopandas as gpd
 import numpy as np
@@ -23,6 +24,11 @@ def test_image_path() -> Path:
 @pytest.fixture(scope="session")
 def test_image(test_image_path: Path) -> Dataset:
     return gdal.Open(str(test_image_path))
+
+
+@pytest.fixture(scope="session")
+def nan_raster() -> Dataset:
+    return gdal.Open("tests/data/raster_full_of_nan.tif")
 
 
 @pytest.fixture(scope="session")
@@ -179,3 +185,18 @@ def one_compressed_file_7z() -> str:
 @pytest.fixture(scope="module")
 def one_compressed_file_tar() -> str:
     return "tests/data/one_compressed_file.tar"
+
+
+@pytest.fixture(scope="module")
+def replace_values() -> List:
+    return [(0, None)]
+
+
+@pytest.fixture(scope="module")
+def modis_surf_temp() -> gdal.Dataset:
+    return gdal.Open("tests/data/extract_extent_modis_surftemp.tif")
+
+
+@pytest.fixture(scope="module")
+def era5_image() -> gdal.Dataset:
+    return gdal.Open("tests/data/extract_extent_era5_land_monthly_averaged_data.tif")

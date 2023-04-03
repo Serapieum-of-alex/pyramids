@@ -56,6 +56,10 @@ class TestProperties:
         dataset = Dataset(src)
         assert dataset.shape == (1, 13, 14)
 
+    def test_values(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        assert isinstance(dataset.values, np.ndarray)
+
 
 class TestCreateRasterObject:
     def test_from_gdal_dataset(
@@ -138,7 +142,7 @@ class TestCreateRasterObject:
             arr=src_arr,
             geo=src_geotransform,
             epsg=src_epsg,
-            nodatavalue=src_no_data_value,
+            no_data_value=src_no_data_value,
         )
         assert isinstance(src.raster, gdal.Dataset)
         assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
@@ -706,3 +710,46 @@ def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
     extracted_classes = list(class_dict.keys())
     real_classes = class_values.tolist()[:-1]
     assert all(i in real_classes for i in extracted_classes)
+
+
+class TestFootPrint:
+    @pytest.mark.fast
+    def test_raster_full_of_data(self, test_image: Dataset):
+        dataset = Dataset(test_image)
+        extent = dataset.footprint()
+
+        # extent column should have one class only
+        assert len(set(extent["id"])) == 1
+        # the class should be 2
+        assert list(set(extent["id"]))[0] == 2
+
+    @pytest.mark.fast
+    def test_raster_full_of_no_data_value(
+        self, test_image: gdal.Dataset, nan_raster: str
+    ):
+        dataset = Dataset(nan_raster)
+        extent = dataset.footprint()
+        assert extent is None
+
+    @pytest.mark.fast
+    def test_modis_with_replace_parameter_several_bands(
+        self, modis_surf_temp: gdal.Dataset, replace_values: List
+    ):
+        dataset = Dataset(modis_surf_temp)
+        # modis nodatavalue is gdal object is different than the array
+        extent = dataset.footprint(replace=replace_values)
+        # extent column should have one class only
+        assert len(set(extent["id"])) == 1
+        # the class should be 2
+        assert list(set(extent["id"]))[0] == 2
+
+    @pytest.mark.fast
+    def test_ear5_one_band_no_nodatavalue_in_raster(
+        self, era5_image: gdal.Dataset, replace_values: List
+    ):
+        dataset = Dataset(era5_image)
+        extent = dataset.footprint(replace=replace_values)
+        # extent column should have one class only
+        assert len(set(extent["id"])) == 1
+        # the class should be 2
+        assert list(set(extent["id"]))[0] == 2
