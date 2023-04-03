@@ -744,7 +744,7 @@ class TestFootPrint:
         assert list(set(extent["id"]))[0] == 2
 
     @pytest.mark.fast
-    def test_ear5_one_band_no_nodatavalue_in_raster(
+    def test_ear5_one_band_no_no_data_value_in_raster(
         self, era5_image: gdal.Dataset, replace_values: List
     ):
         dataset = Dataset(era5_image)

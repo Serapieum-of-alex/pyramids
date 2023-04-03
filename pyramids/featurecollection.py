@@ -811,7 +811,6 @@ class FeatureCollection:
         if wkt:
             return poly.wkt
         else:
-
             return poly
 
     @staticmethod
