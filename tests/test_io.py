@@ -1,5 +1,7 @@
 import os
 from typing import List
+
+import pytest
 from osgeo import gdal
 from pyramids.errors import FileFormatNoSupported
 from pyramids.io import _parse_path, extract_from_gz, read_file
@@ -111,6 +113,7 @@ class TestReadTar:
 
 
 class TestHttpsrequest:
+    @pytest.mark.vfs
     def test_read_from_aws(self):
         url = (
             "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/31/U/FU/2020/3"
