@@ -3,6 +3,9 @@ import numpy as np
 from osgeo import gdal
 
 from pyramids.dataset import Dataset
+import sys
+
+sys.setrecursionlimit(5000)
 
 
 class DEM(Dataset):
@@ -480,28 +483,24 @@ class DEM(Dataset):
 
     @staticmethod
     def deleteBasins(basins, pathout):
-        """this function deletes all the basins in a basin raster created when delineating a catchment and leave only the first basin which is the biggest basin in the raster.
+        """Delete Basins
 
-        Inputs:
-        ----------
-            1- basins:
-                [gdal.dataset] raster you create during delineation of a catchment
-                values of its cells are the number of the basin it belongs to
-            2- pathout:
-                [String] path you want to save the resulted raster to it should include
-                the extension ".tif"
-        Outputs:
-        ----------
-            1- raster with only one basin (the basin that its name is 1 )
+            - this function deletes all the basins in a basin raster created when delineating a catchment and leave
+            only the first basin which is the biggest basin in the raster.
 
-        Example:
+        Parameters
         ----------
-            basins=gdal.Open("Data/basins.tif")
-            pathout="mask.tif"
-            DeleteBasins(basins,pathout)
+        basins: [gdal.dataset]
+            raster you create during delineation of a catchment
+            values of its cells are the number of the basin it belongs to
+        pathout: [str]
+             path you want to save the resulted raster to it should include
+            the extension ".tif"
+
+        Returns
+        -------
+        raster with only one basin (the basin that its name is 1 )
         """
-        # input data validation
-        # data type
         assert type(pathout) == str, "A_path input should be string type"
         assert (
             type(basins) == gdal.Dataset

@@ -30,3 +30,10 @@ def test_flowDirectionTable(coello_df_4000: gdal.Dataset):
     dem = DEM(coello_df_4000)
     fd_table = dem.flowDirectionTable()
     assert isinstance(fd_table, dict)
+
+
+# def test_cluster(rhine_raster: gdal.Dataset):
+#     dem = DEM(rhine_raster)
+#     arr = dem.read_array()
+#     f = DEM.cluster(arr, 1, 5)
+#     print("ccc")
