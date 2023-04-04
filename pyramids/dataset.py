@@ -2411,8 +2411,6 @@ class Dataset:
         # if you want to exclude_values any value in the raster
         if exclude_values:
             for val in exclude_values:
-                # val1 = val[0]
-                # val2 = val[1]
                 try:
                     # in case the val2 is None and the array is int type the following line will give error as None
                     # is considered as float
