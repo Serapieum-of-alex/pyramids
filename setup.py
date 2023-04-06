@@ -40,4 +40,6 @@ setup(
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
     ],
+    include_package_data=True,
+    package_data={"": ["gdal_drivers.yaml", "ogr_drivers.yaml"]},
 )
