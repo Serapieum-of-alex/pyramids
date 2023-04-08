@@ -28,8 +28,15 @@ def test_flowDirectionIndex(coello_df_4000: gdal.Dataset):
 
 def test_flowDirectionTable(coello_df_4000: gdal.Dataset):
     dem = DEM(coello_df_4000)
+    fd_cell = dem.flowDirectionTable()
+    assert isinstance(fd_cell, np.ndarray)
+    assert fd_cell.shape == (dem.rows, dem.columns, 2)
+
+
+def test_flowDirectionTable(coello_df_4000: gdal.Dataset, coello_fdt):
+    dem = DEM(coello_df_4000)
     fd_table = dem.flowDirectionTable()
-    assert isinstance(fd_table, dict)
+    assert fd_table == coello_fdt
 
 
 # def test_cluster(rhine_raster: gdal.Dataset):
