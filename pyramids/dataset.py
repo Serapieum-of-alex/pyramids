@@ -2256,7 +2256,7 @@ class Dataset:
 
     def locate_points(
         self,
-        points: Union[GeoDataFrame, FeatureCollection],
+        points: Union[GeoDataFrame, FeatureCollection, DataFrame],
     ) -> np.ndarray:
         """nearestCell.
 
@@ -2280,14 +2280,23 @@ class Dataset:
         """
         if isinstance(points, GeoDataFrame):
             points = FeatureCollection(points)
+        elif isinstance(points, DataFrame):
+            if all(elem not in points.columns for elem in ["x", "y"]):
+                raise ValueError(
+                    "If the input in a DataFrame, it should have two columns x, and y"
+                )
         else:
             if not isinstance(points, FeatureCollection):
                 raise TypeError(
                     f"please check points input it should be GeoDataFrame/FeatureCollection - given {type(points)}"
                 )
-        # get the x, y coordinates.
-        points.xy()
-        points = points.feature.loc[:, ["x", "y"]].values
+        if not isinstance(points, DataFrame):
+            # get the x, y coordinates.
+            points.xy()
+            points = points.feature.loc[:, ["x", "y"]].values
+        else:
+            points = points.loc[:, ["x", "y"]].values
+
         # since first row is x-coords so the first column in the indices is the column index
         indices = locate_values(points, self.x, self.y)
         # rearrange the columns to make the row index first

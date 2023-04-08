@@ -3,7 +3,8 @@ import os
 from typing import List
 
 import geopandas as gpd
-from geopandas.geodataframe import GeoDataFrame
+import pandas as pd
+from geopandas.geodataframe import GeoDataFrame, DataFrame
 import numpy as np
 import pytest
 from osgeo import gdal
@@ -403,3 +404,13 @@ def bounds_gdf() -> GeoDataFrame:
 @pytest.fixture(scope="module")
 def footprint_test() -> Dataset:
     return gdal.Open("tests/data/footprint_test.tif")
+
+
+@pytest.fixture(scope="module")
+def gauges_df() -> DataFrame:
+    x = [454795.6728, 443847.5736, 454044.6935, 464533.7067, 463231.1242, 487292.5152]
+    y = [503143.3264, 481850.7151, 481189.4256, 502683.6482, 486656.3455, 478045.5720]
+    df = pd.DataFrame(columns=["x", "y"])
+    df["x"] = x
+    df["y"] = y
+    return df

@@ -8,6 +8,7 @@ import pytest
 from osgeo import gdal, osr
 from pyramids.dataset import Dataset
 from pyramids.dataset import ReadOnlyError
+from pyramids.featurecollection import FeatureCollection
 
 
 class TestProperties:
@@ -677,7 +678,7 @@ class TestExtract:
         values = src.extract(exclude_value=0)
         assert len(values) == 46
 
-    def test_locate_points(
+    def test_locate_points_using_gdf(
         self,
         coello_gauges: DataFrame,
         src: Dataset,
@@ -685,6 +686,17 @@ class TestExtract:
     ):
         dataset = Dataset(src)
         loc = dataset.locate_points(coello_gauges)
+        assert isinstance(loc, np.ndarray)
+        assert np.array_equal(points_location_in_array, loc)
+
+    def test_locate_points_using_df(
+        self,
+        gauges_df: DataFrame,
+        src: Dataset,
+        points_location_in_array: GeoDataFrame,
+    ):
+        dataset = Dataset(src)
+        loc = dataset.locate_points(gauges_df)
         assert isinstance(loc, np.ndarray)
         assert np.array_equal(points_location_in_array, loc)
 
