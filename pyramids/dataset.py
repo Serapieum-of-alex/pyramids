@@ -470,7 +470,7 @@ class Dataset:
 
         return arr
 
-    def plot(self, band: int = 0, **kwargs):
+    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs):
         """Read Array
 
             - read the values stored in a given band.
@@ -479,6 +479,8 @@ class Dataset:
         ----------
         band : [integer]
             the band you want to get its data. Default is 0
+        exclude_value: [Any]
+            value to execlude from the plot. Default is None.
         **kwargs
             points : [array]
                 3 column array with the first column as the value you want to display for the point, the second is the rows
@@ -555,8 +557,14 @@ class Dataset:
         )
         from cleopatra.array import Array
 
+        exclude_value = (
+            [self.no_data_value[band], exclude_value]
+            if exclude_value is not None
+            else [self.no_data_value[band]]
+        )
+
         arr = self.read_array(band=band)
-        cleo = Array(arr, exculde_value=self.no_data_value[band])
+        cleo = Array(arr, exclude_value=exclude_value)
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
 
@@ -2291,16 +2299,18 @@ class Dataset:
         exclude_value: Any = None,
         feature: Union[FeatureCollection, GeoDataFrame] = None,
     ) -> List:
-        """Extract Values.
+        """Extract.
 
-            - this function is written to extract and return a list of all the values in a map.
+            - Extract method get all the values in a raster, and exclude the values in the exclude_value parameter.
+            - If the feature parameter is given the raster will be cliped to the extent of the given feature and the
+            values within the feature are extracted.
 
         Parameters
         ----------
         exclude_value: [Numeric]
             values you want to exclude from exteacted values
         feature: [FeatureCollection/GeoDataFrame]
-            vectpr file contains geometries you want to extract the values at their location. Default is None.
+            vector file contains geometries you want to extract the values at their location. Default is None.
         """
         arr = self.read_array()
 
@@ -2323,14 +2333,13 @@ class Dataset:
     ) -> Dict[List[float], List[float]]:
         """OverlayMap.
 
-            OverlayMap extracts and return a list of all the values in an ASCII file,
-            if you have two maps one with classes, and the other map contains any type of values,
-            and you want to know the values in each class
+            overlay extracts all the values in rasater file, if you have two maps one with classes, and the other map
+            contains any type of values, and you want to know the values in each class.
 
         Parameters
         ----------
         classes_map: [Dataset]
-            Dataset Object fpr the raster that have classes you want to overlay with the raster.
+            Dataset Object for the raster that have classes you want to overlay with the raster.
         exclude_value: [Numeric]
             values you want to exclude from extracted values.
 
@@ -2369,7 +2378,7 @@ class Dataset:
     def footprint(
         self,
         band: int = 0,
-        exclude_values: Optional[List[Tuple[Any, Any]]] = None,
+        exclude_values: Optional[List[Any]] = None,
     ) -> Union[GeoDataFrame, None]:
         """footprint.
 
@@ -2382,14 +2391,16 @@ class Dataset:
         exclude_values:
             if you want to exclude_values a certain value in the raster with another value inter the two values as a list of tuples a
             [(value_to_be_exclude_valuesd, new_value)]
-            >>> exclude_values = [(0, None)]
+            >>> exclude_values = [0]
             - This parameter is introduced particularly for the case of rasters that has the nodatavalue stored in the
             array does not match the value stored in array, so this option can correct this behavior.
 
         Returns
         -------
-        GeoDataFrame containing the polygon representing the extent of the raster.
-        the extent column should contains a value of  2 only.
+        GeoDataFrame:
+            - geodataframe containing the polygon representing the extent of the raster. the extent column should
+            contains a value of  2 only.
+            - if the dataset had separate polygons each polygon will be in a separate row.
         """
         arr = self.read_array(band=band)
         no_data_val = self.no_data_value[band]
@@ -2611,7 +2622,7 @@ class Datacube:
         with_order: bool = False,
         start: str = None,
         end: str = None,
-        fmt: str = None,
+        fmt: str = "%Y-%m-%d",
         freq: str = "daily",
         separator: str = "_",
         extension: str = ".tif",
@@ -2852,7 +2863,7 @@ class Datacube:
         dst.GetRasterBand(1).WriteArray(arr)
         return Dataset(dst)
 
-    def plot(self, band: int = 0, **kwargs):
+    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs):
         """Read Array
 
             - read the values stored in a given band.
@@ -2861,6 +2872,8 @@ class Datacube:
         ----------
         band : [integer]
             the band you want to get its data. Default is 0
+        exclude_value: [Any]
+            value to execlude from the plot. Default is None.
         **kwargs
             points : [array]
                 3 column array with the first column as the value you want to display for the point, the second is the rows
@@ -2939,7 +2952,13 @@ class Datacube:
 
         data = self.data
 
-        cleo = Array(data, exculde_value=self.base.no_data_value[band])
+        exclude_value = (
+            [self.base.no_data_value[band], exclude_value]
+            if exclude_value is not None
+            else [self.base.no_data_value[band]]
+        )
+
+        cleo = Array(data, exclude_value=exclude_value)
         time = list(range(self.time_length))
         anim = cleo.animate(time, **kwargs)
         return anim
