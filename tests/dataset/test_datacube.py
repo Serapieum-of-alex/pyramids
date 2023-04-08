@@ -312,7 +312,6 @@ class TestProperties:
     def test_getitem(
         self,
         rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
@@ -326,8 +325,6 @@ class TestProperties:
     def test_setitem(
         self,
         rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
     ):
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
@@ -344,7 +341,6 @@ class TestProperties:
         self,
         rasters_folder_path: str,
         rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
     ):
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
@@ -354,7 +350,6 @@ class TestProperties:
         self,
         rasters_folder_path: str,
         rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
     ):
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
@@ -363,8 +358,6 @@ class TestProperties:
     def test_head_tail(
         self,
         rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
     ):
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
@@ -372,3 +365,32 @@ class TestProperties:
         tail = dataset.tail()
         assert head.shape[0] == 5
         assert tail.shape[0] == 5
+
+    def test_first_last(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+        first = dataset.first()
+        last = dataset.last()
+        assert first.shape == rasters_folder_dim
+        assert last.shape == rasters_folder_dim
+
+    def test_rows_columns(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_dim: tuple,
+        rasters_folder_rasters_number: int,
+    ):
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+
+        assert dataset.rows == rasters_folder_dim[0]
+        assert dataset.columns == rasters_folder_dim[1]
+        assert dataset.shape == (
+            rasters_folder_rasters_number,
+            rasters_folder_dim[0],
+            rasters_folder_dim[1],
+        )

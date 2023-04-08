@@ -2566,6 +2566,17 @@ class Datacube:
 
         pass
 
+    def __str__(self):
+        message = f"""
+            Files: {len(self.files)}
+            Cell size: {self._base.cell_size}
+            EPSG: {self._base.epsg}
+            Variables: {self._base.variables}
+            Dimension: {self.rows * self.columns}
+            Mask: {self._base.no_data_value[0]}
+        """
+        return message
+
     @property
     def base(self) -> Dataset:
         """base.
@@ -2578,6 +2589,21 @@ class Datacube:
     def time_length(self) -> int:
         """length of the dataset."""
         return self._time_length
+
+    @property
+    def rows(self):
+        """Number of rows"""
+        return self._base.rows
+
+    @property
+    def shape(self):
+        """Number of rows"""
+        return self.time_length, self.rows, self.columns
+
+    @property
+    def columns(self):
+        """Number of columns"""
+        return self._base.columns
 
     @classmethod
     def create_cube(cls, src: Dataset, dataset_length: int):
