@@ -2860,6 +2860,9 @@ class Datacube:
             raise AttributeError("Please use the read_dataset method t read the data")
         self._data[key, :, :] = value
 
+    def __len__(self):
+        return self._data.shape[0]
+
     def iloc(self, i):
         """iloc.
 
