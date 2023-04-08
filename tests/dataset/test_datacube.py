@@ -306,3 +306,36 @@ def test_overlay(rasters_folder_path: str, germany_classes: str):
     extracted_classes = list(class_dict.keys())
     real_classes = class_values.tolist()[:-1]
     assert all(i in real_classes for i in extracted_classes)
+
+
+class TestProperties:
+    def test_getitem(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_rasters_number: int,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+        arr = dataset[2]
+        assert arr.shape == (
+            rasters_folder_dim[0],
+            rasters_folder_dim[1],
+        )
+
+    def test_setitem(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_rasters_number: int,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+        no_data_value = dataset.base.no_data_value[0]
+        arr = dataset[2]
+        arr[~np.isclose(arr, no_data_value, rtol=0.00001)] = (
+            arr[~np.isclose(arr, no_data_value, rtol=0.00001)] * 10000
+        )
+        dataset[2] = arr
+        arr2 = dataset.data[2, :, :]
+        assert np.array_equal(arr, arr2)

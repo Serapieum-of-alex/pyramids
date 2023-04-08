@@ -2850,6 +2850,16 @@ class Datacube:
     def data(self):
         self._data = None
 
+    def __getitem__(self, key):
+        if not hasattr(self, "data"):
+            raise AttributeError("Please use the read_dataset method t read the data")
+        return self._data[key, :, :]
+
+    def __setitem__(self, key, value: np.ndarray):
+        if not hasattr(self, "data"):
+            raise AttributeError("Please use the read_dataset method t read the data")
+        self._data[key, :, :] = value
+
     def iloc(self, i):
         """iloc.
 
