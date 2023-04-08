@@ -2874,6 +2874,14 @@ class Datacube:
         """Last 5 Datasets."""
         return self._data[n:, :, :]
 
+    def first(self):
+        """First Dataset."""
+        return self._data[0, :, :]
+
+    def last(self):
+        """Last Dataset."""
+        return self._data[-1, :, :]
+
     def iloc(self, i):
         """iloc.
 
