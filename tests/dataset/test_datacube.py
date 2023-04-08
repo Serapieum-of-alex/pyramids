@@ -359,3 +359,16 @@ class TestProperties:
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         assert len(list(dataset)) == rasters_folder_rasters_number
+
+    def test_head_tail(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_rasters_number: int,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+        head = dataset.head()
+        tail = dataset.tail()
+        assert head.shape[0] == 5
+        assert tail.shape[0] == 5

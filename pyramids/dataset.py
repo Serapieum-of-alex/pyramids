@@ -2866,6 +2866,14 @@ class Datacube:
     def __iter__(self):
         return iter(self._data[:])
 
+    def head(self, n: int = 5):
+        """First 5 Datasets."""
+        return self._data[:n, :, :]
+
+    def tail(self, n: int = -5):
+        """Last 5 Datasets."""
+        return self._data[n:, :, :]
+
     def iloc(self, i):
         """iloc.
 
