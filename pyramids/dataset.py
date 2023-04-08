@@ -2863,6 +2863,9 @@ class Datacube:
     def __len__(self):
         return self._data.shape[0]
 
+    def __iter__(self):
+        return iter(self._data[:])
+
     def iloc(self, i):
         """iloc.
 

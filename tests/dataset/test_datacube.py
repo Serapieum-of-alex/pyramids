@@ -349,3 +349,13 @@ class TestProperties:
         dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         dataset.read_dataset()
         assert len(dataset) == rasters_folder_rasters_number
+
+    def test_iter(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_rasters_number: int,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
+        dataset.read_dataset()
+        assert len(list(dataset)) == rasters_folder_rasters_number
