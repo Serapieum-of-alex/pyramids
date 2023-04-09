@@ -1,11 +1,11 @@
 affine >=2.3.1
+cleopatra >=0.2.5
 gdal >=3.5.3
 geopandas >=0.12.2
 h3 >=3.7.4
 hpc-utils ==0.1.0
 loguru >=0.6.0
 numpy ==1.24.1
-# cleopatra ==0.3.0
 pandas >=1.4.4
 pip >=22.3.1
 pyproj >=3.4.0
