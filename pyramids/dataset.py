@@ -43,7 +43,7 @@ except ModuleNotFoundError:
         "osgeo_utils module does not exist try install pip install osgeo-utils "
     )
 
-from numpy_utils.filter import get_pixels, get_indices2, get_pixels2, locate_values
+from hpc.filter import get_pixels, get_indices2, get_pixels2, locate_values
 from pyramids.featurecollection import FeatureCollection
 from pyramids import io
 
