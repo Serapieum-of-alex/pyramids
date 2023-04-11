@@ -1,4 +1,4 @@
-name: Linux
+name: Main-package
 on:
     push:
         branches:
@@ -42,7 +42,7 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          python -m pytest -v -m "not plot" --cov=pyramids --cov-report=xml
+          python -m pytest -v -m "not plot"
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3

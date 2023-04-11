@@ -1,4 +1,4 @@
-name: Linux
+name: optional-packages
 on:
     push:
         branches:
@@ -35,6 +35,12 @@ jobs:
             python -c "from osgeo import gdal"
             gdalinfo --version
 
+      - name: Test cleopatra
+        run: |
+            pip install cleopatra
+            python -c "from cleopatra.array import Array"
+            python -c "import matplotlib.pyplot as plt"
+
       - name: Install dependencies
         run: |
             pip install -r requirements-optional-packages.txt -r requirements-dev.txt
@@ -42,7 +48,7 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          python -m pytest -vvv --cov=pyramids --cov-report=xml
+          python -m pytest -v --cov=pyramids --cov-report=xml
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3
