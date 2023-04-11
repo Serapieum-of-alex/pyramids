@@ -506,11 +506,6 @@ class DEM(Dataset):
             type(basins) == gdal.Dataset
         ), "basins raster should be read using gdal (gdal dataset please read it using gdal library) "
 
-        # input values
-        # check wether the user wrote the extension of the raster or not
-        ext = pathout[-4:]
-        assert ext == ".tif", "please add the extension at the end of the path input"
-
         # get number of rows
         rows = basins.RasterYSize
         # get number of columns
