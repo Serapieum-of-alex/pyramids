@@ -1,11 +1,10 @@
 import pytest
 import numpy as np
 from pyramids.dataset import Dataset, Datacube
-from matplotlib.animation import FuncAnimation
+
 
 # import matplotlib
 # matplotlib.use("TkAgg")
-from matplotlib.figure import Figure
 
 
 class TestPlotDataSet:
@@ -16,6 +15,8 @@ class TestPlotDataSet:
         src_shape: tuple,
         src_arr: np.ndarray,
     ):
+        from matplotlib.figure import Figure
+
         dataset = Dataset(src)
         fig, ax = dataset.plot(band=0)
         assert isinstance(fig, Figure)
@@ -29,6 +30,8 @@ class TestReadDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
+        from matplotlib.animation import FuncAnimation
+
         cube = Datacube.read_separate_files(rasters_folder_path, with_order=False)
         cube.read_dataset()
         anim = cube.plot()
