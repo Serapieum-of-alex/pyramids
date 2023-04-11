@@ -264,9 +264,9 @@ class FeatureCollection:
     def to_dataset(
         self,
         cell_size: int = None,
-        src=None,
-        vector_field=None,
-    ) -> Union[None, gdal.Dataset]:
+        dataset=None,
+        column_name=None,
+    ):
         """Covert a vector into raster.
 
             - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
@@ -277,47 +277,47 @@ class FeatureCollection:
         ----------
         cell_size: [int]
             cell size.
-        src : [gdal Dataset]
+        dataset : [Dataset]
             Raster object, the raster will only be used as a source for the geotransform (
             projection, rows, columns, location) data to be copied to the rasterized vector.
-        vector_field : str or None
+        column_name : str or None
             Name of a field in the vector to burn values from. If None, all vector
             features are burned with a constant value of 1.
 
         Returns
         -------
-        gdal.Dataset
+        Dataset
             Single band raster with vector geometries burned.
         """
         from pyramids.dataset import Dataset
 
-        if cell_size is None and src is None:
+        if cell_size is None and dataset is None:
             raise ValueError("You have to enter either cell size of Dataset object")
 
         # Check EPSG are same, if not reproject vector.
         ds_epsg = self.epsg
-        if src is not None:
-            if src.epsg != ds_epsg:
+        if dataset is not None:
+            if dataset.epsg != ds_epsg:
                 # TODO: reproject the vector to the raster projection instead of raising an error.
                 raise ValueError(
-                    f"Dataset and vector are not the same EPSG. {src.epsg} != {ds_epsg}"
+                    f"Dataset and vector are not the same EPSG. {dataset.epsg} != {ds_epsg}"
                 )
 
-        if src is not None:
-            if not isinstance(src, Dataset):
+        if dataset is not None:
+            if not isinstance(dataset, Dataset):
                 raise TypeError(
                     "The second parameter should be a Dataset object (check how to read a raster using the "
                     "Dataset module)"
                 )
             # if the raster is given the top left corner of the raster will be taken as the top left corner for
             # the rasterized polygon
-            xmin, _, _, ymax, _, _ = src.geotransform
+            xmin, _, _, ymax, _, _ = dataset.geotransform
         else:
             # if a raster is not given the xmin and ymax will be taken as the top left corner for the rasterized
             # polygon.
             xmin, ymin, xmax, ymax = self.feature.bounds.values[0]
 
-        if vector_field is None:
+        if column_name is None:
             # Use a constant value for all features.
             burn_values = [1]
             attribute = None
@@ -325,14 +325,14 @@ class FeatureCollection:
         else:
             # Use the values given in the vector field.
             burn_values = None
-            attribute = vector_field
+            attribute = column_name
             dtype = 7
 
-        if isinstance(src, Dataset):
-            no_data_value = src.no_data_value[0]
-            rows = src.rows
-            columns = src.columns
-            cell_size = src.cell_size
+        if isinstance(dataset, Dataset):
+            no_data_value = dataset.no_data_value[0]
+            rows = dataset.rows
+            columns = dataset.columns
+            cell_size = dataset.cell_size
         else:
             no_data_value = Dataset.default_no_data_value
             columns = int(np.ceil((xmax - xmin) / cell_size))
@@ -346,7 +346,7 @@ class FeatureCollection:
         top_left_coords = (xmin, ymax)
         # TODO: enable later multi bands
         bands = 1
-        src = Dataset._create_driver_from_scratch(
+        dataset_n = Dataset._create_driver_from_scratch(
             cell_size,
             rows,
             columns,
@@ -365,10 +365,10 @@ class FeatureCollection:
         # for future trial to remove writing the vector to disk and enter the second parameter as a path, try to find
         # a way to convert the ogr.DataSource or GeoDataFrame into a similar object to the object resulting from
         # gdal.OpenEx which is a dataset
-        _ = gdal.Rasterize(src.raster, vector_path, options=rasterize_opts)
+        _ = gdal.Rasterize(dataset_n.raster, vector_path, options=rasterize_opts)
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-        return src
+        return dataset_n
 
     @staticmethod
     def _get_ds_epsg(ds: DataSource):
