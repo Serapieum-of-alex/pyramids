@@ -165,7 +165,7 @@ class TestToRaster:
         """
         dataset = Dataset.read_file(raster_to_df_path)
         vector = FeatureCollection(vector_mask_gdf)
-        src = vector.to_dataset(src=dataset)
+        src = vector.to_dataset(dataset=dataset)
         assert src.epsg == vector_mask_gdf.crs.to_epsg()
 
         xmin, _, _, ymax, _, _ = dataset.geotransform
