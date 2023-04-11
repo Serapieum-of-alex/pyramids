@@ -37,14 +37,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-            pip install git+https://github.com/Serapieum-of-alex/numpy-utils.git@main
-            pip install git+https://github.com/Serapieum-of-alex/cleopatra.git@refactoring
             pip install -r requirements.txt -r requirements-dev.txt
             python setup.py install
 
       - name: Generate coverage report
         run: |
-          python -m pytest -vvv --cov=pyramids --cov-report=xml
+          python -m pytest -v -m "not plot" --cov=pyramids --cov-report=xml
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3

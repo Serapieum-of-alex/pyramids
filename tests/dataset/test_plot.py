@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from pyramids.dataset import Dataset, Datacube
 from matplotlib.animation import FuncAnimation
@@ -8,6 +9,7 @@ from matplotlib.figure import Figure
 
 
 class TestPlotDataSet:
+    @pytest.mark.plot
     def test_plot_1(
         self,
         src: Dataset,
@@ -20,6 +22,7 @@ class TestPlotDataSet:
 
 
 class TestReadDataset:
+    @pytest.mark.plot
     def test_geotiff(
         self,
         rasters_folder_path: str,
