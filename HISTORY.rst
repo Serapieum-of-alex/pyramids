@@ -51,3 +51,14 @@ History
 ------------------
 * fix bug in reading the ogr drivers catalog for the vector class
 * fix bug in creating rasterLike in the asciiToRaster method
+
+0.4.0 (2023-04-11)
+------------------
+* Restructure the whole package to two main objects Dataset and FeatureCollection
+* Add class for multiple Dataset "DataCube".
+* Link both Dataset and FeatureCollection to convert between raster and vector data types.
+* Remove rasterio and netcdf from dependencies and depend only on gdal.
+* Test read rasters/netcdf from virtual file systems (aws, compressed)
+* Add dunder methods for all classes.
+* add plotting functionality and cleopatra (plotting package) as an optional package.
+* remove loops and replace it with ufunc from numpy.
