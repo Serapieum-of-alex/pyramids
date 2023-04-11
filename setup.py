@@ -11,12 +11,12 @@ requirements_dev = [line.strip() for line in open("requirements-dev.txt").readli
 
 setup(
     name="pyramids-gis",
-    version="0.3.3",
+    version="0.4.0",
     description="GIS utility package",
     author="Mostafa Farrag",
     author_email="moah.farag@gmail.come",
     url="https://github.com/MAfarrag/pyramids",
-    keywords=["GIS", "gdal", "rasterio"],
+    keywords=["GIS", "gdal"],
     long_description=readme + "\n\n" + history,
     repository="https://github.com/MAfarrag/pyramids",
     documentation="https://pyramids-gis.readthedocs.io/",
@@ -40,4 +40,6 @@ setup(
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
     ],
+    include_package_data=True,
+    package_data={"": ["gdal_drivers.yaml", "ogr_drivers.yaml"]},
 )

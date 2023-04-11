@@ -14,7 +14,7 @@ from osgeo import gdal
 
 # import datetime as dt
 # import pandas as pd
-from pyramids.raster import Raster
+from pyramids.dataset import Dataset
 
 # import matplotlib.pyplot as plt
 #%% inputs
@@ -33,7 +33,7 @@ Dst_Array = dst.ReadAsArray()
 print("Shape of distnation raster Before matching = " + str(Dst_Array.shape))
 
 ### Match the alignment of both rasters
-NewRasterB = Raster.matchRasterAlignment(src, dst)
+NewRasterB = Dataset.align(src, dst)
 NewRasterB_array = NewRasterB.ReadAsArray()
 print("Shape of distnation  raster after matching = " + str(NewRasterB_array.shape))
 
@@ -45,7 +45,7 @@ assert (
 
 # %% Match the NODataValue
 # TODO : fix bug in nearestneighbor
-NewRasterB_ND = Raster.cropAlligned(src, NewRasterB)
+NewRasterB_ND = Dataset._crop_alligned(src, NewRasterB)
 
 NoDataValue = NewRasterB_ND.GetRasterBand(1).GetNoDataValue()
 
@@ -59,4 +59,4 @@ assert (
 # g = src_Array[src_Array == NoDataValue]
 
 # %%
-Raster.saveRaster(NewRasterB_ND, SaveTo)
+Dataset.saveRaster(NewRasterB_ND, SaveTo)

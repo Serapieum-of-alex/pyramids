@@ -66,7 +66,7 @@ pip install git+https://github.com/Serapieum-of-alex/pyramids
 ## pip
 to install the last release you can easly use pip
 ```
-pip install pyramids-gis==0.3.3
+pip install pyramids-gis==0.4.0
 ```
 
 Quick start
@@ -77,3 +77,6 @@ Quick start
 ```
 
 [other code samples](https://pyramids-gis.readthedocs.io/en/latest/?badge=latest)
+
+## Coverage
+[![codecov](https://codecov.io/gh/Serapieum-of-alex/pyramids/branch/main/graphs/sunburst.svg?token=g0DV4dCa8N)](https://codecov.io/gh/Serapieum-of-alex/pyramids)

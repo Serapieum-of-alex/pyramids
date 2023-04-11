@@ -1,0 +1,280 @@
+memory:
+  GDAL Name: MEM
+  Long name: In Memory Dataset
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+  extension: None
+
+geotiff:
+  GDAL Name: GTiff
+  Long name: GeoTIFF File Format
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+  extension: tif
+
+
+netcdf:
+  GDAL Name: netCDF
+  Long name: NetCDF Network Common Data Form
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: libnetcdf
+  extension: nc
+
+cog:
+  GDAL Name: COG
+  Long name: Cloud Optimized GeoTIFF generator
+  Creation: No
+  Copy: yes
+  Geo-referencing: No
+  Build requirements: Built-in by default
+
+geo raster:
+  GDAL Name: GeoRaster
+  Long name: Oracle Spatial GeoRaster
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Oracle client libraries
+
+gif:
+  GDAL Name: GIF
+  Long name: Graphics Interchange Format
+  Creation: No
+  Copy: yes
+  Geo-referencing: No
+  Build requirements: internal GIF library provided
+
+gpkg:
+  GDAL Name: GPKG
+  Long name: GeoPackage raster
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements:  libsqlite3 (and any or all of PNG, JPEG, WEBP drivers)
+
+hdf4:
+  GDAL Name: HDF4
+  Long name: Hierarchical Data Format Release 4 (HDF4)
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: libdf
+
+hdf5:
+  GDAL Name: HDF5
+  Long name: Hierarchical Data Format Release 5 (HDF5)
+  Creation: No
+  Copy: No
+  Geo-referencing: yes
+  Build requirements: libhdf5
+
+jpeg:
+  GDAL Name: JPEG
+  Long name: JPEG JFIF File Format
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: internal libjpeg provided
+  extension: .jpeg
+
+pc raster:
+  GDAL Name: PCRaster
+  Long name: PCRaster raster file format
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: internal libcf provided
+
+post gis raster:
+  GDAL Name: PostGISRaster
+  Long name: PostGIS Dataset driver
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: PostgreSQL library
+
+vrt:
+  GDAL Name: VRT
+  Long name: GDAL Virtual Format
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+  extension: vrt
+
+ascii:
+  GDAL Name: AAIGrid
+  Long name: Arc/Info ASCII Grid
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+  extension: asc
+
+adrg:
+  GDAL Name: ADRG
+  Long name: ADRG/ARC Digitized Dataset Graphics (.gen/.thf)
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+arg:
+  GDAL Name: ARG
+  Long name: Azavea Dataset Grid
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+bag:
+  GDAL Name: BAG
+  Long name: Bathymetry Attributed Grid
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: libhdf5
+
+bt:
+  GDAL Name: BT
+  Long name: VTP .bt Binary Terrain Format
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+esri hdr:
+  GDAL Name: EHdr
+  Long name: ESRI .hdr Labelled
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+
+nasa pds:
+  GDAL Name: PDS4
+  Long name: NASA Planetary Data System (Version 4)
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+png:
+  GDAL Name: PNG
+  Long name: Portable Network Graphics
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+r object:
+  GDAL Name: R
+  Long name: R Object Data Store
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+raster lite:
+  GDAL Name: Rasterlite
+  Long name: Rasters in SQLite DB
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: libsqlite3
+
+sqLite:
+  GDAL Name: SQLite
+  Long name: Rasters in SQLite DB
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: libsqlite3, librasterlite2, libspatialite
+
+rmf:
+  GDAL Name: RMF
+  Long name: Dataset Matrix Format
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+r raster:
+  GDAL Name: RRASTER
+  Long name: R Dataset
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+saga:
+  GDAL Name: SAGA
+  Long name: SAGA GIS Binary Grid File Format
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+sgi:
+  GDAL Name: SGI
+  Long name: SGI Image Format
+  Creation: yes
+  Copy: yes
+  Geo-referencing: No
+  Build requirements: Built-in by default
+
+sig dem:
+  GDAL Name: SIGDEM
+  Long name: Scaled Integer Gridded DEM
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+tile db:
+  GDAL Name: TileDB
+  Long name: TileDB
+  Creation: yes
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: TileDB
+
+
+webp:
+  GDAL Name: WEBP
+  Long name: WEBP
+  Creation: No
+  Copy: yes
+  Geo-referencing: No
+  Build requirements: libwebp
+
+wms:
+  GDAL Name: WMS
+  Long name: Web Map Services
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: libcurl
+
+xyz:
+  GDAL Name: XYZ
+  Long name: ASCII Gridded XYZ
+  Creation: No
+  Copy: yes
+  Geo-referencing: yes
+  Build requirements: Built-in by default
+
+eedi:
+  GDAL Name: EEDAI
+  Long name: Google Earth Engine Data API Image
+  Creation: No
+  Copy: No
+  Geo-referencing: yes
+  Build requirements: libcurl

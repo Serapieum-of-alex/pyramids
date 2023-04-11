@@ -1,9 +1,13 @@
-import gzip
-import os
-
+"""Utility module"""
+import yaml
+import datetime as dt
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
 from osgeo.gdal import Dataset
+from pyramids.errors import OptionalPackageDoesNontExist
+from pyramids import __path__
+
+# from urllib.parse import urlparse as parse_url
 
 # mapping between gdal type and ogr field type
 GDAL_OGR_DATA_TYPES = {
@@ -33,6 +37,14 @@ NUMPY_GDAL_DATA_TYPES = {
     "complex64": 10,
     "complex128": 11,
 }
+INTERPOLATION_METHODS = {
+    "nearest neibour": gdal.GRA_NearestNeighbour,
+    "cubic": gdal.GRA_Cubic,
+    "bilinear": gdal.GRA_Bilinear,
+}
+
+
+# TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
 
 
 def numpy_to_gdal_dtype(arr: np.ndarray):
@@ -55,13 +67,28 @@ def numpy_to_gdal_dtype(arr: np.ndarray):
     # return GDAL_NUMPY_DATA_TYPES[list(NUMPY_GDAL_DATA_TYPES.keys())[loc]]
 
 
+def gdal_to_numpy_dtype(dtype: int):
+    """converts gdal dtype into numpy dtype
+
+    Parameters
+    ----------
+    dtype: [int]
+
+    Returns
+    -------
+    str
+    """
+    ind = list(NUMPY_GDAL_DATA_TYPES.values()).index(dtype)
+    return list(NUMPY_GDAL_DATA_TYPES.keys())[ind]
+
+
 def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
     """return the coresponding data type grom ogr to each gdal data type.
 
     Parameters
     ----------
     src: [DataSet]
-        gdal Dataset
+        gdal Datacube
     band: [gda Band]
         gdal band
 
@@ -75,29 +102,98 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
     return GDAL_OGR_DATA_TYPES[key]
 
 
-def extractFromGZ(input_file: str, output_file: str, delete=False):
-    """ExtractFromGZ method extract data from the zip/.gz files, save the data.
+def create_time_conversion_func(time: str) -> callable:
+    """Create a function to convert the ordinal time to gregorian date
 
     Parameters
     ----------
-    input_file : [str]
-        zipped file name .
-    output_file : [str]
-        directory where the unzipped data must be
-                            stored.
-    delete : [bool]
-        True if you want to delete the zipped file after the extracting the data
+    time: [str]
+        time unit string extracted from netcdf file
+        >>> 'seconds since 1970-01-01'
+
     Returns
     -------
-    None.
+    callacle
     """
-    with gzip.GzipFile(input_file, "rb") as zf:
-        content = zf.read()
-        save_file_content = open(output_file, "wb")
-        save_file_content.write(content)
+    time_unit, start = time.split(" since ")
+    datum = dt.datetime.strptime(start, "%Y-%m-%d")
 
-    save_file_content.close()
-    zf.close()
+    def ordinal_to_date(time_step: int):
+        if time_unit == "microseconds":
+            gregorian = datum + dt.timedelta(microseconds=time_step)
+        elif time_unit == "milliseconds":
+            gregorian = datum + dt.timedelta(milliseconds=time_step)
+        elif time_unit == "seconds":
+            gregorian = datum + dt.timedelta(seconds=time_step)
+        elif time_unit == "hours":
+            gregorian = datum + dt.timedelta(hours=time_step)
+        elif time_unit == "minutes":
+            gregorian = datum + dt.timedelta(minutes=time_step)
+        elif time_unit == "hours":
+            gregorian = datum + dt.timedelta(hours=time_step)
+        elif time_unit == "days":
+            gregorian = datum + dt.timedelta(days=time_step)
+        else:
+            raise ValueError(f"The given time unit is not available: {time_unit}")
+        return gregorian
 
-    if delete:
-        os.remove(input_file)
+    return ordinal_to_date
+
+
+class Catalog:
+    """Data Catalog."""
+
+    def __init__(self, raster_driver=True):
+        if raster_driver:
+            path = "gdal_drivers.yaml"
+        else:
+            path = "ogr_drivers.yaml"
+        self.catalog = self._get_gdal_catalog(path)
+
+    def _get_gdal_catalog(self, path: str):
+        with open(f"{__path__[0]}/{path}", "r") as stream:
+            gdal_catalog = yaml.safe_load(stream)
+
+        return gdal_catalog
+
+    def get_driver(self, driver: str):
+        """get Driver data from the catalog"""
+        return self.catalog.get(driver)
+
+    def get_gdal_name(self, driver: str):
+        """Get GDAL name"""
+        driver = self.get_driver(driver)
+        return driver.get("GDAL Name")
+
+    def exists(self, driver: str):
+        """check if the driver exist in the catalog"""
+        return driver in self.catalog.keys()
+
+    def get_extension(self, driver: str):
+        """Get driver extension."""
+        driver = self.get_driver(driver)
+        return driver.get("extension")
+
+    def get_driver_name(self, gdal_name) -> str:
+        """Get drivern name"""
+        for key, value in self.catalog.items():
+            name = value.get("GDAL Name")
+            if gdal_name == name:
+                break
+        return key
+
+
+def import_geopy(message: str):
+    """try to import geopy."""
+    try:
+        import geopy  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNontExist(message)
+
+
+def import_cleopatra(message: str):
+    """try to import cleopatra."""
+    try:
+        import cleopatra  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNontExist(message)

@@ -101,7 +101,7 @@ There is no given path to save the output raster to disk to it will be returned 
 
     src = Convert.polygonToRaster(gdf, src_raster_path)
     type(src)
-    >>> <class 'osgeo.gdal.Dataset'>
+    >>> <class 'osgeo.gdal.Datacube'>
 
 
 ********************

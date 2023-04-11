@@ -10,7 +10,7 @@ os.chdir(Comp + "/Coello/HAPI/Data")
 # import osr
 # from osgeo import gdal, gdalconst
 
-from pyramids.raster import Raster
+from pyramids.dataset import Dataset
 
 SourceRasterPath = "00inputs/GIS/4000/acc4000.tif"
 RasterTobeClippedPath = (
@@ -19,4 +19,4 @@ RasterTobeClippedPath = (
 output = "F:/Users/mofarrag/distributed/Hapi/Data/output.tif"
 # %%
 
-Raster.ClipRasterWithRaster(RasterTobeClippedPath, SourceRasterPath, output, Save=True)
+Dataset.ClipRasterWithRaster(RasterTobeClippedPath, SourceRasterPath, output, Save=True)

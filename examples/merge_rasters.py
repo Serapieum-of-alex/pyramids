@@ -7,7 +7,7 @@ import os
 
 from rasterio.plot import show
 
-from pyramids.raster import Raster
+from pyramids.dataset import Dataset
 
 os.chdir("F:/02Case studies/Rhine/base_data/GIS/Layers/DEM/srtm/srtms")
 
@@ -22,7 +22,7 @@ print(filelist)
 # glob function can be used to list files from a directory with specific criteria
 dem_fps = glob.glob(filelist)
 
-dst, dst_meta = Raster.rasterio_merge(dem_fps, save=True, path=out_fp)
+dst, dst_meta = Dataset.rasterio_merge(dem_fps, save=True, path=out_fp)
 
 # %% Plot the result
 show(dst, cmap="terrain")

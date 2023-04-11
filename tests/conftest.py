@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List
+from typing import Tuple, List
 
 import geopandas as gpd
 import numpy as np
@@ -10,10 +11,9 @@ from osgeo.gdal import Dataset
 from shapely import wkt
 from shapely.geometry import Polygon
 
-from tests.catchment.conftest import *
-from tests.raster.conftest import *
-from tests.utils.conftest import *
-from tests.vector.conftest import *
+from tests.dem.conftest import *
+from tests.dataset.conftest import *
+from tests.feature.conftest import *
 
 
 @pytest.fixture(scope="session")
@@ -24,6 +24,11 @@ def test_image_path() -> Path:
 @pytest.fixture(scope="session")
 def test_image(test_image_path: Path) -> Dataset:
     return gdal.Open(str(test_image_path))
+
+
+@pytest.fixture(scope="session")
+def nan_raster() -> Dataset:
+    return gdal.Open("tests/data/raster_full_of_nan.tif")
 
 
 @pytest.fixture(scope="session")
@@ -125,3 +130,73 @@ def point_gdf() -> GeoDataFrame:
     gdf["hex"] = hex_index
     gdf.set_crs(epsg=4326, inplace=True)
     return gdf
+
+
+@pytest.fixture(scope="module")
+def one_compressed_file_gzip() -> str:
+    return "tests/data/one_compressed_file.gz"
+
+
+@pytest.fixture(scope="module")
+def unzip_gzip_file_name() -> str:
+    return "tests/data/chirps-v2.0.2009.01.01.tif"
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_gzip() -> str:
+    return "tests/data/multiple_compressed_files.gz"
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_gzip_content() -> List[str]:
+    return ["1.asc", "2.asc"]
+
+
+@pytest.fixture(scope="module")
+def one_compressed_file_zip() -> str:
+    return "tests/data/one_compressed_file.zip"
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_zip() -> str:
+    return "tests/data/multiple_compressed_files.zip"
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_zip_content() -> List[str]:
+    return ["1.asc", "2.asc"]
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_7z() -> str:
+    return "tests/data/multiple_compressed_files.7z"
+
+
+@pytest.fixture(scope="module")
+def multiple_compressed_file_tar() -> str:
+    return "tests/data/multiple_compressed_files.tar"
+
+
+@pytest.fixture(scope="module")
+def one_compressed_file_7z() -> str:
+    return "tests/data/one_compressed_file.7z"
+
+
+@pytest.fixture(scope="module")
+def one_compressed_file_tar() -> str:
+    return "tests/data/one_compressed_file.tar"
+
+
+@pytest.fixture(scope="module")
+def replace_values() -> List:
+    return [0]
+
+
+@pytest.fixture(scope="module")
+def modis_surf_temp() -> gdal.Dataset:
+    return gdal.Open("tests/data/extract_extent_modis_surftemp.tif")
+
+
+@pytest.fixture(scope="module")
+def era5_image() -> gdal.Dataset:
+    return gdal.Open("tests/data/extract_extent_era5_land_monthly_averaged_data.tif")

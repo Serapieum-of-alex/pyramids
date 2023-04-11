@@ -2,7 +2,7 @@
 raster
 ######
 
-raster module contains one class `Raster` which have all the functions that deals with gdal
+raster module contains Two classes `Raster` and `Dataset` which have all the functions that deals with gdal
 and rasterio objest. The module contains function that falls in one of the following categories.
 
 - to import the raster module
@@ -41,14 +41,12 @@ Raster Data
 - function that are related to spatial resolution, projection and coordinates of a raster.
 
 
-getRasterData
+read_array
 -------------
-- `getRasterData` get the basic data inside a raster (the array and the nodatavalue)
+- `read_array` get the array values for a given band in the raster
 
 Parameters
 ==========
-    src: [gdal.Dataset]
-        a gdal.Dataset is a raster already been read using gdal
     band : [integer]
         the band you want to get its data. Default is 1
 
@@ -56,14 +54,10 @@ Returns
 =======
     array : [array]
         array with all the values in the flow path length raster
-    nodataval : [numeric]
-        value stored in novalue cells
-
-- To use the function use the `gda.Dataset` you read using `gdal.Open` method
 
 .. code:: py
 
-    arr, nodataval = Raster.getRasterData(src)
+    arr = Raster.read_array(src)
     print(arr)
     array([[-3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
         -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
@@ -117,9 +111,6 @@ Returns
         -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
         -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
         -3.402823e+38, -3.402823e+38]], dtype=float32)
-
-    print(nodataval)
-    -3.4028230607370965e+38
 
 
 getProjectionData
@@ -248,7 +239,7 @@ Returns
         if a path is given the created raster will be saved to drive, if not
         a gdal.Dataset will be returned.
 
-- If we take the array we obtained from the `getRasterData`, do some arithmetic operation in it, then we created a
+- If we take the array we obtained from the `read_array`, do some arithmetic operation in it, then we created a
     `gdal.DataSet` out of it
 
 .. code:: py
@@ -412,7 +403,7 @@ Returns
     cell_size = 100
     dst = Raster.resampleRaster(src, cell_size, resample_technique="bilinear")
 
-    dst_arr, _ = Raster.getRasterData(dst)
+    dst_arr = Raster.read_array(dst)
     _, newgeo = Raster.getProjectionData(dst)
     print("New cell size is " + str(newgeo[1]))
     Map.plot(dst, title="Flow Accumulation")
@@ -507,8 +498,10 @@ Returns
 .. code:: py
 
     aligned_raster = "examples/data/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
-    dst = gdal.Open(aligned_raster)
-    dst_arr, dst_nodataval = Raster.getRasterData(dst)
+    band = 1
+    dst = Raster.Open(aligned_raster)
+    dst_arr = dst.read_array()
+    dst_nodataval = dst.no_data_value[band - 1]
 
     Map.plot(
         dst_arr,
