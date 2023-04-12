@@ -48,7 +48,7 @@ Installing pyramids
 Installing `pyramids` from the `conda-forge` channel can be achieved by:
 
 ```
-conda install -c conda-forge pyramids=0.3.3
+conda install -c conda-forge pyramids=0.4.0
 ```
 
 It is possible to list all of the versions of `pyramids` available on your platform with:
