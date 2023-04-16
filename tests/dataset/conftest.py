@@ -414,3 +414,13 @@ def gauges_df() -> DataFrame:
     df["x"] = x
     df["y"] = y
     return df
+
+
+@pytest.fixture(scope="module")
+def rhine_dem() -> gdal.Dataset:
+    return gdal.Open("tests/data/dem/DEM5km_Rhine_burned_acc.tif")
+
+
+@pytest.fixture(scope="module")
+def clusters() -> np.ndarray:
+    return np.load("tests/data/dem/cluster.npy")

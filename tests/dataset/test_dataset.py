@@ -774,3 +774,14 @@ class TestFootPrint:
         assert len(set(extent["id"])) == 1
         # the class should be 2
         assert list(set(extent["id"]))[0] == 2
+
+
+def test_cluster(rhine_dem: gdal.Dataset, clusters: np.ndarray):
+    dataset = Dataset(rhine_dem)
+    lower_value = 0.1
+    upper_value = 20
+    cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
+    assert count == 155
+    assert np.array_equal(cluster_array, clusters)
+    assert len(position) == 2364
+    assert len(values) == 2364
