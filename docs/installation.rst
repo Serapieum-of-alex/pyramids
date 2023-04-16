@@ -132,7 +132,7 @@ Besides the recommended conda environment setup described above, you can also in
 Hapi with ``pip``. For the more difficult to install Python dependencies, it is best to
 use the conda package manager:
 
-+ ``conda install numpy scipy gdal netcdf4 pyproj``
++ ``conda install numpy gdal``
 
 
 you can check `libraries.io <https://libraries.io/github/MAfarrag/pyramids>`_. to check versions of the libraries

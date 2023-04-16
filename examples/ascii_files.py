@@ -1,6 +1,6 @@
 import numpy as np
 from pyramids.dataset import Dataset
-from digitalearth.static import Map
+from digitalearth.static import StaticGlyph
 from osgeo import gdal
 
 datapath = "examples/data"
@@ -21,7 +21,7 @@ assert src_obj.geotransform == (
     0.0,
     -4000.0,
 )
-fig, ax = Map.plot(
+fig, ax = StaticGlyph.plot(
     src_obj,
     title="Read ASCII file",
     color_scale=2,

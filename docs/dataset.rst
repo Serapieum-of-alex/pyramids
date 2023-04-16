@@ -1,15 +1,39 @@
-######
-raster
-######
+#######
+dataset
+#######
 
-raster module contains Two classes `Raster` and `Dataset` which have all the functions that deals with gdal
-and rasterio objest. The module contains function that falls in one of the following categories.
+- dataset module contains Two classes `Dataset` and `DataCube`.
 
-- to import the raster module
+.. digraph:: Linking
+
+    dataset -> Dataset;
+    dataset -> DataCube;
+    dpi=200;
+
+- Dataset represent a raster object which could be created from reading a geotiff, netcdf, ascii or any file
+    format/driver supported by gdal.
+- The raster could have single or multi bands.
+- The raster could have different variables (like netcdf file) and these variable can have similar or different
+    dimensions.
+
+- DataCube represent a stack of rasters which have the same dimensions, contains data that have same dimensions (rows
+    & columns).
+
+
+*******
+Dataset
+*******
+
+.. image:: /images/dataset.svg
+   :width: 200pt
+
+The dataset object has some attributes and methods to help
+
+- To import the raster module
 
 .. code:: py
 
-    from pyramids.raster import Raster
+    from pyramids.dataset import Dataset
 
 
 - The main parameter for most of the functions in the `raster` module is a `gdal.Dataset`

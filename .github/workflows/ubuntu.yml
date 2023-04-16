@@ -42,7 +42,7 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          python -m pytest -m "not plot"
+          python -m pytest -sv -m "not plot"
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3
