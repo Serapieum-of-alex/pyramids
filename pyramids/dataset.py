@@ -309,7 +309,12 @@ class Dataset:
     @property
     def time_stamp(self):
         """Time stamp"""
-        return self._time_stamp
+        if hasattr(self, "_time_stamp"):
+            val = self._time_stamp
+        else:
+            val = None
+
+        return val
 
     @property
     def driver_type(self):
