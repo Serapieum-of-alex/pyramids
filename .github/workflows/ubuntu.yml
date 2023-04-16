@@ -1,4 +1,4 @@
-name: Main-package
+wname: Main-package
 on:
     push:
         branches:
