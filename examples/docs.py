@@ -19,11 +19,22 @@ dataset.plot(
 
 dataset.raster
 dataset.cell_size
+dataset.values
+dataset.shape
 dataset.rows
 dataset.columns
+dataset.pivot_point
 dataset.geotransform
 dataset.epsg
+dataset.bounds
+dataset.bounds.plot()
+dataset.bbox
 dataset.crs
+f = dataset.lat
+dataset.lon
+dataset.x
+f = dataset.y
+
 dataset.band_count
 dataset.band_names
 dataset.variables
