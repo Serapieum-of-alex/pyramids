@@ -26,6 +26,7 @@ Dataset
 
 .. image:: /images/dataset.png
    :width: 200pt
+   :align: center
 
 - The main purpose of the Dataset object is to deal with raster objects, single or multibands, has variables/subsets
     like netcdf file or has one variable like most GeoTIFF files.
@@ -62,6 +63,9 @@ read_file
 - The `read_file` method detects the type of the input file from the extension at the end of the path.
 - Similarly you can read an ascii file using the same way.
 
+
+- For ASCII files
+
 .. code:: py
 
     path = "examples/data/dem/dem5km_rhine.asc"
@@ -69,23 +73,69 @@ read_file
     dataset.plot(title="Rhine river basin", ticks_spacing=500,cmap="terrain", color_scale=1, vmin=0,
                 cbar_label="Elevation (m)")
 
-
-
-
-
-
-
-Parameters
-==========
-    band : [integer]
-        the band you want to get its data. Default is 1
-
-Returns
-=======
-    array : [array]
-        array with all the values in the flow path length raster
+- For netcdf file
 
 .. code:: py
+
+    path = "examples/data/dem/dem5km_rhine.nc"
+    dataset = Dataset.read_file(path)
+    dataset.plot(title="Rhine river basin", ticks_spacing=500,cmap="terrain", color_scale=1, vmin=0,
+                cbar_label="Elevation (m)")
+
+
+Dataset objest attributes
+=========================
+
+- The Dataset object has  the following attributes, which enables you to access all the stored data in you raster
+    file (GeoTIFF/NetCDF/ASCII)
+
+.. image:: /images/dataset-arrributes.png
+   :width: 150pt
+   :alt: dataset attributes
+   :align: center
+
+
+.. code:: py
+
+    print(dataset.raster)
+    >>> <osgeo.gdal.Dataset; proxy of <Swig Object of type 'GDALDatasetShadow *' at 0x0000026C8DD51FE0> >
+    print(dataset.cell_size)
+    >>> 5000.0
+    print(dataset.rows)
+    >>> 125
+    print(dataset.columns)
+    >>> 93
+    print(dataset.geotransform)
+    >>> (32239263.70388, 5000.0, 0.0, 5756081.42235, 0.0, -5000.0)
+    print(dataset.epsg)
+    >>> 4647
+    print(dataset.crs)
+    >>> 'PROJCS["ETRS89 / UTM zone 32N (zE-N)",GEOGCS["ETRS89",DATUM["European_Terrestrial_Reference_System_1989",SPHEROID["GRS 1980",6378137,298.257222101004,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6258"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4258"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",32500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","4647"]]'
+    print(dataset.band_count)
+    >>> 1
+    print(dataset.band_names)
+    >>> ['Band_1']
+    print(dataset.variables)
+    >>> {}
+    print(dataset.no_data_value)
+    >>> [-3.4028234663852886e+38]
+    print(dataset.meta_data)
+    >>> {'Band1#grid_mapping': 'transverse_mercator', 'Band1#long_name': 'GDAL Band Number 1', 'Band1#_FillValue': '-3.4028235e+38', 'NC_GLOBAL#Conventions': 'CF-1.5', 'NC_GLOBAL#GDAL': 'GDAL 3.6.3, released 2023/03/07', 'NC_GLOBAL#GDAL_AREA_OR_POINT': 'Area', 'NC_GLOBAL#history': 'Sun Apr 16 22:17:20 2023: GDAL CreateCopy( examples/data/dem/dem5km_rhine.nc, ... )', 'transverse_mercator#crs_wkt': 'PROJCS["ETRS89 / UTM zone 32N (zE-N)",GEOGCS["ETRS89",DATUM["European_Terrestrial_Reference_System_1989",SPHEROID["GRS 1980",6378137,298.257222101004,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6258"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4258"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",32500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","4647"]]', 'transverse_mercator#false_easting': '32500000', 'transverse_mercator#false_northing': '0', 'transverse_mercator#GeoTransform': '32239263.70388 5000 0 5756081.42235 0 -5000 ', 'transverse_mercator#grid_mapping_name': 'transverse_mercator', 'transverse_mercator#inverse_flattening': '298.257222101004', 'transverse_mercator#latitude_of_projection_origin': '0', 'transverse_mercator#longitude_of_central_meridian': '9', 'transverse_mercator#longitude_of_prime_meridian': '0', 'transverse_mercator#long_name': 'CRS definition', 'transverse_mercator#scale_factor_at_central_meridian': '0.9996', 'transverse_mercator#semi_major_axis': '6378137', 'transverse_mercator#spatial_ref': 'PROJCS["ETRS89 / UTM zone 32N (zE-N)",GEOGCS["ETRS89",DATUM["European_Terrestrial_Reference_System_1989",SPHEROID["GRS 1980",6378137,298.257222101004,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6258"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4258"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",32500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","4647"]]', 'x#long_name': 'x coordinate of projection', 'x#standard_name': 'projection_x_coordinate', 'x#units': 'm', 'y#long_name': 'y coordinate of projection', 'y#standard_name': 'projection_y_coordinate', 'y#units': 'm'}
+    print(dataset.dtype)
+    >>> [6]
+    print(dataset.file_name)
+    >>> 'examples/data/dem/dem5km_rhine.nc'
+    print(dataset.time_stamp)
+    >>>
+    print(dataset.driver_type)
+    >>> 'geotiff'
+
+
+Dataset objest Methods
+=========================
+
+.. code:: py
+
 
     arr = Raster.read_array(src)
     print(arr)
