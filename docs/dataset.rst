@@ -24,13 +24,14 @@ dataset
 Dataset
 *******
 
+- The main purpose of the `Dataset` object is to deal with raster objects, single or multibands, has variables/subsets
+    like netcdf file or has one variable like most GeoTIFF files.
+
 .. image:: /images/dataset.png
    :width: 200pt
    :align: center
 
-- The main purpose of the Dataset object is to deal with raster objects, single or multibands, has variables/subsets
-    like netcdf file or has one variable like most GeoTIFF files.
-
+- The `Dataset` object data model is as following
 
 .. image:: /images/dataset-alone.png
    :width: 700pt
@@ -42,6 +43,8 @@ Dataset
 .. code:: py
 
     from pyramids.dataset import Dataset
+
+to start exploring the functionality of the dataset module `read_file` method to read any raster file.
 
 read_file
 =========
@@ -94,13 +97,27 @@ Dataset objest attributes
    :alt: dataset attributes
    :align: center
 
+raster
+------
 
 .. code:: py
 
     print(dataset.raster)
     >>> <osgeo.gdal.Dataset; proxy of <Swig Object of type 'GDALDatasetShadow *' at 0x0000026C8DD51FE0> >
+
+cell_size
+---------
+
+.. code:: py
+
     print(dataset.cell_size)
     >>> 5000.0
+
+values
+------
+
+.. code:: py
+
     print(dataset.values)
     >>> array([[-3.4028235e+38, -3.4028235e+38, -3.4028235e+38, ...,
     >>>         -3.4028235e+38, -3.4028235e+38, -3.4028235e+38],
@@ -115,21 +132,63 @@ Dataset objest attributes
     >>>         -3.4028235e+38, -3.4028235e+38, -3.4028235e+38],
     >>>         [-3.4028235e+38, -3.4028235e+38, -3.4028235e+38, ...,
     >>>         -3.4028235e+38, -3.4028235e+38, -3.4028235e+38]], dtype=float32)
+
+shape
+-----
+
+.. code:: py
+
     print(dataset.shape)
     >>> (1, 125, 93)
+
+rows
+----
+
+.. code:: py
+
     print(dataset.rows)
     >>> 125
+
+columns
+-------
+
+.. code:: py
+
     print(dataset.columns)
     >>> 93
+
+pivot_point
+-----------
+- The upper left corner of the raster
+    (minimum lon/x, maximum lat/y).
+
+.. code:: py
+
     print(dataset.pivot_point)
     >>> (32239263.70388, 5756081.42235)
+
+geotransform
+------------
+- geotransform data of the upper left corner of the raster
+    (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
+
+.. code:: py
+
     print(dataset.geotransform)
     >>> (32239263.70388, 5000.0, 0.0, 5756081.42235, 0.0, -5000.0)
+
+bounds
+------
+.. code:: py
+
     print(dataset.bounds)
     >>>                                         geometry
     >>> 0  POLYGON ((32239263.704 5756081.422, 32239263.7...
-    dataset.bounds.plot()
 
+
+.. code:: py
+
+    dataset.bounds.plot()
 
 .. image:: /images/bounds.png
    :width: 300pt
@@ -137,14 +196,33 @@ Dataset objest attributes
    :align: center
 
 
+bbox
+----
 .. code:: py
 
     print(dataset.bbox)
     >>> [32239263.70388, 5131081.42235, 32704263.70388, 5756081.42235]
+
+epsg
+----
+- integer reference number that defines the projection (https://epsg.io/)
+
+.. code:: py
+
     print(dataset.epsg)
     >>> 4647
+
+crs
+---
+.. code:: py
+
     print(dataset.crs)
     >>> 'PROJCS["ETRS89 / UTM zone 32N (zE-N)",GEOGCS["ETRS89",DATUM["European_Terrestrial_Reference_System_1989",SPHEROID["GRS 1980",6378137,298.257222101004,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6258"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4258"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",32500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","4647"]]'
+
+lat/y
+-----
+.. code:: py
+
     dataset.lat or dataset.y
     >>> array([5753581.42235, 5748581.42235, 5743581.42235, 5738581.42235,
     >>>        5733581.42235, 5728581.42235, 5723581.42235, 5718581.42235,
@@ -178,6 +256,11 @@ Dataset objest attributes
     >>>        5173581.42235, 5168581.42235, 5163581.42235, 5158581.42235,
     >>>        5153581.42235, 5148581.42235, 5143581.42235, 5138581.42235,
     >>>        5133581.42235])
+
+lon/x
+-----
+.. code:: py
+
     dataset.lon/dataset.x
     >>> array([32241763.70388, 32246763.70388, 32251763.70388, 32256763.70388,
     >>>        32261763.70388, 32266763.70388, 32271763.70388, 32276763.70388,
@@ -203,29 +286,168 @@ Dataset objest attributes
     >>>        32661763.70388, 32666763.70388, 32671763.70388, 32676763.70388,
     >>>        32681763.70388, 32686763.70388, 32691763.70388, 32696763.70388,
     >>>        32701763.70388])
+
+band_count
+----------
+.. code:: py
+
     print(dataset.band_count)
     >>> 1
+
+band_names
+----------
+.. code:: py
+
     print(dataset.band_names)
     >>> ['Band_1']
+
+variables
+---------
+.. code:: py
+
     print(dataset.variables)
     >>> {}
+
+no_data_value
+-------------
+.. code:: py
+
     print(dataset.no_data_value)
     >>> [-3.4028234663852886e+38]
+
+meta_data
+---------
+.. code:: py
+
     print(dataset.meta_data)
     >>> {'Band1#grid_mapping': 'transverse_mercator', 'Band1#long_name': 'GDAL Band Number 1', 'Band1#_FillValue': '-3.4028235e+38', 'NC_GLOBAL#Conventions': 'CF-1.5', 'NC_GLOBAL#GDAL': 'GDAL 3.6.3, released 2023/03/07', 'NC_GLOBAL#GDAL_AREA_OR_POINT': 'Area', 'NC_GLOBAL#history': 'Sun Apr 16 22:17:20 2023: GDAL CreateCopy( examples/data/dem/dem5km_rhine.nc, ... )', 'transverse_mercator#crs_wkt': 'PROJCS["ETRS89 / UTM zone 32N (zE-N)",GEOGCS["ETRS89",DATUM["European_Terrestrial_Reference_System_1989",SPHEROID["GRS 1980",6378137,298.257222101004,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6258"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4258"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",32500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","4647"]]', 'transverse_mercator#false_easting': '32500000', 'transverse_mercator#false_northing': '0', 'transverse_mercator#GeoTransform': '32239263.70388 5000 0 5756081.42235 0 -5000 ', 'transverse_mercator#grid_mapping_name': 'transverse_mercator', 'transverse_mercator#inverse_flattening': '298.257222101004', 'transverse_mercator#latitude_of_projection_origin': '0', 'transverse_mercator#longitude_of_central_meridian': '9', 'transverse_mercator#longitude_of_prime_meridian': '0', 'transverse_mercator#long_name': 'CRS definition', 'transverse_mercator#scale_factor_at_central_meridian': '0.9996', 'transverse_mercator#semi_major_axis': '6378137', 'transverse_mercator#spatial_ref': 'PROJCS["ETRS89 / UTM zone 32N (zE-N)",GEOGCS["ETRS89",DATUM["European_Terrestrial_Reference_System_1989",SPHEROID["GRS 1980",6378137,298.257222101004,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6258"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4258"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",9],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",32500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","4647"]]', 'x#long_name': 'x coordinate of projection', 'x#standard_name': 'projection_x_coordinate', 'x#units': 'm', 'y#long_name': 'y coordinate of projection', 'y#standard_name': 'projection_y_coordinate', 'y#units': 'm'}
+
+dtype
+-----
+.. code:: py
+
     print(dataset.dtype)
     >>> [6]
+
+file_name
+---------
+.. code:: py
+
     print(dataset.file_name)
     >>> 'examples/data/dem/dem5km_rhine.nc'
+
+time_stamp
+----------
+.. code:: py
+
     print(dataset.time_stamp)
     >>>
+
+driver_type
+-----------
+.. code:: py
+
     print(dataset.driver_type)
     >>> 'geotiff'
 
 
-Dataset objest Methods
-=========================
+Create Dataset object
+=====================
 
+create_from_array
+-----------------
+
+- `create_from_array` method creates a `Dataset` from a given array and geotransform data
+    and save the tif file if a Path is given or it will return the gdal.Dataset
+
+Parameters
+^^^^^^^^^^
+    path : [str], optional
+        Path to save the Raster, if '' is given a memory raster will be returned. The default is ''.
+    arr : [array], optional
+        numpy array. The default is ''.
+    geo : [list], optional
+        geotransform list [minimum lon, pixelsize, rotation, maximum lat, rotation,
+            pixelsize]. The default is ''.
+    nodatavalue : TYPE, optional
+        DESCRIPTION. The default is -9999.
+    epsg: [integer]
+        integer reference number to the new projection (https://epsg.io/)
+            (default 3857 the reference no of WGS84 web mercator )
+
+Returns
+^^^^^^^
+    dst : [gdal.Dataset/save raster to drive].
+        if a path is given the created raster will be saved to drive, if not
+        a gdal.Dataset will be returned.
+
+- If we take the array we obtained from the `read_array`, do some arithmetic operation in it, then we created a
+    `gdal.DataSet` out of it
+
+.. code:: py
+
+    src = Raster.createRaster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
+    Map.plot(src, title="Flow Accumulation")
+
+
+.. image:: /images/flow_accumulation.png
+   :width: 500pt
+
+dataset_like
+------------
+- `dataset_like` method creates a Geotiff raster like another input raster, new raster will have the same projection,
+    coordinates or the top left corner of the original raster, cell size, nodata velue, and number of rows and columns
+    the raster and the dem should have the same number of columns and rows
+
+Parameters
+^^^^^^^^^^
+    src : [gdal.dataset]
+        source raster to get the spatial information
+    array : [numpy array]
+        to store in the new raster
+    path : [String]
+        path to save the new raster including new raster name and extension (.tif)
+    pixel_type : [integer]
+        type of the data to be stored in the pixels,default is 1 (float32)
+        for example pixel type of flow direction raster is unsigned integer
+        1 for float32
+        2 for float64
+        3 for Unsigned integer 16
+        4 for Unsigned integer 32
+        5 for integer 16
+        6 for integer 32
+
+Returns
+^^^^^^^
+    save the new raster to the given path
+
+- If we have made some calculation on raster array and we want to save the array back in the raster
+
+.. code:: py
+
+    arr2 = np.ones(shape=arr.shape, dtype=np.float64) * nodataval
+    arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
+
+    path = "examples/data/rasterlike.tif"
+    Raster.rasterLike(src, arr2, path)
+
+- Now to check the raster that has been saved we can read it again with `gda.Open`
+
+.. code:: py
+
+    dst = gdal.Open(path)
+    Map.plot(dst, title="Flow Accumulation", color_scale=1)
+
+
+.. image:: /images/raster_like.png
+   :width: 500pt
+
+
+Access data methods
+===================
+
+read_array
+^^^^^^^^^^
 .. code:: py
 
 
@@ -284,254 +506,67 @@ Dataset objest Methods
         -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
         -3.402823e+38, -3.402823e+38]], dtype=float32)
 
+Write raster to disk
+====================
 
-getProjectionData
------------------
-- `getProjectionData` returns the projection details of a given gdal.Dataset
-
-Parameters
-==========
-    src: [gdal.Dataset]
-        raster read by gdal
-
-Returns
-=======
-    epsg: [integer]
-         integer reference number that defines the projection (https://epsg.io/)
-    geo: [tuple]
-        geotransform data of the upper left corner of the raster
-        (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
-
-
-.. code:: py
-
-    epsg, geo = Raster.getProjectionData(src)
-    print("EPSG = " + str(epsg))
-    EPSG = 32618
-    print(geo)
-    (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
-
-
-getCellCoords
--------------
-
-- `getCellCoords` returns the coordinates of all cell centres inside the domain (only the cells that
-        does not have nodatavalue)
-
-Parameters
-==========
-    src : [gdal_Dataset]
-        Get the data from the gdal datasetof the DEM
-
-Returns
-=======
-    coords : array
-        Array with a list of the coordinates to be interpolated, without the Nan
-    mat_range : array
-        Array with all the centres of cells in the domain of the DEM
-
-
-.. code:: py
-
-    coords, centers_coords = Raster.getCellCoords(src)
-    print(coords)
-    array([[434968.12061706, 520007.78799918],
-       [434968.12061706, 520007.78799918],
-       [434968.12061706, 520007.78799918],
-       [434968.12061706, 520007.78799918],
-       [434968.12061706, 520007.78799918],
-       [434968.12061706, 520007.78799918],
-       [434968.12061706, 520007.78799918],
-
-    print(centers_coords)
-    array([[[434968.12061706, 520007.78799918],
-        [438968.12061706, 520007.78799918],
-        [442968.12061706, 520007.78799918],
-        [446968.12061706, 520007.78799918],
-        [450968.12061706, 520007.78799918],
-        [454968.12061706, 520007.78799918],
-        [458968.12061706, 520007.78799918],
-
-
-*****************
-Raster Operations
-*****************
-
-
-.. code:: py
-
-    path = "examples/data/save_raster_test.tif"
-    Raster.saveRaster(src, path)
-
-createRaster
-============
-
-- `createRaster` method creates a raster from a given array and geotransform data
-    and save the tif file if a Path is given or it will return the gdal.Dataset
-
-Parameters
-----------
-    path : [str], optional
-        Path to save the Raster, if '' is given a memory raster will be returned. The default is ''.
-    arr : [array], optional
-        numpy array. The default is ''.
-    geo : [list], optional
-        geotransform list [minimum lon, pixelsize, rotation, maximum lat, rotation,
-            pixelsize]. The default is ''.
-    nodatavalue : TYPE, optional
-        DESCRIPTION. The default is -9999.
-    epsg: [integer]
-        integer reference number to the new projection (https://epsg.io/)
-            (default 3857 the reference no of WGS84 web mercator )
-
-Returns
+to_file
 -------
-    dst : [gdal.Dataset/save raster to drive].
-        if a path is given the created raster will be saved to drive, if not
-        a gdal.Dataset will be returned.
 
-- If we take the array we obtained from the `read_array`, do some arithmetic operation in it, then we created a
-    `gdal.DataSet` out of it
-
-.. code:: py
-
-    src = Raster.createRaster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
-    Map.plot(src, title="Flow Accumulation")
-
-
-.. image:: /images/flow_accumulation.png
-   :width: 500pt
-
-rasterLike
-----------
-- `rasterLike` method creates a Geotiff raster like another input raster, new raster will have the same projection,
-    coordinates or the top left corner of the original raster, cell size, nodata velue, and number of rows and columns
-    the raster and the dem should have the same number of columns and rows
+- `to_file` reads an ASCII file the spatial information.
 
 Parameters
-==========
-    src : [gdal.dataset]
-        source raster to get the spatial information
-    array : [numpy array]
-        to store in the new raster
-    path : [String]
-        path to save the new raster including new raster name and extension (.tif)
-    pixel_type : [integer]
-        type of the data to be stored in the pixels,default is 1 (float32)
-        for example pixel type of flow direction raster is unsigned integer
-        1 for float32
-        2 for float64
-        3 for Unsigned integer 16
-        4 for Unsigned integer 32
-        5 for integer 16
-        6 for integer 32
-
-Returns
-=======
-    save the new raster to the given path
-
-- If we have made some calculation on raster array and we want to save the array back in the raster
+^^^^^^^^^^
+    ascii_file: [str]
+        name of the ASCII file you want to convert and the name
+        should include the extension ".asc"
+    geotransform: [tuple]
+        list of the six spatial information of the ASCII file
+        [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
+        CellSize, NoValue]
+    arr: [np.ndarray]
+        [numpy array] 2D arrays containing the values stored in the ASCII
+        file
 
 .. code:: py
 
-    arr2 = np.ones(shape=arr.shape, dtype=np.float64) * nodataval
-    arr2[~np.isclose(arr, nodataval, rtol=0.001)] = 5
+    arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
+    Raster.writeASCII(r"examples/data/roughness.asc", geotransform, arr)
 
-    path = "examples/data/rasterlike.tif"
-    Raster.rasterLike(src, arr2, path)
-
-- Now to check the raster that has been saved we can read it again with `gda.Open`
+- the ASCII file will look like
 
 .. code:: py
 
-    dst = gdal.Open(path)
-    Map.plot(dst, title="Flow Accumulation", color_scale=1)
+    ncols         14
+    nrows         13
+    xllcorner     432968.1206170588
+    yllcorner     468007.787999178
+    cellsize      4000.0
+    NODATA_value  -3.4028230607370965e+38
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
+    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
 
+Spatial properties
+==================
 
-.. image:: /images/raster_like.png
-   :width: 500pt
+resample
+--------
 
-mapAlgebra
-----------
-- `mapAlgebra` executes a mathematical operation on raster array and returns the result
-
-Parameters
-==========
-    src : [gdal.dataset]
-        source raster to that you want to make some calculation on its values
-    fun: [function]
-        defined function that takes one input which is the cell value
-
-Returns
-=======
-    Dataset
-        gdal dataset object
-
-.. code:: py
-
-    def classify(val):
-        if val < 20:
-            val = 1
-        elif val < 40:
-            val = 2
-        elif val < 60:
-            val = 3
-        elif val < 80:
-            val = 4
-        elif val < 100:
-            val = 5
-        else:
-            val = 0
-        return val
-
-
-    dst = Raster.mapAlgebra(src, classify)
-    Map.plot(dst, title="Classes", color_scale=4, ticks_spacing=1)
-
-.. image:: /images/map_algebra.png
-   :width: 500pt
-
-
-
-rasterFill
-----------
-- `rasterFill` takes a raster and fill it with one value.
-
-Parameters
-==========
-    src : [gdal.dataset]
-        source raster
-    val: [numeric]
-        numeric value
-    save_to : [str]
-        path including the extension (.tif)
-
-Returns
-=======
-    raster : [saved on disk]
-        the raster will be saved directly to the path you provided.
-
-.. code:: py
-
-    path = "examples/data/fillrasterexample.tif"
-    value = 20
-    Raster.rasterFill(src, value, save_to=path)
-
-    "now the resulted raster is saved to disk"
-    dst = gdal.Open(path)
-    Map.plot(dst, title="Flow Accumulation")
-
-.. image:: /images/raster_fill.png
-   :width: 500pt
-
-resampleRaster
---------------
-
-- `resampleRaster` reproject a raster to any projection (default the WGS84 web mercator projection, without
+- `resample` reproject a raster to any projection (default the WGS84 web mercator projection, without
     resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
 Parameters
-==========
+^^^^^^^^^^
     src : [gdal.Dataset]
          gdal raster (src=gdal.Open("dem.tif"))
     cell_size : [integer]
@@ -543,7 +578,7 @@ Parameters
         "bilinear" for bilinear
 
 Returns
-=======
+^^^^^^^
     raster : [gdal.Dataset]
          gdal object (you can read it by ReadAsArray)
 
@@ -566,14 +601,14 @@ Returns
 .. image:: /images/resample.png
    :width: 500pt
 
-projectRaster
--------------
+to_crs
+------
 
-- `projectRaster` reprojects a raster to any projection (default the WGS84 web mercator projection, without resampling)
+- `to_crs` reprojects a raster to any projection (default the WGS84 web mercator projection, without resampling)
     The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
 Parameters
-==========
+^^^^^^^^^^
     src: [gdal object]
         gdal dataset (src=gdal.Open("dem.tif"))
     to_epsg: [integer]
@@ -588,7 +623,7 @@ Parameters
         option 2 uses the gda.wrap function, option 1 uses the gda.ReprojectImage function
 
 Returns
-=======
+^^^^^^^
     raster:
         gdal dataset (you can read it by ReadAsArray)
 
@@ -618,18 +653,19 @@ Returns
     New EPSG - 4326
     New Geotransform - (-75.60441003848668, 0.03611587177268461, 0.0, 4.704560448076901, 0.0, -0.03611587177268461)
 
-cropAlligned
-------------
+
+crop
+----
 - If you have an array and you want to clip/crop it using another raster/array.
 
 Crop array using a raster
-=========================
-- `cropAlligned` clip/crop (matches the location of nodata value from src raster to dst raster), Both rasters have to
+^^^^^^^^^^^^^^^^^^^^^^^^^
+- `crop` clip/crop (matches the location of nodata value from src raster to dst raster), Both rasters have to
     have the same dimensions (no of rows & columns) so MatchRasterAlignment should be used prior to this function to
     align both rasters.
 
 Parameters
-----------
+""""""""""
     src: [gdal.dataset/np.ndarray]
         raster you want to clip/store NoDataValue in its cells
         exactly the same like mask raster
@@ -640,7 +676,7 @@ Parameters
         in case the mask is np.ndarray, the mask_noval have to be given.
 
 Returns
--------
+"""""""
     dst: [gdal.dataset]
         the second raster with NoDataValue stored in its cells
         exactly the same like src raster
@@ -681,7 +717,7 @@ Returns
    :width: 500pt
 
 Crop raster using another raster while preserving the alignment
-===============================================================
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 - cropping rasters may  change the alignment of the cells and to keep the alignment during cropping a raster we will
     crop the same previous raster but will give the input to the function as a gdal.dataset object.
 
@@ -697,7 +733,7 @@ Crop raster using another raster while preserving the alignment
 
 
 Crop raster using array
-=======================
+^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code:: py
 
@@ -708,11 +744,11 @@ Crop raster using array
    :width: 500pt
 
 crop
-----
+^^^^
 - `crop` method crops a raster using another raster (both rasters does not have to be aligned).
 
 Parameters
-==========
+""""""""""
     src: [string/gdal.Dataset]
         the raster you want to crop as a path or a gdal object
     mask : [string/gdal.Dataset]
@@ -725,7 +761,7 @@ Parameters
         True if you want to save the cropped raster directly to disk.
 
 Returns
-=======
+"""""""
     dst : [gdal.Dataset]
         the cropped raster will be returned, if the save parameter was True,
         the cropped raster will also be saved to disk in the OutputPath
@@ -765,15 +801,15 @@ Returns
    :width: 500pt
 
 
-matchRasterAlignment
---------------------
+align
+-----
 - `matchRasterAlignment` method matches the coordinate system and the number of of rows & columns between two rasters
     alignment_src is the source of the coordinate system, number of rows, number of columns & cell size data_src is the
     source of data values in cells the result will be a raster with the same structure like alignment_src but with values
     from data_src using Nearest Neighbour interpolation algorithm
 
 Parameters
-==========
+^^^^^^^^^^
     alignment_src : [gdal.dataset/string]
         spatial information source raster to get the spatial information
         (coordinate system, no of rows & columns)
@@ -781,7 +817,7 @@ Parameters
         data values source raster to get the data (values of each cell)
 
 Returns
-=======
+^^^^^^^
     dst : [gdal.dataset]
         result raster in memory
 
@@ -815,94 +851,193 @@ Returns
 .. image:: /images/soil_map_aligned.png
    :width: 500pt
 
-readASCII
----------
-- `readASCII` reads an ASCII file.
+
+
+get_cell_coords
+---------------
+
+- `getCellCoords` returns the coordinates of all cell centres inside the domain (only the cells that
+        does not have nodatavalue)
 
 Parameters
-==========
-    ascii_file: [str]
-        name of the ASCII file you want to convert and the name
-        should include the extension ".asc"
-    pixel_type: [Integer]
-        type of the data to be stored in the pixels,default is 1 (float32)
-        for example pixel type of flow direction raster is unsigned integer
-        1 for float32
-        2 for float64
-        3 for Unsigned integer 16
-        4 for Unsigned integer 32
-        5 for integer 16
-        6 for integer 32
+^^^^^^^^^^
+    src : [gdal_Dataset]
+        Get the data from the gdal datasetof the DEM
 
 Returns
-=======
-    ascii_values: [numpy array]
-        2D arrays containing the values stored in the ASCII file
-    ascii_details: [List]
-        list of the six spatial information of the ASCII file
-        [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-        CellSize, NoValue]
+^^^^^^^
+    coords : array
+        Array with a list of the coordinates to be interpolated, without the Nan
+    mat_range : array
+        Array with all the centres of cells in the domain of the DEM
+
 
 .. code:: py
 
-    path = datapath + r"/asci_example.asc"
-    arr, geotransform = Raster.readASCII(path, pixel_type=1)
-    Map.plot(arr, geotransform[-1], title="Cropped Raster", color_scale=2, ticks_spacing=0.01, nodataval=None)
+    coords, centers_coords = Raster.getCellCoords(src)
+    print(coords)
+    array([[434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
+       [434968.12061706, 520007.78799918],
 
-.. image:: /images/read_ascii.png
+    print(centers_coords)
+    array([[[434968.12061706, 520007.78799918],
+        [438968.12061706, 520007.78799918],
+        [442968.12061706, 520007.78799918],
+        [446968.12061706, 520007.78799918],
+        [450968.12061706, 520007.78799918],
+        [454968.12061706, 520007.78799918],
+        [458968.12061706, 520007.78799918],
+
+
+
+.. code:: py
+
+    path = "examples/data/save_raster_test.tif"
+    Raster.saveRaster(src, path)
+
+overlay
+-------
+
+The `overlay` function takes two ascii files the `BaseMap` which is the
+raster/asc file of the polygons and the secon is the asc file you want to
+extract its values.
+
+
+.. code:: py
+
+    def overlayMap(
+            path: str,
+            classes_map: Union[str, np.ndarray],
+            exclude_value: Union[float, int],
+            compressed: bool=False,
+            occupied_cells_only: bool=True) -> Tuple[Dict[List[float], List[float]], int]:
+    """
+    """overlayMap.
+
+            OverlayMap extracts and return a list of all the values in an ASCII file,
+            if you have two maps one with classes, and the other map contains any type of values,
+            and you want to know the values in each class
+
+Parameters
+^^^^^^^^^^
+path: [str]
+    a path to ascii file.
+classes_map: [str/array]
+    a path includng the name of the ASCII and extention, or an array
+    >>> path = "classes.asc"
+exclude_value: [Numeric]
+    values you want to exclude from extracted values.
+compressed: [Bool]
+    if the map you provided is compressed.
+occupied_cells_only: [Bool]
+    if you want to count only cells that is not zero.
+
+Returns
+^^^^^^^
+ExtractedValues: [Dict]
+    dictonary with a list of values in the basemap as keys
+        and for each key a list of all the intersected values in the
+        maps from the path.
+NonZeroCells: [dataframe]
+    the number of cells in the map.
+"""
+
+To extract the
+
+.. code:: py
+
+    import Hapi.raster as R
+
+    Path = "F:/02Case studies/Hapi Examples/"
+    SavePath  = Path + "results/ZonalStatistics"
+    BaseMapF = Path + "data/Polygons.tif"
+    ExcludedValue = 0
+    Compressed = True
+    OccupiedCellsOnly = False
+
+    ExtractedValues, Cells = R.OverlayMap(Path+"DepthMax22489.zip", BaseMapF,ExcludedValue, Compressed,OccupiedCellsOnly)
+
+
+Mathmatical operations
+======================
+
+apply
+-----
+- `apply` executes a mathematical operation on raster array and returns the result
+
+Parameters
+^^^^^^^^^^
+    src : [gdal.dataset]
+        source raster to that you want to make some calculation on its values
+    fun: [function]
+        defined function that takes one input which is the cell value
+
+Returns
+^^^^^^^
+    Dataset
+        gdal dataset object
+
+.. code:: py
+
+    def classify(val):
+        if val < 20:
+            val = 1
+        elif val < 40:
+            val = 2
+        elif val < 60:
+            val = 3
+        elif val < 80:
+            val = 4
+        elif val < 100:
+            val = 5
+        else:
+            val = 0
+        return val
+
+
+    dst = Raster.mapAlgebra(src, classify)
+    Map.plot(dst, title="Classes", color_scale=4, ticks_spacing=1)
+
+.. image:: /images/map_algebra.png
    :width: 500pt
 
 
-writeASCII
-----------
-- `writeASCII` reads an ASCII file the spatial information.
+
+fill
+----
+- `fill` takes a raster and fill it with one value.
 
 Parameters
-==========
-    ascii_file: [str]
-        name of the ASCII file you want to convert and the name
-        should include the extension ".asc"
-    geotransform: [tuple]
-        list of the six spatial information of the ASCII file
-        [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-        CellSize, NoValue]
-    arr: [np.ndarray]
-        [numpy array] 2D arrays containing the values stored in the ASCII
-        file
+^^^^^^^^^^
+    src : [gdal.dataset]
+        source raster
+    val: [numeric]
+        numeric value
+    save_to : [str]
+        path including the extension (.tif)
 
 Returns
-=======
-    None
+^^^^^^^
+    raster : [saved on disk]
+        the raster will be saved directly to the path you provided.
 
 .. code:: py
 
-    arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
-    Raster.writeASCII(r"examples/data/roughness.asc", geotransform, arr)
+    path = "examples/data/fillrasterexample.tif"
+    value = 20
+    Raster.rasterFill(src, value, save_to=path)
 
-- the ASCII file will look like
+    "now the resulted raster is saved to disk"
+    dst = gdal.Open(path)
+    Map.plot(dst, title="Flow Accumulation")
 
-.. code:: py
-
-    ncols         14
-    nrows         13
-    xllcorner     432968.1206170588
-    yllcorner     468007.787999178
-    cellsize      4000.0
-    NODATA_value  -3.4028230607370965e+38
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-    0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
-
+.. image:: /images/raster_fill.png
+   :width: 500pt
 
 nearestNeighbour
 ----------------
@@ -911,7 +1046,7 @@ nearestNeighbour
     the raster has to be projected to be able to calculate the distance
 
 Parameters
-----------
+^^^^^^^^^^
     Raster: [gdal.dataset]
         raster to get the spatial information (coordinates of each cell)
     StCoord: [Dataframe]
@@ -919,7 +1054,7 @@ Parameters
         of each station
 
 Returns
--------
+^^^^^^^
     StCoord:
         the same input dataframe with two extra columns "cellx","celly"
 
@@ -948,162 +1083,6 @@ Returns
     3   4  464533.7067  502683.6482   4.0   7.0
     4   5  463231.1242  486656.3455   8.0   7.0
     5   6  487292.5152  478045.5720  10.0  13.0
-
-
-TODO
-----
-- clipRasterWithPolygon
-- clip2
-- changeNoDataValue
-- mosaic
-- extractValues
-- normalize
-
-**************
-Raster Dataset
-**************
-
-
-cropAlignedFolder
-=================
-
-- `cropAlignedFolder`_ matches the location of nodata value from src raster to dst raster, Mask is where the
-    nodatavalue will be taken and the location of this value src_dir is path to the folder where rasters exist where we
-    need to put the NoDataValue of the mask in RasterB at the same locations.
-
-Parameters
-==========
-    src_dir : [String]
-        path of the folder of the rasters you want to set Nodata Value on the same location of NodataValue of Raster A,
-        the folder should not have any other files except the rasters
-    mask : [String/gdal.Dataset]
-        path/gdal.Dataset of the mask raster to crop the rasters (to get the NoData value and it location in the array)
-        Mask should include the name of the raster and the extension like "data/dem.tif", or you can read the mask raster
-        using gdal and use is the first parameter to the function.
-    saveto : [String]
-        path where new rasters are going to be saved with exact same old names
-
-Returns
-=======
-    new rasters have the values from rasters in B_input_path with the NoDataValue in the same
-    locations like raster A
-
-.. code:: py
-
-    # The folder should contain tif files only (check example here `cropAlignedFolder`_)
-    saveto = "examples/data/crop_aligned_folder/"
-    Raster.cropAlignedFolder(aligned_raster_folder, src, saveto)
-
-TODO
-----
-- reprojectDataset
-- readASCIIsFolder
-- rastersLike
-- matchDataAlignment
-- folderCalculator
-- readRastersFolder
-
-
-****************
-Zonal Statistics
-****************
-
-one of the most frequent used function in geospatial analysis is zonal
-statistics, where you overlay a shapefile contains some polygons with
-some maps and you want each polygon to extract the values that locates
-inside it from the map, `raster` module in `Hapi` contains a similar
-function `OverlayMap` where you can convert the polygon shapefile into
-a raster first and use it as a base map to overlay with other maps
-
-You don't need to copy and paste the code in this page you can find it
-in the examples `Zonal Statistics <https://github.com/MAfarrag/Hapi/blob/master/Examples/GIS/ZonalStatistics.py/>`_.
-
-
-OverlayMap one map
-==================
-
-The `overlayMap` function takes two ascii files the `BaseMap` which is the
-raster/asc file of the polygons and the secon is the asc file you want to
-extract its values.
-
-
-.. code:: py
-
-    def overlayMap(
-            path: str,
-            classes_map: Union[str, np.ndarray],
-            exclude_value: Union[float, int],
-            compressed: bool=False,
-            occupied_cells_only: bool=True) -> Tuple[Dict[List[float], List[float]], int]:
-    """
-    """overlayMap.
-
-            OverlayMap extracts and return a list of all the values in an ASCII file,
-            if you have two maps one with classes, and the other map contains any type of values,
-            and you want to know the values in each class
-
-    Parameters
-    ----------
-    path: [str]
-        a path to ascii file.
-    classes_map: [str/array]
-        a path includng the name of the ASCII and extention, or an array
-        >>> path = "classes.asc"
-    exclude_value: [Numeric]
-        values you want to exclude from extracted values.
-    compressed: [Bool]
-        if the map you provided is compressed.
-    occupied_cells_only: [Bool]
-        if you want to count only cells that is not zero.
-
-    Returns
-    -------
-    ExtractedValues: [Dict]
-        dictonary with a list of values in the basemap as keys
-            and for each key a list of all the intersected values in the
-            maps from the path.
-    NonZeroCells: [dataframe]
-        the number of cells in the map.
-    """
-
-To extract the
-
-.. code:: py
-
-    import Hapi.raster as R
-
-    Path = "F:/02Case studies/Hapi Examples/"
-    SavePath  = Path + "results/ZonalStatistics"
-    BaseMapF = Path + "data/Polygons.tif"
-    ExcludedValue = 0
-    Compressed = True
-    OccupiedCellsOnly = False
-
-    ExtractedValues, Cells = R.OverlayMap(Path+"DepthMax22489.zip", BaseMapF,ExcludedValue, Compressed,OccupiedCellsOnly)
-
-
-OverlayMap Several maps
-=======================
-The `overlayMaps` function takes path to the folder where more than one map exist instead of a path to one file, it also takes an extra parameter `FilePrefix`, this prefix is used to name the files in the given path and all the file has to start with the prefix
-
-.. code:: py
-
-    FilePrefix = "Map"
-    # several maps
-    ExtractedValues, Cells = R.overlayMaps(Path+"data", BaseMapF, FilePrefix,ExcludedValue, Compressed,OccupiedCellsOnly)
-
-both methods `OverlayMap` and `overlayMaps` returns the values as a `dict`, the difference is in the number of cells `overlayMaps` returns a single integer number while `OverlayMap` returns a `dataframe` with two columns the first in the map name and the second is the number of occupied cell in each map.
-
-Save extracted values
-=====================
-
-.. code:: py
-
-    # save extracted values in different files
-    Polygons = list(ExtractedValues.keys())
-    for i in range(len(Polygons)):
-        np.savetxt(SavePath +"/" + str(Polygons[i]) + ".txt",
-                   ExtractedValues[Polygons[i]],fmt="%4.2f")
 
 
 **********
