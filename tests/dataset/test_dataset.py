@@ -8,58 +8,6 @@ import pytest
 from osgeo import gdal, osr
 from pyramids.dataset import Dataset
 from pyramids.dataset import ReadOnlyError
-from pyramids.featurecollection import FeatureCollection
-
-
-class TestProperties:
-    def test_pivot_point(self, src: gdal.Dataset):
-        dataset = Dataset(src)
-        xy = dataset.pivot_point
-        assert xy[0] == 432968.1206170588
-        assert xy[1] == 520007.787999178
-
-    def test_lon_lat(self, src: gdal.Dataset, lon_coords: list, lat_coords: list):
-        dataset = Dataset(src)
-        assert all(np.isclose(dataset.lon, lon_coords, rtol=0.00001))
-        assert all(np.isclose(dataset.x, lon_coords, rtol=0.00001))
-        assert all(np.isclose(dataset.lat, lat_coords, rtol=0.00001))
-        assert all(np.isclose(dataset.y, lat_coords, rtol=0.00001))
-
-    def test_create_bounds(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
-        dataset = Dataset(src)
-        poly = dataset._calculate_bounds()
-        assert isinstance(poly, GeoDataFrame)
-        assert all(bounds_gdf == poly)
-
-    def test_create_bbox(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
-        dataset = Dataset(src)
-        bbox = dataset._calculate_bbox()
-        assert isinstance(bbox, list)
-        assert bbox == [
-            432968.1206170588,
-            468007.787999178,
-            488968.1206170588,
-            520007.787999178,
-        ]
-        bbox = dataset.bbox
-        assert bbox == [
-            432968.1206170588,
-            468007.787999178,
-            488968.1206170588,
-            520007.787999178,
-        ]
-
-    def test_bounds_property(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
-        dataset = Dataset(src)
-        assert all(dataset.bounds == bounds_gdf)
-
-    def test_shape(self, src: gdal.Dataset):
-        dataset = Dataset(src)
-        assert dataset.shape == (1, 13, 14)
-
-    def test_values(self, src: gdal.Dataset):
-        dataset = Dataset(src)
-        assert isinstance(dataset.values, np.ndarray)
 
 
 class TestCreateRasterObject:
@@ -197,6 +145,57 @@ class TestCreateRasterObject:
                 src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
             )
             assert src_obj.geotransform == dst_obj.geotransform
+
+
+class TestProperties:
+    def test_pivot_point(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        xy = dataset.pivot_point
+        assert xy[0] == 432968.1206170588
+        assert xy[1] == 520007.787999178
+
+    def test_lon_lat(self, src: gdal.Dataset, lon_coords: list, lat_coords: list):
+        dataset = Dataset(src)
+        assert all(np.isclose(dataset.lon, lon_coords, rtol=0.00001))
+        assert all(np.isclose(dataset.x, lon_coords, rtol=0.00001))
+        assert all(np.isclose(dataset.lat, lat_coords, rtol=0.00001))
+        assert all(np.isclose(dataset.y, lat_coords, rtol=0.00001))
+
+    def test_create_bounds(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
+        dataset = Dataset(src)
+        poly = dataset._calculate_bounds()
+        assert isinstance(poly, GeoDataFrame)
+        assert all(bounds_gdf == poly)
+
+    def test_create_bbox(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
+        dataset = Dataset(src)
+        bbox = dataset._calculate_bbox()
+        assert isinstance(bbox, list)
+        assert bbox == [
+            432968.1206170588,
+            468007.787999178,
+            488968.1206170588,
+            520007.787999178,
+        ]
+        bbox = dataset.bbox
+        assert bbox == [
+            432968.1206170588,
+            468007.787999178,
+            488968.1206170588,
+            520007.787999178,
+        ]
+
+    def test_bounds_property(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
+        dataset = Dataset(src)
+        assert all(dataset.bounds == bounds_gdf)
+
+    def test_shape(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        assert dataset.shape == (1, 13, 14)
+
+    def test_values(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        assert isinstance(dataset.values, np.ndarray)
 
 
 class TestSpatialProperties:
