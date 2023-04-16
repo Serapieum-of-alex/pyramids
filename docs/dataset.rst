@@ -24,50 +24,56 @@ dataset
 Dataset
 *******
 
-.. image:: /images/dataset.svg
+.. image:: /images/dataset.png
    :width: 200pt
 
-The dataset object has some attributes and methods to help
+- The main purpose of the Dataset object is to deal with raster objects, single or multibands, has variables/subsets
+    like netcdf file or has one variable like most GeoTIFF files.
 
-- To import the raster module
+
+.. image:: /images/dataset-alone.png
+   :width: 700pt
+   :alt: Dataset object scheme
+   :align: center
+
+- To import the Dataset object
 
 .. code:: py
 
     from pyramids.dataset import Dataset
 
-
-- The main parameter for most of the functions in the `raster` module is a `gdal.Dataset`
+read_file
+=========
+- to read any files using the Dataset object you can use the `read_file` method.
 
 .. code:: py
 
-    raster_path = "examples/data/acc4000.tif"
-    src = gdal.Open(RasterAPath)
-    fig, ax = Map.plot(src, title="Flow Accumulation")
+    path = "examples/data/dem/DEM5km_Rhine_burned_fill.tif"
+    dataset = Dataset.read_file(path)
+    dataset.plot(title="Rhine river basin", ticks_spacing=500,cmap="terrain", color_scale=1, vmin=0,
+             cbar_label="Elevation (m)")
 
-.. image:: /images/flow_accumulation.png
-   :width: 500pt
-
-.. note::
-
-    * change the directory of your code to point at the repository root directory to be able to read the raster files
-    * the visualization in this documentatin uses digitalearth package to install it `Digital-Earth`_
-
-- The module contains function that falls in one of the following categories.
-
-#. `Raster Data`_
-#. `Raster Operations`_
-#. `Raster Dataset`_
+.. image:: /images/rhine_dem.png
+   :width: 700pt
+   :alt: Rhine river basin
+   :align: center
 
 
-***********
-Raster Data
-***********
-- function that are related to spatial resolution, projection and coordinates of a raster.
+- The `read_file` method detects the type of the input file from the extension at the end of the path.
+- Similarly you can read an ascii file using the same way.
+
+.. code:: py
+
+    path = "examples/data/dem/dem5km_rhine.asc"
+    dataset = Dataset.read_file(path)
+    dataset.plot(title="Rhine river basin", ticks_spacing=500,cmap="terrain", color_scale=1, vmin=0,
+                cbar_label="Elevation (m)")
 
 
-read_array
--------------
-- `read_array` get the array values for a given band in the raster
+
+
+
+
 
 Parameters
 ==========
@@ -205,45 +211,24 @@ Returns
         [458968.12061706, 520007.78799918],
 
 
-TODO
-----
-- getEPSG
-- openArrayInfo
-
-
 *****************
 Raster Operations
 *****************
 
-saveRaster
-----------
-- `saveRaster` saves a raster to a path
-
-Parameters
-==========
-    raster: [gdal object]
-        gdal dataset opbject
-    path: [string]
-        a path includng the name of the raster and extention like
-        path="data/cropped.tif"
-
-Returns
-=======
-    the function does not return and data but only save the raster to the hard drive
 
 .. code:: py
 
     path = "examples/data/save_raster_test.tif"
     Raster.saveRaster(src, path)
 
-
 createRaster
-------------
+============
+
 - `createRaster` method creates a raster from a given array and geotransform data
     and save the tif file if a Path is given or it will return the gdal.Dataset
 
 Parameters
-==========
+----------
     path : [str], optional
         Path to save the Raster, if '' is given a memory raster will be returned. The default is ''.
     arr : [array], optional
@@ -258,7 +243,7 @@ Parameters
             (default 3857 the reference no of WGS84 web mercator )
 
 Returns
-=======
+-------
     dst : [gdal.Dataset/save raster to drive].
         if a path is given the created raster will be saved to drive, if not
         a gdal.Dataset will be returned.
@@ -502,7 +487,7 @@ Crop array using a raster
     align both rasters.
 
 Parameters
-^^^^^^^^^^
+----------
     src: [gdal.dataset/np.ndarray]
         raster you want to clip/store NoDataValue in its cells
         exactly the same like mask raster
@@ -513,7 +498,7 @@ Parameters
         in case the mask is np.ndarray, the mask_noval have to be given.
 
 Returns
-^^^^^^^
+-------
     dst: [gdal.dataset]
         the second raster with NoDataValue stored in its cells
         exactly the same like src raster
@@ -838,7 +823,7 @@ Raster Dataset
 
 
 cropAlignedFolder
------------------
+=================
 
 - `cropAlignedFolder`_ matches the location of nodata value from src raster to dst raster, Mask is where the
     nodatavalue will be taken and the location of this value src_dir is path to the folder where rasters exist where we
@@ -893,7 +878,7 @@ in the examples `Zonal Statistics <https://github.com/MAfarrag/Hapi/blob/master/
 
 
 OverlayMap one map
-------------------
+==================
 
 The `overlayMap` function takes two ascii files the `BaseMap` which is the
 raster/asc file of the polygons and the secon is the asc file you want to
