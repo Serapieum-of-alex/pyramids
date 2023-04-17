@@ -354,6 +354,11 @@ driver_type
 Create Dataset object
 =====================
 
+.. image:: /images/create-object.png
+   :width: 150pt
+   :alt: Dataset object scheme
+   :align: center
+
 create_from_array
 -----------------
 
@@ -446,8 +451,13 @@ Returns
 Access data methods
 ===================
 
+.. image:: /images/access-data.png
+   :width: 150pt
+   :alt: Dataset object scheme
+   :align: center
+
 read_array
-^^^^^^^^^^
+----------
 .. code:: py
 
 
@@ -509,38 +519,50 @@ read_array
 Write raster to disk
 ====================
 
+to wtite the dataset object to disk using any of the raster formats (GeoTIFF/NetCDF/ASCII), you can use the `to_file`
+method.
+
+.. image:: /images/write-to-disk.png
+   :width: 350pt
+   :alt: Dataset object scheme
+   :align: center
+
 to_file
 -------
 
-- `to_file` reads an ASCII file the spatial information.
+- `to_file` writes the Dataset object to disk.
 
 Parameters
 ^^^^^^^^^^
-    ascii_file: [str]
-        name of the ASCII file you want to convert and the name
-        should include the extension ".asc"
-    geotransform: [tuple]
-        list of the six spatial information of the ASCII file
-        [ASCIIRows, ASCIIColumns, XLowLeftCorner, YLowLeftCorner,
-        CellSize, NoValue]
-    arr: [np.ndarray]
-        [numpy array] 2D arrays containing the values stored in the ASCII
-        file
+    path: [str]
+        a path includng the name of the raster and extention.
+        >>> path = "data/cropped.tif"
+    driver: [str]
+            driver = "geotiff"/"ascii"/"netcdf".
+    band: [int]
+        band index, needed only in case of ascii drivers. Default is 0.
+
+GeoTIFF
+^^^^^^^
+.. code:: py
+
+    dataset.to_file("examples/data/dem/dem5km_rhine.tif", driver="geotiff")
+
+ASCII
+^^^^^
+.. code:: py
+
+    dataset.to_file("examples/data/dem/dem5km_rhine.asc", driver="ascii")
+
+- The ASCII file will look like
 
 .. code:: py
 
-    arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
-    Raster.writeASCII(r"examples/data/roughness.asc", geotransform, arr)
-
-- the ASCII file will look like
-
-.. code:: py
-
-    ncols         14
-    nrows         13
-    xllcorner     432968.1206170588
-    yllcorner     468007.787999178
-    cellsize      4000.0
+    ncols         93
+    nrows         125
+    xllcorner     32239263.70388
+    yllcorner     5131081.42235
+    cellsize      5000.0
     NODATA_value  -3.4028230607370965e+38
     0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
     0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
@@ -556,8 +578,20 @@ Parameters
     0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
     0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03  0.03
 
+NetCDF
+^^^^^^
+.. code:: py
+
+    dataset.to_file("examples/data/dem/dem5km_rhine.nc", driver="netcdf")
+
+
 Spatial properties
 ==================
+
+.. image:: /images/spatial-operation.png
+   :width: 150pt
+   :alt: Dataset object scheme
+   :align: center
 
 resample
 --------
@@ -945,7 +979,7 @@ ExtractedValues: [Dict]
         maps from the path.
 NonZeroCells: [dataframe]
     the number of cells in the map.
-"""
+
 
 To extract the
 
@@ -965,6 +999,11 @@ To extract the
 
 Mathmatical operations
 ======================
+
+.. image:: /images/math-operations.png
+   :width: 150pt
+   :alt: Dataset object scheme
+   :align: center
 
 apply
 -----
