@@ -1903,7 +1903,7 @@ class Dataset:
                     "the other raster coordinate system"
                 )
 
-        src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = mask_noval
+        src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = src_noval
 
         # align function only equate the no of rows and columns only
         # match nodatavalue inserts nodatavalue in src raster to all places like mask
@@ -1911,16 +1911,16 @@ class Dataset:
         # and now has to be filled with values
         # compare no of element that is not nodatavalue in both rasters to make sure they are matched
         # if both inputs are rasters
-        if isinstance(mask, gdal.Dataset) and isinstance(self.raster, gdal.Dataset):
+        if isinstance(mask, Dataset) and isinstance(self, Dataset):
             # there might be cells that are out of domain in the src but not out of domain in the mask
             # so change all the src_noval to mask_noval in the src_array
             src_array[np.isclose(src_array, src_noval, rtol=0.001)] = mask_noval
             # then count them (out of domain cells) in the src_array
-            elem_src = np.size(src_array[:, :]) - np.count_nonzero(
-                (src_array[np.isclose(src_array, mask_noval, rtol=0.001)])
+            elem_src = src_array.size - np.count_nonzero(
+                (src_array[np.isclose(src_array, src_noval, rtol=0.001)])
             )
             # count the out of domian cells in the mask
-            elem_mask = np.size(mask_array[:, :]) - np.count_nonzero(
+            elem_mask = mask_array.size - np.count_nonzero(
                 (mask_array[np.isclose(mask_array, mask_noval, rtol=0.001)])
             )
 
@@ -1946,28 +1946,24 @@ class Dataset:
                     src_array, mask_noval, rows, cols
                 )
 
-        # if the dst is a raster
-        if isinstance(self.raster, gdal.Dataset):
-            dst = Dataset._create_gdal_dataset(col, row, 1, dtype, driver="MEM")
-            # but with lot of computation
-            # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
-            # are aligned so they have the sam gt
-            try:
-                # set the geotransform
-                dst.SetGeoTransform(mask_gt)
-                # set the projection
-                dst.SetProjection(mask.crs)
-            except UnboundLocalError:
-                dst.SetGeoTransform(self.geotransform)
-                dst.SetProjection(src_sref.ExportToWkt())
+        dst = Dataset._create_gdal_dataset(col, row, 1, dtype, driver="MEM")
+        # but with lot of computation
+        # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
+        # are aligned so they have the sam gt
+        try:
+            # set the geotransform
+            dst.SetGeoTransform(mask_gt)
+            # set the projection
+            dst.SetProjection(mask.crs)
+        except UnboundLocalError:
+            dst.SetGeoTransform(self.geotransform)
+            dst.SetProjection(src_sref.ExportToWkt())
 
-            dst_obj = Dataset(dst)
-            # set the no data value
-            dst_obj._set_no_data_value(mask_noval)
-            dst_obj.raster.GetRasterBand(1).WriteArray(src_array)
-            return dst_obj
-        else:
-            return src_array
+        dst_obj = Dataset(dst)
+        # set the no data value
+        dst_obj._set_no_data_value(mask_noval)
+        dst_obj.raster.GetRasterBand(1).WriteArray(src_array)
+        return dst_obj
 
     def _check_alignment(self, mask) -> bool:
         """Check if raster is aligned with a given mask raster"""
