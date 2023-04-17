@@ -1263,7 +1263,7 @@ class Dataset:
         driver: [str]
             driver = "geotiff".
         band: [int]
-            band index, needed only in case of ascii drivers. Default is 1.
+            band index, needed only in case of ascii drivers. Default is 0.
 
         Examples
         --------
@@ -1833,10 +1833,6 @@ class Dataset:
 
         Parameters
         ----------
-        TODO: the oriiginal function had the ability to crop an array with a dataset object and the opposite
-        src: [gdal.dataset/np.ndarray]
-            raster you want to clip/store NoDataValue in its cells
-            exactly the same like mask raster
         mask: [gdal.dataset/np.ndarray]
             mask raster to get the location of the NoDataValue and
             where it is in the array
@@ -1851,11 +1847,10 @@ class Dataset:
             the second raster with NoDataValue stored in its cells
             exactly the same like src raster
         """
+        # TODO: the original function had the ability to crop an array with a dataset object and the opposite
         # check the mask
         if isinstance(mask, Dataset):
             mask_gt = mask.geotransform
-            # mask_proj = mask.proj
-            # mask_sref = osr.SpatialReference(wkt=mask_proj)
             mask_epsg = mask.epsg
             row = mask.rows
             col = mask.columns
@@ -1886,15 +1881,17 @@ class Dataset:
             src_array = self.raster.copy()
             dtype = self.raster.dtype
 
-        # check proj
-        if not mask_array.shape == src_array.shape:
+        if not row == self.rows or not col == self.columns:
             raise ValueError(
                 "Two rasters has different number of columns or rows please resample or match both rasters"
             )
 
         # if both inputs are rasters
         if isinstance(mask, Dataset):
-            if not self.geotransform == mask_gt:
+            if (
+                not self.pivot_point == mask.pivot_point
+                or not self.cell_size == mask.cell_size
+            ):
                 raise ValueError(
                     "location of upper left corner of both rasters are not the same or cell size is "
                     "different please match both rasters first "
