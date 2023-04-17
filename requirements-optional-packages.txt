@@ -1,4 +1,4 @@
-cleopatra >=0.3.0
+cleopatra >=0.3.1
 gdal >=3.6.2
 geopandas >=0.12.2
 hpc-utils ==0.1.0
