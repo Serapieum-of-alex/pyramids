@@ -929,6 +929,31 @@ class Dataset:
 
         return names
 
+    def _check_no_data_value(self, no_data_value: List):
+        """Validate The no_data_value with the dtype of the object.
+
+        Parameters
+        ----------
+        no_data_value
+
+        Returns
+        -------
+        no_data_value:
+            convert the no_data_value to comly with the dtype
+        """
+        for i, val in enumerate(self.dtype):
+            if gdal_to_numpy_dtype(val).__contains__("float"):
+                no_data_value[i] = (
+                    float(no_data_value[i]) if no_data_value[i] is not None else None
+                )
+            elif gdal_to_numpy_dtype(val).__contains__("int"):
+                no_data_value[i] = (
+                    int(no_data_value[i]) if no_data_value[i] is not None else None
+                )
+            else:
+                raise TypeError("NoDataValue has a complex data type")
+        return no_data_value
+
     def _set_no_data_value(
         self, no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE
     ):
@@ -946,17 +971,7 @@ class Dataset:
         if not isinstance(no_data_value, list):
             no_data_value = [no_data_value] * self.band_count
 
-        for i, val in enumerate(self.dtype):
-            if gdal_to_numpy_dtype(val).__contains__("float"):
-                no_data_value[i] = (
-                    float(no_data_value[i]) if no_data_value[i] is not None else None
-                )
-            elif gdal_to_numpy_dtype(val).__contains__("int"):
-                no_data_value[i] = (
-                    int(no_data_value[i]) if no_data_value[i] is not None else None
-                )
-            else:
-                raise TypeError("NoDataValue has a complex data type")
+        self._check_no_data_value(no_data_value)
 
         for band in range(self.band_count):
             try:
@@ -1071,7 +1086,7 @@ class Dataset:
         self.no_data_value[band] = no_data_value
 
     def change_no_data_value(self, new_value: Any, old_value: Any = None):
-        """change_no_data_value.
+        """Change No Data Value.
 
             - Set the no data value in a all raster bands.
             - Fills the whole raster with the no_data_value.
@@ -1094,7 +1109,13 @@ class Dataset:
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.raster, 0)
         for band in range(self.band_count):
             arr = self.read_array(band)
-            arr[np.isclose(arr, old_value, rtol=0.001)] = new_value[band]
+            try:
+                arr[np.isclose(arr, old_value, rtol=0.001)] = new_value[band]
+            except TypeError:
+                raise NoDataValueError(
+                    f"The dtype of the given no_data_value: {new_value[band]} differs from the dtype of the "
+                    f"band: {gdal_to_numpy_dtype(self.dtype[band])}"
+                )
             dst.GetRasterBand(band + 1).WriteArray(arr)
 
         self._raster = dst
@@ -1903,6 +1924,9 @@ class Dataset:
                     "the other raster coordinate system"
                 )
 
+        # if mask_noval is None:
+        #     src_array[:, np.isnan(mask_array)] = src_noval
+        # else:
         src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = src_noval
 
         # align function only equate the no of rows and columns only
@@ -2768,6 +2792,7 @@ class Dataset:
 
 
 class Datacube:
+    """DataCube."""
 
     files: List[str]
     data: np.ndarray

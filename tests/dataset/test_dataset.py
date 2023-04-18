@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from osgeo import gdal, osr
 from pyramids.dataset import Dataset
-from pyramids.dataset import ReadOnlyError
+from pyramids.errors import ReadOnlyError, NoDataValueError
 
 
 class TestCreateRasterObject:
@@ -223,6 +223,12 @@ class TestSpatialProperties:
         assert isinstance(names, list)
         assert names == ["Band_1"]
 
+    def test_create_sr_from_epsg(self):
+        sr = Dataset._create_sr_from_epsg(4326)
+        assert sr.GetAuthorityCode(None) == f"{4326}"
+
+
+class TestNoDataValue:
     def test_set_no_data_value_error_read_only(
         self,
         src_set_no_data_value: gdal.Dataset,
@@ -265,9 +271,15 @@ class TestSpatialProperties:
         val = arr[0, 0]
         assert val == new_val
 
-    def test_create_sr_from_epsg(self):
-        sr = Dataset._create_sr_from_epsg(4326)
-        assert sr.GetAuthorityCode(None) == f"{4326}"
+    # def test_change_no_data_error_different_data_type(
+    #         self, int_none_nodatavalue_attr_0_stored: gdal.Dataset
+    # ):
+    #     # try to store None in the array (int)
+    #     dataset = Dataset(int_none_nodatavalue_attr_0_stored)
+    #     try:
+    #         dataset.change_no_data_value(None, 0)
+    #     except NoDataValueError:
+    #         pass
 
 
 class TestSetCRS:
@@ -522,7 +534,7 @@ def test_match_raster_alignment(
 
 
 class TestCrop:
-    def test_crop_gdal_obj_with_gdal_obj(
+    def test_crop_dataset_with_another_dataset_single_band(
         self,
         src: gdal.Dataset,
         aligned_raster,
@@ -538,7 +550,24 @@ class TestCrop:
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
         assert (dst_arr_cropped == src_arr).all()
 
-    def test_crop_gdal_obj_with_array(
+    # def test_crop_dataset_with_another_dataset_multi_band(
+    #     self,
+    #     sentinel_raster: gdal.Dataset,
+    #     sentinel_crop,
+    #     src_arr: np.ndarray,
+    #     src_no_data_value: float,
+    # ):
+    #     mask_obj = Dataset(sentinel_crop)
+    #     aligned_raster = Dataset(sentinel_raster)
+    #     # mask_obj = mask_obj.align(aligned_raster)
+    #     croped = aligned_raster._crop_alligned(mask_obj)
+    #     dst_arr_cropped = croped.raster.ReadAsArray()
+    #     # check that all the places of the nodatavalue are the same in both arrays
+    #     src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
+    #     dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
+    #     assert (dst_arr_cropped == src_arr).all()
+
+    def test_crop_dataset_with_array(
         self,
         aligned_raster,
         src_arr: np.ndarray,
