@@ -952,6 +952,7 @@ class Dataset:
                 )
             else:
                 raise TypeError("NoDataValue has a complex data type")
+
         return no_data_value
 
     def _set_no_data_value(
@@ -1107,6 +1108,10 @@ class Dataset:
             old_value = [old_value] * self.band_count
 
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.raster, 0)
+        # create a new dataset
+        new_dataset = Dataset(dst)
+        new_dataset._set_no_data_value(new_value)
+
         for band in range(self.band_count):
             arr = self.read_array(band)
             try:
@@ -1116,12 +1121,9 @@ class Dataset:
                     f"The dtype of the given no_data_value: {new_value[band]} differs from the dtype of the "
                     f"band: {gdal_to_numpy_dtype(self.dtype[band])}"
                 )
-            dst.GetRasterBand(band + 1).WriteArray(arr)
+            new_dataset.raster.GetRasterBand(band + 1).WriteArray(arr)
 
-        self._raster = dst
-
-        for band in range(self.band_count):
-            self.change_no_data_value_attr(band, new_value[band])
+        self.__init__(new_dataset.raster)
 
     def get_cell_coords(
         self, location: str = "center", mask: bool = False
@@ -1876,7 +1878,7 @@ class Dataset:
             row = mask.rows
             col = mask.columns
             mask_noval = mask.no_data_value[band - 1]
-            mask_array = mask.raster.ReadAsArray()
+            mask_array = mask.read_array()
         elif isinstance(mask, np.ndarray):
             if mask_noval is None:
                 raise ValueError(
@@ -1895,7 +1897,7 @@ class Dataset:
         dtype = self.dtype[band - 1]
 
         src_sref = osr.SpatialReference(wkt=self.crs)
-        src_array = self.raster.ReadAsArray()
+        src_array = self.read_array()
         # Warning: delete later the self.raster will never be an array
         if isinstance(self.raster, np.ndarray):
             # if the object to be cropped is array
@@ -1924,11 +1926,16 @@ class Dataset:
                     "the other raster coordinate system"
                 )
 
-        # if mask_noval is None:
-        #     src_array[:, np.isnan(mask_array)] = src_noval
-        # else:
-        src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = src_noval
-
+        if self.band_count > 1:
+            if mask_noval is None:
+                src_array[:, np.isnan(mask_array)] = src_noval
+            else:
+                src_array[:, np.isclose(mask_array, mask_noval, rtol=0.001)] = src_noval
+        else:
+            if mask_noval is None:
+                src_array[np.isnan(mask_array)] = src_noval
+            else:
+                src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = src_noval
         # align function only equate the no of rows and columns only
         # match nodatavalue inserts nodatavalue in src raster to all places like mask
         # still places that has nodatavalue in the src raster but it is not nodatavalue in the mask
