@@ -271,15 +271,15 @@ class TestNoDataValue:
         val = arr[0, 0]
         assert val == new_val
 
-    # def test_change_no_data_error_different_data_type(
-    #         self, int_none_nodatavalue_attr_0_stored: gdal.Dataset
-    # ):
-    #     # try to store None in the array (int)
-    #     dataset = Dataset(int_none_nodatavalue_attr_0_stored)
-    #     try:
-    #         dataset.change_no_data_value(None, 0)
-    #     except NoDataValueError:
-    #         pass
+    def test_change_no_data_error_different_data_type(
+        self, int_none_nodatavalue_attr_0_stored: gdal.Dataset
+    ):
+        # try to store None in the array (int)
+        dataset = Dataset(int_none_nodatavalue_attr_0_stored)
+        try:
+            dataset.change_no_data_value(None, 0)
+        except NoDataValueError:
+            pass
 
 
 class TestSetCRS:

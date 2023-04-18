@@ -424,3 +424,20 @@ def rhine_dem() -> gdal.Dataset:
 @pytest.fixture(scope="module")
 def clusters() -> np.ndarray:
     return np.load("tests/data/dem/cluster.npy")
+
+
+@pytest.fixture(scope="module")
+def sentinel_raster() -> gdal.Dataset:
+    return gdal.Open(
+        "tests/data/geotiff/S2A_MSIL2A_20200215T082021_N0214_R121_T36SXA_20200215T110825_image_0_0.tif"
+    )
+
+
+@pytest.fixture(scope="module")
+def sentinel_crop() -> gdal.Dataset:
+    return gdal.Open("tests\data\geotiff\sentinel_crop.tif")
+
+
+@pytest.fixture(scope="module")
+def int_none_nodatavalue_attr_0_stored() -> gdal.Dataset:
+    return gdal.Open("tests/data/geotiff/int_none_nodatavalue_attr_0_stored.tif")
