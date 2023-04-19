@@ -287,6 +287,15 @@ class Dataset:
         """No data value that marks the cells out of the domain"""
         return self._no_data_value
 
+    @no_data_value.setter
+    def no_data_value(self, value: object):
+        """No data value that marks the cells out of the domain"""
+        if isinstance(value, list):
+            for i, val in enumerate(value):
+                self._change_no_data_value_attr(i, val)
+        else:
+            self._change_no_data_value_attr(0, value)
+
     @property
     def meta_data(self):
         """Meta data"""
@@ -1039,7 +1048,7 @@ class Dataset:
                     f"band: {gdal_to_numpy_dtype(self.dtype[band_i])}"
                 )
 
-        self.change_no_data_value_attr(band_i, no_data_value)
+        self._change_no_data_value_attr(band_i, no_data_value)
         # initialize the band with the nodata value instead of 0
         try:
             self.raster.GetRasterBand(band_i + 1).Fill(no_data_value)
@@ -1053,7 +1062,7 @@ class Dataset:
         # update the no_data_value in the Dataset object
         self.no_data_value[band_i] = no_data_value
 
-    def change_no_data_value_attr(self, band: int, no_data_value):
+    def _change_no_data_value_attr(self, band: int, no_data_value):
         """Change the no_data_value attribute.
 
             - Change only the no_data_value attribute in the gdal Datacube object.
@@ -1084,7 +1093,7 @@ class Dataset:
                 self.raster.GetRasterBand(band + 1).SetNoDataValue(
                     np.float64(no_data_value)
                 )
-        self.no_data_value[band] = no_data_value
+        self._no_data_value[band] = no_data_value
 
     def change_no_data_value(self, new_value: Any, old_value: Any = None):
         """Change No Data Value.
@@ -1840,11 +1849,54 @@ class Dataset:
         )
         return dst_obj
 
+    def fill_gaps(self, mask, src_array):
+        mask_array = mask.read_array()
+        row = mask.rows
+        col = mask.columns
+        mask_noval = mask.no_data_value[0]
+
+        if isinstance(mask, Dataset) and isinstance(self, Dataset):
+            # there might be cells that are out of domain in the src but not out of domain in the mask
+            # so change all the src_noval to mask_noval in the src_array
+            # src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)] = mask_noval
+            # then count them (out of domain cells) in the src_array
+            elem_src = src_array.size - np.count_nonzero(
+                (src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)])
+            )
+            # count the out of domian cells in the mask
+            elem_mask = mask_array.size - np.count_nonzero(
+                (mask_array[np.isclose(mask_array, mask_noval, rtol=0.001)])
+            )
+
+            # if not equal then store indices of those cells that doesn't matchs
+            if elem_mask > elem_src:
+                rows = [
+                    i
+                    for i in range(row)
+                    for j in range(col)
+                    if np.isclose(src_array[i, j], self.no_data_value[0], rtol=0.001)
+                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
+                ]
+                cols = [
+                    j
+                    for i in range(row)
+                    for j in range(col)
+                    if np.isclose(src_array[i, j], self.no_data_value[0], rtol=0.001)
+                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
+                ]
+            # interpolate those missing cells by nearest neighbour
+            if elem_mask > elem_src:
+                src_array = Dataset._nearest_neighbour(
+                    src_array, self.no_data_value[0], rows, cols
+                )
+            return src_array
+
     def _crop_alligned(
         self,
         mask: Union[gdal.Dataset, np.ndarray],
         mask_noval: Union[int, float] = None,
-        band: int = 1,
+        band: int = 0,
+        fill_gaps: bool = False,
     ) -> Union[np.ndarray, gdal.Dataset]:
         """cropAlligned.
 
@@ -1877,7 +1929,7 @@ class Dataset:
             mask_epsg = mask.epsg
             row = mask.rows
             col = mask.columns
-            mask_noval = mask.no_data_value[band - 1]
+            mask_noval = mask.no_data_value[band]
             mask_array = mask.read_array()
         elif isinstance(mask, np.ndarray):
             if mask_noval is None:
@@ -1893,8 +1945,9 @@ class Dataset:
             )
 
         # if the to be clipped object is raster
-        src_noval = self.no_data_value[band - 1]
-        dtype = self.dtype[band - 1]
+        # src_noval = self.no_data_value[band]
+        # dtype = self.dtype[band]
+        band_count = self.band_count
 
         src_sref = osr.SpatialReference(wkt=self.crs)
         src_array = self.read_array()
@@ -1902,7 +1955,7 @@ class Dataset:
         if isinstance(self.raster, np.ndarray):
             # if the object to be cropped is array
             src_array = self.raster.copy()
-            dtype = self.raster.dtype
+            # dtype = self.raster.dtype
 
         if not row == self.rows or not col == self.columns:
             raise ValueError(
@@ -1926,58 +1979,33 @@ class Dataset:
                     "the other raster coordinate system"
                 )
 
-        if self.band_count > 1:
-            if mask_noval is None:
-                src_array[:, np.isnan(mask_array)] = src_noval
-            else:
-                src_array[:, np.isclose(mask_array, mask_noval, rtol=0.001)] = src_noval
+        if band_count > 1:
+            for band in range(self.band_count):
+                if mask_noval is None:
+                    src_array[band, np.isnan(mask_array)] = self.no_data_value[band]
+                else:
+                    src_array[
+                        band, np.isclose(mask_array, mask_noval, rtol=0.001)
+                    ] = self.no_data_value[band]
         else:
             if mask_noval is None:
-                src_array[np.isnan(mask_array)] = src_noval
+                src_array[np.isnan(mask_array)] = self.no_data_value[0]
             else:
-                src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = src_noval
+                src_array[
+                    np.isclose(mask_array, mask_noval, rtol=0.001)
+                ] = self.no_data_value[0]
         # align function only equate the no of rows and columns only
         # match nodatavalue inserts nodatavalue in src raster to all places like mask
         # still places that has nodatavalue in the src raster but it is not nodatavalue in the mask
         # and now has to be filled with values
         # compare no of element that is not nodatavalue in both rasters to make sure they are matched
         # if both inputs are rasters
-        if isinstance(mask, Dataset) and isinstance(self, Dataset):
-            # there might be cells that are out of domain in the src but not out of domain in the mask
-            # so change all the src_noval to mask_noval in the src_array
-            src_array[np.isclose(src_array, src_noval, rtol=0.001)] = mask_noval
-            # then count them (out of domain cells) in the src_array
-            elem_src = src_array.size - np.count_nonzero(
-                (src_array[np.isclose(src_array, src_noval, rtol=0.001)])
-            )
-            # count the out of domian cells in the mask
-            elem_mask = mask_array.size - np.count_nonzero(
-                (mask_array[np.isclose(mask_array, mask_noval, rtol=0.001)])
-            )
+        if fill_gaps:
+            src_array = self.fill_gaps(mask, src_array)
 
-            # if not equal then store indices of those cells that doesn't matchs
-            if elem_mask > elem_src:
-                rows = [
-                    i
-                    for i in range(row)
-                    for j in range(col)
-                    if np.isclose(src_array[i, j], mask_noval, rtol=0.001)
-                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
-                ]
-                cols = [
-                    j
-                    for i in range(row)
-                    for j in range(col)
-                    if np.isclose(src_array[i, j], mask_noval, rtol=0.001)
-                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
-                ]
-            # interpolate those missing cells by nearest neighbour
-            if elem_mask > elem_src:
-                src_array = Dataset._nearest_neighbour(
-                    src_array, mask_noval, rows, cols
-                )
-
-        dst = Dataset._create_gdal_dataset(col, row, 1, dtype, driver="MEM")
+        dst = Dataset._create_gdal_dataset(
+            col, row, band_count, self.dtype[0], driver="MEM"
+        )
         # but with lot of computation
         # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
         # are aligned so they have the sam gt
@@ -1992,8 +2020,12 @@ class Dataset:
 
         dst_obj = Dataset(dst)
         # set the no data value
-        dst_obj._set_no_data_value(mask_noval)
-        dst_obj.raster.GetRasterBand(1).WriteArray(src_array)
+        dst_obj._set_no_data_value(self.no_data_value)
+        if band_count > 1:
+            for band in range(band_count):
+                dst_obj.raster.GetRasterBand(band + 1).WriteArray(src_array[band, :, :])
+        else:
+            dst_obj.raster.GetRasterBand(1).WriteArray(src_array)
         return dst_obj
 
     def _check_alignment(self, mask) -> bool:

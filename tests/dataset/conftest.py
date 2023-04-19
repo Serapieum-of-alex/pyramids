@@ -19,7 +19,7 @@ def src_path() -> str:
 
 @pytest.fixture(scope="module")
 def src(src_path: str) -> Dataset:
-    return gdal.Open(src_path)
+    return gdal.OpenShared(src_path, gdal.GA_ReadOnly)
 
 
 @pytest.fixture(scope="module")
