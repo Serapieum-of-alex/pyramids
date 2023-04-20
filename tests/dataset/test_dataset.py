@@ -568,14 +568,13 @@ class TestCrop:
         sentinel_raster: gdal.Dataset,
         sentinel_crop,
         sentinel_crop_arr: np.ndarray,
-        src_no_data_value: float,
     ):
         mask_obj = Dataset(sentinel_crop)
         aligned_raster = Dataset(sentinel_raster)
 
         croped = aligned_raster._crop_alligned(mask_obj)
         dst_arr_cropped = croped.raster.ReadAsArray()
-        print(dst_arr_cropped[0, 0, 0])
+
         assert np.array_equal(dst_arr_cropped, sentinel_crop_arr)
 
     def test_crop_dataset_with_array(
