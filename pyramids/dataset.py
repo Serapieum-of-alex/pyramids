@@ -1908,7 +1908,7 @@ class Dataset:
 
         Parameters
         ----------
-        mask: [gdal.dataset/np.ndarray]
+        mask: [Dataset/np.ndarray]
             mask raster to get the location of the NoDataValue and
             where it is in the array
         mask_noval: [numeric]
@@ -1922,8 +1922,6 @@ class Dataset:
             the second raster with NoDataValue stored in its cells
             exactly the same like src raster
         """
-        # TODO: the original function had the ability to crop an array with a dataset object and the opposite
-        # check the mask
         if isinstance(mask, Dataset):
             mask_gt = mask.geotransform
             mask_epsg = mask.epsg
@@ -1944,25 +1942,15 @@ class Dataset:
                 f"given - {type(mask)}"
             )
 
-        # if the to be clipped object is raster
-        # src_noval = self.no_data_value[band]
-        # dtype = self.dtype[band]
         band_count = self.band_count
-
         src_sref = osr.SpatialReference(wkt=self.crs)
         src_array = self.read_array()
-        # Warning: delete later the self.raster will never be an array
-        if isinstance(self.raster, np.ndarray):
-            # if the object to be cropped is array
-            src_array = self.raster.copy()
-            # dtype = self.raster.dtype
 
         if not row == self.rows or not col == self.columns:
             raise ValueError(
                 "Two rasters has different number of columns or rows please resample or match both rasters"
             )
 
-        # if both inputs are rasters
         if isinstance(mask, Dataset):
             if (
                 not self.pivot_point == mask.pivot_point

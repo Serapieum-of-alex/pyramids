@@ -563,22 +563,19 @@ class TestCrop:
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
         assert (dst_arr_cropped == src_arr).all()
 
-    # def test_crop_dataset_with_another_dataset_multi_band(
-    #     self,
-    #     sentinel_raster: gdal.Dataset,
-    #     sentinel_crop,
-    #     src_arr: np.ndarray,
-    #     src_no_data_value: float,
-    # ):
-    #     mask_obj = Dataset(sentinel_crop)
-    #     aligned_raster = Dataset(sentinel_raster)
-    #     # mask_obj = mask_obj.align(aligned_raster)
-    #     croped = aligned_raster._crop_alligned(mask_obj)
-    #     dst_arr_cropped = croped.raster.ReadAsArray()
-    #     # check that all the places of the nodatavalue are the same in both arrays
-    #     src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
-    #     dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
-    #     assert (dst_arr_cropped == src_arr).all()
+    def test_crop_dataset_with_another_dataset_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+        sentinel_crop,
+        sentinel_crop_arr: np.ndarray,
+        src_no_data_value: float,
+    ):
+        mask_obj = Dataset(sentinel_crop)
+        aligned_raster = Dataset(sentinel_raster)
+
+        croped = aligned_raster._crop_alligned(mask_obj)
+        dst_arr_cropped = croped.raster.ReadAsArray()
+        assert np.array_equal(dst_arr_cropped, sentinel_crop_arr)
 
     def test_crop_dataset_with_array(
         self,
