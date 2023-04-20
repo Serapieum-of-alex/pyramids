@@ -23,6 +23,11 @@ def src(src_path: str) -> Dataset:
 
 
 @pytest.fixture(scope="module")
+def chang_no_data_dataset(src_path: str) -> Dataset:
+    return gdal.OpenShared("tests/data/acc4000-change-no-data.tif", gdal.GA_ReadOnly)
+
+
+@pytest.fixture(scope="module")
 def lon_coords() -> list:
     return [
         434968.1206170588,
