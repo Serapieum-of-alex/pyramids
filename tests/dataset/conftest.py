@@ -440,7 +440,7 @@ def sentinel_raster() -> gdal.Dataset:
 
 @pytest.fixture(scope="module")
 def sentinel_crop() -> gdal.Dataset:
-    return gdal.Open("tests\data\geotiff\sentinel_crop.tif")
+    return gdal.Open("tests/data/geotiff/sentinel_crop.tif")
 
 
 @pytest.fixture(scope="module")
