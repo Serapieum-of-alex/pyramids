@@ -151,6 +151,7 @@ class Dataset:
 
     @property
     def values(self) -> np.ndarray:
+        """array values."""
         return self.read_array(band=None)
 
     @property
@@ -1850,6 +1851,23 @@ class Dataset:
         return dst_obj
 
     def fill_gaps(self, mask, src_array):
+        """fill_gaps.
+
+        Parameters
+        ----------
+        mask: [np.ndarray]
+        src_array: [np.ndarray]
+
+        Returns
+        -------
+        np.ndarray
+        """
+        # align function only equate the no of rows and columns only
+        # match nodatavalue inserts nodatavalue in src raster to all places like mask
+        # still places that has nodatavalue in the src raster but it is not nodatavalue in the mask
+        # and now has to be filled with values
+        # compare no of element that is not nodatavalue in both rasters to make sure they are matched
+        # if both inputs are rasters
         mask_array = mask.read_array()
         row = mask.rows
         col = mask.columns
@@ -1895,7 +1913,6 @@ class Dataset:
         self,
         mask: Union[gdal.Dataset, np.ndarray],
         mask_noval: Union[int, float] = None,
-        band: int = 0,
         fill_gaps: bool = False,
     ) -> Union[np.ndarray, gdal.Dataset]:
         """cropAlligned.
@@ -1913,8 +1930,8 @@ class Dataset:
             where it is in the array
         mask_noval: [numeric]
             in case the mask is np.ndarray, the mask_noval have to be given.
-        band: [int]
-            band index, starts from 1 to the number of bands.
+        fill_gaps: [bool]
+            Default is False.
 
         Returns
         -------
@@ -1927,7 +1944,7 @@ class Dataset:
             mask_epsg = mask.epsg
             row = mask.rows
             col = mask.columns
-            mask_noval = mask.no_data_value[band]
+            mask_noval = mask.no_data_value[0]
             mask_array = mask.read_array()
         elif isinstance(mask, np.ndarray):
             if mask_noval is None:
@@ -1982,12 +1999,7 @@ class Dataset:
                 src_array[
                     np.isclose(mask_array, mask_noval, rtol=0.001)
                 ] = self.no_data_value[0]
-        # align function only equate the no of rows and columns only
-        # match nodatavalue inserts nodatavalue in src raster to all places like mask
-        # still places that has nodatavalue in the src raster but it is not nodatavalue in the mask
-        # and now has to be filled with values
-        # compare no of element that is not nodatavalue in both rasters to make sure they are matched
-        # if both inputs are rasters
+
         if fill_gaps:
             src_array = self.fill_gaps(mask, src_array)
 
