@@ -465,30 +465,58 @@ class TestFillRaster:
         assert vals[0] == fill_raster_value
 
 
-def test_resample(
-    src: gdal.Dataset,
-    resample_raster_cell_size: int,
-    resample_raster_resample_technique: str,
-    resample_raster_result_dims: tuple,
-):
-    src = Dataset(src)
-    dst = src.resample(
-        resample_raster_cell_size,
-        method=resample_raster_resample_technique,
-    )
+class TestResample:
+    def test_single_band(
+        self,
+        src: gdal.Dataset,
+        resample_raster_cell_size: int,
+        resample_raster_resample_technique: str,
+        resample_raster_result_dims: tuple,
+    ):
+        src = Dataset(src)
+        dst = src.resample(
+            resample_raster_cell_size,
+            method=resample_raster_resample_technique,
+        )
 
-    dst_arr = dst.raster.ReadAsArray()
-    assert dst_arr.shape == resample_raster_result_dims
-    assert (
-        dst.raster.GetGeoTransform()[1] == resample_raster_cell_size
-        and dst.raster.GetGeoTransform()[-1] == -1 * resample_raster_cell_size
-    )
-    assert np.isclose(
-        dst.raster.GetRasterBand(1).GetNoDataValue(),
-        src.raster.GetRasterBand(1).GetNoDataValue(),
-        rtol=0.00001,
-    )
-    assert dst.raster.GetProjection() == src.raster.GetProjection()
+        dst_arr = dst.raster.ReadAsArray()
+        assert dst_arr.shape == resample_raster_result_dims
+        assert (
+            dst.raster.GetGeoTransform()[1] == resample_raster_cell_size
+            and dst.raster.GetGeoTransform()[-1] == -1 * resample_raster_cell_size
+        )
+        assert np.isclose(
+            dst.raster.GetRasterBand(1).GetNoDataValue(),
+            src.raster.GetRasterBand(1).GetNoDataValue(),
+            rtol=0.00001,
+        )
+        assert dst.raster.GetProjection() == src.raster.GetProjection()
+
+    def test_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+        resample_raster_cell_size: int,
+        resample_raster_resample_technique: str,
+        resampled_multi_band_dims: tuple,
+        sentinel_resample_arr: np.ndarray,
+    ):
+        resample_raster_cell_size = 0.00015
+        src = Dataset(sentinel_raster)
+        dst = src.resample(
+            resample_raster_cell_size,
+            method=resample_raster_resample_technique,
+        )
+
+        dst_arr = dst.raster.ReadAsArray()
+        assert dst.rows == resampled_multi_band_dims[0]
+        assert dst.columns == resampled_multi_band_dims[1]
+        assert (
+            dst.raster.GetGeoTransform()[1] == resample_raster_cell_size
+            and dst.raster.GetGeoTransform()[-1] == -1 * resample_raster_cell_size
+        )
+
+        assert np.array_equal(sentinel_resample_arr, dst_arr)
+        assert dst.raster.GetProjection() == src.raster.GetProjection()
 
 
 class TestReproject:
@@ -529,21 +557,40 @@ class TestReproject:
         assert dst_arr.shape == src_shape
 
 
-def test_match_raster_alignment(
-    src: gdal.Dataset,
-    src_shape: tuple,
-    src_no_data_value: float,
-    src_geotransform: tuple,
-    soil_raster: gdal.Dataset,
-):
-    mask_obj = Dataset(src)
-    soil_raster_obj = Dataset(soil_raster)
-    soil_aligned = soil_raster_obj.align(mask_obj)
-    assert soil_aligned.raster.ReadAsArray().shape == src_shape
-    nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
-    assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
-    geotransform = soil_aligned.raster.GetGeoTransform()
-    assert src_geotransform == geotransform
+class TestAlign:
+    def test_align_single_band(
+        self,
+        src: gdal.Dataset,
+        src_shape: tuple,
+        src_no_data_value: float,
+        src_geotransform: tuple,
+        soil_raster: gdal.Dataset,
+    ):
+        mask_obj = Dataset(src)
+        soil_raster_obj = Dataset(soil_raster)
+        soil_aligned = soil_raster_obj.align(mask_obj)
+        assert soil_aligned.raster.ReadAsArray().shape == src_shape
+        nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
+        assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
+        geotransform = soil_aligned.raster.GetGeoTransform()
+        assert src_geotransform == geotransform
+
+    # def test_align_multi_band(
+    #         self,
+    #         src: gdal.Dataset,
+    #         src_shape: tuple,
+    #         src_no_data_value: float,
+    #         src_geotransform: tuple,
+    #         soil_raster: gdal.Dataset,
+    # ):
+    #     mask_obj = Dataset(src)
+    #     soil_raster_obj = Dataset(soil_raster)
+    #     soil_aligned = soil_raster_obj.align(mask_obj)
+    #     assert soil_aligned.raster.ReadAsArray().shape == src_shape
+    #     nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
+    #     assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
+    #     geotransform = soil_aligned.raster.GetGeoTransform()
+    #     assert src_geotransform == geotransform
 
 
 class TestCrop:

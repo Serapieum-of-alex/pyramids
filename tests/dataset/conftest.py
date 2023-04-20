@@ -247,6 +247,16 @@ def resample_raster_result_dims() -> tuple:
 
 
 @pytest.fixture(scope="module")
+def resampled_multi_band_dims() -> tuple:
+    return 154, 181
+
+
+@pytest.fixture(scope="module")
+def sentinel_resample_arr() -> np.ndarray:
+    return np.load("tests/data/geotiff/resamples_sentinel.npy")
+
+
+@pytest.fixture(scope="module")
 def project_raster_to_epsg() -> int:
     return 4326
 

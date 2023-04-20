@@ -1614,7 +1614,7 @@ class Dataset:
         return dst
 
     def resample(self, cell_size: Union[int, float], method: str = "nearest neibour"):
-        """resampleRaster.
+        """resample.
 
         resample method reproject a raster to any projection
         (default the WGS84 web mercator projection, without resampling)
@@ -1633,8 +1633,8 @@ class Dataset:
 
         Returns
         -------
-        raster : [gdal.Datacube]
-             gdal object (you can read it by ReadAsArray)
+        raster : [Dataset]
+             Dataset object.
         """
         if not isinstance(method, str):
             raise TypeError(
@@ -1655,30 +1655,29 @@ class Dataset:
         lrx = self.geotransform[0] + self.geotransform[1] * self.columns
         lry = self.geotransform[3] + self.geotransform[5] * self.rows
 
-        pixel_spacing = cell_size
         # new geotransform
         new_geo = (
             self.geotransform[0],
-            pixel_spacing,
+            cell_size,
             self.geotransform[2],
             self.geotransform[3],
             self.geotransform[4],
-            -1 * pixel_spacing,
+            -1 * cell_size,
         )
         # create a new raster
-        cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
-        rows = int(np.round(abs(uly - lry) / pixel_spacing))
-        dtype = self.raster.GetRasterBand(1).DataType
+        cols = int(np.round(abs(lrx - ulx) / cell_size))
+        rows = int(np.round(abs(uly - lry) / cell_size))
+        dtype = self.dtype[0]
+        bands = self.band_count
 
-        dst = Dataset._create_gdal_dataset(cols, rows, 1, dtype)
+        dst = Dataset._create_gdal_dataset(cols, rows, bands, dtype)
         # set the geotransform
         dst.SetGeoTransform(new_geo)
         # set the projection
         dst.SetProjection(sr_src.ExportToWkt())
         dst_obj = Dataset(dst)
         # set the no data value
-        no_data_value = self.raster.GetRasterBand(1).GetNoDataValue()
-        dst_obj._set_no_data_value(no_data_value)
+        dst_obj._set_no_data_value(self.no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             self.raster,
@@ -2039,9 +2038,9 @@ class Dataset:
         self,
         alignment_src,
     ) -> gdal.Dataset:
-        """matchRasterAlignment.
+        """align.
 
-        matchRasterAlignment method copies the following data
+        align method copies the following data
             - The coordinate system
             - The number of of rows & columns
             - cell size
@@ -2052,15 +2051,15 @@ class Dataset:
 
         Parameters
         ----------
-        alignment_src : [gdal.dataset/string]
+        alignment_src : [Dataset]
             spatial information source raster to get the spatial information
             (coordinate system, no of rows & columns)
             data values source raster to get the data (values of each cell)
 
         Returns
         -------
-        dst : [Raster]
-            Raster object
+        dst : [Dataset]
+            Dataset object
 
         Examples
         --------
@@ -2070,8 +2069,6 @@ class Dataset:
         """
         if isinstance(alignment_src, Dataset):
             src = alignment_src
-        elif isinstance(alignment_src, str):
-            src = Dataset.read_file(alignment_src)
         else:
             raise TypeError(
                 "First parameter should be a Dataset read using Dataset.openRaster or a path to the raster, "
