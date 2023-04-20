@@ -575,6 +575,7 @@ class TestCrop:
 
         croped = aligned_raster._crop_alligned(mask_obj)
         dst_arr_cropped = croped.raster.ReadAsArray()
+        print(dst_arr_cropped[0, 0])
         assert np.array_equal(dst_arr_cropped, sentinel_crop_arr)
 
     def test_crop_dataset_with_array(
