@@ -445,7 +445,7 @@ def sentinel_crop() -> gdal.Dataset:
 
 @pytest.fixture(scope="module")
 def sentinel_crop_arr() -> np.ndarray:
-    return np.load("tests\data\geotiff\sentinel-crop.npy")
+    return np.load("tests/data/geotiff/sentinel-crop.npy")
 
 
 @pytest.fixture(scope="module")
