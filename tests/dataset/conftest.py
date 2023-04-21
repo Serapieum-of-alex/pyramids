@@ -257,6 +257,11 @@ def sentinel_resample_arr() -> np.ndarray:
 
 
 @pytest.fixture(scope="module")
+def resampled_multiband() -> gdal.Dataset:
+    return gdal.Open("tests/data/geotiff/resampled_multi_bands.tif")
+
+
+@pytest.fixture(scope="module")
 def project_raster_to_epsg() -> int:
     return 4326
 

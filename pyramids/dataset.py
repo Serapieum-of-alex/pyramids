@@ -954,11 +954,15 @@ class Dataset:
         for i, val in enumerate(self.dtype):
             if gdal_to_numpy_dtype(val).__contains__("float"):
                 no_data_value[i] = (
-                    float(no_data_value[i]) if no_data_value[i] is not None else None
+                    float(no_data_value[i])
+                    if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
+                    else None
                 )
             elif gdal_to_numpy_dtype(val).__contains__("int"):
                 no_data_value[i] = (
-                    int(no_data_value[i]) if no_data_value[i] is not None else None
+                    int(no_data_value[i])
+                    if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
+                    else None
                 )
             else:
                 raise TypeError("NoDataValue has a complex data type")
@@ -2076,10 +2080,13 @@ class Dataset:
             )
 
         # reproject the raster to match the projection of alignment_src
-        reprojected_RasterB = self.to_crs(src.epsg)
+        if not self.epsg == src.epsg:
+            reprojected_RasterB = self.to_crs(src.epsg)
+        else:
+            reprojected_RasterB = self
         # create a new raster
         dst = Dataset._create_gdal_dataset(
-            src.columns, src.rows, 1, src.dtype[0], driver="MEM"
+            src.columns, src.rows, self.band_count, src.dtype[0], driver="MEM"
         )
         # set the geotransform
         dst.SetGeoTransform(src.geotransform)
@@ -2087,7 +2094,7 @@ class Dataset:
         dst.SetProjection(src.crs)
         # set the no data value
         dst_obj = Dataset(dst)
-        dst_obj._set_no_data_value(src.no_data_value[0])
+        dst_obj._set_no_data_value(src.no_data_value)
         # perform the projection & resampling
         method = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB

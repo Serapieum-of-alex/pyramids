@@ -567,30 +567,28 @@ class TestAlign:
         soil_raster: gdal.Dataset,
     ):
         mask_obj = Dataset(src)
-        soil_raster_obj = Dataset(soil_raster)
-        soil_aligned = soil_raster_obj.align(mask_obj)
-        assert soil_aligned.raster.ReadAsArray().shape == src_shape
-        nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
+        dataset = Dataset(soil_raster)
+        dataset_aligned = dataset.align(mask_obj)
+        assert dataset_aligned.raster.ReadAsArray().shape == src_shape
+        nodataval = dataset_aligned.raster.GetRasterBand(1).GetNoDataValue()
         assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
-        geotransform = soil_aligned.raster.GetGeoTransform()
+        geotransform = dataset_aligned.raster.GetGeoTransform()
         assert src_geotransform == geotransform
 
-    # def test_align_multi_band(
-    #         self,
-    #         src: gdal.Dataset,
-    #         src_shape: tuple,
-    #         src_no_data_value: float,
-    #         src_geotransform: tuple,
-    #         soil_raster: gdal.Dataset,
-    # ):
-    #     mask_obj = Dataset(src)
-    #     soil_raster_obj = Dataset(soil_raster)
-    #     soil_aligned = soil_raster_obj.align(mask_obj)
-    #     assert soil_aligned.raster.ReadAsArray().shape == src_shape
-    #     nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
-    #     assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
-    #     geotransform = soil_aligned.raster.GetGeoTransform()
-    #     assert src_geotransform == geotransform
+    def test_align_multi_band(
+        self,
+        resampled_multiband: gdal.Dataset,
+        sentinel_raster: gdal.Dataset,
+        resampled_multi_band_dims: tuple,
+        src_geotransform: tuple,
+    ):
+        alignment_src = Dataset(resampled_multiband)
+        dataset = Dataset(sentinel_raster)
+        dataset_aligned = dataset.align(alignment_src)
+        assert dataset_aligned.rows == resampled_multi_band_dims[0]
+        assert dataset_aligned.columns == resampled_multi_band_dims[1]
+        assert dataset_aligned.no_data_value == dataset.no_data_value
+        assert dataset.pivot_point == dataset_aligned.pivot_point
 
 
 class TestCrop:
