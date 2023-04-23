@@ -1756,13 +1756,12 @@ class Dataset:
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neibour"
     ) -> object:
-        src_proj = self.crs
         src_gt = self.geotransform
         src_x = self.columns
         src_y = self.rows
 
-        src_sr = osr.SpatialReference(wkt=src_proj)
-        src_epsg = self._get_epsg()
+        src_sr = osr.SpatialReference(wkt=self.crs)
+        src_epsg = self.epsg
 
         ### distination raster
         # spatial ref
@@ -1818,6 +1817,8 @@ class Dataset:
             new_xs = xs
             # new_ys = ys
 
+        # TODO: the function does not always maintain alignment, based on the conversion of the cell_size and the
+        # pivot point
         pixel_spacing = np.abs(new_xs[0] - new_xs[1])
 
         # create a new raster
@@ -1825,7 +1826,7 @@ class Dataset:
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
         dtype = self.dtype[0]
-        dst = Dataset._create_gdal_dataset(cols, rows, 1, dtype)
+        dst = Dataset._create_gdal_dataset(cols, rows, self.band_count, dtype)
 
         # new geotransform
         new_geo = (
@@ -1841,9 +1842,8 @@ class Dataset:
         # set the projection
         dst.SetProjection(dst_sr.ExportToWkt())
         # set the no data value
-        no_data_value = self.raster.GetRasterBand(1).GetNoDataValue()
         dst_obj = Dataset(dst)
-        dst_obj._set_no_data_value(no_data_value)
+        dst_obj._set_no_data_value(self.no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             self.raster,

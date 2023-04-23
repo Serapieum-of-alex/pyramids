@@ -520,7 +520,7 @@ class TestResample:
 
 
 class TestReproject:
-    def test_option_maintain_alighment(
+    def test_option_maintain_alighment_single_band(
         self,
         src: gdal.Dataset,
         project_raster_to_epsg: int,
@@ -537,6 +537,17 @@ class TestReproject:
         assert epsg == project_raster_to_epsg
         dst_arr = dst.raster.ReadAsArray()
         assert dst_arr.shape == src_shape
+
+    def test_option_maintain_alighment_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+    ):
+        epsg = 32637
+        src = Dataset(sentinel_raster)
+        dst = src.to_crs(to_epsg=epsg, maintain_alighment=True)
+        assert dst.band_count == src.band_count
+        assert dst.epsg == epsg
+        # assert dst.shape == src.shape
 
     def test_option_donot_maintain_alighment(
         self,
@@ -555,6 +566,17 @@ class TestReproject:
         assert epsg == project_raster_to_epsg
         dst_arr = dst.raster.ReadAsArray()
         assert dst_arr.shape == src_shape
+
+    def test_option_donot_maintain_alighment_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+    ):
+        epsg = 32637
+        src = Dataset(sentinel_raster)
+        dst = src.to_crs(to_epsg=epsg, maintain_alighment=False)
+        assert dst.band_count == src.band_count
+        assert dst.epsg == epsg
+        # assert dst.shape == src.shape
 
 
 class TestAlign:
