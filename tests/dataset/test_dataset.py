@@ -818,6 +818,19 @@ class TestOverlay:
         real_classes = class_values.tolist()[:-1]
         assert all(i in real_classes for i in extracted_classes)
 
+    def test_multi_band(
+        self, sentinel_raster: gdal.Dataset, sentinel_classes: gdal.Dataset
+    ):
+        dataset = Dataset(sentinel_raster)
+        classes_src = Dataset(sentinel_classes)
+        class_dict = dataset.overlay(classes_src, band=1)
+        arr = classes_src.read_array()
+        class_values = np.unique(arr)
+        assert len(class_dict.keys()) == len(class_values)
+        extracted_classes = list(class_dict.keys())
+        real_classes = class_values.tolist()
+        assert all(i in real_classes for i in extracted_classes)
+
 
 class TestFootPrint:
     @pytest.mark.fast

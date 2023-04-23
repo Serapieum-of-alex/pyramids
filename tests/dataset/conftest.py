@@ -466,3 +466,8 @@ def sentinel_crop_arr() -> np.ndarray:
 @pytest.fixture(scope="module")
 def int_none_nodatavalue_attr_0_stored() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/int_none_nodatavalue_attr_0_stored.tif")
+
+
+@pytest.fixture(scope="module")
+def sentinel_classes() -> gdal.Dataset:
+    return gdal.Open("tests/data/geotiff/sentinel-classes.tif")

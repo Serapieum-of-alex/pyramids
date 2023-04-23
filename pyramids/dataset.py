@@ -2406,6 +2406,7 @@ class Dataset:
     def overlay(
         self,
         classes_map,
+        band: int = 0,
         exclude_value: Union[float, int] = None,
     ) -> Dict[List[float], List[float]]:
         """Overlay.
@@ -2417,6 +2418,8 @@ class Dataset:
         ----------
         classes_map: [Dataset]
             Dataset Object for the raster that have classes you want to overlay with the raster.
+        band: [int]
+            if the raster is multi-band raster choose the band you want to overlay with the classes map. Default is 0.
         exclude_value: [Numeric]
             values you want to exclude from extracted values.
 
@@ -2431,11 +2434,14 @@ class Dataset:
                 "The class Dataset is not aligned with the current raster, plase use the method "
                 "'align' to align both rasters."
             )
-        arr = self.read_array()
+        arr = self.read_array(band=band)
+        no_data_value = (
+            self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
+        )
         mask = (
-            [self.no_data_value[0], exclude_value]
+            [no_data_value, exclude_value]
             if exclude_value is not None
-            else [self.no_data_value[0]]
+            else [no_data_value]
         )
         ind = get_indices2(arr, mask)
         classes = classes_map.read_array()
