@@ -464,13 +464,17 @@ class Dataset:
         array : [array]
             array with all the values in the raster.
         """
+        # try to return array as the same type as the raster band but made problems when trying to replace the
+        # no_data_value of an integer band with np.nan value
+        # dtype = gdal_to_numpy_dtype(self.dtype[0])
         if band is None and self.band_count > 1:
             arr = np.ones(
                 (
                     self.band_count,
                     self.rows,
                     self.columns,
-                )
+                ),
+                # dtype=dtype
             )
             for i in range(self.band_count):
                 arr[i, :, :] = self._raster.GetRasterBand(i + 1).ReadAsArray()
