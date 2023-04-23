@@ -490,7 +490,15 @@ class Dataset:
 
         return arr
 
-    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs):
+    def plot(
+        self,
+        band: int = None,
+        exclude_value: Any = None,
+        rgb: List[int] = None,
+        surface_reflectance: int = 10000,
+        cutoff: List = None,
+        **kwargs,
+    ):
         """Read Array
 
             - read the values stored in a given band.
@@ -501,6 +509,13 @@ class Dataset:
             the band you want to get its data. Default is 0
         exclude_value: [Any]
             value to execlude from the plot. Default is None.
+        rgb: [List]
+            Default is [3,2,1]
+        surface_reflectance: [int]
+            Default is  10000
+        cutoff: [List]
+            clip the range of pixel values for each band. (take only the pixel values from 0 to value of the cutoff and
+            scale them back to between 0 and 1. Default is None.
         **kwargs
             points : [array]
                 3 column array with the first column as the value you want to display for the point, the second is the rows
@@ -577,14 +592,35 @@ class Dataset:
         )
         from cleopatra.array import Array
 
-        exclude_value = (
-            [self.no_data_value[band], exclude_value]
-            if exclude_value is not None
-            else [self.no_data_value[band]]
-        )
+        no_data_value = [np.nan if i is None else i for i in self.no_data_value]
+
+        if band is None:
+            if rgb is None:
+                rgb = [3, 2, 1]
+            # first make the band index the first band in the rgb list (red band)
+            band = rgb[0]
+            exclude_value = (
+                [no_data_value[band], exclude_value]
+                if exclude_value is not None
+                else [no_data_value[band]]
+            )
+
+            band = None
+        else:
+            exclude_value = (
+                [self.no_data_value[band], exclude_value]
+                if exclude_value is not None
+                else [self.no_data_value[band]]
+            )
 
         arr = self.read_array(band=band)
-        cleo = Array(arr, exclude_value=exclude_value)
+        cleo = Array(
+            arr,
+            exclude_value=exclude_value,
+            rgb=rgb,
+            surface_reflectance=surface_reflectance,
+            cutoff=cutoff,
+        )
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
 
