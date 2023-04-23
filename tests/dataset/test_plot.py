@@ -4,11 +4,6 @@ from osgeo import gdal
 from pyramids.dataset import Dataset, Datacube
 
 
-import matplotlib
-
-matplotlib.use("TkAgg")
-
-
 class TestPlotDataSet:
     @pytest.mark.plot
     def test_single_band(
