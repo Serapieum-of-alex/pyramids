@@ -19,7 +19,12 @@ def src_path() -> str:
 
 @pytest.fixture(scope="module")
 def src(src_path: str) -> Dataset:
-    return gdal.Open(src_path)
+    return gdal.OpenShared(src_path, gdal.GA_ReadOnly)
+
+
+@pytest.fixture(scope="module")
+def chang_no_data_dataset(src_path: str) -> Dataset:
+    return gdal.OpenShared("tests/data/acc4000-change-no-data.tif", gdal.GA_ReadOnly)
 
 
 @pytest.fixture(scope="module")
@@ -242,6 +247,21 @@ def resample_raster_result_dims() -> tuple:
 
 
 @pytest.fixture(scope="module")
+def resampled_multi_band_dims() -> tuple:
+    return 154, 181
+
+
+@pytest.fixture(scope="module")
+def sentinel_resample_arr() -> np.ndarray:
+    return np.load("tests/data/geotiff/resamples_sentinel.npy")
+
+
+@pytest.fixture(scope="module")
+def resampled_multiband() -> gdal.Dataset:
+    return gdal.Open("tests/data/geotiff/resampled_multi_bands.tif")
+
+
+@pytest.fixture(scope="module")
 def project_raster_to_epsg() -> int:
     return 4326
 
@@ -414,3 +434,40 @@ def gauges_df() -> DataFrame:
     df["x"] = x
     df["y"] = y
     return df
+
+
+@pytest.fixture(scope="module")
+def rhine_dem() -> gdal.Dataset:
+    return gdal.Open("tests/data/dem/DEM5km_Rhine_burned_acc.tif")
+
+
+@pytest.fixture(scope="module")
+def clusters() -> np.ndarray:
+    return np.load("tests/data/dem/cluster.npy")
+
+
+@pytest.fixture(scope="module")
+def sentinel_raster() -> gdal.Dataset:
+    return gdal.Open(
+        "tests/data/geotiff/S2A_MSIL2A_20200215T082021_N0214_R121_T36SXA_20200215T110825_image_0_0.tif"
+    )
+
+
+@pytest.fixture(scope="module")
+def sentinel_crop() -> gdal.Dataset:
+    return gdal.Open("tests/data/geotiff/sentinel_crop.tif")
+
+
+@pytest.fixture(scope="module")
+def sentinel_crop_arr() -> np.ndarray:
+    return np.load("tests/data/geotiff/sentinel-crop.npy")
+
+
+@pytest.fixture(scope="module")
+def int_none_nodatavalue_attr_0_stored() -> gdal.Dataset:
+    return gdal.Open("tests/data/geotiff/int_none_nodatavalue_attr_0_stored.tif")
+
+
+@pytest.fixture(scope="module")
+def sentinel_classes() -> gdal.Dataset:
+    return gdal.Open("tests/data/geotiff/sentinel-classes.tif")

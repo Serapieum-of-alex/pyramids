@@ -4,7 +4,7 @@ import datetime as dt
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
 from osgeo.gdal import Dataset
-from pyramids.errors import OptionalPackageDoesNontExist
+from pyramids._errors import OptionalPackageDoesNontExist, DriverNotExistError
 from pyramids import __path__
 
 # from urllib.parse import urlparse as parse_url
@@ -164,6 +164,52 @@ class Catalog:
         """Get GDAL name"""
         driver = self.get_driver(driver)
         return driver.get("GDAL Name")
+
+    def get_driver_name_by_extension(self, extension: str):
+        """Get driver by extension.
+
+        Parameters
+        ----------
+        extension: [str]
+            extenstion of the file.
+
+        Returns
+        -------
+        str:
+            Driver name.
+        """
+        try:
+            key = next(
+                key
+                for key, value in self.catalog.items()
+                if value.get("extension") is not None
+                and value.get("extension") == extension
+            )
+        except StopIteration:
+            raise DriverNotExistError(
+                f"The given extension: {extension} is not associated with any driver in the "
+                "driver catalog, if this driver is supported by gdal please open and issue to "
+                "asking for youe extension to be added to the catalog"
+                "https://github.com/Serapieum-of-alex/pyramids/issues/new?assignees=&labels=&template=feature_request.md&title=add%20extension"
+            )
+
+        return key
+
+    def get_driver_by_extension(self, extension):
+        """Get driver by extension.
+
+        Parameters
+        ----------
+        extension: [str]
+            extenstion of the file.
+
+        Returns
+        -------
+        Dict:
+            Driver dictionary
+        """
+        diver_name = self.get_driver_name_by_extension(extension)
+        return self.get_driver(diver_name)
 
     def exists(self, driver: str):
         """check if the driver exist in the catalog"""

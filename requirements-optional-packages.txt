@@ -1,7 +1,7 @@
-cleopatra >=0.3.0
+cleopatra >=0.3.2
 gdal >=3.6.2
 geopandas >=0.12.2
-hpc-utils ==0.1.0
+hpc-utils ==0.1.1
 loguru >=0.7.0
 numpy ==1.24.1
 pandas >=2.0.0

@@ -4,7 +4,8 @@ import gzip
 import numpy as np
 import warnings
 from osgeo import gdal
-from pyramids.errors import FileFormatNoSupported
+
+from pyramids._errors import FileFormatNoSupported
 
 gdal.UseExceptions()
 
@@ -27,21 +28,21 @@ def _is_tar(path: str):
 def _get_zip_path(path: str, file_i: int = 0):
     """Get Zip Path.
 
-        - check if the given path contains a .zip in it
-        - if the path contains a zip but does not end with zip (xxxx.zip/1.asc), so the path contains the
-        internal path inside the zip file, so just add the prefix
-        - anything else get the list of the files inside the zip and return the full path to first file.
+            - check if the given path contains a .zip in it
+            - if the path contains a zip but does not end with zip (xxxx.zip/1.asc), so the path contains the
+    4        internal path inside the zip file, so just add the prefix
+            - anything else get the list of the files inside the zip and return the full path to first file.
 
-    Parameters
-    ----------
-    path: [str]
-        path to the zip file.
-    file_i: [int]
-        index to the file inside the compressed file you want to read.
+        Parameters
+        ----------
+        path: [str]
+            path to the zip file.
+        file_i: [int]
+            index to the file inside the compressed file you want to read.
 
-    Returns
-    -------
-    str path to gdal to read the zipped file.
+        Returns
+        -------
+        str path to gdal to read the zipped file.
     """
     # get list of files inside the compressed file
     if path.__contains__(".zip") and not path.endswith(".zip"):
@@ -203,13 +204,15 @@ def read_file(path: str, read_only: bool = True):
                 "files. Currently it is not supported to read gzip/7z files with multiple compressed internal "
                 "files"
             )
+        elif str(e).__contains__(" No such file or directory"):
+            raise FileNotFoundError(f"{path} you entered does not exist")
         else:
             raise e
-    if src is None:
-        raise ValueError(
-            f"The raster path: {path} you enter gives a None gdal Object check the read premission, maybe "
-            f"the raster is being used by other software"
-        )
+    # if src is None:
+    #     raise ValueError(
+    #         f"The raster path: {path} you enter gives a None gdal Object check the read premission, maybe "
+    #         f"the raster is being used by other software"
+    #     )
     return src
 
 

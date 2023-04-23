@@ -23,7 +23,7 @@ ExtractedValues, NonZeroCells = R.overlay(
     f"{Path}/maps/Map1.zip", BaseMapF, ExcludedValue, Compressed, OccupiedCellsOnly
 )
 
-MapPrefix = "Map"
+MapPrefix = "StaticGlyph"
 # several maps
 ExtractedValues, NonZeroCells = R.overlayMaps(
     Path + "maps", BaseMapF, MapPrefix, ExcludedValue, Compressed, OccupiedCellsOnly

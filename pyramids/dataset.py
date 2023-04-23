@@ -18,7 +18,7 @@ import pandas as pd
 from geopandas.geodataframe import GeoDataFrame, DataFrame
 from osgeo import gdal, osr, ogr  # gdalconst,
 from osgeo.osr import SpatialReference
-from pyramids.utils import (
+from pyramids._utils import (
     gdal_to_ogr_dtype,
     INTERPOLATION_METHODS,
     NUMPY_GDAL_DATA_TYPES,
@@ -28,12 +28,11 @@ from pyramids.utils import (
     Catalog,
     import_cleopatra,
 )
-from pyramids.errors import (
+from pyramids._errors import (
     ReadOnlyError,
     DatasetNoFoundError,
     NoDataValueError,
     AlignmentError,
-    DriverNotExistError,
 )
 
 try:
@@ -43,9 +42,9 @@ except ModuleNotFoundError:
         "osgeo_utils module does not exist try install pip install osgeo-utils "
     )
 
-from hpc.filter import get_pixels, get_indices2, get_pixels2, locate_values
+from hpc.indexing import get_pixels, get_indices2, get_pixels2, locate_values
 from pyramids.featurecollection import FeatureCollection
-from pyramids import io
+from pyramids import _io
 
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog(raster_driver=True)
@@ -88,9 +87,11 @@ class Dataset:
             self._time_stamp = self._get_time_variable()
             self._lat, self._lon = self._get_lat_lon()
 
-        self._no_data_value = [
+        no_data_value = [
             src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
         ]
+        # no_data_value = [np.nan if i is None else i for i in no_data_value ]
+        self._no_data_value = no_data_value
         self._dtype = [
             src.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
         ]
@@ -151,6 +152,7 @@ class Dataset:
 
     @property
     def values(self) -> np.ndarray:
+        """array values."""
         return self.read_array(band=None)
 
     @property
@@ -287,6 +289,15 @@ class Dataset:
         """No data value that marks the cells out of the domain"""
         return self._no_data_value
 
+    @no_data_value.setter
+    def no_data_value(self, value: object):
+        """No data value that marks the cells out of the domain"""
+        if isinstance(value, list):
+            for i, val in enumerate(value):
+                self._change_no_data_value_attr(i, val)
+        else:
+            self._change_no_data_value_attr(0, value)
+
     @property
     def meta_data(self):
         """Meta data"""
@@ -309,7 +320,12 @@ class Dataset:
     @property
     def time_stamp(self):
         """Time stamp"""
-        return self._time_stamp
+        if hasattr(self, "_time_stamp"):
+            val = self._time_stamp
+        else:
+            val = None
+
+        return val
 
     @property
     def driver_type(self):
@@ -332,7 +348,7 @@ class Dataset:
         -------
         GDAL dataset
         """
-        src = io.read_file(path, read_only)
+        src = _io.read_file(path, read_only)
         return cls(src)
 
     @classmethod
@@ -448,13 +464,17 @@ class Dataset:
         array : [array]
             array with all the values in the raster.
         """
+        # try to return array as the same type as the raster band but made problems when trying to replace the
+        # no_data_value of an integer band with np.nan value
+        # dtype = gdal_to_numpy_dtype(self.dtype[0])
         if band is None and self.band_count > 1:
             arr = np.ones(
                 (
                     self.band_count,
                     self.rows,
                     self.columns,
-                )
+                ),
+                # dtype=dtype
             )
             for i in range(self.band_count):
                 arr[i, :, :] = self._raster.GetRasterBand(i + 1).ReadAsArray()
@@ -470,7 +490,15 @@ class Dataset:
 
         return arr
 
-    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs):
+    def plot(
+        self,
+        band: int = None,
+        exclude_value: Any = None,
+        rgb: List[int] = None,
+        surface_reflectance: int = 10000,
+        cutoff: List = None,
+        **kwargs,
+    ):
         """Read Array
 
             - read the values stored in a given band.
@@ -481,6 +509,13 @@ class Dataset:
             the band you want to get its data. Default is 0
         exclude_value: [Any]
             value to execlude from the plot. Default is None.
+        rgb: [List]
+            Default is [3,2,1]
+        surface_reflectance: [int]
+            Default is  10000
+        cutoff: [List]
+            clip the range of pixel values for each band. (take only the pixel values from 0 to value of the cutoff and
+            scale them back to between 0 and 1. Default is None.
         **kwargs
             points : [array]
                 3 column array with the first column as the value you want to display for the point, the second is the rows
@@ -557,14 +592,35 @@ class Dataset:
         )
         from cleopatra.array import Array
 
-        exclude_value = (
-            [self.no_data_value[band], exclude_value]
-            if exclude_value is not None
-            else [self.no_data_value[band]]
-        )
+        no_data_value = [np.nan if i is None else i for i in self.no_data_value]
+
+        if band is None:
+            if rgb is None:
+                rgb = [3, 2, 1]
+            # first make the band index the first band in the rgb list (red band)
+            band = rgb[0]
+            exclude_value = (
+                [no_data_value[band], exclude_value]
+                if exclude_value is not None
+                else [no_data_value[band]]
+            )
+
+            band = None
+        else:
+            exclude_value = (
+                [self.no_data_value[band], exclude_value]
+                if exclude_value is not None
+                else [self.no_data_value[band]]
+            )
 
         arr = self.read_array(band=band)
-        cleo = Array(arr, exclude_value=exclude_value)
+        cleo = Array(
+            arr,
+            exclude_value=exclude_value,
+            rgb=rgb,
+            surface_reflectance=surface_reflectance,
+            cutoff=cutoff,
+        )
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
 
@@ -924,6 +980,36 @@ class Dataset:
 
         return names
 
+    def _check_no_data_value(self, no_data_value: List):
+        """Validate The no_data_value with the dtype of the object.
+
+        Parameters
+        ----------
+        no_data_value
+
+        Returns
+        -------
+        no_data_value:
+            convert the no_data_value to comly with the dtype
+        """
+        for i, val in enumerate(self.dtype):
+            if gdal_to_numpy_dtype(val).__contains__("float"):
+                no_data_value[i] = (
+                    float(no_data_value[i])
+                    if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
+                    else None
+                )
+            elif gdal_to_numpy_dtype(val).__contains__("int"):
+                no_data_value[i] = (
+                    int(no_data_value[i])
+                    if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
+                    else None
+                )
+            else:
+                raise TypeError("NoDataValue has a complex data type")
+
+        return no_data_value
+
     def _set_no_data_value(
         self, no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE
     ):
@@ -941,17 +1027,7 @@ class Dataset:
         if not isinstance(no_data_value, list):
             no_data_value = [no_data_value] * self.band_count
 
-        for i, val in enumerate(self.dtype):
-            if gdal_to_numpy_dtype(val).__contains__("float"):
-                no_data_value[i] = (
-                    float(no_data_value[i]) if no_data_value[i] is not None else None
-                )
-            elif gdal_to_numpy_dtype(val).__contains__("int"):
-                no_data_value[i] = (
-                    int(no_data_value[i]) if no_data_value[i] is not None else None
-                )
-            else:
-                raise TypeError("NoDataValue has a complex data type")
+        self._check_no_data_value(no_data_value)
 
         for band in range(self.band_count):
             try:
@@ -1018,7 +1094,7 @@ class Dataset:
                     f"band: {gdal_to_numpy_dtype(self.dtype[band_i])}"
                 )
 
-        self.change_no_data_value_attr(band_i, no_data_value)
+        self._change_no_data_value_attr(band_i, no_data_value)
         # initialize the band with the nodata value instead of 0
         try:
             self.raster.GetRasterBand(band_i + 1).Fill(no_data_value)
@@ -1032,7 +1108,7 @@ class Dataset:
         # update the no_data_value in the Dataset object
         self.no_data_value[band_i] = no_data_value
 
-    def change_no_data_value_attr(self, band: int, no_data_value):
+    def _change_no_data_value_attr(self, band: int, no_data_value):
         """Change the no_data_value attribute.
 
             - Change only the no_data_value attribute in the gdal Datacube object.
@@ -1063,10 +1139,10 @@ class Dataset:
                 self.raster.GetRasterBand(band + 1).SetNoDataValue(
                     np.float64(no_data_value)
                 )
-        self.no_data_value[band] = no_data_value
+        self._no_data_value[band] = no_data_value
 
     def change_no_data_value(self, new_value: Any, old_value: Any = None):
-        """change_no_data_value.
+        """Change No Data Value.
 
             - Set the no data value in a all raster bands.
             - Fills the whole raster with the no_data_value.
@@ -1087,15 +1163,22 @@ class Dataset:
             old_value = [old_value] * self.band_count
 
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.raster, 0)
+        # create a new dataset
+        new_dataset = Dataset(dst)
+        new_dataset._set_no_data_value(new_value)
+
         for band in range(self.band_count):
             arr = self.read_array(band)
-            arr[np.isclose(arr, old_value, rtol=0.001)] = new_value[band]
-            dst.GetRasterBand(band + 1).WriteArray(arr)
+            try:
+                arr[np.isclose(arr, old_value, rtol=0.001)] = new_value[band]
+            except TypeError:
+                raise NoDataValueError(
+                    f"The dtype of the given no_data_value: {new_value[band]} differs from the dtype of the "
+                    f"band: {gdal_to_numpy_dtype(self.dtype[band])}"
+                )
+            new_dataset.raster.GetRasterBand(band + 1).WriteArray(arr)
 
-        self._raster = dst
-
-        for band in range(self.band_count):
-            self.change_no_data_value_attr(band, new_value[band])
+        self.__init__(new_dataset.raster)
 
     def get_cell_coords(
         self, location: str = "center", mask: bool = False
@@ -1245,20 +1328,19 @@ class Dataset:
         gdf["id"] = gdf.index
         return gdf
 
-    def to_file(self, path: str, driver: str = "geotiff", band: int = 0) -> None:
+    def to_file(self, path: str, band: int = 0) -> None:
         """Save to geotiff format.
 
-            saveRaster saves a raster to a path
+            save saves a raster to a path, the type of the driver (georiff/netcdf/ascii) will be implied from the
+            extension at the end of the given path.
 
         Parameters
         ----------
         path: [string]
             a path includng the name of the raster and extention.
             >>> path = "data/cropped.tif"
-        driver: [str]
-            driver = "geotiff".
         band: [int]
-            band index, needed only in case of ascii drivers. Default is 1.
+            band index, needed only in case of ascii drivers. Default is 0.
 
         Examples
         --------
@@ -1269,16 +1351,17 @@ class Dataset:
         if not isinstance(path, str):
             raise TypeError("path input should be string type")
 
-        if not CATALOG.exists(driver):
-            raise DriverNotExistError(f"The given driver: {driver} does not exist")
-
+        extension = path.split(".")[-1]
+        driver = CATALOG.get_driver_name_by_extension(extension)
+        # if not CATALOG.exists(driver):
+        #     raise DriverNotExistError(f"The given driver: {driver} does not exist")
         driver_name = CATALOG.get_gdal_name(driver)
 
         if driver == "ascii":
             arr = self.read_array(band=band)
             no_data_value = self.no_data_value[band]
             xmin, ymin, _, _ = self.bbox
-            io.to_ascii(arr, self.cell_size, xmin, ymin, no_data_value, path)
+            _io.to_ascii(arr, self.cell_size, xmin, ymin, no_data_value, path)
         else:
             dst = gdal.GetDriverByName(driver_name).CreateCopy(path, self.raster, 0)
             dst = None  # Flush the dataset to disk
@@ -1576,7 +1659,7 @@ class Dataset:
         return dst
 
     def resample(self, cell_size: Union[int, float], method: str = "nearest neibour"):
-        """resampleRaster.
+        """resample.
 
         resample method reproject a raster to any projection
         (default the WGS84 web mercator projection, without resampling)
@@ -1595,8 +1678,8 @@ class Dataset:
 
         Returns
         -------
-        raster : [gdal.Datacube]
-             gdal object (you can read it by ReadAsArray)
+        raster : [Dataset]
+             Dataset object.
         """
         if not isinstance(method, str):
             raise TypeError(
@@ -1617,30 +1700,29 @@ class Dataset:
         lrx = self.geotransform[0] + self.geotransform[1] * self.columns
         lry = self.geotransform[3] + self.geotransform[5] * self.rows
 
-        pixel_spacing = cell_size
         # new geotransform
         new_geo = (
             self.geotransform[0],
-            pixel_spacing,
+            cell_size,
             self.geotransform[2],
             self.geotransform[3],
             self.geotransform[4],
-            -1 * pixel_spacing,
+            -1 * cell_size,
         )
         # create a new raster
-        cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
-        rows = int(np.round(abs(uly - lry) / pixel_spacing))
-        dtype = self.raster.GetRasterBand(1).DataType
+        cols = int(np.round(abs(lrx - ulx) / cell_size))
+        rows = int(np.round(abs(uly - lry) / cell_size))
+        dtype = self.dtype[0]
+        bands = self.band_count
 
-        dst = Dataset._create_gdal_dataset(cols, rows, 1, dtype)
+        dst = Dataset._create_gdal_dataset(cols, rows, bands, dtype)
         # set the geotransform
         dst.SetGeoTransform(new_geo)
         # set the projection
         dst.SetProjection(sr_src.ExportToWkt())
         dst_obj = Dataset(dst)
         # set the no data value
-        no_data_value = self.raster.GetRasterBand(1).GetNoDataValue()
-        dst_obj._set_no_data_value(no_data_value)
+        dst_obj._set_no_data_value(self.no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             self.raster,
@@ -1714,13 +1796,12 @@ class Dataset:
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neibour"
     ) -> object:
-        src_proj = self.crs
         src_gt = self.geotransform
         src_x = self.columns
         src_y = self.rows
 
-        src_sr = osr.SpatialReference(wkt=src_proj)
-        src_epsg = self._get_epsg()
+        src_sr = osr.SpatialReference(wkt=self.crs)
+        src_epsg = self.epsg
 
         ### distination raster
         # spatial ref
@@ -1776,6 +1857,8 @@ class Dataset:
             new_xs = xs
             # new_ys = ys
 
+        # TODO: the function does not always maintain alignment, based on the conversion of the cell_size and the
+        # pivot point
         pixel_spacing = np.abs(new_xs[0] - new_xs[1])
 
         # create a new raster
@@ -1783,7 +1866,7 @@ class Dataset:
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
         dtype = self.dtype[0]
-        dst = Dataset._create_gdal_dataset(cols, rows, 1, dtype)
+        dst = Dataset._create_gdal_dataset(cols, rows, self.band_count, dtype)
 
         # new geotransform
         new_geo = (
@@ -1799,9 +1882,8 @@ class Dataset:
         # set the projection
         dst.SetProjection(dst_sr.ExportToWkt())
         # set the no data value
-        no_data_value = self.raster.GetRasterBand(1).GetNoDataValue()
         dst_obj = Dataset(dst)
-        dst_obj._set_no_data_value(no_data_value)
+        dst_obj._set_no_data_value(self.no_data_value)
         # perform the projection & resampling
         gdal.ReprojectImage(
             self.raster,
@@ -1812,11 +1894,70 @@ class Dataset:
         )
         return dst_obj
 
+    def fill_gaps(self, mask, src_array):
+        """fill_gaps.
+
+        Parameters
+        ----------
+        mask: [np.ndarray]
+        src_array: [np.ndarray]
+
+        Returns
+        -------
+        np.ndarray
+        """
+        # align function only equate the no of rows and columns only
+        # match nodatavalue inserts nodatavalue in src raster to all places like mask
+        # still places that has nodatavalue in the src raster but it is not nodatavalue in the mask
+        # and now has to be filled with values
+        # compare no of element that is not nodatavalue in both rasters to make sure they are matched
+        # if both inputs are rasters
+        mask_array = mask.read_array()
+        row = mask.rows
+        col = mask.columns
+        mask_noval = mask.no_data_value[0]
+
+        if isinstance(mask, Dataset) and isinstance(self, Dataset):
+            # there might be cells that are out of domain in the src but not out of domain in the mask
+            # so change all the src_noval to mask_noval in the src_array
+            # src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)] = mask_noval
+            # then count them (out of domain cells) in the src_array
+            elem_src = src_array.size - np.count_nonzero(
+                (src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)])
+            )
+            # count the out of domian cells in the mask
+            elem_mask = mask_array.size - np.count_nonzero(
+                (mask_array[np.isclose(mask_array, mask_noval, rtol=0.001)])
+            )
+
+            # if not equal then store indices of those cells that doesn't matchs
+            if elem_mask > elem_src:
+                rows = [
+                    i
+                    for i in range(row)
+                    for j in range(col)
+                    if np.isclose(src_array[i, j], self.no_data_value[0], rtol=0.001)
+                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
+                ]
+                cols = [
+                    j
+                    for i in range(row)
+                    for j in range(col)
+                    if np.isclose(src_array[i, j], self.no_data_value[0], rtol=0.001)
+                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
+                ]
+            # interpolate those missing cells by nearest neighbour
+            if elem_mask > elem_src:
+                src_array = Dataset._nearest_neighbour(
+                    src_array, self.no_data_value[0], rows, cols
+                )
+            return src_array
+
     def _crop_alligned(
         self,
         mask: Union[gdal.Dataset, np.ndarray],
         mask_noval: Union[int, float] = None,
-        band: int = 1,
+        fill_gaps: bool = False,
     ) -> Union[np.ndarray, gdal.Dataset]:
         """cropAlligned.
 
@@ -1828,17 +1969,13 @@ class Dataset:
 
         Parameters
         ----------
-        TODO: the oriiginal function had the ability to crop an array with a dataset object and the opposite
-        src: [gdal.dataset/np.ndarray]
-            raster you want to clip/store NoDataValue in its cells
-            exactly the same like mask raster
-        mask: [gdal.dataset/np.ndarray]
+        mask: [Dataset/np.ndarray]
             mask raster to get the location of the NoDataValue and
             where it is in the array
         mask_noval: [numeric]
             in case the mask is np.ndarray, the mask_noval have to be given.
-        band: [int]
-            band index, starts from 1 to the number of bands.
+        fill_gaps: [bool]
+            Default is False.
 
         Returns
         -------
@@ -1846,16 +1983,13 @@ class Dataset:
             the second raster with NoDataValue stored in its cells
             exactly the same like src raster
         """
-        # check the mask
         if isinstance(mask, Dataset):
             mask_gt = mask.geotransform
-            # mask_proj = mask.proj
-            # mask_sref = osr.SpatialReference(wkt=mask_proj)
             mask_epsg = mask.epsg
             row = mask.rows
             col = mask.columns
-            mask_noval = mask.no_data_value[band - 1]
-            mask_array = mask.raster.ReadAsArray()
+            mask_noval = mask.no_data_value[0]
+            mask_array = mask.read_array()
         elif isinstance(mask, np.ndarray):
             if mask_noval is None:
                 raise ValueError(
@@ -1869,27 +2003,20 @@ class Dataset:
                 f"given - {type(mask)}"
             )
 
-        # if the to be clipped object is raster
-        src_noval = self.no_data_value[band - 1]
-        dtype = self.dtype[band - 1]
-
+        band_count = self.band_count
         src_sref = osr.SpatialReference(wkt=self.crs)
-        src_array = self.raster.ReadAsArray()
-        # Warning: delete later the self.raster will never be an array
-        if isinstance(self.raster, np.ndarray):
-            # if the object to be cropped is array
-            src_array = self.raster.copy()
-            dtype = self.raster.dtype
+        src_array = self.read_array()
 
-        # check proj
-        if not mask_array.shape == src_array.shape:
+        if not row == self.rows or not col == self.columns:
             raise ValueError(
                 "Two rasters has different number of columns or rows please resample or match both rasters"
             )
 
-        # if both inputs are rasters
         if isinstance(mask, Dataset):
-            if not self.geotransform == mask_gt:
+            if (
+                not self.pivot_point == mask.pivot_point
+                or not self.cell_size == mask.cell_size
+            ):
                 raise ValueError(
                     "location of upper left corner of both rasters are not the same or cell size is "
                     "different please match both rasters first "
@@ -1901,71 +2028,49 @@ class Dataset:
                     "the other raster coordinate system"
                 )
 
-        src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = mask_noval
-
-        # align function only equate the no of rows and columns only
-        # match nodatavalue inserts nodatavalue in src raster to all places like mask
-        # still places that has nodatavalue in the src raster but it is not nodatavalue in the mask
-        # and now has to be filled with values
-        # compare no of element that is not nodatavalue in both rasters to make sure they are matched
-        # if both inputs are rasters
-        if isinstance(mask, gdal.Dataset) and isinstance(self.raster, gdal.Dataset):
-            # there might be cells that are out of domain in the src but not out of domain in the mask
-            # so change all the src_noval to mask_noval in the src_array
-            src_array[np.isclose(src_array, src_noval, rtol=0.001)] = mask_noval
-            # then count them (out of domain cells) in the src_array
-            elem_src = np.size(src_array[:, :]) - np.count_nonzero(
-                (src_array[np.isclose(src_array, mask_noval, rtol=0.001)])
-            )
-            # count the out of domian cells in the mask
-            elem_mask = np.size(mask_array[:, :]) - np.count_nonzero(
-                (mask_array[np.isclose(mask_array, mask_noval, rtol=0.001)])
-            )
-
-            # if not equal then store indices of those cells that doesn't matchs
-            if elem_mask > elem_src:
-                rows = [
-                    i
-                    for i in range(row)
-                    for j in range(col)
-                    if np.isclose(src_array[i, j], mask_noval, rtol=0.001)
-                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
-                ]
-                cols = [
-                    j
-                    for i in range(row)
-                    for j in range(col)
-                    if np.isclose(src_array[i, j], mask_noval, rtol=0.001)
-                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
-                ]
-            # interpolate those missing cells by nearest neighbour
-            if elem_mask > elem_src:
-                src_array = Dataset._nearest_neighbour(
-                    src_array, mask_noval, rows, cols
-                )
-
-        # if the dst is a raster
-        if isinstance(self.raster, gdal.Dataset):
-            dst = Dataset._create_gdal_dataset(col, row, 1, dtype, driver="MEM")
-            # but with lot of computation
-            # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
-            # are aligned so they have the sam gt
-            try:
-                # set the geotransform
-                dst.SetGeoTransform(mask_gt)
-                # set the projection
-                dst.SetProjection(mask.crs)
-            except UnboundLocalError:
-                dst.SetGeoTransform(self.geotransform)
-                dst.SetProjection(src_sref.ExportToWkt())
-
-            dst_obj = Dataset(dst)
-            # set the no data value
-            dst_obj._set_no_data_value(mask_noval)
-            dst_obj.raster.GetRasterBand(1).WriteArray(src_array)
-            return dst_obj
+        if band_count > 1:
+            for band in range(self.band_count):
+                if mask_noval is None:
+                    src_array[band, np.isnan(mask_array)] = self.no_data_value[band]
+                else:
+                    src_array[
+                        band, np.isclose(mask_array, mask_noval, rtol=0.001)
+                    ] = self.no_data_value[band]
         else:
-            return src_array
+            if mask_noval is None:
+                src_array[np.isnan(mask_array)] = self.no_data_value[0]
+            else:
+                src_array[
+                    np.isclose(mask_array, mask_noval, rtol=0.001)
+                ] = self.no_data_value[0]
+
+        if fill_gaps:
+            src_array = self.fill_gaps(mask, src_array)
+
+        dst = Dataset._create_gdal_dataset(
+            col, row, band_count, self.dtype[0], driver="MEM"
+        )
+        # but with lot of computation
+        # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
+        # are aligned so they have the sam gt
+        try:
+            # set the geotransform
+            dst.SetGeoTransform(mask_gt)
+            # set the projection
+            dst.SetProjection(mask.crs)
+        except UnboundLocalError:
+            dst.SetGeoTransform(self.geotransform)
+            dst.SetProjection(src_sref.ExportToWkt())
+
+        dst_obj = Dataset(dst)
+        # set the no data value
+        dst_obj._set_no_data_value(self.no_data_value)
+        if band_count > 1:
+            for band in range(band_count):
+                dst_obj.raster.GetRasterBand(band + 1).WriteArray(src_array[band, :, :])
+        else:
+            dst_obj.raster.GetRasterBand(1).WriteArray(src_array)
+        return dst_obj
 
     def _check_alignment(self, mask) -> bool:
         """Check if raster is aligned with a given mask raster"""
@@ -1978,9 +2083,9 @@ class Dataset:
         self,
         alignment_src,
     ) -> gdal.Dataset:
-        """matchRasterAlignment.
+        """align.
 
-        matchRasterAlignment method copies the following data
+        align method copies the following data
             - The coordinate system
             - The number of of rows & columns
             - cell size
@@ -1991,15 +2096,15 @@ class Dataset:
 
         Parameters
         ----------
-        alignment_src : [gdal.dataset/string]
+        alignment_src : [Dataset]
             spatial information source raster to get the spatial information
             (coordinate system, no of rows & columns)
             data values source raster to get the data (values of each cell)
 
         Returns
         -------
-        dst : [Raster]
-            Raster object
+        dst : [Dataset]
+            Dataset object
 
         Examples
         --------
@@ -2009,8 +2114,6 @@ class Dataset:
         """
         if isinstance(alignment_src, Dataset):
             src = alignment_src
-        elif isinstance(alignment_src, str):
-            src = Dataset.read_file(alignment_src)
         else:
             raise TypeError(
                 "First parameter should be a Dataset read using Dataset.openRaster or a path to the raster, "
@@ -2018,10 +2121,13 @@ class Dataset:
             )
 
         # reproject the raster to match the projection of alignment_src
-        reprojected_RasterB = self.to_crs(src.epsg)
+        if not self.epsg == src.epsg:
+            reprojected_RasterB = self.to_crs(src.epsg)
+        else:
+            reprojected_RasterB = self
         # create a new raster
         dst = Dataset._create_gdal_dataset(
-            src.columns, src.rows, 1, src.dtype[0], driver="MEM"
+            src.columns, src.rows, self.band_count, src.dtype[0], driver="MEM"
         )
         # set the geotransform
         dst.SetGeoTransform(src.geotransform)
@@ -2029,7 +2135,7 @@ class Dataset:
         dst.SetProjection(src.crs)
         # set the no data value
         dst_obj = Dataset(dst)
-        dst_obj._set_no_data_value(src.no_data_value[0])
+        dst_obj._set_no_data_value(src.no_data_value)
         # perform the projection & resampling
         method = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
@@ -2322,12 +2428,14 @@ class Dataset:
             vector file contains geometries you want to extract the values at their location. Default is None.
         """
         arr = self.read_array()
-
+        no_data_value = (
+            self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
+        )
         if feature is None:
             mask = (
-                [self.no_data_value[0], exclude_value]
+                [no_data_value, exclude_value]
                 if exclude_value is not None
-                else [self.no_data_value[0]]
+                else [no_data_value]
             )
             values = get_pixels2(arr, mask)
         else:
@@ -2338,17 +2446,20 @@ class Dataset:
     def overlay(
         self,
         classes_map,
+        band: int = 0,
         exclude_value: Union[float, int] = None,
     ) -> Dict[List[float], List[float]]:
-        """OverlayMap.
+        """Overlay.
 
-            overlay extracts all the values in rasater file, if you have two maps one with classes, and the other map
+            overlay extracts all the values in raster file, if you have two maps one with classes, and the other map
             contains any type of values, and you want to know the values in each class.
 
         Parameters
         ----------
         classes_map: [Dataset]
             Dataset Object for the raster that have classes you want to overlay with the raster.
+        band: [int]
+            if the raster is multi-band raster choose the band you want to overlay with the classes map. Default is 0.
         exclude_value: [Numeric]
             values you want to exclude from extracted values.
 
@@ -2363,11 +2474,14 @@ class Dataset:
                 "The class Dataset is not aligned with the current raster, plase use the method "
                 "'align' to align both rasters."
             )
-        arr = self.read_array()
+        arr = self.read_array(band=band)
+        no_data_value = (
+            self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
+        )
         mask = (
-            [self.no_data_value[0], exclude_value]
+            [no_data_value, exclude_value]
             if exclude_value is not None
-            else [self.no_data_value[0]]
+            else [no_data_value]
         )
         ind = get_indices2(arr, mask)
         classes = classes_map.read_array()
@@ -2528,6 +2642,231 @@ class Dataset:
                 xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize
             )
 
+    @staticmethod
+    def _groupNeighbours(
+        array, i, j, lowervalue, uppervalue, position, values, count, cluster
+    ):
+        """group neibiuring cells with the same values"""
+
+        # bottom cell
+        if (
+            lowervalue <= array[i + 1, j] <= uppervalue
+            and cluster[i + 1, j] == 0
+            and i + 1 < array.shape[0]
+        ):
+            position.append([i + 1, j])
+            values.append(array[i + 1, j])
+            cluster[i + 1, j] = count
+            Dataset._groupNeighbours(
+                array,
+                i + 1,
+                j,
+                lowervalue,
+                uppervalue,
+                position,
+                values,
+                count,
+                cluster,
+            )
+        # bottom right
+        if (
+            j + 1 < array.shape[1]
+            and i + 1 < array.shape[0]
+            and lowervalue <= array[i + 1, j + 1] <= uppervalue
+            and cluster[i + 1, j + 1] == 0
+        ):
+            position.append([i + 1, j + 1])
+            values.append(array[i + 1, j + 1])
+            cluster[i + 1, j + 1] = count
+            Dataset._groupNeighbours(
+                array,
+                i + 1,
+                j + 1,
+                lowervalue,
+                uppervalue,
+                position,
+                values,
+                count,
+                cluster,
+            )
+        # right
+        if (
+            j + 1 < array.shape[1]
+            and lowervalue <= array[i, j + 1] <= uppervalue
+            and cluster[i, j + 1] == 0
+        ):
+            position.append([i, j + 1])
+            values.append(array[i, j + 1])
+            cluster[i, j + 1] = count
+            Dataset._groupNeighbours(
+                array,
+                i,
+                j + 1,
+                lowervalue,
+                uppervalue,
+                position,
+                values,
+                count,
+                cluster,
+            )
+        # upper right
+        if (
+            j + 1 < array.shape[1]
+            and i - 1 >= 0
+            and lowervalue <= array[i - 1, j + 1] <= uppervalue
+            and cluster[i - 1, j + 1] == 0
+        ):
+            position.append([i - 1, j + 1])
+            values.append(array[i - 1, j + 1])
+            cluster[i - 1, j + 1] = count
+            Dataset._groupNeighbours(
+                array,
+                i - 1,
+                j + 1,
+                lowervalue,
+                uppervalue,
+                position,
+                values,
+                count,
+                cluster,
+            )
+        # top
+        if (
+            i - 1 >= 0
+            and lowervalue <= array[i - 1, j] <= uppervalue
+            and cluster[i - 1, j] == 0
+        ):
+            position.append([i - 1, j])
+            values.append(array[i - 1, j])
+            cluster[i - 1, j] = count
+            Dataset._groupNeighbours(
+                array,
+                i - 1,
+                j,
+                lowervalue,
+                uppervalue,
+                position,
+                values,
+                count,
+                cluster,
+            )
+        # top left
+        if (
+            i - 1 >= 0
+            and j - 1 >= 0
+            and lowervalue <= array[i - 1, j - 1] <= uppervalue
+            and cluster[i - 1, j - 1] == 0
+        ):
+            position.append([i - 1, j - 1])
+            values.append(array[i - 1, j - 1])
+            cluster[i - 1, j - 1] = count
+            Dataset._groupNeighbours(
+                array,
+                i - 1,
+                j - 1,
+                lowervalue,
+                uppervalue,
+                position,
+                values,
+                count,
+                cluster,
+            )
+        # left
+        if (
+            j - 1 >= 0
+            and lowervalue <= array[i, j - 1] <= uppervalue
+            and cluster[i, j - 1] == 0
+        ):
+            position.append([i, j - 1])
+            values.append(array[i, j - 1])
+            cluster[i, j - 1] = count
+            Dataset._groupNeighbours(
+                array,
+                i,
+                j - 1,
+                lowervalue,
+                uppervalue,
+                position,
+                values,
+                count,
+                cluster,
+            )
+        # bottom left
+        if (
+            j - 1 >= 0
+            and i + 1 < array.shape[0]
+            and lowervalue <= array[i + 1, j - 1] <= uppervalue
+            and cluster[i + 1, j - 1] == 0
+        ):
+            position.append([i + 1, j - 1])
+            values.append(array[i + 1, j - 1])
+            cluster[i + 1, j - 1] = count
+            Dataset._groupNeighbours(
+                array,
+                i + 1,
+                j - 1,
+                lowervalue,
+                uppervalue,
+                position,
+                values,
+                count,
+                cluster,
+            )
+
+    def cluster(
+        self, lower_bound: Any, upper_bound: Any
+    ) -> Tuple[np.ndarray, int, list, list]:
+        """Cluster
+
+            - group all the connected values between two numbers in a raster in clusters.
+
+        Parameters
+        ----------
+        lower_bound : [numeric]
+            lower bound of the cluster.
+        upper_bound : [numeric]
+            upper bound of the cluster.
+
+        Returns
+        -------
+        cluster : [array]
+            array contains integer numbers representing the number of the cluster.
+        count : [integer]
+            number of the clusters in the array.
+        position : [list]
+            list contains two indeces [x,y] for the position of each value .
+        values : [numeric]
+            the values stored in each cell in the cluster .
+        """
+        data = self.read_array()
+        position = []
+        values = []
+        count = 1
+        cluster = np.zeros(shape=(data.shape[0], data.shape[1]))
+
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+
+                if lower_bound <= data[i, j] <= upper_bound and cluster[i, j] == 0:
+                    self._groupNeighbours(
+                        data,
+                        i,
+                        j,
+                        lower_bound,
+                        upper_bound,
+                        position,
+                        values,
+                        count,
+                        cluster,
+                    )
+                    if cluster[i, j] == 0:
+                        position.append([i, j])
+                        values.append(data[i, j])
+                        cluster[i, j] = count
+                    count = count + 1
+
+        return cluster, count, position, values
+
     def listAttributes(self):
         """Print Attributes List."""
 
@@ -2545,6 +2884,7 @@ class Dataset:
 
 
 class Datacube:
+    """DataCube."""
 
     files: List[str]
     data: np.ndarray
@@ -3057,7 +3397,7 @@ class Datacube:
 
         for i in range(self.time_length):
             src = self.iloc(i)
-            src.to_file(f"{path}/{i}.{ext}", driver=driver, band=band)
+            src.to_file(f"{path}/{i}.{ext}", band=band)
 
     def to_crs(
         self,

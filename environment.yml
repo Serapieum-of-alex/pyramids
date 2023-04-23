@@ -3,7 +3,7 @@ channels:
 dependencies:
   - python >=3.9,<3.11
   - numpy >=1.24.1
-  - hpc >=0.1.0
+  - hpc >=0.1.1
   - pip >=22.3.1
   - gdal >=3.6.2
   - pandas >=2.0.0

@@ -76,21 +76,15 @@ pyramids - GIS utility package
 Main Features
 -------------
 - GDAL/ogr API that tackle various processes using gdal python functions, and gdal CLI.
-- rasterio api that uses rasterio function in manipulating
 - GIS modules to enable the modeler to fully prepare the meteorological inputs and do all the preprocessing
   needed to build the model (align rasters with the DEM), in addition to various methods to manipulate and
   convert different forms of distributed data (rasters, NetCDF, shapefiles)
 
 .. digraph:: Linking
 
-    pyramids -> raster;
-    pyramids -> vector;
-    pyramids -> netcdf;
-    pyramids -> convert;
-    pyramids -> array;
-    pyramids -> catchment;
-    pyramids -> indexing;
-    pyramids -> utils;
+    pyramids -> dataset;
+    pyramids -> featurecollection;
+    pyramids -> dem;
     dpi=200;
 
 .. toctree::
@@ -98,9 +92,6 @@ Main Features
    :maxdepth: 1
 
     Installation <installation.rst>
-    Raster <raster.rst>
-    Vector <vector.rst>
-    NetCDF <netcdf.rst>
-    Convert <convert.rst>
-    Indeixing <spatial_indexing.rst>
-    Catchment <catchment.rst>
+    Dataset <dataset.rst>
+    Feature Collection <featurecollection.rst>
+    DEM <dem.rst>

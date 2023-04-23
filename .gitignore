@@ -159,3 +159,4 @@ examples/coords.csv
 *.pptx
 examples/monthly_precipitation_amount_1hour_Accumulation_2022.05.01.00.00.00.tif
 tests/data/raster-folder-coello/*
+examples/old/*

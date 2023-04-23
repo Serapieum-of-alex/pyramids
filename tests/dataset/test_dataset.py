@@ -7,59 +7,7 @@ import numpy as np
 import pytest
 from osgeo import gdal, osr
 from pyramids.dataset import Dataset
-from pyramids.dataset import ReadOnlyError
-from pyramids.featurecollection import FeatureCollection
-
-
-class TestProperties:
-    def test_pivot_point(self, src: gdal.Dataset):
-        dataset = Dataset(src)
-        xy = dataset.pivot_point
-        assert xy[0] == 432968.1206170588
-        assert xy[1] == 520007.787999178
-
-    def test_lon_lat(self, src: gdal.Dataset, lon_coords: list, lat_coords: list):
-        dataset = Dataset(src)
-        assert all(np.isclose(dataset.lon, lon_coords, rtol=0.00001))
-        assert all(np.isclose(dataset.x, lon_coords, rtol=0.00001))
-        assert all(np.isclose(dataset.lat, lat_coords, rtol=0.00001))
-        assert all(np.isclose(dataset.y, lat_coords, rtol=0.00001))
-
-    def test_create_bounds(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
-        dataset = Dataset(src)
-        poly = dataset._calculate_bounds()
-        assert isinstance(poly, GeoDataFrame)
-        assert all(bounds_gdf == poly)
-
-    def test_create_bbox(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
-        dataset = Dataset(src)
-        bbox = dataset._calculate_bbox()
-        assert isinstance(bbox, list)
-        assert bbox == [
-            432968.1206170588,
-            468007.787999178,
-            488968.1206170588,
-            520007.787999178,
-        ]
-        bbox = dataset.bbox
-        assert bbox == [
-            432968.1206170588,
-            468007.787999178,
-            488968.1206170588,
-            520007.787999178,
-        ]
-
-    def test_bounds_property(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
-        dataset = Dataset(src)
-        assert all(dataset.bounds == bounds_gdf)
-
-    def test_shape(self, src: gdal.Dataset):
-        dataset = Dataset(src)
-        assert dataset.shape == (1, 13, 14)
-
-    def test_values(self, src: gdal.Dataset):
-        dataset = Dataset(src)
-        assert isinstance(dataset.values, np.ndarray)
+from pyramids._errors import ReadOnlyError, NoDataValueError
 
 
 class TestCreateRasterObject:
@@ -199,6 +147,57 @@ class TestCreateRasterObject:
             assert src_obj.geotransform == dst_obj.geotransform
 
 
+class TestProperties:
+    def test_pivot_point(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        xy = dataset.pivot_point
+        assert xy[0] == 432968.1206170588
+        assert xy[1] == 520007.787999178
+
+    def test_lon_lat(self, src: gdal.Dataset, lon_coords: list, lat_coords: list):
+        dataset = Dataset(src)
+        assert all(np.isclose(dataset.lon, lon_coords, rtol=0.00001))
+        assert all(np.isclose(dataset.x, lon_coords, rtol=0.00001))
+        assert all(np.isclose(dataset.lat, lat_coords, rtol=0.00001))
+        assert all(np.isclose(dataset.y, lat_coords, rtol=0.00001))
+
+    def test_create_bounds(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
+        dataset = Dataset(src)
+        poly = dataset._calculate_bounds()
+        assert isinstance(poly, GeoDataFrame)
+        assert all(bounds_gdf == poly)
+
+    def test_create_bbox(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
+        dataset = Dataset(src)
+        bbox = dataset._calculate_bbox()
+        assert isinstance(bbox, list)
+        assert bbox == [
+            432968.1206170588,
+            468007.787999178,
+            488968.1206170588,
+            520007.787999178,
+        ]
+        bbox = dataset.bbox
+        assert bbox == [
+            432968.1206170588,
+            468007.787999178,
+            488968.1206170588,
+            520007.787999178,
+        ]
+
+    def test_bounds_property(self, src: gdal.Dataset, bounds_gdf: GeoDataFrame):
+        dataset = Dataset(src)
+        assert all(dataset.bounds == bounds_gdf)
+
+    def test_shape(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        assert dataset.shape == (1, 13, 14)
+
+    def test_values(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        assert isinstance(dataset.values, np.ndarray)
+
+
 class TestSpatialProperties:
     def test_read_array(
         self,
@@ -224,6 +223,12 @@ class TestSpatialProperties:
         assert isinstance(names, list)
         assert names == ["Band_1"]
 
+    def test_create_sr_from_epsg(self):
+        sr = Dataset._create_sr_from_epsg(4326)
+        assert sr.GetAuthorityCode(None) == f"{4326}"
+
+
+class TestNoDataValue:
     def test_set_no_data_value_error_read_only(
         self,
         src_set_no_data_value: gdal.Dataset,
@@ -266,9 +271,28 @@ class TestSpatialProperties:
         val = arr[0, 0]
         assert val == new_val
 
-    def test_create_sr_from_epsg(self):
-        sr = Dataset._create_sr_from_epsg(4326)
-        assert sr.GetAuthorityCode(None) == f"{4326}"
+    def test_change_no_data_value_setter(
+        self,
+        chang_no_data_dataset: gdal.Dataset,
+        src_no_data_value: float,
+    ):
+        dataset = Dataset(chang_no_data_dataset)
+        new_val = -6666
+        dataset.no_data_value = new_val
+        # check if the no_data_value in the Datacube object is set
+        assert dataset.raster.GetRasterBand(1).GetNoDataValue() == new_val
+        # check if the no_data_value of the Dataset object is set
+        assert dataset.no_data_value == [new_val]
+
+    def test_change_no_data_error_different_data_type(
+        self, int_none_nodatavalue_attr_0_stored: gdal.Dataset
+    ):
+        # try to store None in the array (int)
+        dataset = Dataset(int_none_nodatavalue_attr_0_stored)
+        try:
+            dataset.change_no_data_value(None, 0)
+        except NoDataValueError:
+            pass
 
 
 class TestSetCRS:
@@ -393,7 +417,7 @@ class TestSave:
             os.remove(ascii_file_save_to)
 
         src = Dataset(src)
-        src.to_file(ascii_file_save_to, driver="ascii")
+        src.to_file(ascii_file_save_to)
         assert os.path.exists(ascii_file_save_to)
         os.remove(ascii_file_save_to)
 
@@ -441,34 +465,62 @@ class TestFillRaster:
         assert vals[0] == fill_raster_value
 
 
-def test_resample(
-    src: gdal.Dataset,
-    resample_raster_cell_size: int,
-    resample_raster_resample_technique: str,
-    resample_raster_result_dims: tuple,
-):
-    src = Dataset(src)
-    dst = src.resample(
-        resample_raster_cell_size,
-        method=resample_raster_resample_technique,
-    )
+class TestResample:
+    def test_single_band(
+        self,
+        src: gdal.Dataset,
+        resample_raster_cell_size: int,
+        resample_raster_resample_technique: str,
+        resample_raster_result_dims: tuple,
+    ):
+        src = Dataset(src)
+        dst = src.resample(
+            resample_raster_cell_size,
+            method=resample_raster_resample_technique,
+        )
 
-    dst_arr = dst.raster.ReadAsArray()
-    assert dst_arr.shape == resample_raster_result_dims
-    assert (
-        dst.raster.GetGeoTransform()[1] == resample_raster_cell_size
-        and dst.raster.GetGeoTransform()[-1] == -1 * resample_raster_cell_size
-    )
-    assert np.isclose(
-        dst.raster.GetRasterBand(1).GetNoDataValue(),
-        src.raster.GetRasterBand(1).GetNoDataValue(),
-        rtol=0.00001,
-    )
-    assert dst.raster.GetProjection() == src.raster.GetProjection()
+        dst_arr = dst.raster.ReadAsArray()
+        assert dst_arr.shape == resample_raster_result_dims
+        assert (
+            dst.raster.GetGeoTransform()[1] == resample_raster_cell_size
+            and dst.raster.GetGeoTransform()[-1] == -1 * resample_raster_cell_size
+        )
+        assert np.isclose(
+            dst.raster.GetRasterBand(1).GetNoDataValue(),
+            src.raster.GetRasterBand(1).GetNoDataValue(),
+            rtol=0.00001,
+        )
+        assert dst.raster.GetProjection() == src.raster.GetProjection()
+
+    def test_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+        resample_raster_cell_size: int,
+        resample_raster_resample_technique: str,
+        resampled_multi_band_dims: tuple,
+        sentinel_resample_arr: np.ndarray,
+    ):
+        resample_raster_cell_size = 0.00015
+        src = Dataset(sentinel_raster)
+        dst = src.resample(
+            resample_raster_cell_size,
+            method=resample_raster_resample_technique,
+        )
+
+        dst_arr = dst.raster.ReadAsArray()
+        assert dst.rows == resampled_multi_band_dims[0]
+        assert dst.columns == resampled_multi_band_dims[1]
+        assert (
+            dst.raster.GetGeoTransform()[1] == resample_raster_cell_size
+            and dst.raster.GetGeoTransform()[-1] == -1 * resample_raster_cell_size
+        )
+
+        assert np.array_equal(sentinel_resample_arr, dst_arr)
+        assert dst.raster.GetProjection() == src.raster.GetProjection()
 
 
 class TestReproject:
-    def test_option_maintain_alighment(
+    def test_option_maintain_alighment_single_band(
         self,
         src: gdal.Dataset,
         project_raster_to_epsg: int,
@@ -485,6 +537,17 @@ class TestReproject:
         assert epsg == project_raster_to_epsg
         dst_arr = dst.raster.ReadAsArray()
         assert dst_arr.shape == src_shape
+
+    def test_option_maintain_alighment_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+    ):
+        epsg = 32637
+        src = Dataset(sentinel_raster)
+        dst = src.to_crs(to_epsg=epsg, maintain_alighment=True)
+        assert dst.band_count == src.band_count
+        assert dst.epsg == epsg
+        # assert dst.shape == src.shape
 
     def test_option_donot_maintain_alighment(
         self,
@@ -504,26 +567,54 @@ class TestReproject:
         dst_arr = dst.raster.ReadAsArray()
         assert dst_arr.shape == src_shape
 
+    def test_option_donot_maintain_alighment_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+    ):
+        epsg = 32637
+        src = Dataset(sentinel_raster)
+        dst = src.to_crs(to_epsg=epsg, maintain_alighment=False)
+        assert dst.band_count == src.band_count
+        assert dst.epsg == epsg
+        # assert dst.shape == src.shape
 
-def test_match_raster_alignment(
-    src: gdal.Dataset,
-    src_shape: tuple,
-    src_no_data_value: float,
-    src_geotransform: tuple,
-    soil_raster: gdal.Dataset,
-):
-    mask_obj = Dataset(src)
-    soil_raster_obj = Dataset(soil_raster)
-    soil_aligned = soil_raster_obj.align(mask_obj)
-    assert soil_aligned.raster.ReadAsArray().shape == src_shape
-    nodataval = soil_aligned.raster.GetRasterBand(1).GetNoDataValue()
-    assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
-    geotransform = soil_aligned.raster.GetGeoTransform()
-    assert src_geotransform == geotransform
+
+class TestAlign:
+    def test_align_single_band(
+        self,
+        src: gdal.Dataset,
+        src_shape: tuple,
+        src_no_data_value: float,
+        src_geotransform: tuple,
+        soil_raster: gdal.Dataset,
+    ):
+        mask_obj = Dataset(src)
+        dataset = Dataset(soil_raster)
+        dataset_aligned = dataset.align(mask_obj)
+        assert dataset_aligned.raster.ReadAsArray().shape == src_shape
+        nodataval = dataset_aligned.raster.GetRasterBand(1).GetNoDataValue()
+        assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
+        geotransform = dataset_aligned.raster.GetGeoTransform()
+        assert src_geotransform == geotransform
+
+    def test_align_multi_band(
+        self,
+        resampled_multiband: gdal.Dataset,
+        sentinel_raster: gdal.Dataset,
+        resampled_multi_band_dims: tuple,
+        src_geotransform: tuple,
+    ):
+        alignment_src = Dataset(resampled_multiband)
+        dataset = Dataset(sentinel_raster)
+        dataset_aligned = dataset.align(alignment_src)
+        assert dataset_aligned.rows == resampled_multi_band_dims[0]
+        assert dataset_aligned.columns == resampled_multi_band_dims[1]
+        assert dataset_aligned.no_data_value == dataset.no_data_value
+        assert dataset.pivot_point == dataset_aligned.pivot_point
 
 
 class TestCrop:
-    def test_crop_gdal_obj_with_gdal_obj(
+    def test_crop_dataset_with_another_dataset_single_band(
         self,
         src: gdal.Dataset,
         aligned_raster,
@@ -539,7 +630,21 @@ class TestCrop:
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
         assert (dst_arr_cropped == src_arr).all()
 
-    def test_crop_gdal_obj_with_array(
+    def test_crop_dataset_with_another_dataset_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+        sentinel_crop,
+        sentinel_crop_arr: np.ndarray,
+    ):
+        mask_obj = Dataset(sentinel_crop)
+        aligned_raster = Dataset(sentinel_raster)
+
+        croped = aligned_raster._crop_alligned(mask_obj)
+        dst_arr_cropped = croped.raster.ReadAsArray()
+
+        assert np.array_equal(dst_arr_cropped, sentinel_crop_arr)
+
+    def test_crop_dataset_with_array(
         self,
         aligned_raster,
         src_arr: np.ndarray,
@@ -669,7 +774,7 @@ class TestToDataFrame:
 
 
 class TestExtract:
-    def test_extract(
+    def test_single_band(
         self,
         src: gdal.Dataset,
         src_no_data_value: float,
@@ -677,6 +782,17 @@ class TestExtract:
         src = Dataset(src)
         values = src.extract(exclude_value=0)
         assert len(values) == 46
+
+    def test_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+        src_no_data_value: float,
+    ):
+        src = Dataset(sentinel_raster)
+        values = src.extract()
+        arr = sentinel_raster.ReadAsArray()
+        arr = arr.reshape((arr.shape[0], arr.shape[1] * arr.shape[2]))
+        assert np.array_equal(arr, values)
 
     def test_locate_points_using_gdf(
         self,
@@ -712,16 +828,30 @@ class TestExtract:
         assert np.array_equal(values, [4, 6, 1, 5, 49, 88])
 
 
-def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
-    src_obj = Dataset(rhine_raster)
-    classes_src = Dataset.read_file(germany_classes)
-    class_dict = src_obj.overlay(classes_src)
-    arr = classes_src.read_array()
-    class_values = np.unique(arr)
-    assert len(class_dict.keys()) == len(class_values) - 1
-    extracted_classes = list(class_dict.keys())
-    real_classes = class_values.tolist()[:-1]
-    assert all(i in real_classes for i in extracted_classes)
+class TestOverlay:
+    def test_single_band(self, rhine_raster: gdal.Dataset, germany_classes: str):
+        src_obj = Dataset(rhine_raster)
+        classes_src = Dataset.read_file(germany_classes)
+        class_dict = src_obj.overlay(classes_src)
+        arr = classes_src.read_array()
+        class_values = np.unique(arr)
+        assert len(class_dict.keys()) == len(class_values) - 1
+        extracted_classes = list(class_dict.keys())
+        real_classes = class_values.tolist()[:-1]
+        assert all(i in real_classes for i in extracted_classes)
+
+    def test_multi_band(
+        self, sentinel_raster: gdal.Dataset, sentinel_classes: gdal.Dataset
+    ):
+        dataset = Dataset(sentinel_raster)
+        classes_src = Dataset(sentinel_classes)
+        class_dict = dataset.overlay(classes_src, band=1)
+        arr = classes_src.read_array()
+        class_values = np.unique(arr)
+        assert len(class_dict.keys()) == len(class_values)
+        extracted_classes = list(class_dict.keys())
+        real_classes = class_values.tolist()
+        assert all(i in real_classes for i in extracted_classes)
 
 
 class TestFootPrint:
@@ -775,3 +905,14 @@ class TestFootPrint:
         assert len(set(extent["id"])) == 1
         # the class should be 2
         assert list(set(extent["id"]))[0] == 2
+
+
+def test_cluster(rhine_dem: gdal.Dataset, clusters: np.ndarray):
+    dataset = Dataset(rhine_dem)
+    lower_value = 0.1
+    upper_value = 20
+    cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
+    assert count == 155
+    assert np.array_equal(cluster_array, clusters)
+    assert len(position) == 2364
+    assert len(values) == 2364

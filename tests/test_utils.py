@@ -1,7 +1,8 @@
 import numpy as np
 from osgeo import gdal
 
-from pyramids.utils import numpy_to_gdal_dtype, Catalog
+from pyramids._errors import DriverNotExistError
+from pyramids._utils import numpy_to_gdal_dtype, Catalog
 
 
 def test_numpy_to_gdal_dtype(arr: np.ndarray):
@@ -18,6 +19,15 @@ class TestCatalog:
         catalog = Catalog()
         driver = catalog.get_driver("memory")
         assert isinstance(driver, dict)
+
+    def test_get_driver_by_ext(self):
+        catalog = Catalog()
+        driver = catalog.get_driver_by_extension("nc")
+        assert driver.get("GDAL Name") == "netCDF"
+        try:
+            catalog.get_driver_by_extension("mm")
+        except DriverNotExistError:
+            pass
 
     def test_get_gdal_name(self):
         catalog = Catalog()
