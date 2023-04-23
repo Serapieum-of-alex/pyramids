@@ -4,7 +4,7 @@ import datetime as dt
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
 from osgeo.gdal import Dataset
-from pyramids.errors import OptionalPackageDoesNontExist
+from pyramids._errors import OptionalPackageDoesNontExist
 from pyramids import __path__
 
 # from urllib.parse import urlparse as parse_url

@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from osgeo import gdal, osr
 from pyramids.dataset import Dataset
-from pyramids.errors import ReadOnlyError, NoDataValueError
+from pyramids._errors import ReadOnlyError, NoDataValueError
 
 
 class TestCreateRasterObject:
@@ -806,16 +806,17 @@ class TestExtract:
         assert np.array_equal(values, [4, 6, 1, 5, 49, 88])
 
 
-def test_overlay(rhine_raster: gdal.Dataset, germany_classes: str):
-    src_obj = Dataset(rhine_raster)
-    classes_src = Dataset.read_file(germany_classes)
-    class_dict = src_obj.overlay(classes_src)
-    arr = classes_src.read_array()
-    class_values = np.unique(arr)
-    assert len(class_dict.keys()) == len(class_values) - 1
-    extracted_classes = list(class_dict.keys())
-    real_classes = class_values.tolist()[:-1]
-    assert all(i in real_classes for i in extracted_classes)
+class TestOverlay:
+    def test_single_band(self, rhine_raster: gdal.Dataset, germany_classes: str):
+        src_obj = Dataset(rhine_raster)
+        classes_src = Dataset.read_file(germany_classes)
+        class_dict = src_obj.overlay(classes_src)
+        arr = classes_src.read_array()
+        class_values = np.unique(arr)
+        assert len(class_dict.keys()) == len(class_values) - 1
+        extracted_classes = list(class_dict.keys())
+        real_classes = class_values.tolist()[:-1]
+        assert all(i in real_classes for i in extracted_classes)
 
 
 class TestFootPrint:

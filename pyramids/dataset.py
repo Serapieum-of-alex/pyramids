@@ -18,7 +18,7 @@ import pandas as pd
 from geopandas.geodataframe import GeoDataFrame, DataFrame
 from osgeo import gdal, osr, ogr  # gdalconst,
 from osgeo.osr import SpatialReference
-from pyramids.utils import (
+from pyramids._utils import (
     gdal_to_ogr_dtype,
     INTERPOLATION_METHODS,
     NUMPY_GDAL_DATA_TYPES,
@@ -28,7 +28,7 @@ from pyramids.utils import (
     Catalog,
     import_cleopatra,
 )
-from pyramids.errors import (
+from pyramids._errors import (
     ReadOnlyError,
     DatasetNoFoundError,
     NoDataValueError,
@@ -45,7 +45,7 @@ except ModuleNotFoundError:
 
 from hpc.indexing import get_pixels, get_indices2, get_pixels2, locate_values
 from pyramids.featurecollection import FeatureCollection
-from pyramids import io
+from pyramids import _io
 
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog(raster_driver=True)
@@ -349,7 +349,7 @@ class Dataset:
         -------
         GDAL dataset
         """
-        src = io.read_file(path, read_only)
+        src = _io.read_file(path, read_only)
         return cls(src)
 
     @classmethod
@@ -1322,7 +1322,7 @@ class Dataset:
             arr = self.read_array(band=band)
             no_data_value = self.no_data_value[band]
             xmin, ymin, _, _ = self.bbox
-            io.to_ascii(arr, self.cell_size, xmin, ymin, no_data_value, path)
+            _io.to_ascii(arr, self.cell_size, xmin, ymin, no_data_value, path)
         else:
             dst = gdal.GetDriverByName(driver_name).CreateCopy(path, self.raster, 0)
             dst = None  # Flush the dataset to disk
@@ -2409,9 +2409,9 @@ class Dataset:
         classes_map,
         exclude_value: Union[float, int] = None,
     ) -> Dict[List[float], List[float]]:
-        """OverlayMap.
+        """Overlay.
 
-            overlay extracts all the values in rasater file, if you have two maps one with classes, and the other map
+            overlay extracts all the values in raster file, if you have two maps one with classes, and the other map
             contains any type of values, and you want to know the values in each class.
 
         Parameters

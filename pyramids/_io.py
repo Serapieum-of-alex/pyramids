@@ -5,7 +5,7 @@ import numpy as np
 import warnings
 from osgeo import gdal
 
-from pyramids.errors import FileFormatNoSupported
+from pyramids._errors import FileFormatNoSupported
 
 gdal.UseExceptions()
 

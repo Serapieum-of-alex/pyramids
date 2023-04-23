@@ -1,7 +1,7 @@
 import numpy as np
 from osgeo import gdal
 
-from pyramids.utils import numpy_to_gdal_dtype, Catalog
+from pyramids._utils import numpy_to_gdal_dtype, Catalog
 
 
 def test_numpy_to_gdal_dtype(arr: np.ndarray):

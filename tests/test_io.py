@@ -3,8 +3,8 @@ from typing import List
 
 import pytest
 from osgeo import gdal
-from pyramids.errors import FileFormatNoSupported
-from pyramids.io import _parse_path, extract_from_gz, read_file
+from pyramids._errors import FileFormatNoSupported
+from pyramids._io import _parse_path, extract_from_gz, read_file
 
 
 class TestParsePath:

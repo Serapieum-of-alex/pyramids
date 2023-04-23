@@ -23,8 +23,8 @@ from shapely.geometry import Point, Polygon, LineString
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multilinestring import MultiLineString
-from pyramids.utils import Catalog
-from pyramids.errors import DriverNotExistError
+from pyramids._utils import Catalog
+from pyramids._errors import DriverNotExistError
 
 CATALOG = Catalog(raster_driver=False)
 
