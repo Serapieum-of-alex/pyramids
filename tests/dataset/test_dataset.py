@@ -752,7 +752,7 @@ class TestToDataFrame:
 
 
 class TestExtract:
-    def test_extract(
+    def test_single_band(
         self,
         src: gdal.Dataset,
         src_no_data_value: float,
@@ -760,6 +760,17 @@ class TestExtract:
         src = Dataset(src)
         values = src.extract(exclude_value=0)
         assert len(values) == 46
+
+    def test_multi_band(
+        self,
+        sentinel_raster: gdal.Dataset,
+        src_no_data_value: float,
+    ):
+        src = Dataset(sentinel_raster)
+        values = src.extract()
+        arr = sentinel_raster.ReadAsArray()
+        arr = arr.reshape((arr.shape[0], arr.shape[1] * arr.shape[2]))
+        assert np.array_equal(arr, values)
 
     def test_locate_points_using_gdf(
         self,

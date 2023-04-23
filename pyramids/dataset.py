@@ -43,7 +43,7 @@ except ModuleNotFoundError:
         "osgeo_utils module does not exist try install pip install osgeo-utils "
     )
 
-from hpc.filter import get_pixels, get_indices2, get_pixels2, locate_values
+from hpc.indexing import get_pixels, get_indices2, get_pixels2, locate_values
 from pyramids.featurecollection import FeatureCollection
 from pyramids import io
 
@@ -88,9 +88,11 @@ class Dataset:
             self._time_stamp = self._get_time_variable()
             self._lat, self._lon = self._get_lat_lon()
 
-        self._no_data_value = [
+        no_data_value = [
             src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
         ]
+        # no_data_value = [np.nan if i is None else i for i in no_data_value ]
+        self._no_data_value = no_data_value
         self._dtype = [
             src.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
         ]
@@ -2387,12 +2389,14 @@ class Dataset:
             vector file contains geometries you want to extract the values at their location. Default is None.
         """
         arr = self.read_array()
-
+        no_data_value = (
+            self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
+        )
         if feature is None:
             mask = (
-                [self.no_data_value[0], exclude_value]
+                [no_data_value, exclude_value]
                 if exclude_value is not None
-                else [self.no_data_value[0]]
+                else [no_data_value]
             )
             values = get_pixels2(arr, mask)
         else:
