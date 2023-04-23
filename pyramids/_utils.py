@@ -165,7 +165,7 @@ class Catalog:
         driver = self.get_driver(driver)
         return driver.get("GDAL Name")
 
-    def get_driver_name_by_extension(self, extension):
+    def get_driver_name_by_extension(self, extension: str):
         """Get driver by extension.
 
         Parameters
@@ -175,7 +175,8 @@ class Catalog:
 
         Returns
         -------
-
+        str:
+            Driver name.
         """
         try:
             key = next(
@@ -204,7 +205,8 @@ class Catalog:
 
         Returns
         -------
-
+        Dict:
+            Driver dictionary
         """
         diver_name = self.get_driver_name_by_extension(extension)
         return self.get_driver(diver_name)
