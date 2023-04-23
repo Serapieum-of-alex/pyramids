@@ -62,3 +62,13 @@ History
 * Add dunder methods for all classes.
 * add plotting functionality and cleopatra (plotting package) as an optional package.
 * remove loops and replace it with ufunc from numpy.
+
+0.4.1 (2023-04-23)
+------------------
+* adjust all spatial operation functions to work with multi-band rasters.
+* use gdal exceptions to capture runtime error of not finding the the file.
+* add cluster method to dataset class.
+* time_stamp attribute returns None if there is no time_stamp.
+* restructure the no_data_value related functions.
+* plot function can plot rgb imagr for multi-band rasters.
+* to_file detect the driver type from the extension in the path.
