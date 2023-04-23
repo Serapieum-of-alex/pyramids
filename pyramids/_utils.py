@@ -165,7 +165,7 @@ class Catalog:
         driver = self.get_driver(driver)
         return driver.get("GDAL Name")
 
-    def get_driver_by_extension(self, extension):
+    def get_driver_name_by_extension(self, extension):
         """Get driver by extension.
 
         Parameters
@@ -192,7 +192,22 @@ class Catalog:
                 "https://github.com/Serapieum-of-alex/pyramids/issues/new?assignees=&labels=&template=feature_request.md&title=add%20extension"
             )
 
-        return self.get_driver(key)
+        return key
+
+    def get_driver_by_extension(self, extension):
+        """Get driver by extension.
+
+        Parameters
+        ----------
+        extension: [str]
+            extenstion of the file.
+
+        Returns
+        -------
+
+        """
+        diver_name = self.get_driver_name_by_extension(extension)
+        return self.get_driver(diver_name)
 
     def exists(self, driver: str):
         """check if the driver exist in the catalog"""
