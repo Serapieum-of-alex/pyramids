@@ -33,7 +33,6 @@ from pyramids._errors import (
     DatasetNoFoundError,
     NoDataValueError,
     AlignmentError,
-    DriverNotExistError,
 )
 
 try:
@@ -1289,18 +1288,17 @@ class Dataset:
         gdf["id"] = gdf.index
         return gdf
 
-    def to_file(self, path: str, driver: str = "geotiff", band: int = 0) -> None:
+    def to_file(self, path: str, band: int = 0) -> None:
         """Save to geotiff format.
 
-            saveRaster saves a raster to a path
+            save saves a raster to a path, the type of the driver (georiff/netcdf/ascii) will be implied from the
+            extension at the end of the given path.
 
         Parameters
         ----------
         path: [string]
             a path includng the name of the raster and extention.
             >>> path = "data/cropped.tif"
-        driver: [str]
-            driver = "geotiff".
         band: [int]
             band index, needed only in case of ascii drivers. Default is 0.
 
@@ -1313,9 +1311,10 @@ class Dataset:
         if not isinstance(path, str):
             raise TypeError("path input should be string type")
 
-        if not CATALOG.exists(driver):
-            raise DriverNotExistError(f"The given driver: {driver} does not exist")
-
+        extension = path.split(".")[-1]
+        driver = CATALOG.get_driver_name_by_extension(extension)
+        # if not CATALOG.exists(driver):
+        #     raise DriverNotExistError(f"The given driver: {driver} does not exist")
         driver_name = CATALOG.get_gdal_name(driver)
 
         if driver == "ascii":
@@ -3352,7 +3351,7 @@ class Datacube:
 
         for i in range(self.time_length):
             src = self.iloc(i)
-            src.to_file(f"{path}/{i}.{ext}", driver=driver, band=band)
+            src.to_file(f"{path}/{i}.{ext}", band=band)
 
     def to_crs(
         self,

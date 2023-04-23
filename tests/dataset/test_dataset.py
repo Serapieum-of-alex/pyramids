@@ -417,7 +417,7 @@ class TestSave:
             os.remove(ascii_file_save_to)
 
         src = Dataset(src)
-        src.to_file(ascii_file_save_to, driver="ascii")
+        src.to_file(ascii_file_save_to)
         assert os.path.exists(ascii_file_save_to)
         os.remove(ascii_file_save_to)
 
