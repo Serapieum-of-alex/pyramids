@@ -29,7 +29,7 @@ pyramids - GIS utility package
 
 pyramids
 
-![1](/docs/images/package work flow/overall.png)
+![1](/docs/images/package-work-flow/overall.png)
 
 Main Features
 -------------
