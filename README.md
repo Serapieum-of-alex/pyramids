@@ -29,6 +29,8 @@ pyramids - GIS utility package
 
 pyramids
 
+![alt text](docs/images/package work flow/overall.png)
+
 Main Features
 -------------
   - GIS modules to enable the modeler to fully prepare the meteorological inputs and do all the preprocessing
