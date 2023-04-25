@@ -27,13 +27,13 @@ Dataset
 - The main purpose of the `Dataset` object is to deal with raster objects, single or multibands, has variables/subsets
     like netcdf file or has one variable like most GeoTIFF files.
 
-.. image:: /images/dataset.png
+.. image:: /images/dataset/dataset.png
    :width: 200pt
    :align: center
 
 - The `Dataset` object data model is as following
 
-.. image:: /images/dataset-alone.png
+.. image:: /images/schemes/dataset-alone.png
    :width: 700pt
    :alt: Dataset object scheme
    :align: center
@@ -92,7 +92,7 @@ Dataset objest attributes
 - The Dataset object has  the following attributes, which enables you to access all the stored data in you raster
     file (GeoTIFF/NetCDF/ASCII)
 
-.. image:: /images/dataset-arrributes.png
+.. image:: /images/schemes/dataset-arrributes.png
    :width: 150pt
    :alt: dataset attributes
    :align: center
@@ -354,7 +354,7 @@ driver_type
 Create Dataset object
 =====================
 
-.. image:: /images/create-object.png
+.. image:: /images/schemes/create-object.png
    :width: 150pt
    :alt: Dataset object scheme
    :align: center
@@ -451,7 +451,7 @@ Returns
 Access data methods
 ===================
 
-.. image:: /images/access-data.png
+.. image:: /images/schemes/access-data.png
    :width: 150pt
    :alt: Dataset object scheme
    :align: center
@@ -522,7 +522,7 @@ Write raster to disk
 to wtite the dataset object to disk using any of the raster formats (GeoTIFF/NetCDF/ASCII), you can use the `to_file`
 method.
 
-.. image:: /images/write-to-disk.png
+.. image:: /images/schemes/write-to-disk.png
    :width: 350pt
    :alt: Dataset object scheme
    :align: center
@@ -588,7 +588,7 @@ NetCDF
 Spatial properties
 ==================
 
-.. image:: /images/spatial-operation.png
+.. image:: /images/schemes/spatial-operation.png
    :width: 150pt
    :alt: Dataset object scheme
    :align: center
@@ -1000,7 +1000,7 @@ To extract the
 Mathmatical operations
 ======================
 
-.. image:: /images/math-operations.png
+.. image:: /images/schemes/math-operations.png
    :width: 150pt
    :alt: Dataset object scheme
    :align: center
