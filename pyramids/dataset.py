@@ -457,7 +457,7 @@ class Dataset:
         Parameters
         ----------
         band : [integer]
-            the band you want to get its data. Default is 0
+            the band you want to get its data, If None the data of all bands will be read. Default is None
 
         Returns
         -------
@@ -593,27 +593,25 @@ class Dataset:
         from cleopatra.array import Array
 
         no_data_value = [np.nan if i is None else i for i in self.no_data_value]
-
-        if band is None:
+        arr = self.read_array(band=band)
+        # if the raster has three bands or more.
+        if self.band_count >= 3:
             if rgb is None:
                 rgb = [3, 2, 1]
             # first make the band index the first band in the rgb list (red band)
             band = rgb[0]
-            exclude_value = (
-                [no_data_value[band], exclude_value]
-                if exclude_value is not None
-                else [no_data_value[band]]
-            )
-
-            band = None
+        # elif self.band_count == 1:
+        #     band = 0
         else:
-            exclude_value = (
-                [self.no_data_value[band], exclude_value]
-                if exclude_value is not None
-                else [self.no_data_value[band]]
-            )
+            if band is None:
+                band = 0
 
-        arr = self.read_array(band=band)
+        exclude_value = (
+            [no_data_value[band], exclude_value]
+            if exclude_value is not None
+            else [no_data_value[band]]
+        )
+
         cleo = Array(
             arr,
             exclude_value=exclude_value,
