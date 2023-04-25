@@ -57,7 +57,7 @@ read_file
     dataset.plot(title="Rhine river basin", ticks_spacing=500,cmap="terrain", color_scale=1, vmin=0,
              cbar_label="Elevation (m)")
 
-.. image:: /images/rhine_dem.png
+.. image:: /images/dataset/rhine_dem.png
    :width: 700pt
    :alt: Rhine river basin
    :align: center
@@ -190,7 +190,7 @@ bounds
 
     dataset.bounds.plot()
 
-.. image:: /images/bounds.png
+.. image:: /images/dataset/bounds.png
    :width: 300pt
    :alt: dataset attributes
    :align: center
@@ -395,7 +395,7 @@ Returns
     Map.plot(src, title="Flow Accumulation")
 
 
-.. image:: /images/flow_accumulation.png
+.. image:: /images/dataset/flow_accumulation.png
    :width: 500pt
 
 dataset_like
@@ -444,7 +444,7 @@ Returns
     Map.plot(dst, title="Flow Accumulation", color_scale=1)
 
 
-.. image:: /images/raster_like.png
+.. image:: /images/dataset/raster_like.png
    :width: 500pt
 
 
@@ -632,7 +632,7 @@ Returns
     New cell size is 100.0
 
 
-.. image:: /images/resample.png
+.. image:: /images/dataset/resample.png
    :width: 500pt
 
 to_crs
@@ -732,7 +732,7 @@ Returns
         ticks_spacing=0.01,
     )
 
-.. image:: /images/before_cropping.png
+.. image:: /images/dataset/before_cropping.png
    :width: 500pt
 
 
@@ -747,7 +747,7 @@ Returns
         ticks_spacing=0.01,
     )
 
-.. image:: /images/cropped_array.png
+.. image:: /images/dataset/cropped_array.png
    :width: 500pt
 
 Crop raster using another raster while preserving the alignment
@@ -762,7 +762,7 @@ Crop raster using another raster while preserving the alignment
     Map.plot(dst_cropped, title="Cropped raster", color_scale=1, ticks_spacing=0.01)
 
 
-.. image:: /images/cropped_aligned_raster.png
+.. image:: /images/dataset/cropped_aligned_raster.png
    :width: 500pt
 
 
@@ -813,7 +813,7 @@ Returns
     Raster EPSG = 32618
     Raster Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 
-.. image:: /images/raster_tobe_cropped.png
+.. image:: /images/dataset/raster_tobe_cropped.png
    :width: 500pt
 
 
@@ -831,7 +831,7 @@ Returns
     resulted EPSG = 32618
     resulted Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 
-.. image:: /images/cropped_raster.png
+.. image:: /images/dataset/cropped_raster.png
    :width: 500pt
 
 
@@ -867,7 +867,7 @@ Returns
     Before alignment EPSG = 3116
     Before alignment Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
 
-.. image:: /images/soil_map.png
+.. image:: /images/dataset/soil_map.png
    :width: 500pt
 
 
@@ -882,7 +882,7 @@ Returns
     After alignment EPSG = 32618
     After alignment Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 
-.. image:: /images/soil_map_aligned.png
+.. image:: /images/dataset/soil_map_aligned.png
    :width: 500pt
 
 
@@ -1042,7 +1042,7 @@ Returns
     dst = Raster.mapAlgebra(src, classify)
     Map.plot(dst, title="Classes", color_scale=4, ticks_spacing=1)
 
-.. image:: /images/map_algebra.png
+.. image:: /images/dataset/map_algebra.png
    :width: 500pt
 
 
@@ -1075,7 +1075,7 @@ Returns
     dst = gdal.Open(path)
     Map.plot(dst, title="Flow Accumulation")
 
-.. image:: /images/raster_fill.png
+.. image:: /images/dataset/raster_fill.png
    :width: 500pt
 
 nearestNeighbour
