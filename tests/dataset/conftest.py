@@ -471,3 +471,8 @@ def int_none_nodatavalue_attr_0_stored() -> gdal.Dataset:
 @pytest.fixture(scope="module")
 def sentinel_classes() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/sentinel-classes.tif")
+
+
+@pytest.fixture(scope="module")
+def noah() -> gdal.Dataset:
+    return gdal.Open("tests/data/geotiff/noah-precipitation-1979.tif")

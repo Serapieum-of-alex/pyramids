@@ -155,6 +155,9 @@ class Dataset:
         """array values."""
         return self.read_array(band=None)
 
+    # @values.setter
+    # def values(self, band, value):
+    #     self._
     @property
     def rows(self) -> int:
         """Number of rows in the raster array."""
@@ -1367,6 +1370,55 @@ class Dataset:
             dst = None  # Flush the dataset to disk
             # print to go around the assigned but never used pre-commit issue
             print(dst)
+
+    def convert_longitude(self, inplace: bool = False):
+        """Convert Longitude.
+
+            - convert the longitude from 0 - 360 to -180 - 180.
+            - currently the function works correctly if the raster covers the whole world, it means that the columns
+            in the rasters covers from longitude 0 to 360.
+
+        Parameters
+        ----------
+        inplace: [bool]
+            True to make the changes in place.
+
+        Returns
+        -------
+        Dataset.
+        """
+        lon = self.lon
+        src = self.raster
+        # create a copy
+        drv = gdal.GetDriverByName("MEM")
+        dst = drv.CreateCopy("", src, 0)
+        # convert the 0 to 360 to -180 to 180
+        if lon[-1] <= 180:
+            raise ValueError("The raster should cover the whole globe")
+
+        first_to_translated = np.where(lon > 180)[0][0]
+
+        ind = list(range(first_to_translated, len(lon)))
+        ind_2 = list(range(0, first_to_translated))
+
+        for band in range(self.band_count):
+            arr = self.read_array(band=band)
+            arr_rearranged = arr[:, ind + ind_2]
+            dst.GetRasterBand(band + 1).WriteArray(arr_rearranged)
+
+        # correct the geotransform
+        pivot_point = self.pivot_point
+        gt = list(self.geotransform)
+        if lon[-1] > 180:
+            new_gt = pivot_point[0] - 180
+            gt[0] = new_gt
+
+        dst.SetGeoTransform(gt)
+
+        if not inplace:
+            return Dataset(dst)
+        else:
+            self.__init__(dst)
 
     def to_polygon(
         self,

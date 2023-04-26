@@ -916,3 +916,19 @@ def test_cluster(rhine_dem: gdal.Dataset, clusters: np.ndarray):
     assert np.array_equal(cluster_array, clusters)
     assert len(position) == 2364
     assert len(values) == 2364
+
+
+class TestNCtoGeoTIFF:
+    def test_convert_0_360_to_180_180_longitude_new_dataset(self, noah: gdal.Dataset):
+        dataset = Dataset(noah)
+        new_dataset = dataset.convert_longitude()
+        lon = new_dataset.lon
+        assert lon.max() < 180
+        assert new_dataset.pivot_point == (-180, 90)
+
+    def test_convert_0_360_to_180_180_longitude_inplace(self, noah: gdal.Dataset):
+        dataset = Dataset(noah)
+        dataset.convert_longitude(inplace=True)
+        lon = dataset.lon
+        assert lon.max() < 180
+        assert dataset.pivot_point == (-180, 90)
