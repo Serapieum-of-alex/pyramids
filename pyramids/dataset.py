@@ -596,10 +596,11 @@ class Dataset:
         arr = self.read_array(band=band)
         # if the raster has three bands or more.
         if self.band_count >= 3:
-            if rgb is None:
-                rgb = [3, 2, 1]
-            # first make the band index the first band in the rgb list (red band)
-            band = rgb[0]
+            if band is None:
+                if rgb is None:
+                    rgb = [3, 2, 1]
+                # first make the band index the first band in the rgb list (red band)
+                band = rgb[0]
         # elif self.band_count == 1:
         #     band = 0
         else:
@@ -618,6 +619,7 @@ class Dataset:
             rgb=rgb,
             surface_reflectance=surface_reflectance,
             cutoff=cutoff,
+            **kwargs,
         )
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
