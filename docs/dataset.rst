@@ -593,6 +593,51 @@ Spatial properties
    :alt: Dataset object scheme
    :align: center
 
+convert_longitude
+-----------------
+- some files (espicially netcdf files) uses longitude values from 0 degrees to 360 degrees, instead of the usual,
+GIS-standard, arrangement of -180 degrees to 180 degrees for longitude centered on the Prime Meridian, and -90 degrees
+to 90 degrees for latitude centered on the Equator. the `convert_longitude` method corrects such behavior.
+
+.. image:: /images/dataset/0-360-longitude-withbase-map.png
+   :width: 600pt
+   :alt: Dataset object scheme
+   :align: center
+
+- read the raster files using the `read_file` and plot it with the `plot` method.
+
+.. code:: py
+
+    dataset = Dataset.read_file(path)
+    fig, ax = dataset.plot(
+        band=0, figsize=(10, 5), title="Noah daily Precipitation 1979-01-01", cbar_label="Raindall mm/day", vmax=30,
+        cbar_length=0.85
+    )
+
+- You cas see how the most left of the map lies the african continent instead of north and south america.
+
+.. image:: /images/dataset/0-360-longitude.png
+   :width: 600pt
+   :alt: Dataset object scheme
+   :align: center
+
+- To correct the values of the longitude you can use the `convert_longitude` as follows.
+
+
+.. code:: py
+
+    new_dataset = dataset.convert_longitude()
+    new_dataset.plot(
+        band=0, figsize=(10, 5), title="Noah daily Precipitation 1979-01-01", cbar_label="Raindall mm/day", vmax=30,
+        cbar_length=0.85
+    )
+
+.. image:: /images/dataset/negative-180-to-180-longitude.png
+   :width: 600pt
+   :alt: Dataset object scheme
+   :align: center
+
+
 resample
 --------
 
