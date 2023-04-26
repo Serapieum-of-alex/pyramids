@@ -106,7 +106,7 @@ class Dataset:
             Variables: {self.variables}
             Number of Bands: {self.band_count}
             Band names: {self.band_names}
-            Dimension: {self.rows * self.columns}
+            Dimension: {self.rows} * {self.columns}
             Mask: {self._no_data_value[0]}
             Data type: {self.dtype[0]}
         """
