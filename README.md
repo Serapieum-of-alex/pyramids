@@ -13,7 +13,8 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/5e3aa4d0acc843d1a91caf33545ecf03)](https://www.codacy.com/gh/Serapieum-of-alex/pyramids/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Serapieum-of-alex/pyramids&amp;utm_campaign=Badge_Grade)
 
 
-![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.io/github/commits-since/mafarrag/pyramids/0.4.1?include_prereleases&style=plastic)
+![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.
+io/github/commits-since/mafarrag/pyramids/0.4.2?include_prereleases&style=plastic)
 ![GitHub last commit](https://img.shields.io/github/last-commit/mafarrag/pyramids)
 
 Current release info
@@ -50,7 +51,7 @@ Installing pyramids
 Installing `pyramids` from the `conda-forge` channel can be achieved by:
 
 ```
-conda install -c conda-forge pyramids=0.4.1
+conda install -c conda-forge pyramids=0.4.2
 ```
 
 It is possible to list all of the versions of `pyramids` available on your platform with:
@@ -68,7 +69,7 @@ pip install git+https://github.com/Serapieum-of-alex/pyramids
 ## pip
 to install the last release you can easly use pip
 ```
-pip install pyramids-gis==0.4.1
+pip install pyramids-gis==0.4.2
 ```
 
 Quick start
