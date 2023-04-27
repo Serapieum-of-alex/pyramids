@@ -27,13 +27,13 @@ Dataset
 - The main purpose of the `Dataset` object is to deal with raster objects, single or multibands, has variables/subsets
     like netcdf file or has one variable like most GeoTIFF files.
 
-.. image:: /images/dataset.png
+.. image:: /images/dataset/dataset.png
    :width: 200pt
    :align: center
 
 - The `Dataset` object data model is as following
 
-.. image:: /images/dataset-alone.png
+.. image:: /images/schemes/dataset-alone.png
    :width: 700pt
    :alt: Dataset object scheme
    :align: center
@@ -57,7 +57,7 @@ read_file
     dataset.plot(title="Rhine river basin", ticks_spacing=500,cmap="terrain", color_scale=1, vmin=0,
              cbar_label="Elevation (m)")
 
-.. image:: /images/rhine_dem.png
+.. image:: /images/dataset/rhine_dem.png
    :width: 700pt
    :alt: Rhine river basin
    :align: center
@@ -92,7 +92,7 @@ Dataset objest attributes
 - The Dataset object has  the following attributes, which enables you to access all the stored data in you raster
     file (GeoTIFF/NetCDF/ASCII)
 
-.. image:: /images/dataset-arrributes.png
+.. image:: /images/schemes/dataset-arrributes.png
    :width: 150pt
    :alt: dataset attributes
    :align: center
@@ -190,7 +190,7 @@ bounds
 
     dataset.bounds.plot()
 
-.. image:: /images/bounds.png
+.. image:: /images/dataset/bounds.png
    :width: 300pt
    :alt: dataset attributes
    :align: center
@@ -354,7 +354,7 @@ driver_type
 Create Dataset object
 =====================
 
-.. image:: /images/create-object.png
+.. image:: /images/schemes/create-object.png
    :width: 150pt
    :alt: Dataset object scheme
    :align: center
@@ -395,7 +395,7 @@ Returns
     Map.plot(src, title="Flow Accumulation")
 
 
-.. image:: /images/flow_accumulation.png
+.. image:: /images/dataset/flow_accumulation.png
    :width: 500pt
 
 dataset_like
@@ -444,14 +444,14 @@ Returns
     Map.plot(dst, title="Flow Accumulation", color_scale=1)
 
 
-.. image:: /images/raster_like.png
+.. image:: /images/dataset/raster_like.png
    :width: 500pt
 
 
 Access data methods
 ===================
 
-.. image:: /images/access-data.png
+.. image:: /images/schemes/access-data.png
    :width: 150pt
    :alt: Dataset object scheme
    :align: center
@@ -522,7 +522,7 @@ Write raster to disk
 to wtite the dataset object to disk using any of the raster formats (GeoTIFF/NetCDF/ASCII), you can use the `to_file`
 method.
 
-.. image:: /images/write-to-disk.png
+.. image:: /images/schemes/write-to-disk.png
    :width: 350pt
    :alt: Dataset object scheme
    :align: center
@@ -588,10 +588,55 @@ NetCDF
 Spatial properties
 ==================
 
-.. image:: /images/spatial-operation.png
+.. image:: /images/schemes/spatial-operation.png
    :width: 150pt
    :alt: Dataset object scheme
    :align: center
+
+convert_longitude
+-----------------
+- some files (espicially netcdf files) uses longitude values from 0 degrees to 360 degrees, instead of the usual,
+GIS-standard, arrangement of -180 degrees to 180 degrees for longitude centered on the Prime Meridian, and -90 degrees
+to 90 degrees for latitude centered on the Equator. the `convert_longitude` method corrects such behavior.
+
+.. image:: /images/dataset/0-360-longitude-withbase-map.png
+   :width: 600pt
+   :alt: Dataset object scheme
+   :align: center
+
+- read the raster files using the `read_file` and plot it with the `plot` method.
+
+.. code:: py
+
+    dataset = Dataset.read_file(path)
+    fig, ax = dataset.plot(
+        band=0, figsize=(10, 5), title="Noah daily Precipitation 1979-01-01", cbar_label="Raindall mm/day", vmax=30,
+        cbar_length=0.85
+    )
+
+- You cas see how the most left of the map lies the african continent instead of north and south america.
+
+.. image:: /images/dataset/0-360-longitude.png
+   :width: 600pt
+   :alt: Dataset object scheme
+   :align: center
+
+- To correct the values of the longitude you can use the `convert_longitude` as follows.
+
+
+.. code:: py
+
+    new_dataset = dataset.convert_longitude()
+    new_dataset.plot(
+        band=0, figsize=(10, 5), title="Noah daily Precipitation 1979-01-01", cbar_label="Raindall mm/day", vmax=30,
+        cbar_length=0.85
+    )
+
+.. image:: /images/dataset/negative-180-to-180-longitude.png
+   :width: 600pt
+   :alt: Dataset object scheme
+   :align: center
+
 
 resample
 --------
@@ -632,7 +677,7 @@ Returns
     New cell size is 100.0
 
 
-.. image:: /images/resample.png
+.. image:: /images/dataset/resample.png
    :width: 500pt
 
 to_crs
@@ -732,7 +777,7 @@ Returns
         ticks_spacing=0.01,
     )
 
-.. image:: /images/before_cropping.png
+.. image:: /images/dataset/before_cropping.png
    :width: 500pt
 
 
@@ -747,7 +792,7 @@ Returns
         ticks_spacing=0.01,
     )
 
-.. image:: /images/cropped_array.png
+.. image:: /images/dataset/cropped_array.png
    :width: 500pt
 
 Crop raster using another raster while preserving the alignment
@@ -762,7 +807,7 @@ Crop raster using another raster while preserving the alignment
     Map.plot(dst_cropped, title="Cropped raster", color_scale=1, ticks_spacing=0.01)
 
 
-.. image:: /images/cropped_aligned_raster.png
+.. image:: /images/dataset/cropped_aligned_raster.png
    :width: 500pt
 
 
@@ -813,7 +858,7 @@ Returns
     Raster EPSG = 32618
     Raster Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 
-.. image:: /images/raster_tobe_cropped.png
+.. image:: /images/dataset/raster_tobe_cropped.png
    :width: 500pt
 
 
@@ -831,7 +876,7 @@ Returns
     resulted EPSG = 32618
     resulted Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 
-.. image:: /images/cropped_raster.png
+.. image:: /images/dataset/cropped_raster.png
    :width: 500pt
 
 
@@ -867,7 +912,7 @@ Returns
     Before alignment EPSG = 3116
     Before alignment Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
 
-.. image:: /images/soil_map.png
+.. image:: /images/dataset/soil_map.png
    :width: 500pt
 
 
@@ -882,7 +927,7 @@ Returns
     After alignment EPSG = 32618
     After alignment Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 
-.. image:: /images/soil_map_aligned.png
+.. image:: /images/dataset/soil_map_aligned.png
    :width: 500pt
 
 
@@ -1000,7 +1045,7 @@ To extract the
 Mathmatical operations
 ======================
 
-.. image:: /images/math-operations.png
+.. image:: /images/schemes/math-operations.png
    :width: 150pt
    :alt: Dataset object scheme
    :align: center
@@ -1042,7 +1087,7 @@ Returns
     dst = Raster.mapAlgebra(src, classify)
     Map.plot(dst, title="Classes", color_scale=4, ticks_spacing=1)
 
-.. image:: /images/map_algebra.png
+.. image:: /images/dataset/map_algebra.png
    :width: 500pt
 
 
@@ -1075,7 +1120,7 @@ Returns
     dst = gdal.Open(path)
     Map.plot(dst, title="Flow Accumulation")
 
-.. image:: /images/raster_fill.png
+.. image:: /images/dataset/raster_fill.png
    :width: 500pt
 
 nearestNeighbour

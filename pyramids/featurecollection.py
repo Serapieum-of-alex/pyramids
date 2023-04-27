@@ -10,7 +10,7 @@ import tempfile
 import uuid
 import shutil
 import warnings
-from typing import List, Tuple, Union, Iterable
+from typing import List, Tuple, Union, Iterable, Any
 
 import geopandas as gpd
 import numpy as np
@@ -263,7 +263,7 @@ class FeatureCollection:
 
     def to_dataset(
         self,
-        cell_size: int = None,
+        cell_size: Any = None,
         dataset=None,
         column_name=None,
     ):
@@ -315,7 +315,7 @@ class FeatureCollection:
         else:
             # if a raster is not given the xmin and ymax will be taken as the top left corner for the rasterized
             # polygon.
-            xmin, ymin, xmax, ymax = self.feature.bounds.values[0]
+            xmin, ymin, xmax, ymax = self.feature.total_bounds
 
         if column_name is None:
             # Use a constant value for all features.

@@ -106,7 +106,7 @@ class Dataset:
             Variables: {self.variables}
             Number of Bands: {self.band_count}
             Band names: {self.band_names}
-            Dimension: {self.rows * self.columns}
+            Dimension: {self.rows} * {self.columns}
             Mask: {self._no_data_value[0]}
             Data type: {self.dtype[0]}
         """
@@ -155,6 +155,9 @@ class Dataset:
         """array values."""
         return self.read_array(band=None)
 
+    # @values.setter
+    # def values(self, band, value):
+    #     self._
     @property
     def rows(self) -> int:
         """Number of rows in the raster array."""
@@ -457,7 +460,7 @@ class Dataset:
         Parameters
         ----------
         band : [integer]
-            the band you want to get its data. Default is 0
+            the band you want to get its data, If None the data of all bands will be read. Default is None
 
         Returns
         -------
@@ -593,33 +596,33 @@ class Dataset:
         from cleopatra.array import Array
 
         no_data_value = [np.nan if i is None else i for i in self.no_data_value]
-
-        if band is None:
-            if rgb is None:
-                rgb = [3, 2, 1]
-            # first make the band index the first band in the rgb list (red band)
-            band = rgb[0]
-            exclude_value = (
-                [no_data_value[band], exclude_value]
-                if exclude_value is not None
-                else [no_data_value[band]]
-            )
-
-            band = None
-        else:
-            exclude_value = (
-                [self.no_data_value[band], exclude_value]
-                if exclude_value is not None
-                else [self.no_data_value[band]]
-            )
-
         arr = self.read_array(band=band)
+        # if the raster has three bands or more.
+        if self.band_count >= 3:
+            if band is None:
+                if rgb is None:
+                    rgb = [3, 2, 1]
+                # first make the band index the first band in the rgb list (red band)
+                band = rgb[0]
+        # elif self.band_count == 1:
+        #     band = 0
+        else:
+            if band is None:
+                band = 0
+
+        exclude_value = (
+            [no_data_value[band], exclude_value]
+            if exclude_value is not None
+            else [no_data_value[band]]
+        )
+
         cleo = Array(
             arr,
             exclude_value=exclude_value,
             rgb=rgb,
             surface_reflectance=surface_reflectance,
             cutoff=cutoff,
+            **kwargs,
         )
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
@@ -1367,6 +1370,55 @@ class Dataset:
             dst = None  # Flush the dataset to disk
             # print to go around the assigned but never used pre-commit issue
             print(dst)
+
+    def convert_longitude(self, inplace: bool = False):
+        """Convert Longitude.
+
+            - convert the longitude from 0 - 360 to -180 - 180.
+            - currently the function works correctly if the raster covers the whole world, it means that the columns
+            in the rasters covers from longitude 0 to 360.
+
+        Parameters
+        ----------
+        inplace: [bool]
+            True to make the changes in place.
+
+        Returns
+        -------
+        Dataset.
+        """
+        lon = self.lon
+        src = self.raster
+        # create a copy
+        drv = gdal.GetDriverByName("MEM")
+        dst = drv.CreateCopy("", src, 0)
+        # convert the 0 to 360 to -180 to 180
+        if lon[-1] <= 180:
+            raise ValueError("The raster should cover the whole globe")
+
+        first_to_translated = np.where(lon > 180)[0][0]
+
+        ind = list(range(first_to_translated, len(lon)))
+        ind_2 = list(range(0, first_to_translated))
+
+        for band in range(self.band_count):
+            arr = self.read_array(band=band)
+            arr_rearranged = arr[:, ind + ind_2]
+            dst.GetRasterBand(band + 1).WriteArray(arr_rearranged)
+
+        # correct the geotransform
+        pivot_point = self.pivot_point
+        gt = list(self.geotransform)
+        if lon[-1] > 180:
+            new_gt = pivot_point[0] - 180
+            gt[0] = new_gt
+
+        dst.SetGeoTransform(gt)
+
+        if not inplace:
+            return Dataset(dst)
+        else:
+            self.__init__(dst)
 
     def to_polygon(
         self,

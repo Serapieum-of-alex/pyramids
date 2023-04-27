@@ -72,3 +72,10 @@ History
 * restructure the no_data_value related functions.
 * plot function can plot rgb imagr for multi-band rasters.
 * to_file detect the driver type from the extension in the path.
+
+0.4.2 (2023-04-27)
+------------------
+* fix bug in plotting dataset without specifying the band
+* fix bug in passing ot not passing band index in case of multi band rasters
+* change the bounds in to_dataset method to total_bounds tp get the bbox of the whole geometries in the gdf
+* add convert_longitude method to convert longitude to range between -180 and 180
