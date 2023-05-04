@@ -32,11 +32,6 @@ def nan_raster() -> Dataset:
 
 
 @pytest.fixture(scope="session")
-def polygonized_raster_path() -> str:
-    return "tests/data/polygonized.geojson"
-
-
-@pytest.fixture(scope="session")
 def vector_mask_path() -> str:
     return "tests/data/mask.geojson"
 

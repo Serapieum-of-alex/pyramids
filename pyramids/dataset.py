@@ -1424,51 +1424,36 @@ class Dataset:
         self,
         band: int = 0,
         col_name: Any = "id",
-        path: str = None,
-        driver: str = "memory",
     ) -> Union[GeoDataFrame, None]:
-        """polygonize.
+        """to_polygon.
 
-            RasterToPolygon takes a gdal Datacube object and group neighboring cells with the same value into one
+            dataset to polygon takes a gdal Datacube object and group neighboring cells with the same value into one
             polygon, the resulted vector will be saved to disk as a geojson file
 
         Parameters
         ----------
         band: [int]
             raster band index [1,2,3,..]
-        path:[str]
-            path where you want to save the polygon, the path should include the extension at the end
-            (i.e. path/vector_name.geojson)
         col_name:
             name of the column where the raster data will be stored.
-        driver: [str]
-            vector driver, for all possible drivers check https://gdal.org/drivers/vector/index.html .
-            Default is "GeoJSON".
 
         Returns
         -------
-        None
+        GeoDataFrame
         """
         band = self.raster.GetRasterBand(band + 1)
         srs = osr.SpatialReference(wkt=self.crs)
-        if path is None:
-            dst_layername = "id"
-        else:
-            dst_layername = path.split(".")[0].split("/")[-1]
 
-        dst_ds = FeatureCollection.create_ds(driver, path)
-        dst_layer = dst_ds.CreateLayer(dst_layername, srs=srs)
+        dst_ds = FeatureCollection.create_ds("memory")
+        dst_layer = dst_ds.CreateLayer(col_name, srs=srs)
         dtype = gdal_to_ogr_dtype(self.raster)
         newField = ogr.FieldDefn(col_name, dtype)
         dst_layer.CreateField(newField)
         gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
-        if path:
-            dst_layer = None
-            dst_ds = None
-        else:
-            vector = FeatureCollection(dst_ds)
-            gdf = vector._ds_to_gdf()
-            return gdf
+
+        vector = FeatureCollection(dst_ds)
+        gdf = vector._ds_to_gdf()
+        return gdf
 
     def to_geodataframe(
         self,
@@ -1791,6 +1776,7 @@ class Dataset:
         to_epsg: int,
         method: str = "nearest neibour",
         maintain_alighment: int = False,
+        inplace: bool = False,
     ):
         """to_epsg.
 
@@ -1809,17 +1795,19 @@ class Dataset:
             "bilinear" for bilinear
         maintain_alighment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
+        inplace: [bool]
+            True to make changes inplace. Default is False.
 
         Returns
         -------
-        raster:
-            gdal dataset (you can read it by ReadAsArray)
+        Dataset:
+            Dataset object, if inplace is true the method returns None.
 
         Examples
         --------
         >>> from pyramids.dataset import Dataset
-        >>> src = Dataset.read_file("path/raster_name.tif")
-        >>> projected_raster = src.to_crs(to_epsg=3857)
+        >>> dataset = Dataset.read_file("path/raster_name.tif")
+        >>> reprojected_dataset = dataset.to_crs(to_epsg=3857)
         """
         if not isinstance(to_epsg, int):
             raise TypeError(
@@ -1843,7 +1831,10 @@ class Dataset:
             dst = gdal.Warp("", self.raster, dstSRS=f"EPSG:{to_epsg}", format="VRT")
             dst_obj = Dataset(dst)
 
-        return dst_obj
+        if inplace:
+            self.__init__(dst_obj.raster)
+        else:
+            return dst_obj
 
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neibour"
