@@ -134,7 +134,7 @@ def point_gdf() -> GeoDataFrame:
 
 @pytest.fixture(scope="module")
 def one_compressed_file_gzip() -> str:
-    return "tests/data/one_compressed_file.gz"
+    return "tests/data/virtual-file-system/one_compressed_file.gz"
 
 
 @pytest.fixture(scope="module")
@@ -144,7 +144,7 @@ def unzip_gzip_file_name() -> str:
 
 @pytest.fixture(scope="module")
 def multiple_compressed_file_gzip() -> str:
-    return "tests/data/multiple_compressed_files.gz"
+    return "tests/data/virtual-file-system/multiple_compressed_files.gz"
 
 
 @pytest.fixture(scope="module")
@@ -154,12 +154,12 @@ def multiple_compressed_file_gzip_content() -> List[str]:
 
 @pytest.fixture(scope="module")
 def one_compressed_file_zip() -> str:
-    return "tests/data/one_compressed_file.zip"
+    return "tests/data/virtual-file-system/one_compressed_file.zip"
 
 
 @pytest.fixture(scope="module")
 def multiple_compressed_file_zip() -> str:
-    return "tests/data/multiple_compressed_files.zip"
+    return "tests/data/virtual-file-system/multiple_compressed_files.zip"
 
 
 @pytest.fixture(scope="module")
@@ -169,22 +169,22 @@ def multiple_compressed_file_zip_content() -> List[str]:
 
 @pytest.fixture(scope="module")
 def multiple_compressed_file_7z() -> str:
-    return "tests/data/multiple_compressed_files.7z"
+    return "tests/data/virtual-file-system/multiple_compressed_files.7z"
 
 
 @pytest.fixture(scope="module")
 def multiple_compressed_file_tar() -> str:
-    return "tests/data/multiple_compressed_files.tar"
+    return "tests/data/virtual-file-system/multiple_compressed_files.tar"
 
 
 @pytest.fixture(scope="module")
 def one_compressed_file_7z() -> str:
-    return "tests/data/one_compressed_file.7z"
+    return "tests/data/virtual-file-system/one_compressed_file.7z"
 
 
 @pytest.fixture(scope="module")
 def one_compressed_file_tar() -> str:
-    return "tests/data/one_compressed_file.tar"
+    return "tests/data/virtual-file-system/one_compressed_file.tar"
 
 
 @pytest.fixture(scope="module")
