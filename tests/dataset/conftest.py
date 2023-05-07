@@ -87,11 +87,6 @@ def multi_band() -> Dataset:
 
 
 @pytest.fixture(scope="module")
-def nc_path() -> str:
-    return "examples/data/MSWEP_1979010100.nc"
-
-
-@pytest.fixture(scope="module")
 def src_arr(src: Dataset) -> np.ndarray:
     return src.ReadAsArray()
 

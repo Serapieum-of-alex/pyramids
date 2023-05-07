@@ -59,9 +59,6 @@ class TestCreateDataCube:
         assert dataset.base.rows == rasters_folder_dim[0]
         assert dataset.base.columns == rasters_folder_dim[1]
 
-    # def test_from_netcdf(nc_path: str):
-    #     Datacube.readNC(nc_path, "", separator="_")
-
 
 class TestAscii:
     def test_read_all_without_order(
