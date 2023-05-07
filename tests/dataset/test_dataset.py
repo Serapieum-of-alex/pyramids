@@ -699,28 +699,31 @@ class TestCropWithPolygon:
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
 
-class TestToPolygon:
+class TestCluster2:
     """Tect converting raster to polygon."""
 
-    # def test_save_polygon_to_disk(
-    #     self, test_image: gdal.Dataset, polygonized_raster_path: str
-    # ):
-    #     im_obj = Dataset(test_image)
-    #     im_obj.to_polygon(path=polygonized_raster_path) #, driver="GeoJSON"
-    #     assert os.path.exists(polygonized_raster_path)
-    #     gdf = gpd.read_file(polygonized_raster_path)
-    #     assert len(gdf) == 4
-    #     assert all(gdf.geometry.geom_type == "Polygon")
-    #     os.remove(polygonized_raster_path)
-
-    def test_save_polygon_to_memory(
+    def test_single_band(
         self,
         test_image: gdal.Dataset,
     ):
         dataset = Dataset(test_image)
-        gdf = dataset.to_polygon()
+        gdf = dataset.cluster2()
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == 4
+        assert all(gdf.columns == ["GPP", "geometry"])
+        assert all(gdf.geometry.geom_type == "Polygon")
+
+    def test_multi_band_all_bands(
+        self,
+        sentinel_raster: gdal.Dataset,
+    ):
+        dataset = Dataset(sentinel_raster)
+        gdf = dataset.cluster2()
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == 1767
+        assert all(
+            elem in gdf.columns for elem in [dataset.band_names[0]] + ["geometry"]
+        )
         assert all(gdf.geometry.geom_type == "Polygon")
 
 
@@ -860,11 +863,11 @@ class TestFootPrint:
     def test_raster_full_of_data(self, test_image: Dataset):
         dataset = Dataset(test_image)
         extent = dataset.footprint()
-        extent.to_file("tests/data/extent1.geojson")
+        # extent.to_file("tests/data/extent1.geojson")
         # extent column should have one class only
-        assert len(set(extent["id"])) == 1
+        assert len(set(extent[dataset.band_names[0]])) == 1
         # the class should be 2
-        assert list(set(extent["id"]))[0] == 2
+        assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
     @pytest.mark.fast
     def test_max_depth_raster(self, footprint_test: Dataset, replace_values: List):
@@ -872,9 +875,9 @@ class TestFootPrint:
         extent = dataset.footprint(exclude_values=replace_values)
 
         # extent column should have one class only
-        assert len(set(extent["id"])) == 1
+        assert len(set(extent[dataset.band_names[0]])) == 1
         # the class should be 2
-        assert list(set(extent["id"]))[0] == 2
+        assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
     @pytest.mark.fast
     def test_raster_full_of_no_data_value(
@@ -892,9 +895,9 @@ class TestFootPrint:
         # modis nodatavalue is gdal object is different than the array
         extent = dataset.footprint(exclude_values=replace_values)
         # extent column should have one class only
-        assert len(set(extent["id"])) == 1
+        assert len(set(extent[dataset.band_names[0]])) == 1
         # the class should be 2
-        assert list(set(extent["id"]))[0] == 2
+        assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
     @pytest.mark.fast
     def test_ear5_one_band_no_no_data_value_in_raster(
@@ -903,9 +906,9 @@ class TestFootPrint:
         dataset = Dataset(era5_image)
         extent = dataset.footprint(exclude_values=replace_values)
         # extent column should have one class only
-        assert len(set(extent["id"])) == 1
+        assert len(set(extent[dataset.band_names[0]])) == 1
         # the class should be 2
-        assert list(set(extent["id"]))[0] == 2
+        assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
 
 def test_cluster(rhine_dem: gdal.Dataset, clusters: np.ndarray):

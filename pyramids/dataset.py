@@ -1420,27 +1420,7 @@ class Dataset:
         else:
             self.__init__(dst)
 
-    def to_polygon(
-        self,
-        band: int = 0,
-        col_name: Any = "id",
-    ) -> Union[GeoDataFrame, None]:
-        """to_polygon.
-
-            dataset to polygon takes a gdal Datacube object and group neighboring cells with the same value into one
-            polygon, the resulted vector will be saved to disk as a geojson file
-
-        Parameters
-        ----------
-        band: [int]
-            raster band index [1,2,3,..]
-        col_name:
-            name of the column where the raster data will be stored.
-
-        Returns
-        -------
-        GeoDataFrame
-        """
+    def _band_to_polygon(self, band: int, col_name: str):
         band = self.raster.GetRasterBand(band + 1)
         srs = osr.SpatialReference(wkt=self.crs)
 
@@ -1846,8 +1826,6 @@ class Dataset:
         src_sr = osr.SpatialReference(wkt=self.crs)
         src_epsg = self.epsg
 
-        ### distination raster
-        # spatial ref
         dst_sr = self._create_sr_from_epsg(to_epsg)
 
         # in case the source crs is GCS and longitude is in the west hemisphere gdal
@@ -2614,8 +2592,9 @@ class Dataset:
         new_dataset = self.create_from_array(
             arr, self.geotransform, self.epsg, self.no_data_value
         )
-        # then convert the rasater into polygon
-        gdf = new_dataset.to_polygon(band=band)
+        # then convert the raster into polygon
+        gdf = new_dataset.cluster2(band=band)
+        gdf.rename(columns={"Band_1": self.band_names[band]}, inplace=True)
 
         return gdf
 
@@ -2909,6 +2888,32 @@ class Dataset:
                     count = count + 1
 
         return cluster, count, position, values
+
+    def cluster2(
+        self,
+        band: Union[int, List[int]] = None,
+    ) -> GeoDataFrame:
+        """to_polygon.
+
+            - to_polygon creates vector polygons for all connected regions of pixels in the raster sharing a common
+            pixel value (group neighboring cells with the same value into one polygon).
+
+        Parameters
+        ----------
+        band: [int]
+            raster band index 0, 1, 2, 3,..
+
+        Returns
+        -------
+        GeoDataFrame
+        """
+        if band is None:
+            band = 0
+
+        name = self.band_names[band]
+        gdf = self._band_to_polygon(band, name)
+
+        return gdf
 
     def listAttributes(self):
         """Print Attributes List."""
