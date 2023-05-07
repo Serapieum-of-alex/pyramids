@@ -194,9 +194,9 @@ def replace_values() -> List:
 
 @pytest.fixture(scope="module")
 def modis_surf_temp() -> gdal.Dataset:
-    return gdal.Open("tests/data/extract_extent_modis_surftemp.tif")
+    return gdal.Open("tests/data/geotiff/modis_surftemp.tif")
 
 
 @pytest.fixture(scope="module")
 def era5_image() -> gdal.Dataset:
-    return gdal.Open("tests/data/extract_extent_era5_land_monthly_averaged_data.tif")
+    return gdal.Open("tests/data/geotiff/era5_land_monthly_averaged.tif")
