@@ -391,7 +391,7 @@ def merge_output() -> str:
 
 
 @pytest.fixture(scope="module")
-def match_alignment_dataset() -> str:
+def match_alignment_datacube() -> str:
     return "tests/data/match-align-dataset"
 
 

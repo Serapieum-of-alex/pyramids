@@ -179,10 +179,10 @@ class TestReproject:
 
 
 def test_match_alignment(
-    match_alignment_dataset: str,
+    match_alignment_datacube,
     src: Datacube,
 ):
-    dataset = Datacube.read_separate_files(match_alignment_dataset, with_order=False)
+    dataset = Datacube.read_separate_files(match_alignment_datacube, with_order=False)
     dataset.read_dataset()
     mask_obj = Dataset(src)
     dataset.align(mask_obj)
