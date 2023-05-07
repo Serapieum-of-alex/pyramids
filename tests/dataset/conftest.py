@@ -280,7 +280,7 @@ def aligned_raster_arr(aligned_raster) -> np.ndarray:
 
 @pytest.fixture(scope="module")
 def crop_aligned_folder_path() -> str:
-    return "examples/data/aligned_rasters/"
+    return "examples/data/geotiff/aligned_rasters/"
 
 
 @pytest.fixture(scope="module")
