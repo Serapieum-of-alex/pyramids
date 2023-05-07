@@ -295,7 +295,7 @@ def crop_saveto() -> str:
 
 @pytest.fixture(scope="module")
 def rasters_folder_path() -> str:
-    return "tests/data/raster-folder"
+    return "tests/data/geotiff/raster-folder"
 
 
 @pytest.fixture(scope="module")
@@ -305,7 +305,7 @@ def rhine_raster(rasters_folder_path: str) -> Dataset:
 
 @pytest.fixture(scope="module")
 def ascii_folder_path() -> str:
-    return "tests/data/ascii-folder"
+    return "tests/data/ascii/ascii-folder"
 
 
 @pytest.fixture(scope="module")
