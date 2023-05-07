@@ -765,8 +765,8 @@ class TestToFeatureCollection:
         vector_mask_gdf: geodataframe for the vector mask
         rasterized_mask_values: array for comparison
         """
-        src = Dataset(raster_to_df_dataset)
-        gdf = src.to_feature_collection(vector_mask_gdf, add_geometry="Point")
+        dataset = Dataset(raster_to_df_dataset)
+        gdf = dataset.to_feature_collection(vector_mask_gdf, add_geometry="Point")
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == len(rasterized_mask_values)
         assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
