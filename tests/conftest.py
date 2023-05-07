@@ -58,12 +58,17 @@ def rasterized_mask_values() -> np.ndarray:
 
 @pytest.fixture(scope="session")
 def raster_to_df_path() -> str:
-    return "tests/data/raster_to_df.tif"
+    return "tests/data/geotiff/raster_to_df_full_of_data.tif"
 
 
 @pytest.fixture(scope="session")
 def raster_to_df_dataset(raster_to_df_path: str) -> Dataset:
     return gdal.Open(raster_to_df_path)
+
+
+@pytest.fixture(scope="session")
+def raster_to_df_dataset_with_cropped_cell() -> Dataset:
+    return gdal.Open("tests/data/geotiff/raster_to_gdf_with_cropped_cells.tif")
 
 
 @pytest.fixture(scope="session")
