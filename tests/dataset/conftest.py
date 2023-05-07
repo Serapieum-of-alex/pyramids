@@ -355,12 +355,12 @@ def basin_polygon() -> gpd.GeoDataFrame:
 
 @pytest.fixture(scope="module")
 def ascii_file_path() -> str:
-    return "tests/data/asci_example.asc"
+    return "tests/data/ascii/asci_example.asc"
 
 
 @pytest.fixture(scope="module")
 def ascii_without_projection() -> str:
-    return "tests/data/asci_without_projection.asc"
+    return "tests/data/ascii/asci_without_projection.asc"
 
 
 @pytest.fixture(scope="module")
