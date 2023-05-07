@@ -100,44 +100,44 @@ class Dataset:
 
     def __str__(self):
         message = f"""
-            File: {self.file_name}
             Cell size: {self.cell_size}
+            Dimension: {self.rows} * {self.columns}
             EPSG: {self.epsg}
-            Variables: {self.variables}
             Number of Bands: {self.band_count}
             Band names: {self.band_names}
-            Dimension: {self.rows} * {self.columns}
+            Variables: {self.variables}
             Mask: {self._no_data_value[0]}
             Data type: {self.dtype[0]}
+            File: {self.file_name}
         """
         return message
 
     def __repr__(self):
         message = """
-            File: {0}
-            Cell size: {1}
-            EPSG: {2}
-            Variables: {3}
+            Cell size: {0}
+            Dimension: {1} * {2}
+            EPSG: {3}
             Number of Bands: {4}
             Band names: {5}
-            Dimension: {6} * {7}
-            Mask: {8}
-            Data type: {9}
-            projection: {10}
-            Metadata: {11}
+            Variables: {6}
+            Mask: {7}
+            Data type: {8}
+            projection: {9}
+            Metadata: {10}
+            File: {11}
         """.format(
-            self.file_name,
             self.cell_size,
-            self.epsg,
-            self.variables,
-            self.band_count,
-            self.band_names,
             self.rows,
             self.columns,
+            self.epsg,
+            self.band_count,
+            self.band_names,
+            self.variables,
             self._no_data_value[0],
             self.dtype[0],
             self.crs,
             self.meta_data,
+            self.file_name,
         )
         return message
 
@@ -1173,7 +1173,10 @@ class Dataset:
         for band in range(self.band_count):
             arr = self.read_array(band)
             try:
-                arr[np.isclose(arr, old_value, rtol=0.001)] = new_value[band]
+                if old_value is not None:
+                    arr[np.isclose(arr, old_value, rtol=0.001)] = new_value[band]
+                else:
+                    arr[np.isnan(arr)] = new_value[band]
             except TypeError:
                 raise NoDataValueError(
                     f"The dtype of the given no_data_value: {new_value[band]} differs from the dtype of the "
@@ -1435,14 +1438,14 @@ class Dataset:
         gdf = vector._ds_to_gdf()
         return gdf
 
-    def to_geodataframe(
+    def to_feature_collection(
         self,
         vector_mask: Union[str, GeoDataFrame] = None,
         add_geometry: str = None,
         tile: bool = False,
         tile_size: int = 1500,
     ) -> Union[DataFrame, GeoDataFrame]:
-        """Convert a raster to a GeoDataFrame.
+        """Convert a raster to a vector.
 
             The function do the following
             - Flatten the array in each band in the raster then mask the values if a vector_mask
@@ -1565,6 +1568,9 @@ class Dataset:
                 arr = self.raster.ReadAsArray()
                 pixels = arr.flatten()
                 out_df = pd.DataFrame(pixels, columns=band_names)
+                # mask no data values.
+                out_df.replace(self.no_data_value[0], np.nan, inplace=True)
+                out_df.dropna(axis=0, inplace=True, ignore_index=True)
 
             if add_geometry:
                 if add_geometry.lower() == "point":
@@ -1575,8 +1581,6 @@ class Dataset:
         out_df = out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
         if add_geometry:
             out_df = gpd.GeoDataFrame(out_df, geometry=coords["geometry"])
-
-        # TODO mask no data values.
 
         # Remove temporary files.
         if temp_dir is not None:

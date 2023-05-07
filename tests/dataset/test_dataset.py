@@ -727,8 +727,8 @@ class TestCluster2:
         assert all(gdf.geometry.geom_type == "Polygon")
 
 
-class TestToDataFrame:
-    def test_dataframe_without_mask(
+class TestToFeatureCollection:
+    def test_without_mask(
         self, raster_to_df_dataset: gdal.Dataset, raster_to_df_arr: np.ndarray
     ):
         """the input raster is given as a string path on disk.
@@ -739,7 +739,7 @@ class TestToDataFrame:
         raster_to_df_arr: array for comparison
         """
         src = Dataset(raster_to_df_dataset)
-        gdf = src.to_geodataframe(add_geometry="Point")
+        gdf = src.to_feature_collection(add_geometry="Point")
         assert isinstance(gdf, GeoDataFrame)
         rows, cols = raster_to_df_arr.shape
         # get values and reshape arrays for comparison
@@ -751,7 +751,7 @@ class TestToDataFrame:
             "values in the array"
         )
 
-    def test_to_dataframe_with_gdf_mask(
+    def test_with_gdf_mask(
         self,
         raster_to_df_dataset: gdal.Dataset,
         vector_mask_gdf: GeoDataFrame,
@@ -766,13 +766,46 @@ class TestToDataFrame:
         rasterized_mask_values: array for comparison
         """
         src = Dataset(raster_to_df_dataset)
-        gdf = src.to_geodataframe(vector_mask_gdf, add_geometry="Point")
+        gdf = src.to_feature_collection(vector_mask_gdf, add_geometry="Point")
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == len(rasterized_mask_values)
         assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
             "the extracted values in the dataframe "
             "does not "
             "equa the real "
+            "values in the array"
+        )
+
+    def test_without_mask_cropped_raster(
+        self,
+        raster_to_df_dataset_with_cropped_cell: gdal.Dataset,
+        raster_to_df_arr: np.ndarray,
+    ):
+        """the input raster is given as a string path on disk.
+
+        Parameters
+        ----------
+        raster_to_df_arr: array for comparison
+        """
+        dataset = Dataset(raster_to_df_dataset_with_cropped_cell)
+        gdf = dataset.to_feature_collection(add_geometry="Point")
+        assert isinstance(gdf, GeoDataFrame)
+        # rows, cols = raster_to_df_arr.shape
+        # get values and reshape arrays for comparison
+        arr_flatten = (
+            list(range(47, 54))
+            + list(range(60, 68))
+            + list(range(74, 82))
+            + list(range(87, 96))
+            + list(range(101, 110))
+            + list(range(115, 124))
+            + list(range(129, 138))
+        )
+        arr_flatten = np.array(arr_flatten)
+        extracted_values = gdf.loc[:, gdf.columns[0]].values
+        # extracted_values = extracted_values.reshape(arr_flatten.shape)
+        assert np.array_equal(extracted_values, arr_flatten), (
+            "the extracted values in the dataframe does not equa the real "
             "values in the array"
         )
 
