@@ -381,13 +381,13 @@ def ascii_geotransform() -> tuple:
 @pytest.fixture(scope="module")
 def merge_input_raster() -> List[str]:
     search_criteria = "splitted-raster*.tif"
-    path = "tests/data/merge"
+    path = "tests/data/geotiff/merge"
     return glob.glob(os.path.join(path, search_criteria))
 
 
 @pytest.fixture(scope="module")
 def merge_output() -> str:
-    return r"tests/data/merge/merged_raster.tif"
+    return r"tests/data/geotiff/merge/merged_raster.tif"
 
 
 @pytest.fixture(scope="module")
