@@ -200,3 +200,13 @@ def modis_surf_temp() -> gdal.Dataset:
 @pytest.fixture(scope="module")
 def era5_image() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/era5_land_monthly_averaged.tif")
+
+
+@pytest.fixture(scope="module")
+def era5_image_gdf() -> GeoDataFrame:
+    return gpd.read_file("tests/data/geotiff/era5_land_monthly_averaged.geojson")
+
+
+@pytest.fixture(scope="module")
+def era5_mask() -> GeoDataFrame:
+    return gpd.read_file("tests/data/geotiff/era5-mask.geojson")

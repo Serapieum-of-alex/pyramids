@@ -1238,7 +1238,7 @@ class Dataset:
                 )
 
         # data in the array
-        no_val = self.no_data_value[0]
+        no_val = self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
         arr = self.read_array(band=0)
         if mask is not None and no_val not in arr:
             logger.warning(
@@ -1440,7 +1440,7 @@ class Dataset:
 
     def to_feature_collection(
         self,
-        vector_mask: Union[str, GeoDataFrame] = None,
+        vector_mask: GeoDataFrame = None,
         add_geometry: str = None,
         tile: bool = False,
         tile_size: int = 1500,
@@ -1459,8 +1459,8 @@ class Dataset:
 
         Parameters
         ----------
-        vector_mask : Optional[GeoDataFrame/str]
-            GeoDataFrame for the vector_mask file path to vector_mask file. If given, it will be used to clip the raster
+        vector_mask : Optional[GeoDataFrame]
+            GeoDataFrame for the vector_mask. If given, it will be used to clip the raster
         add_geometry: [str]
             "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
             Default is None.
@@ -1507,10 +1507,9 @@ class Dataset:
             vector.feature.to_file(new_vector_path, driver="GeoJSON")
 
             # rasterize the vector by burning the unique values as cell values.
-            # rasterized_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.tif")
             rasterized_vector = vector.to_dataset(
                 dataset=self, column_name="burn_value"
-            )  # rasterized_vector_path,
+            )
             if add_geometry:
                 if add_geometry.lower() == "point":
                     coords = rasterized_vector.get_cell_points(mask=True)
@@ -1546,7 +1545,7 @@ class Dataset:
                 )
 
             # Merge all the tiles.
-            out_df = pd.concat(df_list)
+            df = pd.concat(df_list)
         else:
             if tile:
                 df_list = []  # DataFrames of each tile.
@@ -1562,15 +1561,23 @@ class Dataset:
                     df_list.append(pd.DataFrame(pixels, columns=band_names))
 
                 # Merge all the tiles.
-                out_df = pd.concat(df_list)
+                df = pd.concat(df_list)
             else:
                 # Warning: not checked yet for multi bands
                 arr = self.raster.ReadAsArray()
-                pixels = arr.flatten()
-                out_df = pd.DataFrame(pixels, columns=band_names)
+                if self.band_count == 1:
+                    pixels = arr.flatten()
+                else:
+                    pixels = (
+                        arr.flatten()
+                        .reshape(self.band_count, self.columns * self.rows)
+                        .transpose()
+                    )
+                df = pd.DataFrame(pixels, columns=band_names)
                 # mask no data values.
-                out_df.replace(self.no_data_value[0], np.nan, inplace=True)
-                out_df.dropna(axis=0, inplace=True, ignore_index=True)
+                if self.no_data_value[0] is not None:
+                    df.replace(self.no_data_value[0], np.nan, inplace=True)
+                df.dropna(axis=0, inplace=True, ignore_index=True)
 
             if add_geometry:
                 if add_geometry.lower() == "point":
@@ -1578,16 +1585,16 @@ class Dataset:
                 else:
                     coords = self.get_cell_polygons(mask=True)
 
-        out_df = out_df.drop(columns=["burn_value", "geometry"], errors="ignore")
+        df = df.drop(columns=["burn_value", "geometry"], errors="ignore")
         if add_geometry:
-            out_df = gpd.GeoDataFrame(out_df, geometry=coords["geometry"])
+            df = gpd.GeoDataFrame(df, geometry=coords["geometry"])
 
         # Remove temporary files.
         if temp_dir is not None:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
         # Return dropping any extra cols.
-        return out_df
+        return df
 
     def apply(self, fun, band: int = 0):
         """mapAlgebra.

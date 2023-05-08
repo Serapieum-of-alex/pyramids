@@ -394,6 +394,15 @@ class TestGetCellCoordsAndCreateCellGeometry:
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
 
+    def test_create_cell_points_no_data_value_is_None(
+        self, era5_image: gdal.Dataset, src_shape: Tuple, src_epsg: int
+    ):
+        src = Dataset(era5_image)
+        gdf = src.get_cell_points(mask=True)
+        # check the size
+        assert len(gdf) == 5
+        assert gdf.crs.to_epsg() == 4326
+
     # TODO: create a tesk using a mask
 
 
@@ -751,6 +760,30 @@ class TestToFeatureCollection:
             "values in the array"
         )
 
+    def test_without_mask_multi_band(
+        self, era5_image: gdal.Dataset, era5_image_gdf: GeoDataFrame
+    ):
+        """the input raster is given as a string path on disk."""
+        dataset = Dataset(era5_image)
+        gdf = dataset.to_feature_collection(add_geometry="Point")
+        assert isinstance(gdf, GeoDataFrame)
+        assert gdf.equals(era5_image_gdf), (
+            "the extracted values in the dataframe does not equa the real "
+            "values in the array"
+        )
+
+    # def test_without_mask_multi_band_with_mask(
+    #     self, era5_image: gdal.Dataset, era5_image_gdf: GeoDataFrame, era5_mask: GeoDataFrame
+    # ):
+    #     """the input raster is given as a string path on disk."""
+    #     dataset = Dataset(era5_image)
+    #     gdf = dataset.to_feature_collection(add_geometry="Point", vector_mask=era5_mask)
+    #     assert isinstance(gdf, GeoDataFrame)
+    #     assert gdf.equals(era5_image_gdf), (
+    #         "the extracted values in the dataframe does not equa the real "
+    #         "values in the array"
+    #     )
+
     def test_with_gdf_mask(
         self,
         raster_to_df_dataset: gdal.Dataset,
@@ -933,7 +966,7 @@ class TestFootPrint:
         assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
     @pytest.mark.fast
-    def test_ear5_one_band_no_no_data_value_in_raster(
+    def test_era5_one_band_no_no_data_value_in_raster(
         self, era5_image: gdal.Dataset, replace_values: List
     ):
         dataset = Dataset(era5_image)
