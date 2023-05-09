@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import ogr
+from osgeo import ogr, gdal
 from osgeo.gdal import Dataset
 from osgeo.ogr import DataSource
 from shapely.geometry.polygon import Polygon
@@ -148,16 +148,18 @@ class TestCreatePoint:
         assert len(point_list) == len(coordinates)
 
 
-class TestToRaster:
-    def test_with_raster_obj(
+class TestToDataset:
+    def test_with_dataset_single_band(
         self,
         vector_mask_gdf: GeoDataFrame,
         raster_to_df_path: str,
     ):
         """Geodataframe input polygon.
 
-            - The inputs to the function are in disk,
-            - The output will be returned as gdal.Datacube.
+            test convert a vector to a raster using a dataset as a parameter
+            - both the vector and the raster shares the same pivot point, the vector locates in the top left
+            corner of the raster, the vector covers only the top left corner, and not the whole raster.
+            - the raster is a single band.
 
         Parameters
         ----------
@@ -175,6 +177,23 @@ class TestToRaster:
         arr = src.read_array()
         values = arr[arr[:, :] == 1.0]
         assert values.shape[0] == 16
+
+    def test_with_dataset_multi_band(
+        self, era5_image: gdal.Dataset, era5_mask: GeoDataFrame
+    ):
+        """Geodataframe input polygon."""
+        dataset = Dataset(era5_image)
+        vector = FeatureCollection(era5_mask)
+        src = vector.to_dataset(dataset=dataset)  # cell_size=0.089
+        # assert src.epsg == era5_mask.crs.to_epsg()
+        #
+        # xmin, _, _, ymax, _, _ = dataset.geotransform
+        # assert src.geotransform[0] == xmin
+        # assert src.geotransform[3] == ymax
+        # assert src.cell_size == 4000
+        # arr = src.read_array()
+        # values = arr[arr[:, :] == 1.0]
+        # assert values.shape[0] == 16
 
     def test_with_cell_size_inout(
         self,
