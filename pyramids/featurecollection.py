@@ -107,6 +107,22 @@ class FeatureCollection:
 
         return names
 
+    @property
+    def column(self) -> List:
+        """Column Names"""
+        names = []
+        if isinstance(self.feature, DataSource):
+            for i in range(self.layers_count):
+                layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
+                cols = layer_dfn.GetFieldCount()
+                names = names + [
+                    layer_dfn.GetFieldDefn(j).GetName() for j in range(cols)
+                ]
+            names = names + ["geometry"]
+        else:
+            names = self.feature.columns.tolist()
+        return names
+
     @classmethod
     def read_file(cls, path: str):
         """Open a vector dataset using OGR or GeoPandas.

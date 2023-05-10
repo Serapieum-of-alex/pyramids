@@ -33,6 +33,16 @@ class TestAttributes:
         names = feature.layer_names
         assert names == ["poligonized"]
 
+    def test_columns_ds(self, coello_gauges_ds: DataSource):
+        feature = FeatureCollection(coello_gauges_ds)
+        columns = feature.column
+        assert columns == ["id", "x", "y", "geometry"]
+
+    def test_columns_gdf(self, coello_gauges_gdf: DataSource):
+        feature = FeatureCollection(coello_gauges_gdf)
+        columns = feature.column
+        assert columns == ["id", "x", "y", "geometry"]
+
 
 class TestReadFile:
     def test_open_geodataframe(self, test_vector_path: str):
