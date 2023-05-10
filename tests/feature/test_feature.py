@@ -107,7 +107,8 @@ class TestConvert:
     def test_gdf_to_ds(self, ds_geodataframe: GeoDataFrame):
         vector = FeatureCollection(ds_geodataframe)
         ds = vector._gdf_to_ds()
-        assert isinstance(ds, DataSource)
+        assert isinstance(ds, FeatureCollection)
+        assert isinstance(ds.feature, DataSource)
         # assert ds.name == "memory"
 
     def test_gdf_to_ds_inplace(self, ds_geodataframe: GeoDataFrame):

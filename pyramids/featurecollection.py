@@ -212,12 +212,17 @@ class FeatureCollection:
         -------
         ogr.DataSource
         """
-        # if isinstance(self.feature, GeoDataFrame):
-        ds = ogr.Open(self.feature.to_json())
+        if isinstance(self.feature, GeoDataFrame):
+            ds = ogr.Open(self.feature.to_json())
+        else:
+            ds = self.feature
 
         if inplace:
             self.__init__(ds)
             ds = None
+        else:
+            ds = FeatureCollection(ds)
+
         return ds
 
     # def _gdf_to_ds(self, inplace=False) -> DataSource:
