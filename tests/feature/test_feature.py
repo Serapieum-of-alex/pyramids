@@ -118,6 +118,14 @@ class TestConvert:
         assert isinstance(vector.feature, DataSource)
         # assert vector.feature.name == "memory"
 
+    def test_gdf_to_ds_if_feature_is_already_ds(
+        self, data_source: DataSource, ds_geodataframe: GeoDataFrame
+    ):
+        vector = FeatureCollection(data_source)
+        ds = vector._gdf_to_ds()
+        assert isinstance(ds, FeatureCollection)
+        assert isinstance(ds.feature, DataSource)
+
     # def test_gdf_to_ds2(
     #         self, ds_geodataframe: GeoDataFrame
     # ):
