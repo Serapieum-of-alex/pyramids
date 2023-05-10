@@ -18,6 +18,16 @@ class TestAttributes:
         feature = FeatureCollection(gdf)
         assert feature.bounds == gdf_bound
 
+    def test_layer_count_gdf(self, gdf: GeoDataFrame):
+        feature = FeatureCollection(gdf)
+        layer_count = feature.layers_count
+        assert layer_count is None
+
+    def test_layer_count_ogr_ds(self, data_source: DataSource):
+        feature = FeatureCollection(data_source)
+        layer_count = feature.layers_count
+        assert layer_count == 1
+
 
 class TestReadFile:
     def test_open_geodataframe(self, test_vector_path: str):

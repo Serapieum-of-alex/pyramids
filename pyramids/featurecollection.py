@@ -54,7 +54,7 @@ class FeatureCollection:
         17- WriteShapefile
     """
 
-    def __init__(self, gdf: GeoDataFrame):
+    def __init__(self, gdf: Union[GeoDataFrame, DataSource]):
         # read the drivers catalog
         self._feature = gdf
 
@@ -85,6 +85,17 @@ class FeatureCollection:
     def bounds(self):
         """bounding coordinates"""
         return list(self.feature.bounds.values[0])
+
+    @property
+    def layers_count(self):
+        """layers_count.
+
+        Number of layers in a datasource.
+        """
+        if isinstance(self.feature, DataSource):
+            return self.feature.GetLayerCount()
+        else:
+            return None
 
     @classmethod
     def read_file(cls, path: str):
@@ -298,7 +309,6 @@ class FeatureCollection:
         ds_epsg = self.epsg
         if dataset is not None:
             if dataset.epsg != ds_epsg:
-                # TODO: reproject the vector to the raster projection instead of raising an error.
                 raise ValueError(
                     f"Dataset and vector are not the same EPSG. {dataset.epsg} != {ds_epsg}"
                 )
@@ -311,11 +321,22 @@ class FeatureCollection:
                 )
             # if the raster is given the top left corner of the raster will be taken as the top left corner for
             # the rasterized polygon
-            xmin, _, _, ymax, _, _ = dataset.geotransform
+            xmin, ymax = dataset.pivot_point
+            no_data_value = (
+                dataset.no_data_value[0]
+                if dataset.no_data_value[0] is not None
+                else np.nan
+            )
+            rows = dataset.rows
+            columns = dataset.columns
+            cell_size = dataset.cell_size
         else:
             # if a raster is not given the xmin and ymax will be taken as the top left corner for the rasterized
             # polygon.
             xmin, ymin, xmax, ymax = self.feature.total_bounds
+            no_data_value = Dataset.default_no_data_value
+            columns = int(np.ceil((xmax - xmin) / cell_size))
+            rows = int(np.ceil((ymax - ymin) / cell_size))
 
         if column_name is None:
             # Use a constant value for all features.
@@ -327,16 +348,6 @@ class FeatureCollection:
             burn_values = None
             attribute = column_name
             dtype = 7
-
-        if isinstance(dataset, Dataset):
-            no_data_value = dataset.no_data_value[0]
-            rows = dataset.rows
-            columns = dataset.columns
-            cell_size = dataset.cell_size
-        else:
-            no_data_value = Dataset.default_no_data_value
-            columns = int(np.ceil((xmax - xmin) / cell_size))
-            rows = int(np.ceil((ymax - ymin) / cell_size))
 
         # save the geodataframe to disk and get the path
         temp_dir = tempfile.mkdtemp()
