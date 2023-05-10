@@ -28,6 +28,11 @@ class TestAttributes:
         layer_count = feature.layers_count
         assert layer_count == 1
 
+    def test_layer_names_ogr_ds(self, data_source: DataSource):
+        feature = FeatureCollection(data_source)
+        names = feature.layer_names
+        assert names == ["poligonized"]
+
 
 class TestReadFile:
     def test_open_geodataframe(self, test_vector_path: str):

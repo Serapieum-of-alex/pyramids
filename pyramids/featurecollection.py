@@ -11,7 +11,7 @@ import uuid
 import shutil
 import warnings
 from typing import List, Tuple, Union, Iterable, Any
-
+from numbers import Number
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -77,17 +77,17 @@ class FeatureCollection:
         return self._feature
 
     @property
-    def epsg(self):
+    def epsg(self) -> int:
         """EPSG number"""
         return self._get_epsg()
 
     @property
-    def bounds(self):
+    def bounds(self) -> List[Number]:
         """bounding coordinates"""
         return list(self.feature.bounds.values[0])
 
     @property
-    def layers_count(self):
+    def layers_count(self) -> Union[int, None]:
         """layers_count.
 
         Number of layers in a datasource.
@@ -96,6 +96,16 @@ class FeatureCollection:
             return self.feature.GetLayerCount()
         else:
             return None
+
+    @property
+    def layer_names(self) -> List[str]:
+        """OGR object layers names'."""
+        names = []
+        if isinstance(self.feature, DataSource):
+            for i in range(self.layers_count):
+                names.append(self.feature.GetLayer(i).GetLayerDefn().GetName())
+
+        return names
 
     @classmethod
     def read_file(cls, path: str):
