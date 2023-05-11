@@ -295,7 +295,7 @@ def rasters_folder_path() -> str:
 
 @pytest.fixture(scope="module")
 def rhine_raster(rasters_folder_path: str) -> Dataset:
-    return gdal.Open(f"{rasters_folder_path}/1_MSWEP_1979.01.02.tif")
+    return gdal.Open(f"{rasters_folder_path}/MSWEP_1979.01.02.tif")
 
 
 @pytest.fixture(scope="module")

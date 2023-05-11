@@ -59,6 +59,25 @@ class TestCreateDataCube:
         assert dataset.base.rows == rasters_folder_dim[0]
         assert dataset.base.columns == rasters_folder_dim[1]
 
+    def test_read_with_order_error(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_start_date: str,
+        rasters_folder_end_date: str,
+        rasters_folder_date_fmt: str,
+    ):
+        try:
+            dataset = Datacube.read_separate_files(
+                rasters_folder_path,
+                with_order=True,
+                start=rasters_folder_start_date,
+                end=rasters_folder_end_date,
+                fmt=rasters_folder_date_fmt,
+                separator="d",
+            )
+        except ValueError:
+            pass
+
 
 class TestAscii:
     def test_read_all_without_order(

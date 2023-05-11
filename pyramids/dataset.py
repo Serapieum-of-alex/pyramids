@@ -4,7 +4,7 @@ algebric operation on cell's values. gdal class: https://gdal.org/java/org/gdal/
 """
 import datetime as dt
 from pathlib import Path
-
+import re
 import os
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional
 from loguru import logger
@@ -3057,9 +3057,9 @@ class Datacube:
         start: str = None,
         end: str = None,
         fmt: str = "%Y-%m-%d",
-        freq: str = "daily",
-        separator: str = "_",
+        separator: str = ".",
         extension: str = ".tif",
+        file_name_data_fmt: str = "%Y.%m.%d",
     ):
         """read_separate_files.
 
@@ -3103,14 +3103,15 @@ class Datacube:
             Hint:
                 The date in the raster file name should be the last string befor the file extension
                 >>> "20_MSWEP_YYYY.MM.DD.tif"
-        freq: [str]
-            frequency of the rasters "daily", Hourly, monthly
         separator: [str]
             separator between the order in the beginning of the raster file name and the rest of the file
             name. Default is "_".
         extension: [str]
             the extension of the files you want to read from the given path. Default is ".tif".
-
+        file_name_data_fmt : [str]
+            if the file names have a date and you want to read them ordered .Default is "%Y.%m.%d"
+            >>> "20_MSWEP_YYYY.MM.DD.tif"
+            >>> file_name_data_fmt = "%Y.%m.%d"
         Returns
         -------
         arr_3d: [numpy.ndarray]
@@ -3143,56 +3144,35 @@ class Datacube:
                 raise FileNotFoundError("The path you have provided is empty")
         else:
             files = path[:]
+
         # to sort the files in the same order as the first number in the name
         if with_order:
-            try:
-                filesNo = [int(i.split(separator)[0]) for i in files]
-            except ValueError:
+            regex_string = r"\d{4}" + separator + r"\d{2}" + separator + r"\d{2}"
+            match_str_fn = lambda x: re.search(regex_string, x)
+            # try:
+            list_dates = list(map(match_str_fn, files))
+            if None in list_dates:
                 raise ValueError(
-                    "please include a number at the beginning of the"
-                    "rasters name to indicate the order of the rasters. to do so please"
-                    "use the Inputs.RenameFiles method to solve this issue and don't "
-                    "include any other files in the folder with the rasters"
+                    "The date format/separator given does not match the file names"
                 )
+            list_dates = [
+                dt.datetime.strptime(i.group(), file_name_data_fmt) for i in list_dates
+            ]
 
-            file_tuple = sorted(zip(filesNo, files))
-            files = [x for _, x in file_tuple]
+            df = pd.DataFrame()
+            df["files"] = files
+            df["date"] = list_dates
+            df.sort_values("date", inplace=True, ignore_index=True)
+            files = df.loc[:, "files"].values
 
         if start is not None or end is not None:
             start = dt.datetime.strptime(start, fmt)
             end = dt.datetime.strptime(end, fmt)
 
-            # get the dates for each file
-            dates = list()
-            for i, file_i in enumerate(files):
-                if freq == "daily":
-                    l = len(file_i) - 4
-                    day = int(file_i[l - 2 : l])
-                    month = int(file_i[l - 5 : l - 3])
-                    year = int(file_i[l - 10 : l - 6])
-                    dates.append(dt.datetime(year, month, day))
-                elif freq == "hourly":
-                    year = int(file_i.split("_")[-4])
-                    month = int(file_i.split("_")[-3])
-                    day = int(file_i.split("_")[-2])
-                    hour = int(file_i.split("_")[-1].split(".")[0])
-                    dates.append(dt.datetime(year, month, day, hour))
+            files = (
+                df.loc[start <= df["date"], :].loc[df["date"] <= end, "files"].values
+            )
 
-            starti = dates.index(start)
-            endi = dates.index(end) + 1
-            assert all(
-                file_i.endswith(".tif") for file_i in files[starti:endi]
-            ), "all files in the given folder should have .tif extension"
-        else:
-            starti = 0
-            endi = len(files)
-            # check that folder only contains rasters
-            assert all(
-                file_i.endswith(extension) for file_i in files
-            ), "all files in the given folder should have .tif extension"
-
-        # files to be read
-        files = files[starti:endi]
         if not isinstance(path, list):
             # add the path to all the files
             files = [f"{path}/{i}" for i in files]
