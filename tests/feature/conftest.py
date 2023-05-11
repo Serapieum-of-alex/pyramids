@@ -36,12 +36,12 @@ def data_source(test_vector_path: str) -> DataSource:
 
 @pytest.fixture(scope="module")
 def coello_gauges_ds() -> DataSource:
-    return ogr.Open("tests\data\coello-gauges.geojson")
+    return ogr.Open("tests/data/coello-gauges.geojson")
 
 
 @pytest.fixture(scope="module")
 def coello_gauges_gdf() -> GeoDataFrame:
-    return gpd.read_file("tests\data\coello-gauges.geojson")
+    return gpd.read_file("tests/data/coello-gauges.geojson")
 
 
 @pytest.fixture(scope="module")
