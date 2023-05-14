@@ -28,7 +28,12 @@ class TestCreateDataCube:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=True)
+        dataset = Datacube.read_separate_files(
+            rasters_folder_path,
+            with_order=True,
+            file_name_data_fmt="%Y.%m.%d",
+            separator=".",
+        )
         assert isinstance(dataset.base, Dataset)
         assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
@@ -48,6 +53,8 @@ class TestCreateDataCube:
         dataset = Datacube.read_separate_files(
             rasters_folder_path,
             with_order=True,
+            file_name_data_fmt="%Y.%m.%d",
+            separator=".",
             start=rasters_folder_start_date,
             end=rasters_folder_end_date,
             fmt=rasters_folder_date_fmt,
@@ -70,10 +77,11 @@ class TestCreateDataCube:
             dataset = Datacube.read_separate_files(
                 rasters_folder_path,
                 with_order=True,
+                file_name_data_fmt="%Y.%m.%d",
+                separator="d",
                 start=rasters_folder_start_date,
                 end=rasters_folder_end_date,
                 fmt=rasters_folder_date_fmt,
-                separator="d",
             )
         except ValueError:
             pass

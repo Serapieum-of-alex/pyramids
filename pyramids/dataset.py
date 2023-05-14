@@ -2960,7 +2960,7 @@ class Datacube:
         files: List[str] = None,
     ):
         self._base = src
-        self.files = files
+        self._files = files
         self._time_length = time_length
 
         pass
@@ -2970,8 +2970,17 @@ class Datacube:
             Files: {len(self.files)}
             Cell size: {self._base.cell_size}
             EPSG: {self._base.epsg}
-            Variables: {self._base.variables}
-            Dimension: {self.rows * self.columns}
+            Dimension: {self.rows} * {self.columns}
+            Mask: {self._base.no_data_value[0]}
+        """
+        return message
+
+    def __repr__(self):
+        message = f"""
+            Files: {len(self.files)}
+            Cell size: {self._base.cell_size}
+            EPSG: {self._base.epsg}
+            Dimension: {self.rows} * {self.columns}
             Mask: {self._base.no_data_value[0]}
         """
         return message
@@ -2983,6 +2992,11 @@ class Datacube:
         Base Dataset
         """
         return self._base
+
+    @property
+    def files(self):
+        """Files"""
+        return self._files
 
     @property
     def time_length(self) -> int:
@@ -3036,16 +3050,6 @@ class Datacube:
         array: [numpy array]
             3D array to be stores as a rasters, the dimensions should be
             [rows, columns, timeseries length]
-
-        Returns
-        -------
-        save the new raster to the given path
-
-        Examples
-        --------
-        >>> src_raster = gdal.Open("DEM.tif")
-        >>> name = ["Q_2012_01_01_01.tif","Q_2012_01_01_02.tif","Q_2012_01_01_03.tif","Q_2012_01_01_04.tif"]
-        >>> Datacube.rastersLike(src_raster, data, name)
         """
         self.data = array
 
@@ -3054,68 +3058,56 @@ class Datacube:
         cls,
         path: Union[str, List[str]],
         with_order: bool = False,
+        file_name_data_fmt: str = None,
+        separator: str = ".",
         start: str = None,
         end: str = None,
         fmt: str = "%Y-%m-%d",
-        separator: str = ".",
         extension: str = ".tif",
-        file_name_data_fmt: str = "%Y.%m.%d",
     ):
         """read_separate_files.
 
             - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
-            the folder and len as the number of files
+            the folder and length as the number of files.
 
         inside the folder.
-            - All rasters should have the same dimensions
-            - Folder should only contain raster files
-            - raster file name should have the date at the end of the file name before the extension directly
-              with the YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD
-              >>> "50_MSWEP_1979.01.01.tif"
+        - All rasters should have the same dimensions
+        - If you want to read the rasters with a certain order, then all raster file names should have a date that follows
+            the same format (YYYY.MM .DD / YYYY-MM-DD or YYYY_MM_DD) (i.e. "MSWEP_1979.01.01.tif").
 
         Parameters
         ----------
-        path:[String/list]
-            path of the folder that contains all the rasters or
-            a list contains the paths of the rasters to read.
+        path:[str/list]
+            path of the folder that contains all the rasters, ora list contains the paths of the rasters to read.
         with_order: [bool]
-            True if the rasters follows a certain order, then the rasters names should have a
-            number at the beginning of the file name indicating the order.
-            >>> "01_MSWEP_1979.01.01.tif"
-            >>> "02_MSWEP_1979.01.02.tif"
+            True if the rasters names' follows a certain order, then the rasters names should have a date that follows
+            the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD).
+            >>> "MSWEP_1979.01.01.tif"
+            >>> "MSWEP_1979.01.02.tif"
             >>> ...
-            >>> "20_MSWEP_1979.01.20.tif"
-            - currently the function depends mainly on the separator "_" that separate the order number from the rest of
-            file name.
-            - the separator between the date parts YYYY.MM.DD ir YYYY_MM_DD or any other separator does not matter,
-            however the separator has to be only one letter.
-        fmt: [str]
-            format of the given date
+             >>> "MSWEP_1979.01.20.tif"
+        file_name_data_fmt : [str]
+            if the files names' have a date and you want to read them ordered .Default is None
+            >>> "MSWEP_YYYY.MM.DD.tif"
+            >>> file_name_data_fmt = "%Y.%m.%d"
+        separator: [str]
+            separator between the order in the beginning of the raster file name and the rest of the file
+            name. Default is ".".
         start: [str]
             start date if you want to read the input raster for a specific period only and not all rasters,
             if not given all rasters in the given path will be read.
-            Hint:
-                The date in the raster file name should be the last string befor the file extension
-                >>> "20_MSWEP_YYYY.MM.DD.tif"
         end: [str]
             end date if you want to read the input temperature for a specific period only,
             if not given all rasters in the given path will be read.
-            Hint:
-                The date in the raster file name should be the last string befor the file extension
-                >>> "20_MSWEP_YYYY.MM.DD.tif"
-        separator: [str]
-            separator between the order in the beginning of the raster file name and the rest of the file
-            name. Default is "_".
+        fmt: [str]
+            format of the given date in the start/end parameter.
         extension: [str]
             the extension of the files you want to read from the given path. Default is ".tif".
-        file_name_data_fmt : [str]
-            if the file names have a date and you want to read them ordered .Default is "%Y.%m.%d"
-            >>> "20_MSWEP_YYYY.MM.DD.tif"
-            >>> file_name_data_fmt = "%Y.%m.%d"
+
         Returns
         -------
-        arr_3d: [numpy.ndarray]
-            3d array contains arrays read from all rasters in the folder.
+        DataCube:
+            instance of the datacube class.
 
         Example
         -------
@@ -3147,9 +3139,19 @@ class Datacube:
 
         # to sort the files in the same order as the first number in the name
         if with_order:
+            if file_name_data_fmt is None:
+                raise ValueError(
+                    f"To read the raster with a certain order (with_order = {with_order}, then you have to enter the "
+                    f"value of the parameter file_name_data_fmt(given: {file_name_data_fmt})"
+                )
+            if separator not in file_name_data_fmt:
+                raise ValueError(
+                    f"the separator:({separator}) parameter you entered does not exit in the date format {file_name_data_fmt}"
+                )
+
             regex_string = r"\d{4}" + separator + r"\d{2}" + separator + r"\d{2}"
             match_str_fn = lambda x: re.search(regex_string, x)
-            # try:
+
             list_dates = list(map(match_str_fn, files))
             if None in list_dates:
                 raise ValueError(
