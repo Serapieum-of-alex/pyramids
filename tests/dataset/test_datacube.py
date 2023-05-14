@@ -105,7 +105,7 @@ class TestAscii:
         assert dataset.base.columns == rasters_folder_dim[1]
 
 
-class TestReadDataset:
+class TestOpenDataCube:
     def test_geotiff(
         self,
         rasters_folder_path: str,
