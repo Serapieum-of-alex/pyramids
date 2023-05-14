@@ -89,9 +89,10 @@ Main Features
 
 .. toctree::
    :hidden:
-   :maxdepth: 1
+   :maxdepth: 2
 
     Installation <installation.rst>
     Dataset <dataset.rst>
+    DataCube <datacube.rst.rst>
     Feature Collection <featurecollection.rst>
     DEM <dem.rst>
