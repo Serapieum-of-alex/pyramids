@@ -114,7 +114,7 @@ class TestReadDataset:
     ):
         dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         dataset.open_datacube()
-        assert dataset.data.shape == (
+        assert dataset.values.shape == (
             rasters_folder_rasters_number,
             rasters_folder_dim[0],
             rasters_folder_dim[1],
@@ -130,7 +130,7 @@ class TestReadDataset:
             ascii_folder_path, with_order=False, extension=".asc"
         )
         dataset.open_datacube()
-        assert dataset.data.shape == (
+        assert dataset.values.shape == (
             rasters_folder_rasters_number,
             rasters_folder_dim[0],
             rasters_folder_dim[1],
@@ -147,7 +147,7 @@ class TestUpdateDataset:
         dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         dataset.open_datacube()
         # access the data attribute
-        arr = dataset.data
+        arr = dataset.values
         # modify the array
         arr = arr[0:4, :, :] * np.nan
         try:
@@ -164,7 +164,7 @@ class TestUpdateDataset:
         dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         dataset.open_datacube()
         # access the data attribute
-        arr = dataset.data
+        arr = dataset.values
         # modify the array
         arr = arr * np.nan
         dataset.update_cube(arr)
@@ -195,7 +195,7 @@ class TestReproject:
         dataset.open_datacube()
         dataset.to_crs(to_epsg)
         assert dataset.base.epsg == to_epsg
-        arr = dataset.data
+        arr = dataset.values
         assert dataset.base.rows == arr.shape[1]
         assert dataset.base.columns == arr.shape[2]
         assert dataset.time_length == arr.shape[0]
@@ -268,7 +268,7 @@ class TestCrop:
         dataset.open_datacube()
         dataset.crop(mask)
         # dataset.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
-        arr = dataset.data[0, :, :]
+        arr = dataset.values[0, :, :]
         no_data_value = dataset.base.no_data_value[0]
         arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
         assert arr1.shape[0] == 720
@@ -290,7 +290,7 @@ class TestCrop:
         dataset.open_datacube()
         dataset.crop(polygon_mask)
         # dataset.to_geotiff(crop_aligned_folder_saveto)
-        arr = dataset.data[0, :, :]
+        arr = dataset.values[0, :, :]
         no_data_value = dataset.base.no_data_value[0]
         arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
         assert arr1.shape[0] == 806
@@ -358,7 +358,7 @@ class TestProperties:
             arr[~np.isclose(arr, no_data_value, rtol=0.00001)] * 10000
         )
         dataset[2] = arr
-        arr2 = dataset.data[2, :, :]
+        arr2 = dataset.values[2, :, :]
         assert np.array_equal(arr, arr2)
 
     def test_len(

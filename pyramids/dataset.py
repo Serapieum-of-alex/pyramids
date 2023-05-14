@@ -3051,7 +3051,7 @@ class Datacube:
             3D array to be stores as a rasters, the dimensions should be
             [rows, columns, timeseries length]
         """
-        self.data = array
+        self.values = array
 
     @classmethod
     def read_multiple_files(
@@ -3065,7 +3065,7 @@ class Datacube:
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
     ):
-        """read_separate_files.
+        """read_multiple_files.
 
             - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
             the folder and length as the number of files.
@@ -3201,7 +3201,7 @@ class Datacube:
         # check the given band number
         if not hasattr(self, "base"):
             raise ValueError(
-                "please use the read_separate_files method to get the files (tiff/ascii) in the"
+                "please use the read_multiple_files method to get the files (tiff/ascii) in the"
                 "dataset directory"
             )
         if band > self.base.band_count - 1:
@@ -3209,85 +3209,85 @@ class Datacube:
                 f"the raster has only {self.base.band_count} check the given band number"
             )
         # fill the array with no_data_value data
-        self._data = np.ones(
+        self._values = np.ones(
             (
                 self.time_length,
                 self.base.rows,
                 self.base.columns,
             )
         )
-        self._data[:, :, :] = np.nan
+        self._values[:, :, :] = np.nan
 
         for i, file_i in enumerate(self.files):
             # read the tif file
             raster_i = gdal.Open(f"{file_i}")
-            self._data[i, :, :] = raster_i.GetRasterBand(band + 1).ReadAsArray()
+            self._values[i, :, :] = raster_i.GetRasterBand(band + 1).ReadAsArray()
 
     @property
-    def data(self) -> np.ndarray:
+    def values(self) -> np.ndarray:
         """data attribute.
 
         - The attribute where the dataset array is stored.
         - the 3D numpy array, [dataset length, rows, cols], [dataset length, lons, lats]
         """
-        if not hasattr(self, "_data"):
+        if not hasattr(self, "_values"):
             raise ValueError("please use the read_dataset to read the data first.")
 
-        return self._data
+        return self._values
 
-    @data.setter
-    def data(self, val):
+    @values.setter
+    def values(self, val):
         """Data attribute.
 
         - setting the data (array) does not allow different dimension from the dimension that have been
         defined increating the dataset.
         """
         # if the attribute is defined before check the dimension
-        if hasattr(self, "data"):
-            if self._data.shape != val.shape:
+        if hasattr(self, "values"):
+            if self._values.shape != val.shape:
                 raise ValueError(
                     f"The dimension of the new data: {val.shape}, differs from the dimension of the "
-                    f"original dataset: {self._data.shape}, please redefine the base Dataset and "
+                    f"original dataset: {self._values.shape}, please redefine the base Dataset and "
                     f"dataset_length first"
                 )
 
-        self._data = val
+        self._values = val
 
-    @data.deleter
-    def data(self):
-        self._data = None
+    @values.deleter
+    def values(self):
+        self._values = None
 
     def __getitem__(self, key):
-        if not hasattr(self, "data"):
+        if not hasattr(self, "values"):
             raise AttributeError("Please use the read_dataset method t read the data")
-        return self._data[key, :, :]
+        return self._values[key, :, :]
 
     def __setitem__(self, key, value: np.ndarray):
-        if not hasattr(self, "data"):
+        if not hasattr(self, "values"):
             raise AttributeError("Please use the read_dataset method t read the data")
-        self._data[key, :, :] = value
+        self._values[key, :, :] = value
 
     def __len__(self):
-        return self._data.shape[0]
+        return self._values.shape[0]
 
     def __iter__(self):
-        return iter(self._data[:])
+        return iter(self._values[:])
 
     def head(self, n: int = 5):
         """First 5 Datasets."""
-        return self._data[:n, :, :]
+        return self._values[:n, :, :]
 
     def tail(self, n: int = -5):
         """Last 5 Datasets."""
-        return self._data[n:, :, :]
+        return self._values[n:, :, :]
 
     def first(self):
         """First Dataset."""
-        return self._data[0, :, :]
+        return self._values[0, :, :]
 
     def last(self):
         """Last Dataset."""
-        return self._data[-1, :, :]
+        return self._values[-1, :, :]
 
     def iloc(self, i):
         """iloc.
@@ -3304,9 +3304,9 @@ class Datacube:
         Dataset:
             Dataset object.
         """
-        if not hasattr(self, "data"):
+        if not hasattr(self, "values"):
             raise DatasetNoFoundError("please read the dataset first")
-        arr = self._data[i, :, :]
+        arr = self._values[i, :, :]
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.base.raster, 0)
         dst.GetRasterBand(1).WriteArray(arr)
         return Dataset(dst)
@@ -3398,7 +3398,7 @@ class Datacube:
         )
         from cleopatra.array import Array
 
-        data = self.data
+        data = self.values
 
         exclude_value = (
             [self.base.no_data_value[band], exclude_value]
@@ -3495,7 +3495,7 @@ class Datacube:
                 )
             array[i, :, :] = arr
 
-        self._data = array
+        self._values = array
         # use the last src as
         self._base = dst
 
@@ -3548,7 +3548,7 @@ class Datacube:
                 )
             array[i, :, :] = arr
 
-        self._data = array
+        self._values = array
         # use the last src as
         self._base = dst
 
@@ -3739,7 +3739,7 @@ class Datacube:
                 )
             array[i, :, :] = arr
 
-        self._data = array
+        self._values = array
         # use the last src as
         self._base = dst
 
@@ -3824,7 +3824,7 @@ class Datacube:
         """
         if not callable(ufunc):
             raise TypeError("second argument should be a function")
-        arr = self.data
+        arr = self.values
         no_data_value = self.base.no_data_value[0]
         # execute the function on each raster
         arr[~np.isclose(arr, no_data_value, rtol=0.001)] = ufunc(
