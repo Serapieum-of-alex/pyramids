@@ -143,11 +143,12 @@ with_order = True
     >>>     Dimension: 125 * 93
     >>>     Mask: 2147483648.0
 
-============
+=============
 open_datacube
-============
+=============
+
 - After using the `read_multiple_files` method to parse the files in the directory, you can read the values of a
-specific band from each raster using the `open_datacube` method.
+    specific band from each raster using the `open_datacube` method.
 
 
 .. code:: py
