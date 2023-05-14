@@ -1,133 +1,156 @@
-#######
-dataset
-#######
+########
+DataCube
+########
 
-- dataset module contains Two classes `Dataset` and `DataCube`.
-
-.. digraph:: Linking
-
-    dataset -> Dataset;
-    dataset -> DataCube;
-    dpi=200;
-
-- Dataset represent a raster object which could be created from reading a geotiff, netcdf, ascii or any file
-    format/driver supported by gdal.
-- The raster could have single or multi bands.
-- The raster could have different variables (like netcdf file) and these variable can have similar or different
-    dimensions.
+- `DataCube` class contains  is made to operate in multiple single files .
 
 - DataCube represent a stack of rasters which have the same dimensions, contains data that have same dimensions (rows
     & columns).
 
+.. image:: /images/datacube/logo.png
+   :width: 700pt
+   :align: center
 
-*******
-Dataset
-*******
-
-.. image:: /images/dataset.svg
-   :width: 200pt
-
-The dataset object has some attributes and methods to help
+The datacube object has some attributes and methods to help working with multiple rasters files, or to repeat thesame
+operation on multiple rasters.
 
 - To import the raster module
 
 .. code:: py
 
-    from pyramids.dataset import Dataset
+    from pyramids.dataset import Datacube
+
+- The detailed module attributes and methods are summarized in the following figure.
+
+.. image:: /images/datacube/detailed.png
+   :width: 700pt
+   :align: center
+
+**********
+Attributes
+**********
+
+The `DataCube` object will have the following attributes
+
+#. base: Dataset object
+#. columns: number of columns in the dataset.
+#. rows: number of rows in the dataset.
+#. time_length: number of files/considering the each file represent a timestamp.
+#. shape: (time_length, rows, columns).
+#. files: file that have been read.
+
+.. image:: /images/datacube/attributes.png
+   :width: 150pt
+   :align: center
 
 
-- The main parameter for most of the functions in the `raster` module is a `gdal.Dataset`
-
-.. code:: py
-
-    raster_path = "examples/data/acc4000.tif"
-    src = gdal.Open(RasterAPath)
-    fig, ax = Map.plot(src, title="Flow Accumulation")
-
-.. image:: /images/flow_accumulation.png
-   :width: 500pt
-
-.. note::
-
-    * change the directory of your code to point at the repository root directory to be able to read the raster files
-    * the visualization in this documentatin uses digitalearth package to install it `Digital-Earth`_
-
-- The module contains function that falls in one of the following categories.
-
-#. `Raster Data`_
-#. `Raster Operations`_
-#. `Raster Dataset`_
+*******
+Methods
+*******
 
 
-********
-DataCube
-********
+===================
+read_separate_files
+===================
 
+- `read_separate_files` parse files in a directory and construct the array with the dimension of the first reads
+    rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in the folder and length
+    as the number of files.
 
-crop
-====
-
-- `cropAlignedFolder`_ matches the location of nodata value from src raster to dst raster, Mask is where the
-    nodatavalue will be taken and the location of this value src_dir is path to the folder where rasters exist where we
-    need to put the NoDataValue of the mask in RasterB at the same locations.
+inside the folder.
+    - All rasters should have the same dimensions
+    - If you want to read the rasters with a certain order, then all raster file names should have a date that follows
+        the same format (YYYY.MM .DD / YYYY-MM-DD or YYYY_MM_DD) (i.e. "MSWEP_1979.01.01.tif").
 
 Parameters
 ----------
-    src_dir : [String]
-        path of the folder of the rasters you want to set Nodata Value on the same location of NodataValue of Raster A,
-        the folder should not have any other files except the rasters
-    mask : [String/gdal.Dataset]
-        path/gdal.Dataset of the mask raster to crop the rasters (to get the NoData value and it location in the array)
-        Mask should include the name of the raster and the extension like "data/dem.tif", or you can read the mask raster
-        using gdal and use is the first parameter to the function.
-    saveto : [String]
-        path where new rasters are going to be saved with exact same old names
+path:[str/list]
+    path of the folder that contains all the rasters, ora list contains the paths of the rasters to read.
+with_order: [bool]
+    True if the rasters names' follows a certain order, then the rasters names should have a date that follows
+    the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD).
+    >>> "MSWEP_1979.01.01.tif"
+    >>> "MSWEP_1979.01.02.tif"
+    >>> ...
+    >>> "MSWEP_1979.01.20.tif"
+file_name_data_fmt : [str]
+    if the files names' have a date and you want to read them ordered .Default is None
+    >>> "MSWEP_YYYY.MM.DD.tif"
+    >>> file_name_data_fmt = "%Y.%m.%d"
+separator: [str]
+    separator between the order in the beginning of the raster file name and the rest of the file
+    name. Default is ".".
+start: [str]
+    start date if you want to read the input raster for a specific period only and not all rasters,
+    if not given all rasters in the given path will be read.
+end: [str]
+    end date if you want to read the input temperature for a specific period only,
+    if not given all rasters in the given path will be read.
+fmt: [str]
+    format of the given date in the start/end parameter.
+extension: [str]
+    the extension of the files you want to read from the given path. Default is ".tif".
 
-Returns
--------
-    new rasters have the values from rasters in B_input_path with the NoDataValue in the same
-    locations like raster A
+Cases
+-----
 
-.. code:: py
-
-    # The folder should contain tif files only (check example here `cropAlignedFolder`_)
-    saveto = "examples/data/crop_aligned_folder/"
-    Raster.cropAlignedFolder(aligned_raster_folder, src, saveto)
-
-****************
-Zonal Statistics
-****************
-
-one of the most frequent used function in geospatial analysis is zonal
-statistics, where you overlay a shapefile contains some polygons with
-some maps and you want each polygon to extract the values that locates
-inside it from the map, `raster` module in `Hapi` contains a similar
-function `OverlayMap` where you can convert the polygon shapefile into
-a raster first and use it as a base map to overlay with other maps
-
-You don't need to copy and paste the code in this page you can find it
-in the examples `Zonal Statistics <https://github.com/MAfarrag/Hapi/blob/master/Examples/GIS/ZonalStatistics.py/>`_.
-
-
-OverlayMap Several maps
-=======================
-The `overlayMaps` function takes path to the folder where more than one map exist instead of a path to one file, it also takes an extra parameter `FilePrefix`, this prefix is used to name the files in the given path and all the file has to start with the prefix
+with_order = False
+^^^^^^^^^^^^^^^^^^
+- if you want to make some mathematical operation on all the raster, then the order of the rasters does not matter.
 
 .. code:: py
 
-    FilePrefix = "Map"
-    # several maps
-    ExtractedValues, Cells = R.overlayMaps(Path+"data", BaseMapF, FilePrefix,ExcludedValue, Compressed,OccupiedCellsOnly)
+    rasters_folder_path = "examples/data/geotiff/raster-folder"
+    datacube = Datacube.read_separate_files(rasters_folder_path)
+    print(datacube)
+    >>>     Files: 6
+    >>>     Cell size: 5000.0
+    >>>     EPSG: 4647
+    >>>     Dimension: 125 * 93
+    >>>     Mask: 2147483648.0
 
-both methods `OverlayMap` and `overlayMaps` returns the values as a `dict`, the difference is in the number of cells `overlayMaps` returns a single integer number while `OverlayMap` returns a `dataframe` with two columns the first in the map name and the second is the number of occupied cell in each map.
+with_order = True
+^^^^^^^^^^^^^^^^^
+- If the order in which each raster represent is important (each raster is represents a time stamp)
+- To read the rasters with a certain order, each raster has to have a date in its file name, and using the format of
+    this name the method is going to read the file in right order.
 
-Save extracted values
-=====================
+- the raster directory contents are
 
 .. code:: py
 
-    # save extracted values in different files
-    Polygons = list(ExtractedValues.keys())
-    for i in range(len(Polygons)):
-        np.savetxt(SavePath +"/" + str(Polygons[i]) + ".txt",
-                   ExtractedValues[Polygons[i]],fmt="%4.2f")
+    >>> MSWEP_1979.01.01.tif
+    >>> MSWEP_1979.01.02.tif
+    >>> MSWEP_1979.01.03.tif
+    >>> MSWEP_1979.01.04.tif
+    >>> MSWEP_1979.01.05.tif
+    >>> MSWEP_1979.01.06.tif
+
+
+.. code:: py
+
+    rasters_folder_path = "examples/data/geotiff/raster-folder"
+    datacube = Datacube.read_separate_files(rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator=".")
+    print(datacube)
+    >>>     Files: 6
+    >>>     Cell size: 5000.0
+    >>>     EPSG: 4647
+    >>>     Dimension: 125 * 93
+    >>>     Mask: 2147483648.0
+
+
+===========
+create_cube
+===========
+- Create a `DataCube` object.
+
+===========
+update_cube
+===========
+- update the data in the `DataCube` object
+
+
+============
+read_dataset
+============
+- Open `Dataset`
