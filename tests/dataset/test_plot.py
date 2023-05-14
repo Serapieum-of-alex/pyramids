@@ -42,7 +42,7 @@ class TestPlotDataCube:
     ):
         from matplotlib.animation import FuncAnimation
 
-        cube = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        cube.read_dataset()
+        cube = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        cube.open_datacube()
         anim = cube.plot()
         assert isinstance(anim, FuncAnimation)

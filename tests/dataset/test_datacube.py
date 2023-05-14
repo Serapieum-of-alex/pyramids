@@ -14,7 +14,7 @@ class TestCreateDataCube:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         assert isinstance(dataset.base, Dataset)
         assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
@@ -28,7 +28,7 @@ class TestCreateDataCube:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(
+        dataset = Datacube.read_multiple_files(
             rasters_folder_path,
             with_order=True,
             file_name_data_fmt="%Y.%m.%d",
@@ -50,7 +50,7 @@ class TestCreateDataCube:
         rasters_folder_dim: tuple,
         rasters_folder_between_dates_raster_number: int,
     ):
-        dataset = Datacube.read_separate_files(
+        dataset = Datacube.read_multiple_files(
             rasters_folder_path,
             with_order=True,
             file_name_data_fmt="%Y.%m.%d",
@@ -74,7 +74,7 @@ class TestCreateDataCube:
         rasters_folder_date_fmt: str,
     ):
         try:
-            dataset = Datacube.read_separate_files(
+            dataset = Datacube.read_multiple_files(
                 rasters_folder_path,
                 with_order=True,
                 file_name_data_fmt="%Y.%m.%d",
@@ -94,7 +94,7 @@ class TestAscii:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(
+        dataset = Datacube.read_multiple_files(
             ascii_folder_path, with_order=False, extension=".asc"
         )
         assert isinstance(dataset.base, Dataset)
@@ -112,8 +112,8 @@ class TestReadDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         assert dataset.data.shape == (
             rasters_folder_rasters_number,
             rasters_folder_dim[0],
@@ -126,10 +126,10 @@ class TestReadDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(
+        dataset = Datacube.read_multiple_files(
             ascii_folder_path, with_order=False, extension=".asc"
         )
-        dataset.read_dataset()
+        dataset.open_datacube()
         assert dataset.data.shape == (
             rasters_folder_rasters_number,
             rasters_folder_dim[0],
@@ -144,8 +144,8 @@ class TestUpdateDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         # access the data attribute
         arr = dataset.data
         # modify the array
@@ -161,8 +161,8 @@ class TestUpdateDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         # access the data attribute
         arr = dataset.data
         # modify the array
@@ -177,8 +177,8 @@ class TestAccessDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         src = dataset.iloc(2)
         assert isinstance(src, Dataset)
         arr = src.read_array()
@@ -191,8 +191,8 @@ class TestReproject:
         rasters_folder_path: str,
     ):
         to_epsg = 4326
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         dataset.to_crs(to_epsg)
         assert dataset.base.epsg == to_epsg
         arr = dataset.data
@@ -206,8 +206,8 @@ def test_match_alignment(
     match_alignment_datacube,
     src: Datacube,
 ):
-    dataset = Datacube.read_separate_files(match_alignment_datacube, with_order=False)
-    dataset.read_dataset()
+    dataset = Datacube.read_multiple_files(match_alignment_datacube, with_order=False)
+    dataset.open_datacube()
     mask_obj = Dataset(src)
     dataset.align(mask_obj)
     assert dataset.base.rows == mask_obj.rows
@@ -225,8 +225,8 @@ class TestSaveDataset:
         if os.path.exists(path):
             shutil.rmtree(path)
 
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         dataset.to_file(path)
         files = os.listdir(path)
         assert len(files) == 6
@@ -242,8 +242,8 @@ class TestSaveDataset:
         if os.path.exists(path):
             shutil.rmtree(path)
 
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         dataset.to_file(path, driver="ascii", band=0)
         files = os.listdir(path)
         assert len(files) == 6
@@ -264,8 +264,8 @@ class TestCrop:
         #     os.mkdir(crop_aligned_folder_saveto)
 
         mask = Dataset(raster_mask)
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         dataset.crop(mask)
         # dataset.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
         arr = dataset.data[0, :, :]
@@ -286,8 +286,8 @@ class TestCrop:
         # else:
         #     os.mkdir(crop_aligned_folder_saveto)
 
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         dataset.crop(polygon_mask)
         # dataset.to_geotiff(crop_aligned_folder_saveto)
         arr = dataset.data[0, :, :]
@@ -312,15 +312,15 @@ class TestApply:
         self,
         rasters_folder_path: str,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         func = np.abs
         dataset.apply(func)
 
 
 def test_overlay(rasters_folder_path: str, germany_classes: str):
-    dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-    dataset.read_dataset()
+    dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+    dataset.open_datacube()
 
     classes_src = Dataset.read_file(germany_classes)
     class_dict = dataset.overlay(classes_src)
@@ -338,8 +338,8 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         arr = dataset[2]
         assert arr.shape == (
             rasters_folder_dim[0],
@@ -350,8 +350,8 @@ class TestProperties:
         self,
         rasters_folder_path: str,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         no_data_value = dataset.base.no_data_value[0]
         arr = dataset[2]
         arr[~np.isclose(arr, no_data_value, rtol=0.00001)] = (
@@ -366,8 +366,8 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_rasters_number: int,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         assert len(dataset) == rasters_folder_rasters_number
 
     def test_iter(
@@ -375,16 +375,16 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_rasters_number: int,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         assert len(list(dataset)) == rasters_folder_rasters_number
 
     def test_head_tail(
         self,
         rasters_folder_path: str,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         head = dataset.head()
         tail = dataset.tail()
         assert head.shape[0] == 5
@@ -395,8 +395,8 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_dim: tuple,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
         first = dataset.first()
         last = dataset.last()
         assert first.shape == rasters_folder_dim
@@ -408,8 +408,8 @@ class TestProperties:
         rasters_folder_dim: tuple,
         rasters_folder_rasters_number: int,
     ):
-        dataset = Datacube.read_separate_files(rasters_folder_path, with_order=False)
-        dataset.read_dataset()
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
 
         assert dataset.rows == rasters_folder_dim[0]
         assert dataset.columns == rasters_folder_dim[1]

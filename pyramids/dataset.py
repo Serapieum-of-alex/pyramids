@@ -3054,7 +3054,7 @@ class Datacube:
         self.data = array
 
     @classmethod
-    def read_separate_files(
+    def read_multiple_files(
         cls,
         path: Union[str, List[str]],
         with_order: bool = False,
@@ -3113,12 +3113,12 @@ class Datacube:
         -------
         >>> from pyramids.dataset import Datacube
         >>> raster_folder = "examples/GIS/data/raster-folder"
-        >>> prec = Datacube.read_separate_files(raster_folder)
+        >>> prec = Datacube.read_multiple_files(raster_folder)
 
         >>> import glob
         >>> search_criteria = "*.tif"
         >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Datacube.read_separate_files(file_list, with_order=False)
+        >>> prec = Datacube.read_multiple_files(file_list, with_order=False)
         """
         if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")
@@ -3184,7 +3184,7 @@ class Datacube:
 
         return cls(sample, len(files), files)
 
-    def read_dataset(self, band: int = 0):
+    def open_datacube(self, band: int = 0):
         """Read array.
 
             Read values form the given bands as Arrays for all files
