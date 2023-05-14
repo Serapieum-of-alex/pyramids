@@ -50,10 +50,10 @@ Methods
 
 
 ===================
-read_separate_files
+read_multiple_files
 ===================
 
-- `read_separate_files` parse files in a directory and construct the array with the dimension of the first reads
+- `read_multiple_files` parse files in a directory and construct the array with the dimension of the first reads
     rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in the folder and length
     as the number of files.
 
@@ -61,6 +61,11 @@ inside the folder.
     - All rasters should have the same dimensions
     - If you want to read the rasters with a certain order, then all raster file names should have a date that follows
         the same format (YYYY.MM .DD / YYYY-MM-DD or YYYY_MM_DD) (i.e. "MSWEP_1979.01.01.tif").
+
+.. note::
+
+    `read_multiple_files` only parse the files names' in the given directory, to open each raster and read a specific,
+    band from each raster and add it to the `DataCube` you have to do one step further using the `open_datacube`_ method.
 
 Parameters
 ----------
@@ -101,7 +106,7 @@ with_order = False
 .. code:: py
 
     rasters_folder_path = "examples/data/geotiff/raster-folder"
-    datacube = Datacube.read_separate_files(rasters_folder_path)
+    datacube = Datacube.read_multiple_files(rasters_folder_path)
     print(datacube)
     >>>     Files: 6
     >>>     Cell size: 5000.0
@@ -130,13 +135,28 @@ with_order = True
 .. code:: py
 
     rasters_folder_path = "examples/data/geotiff/raster-folder"
-    datacube = Datacube.read_separate_files(rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator=".")
+    datacube = Datacube.read_multiple_files(rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator=".")
     print(datacube)
     >>>     Files: 6
     >>>     Cell size: 5000.0
     >>>     EPSG: 4647
     >>>     Dimension: 125 * 93
     >>>     Mask: 2147483648.0
+
+============
+open_datacube
+============
+- After using the `read_multiple_files` method to parse the files in the directory, you can read the values of a
+specific band from each raster using the `open_datacube` method.
+
+
+.. code:: py
+
+    rasters_folder_path = "examples/data/geotiff/raster-folder"
+    datacube = Datacube.read_multiple_files(rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator=".")
+    dataset.open_datacube()
+    print(dataset.values.shape)
+    >>>     (6, 125, 93)
 
 
 ===========
@@ -148,9 +168,3 @@ create_cube
 update_cube
 ===========
 - update the data in the `DataCube` object
-
-
-============
-read_dataset
-============
-- Open `Dataset`
