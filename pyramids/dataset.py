@@ -1417,6 +1417,10 @@ class Dataset:
         #     gt[0] = new_gt
         #
         # dst.SetGeoTransform(gt)
+
+        # +lon_0=0 parameter to set the central meridian to 0, and the +over parameter to indicate that the longitude
+        # values should wrap around from 360 to 0 degrees
+        # "+proj=longlat +ellps=WGS84 +datum=WGS84" to define projection that uses -180 to 180.
         dst = gdal.Warp(
             "",
             self.raster,
