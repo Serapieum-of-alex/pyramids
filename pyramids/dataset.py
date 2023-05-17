@@ -3876,31 +3876,3 @@ class Datacube:
                 values[class_i] = values[class_i] + dict_i[class_i]
 
         return values
-
-    # @staticmethod
-    # def readNC(
-    #         path,
-    #         save_to: str,
-    #         separator: str = "_",
-    #         time_var_name: str = None,
-    #         prefix: str = None,
-    # ):
-    #
-    #     if isinstance(path, str):
-    #         nc = netCDF4.Datacube(path)
-    #     elif isinstance(path, list):
-    #         nc = netCDF4.MFDataset(path)
-    #     else:
-    #         raise TypeError(
-    #             "First parameter to the nctoTiff function should be either str or list"
-    #         )
-    #
-    #     # get the variable
-    #     Var = list(nc.subsets.keys())[-1]
-    #     # extract the data
-    #     dataset = nc[Var]
-    #     # get the details of the file
-    #     geo, epsg, _, _, time_len, time_var, no_data_value, datatype = NC.getNCDetails(
-    #         nc, time_var_name=time_var_name
-    #     )
-    #     print("sss")
