@@ -2228,7 +2228,7 @@ class Dataset:
 
         return dst_obj
 
-    def _crop_with_polygon(self, poly: GeoDataFrame):
+    def _crop_with_polygon_by_rasterizing(self, poly: GeoDataFrame):
         """cropWithPolygon.
 
             clip the Raster object using a polygon vector.
@@ -2257,22 +2257,44 @@ class Dataset:
         mask = vector.to_dataset(dataset=self)
         cropped_obj = self._crop_with_raster(mask)
 
-        # xmin, ymin, xmax, ymax = poly.bounds.values.tolist()[0]
-        # window = (xmin, ymax, xmax, ymin)
-        # # gdal.TranslateOptions(dst, ss, projWin=window)
-        # # copy the src raster
-        # drv = gdal.GetDriverByName("MEM")
-        # dst = drv.CreateCopy("", self.raster, 0)
-        # try:
-        #     gdal.Translate(dst, self.raster, projWin=window)
-        # except RuntimeError:
-        #     pass
-
-        # cropped_obj = Dataset(dst)
-
         return cropped_obj
 
-    def crop(self, mask: Union[GeoDataFrame]):
+    def _crop_with_polygon_warp(self, feature: Union[FeatureCollection, GeoDataFrame]):
+        """Crop raster with polygon.
+
+            - do not convert the polygon into a raster but rather use it directly to crop the raster using the
+            gdal.warp function.
+
+        Parameters
+        ----------
+        feature: [FeatureCollection]
+
+        Returns
+        -------
+        gdal.Dataset
+        """
+        if isinstance(feature, GeoDataFrame):
+            feature = FeatureCollection(feature)
+        else:
+            if not isinstance(feature, FeatureCollection):
+                raise TypeError(
+                    f"The function takes only a FeatureCollection or GeoDataFrame, given {type(feature)}"
+                )
+
+        feature = feature._gdf_to_ds()
+        warp_options = gdal.WarpOptions(
+            format="VRT",
+            # outputBounds=feature.total_bounds,
+            cropToCutline=True,
+            cutlineDSName=feature.feature.name,
+            # cutlineLayer=feature.layer_names[0],
+            multithread=True,
+        )
+        dst = gdal.Warp("", self.raster, options=warp_options)
+        dst_obj = Dataset(dst)
+        return dst_obj
+
+    def crop(self, mask: Union[GeoDataFrame, FeatureCollection]):
         """
 
             clip the Dataset object using a polygon/another raster (both rasters does not have to be aligned).
@@ -2287,7 +2309,7 @@ class Dataset:
         Dataset Object
         """
         if isinstance(mask, GeoDataFrame):
-            dst = self._crop_with_polygon(mask)
+            dst = self._crop_with_polygon_by_rasterizing(mask)
         elif isinstance(mask, Dataset):
             dst = self._crop_with_raster(mask)
         else:

@@ -667,19 +667,6 @@ class TestCrop:
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
         assert (dst_arr_cropped == src_arr).all()
 
-    # def test_crop_arr_with_gdal_obj(
-    #     self,
-    #     src: Datacube,
-    #     aligned_raster_arr,
-    #     src_arr: np.ndarray,
-    #     src_no_data_value: float,
-    # ):
-    #     dst_arr_cropped = src.cropAlligned(aligned_raster_arr, src)
-    #     # check that all the places of the nodatavalue are the same in both arrays
-    #     src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
-    #     dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
-    #     assert (dst_arr_cropped == src_arr).all()
-
     def test_crop_un_aligned(
         self,
         soil_raster: gdal.Dataset,
@@ -696,15 +683,25 @@ class TestCrop:
 
 
 class TestCropWithPolygon:
-    def test_crop_with_polygon(
+    def test_by_rasterizing(
         self,
         rhine_raster: gdal.Dataset,
         polygon_mask: gpd.GeoDataFrame,
     ):
         src_obj = Dataset(rhine_raster)
-        cropped_raster = src_obj._crop_with_polygon(polygon_mask)
+        cropped_raster = src_obj._crop_with_polygon_by_rasterizing(polygon_mask)
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.geotransform == src_obj.geotransform
+        assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+
+    def test_by_warp(
+        self,
+        rhine_raster: gdal.Dataset,
+        polygon_mask: gpd.GeoDataFrame,
+    ):
+        src_obj = Dataset(rhine_raster)
+        cropped_raster = src_obj._crop_with_polygon_warp(polygon_mask)
+        assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
 
