@@ -84,8 +84,12 @@ class FeatureCollection:
     @property
     def total_bounds(self) -> List[Number]:
         """bounding coordinates"""
-        # return list(self.feature.bounds.values[0])
-        return self.feature.total_bounds.tolist()
+        if isinstance(self.feature, GeoDataFrame):
+            bounds = self.feature.total_bounds.tolist()
+        else:
+            bounds = self.feature.GetLayer().GetExtent()
+            bounds = [bounds[0], bounds[2], bounds[1], bounds[3]]
+        return bounds
 
     @property
     def layers_count(self) -> Union[int, None]:
