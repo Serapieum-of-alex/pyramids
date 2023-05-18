@@ -32,7 +32,6 @@ class TestCreateDataCube:
             rasters_folder_path,
             with_order=True,
             file_name_data_fmt="%Y.%m.%d",
-            separator=".",
         )
         assert isinstance(dataset.base, Dataset)
         assert dataset.base.no_data_value[0] == 2147483648.0
@@ -54,7 +53,6 @@ class TestCreateDataCube:
             rasters_folder_path,
             with_order=True,
             file_name_data_fmt="%Y.%m.%d",
-            separator=".",
             start=rasters_folder_start_date,
             end=rasters_folder_end_date,
             fmt=rasters_folder_date_fmt,
@@ -78,7 +76,7 @@ class TestCreateDataCube:
                 rasters_folder_path,
                 with_order=True,
                 file_name_data_fmt="%Y.%m.%d",
-                separator="d",
+                # separator="d",
                 start=rasters_folder_start_date,
                 end=rasters_folder_end_date,
                 fmt=rasters_folder_date_fmt,
@@ -251,7 +249,7 @@ class TestSaveDataset:
 
 
 class TestCrop:
-    def test_crop_with_raster(
+    def test_crop_with_raster_inplace(
         self,
         raster_mask: Datacube,
         rasters_folder_path: str,
@@ -266,10 +264,33 @@ class TestCrop:
         mask = Dataset(raster_mask)
         dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         dataset.open_datacube()
-        dataset.crop(mask)
+        dataset.crop(mask, inplace=True)
         # dataset.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
         arr = dataset.values[0, :, :]
         no_data_value = dataset.base.no_data_value[0]
+        arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
+        assert arr1.shape[0] == 720
+        # shutil.rmtree(crop_aligned_folder_saveto)
+
+    def test_crop_with_raster_inplace_false(
+        self,
+        raster_mask: Datacube,
+        rasters_folder_path: str,
+        crop_aligned_folder_saveto: str,
+    ):
+        # if os.path.exists(crop_aligned_folder_saveto):
+        #     shutil.rmtree(crop_aligned_folder_saveto)
+        #     os.mkdir(crop_aligned_folder_saveto)
+        # else:
+        #     os.mkdir(crop_aligned_folder_saveto)
+
+        mask = Dataset(raster_mask)
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
+        cropped_dataset = dataset.crop(mask, inplace=False)
+        # dataset.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
+        arr = cropped_dataset.values[0, :, :]
+        no_data_value = cropped_dataset.base.no_data_value[0]
         arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
         assert arr1.shape[0] == 720
         # shutil.rmtree(crop_aligned_folder_saveto)
@@ -288,12 +309,12 @@ class TestCrop:
 
         dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         dataset.open_datacube()
-        dataset.crop(polygon_mask)
-        # dataset.to_geotiff(crop_aligned_folder_saveto)
+        dataset.crop(polygon_mask, inplace=True)
+        # dataset.to_file(crop_aligned_folder_saveto)
         arr = dataset.values[0, :, :]
         no_data_value = dataset.base.no_data_value[0]
         arr1 = arr[~np.isclose(arr, no_data_value, rtol=0.001)]
-        assert arr1.shape[0] == 806
+        assert arr1.shape[0] == 696
         # shutil.rmtree(crop_aligned_folder_saveto)
 
 

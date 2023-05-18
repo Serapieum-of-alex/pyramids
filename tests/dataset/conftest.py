@@ -264,7 +264,7 @@ def project_raster_to_epsg() -> int:
 @pytest.fixture(scope="module")
 def aligned_raster() -> Dataset:
     return gdal.Open(
-        "examples/data/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
+        "tests/data/geotiff/aligned_rasters/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
     )
 
 

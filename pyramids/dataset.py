@@ -2309,7 +2309,8 @@ class Dataset:
         Dataset Object
         """
         if isinstance(mask, GeoDataFrame):
-            dst = self._crop_with_polygon_by_rasterizing(mask)
+            # dst = self._crop_with_polygon_by_rasterizing(mask)
+            dst = self._crop_with_polygon_warp(mask)
         elif isinstance(mask, Dataset):
             dst = self._crop_with_raster(mask)
         else:
@@ -3089,14 +3090,15 @@ class Datacube:
         cls,
         path: Union[str, List[str]],
         with_order: bool = False,
+        regex_string=r"\d{4}.\d{2}.\d{2}",
+        date: bool = True,
         file_name_data_fmt: str = None,
-        separator: str = ".",
         start: str = None,
         end: str = None,
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
     ):
-        """read_multiple_files.
+        r"""read_multiple_files.
 
             - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
             the folder and length as the number of files.
@@ -3116,14 +3118,24 @@ class Datacube:
             >>> "MSWEP_1979.01.01.tif"
             >>> "MSWEP_1979.01.02.tif"
             >>> ...
-             >>> "MSWEP_1979.01.20.tif"
+            >>> "MSWEP_1979.01.20.tif"
+        regex_string: [str]
+            a regex string that we can use to locate the date in the file names.Default is r"\d{4}.\d{
+            2}.\d{2}".
+            >>> fname = "MSWEP_YYYY.MM.DD.tif"
+            >>> regex_string = r"\d{4}.\d{2}.\d{2}"
+            - or
+            >>> fname = "MSWEP_YYYY_M_D.tif"
+            >>> regex_string = r"\d{4}_\d{1}_\d{1}"
+            - if there is a number at the beginning of the name
+            >>> fname = "1_MSWEP_YYYY_M_D.tif"
+            >>> regex_string = r"\d+"
+        date: [bool]
+            True if the number in the file name is a date. Default is True.
         file_name_data_fmt : [str]
             if the files names' have a date and you want to read them ordered .Default is None
             >>> "MSWEP_YYYY.MM.DD.tif"
             >>> file_name_data_fmt = "%Y.%m.%d"
-        separator: [str]
-            separator between the order in the beginning of the raster file name and the rest of the file
-            name. Default is ".".
         start: [str]
             start date if you want to read the input raster for a specific period only and not all rasters,
             if not given all rasters in the given path will be read.
@@ -3175,22 +3187,20 @@ class Datacube:
                     f"To read the raster with a certain order (with_order = {with_order}, then you have to enter the "
                     f"value of the parameter file_name_data_fmt(given: {file_name_data_fmt})"
                 )
-            if separator not in file_name_data_fmt:
-                raise ValueError(
-                    f"the separator:({separator}) parameter you entered does not exit in the date format {file_name_data_fmt}"
-                )
 
-            regex_string = r"\d{4}" + separator + r"\d{2}" + separator + r"\d{2}"
-            match_str_fn = lambda x: re.search(regex_string, x)
+            match_str_fn = lambda x: re.search(regex_string, x).group()
 
             list_dates = list(map(match_str_fn, files))
             if None in list_dates:
                 raise ValueError(
                     "The date format/separator given does not match the file names"
                 )
-            list_dates = [
-                dt.datetime.strptime(i.group(), file_name_data_fmt) for i in list_dates
-            ]
+            if date:
+                list_dates = [
+                    dt.datetime.strptime(i, file_name_data_fmt) for i in list_dates
+                ]
+            else:
+                list_dates = list(map(int, list_dates))
 
             df = pd.DataFrame()
             df["files"] = files
@@ -3531,9 +3541,8 @@ class Datacube:
         self._base = dst
 
     def crop(
-        self,
-        mask: Union[Dataset, str],
-    ) -> None:
+        self, mask: Union[Dataset, str], inplace: bool = False
+    ) -> Union[None, Dataset]:
         """cropAlignedFolder.
 
             cropAlignedFolder matches the location of nodata value from src raster to dst
@@ -3543,11 +3552,13 @@ class Datacube:
 
         Parameters
         ----------
-        mask : [str/Dataset]
-            path/Dataset object of the mask raster to crop the rasters (to get the NoData value
+        mask : [Dataset]
+            Dataset object of the mask raster to crop the rasters (to get the NoData value
             and it location in the array) Mask should include the name of the raster and the
             extension like "data/dem.tif", or you can read the mask raster using gdal and use
             is the first parameter to the function.
+        inplace: [bool]
+            True to make the changes in place.
 
         Returns
         -------
@@ -3579,9 +3590,14 @@ class Datacube:
                 )
             array[i, :, :] = arr
 
-        self._values = array
-        # use the last src as
-        self._base = dst
+        if inplace:
+            self._values = array
+            # use the last src as
+            self._base = dst
+        else:
+            dataset = Datacube(dst, time_length=self.time_length)
+            dataset._values = array
+            return dataset
 
     # # TODO: merge ReprojectDataset and ProjectRaster they are almost the same
     # # TODO: still needs to be tested
