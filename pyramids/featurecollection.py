@@ -82,9 +82,10 @@ class FeatureCollection:
         return self._get_epsg()
 
     @property
-    def bounds(self) -> List[Number]:
+    def total_bounds(self) -> List[Number]:
         """bounding coordinates"""
-        return list(self.feature.bounds.values[0])
+        # return list(self.feature.bounds.values[0])
+        return self.feature.total_bounds.tolist()
 
     @property
     def layers_count(self) -> Union[int, None]:
@@ -241,7 +242,7 @@ class FeatureCollection:
 
         return ds
 
-    # def _gdf_to_ds(self, inplace=False) -> DataSource:
+    # def _gdf_to_ds_copy(self, inplace=False) -> DataSource:
     #     """Convert ogr DataSource object to a GeoDataFrame.
     #
     #     Returns
@@ -253,13 +254,14 @@ class FeatureCollection:
     #     new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
     #     if isinstance(self.feature, GeoDataFrame):
     #         self.feature.to_file(new_vector_path)
-    #         ds = FeatureCollection.read_file(new_vector_path, engine="ogr")
-    #         ds = FeatureCollection._copy_driver_to_memory(ds.feature)
+    #         ds = ogr.Open(new_vector_path)
+    #         # ds = FeatureCollection(ds)
+    #         ds = FeatureCollection._copy_driver_to_memory(ds)
     #     else:
     #         ds = FeatureCollection._copy_driver_to_memory(self.feature)
     #
     #     if inplace:
-    #         self.__init__(ds, engine="ogr")
+    #         self.__init__(ds)
     #         ds = None
     #
     #     return ds

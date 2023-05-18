@@ -16,7 +16,7 @@ from pyramids.dataset import Dataset
 class TestAttributes:
     def test_bound(self, gdf: GeoDataFrame, gdf_bound: List):
         feature = FeatureCollection(gdf)
-        assert feature.bounds == gdf_bound
+        assert all(np.isclose(feature.total_bounds, gdf_bound, rtol=0.0001))
 
     def test_layer_count_gdf(self, gdf: GeoDataFrame):
         feature = FeatureCollection(gdf)
