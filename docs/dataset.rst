@@ -688,18 +688,16 @@ to_crs
 
 Parameters
 ^^^^^^^^^^
-    src: [gdal object]
-        gdal dataset (src=gdal.Open("dem.tif"))
     to_epsg: [integer]
         reference number to the new projection (https://epsg.io/)
         (default 3857 the reference no of WGS84 web mercator )
-    resample_technique: [String]
+    method: [String]
         resampling technique default is "Nearest"
         https://gisgeography.com/raster-resampling/
-        "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+        "nearest neibour" for nearest neighbour,"cubic" for cubic convolution,
         "bilinear" for bilinear
-    option : [1 or 2]
-        option 2 uses the gda.wrap function, option 1 uses the gda.ReprojectImage function
+    maintain_alighment : [bool]
+        True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
 
 Returns
 ^^^^^^^
