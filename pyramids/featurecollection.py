@@ -10,6 +10,7 @@ import tempfile
 import uuid
 import shutil
 import warnings
+import json
 from typing import List, Tuple, Union, Iterable, Any
 from numbers import Number
 import geopandas as gpd
@@ -234,7 +235,15 @@ class FeatureCollection:
         ogr.DataSource
         """
         if isinstance(self.feature, GeoDataFrame):
-            ds = ogr.Open(self.feature.to_json())
+            gdf_json = json.loads(self.feature.to_json())
+            geojson_str = json.dumps(gdf_json)
+            # Use the /vsimem/ (Virtual File Systems) to write the GeoJSON string to memory
+            gdal.FileFromMemBuffer("/vsimem/myjson.json", geojson_str)
+            # Use OGR to open the GeoJSON from memory
+            drv = ogr.GetDriverByName("GeoJSON")
+            ds = drv.Open("/vsimem/myjson.json")
+
+            # ds = ogr.Open(self.feature.to_json())
         else:
             ds = self.feature
 
