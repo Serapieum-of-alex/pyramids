@@ -78,13 +78,22 @@ with_order: [bool]
     >>> "MSWEP_1979.01.02.tif"
     >>> ...
     >>> "MSWEP_1979.01.20.tif"
+regex_string: [str]
+    a regex string that we can use to locate the date in the file names.Default is r"\d{4}.\d{2}.\d{2}".
+    >>> fname = "MSWEP_YYYY.MM.DD.tif"
+    >>> regex_string = r"\d{4}.\d{2}.\d{2}"
+    - or
+    >>> fname = "MSWEP_YYYY_M_D.tif"
+    >>> regex_string = r"\d{4}_\d{1}_\d{1}"
+    - if there is a number at the beginning of the name
+    >>> fname = "1_MSWEP_YYYY_M_D.tif"
+    >>> regex_string = r"\d+"
+date: [bool]
+    True if the number in the file name is a date. Default is True.
 file_name_data_fmt : [str]
     if the files names' have a date and you want to read them ordered .Default is None
     >>> "MSWEP_YYYY.MM.DD.tif"
     >>> file_name_data_fmt = "%Y.%m.%d"
-separator: [str]
-    separator between the order in the beginning of the raster file name and the rest of the file
-    name. Default is ".".
 start: [str]
     start date if you want to read the input raster for a specific period only and not all rasters,
     if not given all rasters in the given path will be read.
@@ -120,7 +129,7 @@ with_order = True
 - To read the rasters with a certain order, each raster has to have a date in its file name, and using the format of
     this name the method is going to read the file in right order.
 
-- the raster directory contents are
+- the raster directory contents are files with a date in each file name
 
 .. code:: py
 
@@ -135,9 +144,34 @@ with_order = True
 .. code:: py
 
     rasters_folder_path = "examples/data/geotiff/raster-folder"
-    datacube = Datacube.read_multiple_files(rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator=".")
+    datacube = Datacube.read_multiple_files(
+        rasters_folder_path, regex_string=r"\d{4}.\d{2}.\d{2}", date=True, file_name_data_fmt="%Y.%m.%d",
+    )
     print(datacube)
     >>>     Files: 6
+    >>>     Cell size: 5000.0
+    >>>     EPSG: 4647
+    >>>     Dimension: 125 * 93
+    >>>     Mask: 2147483648.0
+
+- the raster directory contents are files with a number in each file name
+
+.. code:: py
+
+    >>> 0_MSWEP.tif
+    >>> 1_MSWEP.tif
+    >>> 2_MSWEP.tif
+    >>> 3_MSWEP.tif
+    >>> 4_MSWEP.tif
+
+.. code:: py
+
+    rasters_folder_path = "tests/data/geotiff/rhine"
+    datacube = Datacube.read_multiple_files(
+        rasters_folder_path, with_order=True, regex_string=r"\d+", date=False,
+    )
+    print(datacube)
+    >>>     Files: 3
     >>>     Cell size: 5000.0
     >>>     EPSG: 4647
     >>>     Dimension: 125 * 93

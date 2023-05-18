@@ -22,7 +22,7 @@ class TestCreateDataCube:
         assert dataset.base.rows == rasters_folder_dim[0]
         assert dataset.base.columns == rasters_folder_dim[1]
 
-    def test_read_all_with_order(
+    def test_read_all_with_order_date(
         self,
         rasters_folder_path: str,
         rasters_folder_rasters_number: int,
@@ -61,6 +61,25 @@ class TestCreateDataCube:
         assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
         assert dataset.time_length == rasters_folder_between_dates_raster_number
+        assert dataset.base.rows == rasters_folder_dim[0]
+        assert dataset.base.columns == rasters_folder_dim[1]
+
+    def test_read_all_with_order_numbers(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_rasters_number: int,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Datacube.read_multiple_files(
+            "tests/data/geotiff/rhine",
+            with_order=True,
+            regex_string=r"\d+",
+            date=False,
+        )
+        assert isinstance(dataset.base, Dataset)
+        assert dataset.base.no_data_value[0] == 2147483648.0
+        assert isinstance(dataset.files, list)
+        assert dataset.time_length == 3
         assert dataset.base.rows == rasters_folder_dim[0]
         assert dataset.base.columns == rasters_folder_dim[1]
 
