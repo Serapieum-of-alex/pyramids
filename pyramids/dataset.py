@@ -3262,8 +3262,6 @@ class Datacube:
         - The attribute where the dataset array is stored.
         - the 3D numpy array, [dataset length, rows, cols], [dataset length, lons, lats]
         """
-        # if not hasattr(self, "_values"):
-        #     raise ValueError("please use the read_dataset to read the data first.")
         return self._values
 
     @values.setter
