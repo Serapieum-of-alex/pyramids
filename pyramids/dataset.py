@@ -3182,10 +3182,9 @@ class Datacube:
 
         # to sort the files in the same order as the first number in the name
         if with_order:
-
-            match_str_fn = lambda x: re.search(regex_string, x).group()
-
+            match_str_fn = lambda x: re.search(regex_string, x)
             list_dates = list(map(match_str_fn, files))
+
             if None in list_dates:
                 raise ValueError(
                     "The date format/separator given does not match the file names"
@@ -3196,11 +3195,13 @@ class Datacube:
                         f"To read the raster with a certain order (with_order = {with_order}, then you have to enter the "
                         f"value of the parameter file_name_data_fmt(given: {file_name_data_fmt})"
                     )
-                list_dates = [
-                    dt.datetime.strptime(i, file_name_data_fmt) for i in list_dates
-                ]
+                fn = lambda x: dt.datetime.strptime(x.group(), file_name_data_fmt)
+                # list_dates = [
+                #     dt.datetime.strptime(i.group(), file_name_data_fmt) for i in list_dates
+                # ]
             else:
-                list_dates = list(map(int, list_dates))
+                fn = lambda x: int(x.group())
+            list_dates = list(map(fn, list_dates))
 
             df = pd.DataFrame()
             df["files"] = files
