@@ -3196,9 +3196,6 @@ class Datacube:
                         f"value of the parameter file_name_data_fmt(given: {file_name_data_fmt})"
                     )
                 fn = lambda x: dt.datetime.strptime(x.group(), file_name_data_fmt)
-                # list_dates = [
-                #     dt.datetime.strptime(i.group(), file_name_data_fmt) for i in list_dates
-                # ]
             else:
                 fn = lambda x: int(x.group())
             list_dates = list(map(fn, list_dates))
@@ -3210,12 +3207,21 @@ class Datacube:
             files = df.loc[:, "files"].values
 
         if start is not None or end is not None:
-            start = dt.datetime.strptime(start, fmt)
-            end = dt.datetime.strptime(end, fmt)
+            if date:
+                start = dt.datetime.strptime(start, fmt)
+                end = dt.datetime.strptime(end, fmt)
 
-            files = (
-                df.loc[start <= df["date"], :].loc[df["date"] <= end, "files"].values
-            )
+                files = (
+                    df.loc[start <= df["date"], :]
+                    .loc[df["date"] <= end, "files"]
+                    .values
+                )
+            else:
+                files = (
+                    df.loc[start <= df["date"], :]
+                    .loc[df["date"] <= end, "files"]
+                    .values
+                )
 
         if not isinstance(path, list):
             # add the path to all the files
