@@ -458,3 +458,27 @@ class TestProperties:
             rasters_folder_dim[0],
             rasters_folder_dim[1],
         )
+
+    def test_values_get(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
+        arr = dataset.values
+        assert isinstance(arr, np.ndarray)
+        assert arr.shape == (6, 125, 93)
+
+    def test_values_setter(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+
+        dataset.open_datacube()
+        arr = dataset.values
+        arr = arr * 0
+        dataset.values = arr
+        assert np.array_equal(dataset.values, arr)

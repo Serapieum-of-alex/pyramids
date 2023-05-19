@@ -3278,9 +3278,8 @@ class Datacube:
         - The attribute where the dataset array is stored.
         - the 3D numpy array, [dataset length, rows, cols], [dataset length, lons, lats]
         """
-        if not hasattr(self, "_values"):
-            raise ValueError("please use the read_dataset to read the data first.")
-
+        # if not hasattr(self, "_values"):
+        #     raise ValueError("please use the read_dataset to read the data first.")
         return self._values
 
     @values.setter
@@ -3307,12 +3306,12 @@ class Datacube:
 
     def __getitem__(self, key):
         if not hasattr(self, "values"):
-            raise AttributeError("Please use the read_dataset method t read the data")
+            raise AttributeError("Please use the read_dataset method to read the data")
         return self._values[key, :, :]
 
     def __setitem__(self, key, value: np.ndarray):
         if not hasattr(self, "values"):
-            raise AttributeError("Please use the read_dataset method t read the data")
+            raise AttributeError("Please use the read_dataset method to read the data")
         self._values[key, :, :] = value
 
     def __len__(self):
