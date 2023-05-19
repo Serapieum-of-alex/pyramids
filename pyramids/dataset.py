@@ -3069,22 +3069,6 @@ class Datacube:
         """
         return cls(src, dataset_length)
 
-    def update_cube(self, array: np.ndarray):
-        """Update dataset data.
-
-            - This function creates a Geotiff raster like another input raster, new raster will have the same
-            projection, coordinates or the top left corner of the original raster, cell size, nodata velue, and number
-            of rows and columns
-            - the raster and the given array should have the same number of columns and rows.
-
-        Parameters
-        ----------
-        array: [numpy array]
-            3D array to be stores as a rasters, the dimensions should be
-            [rows, columns, timeseries length]
-        """
-        self.values = array
-
     @classmethod
     def read_multiple_files(
         cls,

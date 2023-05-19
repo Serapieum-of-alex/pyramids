@@ -154,39 +154,6 @@ class TestOpenDataCube:
         )
 
 
-class TestUpdateDataset:
-    def test_different_dimensions(
-        self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
-    ):
-        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
-        dataset.open_datacube()
-        # access the data attribute
-        arr = dataset.values
-        # modify the array
-        arr = arr[0:4, :, :] * np.nan
-        try:
-            dataset.update_cube(arr)
-        except ValueError:
-            pass
-
-    def test_same_dimensions(
-        self,
-        rasters_folder_path: str,
-        rasters_folder_rasters_number: int,
-        rasters_folder_dim: tuple,
-    ):
-        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
-        dataset.open_datacube()
-        # access the data attribute
-        arr = dataset.values
-        # modify the array
-        arr = arr * np.nan
-        dataset.update_cube(arr)
-
-
 class TestAccessDataset:
     def test_iloc(
         self,
@@ -500,3 +467,20 @@ class TestProperties:
         arr = arr * 0
         dataset.values = arr
         assert np.array_equal(dataset.values, arr)
+
+    def test_values_sette_different_dimensions(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_rasters_number: int,
+        rasters_folder_dim: tuple,
+    ):
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
+        # access the data attribute
+        arr = dataset.values
+        # modify the array
+        arr = arr[0:4, :, :] * np.nan
+        try:
+            dataset.values = arr
+        except ValueError:
+            pass
