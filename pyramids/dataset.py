@@ -3458,14 +3458,16 @@ class Datacube:
         anim = cleo.animate(time, **kwargs)
         return anim
 
-    def to_file(self, path: str, driver: str = "geotiff", band: int = 0):
+    def to_file(
+        self, path: Union[str, List[str]], driver: str = "geotiff", band: int = 0
+    ):
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
 
         Parameters
         ----------
-        path: [string]
+        path: [str/list]
             a path includng the name of the raster and extention.
             >>> path = "data/cropped.tif"
         driver: [str]
@@ -3479,13 +3481,23 @@ class Datacube:
         >>> output_path = "examples/GIS/data/save_raster_test.tif"
         >>> raster_obj.to_file(output_path)
         """
-        if not Path(path).exists():
-            Path(path).mkdir(parents=True, exist_ok=True)
         ext = CATALOG.get_extension(driver)
+
+        if isinstance(path, str):
+            if not Path(path).exists():
+                Path(path).mkdir(parents=True, exist_ok=True)
+            path = [f"{path}/{i}.{ext}" for i in range(self.time_length)]
+        else:
+            if not len(path) == self.time_length:
+                raise ValueError(
+                    f"Length of the given paths: {len(path)} does not equal number of rasters in the data cube: {self.time_length}"
+                )
+            if not Path(path[0]).parent.exists():
+                Path(path[0]).parent.mkdir(parents=True, exist_ok=True)
 
         for i in range(self.time_length):
             src = self.iloc(i)
-            src.to_file(f"{path}/{i}.{ext}", band=band)
+            src.to_file(path[i], band=band)
 
     def to_crs(
         self,

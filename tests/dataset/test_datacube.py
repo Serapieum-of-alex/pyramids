@@ -232,7 +232,7 @@ def test_match_alignment(
 
 
 class TestSaveDataset:
-    def test_to_geotiff(
+    def test_to_geotiff_with_path(
         self,
         rasters_folder_path: str,
         rasters_folder_rasters_number: int,
@@ -248,6 +248,24 @@ class TestSaveDataset:
         files = os.listdir(path)
         assert len(files) == 6
         shutil.rmtree(path)
+
+    def test_to_geotiff_with_list_of_paths(
+        self,
+        rasters_folder_path: str,
+        rasters_folder_rasters_number: int,
+        rasters_folder_dim: tuple,
+    ):
+        rpath = "tests/data/dataset/save_geotiff"
+        if os.path.exists(rpath):
+            shutil.rmtree(rpath)
+
+        dataset = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset.open_datacube()
+        path = [f"{rpath}/{i}.tif" for i in range(dataset.time_length)]
+        dataset.to_file(path)
+        files = os.listdir(rpath)
+        assert len(files) == 6
+        shutil.rmtree(rpath)
 
     def test_to_ascii(
         self,
