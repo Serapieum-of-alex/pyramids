@@ -2430,9 +2430,8 @@ class Dataset:
     ) -> np.ndarray:
         """nearestCell.
 
-            nearestCell calculates the the indices (rows, col) of nearest cell in a given
-            raster to a station
-            coordinate system of the raster has to be projected to be able to calculate
+            locate_points calculates the the indices (rows, col) of nearest cell in a given
+            raster to a point coordinate system of the raster has to be projected to be able to calculate
             the distance
 
         Parameters
@@ -3437,8 +3436,8 @@ class Datacube:
 
         cleo = Array(data, exclude_value=exclude_value)
         time = list(range(self.time_length))
-        anim = cleo.animate(time, **kwargs)
-        return anim
+        cleo.animate(time, **kwargs)
+        return cleo
 
     def to_file(
         self, path: Union[str, List[str]], driver: str = "geotiff", band: int = 0
