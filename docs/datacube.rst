@@ -200,6 +200,6 @@ create_cube
 - Create a `DataCube` object.
 
 ===========
-update_cube
+Propteties
 ===========
 - update the data in the `DataCube` object
