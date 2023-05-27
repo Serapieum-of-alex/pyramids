@@ -2286,7 +2286,6 @@ class Dataset:
             format="VRT",
             # outputBounds=feature.total_bounds,
             cropToCutline=True,
-            # cutlineDSName=feature.feature.name,
             cutlineDSName=feature.file_name,
             # cutlineLayer=feature.layer_names[0],
             multithread=True,

@@ -122,14 +122,14 @@ class TestConvert:
         vector = FeatureCollection(ds_geodataframe)
         ds = vector._gdf_to_ds()
         assert isinstance(ds, FeatureCollection)
-        assert isinstance(ds.feature, gdal.Dataset)  # DataSource
+        assert isinstance(ds.feature, DataSource)
         # assert ds.name == "memory"
 
     def test_gdf_to_ds_inplace(self, ds_geodataframe: GeoDataFrame):
         vector = FeatureCollection(ds_geodataframe)
         ds = vector._gdf_to_ds(inplace=True)
         assert ds is None
-        assert isinstance(vector.feature, gdal.Dataset)  # DataSource
+        assert isinstance(vector.feature, DataSource)
         # assert vector.feature.name == "memory"
 
     def test_gdf_to_ds_if_feature_is_already_ds(
@@ -139,6 +139,12 @@ class TestConvert:
         ds = vector._gdf_to_ds()
         assert isinstance(ds, FeatureCollection)
         assert isinstance(ds.feature, DataSource)
+
+    def test_gdf_to_gdal_ex(self, ds_geodataframe: GeoDataFrame):
+        vector = FeatureCollection(ds_geodataframe)
+        ds = vector._gdf_to_ds(gdal_dataset=True)
+        assert isinstance(ds, FeatureCollection)
+        assert isinstance(ds.feature, gdal.Dataset)
 
     # def test_gdf_to_ds2(
     #         self, ds_geodataframe: GeoDataFrame

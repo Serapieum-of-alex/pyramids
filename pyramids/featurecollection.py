@@ -28,6 +28,7 @@ from pyramids._utils import Catalog
 from pyramids._errors import DriverNotExistError
 
 CATALOG = Catalog(raster_driver=False)
+MEMORY_FILE = "/vsimem/myjson.json"
 
 
 class FeatureCollection:
@@ -240,7 +241,9 @@ class FeatureCollection:
         else:
             self.feature.to_file(path, driver=driver_gdal_name)
 
-    def _gdf_to_ds(self, inplace: bool = False) -> Union[DataSource, None]:
+    def _gdf_to_ds(
+        self, inplace: bool = False, gdal_dataset=False
+    ) -> Union[DataSource, None]:
         """convert a geopandas geodataframe into ogr DataSource.
 
         Parameters
@@ -256,11 +259,13 @@ class FeatureCollection:
             gdf_json = json.loads(self.feature.to_json())
             geojson_str = json.dumps(gdf_json)
             # Use the /vsimem/ (Virtual File Systems) to write the GeoJSON string to memory
-            gdal.FileFromMemBuffer("/vsimem/myjson.json", geojson_str)
+            gdal.FileFromMemBuffer(MEMORY_FILE, geojson_str)
             # Use OGR to open the GeoJSON from memory
-            # drv = ogr.GetDriverByName("GeoJSON")
-            # ds = drv.Open("/vsimem/myjson.json")
-            ds = gdal.OpenEx("/vsimem/myjson.json")
+            if not gdal_dataset:
+                drv = ogr.GetDriverByName("GeoJSON")
+                ds = drv.Open(MEMORY_FILE)
+            else:
+                ds = gdal.OpenEx(MEMORY_FILE)
         else:
             ds = self.feature
 
