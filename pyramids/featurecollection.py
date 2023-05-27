@@ -98,7 +98,9 @@ class FeatureCollection:
 
         Number of layers in a datasource.
         """
-        if isinstance(self.feature, DataSource):
+        if isinstance(self.feature, DataSource) or isinstance(
+            self.feature, gdal.Dataset
+        ):
             return self.feature.GetLayerCount()
         else:
             return None
@@ -107,7 +109,9 @@ class FeatureCollection:
     def layer_names(self) -> List[str]:
         """OGR object layers names'."""
         names = []
-        if isinstance(self.feature, DataSource):
+        if isinstance(self.feature, DataSource) or isinstance(
+            self.feature, gdal.Dataset
+        ):
             for i in range(self.layers_count):
                 names.append(self.feature.GetLayer(i).GetLayerDefn().GetName())
 
@@ -117,7 +121,9 @@ class FeatureCollection:
     def column(self) -> List:
         """Column Names"""
         names = []
-        if isinstance(self.feature, DataSource):
+        if isinstance(self.feature, DataSource) or isinstance(
+            self.feature, gdal.Dataset
+        ):
             for i in range(self.layers_count):
                 layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
                 cols = layer_dfn.GetFieldCount()
@@ -128,6 +134,18 @@ class FeatureCollection:
         else:
             names = self.feature.columns.tolist()
         return names
+
+    @property
+    def file_name(self):
+        """Get file name in case of the base object is an ogr.Datasource or gdal.Dataset"""
+        if isinstance(self.feature, DataSource):
+            file_name = self.feature.name
+        elif isinstance(self.feature, gdal.Dataset):
+            file_name = self.feature.GetFileList()[0]
+        else:
+            file_name = ""
+
+        return file_name
 
     @classmethod
     def read_file(cls, path: str):
@@ -240,10 +258,9 @@ class FeatureCollection:
             # Use the /vsimem/ (Virtual File Systems) to write the GeoJSON string to memory
             gdal.FileFromMemBuffer("/vsimem/myjson.json", geojson_str)
             # Use OGR to open the GeoJSON from memory
-            drv = ogr.GetDriverByName("GeoJSON")
-            ds = drv.Open("/vsimem/myjson.json")
-
-            # ds = ogr.Open(self.feature.to_json())
+            # drv = ogr.GetDriverByName("GeoJSON")
+            # ds = drv.Open("/vsimem/myjson.json")
+            ds = gdal.OpenEx("/vsimem/myjson.json")
         else:
             ds = self.feature
 
