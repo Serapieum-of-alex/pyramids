@@ -29,6 +29,7 @@ from pyramids._errors import DriverNotExistError
 
 CATALOG = Catalog(raster_driver=False)
 MEMORY_FILE = "/vsimem/myjson.geojson"
+gdal.UseExceptions()
 
 
 class FeatureCollection:
