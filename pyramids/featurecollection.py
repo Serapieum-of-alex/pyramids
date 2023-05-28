@@ -24,7 +24,7 @@ from shapely.geometry import Point, Polygon, LineString
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multilinestring import MultiLineString
-from pyramids._utils import Catalog
+from pyramids._utils import Catalog, ogr_ds_togdal_dataset
 from pyramids._errors import DriverNotExistError
 
 CATALOG = Catalog(raster_driver=False)
@@ -308,32 +308,16 @@ class FeatureCollection:
         -------
         GeoDataFrame
         """
-        # # TODO: not complete yet the function needs to take an ogr.DataSource and then write it to disk and then read
-        # #  it using the gdal.OpenEx as below
-        # # but this way if i write the vector to disk i can just read it ysing geopandas as df directly.
-        # # https://gis.stackexchange.com/questions/227737/python-gdal-ogr-2-x-read-vectors-with-gdal-openex-or-ogr-open
-        #
-        # # read the vector using gdal not ogr
-        # ds = gdal.OpenEx(path)  # , gdal.OF_READONLY
-        # layer = ds.GetLayer(0)
-        # layer_name = layer.GetName()
-        # mempath = "/vsimem/test.geojson"
-        # # convert the vector read as a gdal dataset to memory
-        # # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.VectorTranslateOptions
-        # gdal.VectorTranslate(mempath, ds)  # , SQLStatement=f"SELECT * FROM {layer_name}", layerName=layer_name
-        # # reading the memory file using fiona
-        # f = fiona.open(mempath, driver='geojson')
-        # gdf = gpd.GeoDataFrame.from_features(f, crs=f.crs)
+        gdal_ds = ogr_ds_togdal_dataset(self.feature)
+        layer_name = self.layer_names[0]
+        gdal.VectorTranslate(
+            MEMORY_FILE,
+            gdal_ds,
+            SQLStatement=f"SELECT * FROM {layer_name}",
+            layerName=layer_name,
+        )
+        gdf = gpd.read_file(MEMORY_FILE, driver="geojson")
 
-        # till i manage to do the above way just write the ogr.DataSource to disk and then read it using geopandas
-
-        # Create a temporary directory for files.
-        temp_dir = tempfile.mkdtemp()
-        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
-        self.to_file(new_vector_path, driver="geojson")
-        gdf = gpd.read_file(new_vector_path)
-
-        shutil.rmtree(temp_dir, ignore_errors=True)
         if inplace:
             self.__init__(gdf)
             gdf = None
