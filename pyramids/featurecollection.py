@@ -28,7 +28,7 @@ from pyramids._utils import Catalog, ogr_ds_togdal_dataset
 from pyramids._errors import DriverNotExistError
 
 CATALOG = Catalog(raster_driver=False)
-MEMORY_FILE = "/vsimem/myjson.json"
+MEMORY_FILE = "/vsimem/myjson.geojson"
 
 
 class FeatureCollection:
