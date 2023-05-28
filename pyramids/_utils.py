@@ -246,7 +246,17 @@ def import_cleopatra(message: str):
 
 
 def ogr_ds_togdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
+    """Convert ogr.Datasource object to a gdal.Dataset
 
+    Parameters
+    ----------
+    ogr_ds: [Datasource]
+        ogr.Datasource object
+
+    Returns
+    -------
+    gdal.Dataset
+    """
     gdal_ds = gdal.GetDriverByName("Memory").Create("", 0, 0, 0, gdal.GDT_Unknown)
 
     for i in range(ogr_ds.GetLayerCount()):
