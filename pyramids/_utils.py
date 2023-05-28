@@ -243,3 +243,25 @@ def import_cleopatra(message: str):
         import cleopatra  # noqa
     except ImportError:
         raise OptionalPackageDoesNontExist(message)
+
+
+def ogr_ds_togdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
+
+    gdal_ds = gdal.GetDriverByName("Memory").Create("", 0, 0, 0, gdal.GDT_Unknown)
+
+    for i in range(ogr_ds.GetLayerCount()):
+        layer = ogr_ds.GetLayerByIndex(i)
+        gdal_layer = gdal_ds.CreateLayer(
+            layer.GetName(), layer.GetSpatialRef(), layer.GetLayerDefn().GetGeomType()
+        )
+        for field in layer.schema:
+            gdal_layer.CreateField(ogr.FieldDefn(field.name, field.type))
+        for feature in layer:
+            gdal_feature = ogr.Feature(feature.GetDefnRef())
+            gdal_feature.SetGeometry(feature.GetGeometryRef())
+            for field in layer.schema:
+                field_value = feature.GetField(field.name)
+                gdal_feature.SetField(field.name, field_value)
+            gdal_layer.CreateFeature(gdal_feature)
+
+    return gdal_ds

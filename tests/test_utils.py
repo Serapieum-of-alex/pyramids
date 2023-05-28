@@ -1,8 +1,8 @@
 import numpy as np
-from osgeo import gdal
+from osgeo import gdal, ogr
 
 from pyramids._errors import DriverNotExistError
-from pyramids._utils import numpy_to_gdal_dtype, Catalog
+from pyramids._utils import numpy_to_gdal_dtype, Catalog, ogr_ds_togdal_dataset
 
 
 def test_numpy_to_gdal_dtype(arr: np.ndarray):
@@ -48,3 +48,8 @@ class TestCatalog:
         catalog = Catalog()
         name = catalog.get_driver_name("AAIGrid")
         assert name == "ascii"
+
+
+def test_ogr_ds_togdal_dataset(data_source: ogr.DataSource):
+    gdal_ds = ogr_ds_togdal_dataset(data_source)
+    assert isinstance(gdal_ds, gdal.Dataset)
