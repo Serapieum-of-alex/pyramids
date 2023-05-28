@@ -311,7 +311,7 @@ class FeatureCollection:
         """
         gdal_ds = ogr_ds_togdal_dataset(self.feature)
         print(gdal_ds)
-        layer_name = self.layer_names[0]
+        layer_name = gdal_ds.GetLayer().GetName()  # self.layer_names[0]
         gdal.VectorTranslate(
             MEMORY_FILE,
             gdal_ds,
