@@ -318,7 +318,7 @@ class FeatureCollection:
             SQLStatement=f"SELECT * FROM {layer_name}",
             layerName=layer_name,
         )
-        gdf = gpd.read_file(MEMORY_FILE, driver="geojson")
+        gdf = gpd.read_file(MEMORY_FILE)  # , driver="geojson"
 
         if inplace:
             self.__init__(gdf)
