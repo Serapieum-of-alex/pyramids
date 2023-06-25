@@ -18,8 +18,8 @@ jobs:
           use-mamba: true
           auto-update-conda: false
           environment-file: environment.yml
-          auto-activate-base: true
-          activate-environment: ""
+          auto-activate-base: false
+          activate-environment: test
           python-version: ${{ matrix.python-version }}
           channels: conda-forge,defaults
           channel-priority: true
