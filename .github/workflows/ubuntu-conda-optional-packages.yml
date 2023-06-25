@@ -1,0 +1,33 @@
+name: Main-package-conda
+on: [push, pull_request]
+jobs:
+  Run:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11"]
+    env:
+      OS: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+
+      - name: Install dependencies
+        run: |
+            # $CONDA is an environment variable pointing to the root of the miniconda directory
+            $CONDA/bin/conda env update --file environment-optional-packages.yml --name base
+            $CONDA/bin/python -m pip install -r requirements-dev.txt
+            $CONDA/bin/python setup.py install
+
+      - name: Generate coverage report
+        run: |
+          $CONDA/bin/pytest -sv -m "not plot"
+
+#      - name: Upload coverage reports to Codecov with GitHub Action
+#        uses: codecov/codecov-action@v3
