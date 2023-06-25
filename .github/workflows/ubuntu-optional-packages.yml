@@ -1,4 +1,4 @@
-name: Optional-packages
+name: Optional-packages-pypi
 on: [push, pull_request]
 jobs:
   Run:

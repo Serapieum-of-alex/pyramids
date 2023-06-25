@@ -1,4 +1,4 @@
-name: Main-package
+name: Main-package-pypi
 on: [push, pull_request]
 jobs:
   Run:
