@@ -302,7 +302,27 @@ class FeatureCollection:
     #
     #     return ds
 
-    def _ds_to_gdf(self, inplace: bool = False) -> GeoDataFrame:
+    def _ds_to_gdf_with_io(self, inplace: bool = False) -> GeoDataFrame:
+        """Convert ogr DataSource object to a GeoDataFrame.
+
+        Returns
+        -------
+        GeoDataFrame
+        """
+        # Create a temporary directory for files.
+        temp_dir = tempfile.mkdtemp()
+        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        self.to_file(new_vector_path, driver="geojson")
+        gdf = gpd.read_file(new_vector_path)
+
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        if inplace:
+            self.__init__(gdf)
+            gdf = None
+
+        return gdf
+
+    def _ds_to_gdf_in_memory(self, inplace: bool = False) -> GeoDataFrame:
         """Convert ogr DataSource object to a GeoDataFrame.
 
         Returns
@@ -310,7 +330,6 @@ class FeatureCollection:
         GeoDataFrame
         """
         gdal_ds = ogr_ds_togdal_dataset(self.feature)
-        print(gdal_ds)
         layer_name = gdal_ds.GetLayer().GetName()  # self.layer_names[0]
         gdal.VectorTranslate(
             MEMORY_FILE,
@@ -318,11 +337,32 @@ class FeatureCollection:
             SQLStatement=f"SELECT * FROM {layer_name}",
             layerName=layer_name,
         )
-        gdf = gpd.read_file(MEMORY_FILE, layer=layer_name)  # , driver="geojson"
+        # import fiona
+        # from fiona import MemoryFile
+        # f = MemoryFile(MEMORY_FILE)
+        # f = fiona.Collection(MEMORY_FILE)
+
+        # f = fiona.open(MEMORY_FILE, driver='geojson')
+        # gdf = gpd.GeoDataFrame.from_features(f, crs=f.crs)
+        gdf = gpd.read_file(MEMORY_FILE, layer=layer_name, driver="geojson")
 
         if inplace:
             self.__init__(gdf)
             gdf = None
+
+        return gdf
+
+    def _ds_to_gdf(self, inplace: bool = False) -> GeoDataFrame:
+        """Convert ogr DataSource object to a GeoDataFrame.
+
+        Returns
+        -------
+        GeoDataFrame
+        """
+        try:
+            gdf = self._ds_to_gdf_in_memory(inplace=inplace)
+        except:
+            gdf = self._ds_to_gdf_with_io(inplace=inplace)
 
         return gdf
 
