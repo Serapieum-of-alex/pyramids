@@ -361,7 +361,9 @@ class FeatureCollection:
         """
         try:
             gdf = self._ds_to_gdf_in_memory(inplace=inplace)
-        except:
+        except:  # pragma: no cover
+            # keep the exception unspecified and we want to catch fiona.errors.DriverError but we do not want to
+            # explicitly import fiona here
             gdf = self._ds_to_gdf_with_io(inplace=inplace)
 
         return gdf
