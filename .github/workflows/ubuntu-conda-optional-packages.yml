@@ -1,4 +1,4 @@
-name: Main-package-conda
+name: Main-package-conda-optional-packages
 on: [push, pull_request]
 jobs:
   Run:
@@ -12,6 +12,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          mamba-version: "*"
+          use-mamba: true
+          auto-update-conda: false
+          environment-file: environment-optional-packages.yml
+          auto-activate-base: true
+          activate-environment: ""
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,defaults
+          channel-priority: true
+          show-channel-urls: true
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -20,14 +33,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-            # $CONDA is an environment variable pointing to the root of the miniconda directory
-            $CONDA/bin/conda env update --file environment-optional-packages.yml --name base
-            $CONDA/bin/python -m pip install -r requirements-dev.txt
-            $CONDA/bin/python setup.py install
+            python -m pip install -r requirements-dev.txt
+            python setup.py install
 
       - name: Generate coverage report
         run: |
-          $CONDA/bin/pytest -sv -m "not plot"
-
-#      - name: Upload coverage reports to Codecov with GitHub Action
-#        uses: codecov/codecov-action@v3
+          conda info
+          conda list
+          conda config --show-sources
+          conda config --show
+          pytest -sv -m "not plot"
