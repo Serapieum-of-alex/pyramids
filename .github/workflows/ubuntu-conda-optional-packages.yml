@@ -15,7 +15,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v2
         with:
           mamba-version: "*"
-          use-mamba: true
+          #use-mamba: true
           auto-update-conda: false
           environment-file: environment-optional-packages.yml
           auto-activate-base: false
