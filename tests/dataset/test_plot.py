@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 from osgeo import gdal
 from pyramids.dataset import Dataset, Datacube
-from cleopatra.array import Array
 
 
 class TestPlotDataSet:
@@ -41,6 +40,7 @@ class TestPlotDataCube:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
+        from cleopatra.array import Array
         from matplotlib.animation import FuncAnimation
 
         cube = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
