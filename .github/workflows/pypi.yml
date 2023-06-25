@@ -1,30 +1,82 @@
-# This workflows will upload a Python Package using Twine when a release is created
-# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
-
-name: pypi-package
-
-on:
-    release:
-        types: [created]
-
+name: Pypi
+on: [push]
 jobs:
-    deploy:
-        runs-on: ubuntu-latest
+  Main-Package:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11"]
+    env:
+      OS: ${{ matrix.os }}
 
-        steps:
-            - uses: actions/checkout@v3
-            - name: Set up Python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: "3.x"
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install setuptools wheel twine
-            - name: Build and publish
-              env:
-                  TWINE_USERNAME: ${{ secrets.PYPI_USERS }}
-                  TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-              run: |
-                  python setup.py sdist bdist_wheel
-                  twine upload dist/*
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+
+      - name: Install GDAL
+        run: |
+            python -m pip install --upgrade pip
+            pip install --no-cache-dir Cython
+            pip install --find-links=https://girder.github.io/large_image_wheels --no-cache GDAL
+
+      - name: Test GDAL installation
+        run: |
+            python -c "from osgeo import gdal"
+            gdalinfo --version
+
+      - name: Install dependencies
+        run: |
+            pip install -r requirements.txt -r requirements-dev.txt
+            python setup.py install
+
+      - name: Generate coverage report
+        run: |
+          python -m pytest -sv -m "not plot"
+
+      - name: Upload coverage reports to Codecov with GitHub Action
+        uses: codecov/codecov-action@v3
+
+  Optional-packages:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11"]
+    env:
+      OS: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+
+      - name: Install GDAL
+        run: |
+            python -m pip install --upgrade pip
+            pip install --no-cache-dir Cython
+            pip install --find-links=https://girder.github.io/large_image_wheels --no-cache GDAL
+
+      - name: Test GDAL installation
+        run: |
+            python -c "from osgeo import gdal"
+            gdalinfo --version
+
+      - name: Install dependencies
+        run: |
+            pip install -r requirements-optional-packages.txt -r requirements-dev.txt
+            python setup.py install
+
+      - name: Generate coverage report
+        run: |
+          python -m pytest -v --cov=pyramids --cov-report=xml
+
+      - name: Upload coverage reports to Codecov with GitHub Action
+        uses: codecov/codecov-action@v3
