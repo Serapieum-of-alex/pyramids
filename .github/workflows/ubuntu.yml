@@ -1,4 +1,4 @@
-wname: Main-package
+name: Main-package
 on: [push, pull_request]
 jobs:
   Run:
