@@ -33,7 +33,6 @@ jobs:
       - name: Install dev-dependencies
         run: |
             python -m pip install -r requirements-dev.txt
-#            python setup.py install
 
       - name: Generate coverage report
         shell: bash -el {0}
