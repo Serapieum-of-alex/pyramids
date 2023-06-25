@@ -36,6 +36,7 @@ jobs:
 #            python setup.py install
 
       - name: Generate coverage report
+        shell: bash -el {0}
         run: |
           conda info
           conda list
