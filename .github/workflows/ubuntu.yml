@@ -1,17 +1,11 @@
 wname: Main-package
-on:
-    push:
-        branches:
-            - main
-    pull_request:
-        branches:
-            - main
+on: [push, pull_request]
 jobs:
   Run:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-latest]
+        os: [ubuntu-latest]
         python-version: ["3.9", "3.10", "3.11"]
     env:
       OS: ${{ matrix.os }}

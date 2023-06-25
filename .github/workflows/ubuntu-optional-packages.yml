@@ -1,11 +1,5 @@
-name: optional-packages
-on:
-    push:
-        branches:
-            - main
-    pull_request:
-        branches:
-            - main
+name: Optional-packages
+on: [push, pull_request]
 jobs:
   Run:
     runs-on: ${{ matrix.os }}
