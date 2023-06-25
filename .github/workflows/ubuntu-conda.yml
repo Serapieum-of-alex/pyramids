@@ -1,5 +1,5 @@
 name: Main-package-conda
-on: [push, pull_request]
+on: [push]
 jobs:
   Run:
     runs-on: ${{ matrix.os }}

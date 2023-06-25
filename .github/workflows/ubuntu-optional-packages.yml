@@ -1,5 +1,5 @@
 name: Optional-packages-pypi
-on: [push, pull_request]
+on: [push]
 jobs:
   Run:
     runs-on: ${{ matrix.os }}
