@@ -22,6 +22,16 @@ class TestAttributes:
         feature = FeatureCollection(data_source)
         assert all(np.isclose(feature.total_bounds, gdf_bound, rtol=0.0001))
 
+    def test_pivot_point_gdf(self, gdf: GeoDataFrame, gdf_bound: List):
+        feature = FeatureCollection(gdf)
+        point = feature.pivot_point
+        assert point == [gdf_bound[0], gdf_bound[-1]]
+
+    def test_pivot_point_ds(self, data_source: DataSource, gdf_bound: List):
+        feature = FeatureCollection(data_source)
+        point = feature.pivot_point
+        assert point == [gdf_bound[0], gdf_bound[-1]]
+
     def test_layer_count_gdf(self, gdf: GeoDataFrame):
         feature = FeatureCollection(gdf)
         layer_count = feature.layers_count
@@ -193,7 +203,7 @@ class TestCreatePoint:
 
 
 class TestToDataset:
-    def test_with_dataset_single_band(
+    def test_single_band_using_dataset_parameter(
         self,
         vector_mask_gdf: GeoDataFrame,
         raster_to_df_path: str,
@@ -222,7 +232,7 @@ class TestToDataset:
         values = arr[arr[:, :] == 1.0]
         assert values.shape[0] == 16
 
-    def test_with_dataset_multi_band(
+    def test_multi_band_using_dataset_parameter(
         self, era5_image: gdal.Dataset, era5_mask: GeoDataFrame
     ):
         """Geodataframe input polygon."""

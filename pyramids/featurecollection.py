@@ -95,6 +95,17 @@ class FeatureCollection:
         return bounds
 
     @property
+    def pivot_point(self) -> List[Number]:
+        """Top left corner coordinates."""
+        if isinstance(self.feature, GeoDataFrame):
+            bounds = self.feature.total_bounds.tolist()
+        else:
+            bounds = self.feature.GetLayer().GetExtent()
+
+        bounds = [bounds[0], bounds[3]]
+        return bounds
+
+    @property
     def layers_count(self) -> Union[int, None]:
         """layers_count.
 
@@ -450,12 +461,6 @@ class FeatureCollection:
 
         # convert the vector to a gdal Dataset (vector but read by gdal.EX)
         vector_gdal_ex = self._gdf_to_ds(gdal_dataset=True)
-        # ---------
-        # save the geodataframe to disk and get the path
-        # temp_dir = tempfile.mkdtemp()
-        # vector_gdal_ex = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
-        # self.feature.to_file(vector_gdal_ex)
-        # ---------
         top_left_coords = (xmin, ymax)
         # TODO: enable later multi bands
         bands = 1
@@ -478,11 +483,9 @@ class FeatureCollection:
         # for future trial to remove writing the vector to disk and enter the second parameter as a path, try to find
         # a way to convert the ogr.DataSource or GeoDataFrame into a similar object to the object resulting from
         # gdal.OpenEx which is a dataset
-        # _ = gdal.Rasterize(dataset_n.raster, vector_gdal_ex, options=rasterize_opts)
         _ = gdal.Rasterize(
             dataset_n.raster, vector_gdal_ex.feature, options=rasterize_opts
         )
-        # shutil.rmtree(temp_dir, ignore_errors=True)
 
         return dataset_n
 
