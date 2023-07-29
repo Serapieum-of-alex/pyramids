@@ -251,6 +251,9 @@ class FeatureCollection:
         ----------
         inplace: [bool]
             convert the geodataframe to datasource inplace. Default is False.
+        gdal_dataset: [bool]
+            True if you want to convert the geodataframe into a gdal Dataset (the onject created by reading the
+            vector with gdal.EX). Default is False
 
         Returns
         -------
@@ -445,11 +448,14 @@ class FeatureCollection:
             attribute = column_name
             dtype = 7
 
+        # convert the vector to a gdal Dataset (vector but read by gdal.EX)
+        vector_gdal_ex = self._gdf_to_ds(gdal_dataset=True)
+        # ---------
         # save the geodataframe to disk and get the path
-        temp_dir = tempfile.mkdtemp()
-        vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
-        self.feature.to_file(vector_path)
-
+        # temp_dir = tempfile.mkdtemp()
+        # vector_gdal_ex = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        # self.feature.to_file(vector_gdal_ex)
+        # ---------
         top_left_coords = (xmin, ymax)
         # TODO: enable later multi bands
         bands = 1
@@ -472,8 +478,11 @@ class FeatureCollection:
         # for future trial to remove writing the vector to disk and enter the second parameter as a path, try to find
         # a way to convert the ogr.DataSource or GeoDataFrame into a similar object to the object resulting from
         # gdal.OpenEx which is a dataset
-        _ = gdal.Rasterize(dataset_n.raster, vector_path, options=rasterize_opts)
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        # _ = gdal.Rasterize(dataset_n.raster, vector_gdal_ex, options=rasterize_opts)
+        _ = gdal.Rasterize(
+            dataset_n.raster, vector_gdal_ex.feature, options=rasterize_opts
+        )
+        # shutil.rmtree(temp_dir, ignore_errors=True)
 
         return dataset_n
 
