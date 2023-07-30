@@ -97,7 +97,7 @@ class Dataset:
             src.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
         ]
 
-        self._band_names = self.get_band_names()
+        self._band_names = self._get_band_names()
 
     def __str__(self):
         message = f"""
@@ -281,7 +281,12 @@ class Dataset:
     @property
     def band_names(self):
         """Band names."""
-        return self._band_names
+        return self._get_band_names()
+
+    @band_names.setter
+    def band_names(self, name_list: List):
+        """band_names setter"""
+        self._set_band_names(name_list)
 
     @property
     def variables(self):
@@ -954,7 +959,7 @@ class Dataset:
         #             sr.ImportFromWkt(epsg)
         return sr
 
-    def get_band_names(self) -> List[str]:
+    def _get_band_names(self) -> List[str]:
         """Get band names from band meta data if exists otherwise will return idex [1,2, ...]
 
         Returns
@@ -982,7 +987,7 @@ class Dataset:
 
         return names
 
-    def set_band_names(self, name_list: List):
+    def _set_band_names(self, name_list: List):
         """set band names from a given list of names
 
         Returns
@@ -1505,7 +1510,7 @@ class Dataset:
         temp_dir = None
 
         # Get raster band names. open the dataset using gdal.Open
-        band_names = self.get_band_names()
+        band_names = self._get_band_names()
 
         # Create a mask from the pixels touched by the vector_mask.
         if vector_mask is not None:

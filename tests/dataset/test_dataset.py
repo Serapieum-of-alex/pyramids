@@ -197,6 +197,30 @@ class TestProperties:
         dataset = Dataset(src)
         assert isinstance(dataset.values, np.ndarray)
 
+    def test_get_band_names(self, src: gdal.Dataset):
+        src = Dataset(src)
+        names = src._get_band_names()
+        assert isinstance(names, list)
+        assert names == ["Band_1"]
+
+    def test_set_band_names(self, src: gdal.Dataset):
+        src = Dataset(src)
+        name_list = ["new_name"]
+        src._set_band_names(name_list)
+        # chack that the name is chaged in the dataset object
+        assert src.band_names == name_list
+        assert src.raster.GetRasterBand(1).GetDescription() == name_list[0]
+        # return back the old name so that the test_get_band_names pass the test.
+        src._set_band_names(["Band_1"])
+
+    def test_band_names(self, src: gdal.Dataset):
+        name_list = ["new_name"]
+        src = Dataset(src)
+        assert src.band_names == ["Band_1"]
+        src.band_names = name_list
+        assert src.band_names == name_list
+        src.band_names = ["Band_1"]
+
 
 class TestSpatialProperties:
     def test_read_array(
@@ -216,21 +240,6 @@ class TestSpatialProperties:
         src = Dataset(multi_band)
         arr = src.read_array()
         assert np.array_equal(multi_band.ReadAsArray(), arr)
-
-    def test_get_band_names(self, src: gdal.Dataset):
-        src = Dataset(src)
-        names = src.get_band_names()
-        assert isinstance(names, list)
-        assert names == ["Band_1"]
-
-    def test_set_band_names(self, src: gdal.Dataset):
-        src = Dataset(src)
-        name_list = ["new_name"]
-        src.set_band_names(name_list)
-        # chack that the name is chaged in the dataset object
-        assert src.band_names == name_list
-        assert src.raster.GetRasterBand(1).GetDescription() == name_list[0]
-        src.set_band_names(["Band_1"])
 
     def test_create_sr_from_epsg(self):
         sr = Dataset._create_sr_from_epsg(4326)
