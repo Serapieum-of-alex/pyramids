@@ -223,6 +223,15 @@ class TestSpatialProperties:
         assert isinstance(names, list)
         assert names == ["Band_1"]
 
+    def test_set_band_names(self, src: gdal.Dataset):
+        src = Dataset(src)
+        name_list = ["new_name"]
+        src.set_band_names(name_list)
+        # chack that the name is chaged in the dataset object
+        assert src.band_names == name_list
+        assert src.raster.GetRasterBand(1).GetDescription() == name_list[0]
+        src.set_band_names(["Band_1"])
+
     def test_create_sr_from_epsg(self):
         sr = Dataset._create_sr_from_epsg(4326)
         assert sr.GetAuthorityCode(None) == f"{4326}"
@@ -769,7 +778,7 @@ class TestToFeatureCollection:
             "values in the array"
         )
 
-    # def test_without_mask_multi_band_with_mask(
+    # def test_with_mask_multi_band(
     #     self, era5_image: gdal.Dataset, era5_image_gdf: GeoDataFrame, era5_mask: GeoDataFrame
     # ):
     #     """the input raster is given as a string path on disk."""

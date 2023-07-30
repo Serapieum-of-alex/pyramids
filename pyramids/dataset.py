@@ -70,6 +70,7 @@ class Dataset:
         self._raster = src
         self._geotransform = src.GetGeoTransform()
         self._cell_size = self.geotransform[1]
+        # replace with a loop over the GetMetadata for each separate band
         self._meta_data = src.GetMetadata()
         self._file_name = src.GetDescription()
         # projection data
@@ -980,6 +981,21 @@ class Dataset:
                     names.append(band_i_name)
 
         return names
+
+    def set_band_names(self, name_list: List):
+        """set band names from a given list of names
+
+        Returns
+        -------
+        list[str]
+            list of band names
+        """
+        for i in range(self.band_count):
+            # first set the band name in the gdal dataset object
+            band_i = self.raster.GetRasterBand(i + 1)
+            band_i.SetDescription(name_list[i])
+            # second change the band names in the
+            self._band_names[i] = name_list[i]
 
     def _check_no_data_value(self, no_data_value: List):
         """Validate The no_data_value with the dtype of the object.
