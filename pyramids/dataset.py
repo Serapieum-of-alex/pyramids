@@ -956,15 +956,13 @@ class Dataset:
     def get_band_names(self) -> List[str]:
         """Get band names from band meta data if exists otherwise will return idex [1,2, ...]
 
-        Parameters
-        ----------
-
         Returns
         -------
         list[str]
+            list of band names
         """
         names = []
-        for i in range(1, self.raster.RasterCount + 1):
+        for i in range(1, self.band_count + 1):
             band_i = self.raster.GetRasterBand(i)
 
             if band_i.GetDescription():
@@ -1572,7 +1570,7 @@ class Dataset:
                 # Merge all the tiles.
                 df = pd.concat(df_list)
             else:
-                # Warning: not checked yet for multi bands
+                # TODO: replace with the method read_array
                 arr = self.raster.ReadAsArray()
                 if self.band_count == 1:
                     pixels = arr.flatten()
