@@ -8,9 +8,6 @@ import re
 import os
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional
 from loguru import logger
-import shutil
-import tempfile
-import uuid
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -1507,18 +1504,12 @@ class Dataset:
         the resulted geodataframe will have the band value under the name of the band (if the raster file has a metadata,
         if not, the bands will be indexed from 1 to the number of bands)
         """
-        temp_dir = None
-
         # Get raster band names. open the dataset using gdal.Open
-        band_names = self._get_band_names()
+        band_names = self.band_names
 
         # Create a mask from the pixels touched by the vector_mask.
         if vector_mask is not None:
-            # Create a temporary directory for files.
-            temp_dir = tempfile.mkdtemp()
-            new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}")
 
-            # read the vector with geopandas
             if isinstance(vector_mask, GeoDataFrame):
                 vector = FeatureCollection(vector_mask)
             elif isinstance(vector_mask, FeatureCollection):
@@ -1531,8 +1522,6 @@ class Dataset:
 
             # add a unique value for each rows to use it to rasterize the vector
             vector.feature["burn_value"] = list(range(1, len(vector.feature) + 1))
-            # save the new vector to disk to read it with ogr later
-            vector.feature.to_file(new_vector_path, driver="GeoJSON")
 
             # rasterize the vector by burning the unique values as cell values.
             rasterized_vector = vector.to_dataset(
@@ -1617,11 +1606,6 @@ class Dataset:
         if add_geometry:
             df = gpd.GeoDataFrame(df, geometry=coords["geometry"])
 
-        # Remove temporary files.
-        if temp_dir is not None:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-
-        # Return dropping any extra cols.
         return df
 
     def apply(self, fun, band: int = 0):
