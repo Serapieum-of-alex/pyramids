@@ -486,11 +486,11 @@ class FeatureCollection:
                 attribute=attribute[ind] if isinstance(attribute, list) else attribute,
                 allTouched=True,
             )
-            # the second parameter to the Rasterize function if str is read using gdal.OpenEX inside the function,
-            # so the second parameter if not str should be a dataset, if you try to use ogr.DataSource it will give an error
-            # for future trial to remove writing the vector to disk and enter the second parameter as a path, try to find
-            # a way to convert the ogr.DataSource or GeoDataFrame into a similar object to the object resulting from
-            # gdal.OpenEx which is a dataset
+            # if the second parameter to the Rasterize function is str, it will be read using gdal.OpenEX inside the
+            # function, so if the second parameter is not str, it should be a dataset, if you try to use ogr.DataSource
+            # it will give an error.
+            # the second parameter can be given as a path, or read the vector using gdal.OpenEX and use it as a
+            # second parameter.
             _ = gdal.Rasterize(
                 dataset_n.raster, vector_gdal_ex.feature, options=rasterize_opts
             )
