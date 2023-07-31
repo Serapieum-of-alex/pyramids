@@ -32,13 +32,29 @@ def nan_raster() -> Dataset:
 
 
 @pytest.fixture(scope="session")
-def vector_mask_path() -> str:
+def polygon_corner_coello_path() -> str:
+    """polygon vector at the top left corner of coello."""
     return "tests/data/mask.geojson"
 
 
-@pytest.fixture(scope="session")
-def vector_mask_gdf(vector_mask_path: str) -> GeoDataFrame:
-    return gpd.read_file(vector_mask_path)
+@pytest.fixture(scope="function")
+def polygon_corner_coello_gdf(polygon_corner_coello_path: str) -> GeoDataFrame:
+    """
+    polygon vector at the top left corner of coello.
+    columns: ["fid"]
+    geometries: one polygon at the top left corner of the coello catchment
+    """
+    return gpd.read_file(polygon_corner_coello_path)
+
+
+@pytest.fixture(scope="function")
+def polygons_coello_gdf() -> GeoDataFrame:
+    """
+    polygon vector at the top left corner of coello.
+    columns: ["fid"]
+    geometries: one polygon at the top left corner of the coello catchment
+    """
+    return gpd.read_file("tests/data/coello_polygons.geojson")
 
 
 @pytest.fixture(scope="session")
@@ -57,13 +73,21 @@ def rasterized_mask_values() -> np.ndarray:
 
 
 @pytest.fixture(scope="session")
-def raster_to_df_path() -> str:
+def raster_1band_coello_path() -> str:
+    """
+    raster full of data (there is no no_data_value in the array)
+    location: coello
+    number of cells: 182
+    value: values in the array are from 1 to 182 ordered from the top left corner from left to right to the bottom
+    right corner
+    """
     return "tests/data/geotiff/raster_to_df_full_of_data.tif"
 
 
 @pytest.fixture(scope="session")
-def raster_to_df_dataset(raster_to_df_path: str) -> Dataset:
-    return gdal.Open(raster_to_df_path)
+def raster_1band_coello_gdal_dataset(raster_1band_coello_path: str) -> Dataset:
+    """coello raster read by gdal"""
+    return gdal.Open(raster_1band_coello_path)
 
 
 @pytest.fixture(scope="session")
@@ -72,8 +96,8 @@ def raster_to_df_dataset_with_cropped_cell() -> Dataset:
 
 
 @pytest.fixture(scope="session")
-def raster_to_df_arr(raster_to_df_dataset: Dataset) -> np.ndarray:
-    return raster_to_df_dataset.ReadAsArray()
+def raster_to_df_arr(raster_1band_coello_gdal_dataset: Dataset) -> np.ndarray:
+    return raster_1band_coello_gdal_dataset.ReadAsArray()
 
 
 @pytest.fixture(scope="session")

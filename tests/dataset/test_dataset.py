@@ -753,7 +753,7 @@ class TestCluster2:
 
 class TestToFeatureCollection:
     def test_without_mask(
-        self, raster_to_df_dataset: gdal.Dataset, raster_to_df_arr: np.ndarray
+        self, raster_1band_coello_gdal_dataset: Dataset, raster_to_df_arr: np.ndarray
     ):
         """the input raster is given as a string path on disk.
 
@@ -762,7 +762,7 @@ class TestToFeatureCollection:
         raster_to_df_dataset: gdal.Dataset
         raster_to_df_arr: array for comparison
         """
-        src = Dataset(raster_to_df_dataset)
+        src = Dataset(raster_1band_coello_gdal_dataset)
         gdf = src.to_feature_collection(add_geometry="Point")
         assert isinstance(gdf, GeoDataFrame)
         rows, cols = raster_to_df_arr.shape
@@ -801,8 +801,8 @@ class TestToFeatureCollection:
 
     def test_with_gdf_mask(
         self,
-        raster_to_df_dataset: gdal.Dataset,
-        vector_mask_gdf: GeoDataFrame,
+        raster_1band_coello_gdal_dataset: Dataset,
+        polygon_corner_coello_gdf: GeoDataFrame,
         rasterized_mask_values: np.ndarray,
     ):
         """the input mask vector is given as geodataframe.
@@ -813,8 +813,10 @@ class TestToFeatureCollection:
         vector_mask_gdf: geodataframe for the vector mask
         rasterized_mask_values: array for comparison
         """
-        dataset = Dataset(raster_to_df_dataset)
-        gdf = dataset.to_feature_collection(vector_mask_gdf, add_geometry="Point")
+        dataset = Dataset(raster_1band_coello_gdal_dataset)
+        gdf = dataset.to_feature_collection(
+            polygon_corner_coello_gdf, add_geometry="Point"
+        )
         assert isinstance(gdf, GeoDataFrame)
         assert len(gdf) == len(rasterized_mask_values)
         assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (

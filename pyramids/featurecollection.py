@@ -386,7 +386,7 @@ class FeatureCollection:
         self,
         cell_size: Any = None,
         dataset=None,
-        column_name=None,
+        column_name: Union[str, List[str]] = None,
     ):
         """Covert a vector into raster.
 
@@ -396,14 +396,15 @@ class FeatureCollection:
 
         Parameters
         ----------
-        cell_size: [int]
-            cell size.
+        cell_size: [int/Optional]
+            cell size you want the new ceated raster to have. the cell_size parameter is optional, if you use the
+            dataset parameter you don't need to provide it. Default is None.
         dataset : [Dataset]
             Raster object, the raster will only be used as a source for the geotransform (
-            projection, rows, columns, location) data to be copied to the rasterized vector.
-        column_name : str or None
-            Name of a field in the vector to burn values from. If None, all vector
-            features are burned with a constant value of 1.
+            projection, rows, columns, location) data to be copied to the rasterized vector. the dataset parameter
+            is optional, if you use the cell_size parameter you don't need to provide it. Default is None.
+        column_name : str/List[str] or None
+            Name of a column in the vector to burn values from. If None, all the columns will be considered as bands.
 
         Returns
         -------
@@ -429,7 +430,7 @@ class FeatureCollection:
                     "The second parameter should be a Dataset object (check how to read a raster using the "
                     "Dataset module)"
                 )
-            # if the raster is given the top left corner of the raster will be taken as the top left corner for
+            # if the raster is given, the top left corner of the raster will be taken as the top left corner for
             # the rasterized polygon
             xmin, ymax = dataset.pivot_point
             no_data_value = (
@@ -441,51 +442,58 @@ class FeatureCollection:
             columns = dataset.columns
             cell_size = dataset.cell_size
         else:
-            # if a raster is not given the xmin and ymax will be taken as the top left corner for the rasterized
+            # if a raster is not given, the xmin and ymax will be taken as the top left corner for the rasterized
             # polygon.
             xmin, ymin, xmax, ymax = self.feature.total_bounds
             no_data_value = Dataset.default_no_data_value
             columns = int(np.ceil((xmax - xmin) / cell_size))
             rows = int(np.ceil((ymax - ymin) / cell_size))
 
+        # TODO: the dtype should be determined based on the values in the feature collection
+        burn_values = None
         if column_name is None:
-            # Use a constant value for all features.
-            burn_values = [1]
-            attribute = None
+            columns_names = self.column
+            columns_names.remove("geometry")
+            attribute = columns_names
             dtype = 5
         else:
             # Use the values given in the vector field.
-            burn_values = None
             attribute = column_name
             dtype = 7
 
         # convert the vector to a gdal Dataset (vector but read by gdal.EX)
         vector_gdal_ex = self._gdf_to_ds(gdal_dataset=True)
         top_left_coords = (xmin, ymax)
-        # TODO: enable later multi bands
-        bands = 1
+
+        bands_count = 1 if not isinstance(attribute, list) else len(attribute)
         dataset_n = Dataset._create_driver_from_scratch(
             cell_size,
             rows,
             columns,
             dtype,
-            bands,
+            bands_count,
             top_left_coords,
             ds_epsg,
             no_data_value,
         )
 
-        rasterize_opts = gdal.RasterizeOptions(
-            bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
-        )
-        # the second parameter to the Rasterize function if str is read using gdal.OpenEX inside the function,
-        # so the second parameter if not str should be a dataset, if you try to use ogr.DataSource it will give an error
-        # for future trial to remove writing the vector to disk and enter the second parameter as a path, try to find
-        # a way to convert the ogr.DataSource or GeoDataFrame into a similar object to the object resulting from
-        # gdal.OpenEx which is a dataset
-        _ = gdal.Rasterize(
-            dataset_n.raster, vector_gdal_ex.feature, options=rasterize_opts
-        )
+        bands = list(range(1, bands_count + 1))
+        # loop over bands
+        for ind, band in enumerate(bands):
+            rasterize_opts = gdal.RasterizeOptions(
+                bands=[band],
+                burnValues=burn_values,
+                attribute=attribute[ind] if isinstance(attribute, list) else attribute,
+                allTouched=True,
+            )
+            # the second parameter to the Rasterize function if str is read using gdal.OpenEX inside the function,
+            # so the second parameter if not str should be a dataset, if you try to use ogr.DataSource it will give an error
+            # for future trial to remove writing the vector to disk and enter the second parameter as a path, try to find
+            # a way to convert the ogr.DataSource or GeoDataFrame into a similar object to the object resulting from
+            # gdal.OpenEx which is a dataset
+            _ = gdal.Rasterize(
+                dataset_n.raster, vector_gdal_ex.feature, options=rasterize_opts
+            )
 
         return dataset_n
 

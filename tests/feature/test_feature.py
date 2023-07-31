@@ -203,76 +203,311 @@ class TestCreatePoint:
 
 
 class TestToDataset:
-    def test_single_band_using_dataset_parameter(
-        self,
-        vector_mask_gdf: GeoDataFrame,
-        raster_to_df_path: str,
-    ):
-        """Geodataframe input polygon.
+    """Test Convert feature collection into dataset"""
 
-            test convert a vector to a raster using a dataset as a parameter
-            - both the vector and the raster shares the same pivot point, the vector locates in the top left
-            corner of the raster, the vector covers only the top left corner, and not the whole raster.
-            - the raster is a single band.
-
-        Parameters
-        ----------
-        raster_to_df_path
+    class TestSingleColumnVector:
         """
-        dataset = Dataset.read_file(raster_to_df_path)
-        vector = FeatureCollection(vector_mask_gdf)
-        src = vector.to_dataset(dataset=dataset)
-        assert src.epsg == vector_mask_gdf.crs.to_epsg()
+        Descriptions
+        ------------
+            - Test using the dataset parameter
+            - The vector we want to convert into raster has one column (which means the returned raster should have
+            one band)
 
-        xmin, _, _, ymax, _, _ = dataset.geotransform
-        assert src.geotransform[0] == xmin
-        assert src.geotransform[3] == ymax
-        assert src.cell_size == 4000
-        arr = src.read_array()
-        values = arr[arr[:, :] == 1.0]
-        assert values.shape[0] == 16
-
-    def test_multi_band_using_dataset_parameter(
-        self, era5_image: gdal.Dataset, era5_mask: GeoDataFrame
-    ):
-        """Geodataframe input polygon."""
-        dataset = Dataset(era5_image)
-        vector = FeatureCollection(era5_mask)
-        src = vector.to_dataset(dataset=dataset)  # cell_size=0.089
-        # assert src.epsg == era5_mask.crs.to_epsg()
-        #
-        # xmin, _, _, ymax, _, _ = dataset.geotransform
-        # assert src.geotransform[0] == xmin
-        # assert src.geotransform[3] == ymax
-        # assert src.cell_size == 4000
-        # arr = src.read_array()
-        # values = arr[arr[:, :] == 1.0]
-        # assert values.shape[0] == 16
-
-    def test_with_cell_size_inout(
-        self,
-        vector_mask_gdf: GeoDataFrame,
-    ):
-        """Geodataframe input polygon.
-
-            - The inputs to the function are in disk,
-            - The output will be returned as gdal.Datacube.
-
-        Parameters
-        ----------
-        vector_mask_gdf
+        Tests
+        -----
+         - test_single_band_dataset_parameter:
+            The dataset parameter has one band
         """
-        vector = FeatureCollection(vector_mask_gdf)
-        src = vector.to_dataset(cell_size=200)
-        assert src.epsg == vector_mask_gdf.crs.to_epsg()
-        xmin, _, _, ymax = vector_mask_gdf.bounds.values[0]
-        assert src.geotransform[0] == xmin
-        assert src.geotransform[3] == ymax
-        assert src.cell_size == 200
-        arr = src.read_array()
-        # assert src.no_data_value[0] == 0.0
-        values = arr[arr[:, :] == 1.0]
-        assert values.shape[0] == 6400
+
+        def test_single_band_dataset_parameter(
+            self,
+            polygon_corner_coello_gdf: GeoDataFrame,
+            raster_1band_coello_path: str,
+        ):
+            """
+            Description
+            -----------
+                - The dataset parameter has one band.
+                - The vector itself has one column
+
+            Parameters
+            ----------
+                - use the dataset parameter is used in the conversion not the cell_size.
+                - the column_name parameter is None (the default value) so the function should convert all the
+                columns (one column) into bands
+
+                - both the vector and the raster shares the same pivot point, the vector locates in the top left
+                corner of the raster, the vector covers only the top left corner, and not the whole raster.
+
+            Returns
+            -------
+                - The resulted raster should have 3 bands full of 1, 2, 3 respectively.
+                - the array of each band in the new dataset will have 4 cells.
+                - the cell size of the new dataset is 8000.
+            """
+            dataset = Dataset.read_file(raster_1band_coello_path)
+            vector = FeatureCollection(polygon_corner_coello_gdf)
+            src = vector.to_dataset(dataset=dataset)
+            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
+
+            xmin, _, _, ymax, _, _ = dataset.geotransform
+            assert src.geotransform[0] == xmin
+            assert src.geotransform[3] == ymax
+            assert src.cell_size == 4000
+            arr = src.read_array()
+            values = arr[arr[:, :] == 1.0]
+            assert values.shape[0] == 16
+
+        # def test_multi_band_dataset_parameter(
+        #         self, era5_image: gdal.Dataset, era5_mask: GeoDataFrame
+        # ):
+        #     """Geodataframe input polygon."""
+        #     dataset = Dataset(era5_image)
+        #     vector = FeatureCollection(era5_mask)
+        #     src = vector.to_dataset(dataset=dataset)  # cell_size=0.089
+        #     print("xxxx")
+        #     # assert src.epsg == era5_mask.crs.to_epsg()
+        #     #
+        #     # xmin, _, _, ymax, _, _ = dataset.geotransform
+        #     # assert src.geotransform[0] == xmin
+        #     # assert src.geotransform[3] == ymax
+        #     # assert src.cell_size == 4000
+        #     # arr = src.read_array()
+        #     # values = arr[arr[:, :] == 1.0]
+        #     # assert values.shape[0] == 16
+
+    class TestMultiColumnVector:
+        def test_single_band_dataset_parameter_one_column(
+            self,
+            polygon_corner_coello_gdf: GeoDataFrame,
+            raster_1band_coello_path: str,
+        ):
+            """Geodataframe input polygon.
+
+                test convert a vector to a raster using a dataset as a parameter
+                - both the vector and the raster shares the same pivot point, the vector locates in the top left
+                corner of the raster, the vector covers only the top left corner, and not the whole raster.
+                - the raster is a single band.
+                - use columne_name parameter to tell the method which column you want to take the value from.
+
+            Parameters
+            ----------
+            raster_to_df_path
+            """
+            dataset = Dataset.read_file(raster_1band_coello_path)
+            polygon_corner_coello_gdf["column_2"] = 2
+            vector = FeatureCollection(polygon_corner_coello_gdf)
+            src = vector.to_dataset(dataset=dataset, column_name="column_2")
+            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
+
+            xmin, _, _, ymax, _, _ = dataset.geotransform
+            assert src.geotransform[0] == xmin
+            assert src.geotransform[3] == ymax
+            assert src.cell_size == 4000
+            arr = src.read_array()
+            values = arr[arr[:, :] == 2]
+            assert values.shape[0] == 16
+
+        def test_single_band_dataset_parameter_multiple_columns(
+            self,
+            polygon_corner_coello_gdf: GeoDataFrame,
+            raster_1band_coello_path: str,
+        ):
+            """Geodataframe input polygon.
+
+                test convert a vector to a raster using a dataset as a parameter
+                - both the vector and the raster shares the same pivot point, the vector locates in the top left
+                corner of the raster, the vector covers only the top left corner, and not the whole raster.
+                - the raster is a single band.
+                - use columne_name parameter to tell the method which column you want to take the value from.
+
+            Parameters
+            ----------
+            raster_to_df_path
+            """
+            dataset = Dataset.read_file(raster_1band_coello_path)
+            polygon_corner_coello_gdf["column_2"] = 2
+            polygon_corner_coello_gdf["column_3"] = 3
+            vector = FeatureCollection(polygon_corner_coello_gdf)
+            src = vector.to_dataset(
+                dataset=dataset, column_name=["column_2", "column_3"]
+            )
+            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
+
+            xmin, _, _, ymax, _, _ = dataset.geotransform
+            assert src.geotransform[0] == xmin
+            assert src.geotransform[3] == ymax
+            assert src.cell_size == 4000
+            arr = src.read_array()
+            assert arr.shape == (2, 13, 14)
+            band_1_values = arr[0, arr[0, :, :] == 2]
+            band_2_values = arr[1, arr[1, :, :] == 3]
+            assert band_1_values.shape[0] == 16
+            assert band_2_values.shape[0] == 16
+
+        def test_single_band_dataset_parameter_none_column_name(
+            self,
+            polygon_corner_coello_gdf: GeoDataFrame,
+            raster_1band_coello_path: str,
+        ):
+            """Geodataframe input polygon.
+
+                test convert a vector to a raster using a dataset as a parameter
+                - both the vector and the raster shares the same pivot point, the vector locates in the top left
+                corner of the raster, the vector covers only the top left corner, and not the whole raster.
+                - the raster is a single band.
+                - use columne_name parameter to tell the method which column you want to take the value from.
+                - The top left corner of both the raster and the polygon are very close to each other but not identical.
+
+            Parameters
+            ----------
+            raster_to_df_path
+            """
+            dataset = Dataset.read_file(raster_1band_coello_path)
+            polygon_corner_coello_gdf["column_2"] = 2
+            polygon_corner_coello_gdf["column_3"] = 3
+
+            vector = FeatureCollection(polygon_corner_coello_gdf)
+            src = vector.to_dataset(dataset=dataset, column_name=None)
+            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
+
+            xmin, _, _, ymax, _, _ = dataset.geotransform
+            assert src.geotransform[0] == xmin
+            assert src.geotransform[3] == ymax
+            assert src.cell_size == 4000
+            arr = src.read_array()
+            assert arr.shape == (3, 13, 14)
+            band_1_values = arr[0, arr[0, :, :] == 1]
+            band_2_values = arr[1, arr[1, :, :] == 2]
+            band_3_values = arr[2, arr[2, :, :] == 3]
+            assert band_1_values.shape[0] == 16
+            assert band_2_values.shape[0] == 16
+            assert band_3_values.shape[0] == 16
+
+    class TestCellSize:
+        """
+        Test converting feature collection into dataset using cell size parameter.
+
+        Tests
+        -----
+        test_none_column_name:
+            multi columns, very course resolution (8000)
+        """
+
+        def test_none_column_name(
+            self,
+            polygon_corner_coello_gdf: GeoDataFrame,
+        ):
+            """
+            Description
+            -----------
+                - Add more columns to the the one geometry vector to create multi-band raster.
+
+            Parameters
+            ----------
+                - use the cell_size parameter in the conversion not the dataset.
+                - the column_name parameter is None (the default value) so the function should convert all the columns in
+
+            Returns
+            -------
+                - The resulted raster should have 3 bands full of 1, 2, 3 respectively.
+                - the array of each band in the new dataset will have 4 cells.
+                - the cell size of the new dataset is 8000.
+            """
+            polygon_corner_coello_gdf["column_2"] = 2
+            polygon_corner_coello_gdf["column_3"] = 3
+            required_cell_size = 8000
+
+            vector = FeatureCollection(polygon_corner_coello_gdf)
+            src = vector.to_dataset(cell_size=required_cell_size, column_name=None)
+            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
+
+            xmin, ymax = vector.pivot_point
+            assert src.geotransform[0] == xmin
+            assert src.geotransform[3] == ymax
+            assert src.cell_size == required_cell_size
+            arr = src.read_array()
+            assert arr.shape == (3, 2, 2)
+            band_1_values = arr[0, arr[0, :, :] == 1]
+            band_2_values = arr[1, arr[1, :, :] == 2]
+            band_3_values = arr[2, arr[2, :, :] == 3]
+            assert band_1_values.shape[0] == 4
+            assert band_2_values.shape[0] == 4
+            assert band_3_values.shape[0] == 4
+
+        def test_one_column(
+            self,
+            polygon_corner_coello_gdf: GeoDataFrame,
+        ):
+            """
+            Description
+            -----------
+                - The vector has one column
+
+            Parameters
+            ----------
+                - use the cell_size parameter in the conversion not the dataset.
+                - the column_name parameter is None (the default value) so the function should convert all the columns(
+                one column)
+
+            Returns
+            -------
+                - The resulted raster should have 1 bands full of 1.
+                - the array of each band in the new dataset will have 6400 cells.
+                - the cell size of the new dataset is 200.
+            """
+            vector = FeatureCollection(polygon_corner_coello_gdf)
+            src = vector.to_dataset(cell_size=200)
+            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
+            xmin, _, _, ymax = polygon_corner_coello_gdf.bounds.values[0]
+            assert src.geotransform[0] == xmin
+            assert src.geotransform[3] == ymax
+            assert src.cell_size == 200
+            arr = src.read_array()
+            # assert src.no_data_value[0] == 0.0
+            values = arr[arr[:, :] == 1.0]
+            assert values.shape[0] == 6400
+
+        def test_multi_polygon(
+            self,
+            polygons_coello_gdf: GeoDataFrame,
+        ):
+            """
+            Description
+            -----------
+                - Add more columns to the the one geometry vector to create multi-band raster.
+
+            Parameters
+            ----------
+                - use the cell_size parameter in the conversion not the dataset.
+                - the column_name parameter is None (the default value) so the function should convert all the columns in
+
+            Returns
+            -------
+                - The resulted raster should have 3 bands full of 1, 2, 3 respectively.
+                - the array of each band in the new dataset will have 4 cells.
+                - the cell size of the new dataset is 4000.
+            """
+            required_cell_size = 4000
+
+            vector = FeatureCollection(polygons_coello_gdf)
+            src = vector.to_dataset(cell_size=required_cell_size, column_name=None)
+            assert src.epsg == polygons_coello_gdf.crs.to_epsg()
+
+            xmin, ymax = vector.pivot_point
+            assert src.geotransform[0] == xmin
+            assert src.geotransform[3] == ymax
+            assert src.cell_size == required_cell_size
+            arr = src.read_array()
+            assert arr.shape == (3, 13, 13)
+            band_0_values_1 = arr[0, arr[0, :, :] == 1]
+            band_0_values_2 = arr[0, arr[0, :, :] == 2]
+            band_0_values_3 = arr[0, arr[0, :, :] == 3]
+            band_0_values_4 = arr[0, arr[0, :, :] == 4]
+            assert band_0_values_1.shape[0] == 20
+            assert band_0_values_2.shape[0] == 27
+            assert band_0_values_3.shape[0] == 21
+            assert band_0_values_4.shape[0] == 24
 
 
 class Test_multi_geom_handler:
