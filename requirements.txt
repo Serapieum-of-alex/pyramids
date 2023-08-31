@@ -1,6 +1,6 @@
 gdal >=3.6.2
 geopandas >=0.12.2
-hpc-utils ==0.1.1
+hpc-utils ==0.1.2
 loguru >=0.7.0
 numpy ==1.24.1
 pandas >=2.0.0
