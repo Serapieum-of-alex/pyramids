@@ -424,6 +424,7 @@ class FeatureCollection:
                     f"Dataset and vector are not the same EPSG. {dataset.epsg} != {ds_epsg}"
                 )
 
+        # TODO: this case
         if dataset is not None:
             if not isinstance(dataset, Dataset):
                 raise TypeError(
@@ -767,13 +768,13 @@ class FeatureCollection:
             geom_type = row.geometry.geom_type.lower()
             if geom_type == geometry:
                 # get number of the polygons inside the multipolygon class
-                n_rows = len(row.geometry)
+                n_rows = len(row.geometry.geoms)
                 new_gdf = gpd.GeoDataFrame(pd.concat([new_gdf] + [row] * n_rows))
                 new_gdf.reset_index(drop=True, inplace=True)
                 new_gdf.columns = row.index.values
                 # for each rows assign each polygon
                 for geom in range(n_rows):
-                    new_gdf.loc[geom, "geometry"] = row.geometry[geom]
+                    new_gdf.loc[geom, "geometry"] = row.geometry.geoms[geom]
                 to_drop.append(idx)
 
         # drop the exploded rows
@@ -814,7 +815,7 @@ class FeatureCollection:
         coord_arrays = []
         geom_type = geom_type.lower()
         if geom_type == "multipoint" or geom_type == "multilinestring":
-            for i, part in enumerate(multi_geometry):
+            for i, part in enumerate(multi_geometry.geoms):
                 if geom_type == "multipoint":
                     vals = FeatureCollection._get_point_coords(part, coord_type)
                     coord_arrays.append(vals)
@@ -822,7 +823,7 @@ class FeatureCollection:
                     vals = FeatureCollection._get_line_coords(part, coord_type)
                     coord_arrays.append(vals)
         elif geom_type == "multipolygon":
-            for i, part in enumerate(multi_geometry):
+            for i, part in enumerate(multi_geometry.geoms):
                 # multi_2_single = FeatureCollection._explode(part) if part.type.startswith("MULTI") else part
                 vals = FeatureCollection._get_poly_coords(part, coord_type)
                 coord_arrays.append(vals)
