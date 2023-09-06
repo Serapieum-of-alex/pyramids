@@ -395,7 +395,7 @@ class Dataset:
         return dst
 
     @classmethod
-    def _create_driver_from_scratch(
+    def create_driver_from_scratch(
         cls,
         cell_size: int,
         rows: int,
@@ -1509,7 +1509,6 @@ class Dataset:
 
         # Create a mask from the pixels touched by the vector_mask.
         if vector_mask is not None:
-
             if isinstance(vector_mask, GeoDataFrame):
                 vector = FeatureCollection(vector_mask)
             elif isinstance(vector_mask, FeatureCollection):
@@ -1527,6 +1526,7 @@ class Dataset:
             rasterized_vector = vector.to_dataset(
                 dataset=self, column_name="burn_value"
             )
+
             if add_geometry:
                 if add_geometry.lower() == "point":
                     coords = rasterized_vector.get_cell_points(mask=True)
@@ -1536,10 +1536,10 @@ class Dataset:
             # Loop over mask values to extract pixels.
             # DataFrames of each tile.
             df_list = []
+            # TODO: replace with the read_array method
             mask_arr = rasterized_vector.raster.GetRasterBand(1).ReadAsArray()
 
             for arr in self.get_tile(tile_size):
-
                 mask_dfs = []
                 for mask_val in vector.feature["burn_value"].values:
                     # Extract only masked pixels.
@@ -2913,7 +2913,6 @@ class Dataset:
 
         for i in range(data.shape[0]):
             for j in range(data.shape[1]):
-
                 if lower_bound <= data[i, j] <= upper_bound and cluster[i, j] == 0:
                     self._groupNeighbours(
                         data,

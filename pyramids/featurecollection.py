@@ -399,12 +399,13 @@ class FeatureCollection:
         cell_size: [int/Optional]
             cell size you want the new ceated raster to have. the cell_size parameter is optional, if you use the
             dataset parameter you don't need to provide it. Default is None.
-        dataset : [Dataset]
+        dataset : [Dataset/Optional]
             Raster object, the raster will only be used as a source for the geotransform (
             projection, rows, columns, location) data to be copied to the rasterized vector. the dataset parameter
             is optional, if you use the cell_size parameter you don't need to provide it. Default is None.
-        column_name : str/List[str] or None
+        column_name : [str/List[str]/Optional]
             Name of a column in the vector to burn values from. If None, all the columns will be considered as bands.
+            Default is None.
 
         Returns
         -------
@@ -467,7 +468,7 @@ class FeatureCollection:
         top_left_coords = (xmin, ymax)
 
         bands_count = 1 if not isinstance(attribute, list) else len(attribute)
-        dataset_n = Dataset._create_driver_from_scratch(
+        dataset_n = Dataset.create_driver_from_scratch(
             cell_size,
             rows,
             columns,
