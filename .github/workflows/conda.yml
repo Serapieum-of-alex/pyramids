@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.10"]
+        python-version: ["3.11"]
     env:
       OS: ${{ matrix.os }}
 
@@ -41,14 +41,14 @@ jobs:
           conda list
           conda config --show-sources
           conda config --show
-          pytest -sv -m "not plot"
+          pytest -sv
 
   Optional-packages:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.10"]
+        python-version: ["3.11"]
     env:
       OS: ${{ matrix.os }}
 
