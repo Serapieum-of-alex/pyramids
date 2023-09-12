@@ -37,6 +37,35 @@ NUMPY_GDAL_DATA_TYPES = {
     "complex64": 10,
     "complex128": 11,
 }
+
+OGR_DATA_TYPES = {
+    ogr.OFTInteger: 0,
+    ogr.OFTIntegerList: 1,
+    ogr.OFTReal: 2,
+    ogr.OFTRealList: 3,
+    ogr.OFTString: 4,
+    ogr.OFTStringList: 5,
+    ogr.OFTWideString: 6,
+    ogr.OFTWideStringList: 7,
+    ogr.OFTBinary: 8,
+    ogr.OFTDate: 9,
+    ogr.OFTTime: 10,
+    ogr.OFTDateTime: 11,
+    ogr.OFTInteger64: 12,
+    ogr.OFTInteger64List: 13,
+}
+
+OGR_NUMPY_DATA_TYPES = {
+    0: np.int32,  # ogr.OFTInteger
+    12: np.int64,  # ogr.OFTInteger64
+    2: np.float64,  # ogr.OFTReal
+    4: np.object_,  # ogr.OFTString
+    11: np.datetime64,  # ogr.OFTDateTime
+    9: np.datetime64,  # ogr.OFTDate
+    10: np.datetime64,  # ogr.OFTTime
+}
+
+
 INTERPOLATION_METHODS = {
     "nearest neibour": gdal.GRA_NearestNeighbour,
     "cubic": gdal.GRA_Cubic,
@@ -64,7 +93,40 @@ def numpy_to_gdal_dtype(arr: np.ndarray):
     gdal_type = list(GDAL_OGR_DATA_TYPES.keys())[loc]
     return gdal_type
 
-    # return GDAL_NUMPY_DATA_TYPES[list(NUMPY_GDAL_DATA_TYPES.keys())[loc]]
+
+def ogr_to_numpy_dtype(dtype: int):
+    """converts OGR dtype into numpy dtype
+
+    Parameters
+    ----------
+    dtype: [int]
+        OGR data type code
+        ogr.OFTInteger: 0,
+        ogr.OFTIntegerList: 1,
+        ogr.OFTReal: 2,
+        ogr.OFTRealList: 3,
+        ogr.OFTString: 4,
+        ogr.OFTStringList: 5,
+        ogr.OFTWideString: 6,
+        ogr.OFTWideStringList: 7,
+        ogr.OFTBinary:8,
+        ogr.OFTDate:9,
+        ogr.OFTTime:10,
+        ogr.OFTDateTime:11,
+        ogr.OFTInteger64: 12,
+        ogr.OFTInteger64List: 13,
+
+    Returns
+    -------
+    str
+    """
+    numpy_dtype = OGR_NUMPY_DATA_TYPES.get(dtype)
+    if numpy_dtype is None:
+        raise ValueError(
+            f"The given OGR data type is not supported: {dtype}, available types are: {OGR_NUMPY_DATA_TYPES}"
+        )
+
+    return numpy_dtype
 
 
 def gdal_to_numpy_dtype(dtype: int):
