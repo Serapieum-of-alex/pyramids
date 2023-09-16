@@ -655,8 +655,26 @@ class Dataset:
         lat = self._read_variable("lat")
         return lat, lon
 
-    def _read_variable(self, var: str):
-        return gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
+    def _read_variable(self, var: str) -> Union[gdal.Dataset, None]:
+        """_read_variable.
+
+        Read variables in a dataset
+
+        Parameters
+        ----------
+        var: [str]
+            variable name in the dataset
+
+        Returns
+        -------
+        GDAL dataset/None
+            if the variable exists in the dataset it will return a gdal dataset otherwise it will return None.
+        """
+        try:
+            var_ds = gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
+        except RuntimeError:
+            var_ds = None
+        return var_ds
 
     @staticmethod
     def _create_gdal_dataset(
