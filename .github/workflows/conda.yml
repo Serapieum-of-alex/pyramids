@@ -41,7 +41,7 @@ jobs:
           conda list
           conda config --show-sources
           conda config --show
-          pytest -sv
+          pytest -sv -m "not plot"
 
   Optional-packages:
     runs-on: ${{ matrix.os }}
@@ -84,4 +84,4 @@ jobs:
           conda list
           conda config --show-sources
           conda config --show
-          pytest -sv -m "not plot"
+          pytest -sv
