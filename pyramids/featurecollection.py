@@ -11,7 +11,7 @@ import uuid
 import shutil
 import warnings
 import json
-from typing import List, Tuple, Union, Iterable, Any
+from typing import List, Tuple, Union, Iterable, Any, Dict
 from numbers import Number
 import geopandas as gpd
 import numpy as np
@@ -24,7 +24,7 @@ from shapely.geometry import Point, Polygon, LineString
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multilinestring import MultiLineString
-from pyramids._utils import Catalog, ogr_ds_togdal_dataset
+from pyramids._utils import Catalog, ogr_ds_togdal_dataset, ogr_to_numpy_dtype
 from pyramids._errors import DriverNotExistError
 
 CATALOG = Catalog(raster_driver=False)
@@ -159,6 +159,32 @@ class FeatureCollection:
             file_name = ""
 
         return file_name
+
+    @property
+    def dtypes(self) -> Dict[str, str]:
+        """dtypes.
+            - Get the data types of the columns in the vector file.
+
+        Returns
+        -------
+            list of the data types (strings/numpy datatypes) of the columns in the vector file, except the geometry
+            column.
+        """
+        if isinstance(self.feature, GeoDataFrame):
+            dtypes = self.feature.dtypes.to_dict()
+        else:
+            dtypes = []
+            for i in range(self.layers_count):
+                layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
+                cols = layer_dfn.GetFieldCount()
+                dtypes = dtypes + [
+                    ogr_to_numpy_dtype(layer_dfn.GetFieldDefn(j).GetType()).__name__
+                    for j in range(cols)
+                ]
+            # the geometry colmn is not in the returned dictionary if the vector is DataSource
+            dtypes = {col_i: type_i for col_i, type_i in zip(self.column, dtypes)}
+
+        return dtypes
 
     @classmethod
     def read_file(cls, path: str):

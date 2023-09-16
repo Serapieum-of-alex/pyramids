@@ -52,10 +52,31 @@ class TestAttributes:
         columns = feature.column
         assert columns == ["id", "x", "y", "geometry"]
 
-    def test_columns_gdf(self, coello_gauges_gdf: DataSource):
+    def test_columns_gdf(self, coello_gauges_gdf: GeoDataFrame):
         feature = FeatureCollection(coello_gauges_gdf)
         columns = feature.column
         assert columns == ["id", "x", "y", "geometry"]
+
+    def test_dtypes_gdf(self, coello_gauges_gdf: GeoDataFrame):
+        feature = FeatureCollection(coello_gauges_gdf)
+        dtypes = feature.dtypes
+        assert isinstance(dtypes, dict)
+        assert dtypes == {
+            "id": "int64",
+            "x": "float64",
+            "y": "float64",
+            "geometry": "geometry",
+        }
+
+    def test_dtypes_ds(self, coello_gauges_ds: DataSource):
+        feature = FeatureCollection(coello_gauges_ds)
+        dtypes = feature.dtypes
+        assert isinstance(dtypes, dict)
+        assert dtypes == {
+            "id": "int32",
+            "x": "float64",
+            "y": "float64",
+        }
 
 
 class TestReadFile:
@@ -258,23 +279,16 @@ class TestToDataset:
             values = arr[arr[:, :] == 1.0]
             assert values.shape[0] == 16
 
-        # def test_multi_band_dataset_parameter(
-        #         self, era5_image: gdal.Dataset, era5_mask: GeoDataFrame
-        # ):
-        #     """Geodataframe input polygon."""
-        #     dataset = Dataset(era5_image)
-        #     vector = FeatureCollection(era5_mask)
-        #     src = vector.to_dataset(dataset=dataset)  # cell_size=0.089
-        #     print("xxxx")
-        #     # assert src.epsg == era5_mask.crs.to_epsg()
-        #     #
-        #     # xmin, _, _, ymax, _, _ = dataset.geotransform
-        #     # assert src.geotransform[0] == xmin
-        #     # assert src.geotransform[3] == ymax
-        #     # assert src.cell_size == 4000
-        #     # arr = src.read_array()
-        #     # values = arr[arr[:, :] == 1.0]
-        #     # assert values.shape[0] == 16
+    # def test_dataset_parameter_error_case(
+    #         self, era5_image: gdal.Dataset, era5_mask: GeoDataFrame
+    # ):
+    #     """
+    #     This case does not give the right result when we use the dataset parameter
+    #     """
+    #     dataset = Dataset(era5_image)
+    #     vector = FeatureCollection(era5_mask)
+    #     src = vector.to_dataset(cell_size=0.080)  #dataset=dataset
+    #     # src.to_file("ssss.tif")
 
     class TestMultiColumnVector:
         def test_single_band_dataset_parameter_one_column(
