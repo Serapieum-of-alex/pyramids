@@ -144,7 +144,7 @@ NUMPY_DTYPE = [
     None,
 ]
 
-conversion_df = DataFrame(
+DTYPE_CONVERSION_DF = DataFrame(
     columns=["id", "name", "numpy", "gdal", "ogr"],
     data=list(zip(GDAL_DTYPE_CODE, DTYPE_NAMES, NUMPY_DTYPE, GDAL_DTYPE, OGR_DTYPE)),
 )
@@ -174,7 +174,9 @@ def numpy_to_gdal_dtype(arr: np.ndarray):
     np_dtype = arr.dtype
     # integer as gdal does not accept the dtype if it is int64
     gdal_type = int(
-        conversion_df.loc[conversion_df["numpy"] == np_dtype, "gdal"].values[0]
+        DTYPE_CONVERSION_DF.loc[
+            DTYPE_CONVERSION_DF["numpy"] == np_dtype, "gdal"
+        ].values[0]
     )
     return gdal_type
 
@@ -214,12 +216,14 @@ def ogr_to_numpy_dtype(dtype_code: int):
     elif dtype_code == 2:
         numpy_dtype = np.float64
     else:
-        numpy_dtype = conversion_df.loc[conversion_df["ogr"] == dtype_code, "numpy"]
+        numpy_dtype = DTYPE_CONVERSION_DF.loc[
+            DTYPE_CONVERSION_DF["ogr"] == dtype_code, "numpy"
+        ]
 
         if len(numpy_dtype) == 0:
             raise ValueError(
                 f"The given OGR data type is not supported: {dtype_code}, available types are: "
-                f"{conversion_df['ogr'].unique().tolist()}"
+                f"{DTYPE_CONVERSION_DF['ogr'].unique().tolist()}"
             )
         else:
             numpy_dtype = numpy_dtype.values[0]
@@ -227,7 +231,7 @@ def ogr_to_numpy_dtype(dtype_code: int):
     return numpy_dtype
 
 
-def gdal_to_numpy_dtype(dtype: int):
+def gdal_to_numpy_dtype(dtype: int) -> str:
     """converts gdal dtype into numpy dtype
 
     Parameters
@@ -238,8 +242,12 @@ def gdal_to_numpy_dtype(dtype: int):
     -------
     str
     """
-    ind = list(NUMPY_GDAL_DATA_TYPES.values()).index(dtype)
-    return list(NUMPY_GDAL_DATA_TYPES.keys())[ind]
+    name = (
+        DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == dtype, "numpy"]
+        .values[0]
+        .__name__
+    )
+    return name
 
 
 def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
