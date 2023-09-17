@@ -4,6 +4,7 @@ from osgeo import gdal, ogr
 from pyramids._errors import DriverNotExistError
 from pyramids._utils import (
     numpy_to_gdal_dtype,
+    gdal_to_numpy_dtype,
     Catalog,
     ogr_ds_togdal_dataset,
     ogr_to_numpy_dtype,
@@ -13,6 +14,16 @@ from pyramids._utils import (
 def test_numpy_to_gdal_dtype(arr: np.ndarray):
     gdal_type = numpy_to_gdal_dtype(arr)
     assert gdal_type is gdal.GDT_Float32
+
+
+def test_gdal_to_numpy_dtype():
+    assert gdal_to_numpy_dtype(6) == "float32"
+    assert gdal_to_numpy_dtype(7) == "float64"
+    assert gdal_to_numpy_dtype(2) == "uint16"
+    # try:
+    #     gdal_to_numpy_dtype(0)
+    # except ValueError:
+    #     pass
 
 
 def test_ogr_to_numpy_dtype():
