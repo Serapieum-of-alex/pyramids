@@ -3,7 +3,7 @@ import yaml
 import datetime as dt
 import numpy as np
 from pandas import DataFrame
-from osgeo import gdal, gdal_array, ogr, gdalconst
+from osgeo import gdal, ogr, gdalconst  # gdal_array,
 from osgeo.gdal import Dataset
 from pyramids._errors import OptionalPackageDoesNontExist, DriverNotExistError
 from pyramids import __path__
@@ -148,7 +148,7 @@ conversion_df = DataFrame(
     columns=["id", "name", "numpy", "gdal", "ogr"],
     data=list(zip(GDAL_DTYPE_CODE, DTYPE_NAMES, NUMPY_DTYPE, GDAL_DTYPE, OGR_DTYPE)),
 )
-
+# conversion_df["gdal"].astype("int")
 INTERPOLATION_METHODS = {
     "nearest neibour": gdal.GRA_NearestNeighbour,
     "cubic": gdal.GRA_Cubic,
@@ -171,9 +171,10 @@ def numpy_to_gdal_dtype(arr: np.ndarray):
     -------
     gdal data type
     """
-    type_code = gdal_array.NumericTypeCodeToGDALTypeCode(arr.dtype)
-    loc = list(NUMPY_GDAL_DATA_TYPES.values()).index(type_code)
-    gdal_type = list(GDAL_OGR_DATA_TYPES.keys())[loc]
+    np_dtype = arr.dtype
+    gdal_type = int(
+        conversion_df.loc[conversion_df["numpy"] == np_dtype, "gdal"].values[0]
+    )
     return gdal_type
 
 
