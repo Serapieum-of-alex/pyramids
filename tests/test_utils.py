@@ -16,7 +16,7 @@ def test_numpy_to_gdal_dtype(arr: np.ndarray):
 
 
 def test_ogr_to_numpy_dtype():
-    assert ogr_to_numpy_dtype(0) == np.int32
+    assert ogr_to_numpy_dtype(0) == np.int64
     try:
         ogr_to_numpy_dtype(1)
     except ValueError:

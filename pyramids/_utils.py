@@ -56,7 +56,7 @@ OGR_DATA_TYPES = {
 }
 
 OGR_NUMPY_DATA_TYPES = {
-    0: np.int32,  # ogr.OFTInteger
+    0: np.int64,  # ogr.OFTInteger is actually int32 but to unify it with how geopandas read it, we will use int64.
     12: np.int64,  # ogr.OFTInteger64
     2: np.float64,  # ogr.OFTReal
     4: np.object_,  # ogr.OFTString
