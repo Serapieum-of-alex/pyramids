@@ -148,7 +148,7 @@ conversion_df = DataFrame(
     columns=["id", "name", "numpy", "gdal", "ogr"],
     data=list(zip(GDAL_DTYPE_CODE, DTYPE_NAMES, NUMPY_DTYPE, GDAL_DTYPE, OGR_DTYPE)),
 )
-# conversion_df["gdal"].astype("int")
+
 INTERPOLATION_METHODS = {
     "nearest neibour": gdal.GRA_NearestNeighbour,
     "cubic": gdal.GRA_Cubic,
@@ -172,18 +172,19 @@ def numpy_to_gdal_dtype(arr: np.ndarray):
     gdal data type
     """
     np_dtype = arr.dtype
+    # integer as gdal does not accept the dtype if it is int64
     gdal_type = int(
         conversion_df.loc[conversion_df["numpy"] == np_dtype, "gdal"].values[0]
     )
     return gdal_type
 
 
-def ogr_to_numpy_dtype(dtype: int):
+def ogr_to_numpy_dtype(dtype_code: int):
     """converts OGR dtype into numpy dtype
 
     Parameters
     ----------
-    dtype: [int]
+    dtype_code: [int]
         OGR data type code
         ogr.OFTInteger: 0,
         ogr.OFTIntegerList: 1,
@@ -202,13 +203,26 @@ def ogr_to_numpy_dtype(dtype: int):
 
     Returns
     -------
-    str
+    Numpy data type
     """
-    numpy_dtype = OGR_NUMPY_DATA_TYPES.get(dtype)
-    if numpy_dtype is None:
-        raise ValueError(
-            f"The given OGR data type is not supported: {dtype}, available types are: {OGR_NUMPY_DATA_TYPES}"
-        )
+    # since there are more than one numpy dtype for the ogr.OFTInteger (0), and the ogr.OFTInteger64 (12),
+    # we will return int32 for 0 and int64 for 12.
+    if dtype_code == 0:
+        numpy_dtype = np.int32
+    elif dtype_code == 12:
+        numpy_dtype = np.int64
+    elif dtype_code == 2:
+        numpy_dtype = np.float64
+    else:
+        numpy_dtype = conversion_df.loc[conversion_df["ogr"] == dtype_code, "numpy"]
+
+        if len(numpy_dtype) == 0:
+            raise ValueError(
+                f"The given OGR data type is not supported: {dtype_code}, available types are: "
+                f"{conversion_df['ogr'].unique().tolist()}"
+            )
+        else:
+            numpy_dtype = numpy_dtype.values[0]
 
     return numpy_dtype
 

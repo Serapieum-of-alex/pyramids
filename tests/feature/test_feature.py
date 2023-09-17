@@ -73,7 +73,7 @@ class TestAttributes:
         dtypes = feature.dtypes
         assert isinstance(dtypes, dict)
         assert dtypes == {
-            "id": "int64",
+            "id": "int32",
             "x": "float64",
             "y": "float64",
         }
