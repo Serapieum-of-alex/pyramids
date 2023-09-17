@@ -20,10 +20,10 @@ def test_gdal_to_numpy_dtype():
     assert gdal_to_numpy_dtype(6) == "float32"
     assert gdal_to_numpy_dtype(7) == "float64"
     assert gdal_to_numpy_dtype(2) == "uint16"
-    # try:
-    #     gdal_to_numpy_dtype(0)
-    # except ValueError:
-    #     pass
+    try:
+        gdal_to_numpy_dtype(20)
+    except ValueError:
+        pass
 
 
 def test_ogr_to_numpy_dtype():

@@ -242,12 +242,16 @@ def gdal_to_numpy_dtype(dtype: int) -> str:
     -------
     str
     """
-    name = (
-        DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == dtype, "numpy"]
-        .values[0]
-        .__name__
-    )
-    return name
+    gdal_dtypes = DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == dtype, "numpy"]
+    if len(gdal_dtypes) == 0:
+        raise ValueError(
+            f"The given GDAL data type is not supported: {dtype}, available types are: "
+            f"{DTYPE_CONVERSION_DF['gdal'].unique().tolist()}"
+        )
+    else:
+        gdal_dtypes = gdal_dtypes.values[0].__name__
+
+    return gdal_dtypes
 
 
 def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
