@@ -2,7 +2,8 @@
 import yaml
 import datetime as dt
 import numpy as np
-from osgeo import gdal, gdal_array, ogr
+from pandas import DataFrame
+from osgeo import gdal, gdal_array, ogr, gdalconst
 from osgeo.gdal import Dataset
 from pyramids._errors import OptionalPackageDoesNontExist, DriverNotExistError
 from pyramids import __path__
@@ -65,6 +66,88 @@ OGR_NUMPY_DATA_TYPES = {
     10: np.datetime64,  # ogr.OFTTime
 }
 
+DTYPE_NAMES = [
+    None,
+    "byte",
+    "uint16",
+    "int16",
+    "uint32",
+    "int32",
+    "float32",
+    "float64",
+    "complex-int16",
+    "complex-int32",
+    "complex-float32",
+    "complex-float64",
+    "uint64",
+    "int64",
+    "int8",
+    "count",
+]
+
+GDAL_DTYPE = [
+    gdalconst.GDT_Unknown,
+    gdalconst.GDT_Byte,
+    gdalconst.GDT_UInt16,
+    gdalconst.GDT_Int16,
+    gdalconst.GDT_UInt32,
+    gdalconst.GDT_Int32,
+    gdalconst.GDT_Float32,
+    gdalconst.GDT_Float64,
+    gdalconst.GDT_CInt16,
+    gdalconst.GDT_CInt32,
+    gdalconst.GDT_CFloat32,
+    gdalconst.GDT_CFloat64,
+    gdalconst.GDT_UInt64,
+    gdalconst.GDT_Int64,
+    gdalconst.GDT_Int8,
+    gdalconst.GDT_TypeCount,
+]
+
+GDAL_DTYPE_CODE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+
+OGR_DTYPE = [
+    None,
+    ogr.OFTInteger,
+    ogr.OFTInteger,
+    ogr.OFTInteger,
+    ogr.OFTInteger64,
+    ogr.OFTInteger64,
+    ogr.OFTReal,
+    ogr.OFTReal,
+    None,
+    None,
+    None,
+    None,
+    ogr.OFTInteger64,
+    ogr.OFTInteger64,
+    ogr.OFTInteger,
+    None,
+]
+
+NUMPY_DTYPE = [
+    None,
+    np.uint8,
+    np.uint16,
+    np.int16,
+    np.uint32,
+    np.int32,
+    np.float32,
+    np.float64,
+    np.complex64,
+    np.complex64,
+    np.complex64,
+    np.complex128,
+    np.uint64,
+    np.int64,
+    np.int8,
+    None,
+]
+
+conversion_df = DataFrame(
+    columns=["id", "name", "numpy", "gdal", "ogr"],
+    data=list(zip(GDAL_DTYPE_CODE, DTYPE_NAMES, NUMPY_DTYPE, GDAL_DTYPE, OGR_DTYPE)),
+)
 
 INTERPOLATION_METHODS = {
     "nearest neibour": gdal.GRA_NearestNeighbour,
