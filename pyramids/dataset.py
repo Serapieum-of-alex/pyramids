@@ -18,6 +18,7 @@ from osgeo.osr import SpatialReference
 from pyramids._utils import (
     gdal_to_ogr_dtype,
     INTERPOLATION_METHODS,
+    DTYPE_CONVERSION_DF,
     NUMPY_GDAL_DATA_TYPES,
     gdal_to_numpy_dtype,
     numpy_to_gdal_dtype,
@@ -311,6 +312,14 @@ class Dataset:
         """Data Type"""
         return [
             self.raster.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
+        ]
+
+    @property
+    def numpy_dtype(self) -> List[str]:
+        """List of the numpy data Type of each band"""
+        return [
+            DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "name"].values[0]
+            for i in self.dtype
         ]
 
     @property

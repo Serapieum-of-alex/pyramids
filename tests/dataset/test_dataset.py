@@ -103,7 +103,7 @@ class TestCreateRasterObject:
         assert src.raster.GetGeoTransform() == src_geotransform
 
     class TestRasterLike:
-        def test_create_raster_like_to_disk(
+        def test_to_disk(
             self,
             src: gdal.Dataset,
             src_arr: np.ndarray,
@@ -127,7 +127,7 @@ class TestCreateRasterObject:
             )
             assert src_obj.geotransform == dst_obj.geotransform
 
-        def test_create_raster_like_to_mem(
+        def test_to_mem(
             self,
             src: gdal.Dataset,
             src_arr: np.ndarray,
@@ -220,6 +220,10 @@ class TestProperties:
         src.band_names = name_list
         assert src.band_names == name_list
         src.band_names = ["Band_1"]
+
+    def test_np_dtype(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.numpy_dtype == ["float32"]
 
 
 class TestSpatialProperties:
