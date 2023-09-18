@@ -90,9 +90,6 @@ class Dataset:
         ]
         # no_data_value = [np.nan if i is None else i for i in no_data_value ]
         self._no_data_value = no_data_value
-        self._dtype = [
-            src.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
-        ]
 
         self._band_names = self._get_band_names()
 
@@ -312,7 +309,9 @@ class Dataset:
     @property
     def dtype(self):
         """Data Type"""
-        return self._dtype
+        return [
+            self.raster.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
+        ]
 
     @property
     def file_name(self):
@@ -1027,7 +1026,7 @@ class Dataset:
         Returns
         -------
         no_data_value:
-            convert the no_data_value to comly with the dtype
+            convert the no_data_value to comply with the dtype
         """
         for i, val in enumerate(self.dtype):
             if gdal_to_numpy_dtype(val).__contains__("float"):
