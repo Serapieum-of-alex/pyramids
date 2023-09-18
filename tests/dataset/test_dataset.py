@@ -221,9 +221,17 @@ class TestProperties:
         assert src.band_names == name_list
         src.band_names = ["Band_1"]
 
-    def test_np_dtype(self, src: gdal.Dataset):
+    def test_numpy_dtype(self, src: gdal.Dataset):
         src = Dataset(src)
-        assert src.numpy_dtype == ["float32"]
+        assert src.numpy_dtype == [np.float32]
+
+    def test_dtype(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.dtype == ["float32"]
+
+    def test_gdal_dtype(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.gdal_dtype == [6]
 
 
 class TestSpatialProperties:

@@ -318,6 +318,14 @@ class Dataset:
     def numpy_dtype(self) -> List[str]:
         """List of the numpy data Type of each band"""
         return [
+            DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "numpy"].values[0]
+            for i in self.gdal_dtype
+        ]
+
+    @property
+    def dtype(self) -> List[str]:
+        """List of the numpy data Type of each band"""
+        return [
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "name"].values[0]
             for i in self.gdal_dtype
         ]
