@@ -103,7 +103,7 @@ class Dataset:
             Band names: {self.band_names}
             Variables: {self.variables}
             Mask: {self._no_data_value[0]}
-            Data type: {self.dtype[0]}
+            Data type: {self.gdal_dtype[0]}
             File: {self.file_name}
         """
         return message
@@ -130,7 +130,7 @@ class Dataset:
             self.band_names,
             self.variables,
             self._no_data_value[0],
-            self.dtype[0],
+            self.gdal_dtype[0],
             self.crs,
             self.meta_data,
             self.file_name,
@@ -308,7 +308,7 @@ class Dataset:
         return self._meta_data
 
     @property
-    def dtype(self):
+    def gdal_dtype(self):
         """Data Type"""
         return [
             self.raster.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
@@ -319,7 +319,7 @@ class Dataset:
         """List of the numpy data Type of each band"""
         return [
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "name"].values[0]
-            for i in self.dtype
+            for i in self.gdal_dtype
         ]
 
     @property
@@ -390,7 +390,7 @@ class Dataset:
         src_obj = cls(src)
         # Create the driver.
         dst = src_obj._create_gdal_dataset(
-            src_obj.columns, src_obj.rows, bands, src_obj.dtype[0], path=path
+            src_obj.columns, src_obj.rows, bands, src_obj.gdal_dtype[0], path=path
         )
 
         # Set the projection.
@@ -1037,7 +1037,7 @@ class Dataset:
         no_data_value:
             convert the no_data_value to comply with the dtype
         """
-        for i, val in enumerate(self.dtype):
+        for i, val in enumerate(self.gdal_dtype):
             if gdal_to_numpy_dtype(val).__contains__("float"):
                 no_data_value[i] = (
                     float(no_data_value[i])
@@ -1133,10 +1133,10 @@ class Dataset:
         potential_dtypes = [NUMPY_GDAL_DATA_TYPES.get(i) for i in potential_dtypes]
 
         if no_data_value is not None:
-            if not self.dtype[band_i] in potential_dtypes:
+            if not self.gdal_dtype[band_i] in potential_dtypes:
                 raise NoDataValueError(
                     f"The dtype of the given no_data_value{no_data_value}: {no_dtype} differs from the dtype of the "
-                    f"band: {gdal_to_numpy_dtype(self.dtype[band_i])}"
+                    f"band: {gdal_to_numpy_dtype(self.gdal_dtype[band_i])}"
                 )
 
         self._change_no_data_value_attr(band_i, no_data_value)
@@ -1222,7 +1222,7 @@ class Dataset:
             except TypeError:
                 raise NoDataValueError(
                     f"The dtype of the given no_data_value: {new_value[band]} differs from the dtype of the "
-                    f"band: {gdal_to_numpy_dtype(self.dtype[band])}"
+                    f"band: {gdal_to_numpy_dtype(self.gdal_dtype[band])}"
                 )
             new_dataset.raster.GetRasterBand(band + 1).WriteArray(arr)
 
@@ -1664,7 +1664,7 @@ class Dataset:
 
         no_data_value = self.no_data_value[band]
         src_array = self.read_array(band)
-        dtype = self.dtype[band]
+        dtype = self.gdal_dtype[band]
 
         # fill the new array with the nodata value
         new_array = np.ones((self.rows, self.columns)) * no_data_value
@@ -1778,7 +1778,7 @@ class Dataset:
         # create a new raster
         cols = int(np.round(abs(lrx - ulx) / cell_size))
         rows = int(np.round(abs(uly - lry) / cell_size))
-        dtype = self.dtype[0]
+        dtype = self.gdal_dtype[0]
         bands = self.band_count
 
         dst = Dataset._create_gdal_dataset(cols, rows, bands, dtype)
@@ -1935,7 +1935,7 @@ class Dataset:
         cols = int(np.round(abs(lrx - ulx) / pixel_spacing))
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
-        dtype = self.dtype[0]
+        dtype = self.gdal_dtype[0]
         dst = Dataset._create_gdal_dataset(cols, rows, self.band_count, dtype)
 
         # new geotransform
@@ -2118,7 +2118,7 @@ class Dataset:
             src_array = self.fill_gaps(mask, src_array)
 
         dst = Dataset._create_gdal_dataset(
-            col, row, band_count, self.dtype[0], driver="MEM"
+            col, row, band_count, self.gdal_dtype[0], driver="MEM"
         )
         # but with lot of computation
         # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
@@ -2197,7 +2197,7 @@ class Dataset:
             reprojected_RasterB = self
         # create a new raster
         dst = Dataset._create_gdal_dataset(
-            src.columns, src.rows, self.band_count, src.dtype[0], driver="MEM"
+            src.columns, src.rows, self.band_count, src.gdal_dtype[0], driver="MEM"
         )
         # set the geotransform
         dst.SetGeoTransform(src.geotransform)
