@@ -23,6 +23,11 @@ def src(src_path: str) -> Dataset:
 
 
 @pytest.fixture(scope="module")
+def nc_path() -> str:
+    return "tests/data/netcdf/westernscheldt01_waqgeom.nc"
+
+
+@pytest.fixture(scope="module")
 def chang_no_data_dataset(src_path: str) -> Dataset:
     return gdal.OpenShared("tests/data/acc4000-change-no-data.tif", gdal.GA_ReadOnly)
 
@@ -66,22 +71,22 @@ def lat_coords() -> list:
     ]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def src_reset_crs() -> Dataset:
     return gdal.Open("tests/data/reset_crs.tif")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def src_set_no_data_value() -> Dataset:
     return gdal.Open("tests/data/src-set_no_data_value.tif")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def src_update() -> Dataset:
     return gdal.Open("tests/data/acc4000-update.tif", gdal.GA_Update)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def multi_band() -> Dataset:
     return gdal.Open("tests/data/geotiff/multi_bands.tif")
 
@@ -468,6 +473,6 @@ def sentinel_classes() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/sentinel-classes.tif")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def noah() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/noah-precipitation-1979.tif")
