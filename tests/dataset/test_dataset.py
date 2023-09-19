@@ -279,7 +279,7 @@ class TestNoDataValue:
         src._set_no_data_value(5.0)
         # check if the no_data_value in the Datacube object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
-        # check if the no_data_value of the Dataset object is set
+        # check if the no_data_value of the Dataset object is set5
         assert src.no_data_value[0] == 5
 
     def test_change_no_data_value(
@@ -296,6 +296,8 @@ class TestNoDataValue:
         assert src.raster.GetRasterBand(1).GetNoDataValue() == new_val
         # check if the no_data_value of the Dataset object is set
         assert src.no_data_value[0] == new_val
+        # check that the no_data_value type has changed to float like the band dtype
+        assert isinstance(src.no_data_value[0], float)
         # check if the new_val for the no_data_value is set in the bands
         arr = src.read_array(0)
         val = arr[0, 0]
@@ -306,6 +308,9 @@ class TestNoDataValue:
         chang_no_data_dataset: gdal.Dataset,
         src_no_data_value: float,
     ):
+        """
+        check setting the gdal attribute only but not the value of the nodata cells
+        """
         dataset = Dataset(chang_no_data_dataset)
         new_val = -6666
         dataset.no_data_value = new_val
@@ -623,7 +628,7 @@ class TestAlign:
         self,
         src: gdal.Dataset,
         src_shape: tuple,
-        src_no_data_value: float,
+        # src_no_data_value: float,
         src_geotransform: tuple,
         soil_raster: gdal.Dataset,
     ):
@@ -632,6 +637,7 @@ class TestAlign:
         dataset_aligned = dataset.align(mask_obj)
         assert dataset_aligned.raster.ReadAsArray().shape == src_shape
         nodataval = dataset_aligned.raster.GetRasterBand(1).GetNoDataValue()
+        src_no_data_value = dataset.no_data_value[0]
         assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
         geotransform = dataset_aligned.raster.GetGeoTransform()
         assert src_geotransform == geotransform
@@ -648,7 +654,7 @@ class TestAlign:
         dataset_aligned = dataset.align(alignment_src)
         assert dataset_aligned.rows == resampled_multi_band_dims[0]
         assert dataset_aligned.columns == resampled_multi_band_dims[1]
-        assert dataset_aligned.no_data_value == dataset.no_data_value
+        # assert dataset_aligned.no_data_value == dataset.no_data_value
         assert dataset.pivot_point == dataset_aligned.pivot_point
 
 

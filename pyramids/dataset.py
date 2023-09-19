@@ -2,6 +2,7 @@
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebric operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
+import warnings
 import datetime as dt
 from pathlib import Path
 import re
@@ -19,7 +20,7 @@ from pyramids._utils import (
     gdal_to_ogr_dtype,
     INTERPOLATION_METHODS,
     DTYPE_CONVERSION_DF,
-    NUMPY_GDAL_DATA_TYPES,
+    # NUMPY_GDAL_DATA_TYPES,
     gdal_to_numpy_dtype,
     numpy_to_gdal_dtype,
     create_time_conversion_func,
@@ -295,7 +296,13 @@ class Dataset:
 
     @no_data_value.setter
     def no_data_value(self, value: object):
-        """No data value that marks the cells out of the domain"""
+        """
+        No data value that marks the cells out of the domain
+
+        Notes
+        -----
+            - the setter does not change the values of the cells to the new no_data_value, it only changes the
+        """
         if isinstance(value, list):
             for i, val in enumerate(value):
                 self._change_no_data_value_attr(i, val)
@@ -1045,21 +1052,35 @@ class Dataset:
         no_data_value:
             convert the no_data_value to comply with the dtype
         """
+        # convert the no_data_value based on the dtype of each raster band.
+        # no_data_value = [func(val) for func, val in zip(self.numpy_dtype, no_data_value)]
         for i, val in enumerate(self.gdal_dtype):
-            if gdal_to_numpy_dtype(val).__contains__("float"):
+            try:
                 no_data_value[i] = (
-                    float(no_data_value[i])
+                    self.numpy_dtype[i](no_data_value[i])
                     if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
-                    else None
+                    else no_data_value[i]
                 )
-            elif gdal_to_numpy_dtype(val).__contains__("int"):
-                no_data_value[i] = (
-                    int(no_data_value[i])
-                    if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
-                    else None
+            except OverflowError:
+                warnings.warn(
+                    f"The no_data_value:{no_data_value[i]} is out of range, Band data type is {self.numpy_dtype[i]}"
                 )
-            else:
-                raise TypeError("NoDataValue has a complex data type")
+                no_data_value[i] = float(no_data_value[i])
+
+            # if gdal_to_numpy_dtype(val).__contains__("float"):
+            #     no_data_value[i] = (
+            #         float(no_data_value[i])
+            #         if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
+            #         else None
+            #     )
+            # elif gdal_to_numpy_dtype(val).__contains__("int"):
+            #     no_data_value[i] = (
+            #         int(no_data_value[i])
+            #         if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
+            #         else None
+            #     )
+            # else:
+            #     raise TypeError("NoDataValue has a complex data type")
 
         return no_data_value
 
@@ -1072,18 +1093,25 @@ class Dataset:
             - Fills the whole raster with the no_data_value.
             - used only when creating an empty driver.
 
+            now the no_data_value is converted to the dtype of the raster bands and updated in the
+            dataset attribure, gdal nodatavalue attribute, used to fill the raster band.
+            from here you have to use the no_data_value stored in the no_data_value attribute as it is updated.
+
         Parameters
         ----------
         no_data_value: [numeric]
-            no data value to fill the masked part of the array
+            no data value to fill the masked part of the array.
         """
         if not isinstance(no_data_value, list):
             no_data_value = [no_data_value] * self.band_count
 
-        self._check_no_data_value(no_data_value)
+        no_data_value = self._check_no_data_value(no_data_value)
 
         for band in range(self.band_count):
             try:
+                # now the no_data_value is converted to the dtype of the raster bands and updated in the
+                # dataset attribure, gdal nodatavalue attribute, used to fill the raster band.
+                # from here you have to use the no_data_value stored in the no_data_value attribute as it is updated.
                 self._set_no_data_value_backend(band, no_data_value[band])
             except Exception as e:
                 if str(e).__contains__(
@@ -1134,21 +1162,23 @@ class Dataset:
             Numerical value.
         """
         # check if the dtype of the no_data_value comply with the dtype of the raster itself.
-        no_dtype = str(type(no_data_value)).split("'")[1]
-        potential_dtypes = [
-            i for i in list(NUMPY_GDAL_DATA_TYPES.keys()) if i.__contains__(no_dtype)
-        ]
-        potential_dtypes = [NUMPY_GDAL_DATA_TYPES.get(i) for i in potential_dtypes]
+        # no_dtype = str(type(no_data_value)).split("'")[1]
+        # potential_dtypes = [
+        #     i for i in list(NUMPY_GDAL_DATA_TYPES.keys()) if i.__contains__(no_dtype)
+        # ]
+        # potential_dtypes = [NUMPY_GDAL_DATA_TYPES.get(i) for i in potential_dtypes]
 
-        if no_data_value is not None:
-            if not self.gdal_dtype[band_i] in potential_dtypes:
-                raise NoDataValueError(
-                    f"The dtype of the given no_data_value{no_data_value}: {no_dtype} differs from the dtype of the "
-                    f"band: {gdal_to_numpy_dtype(self.gdal_dtype[band_i])}"
-                )
+        # if no_data_value is not None:
+        #     if not self.gdal_dtype[band_i] in potential_dtypes:
+        #         raise NoDataValueError(
+        #             f"The dtype of the given no_data_value{no_data_value}: {no_dtype} differs from the dtype of the "
+        #             f"band: {gdal_to_numpy_dtype(self.gdal_dtype[band_i])}"
+        #         )
 
         self._change_no_data_value_attr(band_i, no_data_value)
         # initialize the band with the nodata value instead of 0
+        # the no_data_value may have changed inside the _change_no_data_value_attr method to float64, so redefine it.
+        no_data_value = self.no_data_value[band_i]
         try:
             self.raster.GetRasterBand(band_i + 1).Fill(no_data_value)
         except Exception as e:
@@ -1189,9 +1219,9 @@ class Dataset:
             elif str(e).__contains__(
                 "in method 'Band_SetNoDataValue', argument 2 of type 'double'"
             ):
-                self.raster.GetRasterBand(band + 1).SetNoDataValue(
-                    np.float64(no_data_value)
-                )
+                no_data_value = np.float64(no_data_value)
+                self.raster.GetRasterBand(band + 1).SetNoDataValue(no_data_value)
+
         self._no_data_value[band] = no_data_value
 
     def change_no_data_value(self, new_value: Any, old_value: Any = None):
@@ -1218,8 +1248,12 @@ class Dataset:
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.raster, 0)
         # create a new dataset
         new_dataset = Dataset(dst)
+        # the new_value could change inside the _set_no_data_value method before it is used to set the no_data_value
+        # attrbute in gdal object/pyramids object and to fill the band.
         new_dataset._set_no_data_value(new_value)
-
+        # now we have to use the no_data_value value in the no_data_value attribute in the Dataset object as it is
+        # updated.
+        new_value = new_dataset.no_data_value
         for band in range(self.band_count):
             arr = self.read_array(band)
             try:
@@ -2167,7 +2201,7 @@ class Dataset:
             - The coordinate system
             - The number of of rows & columns
             - cell size
-        from alignment_src to a data_src raster (the source of data values in cells)
+        from alignment_src to a the raster (the source of data values in cells)
 
         the result will be a raster with the same structure like alignment_src but with
         values from data_src using Nearest Neighbour interpolation algorithm
@@ -2213,7 +2247,7 @@ class Dataset:
         dst.SetProjection(src.crs)
         # set the no data value
         dst_obj = Dataset(dst)
-        dst_obj._set_no_data_value(src.no_data_value)
+        dst_obj._set_no_data_value(self.no_data_value)
         # perform the projection & resampling
         method = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
