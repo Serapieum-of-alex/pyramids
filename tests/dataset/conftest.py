@@ -256,7 +256,7 @@ def sentinel_resample_arr() -> np.ndarray:
     return np.load("tests/data/geotiff/resamples_sentinel.npy")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def resampled_multiband() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/resampled_multi_bands.tif")
 
@@ -446,7 +446,7 @@ def clusters() -> np.ndarray:
     return np.load("tests/data/dem/cluster.npy")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def sentinel_raster() -> gdal.Dataset:
     return gdal.Open(
         "tests/data/geotiff/S2A_MSIL2A_20200215T082021_N0214_R121_T36SXA_20200215T110825_image_0_0.tif"
