@@ -9,62 +9,32 @@ from pyramids._errors import OptionalPackageDoesNontExist, DriverNotExistError
 from pyramids import __path__
 
 # from urllib.parse import urlparse as parse_url
+# OGR_DATA_TYPES = {
+#     ogr.OFTInteger: 0,
+#     ogr.OFTIntegerList: 1,
+#     ogr.OFTReal: 2,
+#     ogr.OFTRealList: 3,
+#     ogr.OFTString: 4,
+#     ogr.OFTStringList: 5,
+#     ogr.OFTWideString: 6,
+#     ogr.OFTWideStringList: 7,
+#     ogr.OFTBinary: 8,
+#     ogr.OFTDate: 9,
+#     ogr.OFTTime: 10,
+#     ogr.OFTDateTime: 11,
+#     ogr.OFTInteger64: 12,
+#     ogr.OFTInteger64List: 13,
+# }
 
-# mapping between gdal type and ogr field type
-GDAL_OGR_DATA_TYPES = {
-    gdal.GDT_Unknown: ogr.OFTInteger,
-    gdal.GDT_Byte: ogr.OFTInteger,
-    gdal.GDT_UInt16: ogr.OFTInteger,
-    gdal.GDT_Int16: ogr.OFTInteger,
-    gdal.GDT_UInt32: ogr.OFTInteger,
-    gdal.GDT_Int32: ogr.OFTInteger,
-    gdal.GDT_Float32: ogr.OFTReal,
-    gdal.GDT_Float64: ogr.OFTReal,
-    gdal.GDT_CInt16: ogr.OFTInteger,
-    gdal.GDT_CInt32: ogr.OFTInteger,
-    gdal.GDT_CFloat32: ogr.OFTReal,
-    gdal.GDT_CFloat64: ogr.OFTReal,
-}
-
-NUMPY_GDAL_DATA_TYPES = {
-    "uint8": 1,
-    "int8": 1,
-    "uint16": 2,
-    "int16": 3,
-    "uint32": 4,
-    "int32": 5,
-    "float32": 6,
-    "float64": 7,
-    "complex64": 10,
-    "complex128": 11,
-}
-
-OGR_DATA_TYPES = {
-    ogr.OFTInteger: 0,
-    ogr.OFTIntegerList: 1,
-    ogr.OFTReal: 2,
-    ogr.OFTRealList: 3,
-    ogr.OFTString: 4,
-    ogr.OFTStringList: 5,
-    ogr.OFTWideString: 6,
-    ogr.OFTWideStringList: 7,
-    ogr.OFTBinary: 8,
-    ogr.OFTDate: 9,
-    ogr.OFTTime: 10,
-    ogr.OFTDateTime: 11,
-    ogr.OFTInteger64: 12,
-    ogr.OFTInteger64List: 13,
-}
-
-OGR_NUMPY_DATA_TYPES = {
-    0: np.int64,  # ogr.OFTInteger is actually int32 but to unify it with how geopandas read it, we will use int64.
-    12: np.int64,  # ogr.OFTInteger64
-    2: np.float64,  # ogr.OFTReal
-    4: np.object_,  # ogr.OFTString
-    11: np.datetime64,  # ogr.OFTDateTime
-    9: np.datetime64,  # ogr.OFTDate
-    10: np.datetime64,  # ogr.OFTTime
-}
+# OGR_NUMPY_DATA_TYPES = {
+#     0: np.int64,  # ogr.OFTInteger is actually int32 but to unify it with how geopandas read it, we will use int64.
+#     12: np.int64,  # ogr.OFTInteger64
+#     2: np.float64,  # ogr.OFTReal
+#     4: np.object_,  # ogr.OFTString
+#     11: np.datetime64,  # ogr.OFTDateTime
+#     9: np.datetime64,  # ogr.OFTDate
+#     10: np.datetime64,  # ogr.OFTTime
+# }
 
 DTYPE_NAMES = [
     None,
@@ -269,9 +239,12 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
     gdal data type
     """
     band = src.GetRasterBand(band)
-    loc = list(GDAL_OGR_DATA_TYPES.keys()).index(band.DataType) + 1
-    key = list(GDAL_OGR_DATA_TYPES.keys())[loc]
-    return GDAL_OGR_DATA_TYPES[key]
+    gdal_dtype = band.DataType
+    return int(
+        DTYPE_CONVERSION_DF.loc[
+            DTYPE_CONVERSION_DF["gdal"] == gdal_dtype, "ogr"
+        ].values[0]
+    )
 
 
 def create_time_conversion_func(time: str) -> callable:

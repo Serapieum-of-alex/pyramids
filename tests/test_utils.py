@@ -5,6 +5,7 @@ from pyramids._errors import DriverNotExistError
 from pyramids._utils import (
     numpy_to_gdal_dtype,
     gdal_to_numpy_dtype,
+    gdal_to_ogr_dtype,
     Catalog,
     ogr_ds_togdal_dataset,
     ogr_to_numpy_dtype,
@@ -24,6 +25,11 @@ def test_gdal_to_numpy_dtype():
         gdal_to_numpy_dtype(20)
     except ValueError:
         pass
+
+
+def test_gdal_to_ogr_dtype(test_image: gdal.Dataset, src: gdal.Dataset):
+    assert gdal_to_ogr_dtype(test_image) == 0
+    assert gdal_to_ogr_dtype(src) == 2
 
 
 def test_ogr_to_numpy_dtype():
