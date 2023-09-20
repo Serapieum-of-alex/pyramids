@@ -322,8 +322,8 @@ class Dataset:
         ]
 
     @property
-    def numpy_dtype(self) -> List[str]:
-        """List of the numpy data Type of each band"""
+    def numpy_dtype(self) -> List[type]:
+        """List of the numpy data Type of each band, the data type is a numpy function"""
         return [
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "numpy"].values[0]
             for i in self.gdal_dtype
@@ -1061,12 +1061,23 @@ class Dataset:
                     if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
                     else no_data_value[i]
                 )
-            except OverflowError:
-                warnings.warn(
-                    f"The no_data_value:{no_data_value[i]} is out of range, Band data type is {self.numpy_dtype[i]}"
-                )
-                no_data_value[i] = float(no_data_value[i])
-
+            except OverflowError as e:
+                # no_data_value = -3.4028230607370965e+38, numpy_dtype = np.int64
+                if e.args == ("int too big to convert",):
+                    warnings.warn(
+                        f"The no_data_value:{no_data_value[i]} is out of range, Band data type is {self.numpy_dtype[i]}"
+                    )
+                    no_data_value[i] = self.numpy_dtype[i](DEFAULT_NO_DATA_VALUE)
+                if e.args == ("Python int too large to convert to C long",):
+                    # no_data_value = -3.4028230607370965e+38, numpy_dtype = np.int32
+                    warnings.warn(
+                        f"The no_data_value:{no_data_value[i]} is out of range, Band data type is {self.numpy_dtype[i]}"
+                    )
+                    no_data_value[i] = self.numpy_dtype[i](
+                        DEFAULT_NO_DATA_VALUE
+                    )  # float(DEFAULT_NO_DATA_VALUE)
+                else:
+                    raise e
             # if gdal_to_numpy_dtype(val).__contains__("float"):
             #     no_data_value[i] = (
             #         float(no_data_value[i])
@@ -1216,8 +1227,8 @@ class Dataset:
                     "The Dataset is open with a read only, please read the raster using update "
                     "access mode"
                 )
-            elif str(e).__contains__(
-                "in method 'Band_SetNoDataValue', argument 2 of type 'double'"
+            elif e.args == (
+                "in method 'Band_SetNoDataValue', argument 2 of type 'double'",
             ):
                 no_data_value = np.float64(no_data_value)
                 self.raster.GetRasterBand(band + 1).SetNoDataValue(no_data_value)

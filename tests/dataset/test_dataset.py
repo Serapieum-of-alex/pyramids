@@ -102,6 +102,49 @@ class TestCreateRasterObject:
         )
         assert src.raster.GetGeoTransform() == src_geotransform
 
+    def test_create_driver_from_scratch(self):
+        cell_size = 4000
+        rows = 13
+        columns = 14
+        dtype = 5  # np.int32
+        bands_count = 1
+        top_left_coords = (432968.1206170588, 520007.787999178)
+        ds_epsg = 32618
+        no_data_value = -3.4028230607370965e38
+        dataset_n = Dataset.create_driver_from_scratch(
+            cell_size,
+            rows,
+            columns,
+            dtype,
+            bands_count,
+            top_left_coords,
+            ds_epsg,
+            no_data_value,
+        )
+        assert dataset_n.rows == rows
+        assert dataset_n.columns == columns
+        assert dataset_n.epsg == ds_epsg
+        assert dataset_n.cell_size == cell_size
+        assert dataset_n.pivot_point == top_left_coords
+        assert dataset_n.band_count == bands_count
+        assert dataset_n.dtype == ["int32"]
+        # the dtype is np.int32, and the no_data_value is -3.4028230607370965e+38
+        # Dataset_check_no_data_value()
+        # trying to convert the no_data_value to int32 will give the following error
+        # "OverflowError: Python int too large to convert to C long"
+        # then the default_no_data_value (-9999) will be converted to int32 and used as the no_data_value
+
+        # Dataset._change_no_data_value_attr(band=0, no_data_value=-9999.0)
+        # the _change_no_data_value_attr method will try to change the no_data_value to -9999.0 (int32)
+        # but the self.raster.GetRasterBand(band + 1).SetNoDataValue(no_data_value) will raise an error
+        # "TypeError: in method 'Band_SetNoDataValue', argument 2 of type 'double'" , so the no_data_value will be
+        # changed to float64
+        new_no_data_value = np.float64(dataset_n.default_no_data_value)
+        assert dataset_n.no_data_value[0] == [new_no_data_value]
+        assert isinstance(dataset_n.no_data_value[0], np.float64)
+        arr = dataset_n.read_array()
+        assert arr[0, 0] == new_no_data_value
+
     class TestRasterLike:
         def test_to_disk(
             self,
