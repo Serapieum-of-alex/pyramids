@@ -13,7 +13,11 @@ from pyramids._utils import (
 
 
 def test_numpy_to_gdal_dtype(arr: np.ndarray):
+    # test with array input
     gdal_type = numpy_to_gdal_dtype(arr)
+    assert gdal_type is gdal.GDT_Float32
+    # test with  a dtye input
+    gdal_type = numpy_to_gdal_dtype(arr.dtype)
     assert gdal_type is gdal.GDT_Float32
 
 

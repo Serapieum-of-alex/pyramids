@@ -1,4 +1,5 @@
 """Utility module"""
+from typing import Union
 import yaml
 import datetime as dt
 import numpy as np
@@ -129,19 +130,22 @@ INTERPOLATION_METHODS = {
 # TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
 
 
-def numpy_to_gdal_dtype(arr: np.ndarray):
+def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype]) -> int:
     """mapping functiuon between numpy and gdal data types.
 
     Parameters
     ----------
-    arr: [np.ndarray]
-        numpy array
+    arr: [np.ndarray/np.dtype]
+        numpy array or numpy data type
 
     Returns
     -------
     gdal data type
     """
-    np_dtype = arr.dtype
+    if isinstance(arr, np.ndarray):
+        np_dtype = arr.dtype
+    else:
+        np_dtype = arr
     # integer as gdal does not accept the dtype if it is int64
     gdal_type = int(
         DTYPE_CONVERSION_DF.loc[
