@@ -276,8 +276,10 @@ class TestToDataset:
             assert src.geotransform[3] == ymax
             assert src.cell_size == 4000
             arr = src.read_array()
-            values = arr[arr[:, :] == 1.0]
+            # filter the array based on the no_data_value to check if it is set correctly.
+            values = arr[~np.isclose(arr, src.no_data_value[0])]
             assert values.shape[0] == 16
+            assert values.mean() == vector.feature["fid"].values[0]
 
     # def test_dataset_parameter_error_case(
     #         self, era5_image: gdal.Dataset, era5_mask: GeoDataFrame
@@ -298,20 +300,18 @@ class TestToDataset:
         ):
             """Geodataframe input polygon.
 
-                test convert a vector to a raster using a dataset as a parameter
-                - both the vector and the raster shares the same pivot point, the vector locates in the top left
-                corner of the raster, the vector covers only the top left corner, and not the whole raster.
-                - the raster is a single band.
-                - use columne_name parameter to tell the method which column you want to take the value from.
-
-            Parameters
-            ----------
-            raster_to_df_path
+            test convert a vector to a raster using a dataset as a parameter
+            - both the vector and the raster shares the same pivot point, the vector locates in the top left
+            corner of the raster, the vector covers only the top left corner, and not the whole raster.
+            - the raster is a single band.
+            - use columne_name parameter to tell the method which column you want to take the value from.
             """
             dataset = Dataset.read_file(raster_1band_coello_path)
-            polygon_corner_coello_gdf["column_2"] = 2
+            new_column_name = "column_2"
+            new_column_value = 2
+            polygon_corner_coello_gdf[new_column_name] = new_column_value
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = vector.to_dataset(dataset=dataset, column_name="column_2")
+            src = vector.to_dataset(dataset=dataset, column_name=new_column_name)
             assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
 
             xmin, _, _, ymax, _, _ = dataset.geotransform
@@ -319,8 +319,10 @@ class TestToDataset:
             assert src.geotransform[3] == ymax
             assert src.cell_size == 4000
             arr = src.read_array()
-            values = arr[arr[:, :] == 2]
+            # filter the array based on the no_data_value to check if it is set correctly.
+            values = arr[~np.isclose(arr, src.no_data_value[0])]
             assert values.shape[0] == 16
+            assert values.mean() == new_column_value
 
         def test_single_band_dataset_parameter_multiple_columns(
             self,
@@ -329,15 +331,11 @@ class TestToDataset:
         ):
             """Geodataframe input polygon.
 
-                test convert a vector to a raster using a dataset as a parameter
-                - both the vector and the raster shares the same pivot point, the vector locates in the top left
-                corner of the raster, the vector covers only the top left corner, and not the whole raster.
-                - the raster is a single band.
-                - use columne_name parameter to tell the method which column you want to take the value from.
-
-            Parameters
-            ----------
-            raster_to_df_path
+            test convert a vector to a raster using a dataset as a parameter
+            - both the vector and the raster shares the same pivot point, the vector locates in the top left
+            corner of the raster, the vector covers only the top left corner, and not the whole raster.
+            - the raster is a single band.
+            - use columne_name parameter to tell the method which column you want to take the value from.
             """
             dataset = Dataset.read_file(raster_1band_coello_path)
             polygon_corner_coello_gdf["column_2"] = 2
@@ -354,10 +352,14 @@ class TestToDataset:
             assert src.cell_size == 4000
             arr = src.read_array()
             assert arr.shape == (2, 13, 14)
-            band_1_values = arr[0, arr[0, :, :] == 2]
-            band_2_values = arr[1, arr[1, :, :] == 3]
+            # filter the array based on the no_data_value to check if it is set correctly.
+            band_1_values = arr[0, ~np.isclose(arr[0, :, :], src.no_data_value[0])]
+            band_2_values = arr[1, ~np.isclose(arr[1, :, :], src.no_data_value[1])]
+
             assert band_1_values.shape[0] == 16
             assert band_2_values.shape[0] == 16
+            assert band_1_values.mean() == 2
+            assert band_2_values.mean() == 3
 
         def test_single_band_dataset_parameter_none_column_name(
             self,
