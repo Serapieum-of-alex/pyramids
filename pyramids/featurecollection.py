@@ -24,7 +24,12 @@ from shapely.geometry import Point, Polygon, LineString
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multilinestring import MultiLineString
-from pyramids._utils import Catalog, ogr_ds_togdal_dataset, ogr_to_numpy_dtype
+from pyramids._utils import (
+    Catalog,
+    ogr_ds_togdal_dataset,
+    ogr_to_numpy_dtype,
+    numpy_to_gdal_dtype,
+)
 from pyramids._errors import DriverNotExistError
 
 CATALOG = Catalog(raster_driver=False)
@@ -477,17 +482,18 @@ class FeatureCollection:
             columns = int(np.ceil((xmax - xmin) / cell_size))
             rows = int(np.ceil((ymax - ymin) / cell_size))
 
-        # TODO: the dtype should be determined based on the values in the feature collection
         burn_values = None
         if column_name is None:
-            columns_names = self.column
-            columns_names.remove("geometry")
-            attribute = columns_names
-            dtype = 5
+            column_name = self.column
+            column_name.remove("geometry")
+
+        if isinstance(column_name, list):
+            numpy_dtype = self.dtypes[column_name[0]]
         else:
-            # Use the values given in the vector field.
-            attribute = column_name
-            dtype = 7
+            numpy_dtype = self.dtypes[column_name]
+
+        dtype = numpy_to_gdal_dtype(numpy_dtype)
+        attribute = column_name
 
         # convert the vector to a gdal Dataset (vector but read by gdal.EX)
         vector_gdal_ex = self._gdf_to_ds(gdal_dataset=True)
