@@ -1056,11 +1056,10 @@ class Dataset:
         # no_data_value = [func(val) for func, val in zip(self.numpy_dtype, no_data_value)]
         for i, val in enumerate(self.gdal_dtype):
             try:
-                no_data_value[i] = (
-                    self.numpy_dtype[i](no_data_value[i])
-                    if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
-                    else no_data_value[i]
-                )
+                if no_data_value[i] is not None and not np.isnan(no_data_value[i]):
+                    no_data_value[i] = self.numpy_dtype[i](no_data_value[i])
+                else:
+                    no_data_value[i] = no_data_value[i]
             except OverflowError:
                 # no_data_value = -3.4028230607370965e+38, numpy_dtype = np.int64
                 warnings.warn(
