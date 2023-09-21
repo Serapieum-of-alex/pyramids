@@ -722,15 +722,18 @@ class TestCrop:
         self,
         sentinel_raster: gdal.Dataset,
         sentinel_crop,
-        sentinel_crop_arr: np.ndarray,
+        sentinel_crop_arr_without_no_data_value: np.ndarray,
     ):
         mask_obj = Dataset(sentinel_crop)
         aligned_raster = Dataset(sentinel_raster)
 
         croped = aligned_raster._crop_alligned(mask_obj)
         dst_arr_cropped = croped.raster.ReadAsArray()
-
-        assert np.array_equal(dst_arr_cropped, sentinel_crop_arr)
+        # filter the no_data_value out of the array
+        arr = dst_arr_cropped[
+            ~np.isclose(dst_arr_cropped, croped.no_data_value[0], rtol=0.001)
+        ]
+        assert np.array_equal(sentinel_crop_arr_without_no_data_value, arr)
 
     def test_crop_dataset_with_array(
         self,

@@ -503,7 +503,7 @@ class Dataset:
                     self.rows,
                     self.columns,
                 ),
-                # dtype=dtype
+                dtype=self.numpy_dtype[0],
             )
             for i in range(self.band_count):
                 arr[i, :, :] = self._raster.GetRasterBand(i + 1).ReadAsArray()
@@ -2143,13 +2143,29 @@ class Dataset:
                 )
 
         if band_count > 1:
+            # check if the no data value for the src comply with the dtype of the src as sometimes the band is full
+            # of values and the no_data_value is not used at all in the band and when we try to replace any value in
+            # the array with the no_data_value it will raise an error.
+            no_data_value = self._check_no_data_value(self.no_data_value)
+
             for band in range(self.band_count):
                 if mask_noval is None:
                     src_array[band, np.isnan(mask_array)] = self.no_data_value[band]
                 else:
-                    src_array[
-                        band, np.isclose(mask_array, mask_noval, rtol=0.001)
-                    ] = self.no_data_value[band]
+                    val = no_data_value[band]
+                    # if the no_data_value could not be inserted in the array ( the no_data_value is None and the
+                    # array is uint16) then use the default no_data_value.
+                    try:
+                        src_array[
+                            band, np.isclose(mask_array, mask_noval, rtol=0.001)
+                        ] = val
+                    except TypeError:
+                        # np.iinfo(self.numpy_dtype[0]).max
+                        new_val = self.numpy_dtype[band](DEFAULT_NO_DATA_VALUE)
+                        src_array[
+                            band, np.isclose(mask_array, mask_noval, rtol=0.001)
+                        ] = new_val
+                        self.no_data_value[band] = new_val
         else:
             if mask_noval is None:
                 src_array[np.isnan(mask_array)] = self.no_data_value[0]

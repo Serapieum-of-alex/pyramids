@@ -464,6 +464,14 @@ def sentinel_crop_arr() -> np.ndarray:
 
 
 @pytest.fixture(scope="module")
+def sentinel_crop_arr_without_no_data_value(
+    sentinel_crop_arr: np.ndarray,
+) -> np.ndarray:
+    # filter the no_data_value out of the array
+    return sentinel_crop_arr[~np.isclose(sentinel_crop_arr, 0, rtol=0.001)]
+
+
+@pytest.fixture(scope="module")
 def int_none_nodatavalue_attr_0_stored() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/int_none_nodatavalue_attr_0_stored.tif")
 
