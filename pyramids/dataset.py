@@ -1056,10 +1056,23 @@ class Dataset:
         # no_data_value = [func(val) for func, val in zip(self.numpy_dtype, no_data_value)]
         for i, val in enumerate(self.gdal_dtype):
             try:
-                if no_data_value[i] is not None and not np.isnan(no_data_value[i]):
-                    no_data_value[i] = self.numpy_dtype[i](no_data_value[i])
+                val = no_data_value[i]
+                # if not None or np.nan
+                if val is not None and not np.isnan(val):
+                    # if val < np.iinfo(self.dtype[i]).min or val > np.iinfo(self.dtype[i]).max:
+                    # if the no_data_value is out of the range of the data type
+                    no_data_value[i] = self.numpy_dtype[i](val)
                 else:
-                    no_data_value[i] = no_data_value[i]
+                    # None and np.nan
+                    if self.dtype[i].startswith("u"):
+                        # only Unsigned integer data types.
+                        # if None or np.nan it will make problem with the unsigned integer data type
+                        # use the max bound of the data type as a no_data_value
+                        no_data_value[i] = np.iinfo(self.dtype[i]).max
+                    else:
+                        # no_data_type is None/np,nan and all other data types that is not Unsigned integer
+                        no_data_value[i] = val
+
             except OverflowError:
                 # no_data_value = -3.4028230607370965e+38, numpy_dtype = np.int64
                 warnings.warn(
@@ -2151,20 +2164,9 @@ class Dataset:
                 if mask_noval is None:
                     src_array[band, np.isnan(mask_array)] = self.no_data_value[band]
                 else:
-                    val = no_data_value[band]
-                    # if the no_data_value could not be inserted in the array ( the no_data_value is None and the
-                    # array is uint16) then use the default no_data_value.
-                    try:
-                        src_array[
-                            band, np.isclose(mask_array, mask_noval, rtol=0.001)
-                        ] = val
-                    except TypeError:
-                        # np.iinfo(self.numpy_dtype[0]).max
-                        new_val = self.numpy_dtype[band](DEFAULT_NO_DATA_VALUE)
-                        src_array[
-                            band, np.isclose(mask_array, mask_noval, rtol=0.001)
-                        ] = new_val
-                        self.no_data_value[band] = new_val
+                    src_array[
+                        band, np.isclose(mask_array, mask_noval, rtol=0.001)
+                    ] = no_data_value[band]
         else:
             if mask_noval is None:
                 src_array[np.isnan(mask_array)] = self.no_data_value[0]
