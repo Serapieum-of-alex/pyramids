@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import os
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional
+from numbers import Number
 from loguru import logger
 import geopandas as gpd
 import numpy as np
@@ -295,7 +296,7 @@ class Dataset:
         return self._no_data_value
 
     @no_data_value.setter
-    def no_data_value(self, value: Union[List, Any]):
+    def no_data_value(self, value: Union[List, Number]):
         """
         No data value that marks the cells out of the domain
 
