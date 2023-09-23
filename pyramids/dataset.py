@@ -90,7 +90,7 @@ class Dataset:
         no_data_value = [
             src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
         ]
-        # no_data_value = [np.nan if i is None else i for i in no_data_value ]
+
         self._no_data_value = no_data_value
 
         self._band_names = self._get_band_names()
@@ -295,7 +295,7 @@ class Dataset:
         return self._no_data_value
 
     @no_data_value.setter
-    def no_data_value(self, value: object):
+    def no_data_value(self, value: Union[List, Any]):
         """
         No data value that marks the cells out of the domain
 
