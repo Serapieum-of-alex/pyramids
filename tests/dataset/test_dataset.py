@@ -786,6 +786,28 @@ class TestCropWithPolygon:
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
+    def test_with_irrigular_polygon(
+        self,
+        raster_1band_coello_gdal_dataset: Dataset,
+        rasterized_mask_values: np.ndarray,
+        coello_irregular_polygon_gdf: GeoDataFrame,
+    ):
+        """the input mask vector is given as geodataframe.
+
+        Parameters
+        ----------
+        rasterized_mask_values: array for comparison
+        """
+        dataset = Dataset(raster_1band_coello_gdal_dataset)
+        # test with irrigular mask polygon
+        cropped = dataset._crop_with_polygon_warp(coello_irregular_polygon_gdf)
+        assert isinstance(cropped, Dataset)
+        arr = cropped.raster.ReadAsArray()
+        values = arr[~np.isclose(arr, dataset.no_data_value[0], rtol=0.0001)]
+        assert np.array_equal(
+            values, rasterized_mask_values
+        ), "the extracted values in the dataframe does not equa the real values in the array"
+
 
 class TestCluster2:
     """Tect converting raster to polygon."""
@@ -816,40 +838,75 @@ class TestCluster2:
 
 
 class TestToFeatureCollection:
-    def test_without_mask(
-        self, raster_1band_coello_gdal_dataset: Dataset, raster_to_df_arr: np.ndarray
-    ):
-        """the input raster is given as a string path on disk.
+    class TestWithoutMask:
+        def test_1band(
+            self,
+            raster_1band_coello_gdal_dataset: Dataset,
+            raster_to_df_arr: np.ndarray,
+        ):
+            """the input raster is given as a string path on disk.
 
-        Parameters
-        ----------
-        raster_to_df_dataset: gdal.Dataset
-        raster_to_df_arr: array for comparison
-        """
-        src = Dataset(raster_1band_coello_gdal_dataset)
-        gdf = src.to_feature_collection(add_geometry="Point")
-        assert isinstance(gdf, GeoDataFrame)
-        rows, cols = raster_to_df_arr.shape
-        # get values and reshape arrays for comparison
-        arr_flatten = raster_to_df_arr.reshape((rows * cols, 1))
-        extracted_values = gdf.loc[:, gdf.columns[0]].values
-        extracted_values = extracted_values.reshape(arr_flatten.shape)
-        assert np.array_equal(extracted_values, arr_flatten), (
-            "the extracted values in the dataframe does not equa the real "
-            "values in the array"
-        )
+            Parameters
+            ----------
+            raster_to_df_arr: array for comparison
+            """
+            src = Dataset(raster_1band_coello_gdal_dataset)
+            gdf = src.to_feature_collection(add_geometry="Point")
+            assert isinstance(gdf, GeoDataFrame)
+            rows, cols = raster_to_df_arr.shape
+            # get values and reshape arrays for comparison
+            arr_flatten = raster_to_df_arr.reshape((rows * cols, 1))
+            extracted_values = gdf.loc[:, gdf.columns[0]].values
+            extracted_values = extracted_values.reshape(arr_flatten.shape)
+            assert np.array_equal(extracted_values, arr_flatten), (
+                "the extracted values in the dataframe does not equa the real "
+                "values in the array"
+            )
 
-    def test_without_mask_multi_band(
-        self, era5_image: gdal.Dataset, era5_image_gdf: GeoDataFrame
-    ):
-        """the input raster is given as a string path on disk."""
-        dataset = Dataset(era5_image)
-        gdf = dataset.to_feature_collection(add_geometry="Point")
-        assert isinstance(gdf, GeoDataFrame)
-        assert gdf.equals(era5_image_gdf), (
-            "the extracted values in the dataframe does not equa the real "
-            "values in the array"
-        )
+        def test_multi_band(
+            self, era5_image: gdal.Dataset, era5_image_gdf: GeoDataFrame
+        ):
+            """the input raster is given as a string path on disk."""
+            dataset = Dataset(era5_image)
+            gdf = dataset.to_feature_collection(add_geometry="Point")
+            assert isinstance(gdf, GeoDataFrame)
+            assert gdf.equals(era5_image_gdf), (
+                "the extracted values in the dataframe does not equa the real "
+                "values in the array"
+            )
+
+        def test_cropped_raster(
+            self,
+            raster_to_df_dataset_with_cropped_cell: gdal.Dataset,
+            raster_to_df_arr: np.ndarray,
+        ):
+            """the input raster is given as a string path on disk.
+
+            Parameters
+            ----------
+            raster_to_df_arr: array for comparison
+            """
+            dataset = Dataset(raster_to_df_dataset_with_cropped_cell)
+            gdf = dataset.to_feature_collection(add_geometry="Point")
+            assert isinstance(gdf, GeoDataFrame)
+            # rows, cols = raster_to_df_arr.shape
+            # get values and reshape arrays for comparison
+            arr_flatten = (
+                list(range(47, 54))
+                + list(range(60, 68))
+                + list(range(74, 82))
+                + list(range(87, 96))
+                + list(range(101, 110))
+                + list(range(115, 124))
+                + list(range(129, 138))
+            )
+            arr_flatten = np.array(arr_flatten)
+            extracted_values = gdf.loc[:, gdf.columns[0]].values
+            # extracted_values = extracted_values.reshape(arr_flatten.shape)
+            assert np.array_equal(extracted_values, arr_flatten), (
+                "the extracted values in the dataframe does not equa the real "
+                "values in the array"
+            )
 
     # def test_with_mask_multi_band(
     #     self, era5_image: gdal.Dataset, era5_image_gdf: GeoDataFrame, era5_mask: GeoDataFrame
@@ -863,65 +920,80 @@ class TestToFeatureCollection:
     #         "values in the array"
     #     )
 
-    def test_with_gdf_mask(
-        self,
-        raster_1band_coello_gdal_dataset: Dataset,
-        polygon_corner_coello_gdf: GeoDataFrame,
-        rasterized_mask_values: np.ndarray,
-    ):
-        """the input mask vector is given as geodataframe.
+    class TestWithMask:
+        def test_polygon_entirly_inside_raster(
+            self,
+            raster_1band_coello_gdal_dataset: Dataset,
+            polygon_corner_coello_gdf: GeoDataFrame,
+            rasterized_mask_values: np.ndarray,
+        ):
+            """the input mask vector is given as geodataframe.
 
-        Parameters
-        ----------
-        raster_to_df_dataset: path on disk
-        vector_mask_gdf: geodataframe for the vector mask
-        rasterized_mask_values: array for comparison
-        """
-        dataset = Dataset(raster_1band_coello_gdal_dataset)
-        gdf = dataset.to_feature_collection(
-            polygon_corner_coello_gdf, add_geometry="Point"
-        )
-        assert isinstance(gdf, GeoDataFrame)
-        assert len(gdf) == len(rasterized_mask_values)
-        assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
-            "the extracted values in the dataframe "
-            "does not "
-            "equa the real "
-            "values in the array"
-        )
+            Parameters
+            ----------
+            rasterized_mask_values: array for comparison
+            """
+            dataset = Dataset(raster_1band_coello_gdal_dataset)
+            gdf = dataset.to_feature_collection(
+                polygon_corner_coello_gdf, add_geometry="Point"
+            )
 
-    def test_without_mask_cropped_raster(
-        self,
-        raster_to_df_dataset_with_cropped_cell: gdal.Dataset,
-        raster_to_df_arr: np.ndarray,
-    ):
-        """the input raster is given as a string path on disk.
+            poly_gdf = dataset.to_feature_collection(
+                polygon_corner_coello_gdf, add_geometry="Polygon"
+            )
+            assert isinstance(gdf, GeoDataFrame)
+            assert isinstance(poly_gdf, GeoDataFrame)
+            assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
+                "the extracted values in the dataframe "
+                "does not "
+                "equa the real "
+                "values in the array"
+            )
+            assert all(gdf["geometry"].geom_type == "Point")
+            assert np.array_equal(poly_gdf["Band_1"].values, rasterized_mask_values), (
+                "the extracted values in the dataframe "
+                "does not "
+                "equa the real "
+                "values in the array"
+            )
+            assert all(poly_gdf["geometry"].geom_type == "Polygon")
 
-        Parameters
-        ----------
-        raster_to_df_arr: array for comparison
-        """
-        dataset = Dataset(raster_to_df_dataset_with_cropped_cell)
-        gdf = dataset.to_feature_collection(add_geometry="Point")
-        assert isinstance(gdf, GeoDataFrame)
-        # rows, cols = raster_to_df_arr.shape
-        # get values and reshape arrays for comparison
-        arr_flatten = (
-            list(range(47, 54))
-            + list(range(60, 68))
-            + list(range(74, 82))
-            + list(range(87, 96))
-            + list(range(101, 110))
-            + list(range(115, 124))
-            + list(range(129, 138))
-        )
-        arr_flatten = np.array(arr_flatten)
-        extracted_values = gdf.loc[:, gdf.columns[0]].values
-        # extracted_values = extracted_values.reshape(arr_flatten.shape)
-        assert np.array_equal(extracted_values, arr_flatten), (
-            "the extracted values in the dataframe does not equa the real "
-            "values in the array"
-        )
+        def test_polygon_partly_outside_raster(
+            self,
+            raster_1band_coello_gdal_dataset: Dataset,
+            polygon_corner_coello_gdf: GeoDataFrame,
+            rasterized_mask_values: np.ndarray,
+            coello_irregular_polygon_gdf,
+        ):
+            """the input mask vector is given as geodataframe.
+
+            Parameters
+            ----------
+            rasterized_mask_values: array for comparison
+            """
+            dataset = Dataset(raster_1band_coello_gdal_dataset)
+            gdf = dataset.to_feature_collection(
+                coello_irregular_polygon_gdf, add_geometry="Point"
+            )
+            poly_gdf = dataset.to_feature_collection(
+                coello_irregular_polygon_gdf, add_geometry="Polygon"
+            )
+            assert isinstance(gdf, GeoDataFrame)
+            assert isinstance(poly_gdf, GeoDataFrame)
+            assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
+                "the extracted values in the dataframe "
+                "does not "
+                "equa the real "
+                "values in the array"
+            )
+            assert all(gdf["geometry"].geom_type == "Point")
+            assert np.array_equal(poly_gdf["Band_1"].values, rasterized_mask_values), (
+                "the extracted values in the dataframe "
+                "does not "
+                "equa the real "
+                "values in the array"
+            )
+            assert all(poly_gdf["geometry"].geom_type == "Polygon")
 
 
 class TestExtract:

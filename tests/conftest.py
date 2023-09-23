@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Tuple, List
-from typing import Tuple, List
 
 import geopandas as gpd
 import numpy as np
@@ -48,6 +47,16 @@ def polygon_corner_coello_gdf(polygon_corner_coello_path: str) -> GeoDataFrame:
 
 
 @pytest.fixture(scope="function")
+def coello_irregular_polygon_gdf() -> GeoDataFrame:
+    """
+    polygon vector at the top left corner of coello.
+    columns: ["fid"]
+    geometries: one polygon at the top left corner of the coello catchment
+    """
+    return gpd.read_file("tests/data/coello_irregular_polygon.geojson")
+
+
+@pytest.fixture(scope="function")
 def polygons_coello_gdf() -> GeoDataFrame:
     """
     polygon vector at the top left corner of coello.
@@ -69,7 +78,7 @@ def rasterized_mask_array() -> np.ndarray:
 
 @pytest.fixture(scope="session")
 def rasterized_mask_values() -> np.ndarray:
-    return np.array([1, 2, 3, 4, 15, 16, 17, 18, 29, 30, 31, 32, 43, 44, 45, 46])
+    return np.array([1, 2, 3, 15, 16, 17, 29, 30, 31])
 
 
 @pytest.fixture(scope="session")

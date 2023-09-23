@@ -1591,98 +1591,47 @@ class Dataset:
 
         # Create a mask from the pixels touched by the vector_mask.
         if vector_mask is not None:
-            if isinstance(vector_mask, GeoDataFrame):
-                vector = FeatureCollection(vector_mask)
-            elif isinstance(vector_mask, FeatureCollection):
-                vector = vector_mask
-            else:
-                raise TypeError(
-                    f"The vector_mask should be of type: [GeoDataFrame/FeatureCollection], given: "
-                    f"{type(vector_mask)}"
-                )
+            src = self.crop(mask=vector_mask)
+        else:
+            src = self
 
-            # add a unique value for each rows to use it to rasterize the vector
-            vector.feature["burn_value"] = list(range(1, len(vector.feature) + 1))
+        if tile:
+            df_list = []  # DataFrames of each tile.
+            for arr in Dataset.get_tile(src.raster):
+                # Assume multiband
+                idx = (1, 2)
+                if arr.ndim == 2:
+                    # Handle single band rasters
+                    idx = (0, 1)
 
-            # rasterize the vector by burning the unique values as cell values.
-            rasterized_vector = vector.to_dataset(
-                dataset=self, column_name="burn_value"
-            )
-
-            if add_geometry:
-                if add_geometry.lower() == "point":
-                    coords = rasterized_vector.get_cell_points(mask=True)
-                else:
-                    coords = rasterized_vector.get_cell_polygons(mask=True)
-
-            # Loop over mask values to extract pixels.
-            # DataFrames of each tile.
-            df_list = []
-            # TODO: replace with the read_array method
-            mask_arr = rasterized_vector.raster.GetRasterBand(1).ReadAsArray()
-
-            for arr in self.get_tile(tile_size):
-                mask_dfs = []
-                for mask_val in vector.feature["burn_value"].values:
-                    # Extract only masked pixels.
-                    flatten_masked_values = get_pixels(
-                        arr, mask_arr, mask_val=mask_val
-                    ).transpose()
-                    fid_px = np.ones(flatten_masked_values.shape[0]) * mask_val
-
-                    # Create a DataFrame of masked flatten_masked_values and their FID.
-                    mask_df = pd.DataFrame(flatten_masked_values, columns=band_names)
-                    mask_df["burn_value"] = fid_px
-                    mask_dfs.append(mask_df)
-
-                # Concat the mask DataFrames.
-                mask_df = pd.concat(mask_dfs)
-
-                # Join with pixels with vector attributes using the FID.
-                df_list.append(
-                    mask_df.merge(vector.feature, how="left", on="burn_value")
-                )
+                mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
+                pixels = get_pixels(arr, mask_arr).transpose()
+                df_list.append(pd.DataFrame(pixels, columns=band_names))
 
             # Merge all the tiles.
             df = pd.concat(df_list)
         else:
-            if tile:
-                df_list = []  # DataFrames of each tile.
-                for arr in Dataset.get_tile(self.raster):
-                    # Assume multiband
-                    idx = (1, 2)
-                    if arr.ndim == 2:
-                        # Handle single band rasters
-                        idx = (0, 1)
+            arr = src.read_array()
 
-                    mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
-                    pixels = get_pixels(arr, mask_arr).transpose()
-                    df_list.append(pd.DataFrame(pixels, columns=band_names))
-
-                # Merge all the tiles.
-                df = pd.concat(df_list)
+            if self.band_count == 1:
+                pixels = arr.flatten()
             else:
-                # TODO: replace with the method read_array
-                arr = self.raster.ReadAsArray()
-                if self.band_count == 1:
-                    pixels = arr.flatten()
-                else:
-                    pixels = (
-                        arr.flatten()
-                        .reshape(self.band_count, self.columns * self.rows)
-                        .transpose()
-                    )
-                df = pd.DataFrame(pixels, columns=band_names)
-                # mask no data values.
-                if self.no_data_value[0] is not None:
-                    df.replace(self.no_data_value[0], np.nan, inplace=True)
-                df.dropna(axis=0, inplace=True, ignore_index=True)
+                pixels = (
+                    arr.flatten()
+                    .reshape(src.band_count, src.columns * src.rows)
+                    .transpose()
+                )
+            df = pd.DataFrame(pixels, columns=band_names)
+            # mask no data values.
+            if src.no_data_value[0] is not None:
+                df.replace(src.no_data_value[0], np.nan, inplace=True)
+            df.dropna(axis=0, inplace=True, ignore_index=True)
 
-            if add_geometry:
-                if add_geometry.lower() == "point":
-                    coords = self.get_cell_points(mask=True)
-                else:
-                    coords = self.get_cell_polygons(mask=True)
+        if add_geometry:
+            if add_geometry.lower() == "point":
+                coords = src.get_cell_points(mask=True)
+            else:
+                coords = src.get_cell_polygons(mask=True)
 
         df = df.drop(columns=["burn_value", "geometry"], errors="ignore")
         if add_geometry:
