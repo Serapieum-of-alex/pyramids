@@ -33,6 +33,7 @@ from pyramids._errors import (
     DatasetNoFoundError,
     NoDataValueError,
     AlignmentError,
+    FailedToSaveError,
 )
 
 try:
@@ -1458,8 +1459,6 @@ class Dataset:
 
         extension = path.split(".")[-1]
         driver = CATALOG.get_driver_name_by_extension(extension)
-        # if not CATALOG.exists(driver):
-        #     raise DriverNotExistError(f"The given driver: {driver} does not exist")
         driver_name = CATALOG.get_gdal_name(driver)
 
         if driver == "ascii":
@@ -1468,7 +1467,14 @@ class Dataset:
             xmin, ymin, _, _ = self.bbox
             _io.to_ascii(arr, self.cell_size, xmin, ymin, no_data_value, path)
         else:
-            dst = gdal.GetDriverByName(driver_name).CreateCopy(path, self.raster, 0)
+            # saving rasters with color table fails with a runtime error
+            try:
+                dst = gdal.GetDriverByName(driver_name).CreateCopy(path, self.raster, 0)
+            except RuntimeError:
+                if not os.path.exists(path):
+                    raise FailedToSaveError(
+                        f"Failed to save the {driver_name} raster to the path: {path}"
+                    )
             dst = None  # Flush the dataset to disk
             # print to go around the assigned but never used pre-commit issue
             print(dst)
