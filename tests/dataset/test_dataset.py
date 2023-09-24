@@ -490,6 +490,8 @@ class TestSave:
         src: gdal.Dataset,
         save_raster_path: str,
     ):
+        if os.path.exists(save_raster_path):
+            os.remove(save_raster_path)
         src = Dataset(src)
         src.to_file(save_raster_path)
         assert os.path.exists(save_raster_path)
