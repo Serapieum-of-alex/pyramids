@@ -52,6 +52,7 @@ class TestPlotDataCube:
 
 
 class TestColorTable:
+    @pytest.mark.plot
     def test_get_color_table(self, src_with_color_table: Dataset):
         dataset = Dataset(src_with_color_table)
         df = dataset._get_color_table()
@@ -64,6 +65,7 @@ class TestColorTable:
         assert all(df.columns == ["band", "values", "red", "green", "blue", "alpha"])
         assert all(df.band == 1)
 
+    @pytest.mark.plot
     def test_set_color_table(self, src_without_color_table: Dataset):
         color_hex = ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C"]
         values = [1, 3, 5, 7, 9]
