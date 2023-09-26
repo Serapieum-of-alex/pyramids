@@ -350,6 +350,23 @@ driver_type
     print(dataset.driver_type)
     >>> 'geotiff'
 
+color_table
+-----------
+.. code:: py
+
+    print(dataset.color_table)
+    >>>   band values  red green blue alpha
+    >>> 0    1      0    0     0    0     0
+    >>> 1    1      1  112   153   89   255
+    >>> 2    1      2    0     0    0     0
+    >>> 3    1      3  242   238  162   255
+    >>> 4    1      4    0     0    0     0
+    >>> 5    1      5  242   206  133   255
+    >>> 6    1      6    0     0    0     0
+    >>> 7    1      7  194   140  124   255
+    >>> 8    1      8    0     0    0     0
+    >>> 9    1      9  214   193  156   255
+
 
 Create Dataset object
 =====================
@@ -1166,6 +1183,65 @@ Returns
     4   5  463231.1242  486656.3455   8.0   7.0
     5   6  487292.5152  478045.5720  10.0  13.0
 
+
+Plotting
+========
+
+color_table
+-----------
+
+- The `color_table` property in the `Dataset` object can assign a certain symbology to each band in the raster.
+- To assign a certain symbology you have to have to create a `Dataframe` containing the values and coresponding
+    colors (hexadecimal number) for each band in the raster.
+- assigning a color_table to the raster file will help when opening the file in GIS software like QGIS or ArcGIS,
+    the raster will be displayed with the colors you assigned to it.without the need to assign the colors manually.
+
+
+.. code:: py
+
+    print(df)
+            band  values    color
+    >>> 0    1       1  #709959
+    >>> 1    1       2  #F2EEA2
+    >>> 2    1       3  #F2CE85
+    >>> 3    2       1  #C28C7C
+    >>> 4    2       2  #D6C19C
+    >>> 5    2       3  #D6C19C
+
+- Assign the DataFrame to the `color_table` property.
+
+.. code:: py
+
+    dataset.color_table = df
+
+
+- When saving the raster to disk, the following file will be created along side the raster file.
+<RASTER-FILE-NAME.aux.xml>
+
+.. code:: xml
+
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <ColorInterp>Palette</ColorInterp>
+        <ColorTable>
+          <Entry c1="0" c2="0" c3="0" c4="0" />
+          <Entry c1="112" c2="153" c3="89" c4="255" />
+          <Entry c1="0" c2="0" c3="0" c4="0" />
+          <Entry c1="242" c2="238" c3="162" c4="255" />
+          <Entry c1="0" c2="0" c3="0" c4="0" />
+          <Entry c1="242" c2="206" c3="133" c4="255" />
+          <Entry c1="0" c2="0" c3="0" c4="0" />
+          <Entry c1="194" c2="140" c3="124" c4="255" />
+          <Entry c1="0" c2="0" c3="0" c4="0" />
+          <Entry c1="214" c2="193" c3="156" c4="255" />
+        </ColorTable>
+      </PAMRasterBand>
+    </PAMDataset>
+
+.. note::
+
+    - The values in the `values` column in the `DataFrame` should cover the entir range of  values in the raster.
+    - Any value that is not in the `values` column will not be assigned any color.
 
 **********
 References
