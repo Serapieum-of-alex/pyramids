@@ -364,6 +364,38 @@ class Dataset:
         driver_type = self.raster.GetDriver().GetDescription()
         return CATALOG.get_driver_name(driver_type)
 
+    @property
+    def color_table(self, band: int = None) -> DataFrame:
+        """Color table"""
+        return self._get_color_table(band)
+
+    @color_table.setter
+    def color_table(self, df: DataFrame):
+        """color_table.
+
+        Parameters
+        ----------
+        df: [DataFrame]
+            DataFrame with columns: band, values, color
+            print(df)
+                    band  values    color
+                0    1       1  #709959
+                1    1       2  #F2EEA2
+                2    1       3  #F2CE85
+                3    2       1  #C28C7C
+                4    2       2  #D6C19C
+                5    2       3  #D6C19C
+        """
+        if not isinstance(df, DataFrame):
+            raise TypeError(f"df should be a DataFrame not {type(df)}")
+
+        if not set(["band", "values", "color"]).issubset(df.columns):
+            raise ValueError(  # noqa
+                "df should have the following columns: band, values, color"
+            )
+
+        self._set_color_table(df, overwrite=True)
+
     @classmethod
     def read_file(cls, path: str, read_only=True):
         """read file.
@@ -3001,6 +3033,75 @@ class Dataset:
         gdf = self._band_to_polygon(band, name)
 
         return gdf
+
+    def _set_color_table(self, color_df: DataFrame, overwrite: bool = False):
+        """
+
+        Parameters
+        ----------
+        color_df: [DataFrame]
+            DataFrame with columns: band, values, color
+            print(df)
+                    band  values    color
+                0    1       1  #709959
+                1    1       2  #F2EEA2
+                2    1       3  #F2CE85
+                3    2       1  #C28C7C
+                4    2       2  #D6C19C
+                5    2       3  #D6C19C
+        overwrite: [bool]
+            True if you want to overwrite the existing color table. Default is False.
+        """
+        import_cleopatra(
+            "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
+            "check https://github.com/Serapieum-of-alex/cleopatra"
+        )
+        from cleopatra.colors import Colors
+
+        color = Colors(color_df["color"].tolist())
+        color_rgb = color.get_rgb(normalized=False)
+        color_df.loc[:, ["red", "green", "blue"]] = color_rgb
+
+        for band, df_band in color_df.groupby("band"):
+            band = self.raster.GetRasterBand(band)
+
+            if overwrite:
+                color_table = gdal.ColorTable()
+            else:
+                color_table = band.GetColorTable()
+
+            for i, row in df_band.iterrows():
+                color_table.SetColorEntry(
+                    row["values"], (row["red"], row["green"], row["blue"])
+                )
+
+            band.SetColorTable(color_table)
+            # band.SetRasterColorInterpretation(gdal.GCI_PaletteIndex)
+
+    def _get_color_table(self, band: int = None) -> DataFrame:
+        """get_color_table.
+
+        Parameters
+        ----------
+        band : [int], optional
+            band index, Default is None.
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        df = pd.DataFrame(columns=["band", "values", "red", "green", "blue", "alpha"])
+        bands = range(self.band_count) if band is None else band
+        for band in bands:
+            color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
+            for i in range(color_table.GetCount()):
+                df.loc[
+                    i, ["red", "green", "blue", "alpha"]
+                ] = color_table.GetColorEntry(i)
+                df.loc[i, ["band", "values"]] = band + 1, i
+
+        return df
 
     def listAttributes(self):
         """Print Attributes List."""

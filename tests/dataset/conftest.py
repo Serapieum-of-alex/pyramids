@@ -22,6 +22,20 @@ def src(src_path: str) -> Dataset:
     return gdal.OpenShared(src_path, gdal.GA_ReadOnly)
 
 
+@pytest.fixture(scope="function")
+def src_without_color_table() -> Dataset:
+    return gdal.OpenShared(
+        "tests/data/geotiff/coello-without-color-table.tif", gdal.GA_ReadOnly
+    )
+
+
+@pytest.fixture(scope="function")
+def src_with_color_table() -> Dataset:
+    return gdal.OpenShared(
+        "tests/data/geotiff/coello-with-color-table.tif", gdal.GA_ReadOnly
+    )
+
+
 @pytest.fixture(scope="module")
 def nc_path() -> str:
     return "tests/data/netcdf/westernscheldt01_waqgeom.nc"
