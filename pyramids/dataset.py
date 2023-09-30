@@ -2716,7 +2716,7 @@ class Dataset:
         return gdf
 
     @staticmethod
-    def normalize(array: np.ndarray):
+    def normalize(array: np.ndarray) -> np.ndarray:
         """
         Normalizes numpy arrays into scale 0.0 - 1.0
 
@@ -2728,7 +2728,6 @@ class Dataset:
         Returns
         -------
         array
-            DESCRIPTION.
         """
         array_min = array.min()
         array_max = array.max()
@@ -2747,8 +2746,15 @@ class Dataset:
         Yields
         ------
         tuple[int]
-            4 element tuple containing the x size, y size, x offset and y offset
-            of the window.
+            4 element tuple containing the x offset, y offset, x size and y size  of the window.
+            >>> dataset = Dataset.read_file("examples/GIS/data/acc4000.tif")
+            >>> tile_dimensions = list(dataset._window(6))
+            >>> print(tile_dimensions)
+            >>> [
+            >>>     (0, 0, 6, 6), (0, 6, 6, 6), (0, 12, 6, 1),
+            >>>     (6, 0, 6, 6), (6, 6, 6, 6), (6, 12, 6, 1),
+            >>>     (12, 0, 2, 6), (12, 6, 2, 6), (12, 12, 2, 1)
+            >>> ]
         """
         cols = self.columns
         rows = self.rows
