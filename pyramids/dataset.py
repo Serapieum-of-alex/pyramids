@@ -7,7 +7,7 @@ import datetime as dt
 from pathlib import Path
 import re
 import os
-from typing import Any, Dict, List, Tuple, Union, Callable, Optional
+from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Generator
 from numbers import Number
 from loguru import logger
 import geopandas as gpd
@@ -529,9 +529,6 @@ class Dataset:
         array : [array]
             array with all the values in the raster.
         """
-        # try to return array as the same type as the raster band but made problems when trying to replace the
-        # no_data_value of an integer band with np.nan value
-        # dtype = gdal_to_numpy_dtype(self.dtype[0])
         if band is None and self.band_count > 1:
             arr = np.ones(
                 (
@@ -2744,8 +2741,6 @@ class Dataset:
 
         Parameters
         ----------
-        src : [gdal.Datacube]
-            gdal Datacube object.
         size : [int]
             Size of window in pixels. One value required which is used for both the
             x and y size. E.g 256 means a 256x256 window.
@@ -2764,8 +2759,8 @@ class Dataset:
                 ysize = size if size + yoff <= rows else rows - yoff
                 yield xsize, ysize, xoff, yoff
 
-    def get_tile(self, size=256):
-        """gets a raster array in tiles.
+    def get_tile(self, size=256) -> Generator[np.ndarray, None, None]:
+        """gets tile.
 
         Parameters
         ----------
