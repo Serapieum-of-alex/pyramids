@@ -3,12 +3,13 @@ from types import GeneratorType
 from typing import List, Tuple
 
 import geopandas as gpd
-from geopandas.geodataframe import GeoDataFrame, DataFrame
 import numpy as np
 import pytest
+from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, osr
+
+from pyramids._errors import NoDataValueError, ReadOnlyError
 from pyramids.dataset import Dataset
-from pyramids._errors import ReadOnlyError, NoDataValueError
 
 
 class TestCreateRasterObject:
@@ -841,6 +842,8 @@ class TestCluster2:
 
 
 class TestToFeatureCollection:
+    """Test converting dataset to featurecollection."""
+
     class TestWithoutMask:
         def test_1band(
             self,
@@ -1027,7 +1030,7 @@ class TestExtract:
         points_location_in_array: GeoDataFrame,
     ):
         dataset = Dataset(src)
-        loc = dataset.locate_points(coello_gauges)
+        loc = dataset.map_to_array_coordinates(coello_gauges)
         assert isinstance(loc, np.ndarray)
         assert np.array_equal(points_location_in_array, loc)
 
@@ -1038,7 +1041,7 @@ class TestExtract:
         points_location_in_array: GeoDataFrame,
     ):
         dataset = Dataset(src)
-        loc = dataset.locate_points(gauges_df)
+        loc = dataset.map_to_array_coordinates(gauges_df)
         assert isinstance(loc, np.ndarray)
         assert np.array_equal(points_location_in_array, loc)
 

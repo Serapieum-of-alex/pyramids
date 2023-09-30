@@ -2,39 +2,40 @@
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebric operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
-import warnings
 import datetime as dt
-from pathlib import Path
-import re
 import os
-from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Generator
+import re
+import warnings
 from numbers import Number
-from loguru import logger
+from pathlib import Path
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-
-from geopandas.geodataframe import GeoDataFrame, DataFrame
-from osgeo import gdal, osr, ogr  # gdalconst,
+from geopandas.geodataframe import DataFrame, GeoDataFrame
+from loguru import logger
+from osgeo import gdal, ogr, osr  # gdalconst,
 from osgeo.osr import SpatialReference
-from pyramids._utils import (
-    gdal_to_ogr_dtype,
-    INTERPOLATION_METHODS,
-    DTYPE_CONVERSION_DF,
-    # NUMPY_GDAL_DATA_TYPES,
-    gdal_to_numpy_dtype,
-    numpy_to_gdal_dtype,
-    create_time_conversion_func,
-    Catalog,
-    import_cleopatra,
-)
+
 from pyramids._errors import (
-    ReadOnlyError,
-    DatasetNoFoundError,
-    NoDataValueError,
     AlignmentError,
+    DatasetNoFoundError,
     FailedToSaveError,
+    NoDataValueError,
+    ReadOnlyError,
 )
+from pyramids._utils import (
+    Catalog,
+    DTYPE_CONVERSION_DF,
+    INTERPOLATION_METHODS,
+    create_time_conversion_func,
+    gdal_to_numpy_dtype,
+    gdal_to_ogr_dtype,
+    import_cleopatra,
+    numpy_to_gdal_dtype,
+)  # NUMPY_GDAL_DATA_TYPES,
+
 
 try:
     from osgeo_utils import gdal_merge
@@ -2499,7 +2500,7 @@ class Dataset:
                 print("the cell is isolated (No surrounding cells exist)")
         return array
 
-    def locate_points(
+    def map_to_array_coordinates(
         self,
         points: Union[GeoDataFrame, FeatureCollection, DataFrame],
     ) -> np.ndarray:
@@ -2581,7 +2582,7 @@ class Dataset:
             )
             values = get_pixels2(arr, mask)
         else:
-            indices = self.locate_points(feature)
+            indices = self.map_to_array_coordinates(feature)
             values = arr[indices[:, 0], indices[:, 1]]
         return values
 
