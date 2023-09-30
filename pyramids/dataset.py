@@ -389,7 +389,7 @@ class Dataset:
         if not isinstance(df, DataFrame):
             raise TypeError(f"df should be a DataFrame not {type(df)}")
 
-        if not set(["band", "values", "color"]).issubset(df.columns):
+        if not {"band", "values", "color"}.issubset(df.columns):
             raise ValueError(  # noqa
                 "df should have the following columns: band, values, color"
             )
@@ -466,6 +466,8 @@ class Dataset:
     ):
         """Create a new empty driver from another dataset.
 
+            - The new dataset will have an array filled with the no_data_value.
+
         Parameters
         ----------
         cell_size: [Any]
@@ -483,13 +485,13 @@ class Dataset:
         epsg: [int]
             epsg number to identify the projection of the coordinates in the created raster.
         no_data_value : float or None
-            No data value, if None uses the same as ``src``.
+            No data value.
         path : [str]
             path on disk.
 
         Returns
         -------
-        gdal.DataSet
+        Dataset
         """
         # Create the driver.
         dst = Dataset._create_gdal_dataset(columns, rows, bands, dtype, path=path)
@@ -787,28 +789,26 @@ class Dataset:
     @classmethod
     def create_from_array(
         cls,
-        arr: Union[str, gdal.Dataset, np.ndarray],
-        geo: Union[str, tuple],
+        arr: np.ndarray,
+        geo: Tuple[int, int, int, int, int, int],
         epsg: Union[str, int],
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
     ):
-        """create_raster.
+        """create_from_array.
 
-            - create_raster method creates a raster from a given array and geotransform data
-            and save the tif file if a Path is given or it will return the gdal.Datacube
+            - Create_from_array method creates a raster from a given array and geotransform data
 
         Parameters
         ----------
-        arr : [array], optional
-            numpy array. The default is ''.
-        geo : [list], optional
-            geotransform list [minimum lon, pixelsize, rotation, maximum lat, rotation,
-                pixelsize]. The default is ''.
-        no_data_value : TYPE, optional
-            DESCRIPTION. The default is -9999.
+        arr : [np.ndarray]
+            numpy array.
+        geo : [Tuple]
+            geotransform tuple [minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize].
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator )
+        no_data_value : Any, optional
+            no data value to mask the cells out of the domain. The default is -9999.
 
         Returns
         -------
@@ -2554,7 +2554,7 @@ class Dataset:
         self,
         exclude_value: Any = None,
         feature: Union[FeatureCollection, GeoDataFrame] = None,
-    ) -> List:
+    ) -> np.ndarray:
         """Extract.
 
             - Extract method get all the values in a raster, and exclude the values in the exclude_value parameter.
