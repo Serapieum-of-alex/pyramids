@@ -1,8 +1,8 @@
 import os
+from types import GeneratorType
 from typing import List, Tuple
 
 import geopandas as gpd
-import pandas as pd
 from geopandas.geodataframe import GeoDataFrame, DataFrame
 import numpy as np
 import pytest
@@ -1158,3 +1158,22 @@ class TestNCtoGeoTIFF:
         lon = dataset.lon
         assert lon.max() < 180
         assert dataset.pivot_point == (-180, 90)
+
+
+class TestTiling:
+    def test_window(self, raster_1band_coello_path):
+        dataset = Dataset.read_file(raster_1band_coello_path)
+        tiles_details = dataset._window(size=6)
+        assert isinstance(tiles_details, GeneratorType)
+        tiles_details_l = list(tiles_details)
+        assert tiles_details_l == [
+            (0, 0, 6, 6),
+            (0, 6, 6, 6),
+            (0, 12, 6, 1),
+            (6, 0, 6, 6),
+            (6, 6, 6, 6),
+            (6, 12, 6, 1),
+            (12, 0, 2, 6),
+            (12, 6, 2, 6),
+            (12, 12, 2, 1),
+        ]

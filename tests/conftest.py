@@ -76,12 +76,12 @@ def rasterized_mask_array() -> np.ndarray:
     return np.array([[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]])
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def rasterized_mask_values() -> np.ndarray:
     return np.array([1, 2, 3, 15, 16, 17, 29, 30, 31])
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def raster_1band_coello_path() -> str:
     """
     raster full of data (there is no no_data_value in the array)
@@ -93,7 +93,7 @@ def raster_1band_coello_path() -> str:
     return "tests/data/geotiff/raster_to_df_full_of_data.tif"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def raster_1band_coello_gdal_dataset(raster_1band_coello_path: str) -> Dataset:
     """coello raster read by gdal"""
     return gdal.Open(raster_1band_coello_path)
@@ -104,7 +104,7 @@ def raster_to_df_dataset_with_cropped_cell() -> Dataset:
     return gdal.Open("tests/data/geotiff/raster_to_gdf_with_cropped_cells.tif")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def raster_to_df_arr(raster_1band_coello_gdal_dataset: Dataset) -> np.ndarray:
     return raster_1band_coello_gdal_dataset.ReadAsArray()
 
