@@ -2735,8 +2735,7 @@ class Dataset:
         val = (array - array_min) / (array_max - array_min)
         return val
 
-    @staticmethod
-    def _window(src: gdal.Dataset, size: int = 256):
+    def _window(self, size: int = 256):
         """Dataset square window size/offsets.
 
         Parameters
@@ -2751,13 +2750,13 @@ class Dataset:
             4 element tuple containing the x size, y size, x offset and y offset
             of the window.
         """
-        cols = src.RasterXSize
-        rows = src.RasterYSize
+        cols = self.columns
+        rows = self.rows
         for xoff in range(0, cols, size):
             xsize = size if size + xoff <= cols else cols - xoff
             for yoff in range(0, rows, size):
                 ysize = size if size + yoff <= rows else rows - yoff
-                yield xsize, ysize, xoff, yoff
+                yield xoff, yoff, xsize, ysize
 
     def get_tile(self, size=256) -> Generator[np.ndarray, None, None]:
         """gets tile.
@@ -2773,7 +2772,7 @@ class Dataset:
         np.ndarray
             Dataset array in form [band][y][x].
         """
-        for xsize, ysize, xoff, yoff in self._window(self.raster, size=size):
+        for xoff, yoff, xsize, ysize in self._window(size=size):
             # read the array at a certain indeces
             yield self.raster.ReadAsArray(
                 xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize
