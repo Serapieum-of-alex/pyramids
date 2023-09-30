@@ -2503,16 +2503,19 @@ class Dataset:
         self,
         points: Union[GeoDataFrame, FeatureCollection, DataFrame],
     ) -> np.ndarray:
-        """nearestCell.
+        """locate_points.
 
-            locate_points calculates the the indices (rows, col) of nearest cell in a given
-            raster to a point coordinate system of the raster has to be projected to be able to calculate
-            the distance
+            - locate_points locates the location of a point with real coordinates (x, y) or (lon, lat) on the
+            array by finding the cell indices (rows, col) of nearest cell in the raster.
+            - to a point coordinate system of the raster has to be projected to be able to calculate the distance
 
         Parameters
         ----------
-        points: [Dataframe]
-            dataframe with POINT geometry.
+        points: [GeoDataFrame/Dataframe/FeatureCollection]
+            - GeoDataFrame:
+                GeoDataFrame with POINT geometry.
+            - DataFrame:
+                DataFrame with x, y columns.
 
         Returns
         -------
@@ -2527,12 +2530,13 @@ class Dataset:
         elif isinstance(points, DataFrame):
             if all(elem not in points.columns for elem in ["x", "y"]):
                 raise ValueError(
-                    "If the input in a DataFrame, it should have two columns x, and y"
+                    "If the input is a DataFrame, it should have two columns x, and y"
                 )
         else:
             if not isinstance(points, FeatureCollection):
                 raise TypeError(
-                    f"please check points input it should be GeoDataFrame/FeatureCollection - given {type(points)}"
+                    "please check points input it should be GeoDataFrame/DataFrame/FeatureCollection - given"
+                    f" {type(points)}"
                 )
         if not isinstance(points, DataFrame):
             # get the x, y coordinates.
