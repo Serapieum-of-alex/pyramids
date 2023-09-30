@@ -1023,7 +1023,7 @@ class TestExtract:
         arr = arr.reshape((arr.shape[0], arr.shape[1] * arr.shape[2]))
         assert np.array_equal(arr, values)
 
-    def test_locate_points_using_gdf(
+    def test_map_to_array_coordinates_using_gdf(
         self,
         coello_gauges: DataFrame,
         src: Dataset,
@@ -1034,7 +1034,7 @@ class TestExtract:
         assert isinstance(loc, np.ndarray)
         assert np.array_equal(points_location_in_array, loc)
 
-    def test_locate_points_using_df(
+    def test_map_to_array_coordinates_using_df(
         self,
         gauges_df: DataFrame,
         src: Dataset,
