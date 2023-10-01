@@ -2552,6 +2552,52 @@ class Dataset:
         indices = indices[:, [1, 0]]
         return indices
 
+    @staticmethod
+    def array_to_map_coordinates(
+        top_left_x: Number,
+        top_left_y: Number,
+        cell_size: Number,
+        column_index: Union[List[Number], np.ndarray],
+        rows_index: Union[List[Number], np.ndarray],
+        center: bool = False,
+    ) -> Tuple[List[Number], List[Number]]:
+        """array_to_map_coordinates
+
+        Parameters
+        ----------
+        top_left_x: [Number]
+            the x coordinate of the top left corner of the raster.
+        top_left_y: [Number]
+            the y coordinate of the top left corner of the raster.
+        cell_size: [Number]
+            the cell size of the raster.
+        column_index: [Union[List[Number], np.ndarray]]
+            the column index of the cells in the raster array.
+        rows_index: [Union[List[Number], np.ndarray]]
+            the row index of the cells in the raster array.
+        center: [bool]
+            if True, the coordinates will be the center of the cell. Default is False.
+
+        Returns
+        -------
+        x_coords: [List[Number]]
+            the x coordinates of the cells.
+        y_coords: [List[Number]]
+            the y coordinates of the cells.
+        """
+        if center:
+            # for the top left corner of the cell
+            top_left_x = top_left_x + cell_size / 2
+            top_left_y = top_left_y - cell_size / 2
+
+        x_coord_fn = lambda x: top_left_x + x * cell_size
+        y_coord_fn = lambda y: top_left_y - y * cell_size
+
+        x_coords = list(map(x_coord_fn, column_index))
+        y_coords = list(map(y_coord_fn, rows_index))
+
+        return x_coords, y_coords
+
     def extract(
         self,
         exclude_value: Any = None,

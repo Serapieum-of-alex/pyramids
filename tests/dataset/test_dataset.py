@@ -1023,6 +1023,43 @@ class TestExtract:
         arr = arr.reshape((arr.shape[0], arr.shape[1] * arr.shape[2]))
         assert np.array_equal(arr, values)
 
+    def test_array_to_map_coordinates(self):
+        pivot_x = 432968.1206170588
+        pivot_y = 520007.787999178
+        cell_size = 4000.0
+        tile_xoff = [0, 0, 0, 6, 6, 6, 12, 12, 12]
+        tile_yoff = [0, 6, 12, 0, 6, 12, 0, 6, 12]
+        x_coords, y_coords = Dataset.array_to_map_coordinates(
+            pivot_x,
+            pivot_y,
+            cell_size,
+            tile_xoff,
+            tile_yoff,
+            center=False,
+        )
+        assert x_coords == [
+            432968.1206170588,
+            432968.1206170588,
+            432968.1206170588,
+            456968.1206170588,
+            456968.1206170588,
+            456968.1206170588,
+            480968.1206170588,
+            480968.1206170588,
+            480968.1206170588,
+        ]
+        assert y_coords == [
+            520007.787999178,
+            496007.787999178,
+            472007.787999178,
+            520007.787999178,
+            496007.787999178,
+            472007.787999178,
+            520007.787999178,
+            496007.787999178,
+            472007.787999178,
+        ]
+
     def test_map_to_array_coordinates_using_gdf(
         self,
         coello_gauges: DataFrame,
