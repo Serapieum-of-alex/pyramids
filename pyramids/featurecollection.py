@@ -5,32 +5,35 @@ ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
 drivers available in geopandas
 gpd.io.file._EXTENSION_TO_DRIVER
 """
+import json
 import os
+import shutil
 import tempfile
 import uuid
-import shutil
 import warnings
-import json
-from typing import List, Tuple, Union, Iterable, Any, Dict
 from numbers import Number
+from typing import Any, Dict, Iterable, List, Tuple, Union
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import ogr, osr, gdal
+from osgeo import gdal, ogr, osr
 from osgeo.ogr import DataSource
 from pyproj import Proj, transform
-from shapely.geometry import Point, Polygon, LineString
-from shapely.geometry.multipolygon import MultiPolygon
-from shapely.geometry.multipoint import MultiPoint
+from shapely.geometry import LineString, Point, Polygon
 from shapely.geometry.multilinestring import MultiLineString
+from shapely.geometry.multipoint import MultiPoint
+from shapely.geometry.multipolygon import MultiPolygon
+
+from pyramids._errors import DriverNotExistError
 from pyramids._utils import (
     Catalog,
+    numpy_to_gdal_dtype,
     ogr_ds_togdal_dataset,
     ogr_to_numpy_dtype,
-    numpy_to_gdal_dtype,
 )
-from pyramids._errors import DriverNotExistError
+
 
 CATALOG = Catalog(raster_driver=False)
 MEMORY_FILE = "/vsimem/myjson.geojson"
@@ -1004,39 +1007,26 @@ class FeatureCollection:
         return points
 
     def concate(self, gdf: GeoDataFrame, inplace: bool = False):
-        """CombineGeometrics.
+        """concate.
 
-        CombineGeometrics reads two shapefiles and combine them into one
-        shapefile
+        concate reads two shapefiles and combine them into one object
 
         Parameters
         ----------
-        gdf: [String]
-            a path includng the name of the shapefile and extention like
-            path="data/subbasins.shp"
+        gdf: [GeoDataFrame]
+            GeoDataFrame containing the geometries you want to combine.
         inplace: [bool]
             Default is False.
 
         Returns
         -------
-        SaveIng the shapefile or NewGeoDataFrame :
-            If you choose True in the "save" input the function will save the
-            shapefile in the given "SavePath"
-            If you choose False in the "save" input the function will return a
-            [geodataframe] dataframe containing both input shapefiles
-            you can save it as a shapefile using
-            NewDataFrame.to_file("Anyname.shp")
+        GeoDataFrame
 
         Examples
         --------
-        Return a geodata frame
-        >>> shape_file1 = "Inputs/RIM_sub.shp"
-        >>> shape_file2 = "Inputs/addSubs.shp"
-        >>> NewDataFrame = FeatureCollection.concate(shape_file1, shape_file2, save=False)
-        save a shapefile
-        >>> shape_file1 = "Inputs/RIM_sub.shp"
-        >>> shape_file2 = "Inputs/addSubs.shp"
-        >>> FeatureCollection.concate(shape_file2, save=True, save_path="AllBasins.shp")
+        >>> subbasins = FeatureCollection.read_file("sub-basins.shp")
+        >>> new_sub = gpd.read_file("new-sub-basins.shp")
+        >>> all_subs = subbasins.concate(new_sub, new_sub, inplace=False)
         """
         # concatenate the second shapefile into the first shapefile
         new_gdf = gpd.GeoDataFrame(pd.concat([self.feature, gdf]))
