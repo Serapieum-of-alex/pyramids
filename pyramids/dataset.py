@@ -155,9 +155,6 @@ class Dataset:
         """array values."""
         return self.read_array(band=None)
 
-    # @values.setter
-    # def values(self, band, value):
-    #     self._
     @property
     def rows(self) -> int:
         """Number of rows in the raster array."""
@@ -399,18 +396,18 @@ class Dataset:
 
     @classmethod
     def read_file(cls, path: str, read_only=True):
-        """read file.
+        """read_file.
 
         Parameters
         ----------
         path : [str]
-            Path of file to open(works for ascii, geotiff).
+            Path of file to open.
         read_only : [bool]
             File mode, set to False to open in "update" mode.
 
         Returns
         -------
-        GDAL dataset
+        Dataset
         """
         src = _io.read_file(path, read_only)
         return cls(src)
@@ -1010,23 +1007,6 @@ class Dataset:
         """
         sr = osr.SpatialReference()
         sr.ImportFromEPSG(int(epsg))
-
-        # if epsg is None:
-        #     sr.SetWellKnownGeogCS("WGS84")
-        # else:
-        #     try:
-        #         if not sr.SetWellKnownGeogCS(epsg) == 6:
-        #             sr.SetWellKnownGeogCS(epsg)
-        #         else:
-        #             try:
-        #                 sr.ImportFromEPSG(int(epsg))
-        #             except:
-        #                 sr.ImportFromWkt(epsg)
-        #     except:
-        #         try:
-        #             sr.ImportFromEPSG(int(epsg))
-        #         except:
-        #             sr.ImportFromWkt(epsg)
         return sr
 
     def _get_band_names(self) -> List[str]:
@@ -1085,7 +1065,6 @@ class Dataset:
             convert the no_data_value to comply with the dtype
         """
         # convert the no_data_value based on the dtype of each raster band.
-        # no_data_value = [func(val) for func, val in zip(self.numpy_dtype, no_data_value)]
         for i, val in enumerate(self.gdal_dtype):
             try:
                 val = no_data_value[i]
@@ -1111,22 +1090,6 @@ class Dataset:
                     f"The no_data_value:{no_data_value[i]} is out of range, Band data type is {self.numpy_dtype[i]}"
                 )
                 no_data_value[i] = self.numpy_dtype[i](DEFAULT_NO_DATA_VALUE)
-
-            # if gdal_to_numpy_dtype(val).__contains__("float"):
-            #     no_data_value[i] = (
-            #         float(no_data_value[i])
-            #         if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
-            #         else None
-            #     )
-            # elif gdal_to_numpy_dtype(val).__contains__("int"):
-            #     no_data_value[i] = (
-            #         int(no_data_value[i])
-            #         if (no_data_value[i] is not None and not np.isnan(no_data_value[i]))
-            #         else None
-            #     )
-            # else:
-            #     raise TypeError("NoDataValue has a complex data type")
-
         return no_data_value
 
     def _set_no_data_value(
@@ -1207,19 +1170,6 @@ class Dataset:
             Numerical value.
         """
         # check if the dtype of the no_data_value comply with the dtype of the raster itself.
-        # no_dtype = str(type(no_data_value)).split("'")[1]
-        # potential_dtypes = [
-        #     i for i in list(NUMPY_GDAL_DATA_TYPES.keys()) if i.__contains__(no_dtype)
-        # ]
-        # potential_dtypes = [NUMPY_GDAL_DATA_TYPES.get(i) for i in potential_dtypes]
-
-        # if no_data_value is not None:
-        #     if not self.gdal_dtype[band_i] in potential_dtypes:
-        #         raise NoDataValueError(
-        #             f"The dtype of the given no_data_value{no_data_value}: {no_dtype} differs from the dtype of the "
-        #             f"band: {gdal_to_numpy_dtype(self.gdal_dtype[band_i])}"
-        #         )
-
         self._change_no_data_value_attr(band_i, no_data_value)
         # initialize the band with the nodata value instead of 0
         # the no_data_value may have changed inside the _change_no_data_value_attr method to float64, so redefine it.
@@ -1525,37 +1475,6 @@ class Dataset:
         -------
         Dataset.
         """
-        # lon = self.lon
-        # src = self.raster
-        # # create a copy
-        # drv = gdal.GetDriverByName("MEM")
-        # dst = drv.CreateCopy("", src, 0)
-        # # convert the 0 to 360 to -180 to 180
-        # if lon[-1] <= 180:
-        #     raise ValueError("The raster should cover the whole globe")
-        #
-        # first_to_translated = np.where(lon > 180)[0][0]
-        #
-        # ind = list(range(first_to_translated, len(lon)))
-        # ind_2 = list(range(0, first_to_translated))
-        #
-        # for band in range(self.band_count):
-        #     arr = self.read_array(band=band)
-        #     arr_rearranged = arr[:, ind + ind_2]
-        #     dst.GetRasterBand(band + 1).WriteArray(arr_rearranged)
-        #
-        # # correct the geotransform
-        # pivot_point = self.pivot_point
-        # gt = list(self.geotransform)
-        # if lon[-1] > 180:
-        #     new_gt = pivot_point[0] - 180
-        #     gt[0] = new_gt
-        #
-        # dst.SetGeoTransform(gt)
-
-        # +lon_0=0 parameter to set the central meridian to 0, and the +over parameter to indicate that the longitude
-        # values should wrap around from 360 to 0 degrees
-        # "+proj=longlat +ellps=WGS84 +datum=WGS84" to define projection that uses -180 to 180.
         dst = gdal.Warp(
             "",
             self.raster,
@@ -2442,9 +2361,6 @@ class Dataset:
         if not isinstance(cols, list):
             raise TypeError("cols input has to be of type list")
 
-        #    array=raster.ReadAsArray()
-        #    nodatavalue=np.float32(raster.GetRasterBand(1).GetNoDataValue())
-
         no_rows = np.shape(array)[0]
         no_cols = np.shape(array)[1]
 
@@ -2504,11 +2420,11 @@ class Dataset:
         self,
         points: Union[GeoDataFrame, FeatureCollection, DataFrame],
     ) -> np.ndarray:
-        """locate_points.
+        """map_to_array_coordinates.
 
-            - locate_points locates the location of a point with real coordinates (x, y) or (lon, lat) on the
-            array by finding the cell indices (rows, col) of nearest cell in the raster.
-            - to a point coordinate system of the raster has to be projected to be able to calculate the distance
+            - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by
+            finding the cell indices (rows, col) of nearest cell in the raster.
+            - The point coordinate system of the raster has to be projected to be able to calculate the distance
 
         Parameters
         ----------
@@ -2563,6 +2479,8 @@ class Dataset:
     ) -> Tuple[List[Number], List[Number]]:
         """array_to_map_coordinates
 
+            - array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
+
         Parameters
         ----------
         top_left_x: [Number]
@@ -2616,6 +2534,8 @@ class Dataset:
         feature: [FeatureCollection/GeoDataFrame]
             vector file contains geometries you want to extract the values at their location. Default is None.
         """
+        # Optimize: make the read_array return only the array for inside the mask feature, and not to read the whole
+        #  raster
         arr = self.read_array()
         no_data_value = (
             self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
