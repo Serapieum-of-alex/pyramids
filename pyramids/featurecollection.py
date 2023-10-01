@@ -978,7 +978,9 @@ class FeatureCollection:
             return poly
 
     @staticmethod
-    def create_point(coords: Iterable[Tuple[float]]) -> List[Point]:
+    def create_point(
+        coords: Iterable[Tuple[float]], epsg: int = None
+    ) -> Union[List[Point], GeoDataFrame]:
         """CreatePoint.
 
         CreatePoint takes a list of tuples of coordinates and convert it into
@@ -988,11 +990,13 @@ class FeatureCollection:
         ----------
         coords : [List]
             list of tuples [(x1,y1),(x2,y2)] or [(long1,lat1),(long2,lat1)]
+        epsg: [int]
+            epsg number of the coordinates.
 
         Returns
         -------
         points: [List]
-            list of Shaply point objects [Point,Point]
+            list of Shaply point objects [Point, Point]
 
         Examples
         --------
@@ -1003,6 +1007,10 @@ class FeatureCollection:
         >>> new_geometry.loc[:, 'geometry'] = point_list
         """
         points = list(map(Point, coords))
+
+        if epsg is not None:
+            points = gpd.GeoDataFrame(columns=["geometry"], data=points, crs=epsg)
+            points = FeatureCollection(points)
 
         return points
 

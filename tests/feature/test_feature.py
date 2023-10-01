@@ -3,14 +3,14 @@ from typing import List, Tuple
 
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import ogr, gdal
+from osgeo import gdal, ogr
 from osgeo.gdal import Dataset
 from osgeo.ogr import DataSource
-from shapely.geometry.polygon import Polygon
 from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
 
-from pyramids.featurecollection import FeatureCollection
 from pyramids.dataset import Dataset
+from pyramids.featurecollection import FeatureCollection
 
 
 class TestAttributes:
@@ -217,10 +217,17 @@ class TestCreatePolygon:
 
 
 class TestCreatePoint:
-    def test_create_point_geometries(self, coordinates: List[Tuple[int, int]]):
+    def test_return_shapely_object(self, coordinates: List[Tuple[int, int]]):
         point_list = FeatureCollection.create_point(coordinates)
         assert isinstance(point_list, list)
         assert len(point_list) == len(coordinates)
+
+    def test_return_featurecollection(self, coordinates: List[Tuple[int, int]]):
+        point_fc = FeatureCollection.create_point(coordinates, epsg=4326)
+        assert isinstance(point_fc, FeatureCollection)
+        assert isinstance(point_fc.feature, GeoDataFrame)
+        assert len(point_fc.feature["geometry"]) == len(coordinates)
+        assert point_fc.epsg == 4326
 
 
 class TestToDataset:
