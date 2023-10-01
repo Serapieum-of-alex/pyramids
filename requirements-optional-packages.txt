@@ -1,11 +1,11 @@
-cleopatra >=0.3.4
-gdal >=3.6.2
-geopandas >=0.12.2
-hpc-utils ==0.1.1
+cleopatra >=0.4.0
+gdal >=3.7.0, <3.7.2
+geopandas >=0.13.2
+hpc-utils ==0.1.2
 loguru >=0.7.0
-numpy ==1.24.1
+numpy ==1.25.2
 pandas >=2.0.0
-pip >=22.3.1
-pyproj >=3.4.0
-PyYAML >=6.0
-Shapely >=1.8.4,<2
+pip >=23.2.1
+pyproj >=3.6.0
+PyYAML >=6.0.1
+Shapely >=2.0.1

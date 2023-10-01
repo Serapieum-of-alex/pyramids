@@ -83,15 +83,17 @@ Main Features
 .. digraph:: Linking
 
     pyramids -> dataset;
+    pyramids -> datacube;
     pyramids -> featurecollection;
     pyramids -> dem;
     dpi=200;
 
 .. toctree::
    :hidden:
-   :maxdepth: 1
+   :maxdepth: 2
 
     Installation <installation.rst>
     Dataset <dataset.rst>
+    DataCube <datacube.rst>
     Feature Collection <featurecollection.rst>
     DEM <dem.rst>

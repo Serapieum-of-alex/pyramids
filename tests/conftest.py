@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Tuple, List
-from typing import Tuple, List
 
 import geopandas as gpd
 import numpy as np
@@ -32,18 +31,39 @@ def nan_raster() -> Dataset:
 
 
 @pytest.fixture(scope="session")
-def polygonized_raster_path() -> str:
-    return "tests/data/polygonized.geojson"
-
-
-@pytest.fixture(scope="session")
-def vector_mask_path() -> str:
+def polygon_corner_coello_path() -> str:
+    """polygon vector at the top left corner of coello."""
     return "tests/data/mask.geojson"
 
 
-@pytest.fixture(scope="session")
-def vector_mask_gdf(vector_mask_path: str) -> GeoDataFrame:
-    return gpd.read_file(vector_mask_path)
+@pytest.fixture(scope="function")
+def polygon_corner_coello_gdf(polygon_corner_coello_path: str) -> GeoDataFrame:
+    """
+    polygon vector at the top left corner of coello.
+    columns: ["fid"]
+    geometries: one polygon at the top left corner of the coello catchment
+    """
+    return gpd.read_file(polygon_corner_coello_path)
+
+
+@pytest.fixture(scope="function")
+def coello_irregular_polygon_gdf() -> GeoDataFrame:
+    """
+    polygon vector at the top left corner of coello.
+    columns: ["fid"]
+    geometries: one polygon at the top left corner of the coello catchment
+    """
+    return gpd.read_file("tests/data/coello_irregular_polygon.geojson")
+
+
+@pytest.fixture(scope="function")
+def polygons_coello_gdf() -> GeoDataFrame:
+    """
+    polygon vector at the top left corner of coello.
+    columns: ["fid"]
+    geometries: one polygon at the top left corner of the coello catchment
+    """
+    return gpd.read_file("tests/data/coello_polygons.geojson")
 
 
 @pytest.fixture(scope="session")
@@ -56,24 +76,37 @@ def rasterized_mask_array() -> np.ndarray:
     return np.array([[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]])
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def rasterized_mask_values() -> np.ndarray:
-    return np.array([1, 2, 3, 4, 15, 16, 17, 18, 29, 30, 31, 32, 43, 44, 45, 46])
+    return np.array([1, 2, 3, 15, 16, 17, 29, 30, 31])
+
+
+@pytest.fixture(scope="function")
+def raster_1band_coello_path() -> str:
+    """
+    raster full of data (there is no no_data_value in the array)
+    location: coello
+    number of cells: 182
+    value: values in the array are from 1 to 182 ordered from the top left corner from left to right to the bottom
+    right corner
+    """
+    return "tests/data/geotiff/raster_to_df_full_of_data.tif"
+
+
+@pytest.fixture(scope="function")
+def raster_1band_coello_gdal_dataset(raster_1band_coello_path: str) -> Dataset:
+    """coello raster read by gdal"""
+    return gdal.Open(raster_1band_coello_path)
 
 
 @pytest.fixture(scope="session")
-def raster_to_df_path() -> str:
-    return "tests/data/raster_to_df.tif"
+def raster_to_df_dataset_with_cropped_cell() -> Dataset:
+    return gdal.Open("tests/data/geotiff/raster_to_gdf_with_cropped_cells.tif")
 
 
-@pytest.fixture(scope="session")
-def raster_to_df_dataset(raster_to_df_path: str) -> Dataset:
-    return gdal.Open(raster_to_df_path)
-
-
-@pytest.fixture(scope="session")
-def raster_to_df_arr(raster_to_df_dataset: Dataset) -> np.ndarray:
-    return raster_to_df_dataset.ReadAsArray()
+@pytest.fixture(scope="function")
+def raster_to_df_arr(raster_1band_coello_gdal_dataset: Dataset) -> np.ndarray:
+    return raster_1band_coello_gdal_dataset.ReadAsArray()
 
 
 @pytest.fixture(scope="session")
@@ -134,7 +167,7 @@ def point_gdf() -> GeoDataFrame:
 
 @pytest.fixture(scope="module")
 def one_compressed_file_gzip() -> str:
-    return "tests/data/one_compressed_file.gz"
+    return "tests/data/virtual-file-system/one_compressed_file.gz"
 
 
 @pytest.fixture(scope="module")
@@ -144,7 +177,7 @@ def unzip_gzip_file_name() -> str:
 
 @pytest.fixture(scope="module")
 def multiple_compressed_file_gzip() -> str:
-    return "tests/data/multiple_compressed_files.gz"
+    return "tests/data/virtual-file-system/multiple_compressed_files.gz"
 
 
 @pytest.fixture(scope="module")
@@ -154,12 +187,12 @@ def multiple_compressed_file_gzip_content() -> List[str]:
 
 @pytest.fixture(scope="module")
 def one_compressed_file_zip() -> str:
-    return "tests/data/one_compressed_file.zip"
+    return "tests/data/virtual-file-system/one_compressed_file.zip"
 
 
 @pytest.fixture(scope="module")
 def multiple_compressed_file_zip() -> str:
-    return "tests/data/multiple_compressed_files.zip"
+    return "tests/data/virtual-file-system/multiple_compressed_files.zip"
 
 
 @pytest.fixture(scope="module")
@@ -169,22 +202,22 @@ def multiple_compressed_file_zip_content() -> List[str]:
 
 @pytest.fixture(scope="module")
 def multiple_compressed_file_7z() -> str:
-    return "tests/data/multiple_compressed_files.7z"
+    return "tests/data/virtual-file-system/multiple_compressed_files.7z"
 
 
 @pytest.fixture(scope="module")
 def multiple_compressed_file_tar() -> str:
-    return "tests/data/multiple_compressed_files.tar"
+    return "tests/data/virtual-file-system/multiple_compressed_files.tar"
 
 
 @pytest.fixture(scope="module")
 def one_compressed_file_7z() -> str:
-    return "tests/data/one_compressed_file.7z"
+    return "tests/data/virtual-file-system/one_compressed_file.7z"
 
 
 @pytest.fixture(scope="module")
 def one_compressed_file_tar() -> str:
-    return "tests/data/one_compressed_file.tar"
+    return "tests/data/virtual-file-system/one_compressed_file.tar"
 
 
 @pytest.fixture(scope="module")
@@ -194,9 +227,19 @@ def replace_values() -> List:
 
 @pytest.fixture(scope="module")
 def modis_surf_temp() -> gdal.Dataset:
-    return gdal.Open("tests/data/extract_extent_modis_surftemp.tif")
+    return gdal.Open("tests/data/geotiff/modis_surftemp.tif")
 
 
 @pytest.fixture(scope="module")
 def era5_image() -> gdal.Dataset:
-    return gdal.Open("tests/data/extract_extent_era5_land_monthly_averaged_data.tif")
+    return gdal.Open("tests/data/geotiff/era5_land_monthly_averaged.tif")
+
+
+@pytest.fixture(scope="module")
+def era5_image_gdf() -> GeoDataFrame:
+    return gpd.read_file("tests/data/geotiff/era5_land_monthly_averaged.geojson")
+
+
+@pytest.fixture(scope="module")
+def era5_mask() -> GeoDataFrame:
+    return gpd.read_file("tests/data/geotiff/era5-mask.geojson")

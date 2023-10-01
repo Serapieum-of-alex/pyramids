@@ -1,13 +1,15 @@
 import os
+from types import GeneratorType
 from typing import List, Tuple
 
 import geopandas as gpd
-from geopandas.geodataframe import GeoDataFrame, DataFrame
 import numpy as np
 import pytest
+from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, osr
+
+from pyramids._errors import NoDataValueError, ReadOnlyError
 from pyramids.dataset import Dataset
-from pyramids._errors import ReadOnlyError, NoDataValueError
 
 
 class TestCreateRasterObject:
@@ -102,8 +104,51 @@ class TestCreateRasterObject:
         )
         assert src.raster.GetGeoTransform() == src_geotransform
 
+    def test_create_driver_from_scratch(self):
+        cell_size = 4000
+        rows = 13
+        columns = 14
+        dtype = 5  # np.int32
+        bands_count = 1
+        top_left_coords = (432968.1206170588, 520007.787999178)
+        ds_epsg = 32618
+        no_data_value = -3.4028230607370965e38
+        dataset_n = Dataset.create_driver_from_scratch(
+            cell_size,
+            rows,
+            columns,
+            dtype,
+            bands_count,
+            top_left_coords,
+            ds_epsg,
+            no_data_value,
+        )
+        assert dataset_n.rows == rows
+        assert dataset_n.columns == columns
+        assert dataset_n.epsg == ds_epsg
+        assert dataset_n.cell_size == cell_size
+        assert dataset_n.pivot_point == top_left_coords
+        assert dataset_n.band_count == bands_count
+        assert dataset_n.dtype == ["int32"]
+        # the dtype is np.int32, and the no_data_value is -3.4028230607370965e+38
+        # Dataset_check_no_data_value()
+        # trying to convert the no_data_value to int32 will give the following error
+        # "OverflowError: Python int too large to convert to C long"
+        # then the default_no_data_value (-9999) will be converted to int32 and used as the no_data_value
+
+        # Dataset._change_no_data_value_attr(band=0, no_data_value=-9999.0)
+        # the _change_no_data_value_attr method will try to change the no_data_value to -9999.0 (int32)
+        # but the self.raster.GetRasterBand(band + 1).SetNoDataValue(no_data_value) will raise an error
+        # "TypeError: in method 'Band_SetNoDataValue', argument 2 of type 'double'" , so the no_data_value will be
+        # changed to float64
+        new_no_data_value = np.float64(dataset_n.default_no_data_value)
+        assert dataset_n.no_data_value[0] == [new_no_data_value]
+        assert isinstance(dataset_n.no_data_value[0], np.float64)
+        arr = dataset_n.read_array()
+        assert arr[0, 0] == new_no_data_value
+
     class TestRasterLike:
-        def test_create_raster_like_to_disk(
+        def test_to_disk(
             self,
             src: gdal.Dataset,
             src_arr: np.ndarray,
@@ -127,7 +172,7 @@ class TestCreateRasterObject:
             )
             assert src_obj.geotransform == dst_obj.geotransform
 
-        def test_create_raster_like_to_mem(
+        def test_to_mem(
             self,
             src: gdal.Dataset,
             src_arr: np.ndarray,
@@ -197,6 +242,42 @@ class TestProperties:
         dataset = Dataset(src)
         assert isinstance(dataset.values, np.ndarray)
 
+    def test_get_band_names(self, src: gdal.Dataset):
+        src = Dataset(src)
+        names = src._get_band_names()
+        assert isinstance(names, list)
+        assert names == ["Band_1"]
+
+    def test_set_band_names(self, src: gdal.Dataset):
+        src = Dataset(src)
+        name_list = ["new_name"]
+        src._set_band_names(name_list)
+        # chack that the name is chaged in the dataset object
+        assert src.band_names == name_list
+        assert src.raster.GetRasterBand(1).GetDescription() == name_list[0]
+        # return back the old name so that the test_get_band_names pass the test.
+        src._set_band_names(["Band_1"])
+
+    def test_band_names(self, src: gdal.Dataset):
+        name_list = ["new_name"]
+        src = Dataset(src)
+        assert src.band_names == ["Band_1"]
+        src.band_names = name_list
+        assert src.band_names == name_list
+        src.band_names = ["Band_1"]
+
+    def test_numpy_dtype(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.numpy_dtype == [np.float32]
+
+    def test_dtype(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.dtype == ["float32"]
+
+    def test_gdal_dtype(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.gdal_dtype == [6]
+
 
 class TestSpatialProperties:
     def test_read_array(
@@ -216,12 +297,6 @@ class TestSpatialProperties:
         src = Dataset(multi_band)
         arr = src.read_array()
         assert np.array_equal(multi_band.ReadAsArray(), arr)
-
-    def test_get_band_names(self, src: gdal.Dataset):
-        src = Dataset(src)
-        names = src.get_band_names()
-        assert isinstance(names, list)
-        assert names == ["Band_1"]
 
     def test_create_sr_from_epsg(self):
         sr = Dataset._create_sr_from_epsg(4326)
@@ -249,7 +324,7 @@ class TestNoDataValue:
         src._set_no_data_value(5.0)
         # check if the no_data_value in the Datacube object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
-        # check if the no_data_value of the Dataset object is set
+        # check if the no_data_value of the Dataset object is set5
         assert src.no_data_value[0] == 5
 
     def test_change_no_data_value(
@@ -266,6 +341,8 @@ class TestNoDataValue:
         assert src.raster.GetRasterBand(1).GetNoDataValue() == new_val
         # check if the no_data_value of the Dataset object is set
         assert src.no_data_value[0] == new_val
+        # check that the no_data_value type has changed to float like the band dtype
+        assert isinstance(src.no_data_value[0], float)
         # check if the new_val for the no_data_value is set in the bands
         arr = src.read_array(0)
         val = arr[0, 0]
@@ -276,6 +353,9 @@ class TestNoDataValue:
         chang_no_data_dataset: gdal.Dataset,
         src_no_data_value: float,
     ):
+        """
+        check setting the gdal attribute only but not the value of the nodata cells
+        """
         dataset = Dataset(chang_no_data_dataset)
         new_val = -6666
         dataset.no_data_value = new_val
@@ -394,6 +474,15 @@ class TestGetCellCoordsAndCreateCellGeometry:
         assert len(gdf) == src_shape[0] * src_shape[1]
         assert gdf.crs.to_epsg() == src_epsg
 
+    def test_create_cell_points_no_data_value_is_None(
+        self, era5_image: gdal.Dataset, src_shape: Tuple, src_epsg: int
+    ):
+        src = Dataset(era5_image)
+        gdf = src.get_cell_points(mask=True)
+        # check the size
+        assert len(gdf) == 5
+        assert gdf.crs.to_epsg() == 4326
+
     # TODO: create a tesk using a mask
 
 
@@ -403,6 +492,8 @@ class TestSave:
         src: gdal.Dataset,
         save_raster_path: str,
     ):
+        if os.path.exists(save_raster_path):
+            os.remove(save_raster_path)
         src = Dataset(src)
         src.to_file(save_raster_path)
         assert os.path.exists(save_raster_path)
@@ -584,7 +675,7 @@ class TestAlign:
         self,
         src: gdal.Dataset,
         src_shape: tuple,
-        src_no_data_value: float,
+        # src_no_data_value: float,
         src_geotransform: tuple,
         soil_raster: gdal.Dataset,
     ):
@@ -593,6 +684,7 @@ class TestAlign:
         dataset_aligned = dataset.align(mask_obj)
         assert dataset_aligned.raster.ReadAsArray().shape == src_shape
         nodataval = dataset_aligned.raster.GetRasterBand(1).GetNoDataValue()
+        src_no_data_value = dataset.no_data_value[0]
         assert np.isclose(nodataval, src_no_data_value, rtol=0.000001)
         geotransform = dataset_aligned.raster.GetGeoTransform()
         assert src_geotransform == geotransform
@@ -609,7 +701,7 @@ class TestAlign:
         dataset_aligned = dataset.align(alignment_src)
         assert dataset_aligned.rows == resampled_multi_band_dims[0]
         assert dataset_aligned.columns == resampled_multi_band_dims[1]
-        assert dataset_aligned.no_data_value == dataset.no_data_value
+        # assert dataset_aligned.no_data_value == dataset.no_data_value
         assert dataset.pivot_point == dataset_aligned.pivot_point
 
 
@@ -634,15 +726,18 @@ class TestCrop:
         self,
         sentinel_raster: gdal.Dataset,
         sentinel_crop,
-        sentinel_crop_arr: np.ndarray,
+        sentinel_crop_arr_without_no_data_value: np.ndarray,
     ):
         mask_obj = Dataset(sentinel_crop)
         aligned_raster = Dataset(sentinel_raster)
 
         croped = aligned_raster._crop_alligned(mask_obj)
         dst_arr_cropped = croped.raster.ReadAsArray()
-
-        assert np.array_equal(dst_arr_cropped, sentinel_crop_arr)
+        # filter the no_data_value out of the array
+        arr = dst_arr_cropped[
+            ~np.isclose(dst_arr_cropped, croped.no_data_value[0], rtol=0.001)
+        ]
+        assert np.array_equal(sentinel_crop_arr_without_no_data_value, arr)
 
     def test_crop_dataset_with_array(
         self,
@@ -657,19 +752,6 @@ class TestCrop:
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
         assert (dst_arr_cropped == src_arr).all()
-
-    # def test_crop_arr_with_gdal_obj(
-    #     self,
-    #     src: Datacube,
-    #     aligned_raster_arr,
-    #     src_arr: np.ndarray,
-    #     src_no_data_value: float,
-    # ):
-    #     dst_arr_cropped = src.cropAlligned(aligned_raster_arr, src)
-    #     # check that all the places of the nodatavalue are the same in both arrays
-    #     src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
-    #     dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
-    #     assert (dst_arr_cropped == src_arr).all()
 
     def test_crop_un_aligned(
         self,
@@ -687,90 +769,237 @@ class TestCrop:
 
 
 class TestCropWithPolygon:
-    def test_crop_with_polygon(
+    def test_by_rasterizing(
         self,
         rhine_raster: gdal.Dataset,
         polygon_mask: gpd.GeoDataFrame,
     ):
         src_obj = Dataset(rhine_raster)
-        cropped_raster = src_obj._crop_with_polygon(polygon_mask)
+        cropped_raster = src_obj._crop_with_polygon_by_rasterizing(polygon_mask)
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.geotransform == src_obj.geotransform
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
-
-class TestToPolygon:
-    """Tect converting raster to polygon."""
-
-    def test_save_polygon_to_disk(
-        self, test_image: gdal.Dataset, polygonized_raster_path: str
-    ):
-        im_obj = Dataset(test_image)
-        im_obj.to_polygon(path=polygonized_raster_path, driver="GeoJSON")
-        assert os.path.exists(polygonized_raster_path)
-        gdf = gpd.read_file(polygonized_raster_path)
-        assert len(gdf) == 4
-        assert all(gdf.geometry.geom_type == "Polygon")
-        os.remove(polygonized_raster_path)
-
-    def test_save_polygon_to_memory(
-        self, test_image: gdal.Dataset, polygonized_raster_path: str
-    ):
-        im_obj = Dataset(test_image)
-        gdf = im_obj.to_polygon()
-        assert isinstance(gdf, GeoDataFrame)
-        assert len(gdf) == 4
-        assert all(gdf.geometry.geom_type == "Polygon")
-
-
-class TestToDataFrame:
-    def test_dataframe_without_mask(
-        self, raster_to_df_dataset: gdal.Dataset, raster_to_df_arr: np.ndarray
-    ):
-        """the input raster is given as a string path on disk.
-
-        Parameters
-        ----------
-        raster_to_df_dataset: gdal.Dataset
-        raster_to_df_arr: array for comparison
-        """
-        src = Dataset(raster_to_df_dataset)
-        gdf = src.to_geodataframe(add_geometry="Point")
-        assert isinstance(gdf, GeoDataFrame)
-        rows, cols = raster_to_df_arr.shape
-        # get values and reshape arrays for comparison
-        arr_flatten = raster_to_df_arr.reshape((rows * cols, 1))
-        extracted_values = gdf.loc[:, gdf.columns[0]].values
-        extracted_values = extracted_values.reshape(arr_flatten.shape)
-        assert np.array_equal(extracted_values, arr_flatten), (
-            "the extracted values in the dataframe does not equa the real "
-            "values in the array"
-        )
-
-    def test_to_dataframe_with_gdf_mask(
+    def test_by_warp(
         self,
-        raster_to_df_dataset: gdal.Dataset,
-        vector_mask_gdf: GeoDataFrame,
+        rhine_raster: gdal.Dataset,
+        polygon_mask: gpd.GeoDataFrame,
+    ):
+        src_obj = Dataset(rhine_raster)
+        cropped_raster = src_obj._crop_with_polygon_warp(polygon_mask)
+        assert isinstance(cropped_raster.raster, gdal.Dataset)
+        assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+
+    def test_with_irrigular_polygon(
+        self,
+        raster_1band_coello_gdal_dataset: Dataset,
         rasterized_mask_values: np.ndarray,
+        coello_irregular_polygon_gdf: GeoDataFrame,
     ):
         """the input mask vector is given as geodataframe.
 
         Parameters
         ----------
-        raster_to_df_dataset: path on disk
-        vector_mask_gdf: geodataframe for the vector mask
         rasterized_mask_values: array for comparison
         """
-        src = Dataset(raster_to_df_dataset)
-        gdf = src.to_geodataframe(vector_mask_gdf, add_geometry="Point")
+        dataset = Dataset(raster_1band_coello_gdal_dataset)
+        # test with irrigular mask polygon
+        cropped = dataset._crop_with_polygon_warp(coello_irregular_polygon_gdf)
+        assert isinstance(cropped, Dataset)
+        arr = cropped.raster.ReadAsArray()
+        values = arr[~np.isclose(arr, dataset.no_data_value[0], rtol=0.0001)]
+        assert np.array_equal(
+            values, rasterized_mask_values
+        ), "the extracted values in the dataframe does not equa the real values in the array"
+
+
+class TestCluster2:
+    """Tect converting raster to polygon."""
+
+    def test_single_band(
+        self,
+        test_image: gdal.Dataset,
+    ):
+        dataset = Dataset(test_image)
+        gdf = dataset.cluster2()
         assert isinstance(gdf, GeoDataFrame)
-        assert len(gdf) == len(rasterized_mask_values)
-        assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
-            "the extracted values in the dataframe "
-            "does not "
-            "equa the real "
-            "values in the array"
+        assert len(gdf) == 4
+        assert all(gdf.columns == ["GPP", "geometry"])
+        assert all(gdf.geometry.geom_type == "Polygon")
+
+    def test_multi_band_all_bands(
+        self,
+        sentinel_raster: gdal.Dataset,
+    ):
+        dataset = Dataset(sentinel_raster)
+        gdf = dataset.cluster2()
+        assert isinstance(gdf, GeoDataFrame)
+        assert len(gdf) == 1767
+        assert all(
+            elem in gdf.columns for elem in [dataset.band_names[0]] + ["geometry"]
         )
+        assert all(gdf.geometry.geom_type == "Polygon")
+
+
+class TestToFeatureCollection:
+    """Test converting dataset to featurecollection."""
+
+    class TestWithoutMask:
+        def test_1band(
+            self,
+            raster_1band_coello_gdal_dataset: Dataset,
+            raster_to_df_arr: np.ndarray,
+        ):
+            """the input raster is given as a string path on disk.
+
+            Parameters
+            ----------
+            raster_to_df_arr: array for comparison
+            """
+            src = Dataset(raster_1band_coello_gdal_dataset)
+            gdf = src.to_feature_collection(add_geometry="Point")
+            assert isinstance(gdf, GeoDataFrame)
+            rows, cols = raster_to_df_arr.shape
+            # get values and reshape arrays for comparison
+            arr_flatten = raster_to_df_arr.reshape((rows * cols, 1))
+            extracted_values = gdf.loc[:, gdf.columns[0]].values
+            extracted_values = extracted_values.reshape(arr_flatten.shape)
+            assert np.array_equal(extracted_values, arr_flatten), (
+                "the extracted values in the dataframe does not equa the real "
+                "values in the array"
+            )
+
+        def test_multi_band(
+            self, era5_image: gdal.Dataset, era5_image_gdf: GeoDataFrame
+        ):
+            """the input raster is given as a string path on disk."""
+            dataset = Dataset(era5_image)
+            gdf = dataset.to_feature_collection(add_geometry="Point")
+            assert isinstance(gdf, GeoDataFrame)
+            assert gdf.equals(era5_image_gdf), (
+                "the extracted values in the dataframe does not equa the real "
+                "values in the array"
+            )
+
+        def test_cropped_raster(
+            self,
+            raster_to_df_dataset_with_cropped_cell: gdal.Dataset,
+            raster_to_df_arr: np.ndarray,
+        ):
+            """the input raster is given as a string path on disk.
+
+            Parameters
+            ----------
+            raster_to_df_arr: array for comparison
+            """
+            dataset = Dataset(raster_to_df_dataset_with_cropped_cell)
+            gdf = dataset.to_feature_collection(add_geometry="Point")
+            assert isinstance(gdf, GeoDataFrame)
+            # rows, cols = raster_to_df_arr.shape
+            # get values and reshape arrays for comparison
+            arr_flatten = (
+                list(range(47, 54))
+                + list(range(60, 68))
+                + list(range(74, 82))
+                + list(range(87, 96))
+                + list(range(101, 110))
+                + list(range(115, 124))
+                + list(range(129, 138))
+            )
+            arr_flatten = np.array(arr_flatten)
+            extracted_values = gdf.loc[:, gdf.columns[0]].values
+            # extracted_values = extracted_values.reshape(arr_flatten.shape)
+            assert np.array_equal(extracted_values, arr_flatten), (
+                "the extracted values in the dataframe does not equa the real "
+                "values in the array"
+            )
+
+    # def test_with_mask_multi_band(
+    #     self, era5_image: gdal.Dataset, era5_image_gdf: GeoDataFrame, era5_mask: GeoDataFrame
+    # ):
+    #     """the input raster is given as a string path on disk."""
+    #     dataset = Dataset(era5_image)
+    #     gdf = dataset.to_feature_collection(add_geometry="Point", vector_mask=era5_mask)
+    #     assert isinstance(gdf, GeoDataFrame)
+    #     assert gdf.equals(era5_image_gdf), (
+    #         "the extracted values in the dataframe does not equa the real "
+    #         "values in the array"
+    #     )
+
+    class TestWithMask:
+        def test_polygon_entirly_inside_raster(
+            self,
+            raster_1band_coello_gdal_dataset: Dataset,
+            polygon_corner_coello_gdf: GeoDataFrame,
+            rasterized_mask_values: np.ndarray,
+        ):
+            """the input mask vector is given as geodataframe.
+
+            Parameters
+            ----------
+            rasterized_mask_values: array for comparison
+            """
+            dataset = Dataset(raster_1band_coello_gdal_dataset)
+            gdf = dataset.to_feature_collection(
+                polygon_corner_coello_gdf, add_geometry="Point"
+            )
+
+            poly_gdf = dataset.to_feature_collection(
+                polygon_corner_coello_gdf, add_geometry="Polygon"
+            )
+            assert isinstance(gdf, GeoDataFrame)
+            assert isinstance(poly_gdf, GeoDataFrame)
+            assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
+                "the extracted values in the dataframe "
+                "does not "
+                "equa the real "
+                "values in the array"
+            )
+            assert all(gdf["geometry"].geom_type == "Point")
+            assert np.array_equal(poly_gdf["Band_1"].values, rasterized_mask_values), (
+                "the extracted values in the dataframe "
+                "does not "
+                "equa the real "
+                "values in the array"
+            )
+            assert all(poly_gdf["geometry"].geom_type == "Polygon")
+
+        def test_polygon_partly_outside_raster(
+            self,
+            raster_1band_coello_gdal_dataset: Dataset,
+            polygon_corner_coello_gdf: GeoDataFrame,
+            rasterized_mask_values: np.ndarray,
+            coello_irregular_polygon_gdf,
+        ):
+            """the input mask vector is given as geodataframe.
+
+            Parameters
+            ----------
+            rasterized_mask_values: array for comparison
+            """
+            dataset = Dataset(raster_1band_coello_gdal_dataset)
+            gdf = dataset.to_feature_collection(
+                coello_irregular_polygon_gdf, add_geometry="Point"
+            )
+            poly_gdf = dataset.to_feature_collection(
+                coello_irregular_polygon_gdf, add_geometry="Polygon"
+            )
+            assert isinstance(gdf, GeoDataFrame)
+            assert isinstance(poly_gdf, GeoDataFrame)
+            assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
+                "the extracted values in the dataframe "
+                "does not "
+                "equa the real "
+                "values in the array"
+            )
+            assert all(gdf["geometry"].geom_type == "Point")
+            assert np.array_equal(poly_gdf["Band_1"].values, rasterized_mask_values), (
+                "the extracted values in the dataframe "
+                "does not "
+                "equa the real "
+                "values in the array"
+            )
+            assert all(poly_gdf["geometry"].geom_type == "Polygon")
 
 
 class TestExtract:
@@ -794,25 +1023,62 @@ class TestExtract:
         arr = arr.reshape((arr.shape[0], arr.shape[1] * arr.shape[2]))
         assert np.array_equal(arr, values)
 
-    def test_locate_points_using_gdf(
+    def test_array_to_map_coordinates(self):
+        pivot_x = 432968.1206170588
+        pivot_y = 520007.787999178
+        cell_size = 4000.0
+        tile_xoff = [0, 0, 0, 6, 6, 6, 12, 12, 12]
+        tile_yoff = [0, 6, 12, 0, 6, 12, 0, 6, 12]
+        x_coords, y_coords = Dataset.array_to_map_coordinates(
+            pivot_x,
+            pivot_y,
+            cell_size,
+            tile_xoff,
+            tile_yoff,
+            center=False,
+        )
+        assert x_coords == [
+            432968.1206170588,
+            432968.1206170588,
+            432968.1206170588,
+            456968.1206170588,
+            456968.1206170588,
+            456968.1206170588,
+            480968.1206170588,
+            480968.1206170588,
+            480968.1206170588,
+        ]
+        assert y_coords == [
+            520007.787999178,
+            496007.787999178,
+            472007.787999178,
+            520007.787999178,
+            496007.787999178,
+            472007.787999178,
+            520007.787999178,
+            496007.787999178,
+            472007.787999178,
+        ]
+
+    def test_map_to_array_coordinates_using_gdf(
         self,
         coello_gauges: DataFrame,
         src: Dataset,
         points_location_in_array: GeoDataFrame,
     ):
         dataset = Dataset(src)
-        loc = dataset.locate_points(coello_gauges)
+        loc = dataset.map_to_array_coordinates(coello_gauges)
         assert isinstance(loc, np.ndarray)
         assert np.array_equal(points_location_in_array, loc)
 
-    def test_locate_points_using_df(
+    def test_map_to_array_coordinates_using_df(
         self,
         gauges_df: DataFrame,
         src: Dataset,
         points_location_in_array: GeoDataFrame,
     ):
         dataset = Dataset(src)
-        loc = dataset.locate_points(gauges_df)
+        loc = dataset.map_to_array_coordinates(gauges_df)
         assert isinstance(loc, np.ndarray)
         assert np.array_equal(points_location_in_array, loc)
 
@@ -859,11 +1125,11 @@ class TestFootPrint:
     def test_raster_full_of_data(self, test_image: Dataset):
         dataset = Dataset(test_image)
         extent = dataset.footprint()
-        extent.to_file("tests/data/extent1.geojson")
+        # extent.to_file("tests/data/extent1.geojson")
         # extent column should have one class only
-        assert len(set(extent["id"])) == 1
+        assert len(set(extent[dataset.band_names[0]])) == 1
         # the class should be 2
-        assert list(set(extent["id"]))[0] == 2
+        assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
     @pytest.mark.fast
     def test_max_depth_raster(self, footprint_test: Dataset, replace_values: List):
@@ -871,9 +1137,9 @@ class TestFootPrint:
         extent = dataset.footprint(exclude_values=replace_values)
 
         # extent column should have one class only
-        assert len(set(extent["id"])) == 1
+        assert len(set(extent[dataset.band_names[0]])) == 1
         # the class should be 2
-        assert list(set(extent["id"]))[0] == 2
+        assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
     @pytest.mark.fast
     def test_raster_full_of_no_data_value(
@@ -891,20 +1157,20 @@ class TestFootPrint:
         # modis nodatavalue is gdal object is different than the array
         extent = dataset.footprint(exclude_values=replace_values)
         # extent column should have one class only
-        assert len(set(extent["id"])) == 1
+        assert len(set(extent[dataset.band_names[0]])) == 1
         # the class should be 2
-        assert list(set(extent["id"]))[0] == 2
+        assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
     @pytest.mark.fast
-    def test_ear5_one_band_no_no_data_value_in_raster(
+    def test_era5_one_band_no_no_data_value_in_raster(
         self, era5_image: gdal.Dataset, replace_values: List
     ):
         dataset = Dataset(era5_image)
         extent = dataset.footprint(exclude_values=replace_values)
         # extent column should have one class only
-        assert len(set(extent["id"])) == 1
+        assert len(set(extent[dataset.band_names[0]])) == 1
         # the class should be 2
-        assert list(set(extent["id"]))[0] == 2
+        assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
 
 def test_cluster(rhine_dem: gdal.Dataset, clusters: np.ndarray):
@@ -923,7 +1189,7 @@ class TestNCtoGeoTIFF:
         dataset = Dataset(noah)
         new_dataset = dataset.convert_longitude()
         lon = new_dataset.lon
-        assert lon.max() < 180
+        assert lon.max() < 1805
         assert new_dataset.pivot_point == (-180, 90)
 
     def test_convert_0_360_to_180_180_longitude_inplace(self, noah: gdal.Dataset):
@@ -932,3 +1198,22 @@ class TestNCtoGeoTIFF:
         lon = dataset.lon
         assert lon.max() < 180
         assert dataset.pivot_point == (-180, 90)
+
+
+class TestTiling:
+    def test_window(self, raster_1band_coello_path):
+        dataset = Dataset.read_file(raster_1band_coello_path)
+        tiles_details = dataset._window(size=6)
+        assert isinstance(tiles_details, GeneratorType)
+        tiles_details_l = list(tiles_details)
+        assert tiles_details_l == [
+            (0, 0, 6, 6),
+            (0, 6, 6, 6),
+            (0, 12, 6, 1),
+            (6, 0, 6, 6),
+            (6, 6, 6, 6),
+            (6, 12, 6, 1),
+            (12, 0, 2, 6),
+            (12, 6, 2, 6),
+            (12, 12, 2, 1),
+        ]

@@ -5,28 +5,39 @@ ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
 drivers available in geopandas
 gpd.io.file._EXTENSION_TO_DRIVER
 """
+import json
 import os
+import shutil
 import tempfile
 import uuid
-import shutil
 import warnings
-from typing import List, Tuple, Union, Iterable, Any
+from numbers import Number
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import ogr, osr, gdal
+from osgeo import gdal, ogr, osr
 from osgeo.ogr import DataSource
 from pyproj import Proj, transform
-from shapely.geometry import Point, Polygon, LineString
-from shapely.geometry.multipolygon import MultiPolygon
-from shapely.geometry.multipoint import MultiPoint
+from shapely.geometry import LineString, Point, Polygon
 from shapely.geometry.multilinestring import MultiLineString
-from pyramids._utils import Catalog
+from shapely.geometry.multipoint import MultiPoint
+from shapely.geometry.multipolygon import MultiPolygon
+
 from pyramids._errors import DriverNotExistError
+from pyramids._utils import (
+    Catalog,
+    numpy_to_gdal_dtype,
+    ogr_ds_togdal_dataset,
+    ogr_to_numpy_dtype,
+)
+
 
 CATALOG = Catalog(raster_driver=False)
+MEMORY_FILE = "/vsimem/myjson.geojson"
+gdal.UseExceptions()
 
 
 class FeatureCollection:
@@ -54,7 +65,7 @@ class FeatureCollection:
         17- WriteShapefile
     """
 
-    def __init__(self, gdf: GeoDataFrame):
+    def __init__(self, gdf: Union[GeoDataFrame, DataSource]):
         # read the drivers catalog
         self._feature = gdf
 
@@ -77,14 +88,111 @@ class FeatureCollection:
         return self._feature
 
     @property
-    def epsg(self):
+    def epsg(self) -> int:
         """EPSG number"""
         return self._get_epsg()
 
     @property
-    def bounds(self):
+    def total_bounds(self) -> List[Number]:
         """bounding coordinates"""
-        return list(self.feature.bounds.values[0])
+        if isinstance(self.feature, GeoDataFrame):
+            bounds = self.feature.total_bounds.tolist()
+        else:
+            bounds = self.feature.GetLayer().GetExtent()
+            bounds = [bounds[0], bounds[2], bounds[1], bounds[3]]
+        return bounds
+
+    @property
+    def pivot_point(self) -> List[Number]:
+        """Top left corner coordinates."""
+        if isinstance(self.feature, GeoDataFrame):
+            bounds = self.feature.total_bounds.tolist()
+        else:
+            bounds = self.feature.GetLayer().GetExtent()
+
+        bounds = [bounds[0], bounds[3]]
+        return bounds
+
+    @property
+    def layers_count(self) -> Union[int, None]:
+        """layers_count.
+
+        Number of layers in a datasource.
+        """
+        if isinstance(self.feature, DataSource) or isinstance(
+            self.feature, gdal.Dataset
+        ):
+            return self.feature.GetLayerCount()
+        else:
+            return None
+
+    @property
+    def layer_names(self) -> List[str]:
+        """OGR object layers names'."""
+        names = []
+        if isinstance(self.feature, DataSource) or isinstance(
+            self.feature, gdal.Dataset
+        ):
+            for i in range(self.layers_count):
+                names.append(self.feature.GetLayer(i).GetLayerDefn().GetName())
+
+        return names
+
+    @property
+    def column(self) -> List:
+        """Column Names"""
+        names = []
+        if isinstance(self.feature, DataSource) or isinstance(
+            self.feature, gdal.Dataset
+        ):
+            for i in range(self.layers_count):
+                layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
+                cols = layer_dfn.GetFieldCount()
+                names = names + [
+                    layer_dfn.GetFieldDefn(j).GetName() for j in range(cols)
+                ]
+            names = names + ["geometry"]
+        else:
+            names = self.feature.columns.tolist()
+        return names
+
+    @property
+    def file_name(self):
+        """Get file name in case of the base object is an ogr.Datasource or gdal.Dataset"""
+        if isinstance(self.feature, DataSource):
+            file_name = self.feature.name
+        elif isinstance(self.feature, gdal.Dataset):
+            file_name = self.feature.GetFileList()[0]
+        else:
+            file_name = ""
+
+        return file_name
+
+    @property
+    def dtypes(self) -> Dict[str, str]:
+        """dtypes.
+            - Get the data types of the columns in the vector file.
+
+        Returns
+        -------
+            list of the data types (strings/numpy datatypes) of the columns in the vector file, except the geometry
+            column.
+        """
+        if isinstance(self.feature, GeoDataFrame):
+            dtypes = self.feature.dtypes.to_dict()
+        else:
+            dtypes = []
+            for i in range(self.layers_count):
+                layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
+                cols = layer_dfn.GetFieldCount()
+                dtypes = dtypes + [
+                    ogr_to_numpy_dtype(layer_dfn.GetFieldDefn(j).GetType()).__name__
+                    for j in range(cols)
+                ]
+            # the geometry colmn is not in the returned dictionary if the vector is DataSource
+            dtypes = {col_i: type_i for col_i, type_i in zip(self.column, dtypes)}
+
+        return dtypes
 
     @classmethod
     def read_file(cls, path: str):
@@ -179,27 +287,46 @@ class FeatureCollection:
         else:
             self.feature.to_file(path, driver=driver_gdal_name)
 
-    def _gdf_to_ds(self, inplace: bool = False) -> Union[DataSource, None]:
+    def _gdf_to_ds(
+        self, inplace: bool = False, gdal_dataset=False
+    ) -> Union[DataSource, None]:
         """convert a geopandas geodataframe into ogr DataSource.
 
         Parameters
         ----------
         inplace: [bool]
             convert the geodataframe to datasource inplace. Default is False.
+        gdal_dataset: [bool]
+            True if you want to convert the geodataframe into a gdal Dataset (the onject created by reading the
+            vector with gdal.EX). Default is False
 
         Returns
         -------
         ogr.DataSource
         """
-        # if isinstance(self.feature, GeoDataFrame):
-        ds = ogr.Open(self.feature.to_json())
+        if isinstance(self.feature, GeoDataFrame):
+            gdf_json = json.loads(self.feature.to_json())
+            geojson_str = json.dumps(gdf_json)
+            # Use the /vsimem/ (Virtual File Systems) to write the GeoJSON string to memory
+            gdal.FileFromMemBuffer(MEMORY_FILE, geojson_str)
+            # Use OGR to open the GeoJSON from memory
+            if not gdal_dataset:
+                drv = ogr.GetDriverByName("GeoJSON")
+                ds = drv.Open(MEMORY_FILE)
+            else:
+                ds = gdal.OpenEx(MEMORY_FILE)
+        else:
+            ds = self.feature
 
         if inplace:
             self.__init__(ds)
             ds = None
+        else:
+            ds = FeatureCollection(ds)
+
         return ds
 
-    # def _gdf_to_ds(self, inplace=False) -> DataSource:
+    # def _gdf_to_ds_copy(self, inplace=False) -> DataSource:
     #     """Convert ogr DataSource object to a GeoDataFrame.
     #
     #     Returns
@@ -211,43 +338,25 @@ class FeatureCollection:
     #     new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
     #     if isinstance(self.feature, GeoDataFrame):
     #         self.feature.to_file(new_vector_path)
-    #         ds = FeatureCollection.read_file(new_vector_path, engine="ogr")
-    #         ds = FeatureCollection._copy_driver_to_memory(ds.feature)
+    #         ds = ogr.Open(new_vector_path)
+    #         # ds = FeatureCollection(ds)
+    #         ds = FeatureCollection._copy_driver_to_memory(ds)
     #     else:
     #         ds = FeatureCollection._copy_driver_to_memory(self.feature)
     #
     #     if inplace:
-    #         self.__init__(ds, engine="ogr")
+    #         self.__init__(ds)
     #         ds = None
     #
     #     return ds
 
-    def _ds_to_gdf(self, inplace: bool = False) -> GeoDataFrame:
+    def _ds_to_gdf_with_io(self, inplace: bool = False) -> GeoDataFrame:
         """Convert ogr DataSource object to a GeoDataFrame.
 
         Returns
         -------
         GeoDataFrame
         """
-        # # TODO: not complete yet the function needs to take an ogr.DataSource and then write it to disk and then read
-        # #  it using the gdal.OpenEx as below
-        # # but this way if i write the vector to disk i can just read it ysing geopandas as df directly.
-        # # https://gis.stackexchange.com/questions/227737/python-gdal-ogr-2-x-read-vectors-with-gdal-openex-or-ogr-open
-        #
-        # # read the vector using gdal not ogr
-        # ds = gdal.OpenEx(path)  # , gdal.OF_READONLY
-        # layer = ds.GetLayer(0)
-        # layer_name = layer.GetName()
-        # mempath = "/vsimem/test.geojson"
-        # # convert the vector read as a gdal dataset to memory
-        # # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.VectorTranslateOptions
-        # gdal.VectorTranslate(mempath, ds)  # , SQLStatement=f"SELECT * FROM {layer_name}", layerName=layer_name
-        # # reading the memory file using fiona
-        # f = fiona.open(mempath, driver='geojson')
-        # gdf = gpd.GeoDataFrame.from_features(f, crs=f.crs)
-
-        # till i manage to do the above way just write the ogr.DataSource to disk and then read it using geopandas
-
         # Create a temporary directory for files.
         temp_dir = tempfile.mkdtemp()
         new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
@@ -261,11 +370,57 @@ class FeatureCollection:
 
         return gdf
 
+    def _ds_to_gdf_in_memory(self, inplace: bool = False) -> GeoDataFrame:
+        """Convert ogr DataSource object to a GeoDataFrame.
+
+        Returns
+        -------
+        GeoDataFrame
+        """
+        gdal_ds = ogr_ds_togdal_dataset(self.feature)
+        layer_name = gdal_ds.GetLayer().GetName()  # self.layer_names[0]
+        gdal.VectorTranslate(
+            MEMORY_FILE,
+            gdal_ds,
+            SQLStatement=f"SELECT * FROM {layer_name}",
+            layerName=layer_name,
+        )
+        # import fiona
+        # from fiona import MemoryFile
+        # f = MemoryFile(MEMORY_FILE)
+        # f = fiona.Collection(MEMORY_FILE)
+
+        # f = fiona.open(MEMORY_FILE, driver='geojson')
+        # gdf = gpd.GeoDataFrame.from_features(f, crs=f.crs)
+        gdf = gpd.read_file(MEMORY_FILE, layer=layer_name, driver="geojson")
+
+        if inplace:
+            self.__init__(gdf)
+            gdf = None
+
+        return gdf
+
+    def _ds_to_gdf(self, inplace: bool = False) -> GeoDataFrame:
+        """Convert ogr DataSource object to a GeoDataFrame.
+
+        Returns
+        -------
+        GeoDataFrame
+        """
+        try:
+            gdf = self._ds_to_gdf_in_memory(inplace=inplace)
+        except:  # pragma: no cover
+            # keep the exception unspecified and we want to catch fiona.errors.DriverError but we do not want to
+            # explicitly import fiona here
+            gdf = self._ds_to_gdf_with_io(inplace=inplace)
+
+        return gdf
+
     def to_dataset(
         self,
         cell_size: Any = None,
         dataset=None,
-        column_name=None,
+        column_name: Union[str, List[str]] = None,
     ):
         """Covert a vector into raster.
 
@@ -275,14 +430,16 @@ class FeatureCollection:
 
         Parameters
         ----------
-        cell_size: [int]
-            cell size.
-        dataset : [Dataset]
+        cell_size: [int/Optional]
+            cell size you want the new ceated raster to have. the cell_size parameter is optional, if you use the
+            dataset parameter you don't need to provide it. Default is None.
+        dataset : [Dataset/Optional]
             Raster object, the raster will only be used as a source for the geotransform (
-            projection, rows, columns, location) data to be copied to the rasterized vector.
-        column_name : str or None
-            Name of a field in the vector to burn values from. If None, all vector
-            features are burned with a constant value of 1.
+            projection, rows, columns, location) data to be copied to the rasterized vector. the dataset parameter
+            is optional, if you use the cell_size parameter you don't need to provide it. Default is None.
+        column_name : [str/List[str]/Optional]
+            Name of a column in the vector to burn values from. If None, all the columns will be considered as bands.
+            Default is None.
 
         Returns
         -------
@@ -298,75 +455,82 @@ class FeatureCollection:
         ds_epsg = self.epsg
         if dataset is not None:
             if dataset.epsg != ds_epsg:
-                # TODO: reproject the vector to the raster projection instead of raising an error.
                 raise ValueError(
                     f"Dataset and vector are not the same EPSG. {dataset.epsg} != {ds_epsg}"
                 )
 
+        # TODO: this case
         if dataset is not None:
             if not isinstance(dataset, Dataset):
                 raise TypeError(
                     "The second parameter should be a Dataset object (check how to read a raster using the "
                     "Dataset module)"
                 )
-            # if the raster is given the top left corner of the raster will be taken as the top left corner for
+            # if the raster is given, the top left corner of the raster will be taken as the top left corner for
             # the rasterized polygon
-            xmin, _, _, ymax, _, _ = dataset.geotransform
-        else:
-            # if a raster is not given the xmin and ymax will be taken as the top left corner for the rasterized
-            # polygon.
-            xmin, ymin, xmax, ymax = self.feature.total_bounds
-
-        if column_name is None:
-            # Use a constant value for all features.
-            burn_values = [1]
-            attribute = None
-            dtype = 5
-        else:
-            # Use the values given in the vector field.
-            burn_values = None
-            attribute = column_name
-            dtype = 7
-
-        if isinstance(dataset, Dataset):
-            no_data_value = dataset.no_data_value[0]
+            xmin, ymax = dataset.pivot_point
+            no_data_value = (
+                dataset.no_data_value[0]
+                if dataset.no_data_value[0] is not None
+                else np.nan
+            )
             rows = dataset.rows
             columns = dataset.columns
             cell_size = dataset.cell_size
         else:
+            # if a raster is not given, the xmin and ymax will be taken as the top left corner for the rasterized
+            # polygon.
+            xmin, ymin, xmax, ymax = self.feature.total_bounds
             no_data_value = Dataset.default_no_data_value
             columns = int(np.ceil((xmax - xmin) / cell_size))
             rows = int(np.ceil((ymax - ymin) / cell_size))
 
-        # save the geodataframe to disk and get the path
-        temp_dir = tempfile.mkdtemp()
-        vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
-        self.feature.to_file(vector_path)
+        burn_values = None
+        if column_name is None:
+            column_name = self.column
+            column_name.remove("geometry")
 
+        if isinstance(column_name, list):
+            numpy_dtype = self.dtypes[column_name[0]]
+        else:
+            numpy_dtype = self.dtypes[column_name]
+
+        dtype = numpy_to_gdal_dtype(numpy_dtype)
+        attribute = column_name
+
+        # convert the vector to a gdal Dataset (vector but read by gdal.EX)
+        vector_gdal_ex = self._gdf_to_ds(gdal_dataset=True)
         top_left_coords = (xmin, ymax)
-        # TODO: enable later multi bands
-        bands = 1
-        dataset_n = Dataset._create_driver_from_scratch(
+
+        bands_count = 1 if not isinstance(attribute, list) else len(attribute)
+        dataset_n = Dataset.create_driver_from_scratch(
             cell_size,
             rows,
             columns,
             dtype,
-            bands,
+            bands_count,
             top_left_coords,
             ds_epsg,
             no_data_value,
         )
 
-        rasterize_opts = gdal.RasterizeOptions(
-            bands=[1], burnValues=burn_values, attribute=attribute, allTouched=True
-        )
-        # the second parameter to the Rasterize function if str is read using gdal.OpenEX inside the function,
-        # so the second parameter if not str should be a dataset, if you try to use ogr.DataSource it will give an error
-        # for future trial to remove writing the vector to disk and enter the second parameter as a path, try to find
-        # a way to convert the ogr.DataSource or GeoDataFrame into a similar object to the object resulting from
-        # gdal.OpenEx which is a dataset
-        _ = gdal.Rasterize(dataset_n.raster, vector_path, options=rasterize_opts)
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        bands = list(range(1, bands_count + 1))
+        # loop over bands
+        for ind, band in enumerate(bands):
+            rasterize_opts = gdal.RasterizeOptions(
+                bands=[band],
+                burnValues=burn_values,
+                attribute=attribute[ind] if isinstance(attribute, list) else attribute,
+                allTouched=True,
+            )
+            # if the second parameter to the Rasterize function is str, it will be read using gdal.OpenEX inside the
+            # function, so if the second parameter is not str, it should be a dataset, if you try to use ogr.DataSource
+            # it will give an error.
+            # the second parameter can be given as a path, or read the vector using gdal.OpenEX and use it as a
+            # second parameter.
+            _ = gdal.Rasterize(
+                dataset_n.raster, vector_gdal_ex.feature, options=rasterize_opts
+            )
 
         return dataset_n
 
@@ -640,13 +804,13 @@ class FeatureCollection:
             geom_type = row.geometry.geom_type.lower()
             if geom_type == geometry:
                 # get number of the polygons inside the multipolygon class
-                n_rows = len(row.geometry)
+                n_rows = len(row.geometry.geoms)
                 new_gdf = gpd.GeoDataFrame(pd.concat([new_gdf] + [row] * n_rows))
                 new_gdf.reset_index(drop=True, inplace=True)
                 new_gdf.columns = row.index.values
                 # for each rows assign each polygon
                 for geom in range(n_rows):
-                    new_gdf.loc[geom, "geometry"] = row.geometry[geom]
+                    new_gdf.loc[geom, "geometry"] = row.geometry.geoms[geom]
                 to_drop.append(idx)
 
         # drop the exploded rows
@@ -687,7 +851,7 @@ class FeatureCollection:
         coord_arrays = []
         geom_type = geom_type.lower()
         if geom_type == "multipoint" or geom_type == "multilinestring":
-            for i, part in enumerate(multi_geometry):
+            for i, part in enumerate(multi_geometry.geoms):
                 if geom_type == "multipoint":
                     vals = FeatureCollection._get_point_coords(part, coord_type)
                     coord_arrays.append(vals)
@@ -695,7 +859,7 @@ class FeatureCollection:
                     vals = FeatureCollection._get_line_coords(part, coord_type)
                     coord_arrays.append(vals)
         elif geom_type == "multipolygon":
-            for i, part in enumerate(multi_geometry):
+            for i, part in enumerate(multi_geometry.geoms):
                 # multi_2_single = FeatureCollection._explode(part) if part.type.startswith("MULTI") else part
                 vals = FeatureCollection._get_poly_coords(part, coord_type)
                 coord_arrays.append(vals)
@@ -814,21 +978,26 @@ class FeatureCollection:
             return poly
 
     @staticmethod
-    def create_point(coords: Iterable[Tuple[float]]) -> List[Point]:
-        """CreatePoint.
+    def create_point(
+        coords: Iterable[Tuple[float]], epsg: int = None
+    ) -> Union[List[Point], GeoDataFrame]:
+        """create_point.
 
-        CreatePoint takes a list of tuples of coordinates and convert it into
+        create_point takes a list of tuples of coordinates and convert it into
         a list of Shapely point object
 
         parameters
         ----------
         coords : [List]
             list of tuples [(x1,y1),(x2,y2)] or [(long1,lat1),(long2,lat1)]
+        epsg: [int]
+            epsg number of the coordinates. If given the method will create a GeoDataFrame and use it to create a
+            FeatureCollection object.
 
         Returns
         -------
         points: [List]
-            list of Shaply point objects [Point,Point]
+            list of Shaply point objects [Point, Point]
 
         Examples
         --------
@@ -840,42 +1009,33 @@ class FeatureCollection:
         """
         points = list(map(Point, coords))
 
+        if epsg is not None:
+            points = gpd.GeoDataFrame(columns=["geometry"], data=points, crs=epsg)
+            points = FeatureCollection(points)
+
         return points
 
     def concate(self, gdf: GeoDataFrame, inplace: bool = False):
-        """CombineGeometrics.
+        """concate.
 
-        CombineGeometrics reads two shapefiles and combine them into one
-        shapefile
+        concate reads two shapefiles and combine them into one object
 
         Parameters
         ----------
-        gdf: [String]
-            a path includng the name of the shapefile and extention like
-            path="data/subbasins.shp"
+        gdf: [GeoDataFrame]
+            GeoDataFrame containing the geometries you want to combine.
         inplace: [bool]
             Default is False.
 
         Returns
         -------
-        SaveIng the shapefile or NewGeoDataFrame :
-            If you choose True in the "save" input the function will save the
-            shapefile in the given "SavePath"
-            If you choose False in the "save" input the function will return a
-            [geodataframe] dataframe containing both input shapefiles
-            you can save it as a shapefile using
-            NewDataFrame.to_file("Anyname.shp")
+        GeoDataFrame
 
         Examples
         --------
-        Return a geodata frame
-        >>> shape_file1 = "Inputs/RIM_sub.shp"
-        >>> shape_file2 = "Inputs/addSubs.shp"
-        >>> NewDataFrame = FeatureCollection.concate(shape_file1, shape_file2, save=False)
-        save a shapefile
-        >>> shape_file1 = "Inputs/RIM_sub.shp"
-        >>> shape_file2 = "Inputs/addSubs.shp"
-        >>> FeatureCollection.concate(shape_file2, save=True, save_path="AllBasins.shp")
+        >>> subbasins = FeatureCollection.read_file("sub-basins.shp")
+        >>> new_sub = gpd.read_file("new-sub-basins.shp")
+        >>> all_subs = subbasins.concate(new_sub, new_sub, inplace=False)
         """
         # concatenate the second shapefile into the first shapefile
         new_gdf = gpd.GeoDataFrame(pd.concat([self.feature, gdf]))

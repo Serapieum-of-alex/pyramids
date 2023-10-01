@@ -22,6 +22,25 @@ def src(src_path: str) -> Dataset:
     return gdal.OpenShared(src_path, gdal.GA_ReadOnly)
 
 
+@pytest.fixture(scope="function")
+def src_without_color_table() -> Dataset:
+    return gdal.OpenShared(
+        "tests/data/geotiff/coello-without-color-table.tif", gdal.GA_ReadOnly
+    )
+
+
+@pytest.fixture(scope="function")
+def src_with_color_table() -> Dataset:
+    return gdal.OpenShared(
+        "tests/data/geotiff/coello-with-color-table.tif", gdal.GA_ReadOnly
+    )
+
+
+@pytest.fixture(scope="module")
+def nc_path() -> str:
+    return "tests/data/netcdf/westernscheldt01_waqgeom.nc"
+
+
 @pytest.fixture(scope="module")
 def chang_no_data_dataset(src_path: str) -> Dataset:
     return gdal.OpenShared("tests/data/acc4000-change-no-data.tif", gdal.GA_ReadOnly)
@@ -66,29 +85,24 @@ def lat_coords() -> list:
     ]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def src_reset_crs() -> Dataset:
     return gdal.Open("tests/data/reset_crs.tif")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def src_set_no_data_value() -> Dataset:
     return gdal.Open("tests/data/src-set_no_data_value.tif")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def src_update() -> Dataset:
     return gdal.Open("tests/data/acc4000-update.tif", gdal.GA_Update)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def multi_band() -> Dataset:
     return gdal.Open("tests/data/geotiff/multi_bands.tif")
-
-
-@pytest.fixture(scope="module")
-def nc_path() -> str:
-    return "examples/data/MSWEP_1979010100.nc"
 
 
 @pytest.fixture(scope="module")
@@ -256,7 +270,7 @@ def sentinel_resample_arr() -> np.ndarray:
     return np.load("tests/data/geotiff/resamples_sentinel.npy")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def resampled_multiband() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/resampled_multi_bands.tif")
 
@@ -269,7 +283,7 @@ def project_raster_to_epsg() -> int:
 @pytest.fixture(scope="module")
 def aligned_raster() -> Dataset:
     return gdal.Open(
-        "examples/data/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
+        "tests/data/geotiff/aligned_rasters/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
     )
 
 
@@ -280,7 +294,7 @@ def aligned_raster_arr(aligned_raster) -> np.ndarray:
 
 @pytest.fixture(scope="module")
 def crop_aligned_folder_path() -> str:
-    return "examples/data/aligned_rasters/"
+    return "examples/data/geotiff/aligned_rasters/"
 
 
 @pytest.fixture(scope="module")
@@ -295,17 +309,17 @@ def crop_saveto() -> str:
 
 @pytest.fixture(scope="module")
 def rasters_folder_path() -> str:
-    return "tests/data/raster-folder"
+    return "tests/data/geotiff/raster-folder"
 
 
 @pytest.fixture(scope="module")
 def rhine_raster(rasters_folder_path: str) -> Dataset:
-    return gdal.Open(f"{rasters_folder_path}/1_MSWEP_1979.01.02.tif")
+    return gdal.Open(f"{rasters_folder_path}/MSWEP_1979.01.02.tif")
 
 
 @pytest.fixture(scope="module")
 def ascii_folder_path() -> str:
-    return "tests/data/ascii-folder"
+    return "tests/data/ascii/ascii-folder"
 
 
 @pytest.fixture(scope="module")
@@ -355,12 +369,12 @@ def basin_polygon() -> gpd.GeoDataFrame:
 
 @pytest.fixture(scope="module")
 def ascii_file_path() -> str:
-    return "tests/data/asci_example.asc"
+    return "tests/data/ascii/asci_example.asc"
 
 
 @pytest.fixture(scope="module")
 def ascii_without_projection() -> str:
-    return "tests/data/asci_without_projection.asc"
+    return "tests/data/ascii/asci_without_projection.asc"
 
 
 @pytest.fixture(scope="module")
@@ -381,17 +395,17 @@ def ascii_geotransform() -> tuple:
 @pytest.fixture(scope="module")
 def merge_input_raster() -> List[str]:
     search_criteria = "splitted-raster*.tif"
-    path = "tests/data/merge"
+    path = "tests/data/geotiff/merge"
     return glob.glob(os.path.join(path, search_criteria))
 
 
 @pytest.fixture(scope="module")
 def merge_output() -> str:
-    return r"tests/data/merge/merged_raster.tif"
+    return r"tests/data/geotiff/merge/merged_raster.tif"
 
 
 @pytest.fixture(scope="module")
-def match_alignment_dataset() -> str:
+def match_alignment_datacube() -> str:
     return "tests/data/match-align-dataset"
 
 
@@ -446,7 +460,7 @@ def clusters() -> np.ndarray:
     return np.load("tests/data/dem/cluster.npy")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def sentinel_raster() -> gdal.Dataset:
     return gdal.Open(
         "tests/data/geotiff/S2A_MSIL2A_20200215T082021_N0214_R121_T36SXA_20200215T110825_image_0_0.tif"
@@ -464,6 +478,14 @@ def sentinel_crop_arr() -> np.ndarray:
 
 
 @pytest.fixture(scope="module")
+def sentinel_crop_arr_without_no_data_value(
+    sentinel_crop_arr: np.ndarray,
+) -> np.ndarray:
+    # filter the no_data_value out of the array
+    return sentinel_crop_arr[~np.isclose(sentinel_crop_arr, 0, rtol=0.001)]
+
+
+@pytest.fixture(scope="module")
 def int_none_nodatavalue_attr_0_stored() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/int_none_nodatavalue_attr_0_stored.tif")
 
@@ -473,6 +495,6 @@ def sentinel_classes() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/sentinel-classes.tif")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def noah() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/noah-precipitation-1979.tif")

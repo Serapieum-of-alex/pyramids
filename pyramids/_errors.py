@@ -62,3 +62,12 @@ class OptionalPackageDoesNontExist(Exception):
         logger.error(error_message)
 
     pass
+
+
+class FailedToSaveError(Exception):
+    """Failed to save error"""
+
+    def __init__(self, error_message: str):
+        logger.error(error_message)
+
+    pass

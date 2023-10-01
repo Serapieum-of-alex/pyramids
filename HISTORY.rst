@@ -79,3 +79,40 @@ History
 * fix bug in passing ot not passing band index in case of multi band rasters
 * change the bounds in to_dataset method to total_bounds tp get the bbox of the whole geometries in the gdf
 * add convert_longitude method to convert longitude to range between -180 and 180
+
+0.5.0 (2023-10-01)
+------------------
+Dataset
+"""""""
+* The dtype attribure is not initialized in the __init__, but initialized when using the dtype property.
+* Create band_names setter method.
+* add gdal_dtype, numpy_dtype, and dtype arrtibute to change between the dtype (data type general name), and the coresponding data type in numpy and gdal.
+* Create color_table attribure, getter & setter property to set a symbology (assign color to different values in each band).
+* The read_array method returns array with the same type as the dtype of the first band in the raster.
+* add a setter method to the band_names property.
+* The methods (create_driver_from_scratch, get_band_names) is converted to private method.
+* The no_data_value check the dtype before setting any value.
+* The convert_longitude used the gdal.Wrap method instead of making the calculation step by step.
+* The to_polygon is converted to _band_to_polygon private method used in the clusters method.
+* The to_geodataframe is converted to to_feature_collection. change the backend of the function to use the crop function is a vector mask is given.
+* the to_crs takes an extra parameter "inplace".
+* The locate_points is converted to map_to_array_coordinates.
+* Create array_to_map_coordinates to translate the array indices into real map coordinates.
+
+DataCube
+""""""""
+* rename the read_separate_files to read_multiple_files, and enable it to use regex strigs to filter files in a given directory.
+* rename read_dataset to open_datacube.
+* rename the data attribute to values
+
+FeatureCollection
+"""""""""""""""""
+* Add a pivot_point attribure to return the top left corner/first coordinates of the polygon.
+* Add a layers_count property to return the number of layers in the file.
+* Add a layer_names property to return the layers names.
+* Add a column property to return column names.
+* Add the file_name property to store the file name.
+* Add the dtypes property to retrieve the data types of the columns in the file.
+* Rename bounds to total_bounds.
+* The _gdf_to_ds can convert the GeoDataFrame to a ogr.DataSource and to a gdal.Dataset.
+* The create_point method returns a shapely point object or a GeoDataFrame if an epsg number is given.
