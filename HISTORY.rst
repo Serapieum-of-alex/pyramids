@@ -116,3 +116,10 @@ FeatureCollection
 * Rename bounds to total_bounds.
 * The _gdf_to_ds can convert the GeoDataFrame to a ogr.DataSource and to a gdal.Dataset.
 * The create_point method returns a shapely point object or a GeoDataFrame if an epsg number is given.
+
+0.5.1 (2023-11-27)
+------------------
+Dataset
+"""""""
+* revert the convert_longitude method to not use the gdal_wrap method as it is not working with the new version of gdal (newer tan 3.7.1).
+* bump up versions.
