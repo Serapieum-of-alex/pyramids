@@ -1,5 +1,7 @@
-name: Pypi
+name: pypi-deployment
+
 on: [push]
+
 jobs:
   Main-Package:
     runs-on: ${{ matrix.os }}
