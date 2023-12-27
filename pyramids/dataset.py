@@ -516,7 +516,7 @@ class Dataset:
         return dst
 
     def _iloc(self, i) -> gdal.Band:
-        """iloc.
+        """_iloc.
 
             - Access dataset array using index.
 
