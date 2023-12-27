@@ -533,6 +533,23 @@ read_array
         -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
         -3.402823e+38, -3.402823e+38]], dtype=float32)
 
+Band statistics (stats)
+---------------
+- To get a summary statistics (min, max, mean, std) of a band/all bands.
+- The method returns a `DataFrame` of statistics values of each band, the dataframe has the following columns:
+    [min, max, mean, std], the index of the dataframe is the band names.
+
+.. code:: py
+    era5_image = "tests/data/geotiff/era5_land_monthly_averaged.tif"
+    dataset = Dataset.read_file(era5_image)
+    stats = dataset.stats()
+    print(stats)
+    >>>                min         max        mean       std
+    >>>     Band_1  270.369720  270.762299  270.551361  0.154270
+    >>>     Band_2  269.611938  269.744751  269.673645  0.043788
+    >>>     Band_3  273.641479  274.168823  273.953979  0.198447
+    >>>     Band_4  273.991516  274.540344  274.310669  0.205754
+
 
 Write raster to disk
 ====================
