@@ -123,3 +123,10 @@ Dataset
 """""""
 * revert the convert_longitude method to not use the gdal_wrap method as it is not working with the new version of gdal (newer tan 3.7.1).
 * bump up versions.
+
+0.5.2 (2023-12-27)
+------------------
+Dataset
+"""""""
+* add _iloc method to get the gdal band object by index.
+* add stats method to calculate the statistics of the raster bands.
