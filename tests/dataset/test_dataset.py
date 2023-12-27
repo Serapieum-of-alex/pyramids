@@ -1241,3 +1241,26 @@ class TestIloc:
         dataset = Dataset(src)
         band = dataset._iloc(0)
         assert isinstance(band, gdal.Band)
+
+
+class TestStats:
+    def test_all_bands(self, era5_image: gdal.Dataset, era5_image_stats: DataFrame):
+        dataset = Dataset(era5_image)
+        stats = dataset.stats()
+        assert isinstance(stats, DataFrame)
+        assert all(stats.columns == ["min", "max", "mean", "std"])
+        assert np.isclose(
+            stats.values, era5_image_stats.values, rtol=0.000001, atol=0.00001
+        ).all()
+
+    def test_specific_band(self, era5_image: gdal.Dataset, era5_image_stats: DataFrame):
+        dataset = Dataset(era5_image)
+        stats = dataset.stats(0)
+        assert isinstance(stats, DataFrame)
+        assert all(stats.columns == ["min", "max", "mean", "std"])
+        assert np.isclose(
+            stats.values,
+            era5_image_stats.iloc[0, :].values,
+            rtol=0.000001,
+            atol=0.00001,
+        ).all()

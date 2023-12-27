@@ -4,6 +4,7 @@ from typing import Tuple, List
 import geopandas as gpd
 import numpy as np
 import pytest
+import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
 from osgeo.gdal import Dataset
@@ -243,3 +244,54 @@ def era5_image_gdf() -> GeoDataFrame:
 @pytest.fixture(scope="module")
 def era5_mask() -> GeoDataFrame:
     return gpd.read_file("tests/data/geotiff/era5-mask.geojson")
+
+
+@pytest.fixture(scope="function")
+def era5_image_stats() -> DataFrame:
+    """era5 image band statistics"""
+    df = pd.DataFrame(columns=["min", "max", "mean", "std"], dtype=np.float32)
+    df["min"] = [
+        270.36972,
+        269.611938,
+        273.641479,
+        273.991516,
+        274.979065,
+        0.367523,
+        0.37233,
+        0.380798,
+        0.001764,
+    ]
+    df["max"] = [
+        270.762299,
+        269.744751,
+        274.168823,
+        274.540344,
+        275.666565,
+        0.368973,
+        0.373856,
+        0.394302,
+        0.001884,
+    ]
+    df["mean"] = [
+        270.551361,
+        269.673657,
+        273.953979,
+        274.310657,
+        275.367346,
+        0.368094,
+        0.372946,
+        0.387521,
+        0.001822,
+    ]
+    df["std"] = [
+        0.15427,
+        0.043788,
+        0.198447,
+        0.205754,
+        0.254376,
+        0.000499,
+        0.000546,
+        0.004531,
+        0.000044,
+    ]
+    return df
