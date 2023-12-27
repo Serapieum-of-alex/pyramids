@@ -59,7 +59,11 @@ gdal.UseExceptions()
 
 
 class Dataset:
-    """Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
+    """Dataset.
+
+    class contains methods to deal with rasters and netcdf files, change projection and coordinate
+    systems.
+    """
 
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
@@ -95,7 +99,6 @@ class Dataset:
         ]
 
         self._no_data_value = no_data_value
-
         self._band_names = self._get_band_names()
 
     def __str__(self):
@@ -511,6 +514,79 @@ class Dataset:
             dst._set_no_data_value(no_data_value=no_data_value)
 
         return dst
+
+    def _iloc(self, i) -> gdal.Band:
+        """_iloc.
+
+            - Access dataset array using index.
+
+        Parameters
+        ----------
+        i: [int]
+            index, the index starts from 0.
+
+        Returns
+        -------
+        Band:
+            Gdal Band.
+        """
+        if i > self.band_count - 1:
+            raise IndexError(
+                f"index {i} is out of bounds for axis 0 with size {self.band_count}"
+            )
+        band = self.raster.GetRasterBand(i + 1)
+        return band
+
+    def stats(self, band: int = None) -> DataFrame:
+        """stats.
+
+            - Get statistics of a band.
+                [min, max, mean, std]
+        Parameters
+        ----------
+        band: [int]
+            band index, if None the statistics of all bands will be returned.
+
+        Returns
+        -------
+        DataFrame:
+            DataFrame of statistics values of each band, the dataframe has the following columns:
+            [min, max, mean, std], the index of the dataframe is the band names.
+                           min         max        mean       std
+            Band_1  270.369720  270.762299  270.551361  0.154270
+            Band_2  269.611938  269.744751  269.673645  0.043788
+            Band_3  273.641479  274.168823  273.953979  0.198447
+            Band_4  273.991516  274.540344  274.310669  0.205754
+        """
+        if band is None:
+            df = pd.DataFrame(
+                index=self.band_names,
+                columns=["min", "max", "mean", "std"],
+                dtype=np.float32,
+            )
+            for i in range(self.band_count):
+                df.iloc[i, :] = self._get_stats(i)
+        else:
+            df = pd.DataFrame(
+                index=[self.band_names[band]],
+                columns=["min", "max", "mean", "std"],
+                dtype=np.float32,
+            )
+            df.iloc[0, :] = self._get_stats(band)
+
+        return df
+
+    def _get_stats(self, band: int = None):
+        """_get_stats."""
+        band_i = self._iloc(band)
+        vals = band_i.GetStatistics(True, True)
+        if sum(vals) == 0:
+            warnings.warn(
+                f"Band {band} has no statistics, and the statistics are going to be calculate"
+            )
+            vals = band_i.ComputeStatistics(False)
+
+        return vals
 
     def read_array(self, band: int = None) -> np.ndarray:
         """Read Array

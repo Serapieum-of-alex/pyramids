@@ -16,7 +16,7 @@ dataset
 - The raster could have different variables (like netcdf file) and these variable can have similar or different
     dimensions.
 
-- DataCube represent a stack of rasters which have the same dimensions, contains data that have same dimensions (rows
+- DataCube represent a stack of raster's which have the same dimensions, contains data that have same dimensions (rows
     & columns).
 
 
@@ -24,7 +24,7 @@ dataset
 Dataset
 *******
 
-- The main purpose of the `Dataset` object is to deal with raster objects, single or multibands, has variables/subsets
+- The main purpose of the `Dataset` object is to deal with raster objects, single or multi-bands, has variables/subsets
     like netcdf file or has one variable like most GeoTIFF files.
 
 .. image:: /images/dataset/dataset.png
@@ -86,13 +86,13 @@ read_file
                 cbar_label="Elevation (m)")
 
 
-Dataset objest attributes
+Dataset object attributes
 =========================
 
 - The Dataset object has  the following attributes, which enables you to access all the stored data in you raster
     file (GeoTIFF/NetCDF/ASCII)
 
-.. image:: /images/schemes/dataset-arrributes.png
+.. image:: /images/schemes/dataset-attributes.png
    :width: 150pt
    :alt: dataset attributes
    :align: center
@@ -170,7 +170,7 @@ pivot_point
 geotransform
 ------------
 - geotransform data of the upper left corner of the raster
-    (minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize).
+    (minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size).
 
 .. code:: py
 
@@ -389,8 +389,8 @@ Parameters
     arr : [array], optional
         numpy array. The default is ''.
     geo : [list], optional
-        geotransform list [minimum lon, pixelsize, rotation, maximum lat, rotation,
-            pixelsize]. The default is ''.
+        geotransform list [minimum lon, pixel-size, rotation, maximum lat, rotation,
+            pixel-size]. The default is ''.
     nodatavalue : TYPE, optional
         DESCRIPTION. The default is -9999.
     epsg: [integer]
@@ -408,7 +408,7 @@ Returns
 
 .. code:: py
 
-    src = Raster.createRaster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=nodataval)
+    src = Raster.createRaster(arr=arr, geo=geo, epsg=str(epsg), nodatavalue=no_data_val)
     Map.plot(src, title="Flow Accumulation")
 
 
@@ -418,7 +418,7 @@ Returns
 dataset_like
 ------------
 - `dataset_like` method creates a Geotiff raster like another input raster, new raster will have the same projection,
-    coordinates or the top left corner of the original raster, cell size, nodata velue, and number of rows and columns
+    coordinates or the top left corner of the original raster, cell size, nodata value, and number of rows and columns
     the raster and the dem should have the same number of columns and rows
 
 Parameters
@@ -533,10 +533,28 @@ read_array
         -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
         -3.402823e+38, -3.402823e+38]], dtype=float32)
 
+Band statistics (stats)
+---------------
+- To get a summary statistics (min, max, mean, std) of a band/all bands.
+- The method returns a `DataFrame` of statistics values of each band, the dataframe has the following columns:
+    [min, max, mean, std], the index of the dataframe is the band names.
+
+.. code:: py
+    era5_image = "tests/data/geotiff/era5_land_monthly_averaged.tif"
+    dataset = Dataset.read_file(era5_image)
+    stats = dataset.stats()
+    print(stats)
+    >>>                min         max        mean       std
+    >>>     Band_1  270.369720  270.762299  270.551361  0.154270
+    >>>     Band_2  269.611938  269.744751  269.673645  0.043788
+    >>>     Band_3  273.641479  274.168823  273.953979  0.198447
+    >>>     Band_4  273.991516  274.540344  274.310669  0.205754
+
+
 Write raster to disk
 ====================
 
-to wtite the dataset object to disk using any of the raster formats (GeoTIFF/NetCDF/ASCII), you can use the `to_file`
+to write the dataset object to disk using any of the raster formats (GeoTIFF/NetCDF/ASCII), you can use the `to_file`
 method.
 
 .. image:: /images/schemes/write-to-disk.png
@@ -552,7 +570,7 @@ to_file
 Parameters
 ^^^^^^^^^^
     path: [str]
-        a path includng the name of the raster and extention.
+        a path including the name of the raster and extension.
         >>> path = "data/cropped.tif"
     driver: [str]
             driver = "geotiff"/"ascii"/"netcdf".
@@ -612,7 +630,7 @@ Spatial properties
 
 convert_longitude
 -----------------
-- some files (espicially netcdf files) uses longitude values from 0 degrees to 360 degrees, instead of the usual,
+- some files (especially netcdf files) uses longitude values from 0 degrees to 360 degrees, instead of the usual,
 GIS-standard, arrangement of -180 degrees to 180 degrees for longitude centered on the Prime Meridian, and -90 degrees
 to 90 degrees for latitude centered on the Equator. the `convert_longitude` method corrects such behavior.
 
@@ -686,8 +704,8 @@ Returns
     dst = Raster.resampleRaster(src, cell_size, resample_technique="bilinear")
 
     dst_arr = Raster.read_array(dst)
-    _, newgeo = Raster.getProjectionData(dst)
-    print("New cell size is " + str(newgeo[1]))
+    _, new_geo = Raster.getProjectionData(dst)
+    print("New cell size is " + str(new_geo[1]))
     Map.plot(dst, title="Flow Accumulation")
 
     Original Cell Size =4000.0
@@ -700,7 +718,7 @@ Returns
 to_crs
 ------
 
-- `to_crs` reprojects a raster to any projection (default the WGS84 web mercator projection, without resampling)
+- `to_crs` re-projects a raster to any projection (default the WGS84 web mercator projection, without resampling)
     The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
 Parameters
@@ -714,7 +732,7 @@ Parameters
         "nearest neibour" for nearest neighbour,"cubic" for cubic convolution,
         "bilinear" for bilinear
     maintain_alighment : [bool]
-        True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
+        True to maintain the number of rows and columns of the raster the same after re-projection. Default is False.
 
 Returns
 ^^^^^^^
@@ -726,9 +744,9 @@ Returns
     print("current EPSG - " + str(epsg))
     to_epsg = 4326
     dst = Raster.projectRaster(src, to_epsg=to_epsg, option=1)
-    newepsg, newgeo = Raster.getProjectionData(dst)
-    print("New EPSG - " + str(newepsg))
-    print("New Geotransform - " + str(newgeo))
+    new_epsg, new_geo = Raster.getProjectionData(dst)
+    print("New EPSG - " + str(new_epsg))
+    print("New Geotransform - " + str(new_geo))
 
     current EPSG - 32618
     New EPSG - 4326
@@ -740,9 +758,9 @@ Returns
 .. code:: py
 
     dst = Raster.projectRaster(src, to_epsg=to_epsg, option=2)
-    newepsg, newgeo = Raster.getProjectionData(dst)
-    print("New EPSG - " + str(newepsg))
-    print("New Geotransform - " + str(newgeo))
+    new_epsg, new_geo = Raster.getProjectionData(dst)
+    print("New EPSG - " + str(new_epsg))
+    print("New Geotransform - " + str(new_geo))
 
     New EPSG - 4326
     New Geotransform - (-75.60441003848668, 0.03611587177268461, 0.0, 4.704560448076901, 0.0, -0.03611587177268461)
@@ -754,9 +772,9 @@ crop
 
 Crop array using a raster
 ^^^^^^^^^^^^^^^^^^^^^^^^^
-- `crop` clip/crop (matches the location of nodata value from src raster to dst raster), Both rasters have to
+- `crop` clip/crop (matches the location of nodata value from src raster to dst raster), Both raster's have to
     have the same dimensions (no of rows & columns) so MatchRasterAlignment should be used prior to this function to
-    align both rasters.
+    align both raster's.
 
 Parameters
 """"""""""
@@ -1022,7 +1040,7 @@ Parameters
 path: [str]
     a path to ascii file.
 classes_map: [str/array]
-    a path includng the name of the ASCII and extention, or an array
+    a path including the name of the ASCII and extension, or an array
     >>> path = "classes.asc"
 exclude_value: [Numeric]
     values you want to exclude from extracted values.
@@ -1034,7 +1052,7 @@ occupied_cells_only: [Bool]
 Returns
 ^^^^^^^
 ExtractedValues: [Dict]
-    dictonary with a list of values in the basemap as keys
+    dictionary with a list of values in the basemap as keys
         and for each key a list of all the intersected values in the
         maps from the path.
 NonZeroCells: [dataframe]
@@ -1057,8 +1075,8 @@ To extract the
     ExtractedValues, Cells = R.OverlayMap(Path+"DepthMax22489.zip", BaseMapF,ExcludedValue, Compressed,OccupiedCellsOnly)
 
 
-Mathmatical operations
-======================
+Mathematical operations
+=======================
 
 .. image:: /images/schemes/math-operations.png
    :width: 150pt
@@ -1127,7 +1145,7 @@ Returns
 
 .. code:: py
 
-    path = "examples/data/fillrasterexample.tif"
+    path = "examples/data/fill-raster-example.tif"
     value = 20
     Raster.rasterFill(src, value, save_to=path)
 
@@ -1191,7 +1209,7 @@ color_table
 -----------
 
 - The `color_table` property in the `Dataset` object can assign a certain symbology to each band in the raster.
-- To assign a certain symbology you have to have to create a `Dataframe` containing the values and coresponding
+- To assign a certain symbology you have to have to create a `Dataframe` containing the values and corresponding
     colors (hexadecimal number) for each band in the raster.
 - assigning a color_table to the raster file will help when opening the file in GIS software like QGIS or ArcGIS,
     the raster will be displayed with the colors you assigned to it.without the need to assign the colors manually.

@@ -1217,3 +1217,50 @@ class TestTiling:
             (12, 6, 2, 6),
             (12, 12, 2, 1),
         ]
+
+
+class TestIloc:
+    """extract band from a dataset."""
+
+    def test_iloc_out_of_bound_index(
+        self,
+        src: gdal.Dataset,
+        src_no_data_value: float,
+    ):
+        dataset = Dataset(src)
+        try:
+            dataset._iloc(1)
+        except IndexError:
+            pass
+
+    def test_iloc(
+        self,
+        src: gdal.Dataset,
+        src_no_data_value: float,
+    ):
+        dataset = Dataset(src)
+        band = dataset._iloc(0)
+        assert isinstance(band, gdal.Band)
+
+
+class TestStats:
+    def test_all_bands(self, era5_image: gdal.Dataset, era5_image_stats: DataFrame):
+        dataset = Dataset(era5_image)
+        stats = dataset.stats()
+        assert isinstance(stats, DataFrame)
+        assert all(stats.columns == ["min", "max", "mean", "std"])
+        assert np.isclose(
+            stats.values, era5_image_stats.values, rtol=0.000001, atol=0.00001
+        ).all()
+
+    def test_specific_band(self, era5_image: gdal.Dataset, era5_image_stats: DataFrame):
+        dataset = Dataset(era5_image)
+        stats = dataset.stats(0)
+        assert isinstance(stats, DataFrame)
+        assert all(stats.columns == ["min", "max", "mean", "std"])
+        assert np.isclose(
+            stats.values,
+            era5_image_stats.iloc[0, :].values,
+            rtol=0.000001,
+            atol=0.00001,
+        ).all()
