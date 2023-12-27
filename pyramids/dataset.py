@@ -59,7 +59,11 @@ gdal.UseExceptions()
 
 
 class Dataset:
-    """Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate systems."""
+    """Dataset.
+
+    class contains methods to deal with rasters and netcdf files, change projection and coordinate
+    systems.
+    """
 
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
@@ -95,7 +99,6 @@ class Dataset:
         ]
 
         self._no_data_value = no_data_value
-
         self._band_names = self._get_band_names()
 
     def __str__(self):
@@ -511,6 +514,28 @@ class Dataset:
             dst._set_no_data_value(no_data_value=no_data_value)
 
         return dst
+
+    def _iloc(self, i) -> gdal.Band:
+        """iloc.
+
+            - Access dataset array using index.
+
+        Parameters
+        ----------
+        i: [int]
+            index, the index starts from 0.
+
+        Returns
+        -------
+        Band:
+            Gdal Band.
+        """
+        if i > self.band_count - 1:
+            raise IndexError(
+                f"index {i} is out of bounds for axis 0 with size {self.band_count}"
+            )
+        band = self.raster.GetRasterBand(i + 1)
+        return band
 
     def read_array(self, band: int = None) -> np.ndarray:
         """Read Array

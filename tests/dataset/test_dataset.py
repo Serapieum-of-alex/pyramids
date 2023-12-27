@@ -1217,3 +1217,27 @@ class TestTiling:
             (12, 6, 2, 6),
             (12, 12, 2, 1),
         ]
+
+
+class TestIloc:
+    """extract band from a dataset."""
+
+    def test_iloc_out_of_bound_index(
+        self,
+        src: gdal.Dataset,
+        src_no_data_value: float,
+    ):
+        dataset = Dataset(src)
+        try:
+            dataset._iloc(1)
+        except IndexError:
+            pass
+
+    def test_iloc(
+        self,
+        src: gdal.Dataset,
+        src_no_data_value: float,
+    ):
+        dataset = Dataset(src)
+        band = dataset._iloc(0)
+        assert isinstance(band, gdal.Band)
