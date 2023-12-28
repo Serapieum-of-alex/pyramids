@@ -2402,7 +2402,12 @@ class Dataset:
         dst_obj = Dataset(dst)
         return dst_obj
 
-    def crop(self, mask: Union[GeoDataFrame, FeatureCollection], touch: bool = True):
+    def crop(
+        self,
+        mask: Union[GeoDataFrame, FeatureCollection],
+        touch: bool = True,
+        inplace: bool = False,
+    ):
         """crop.
 
             clip the Dataset object using a polygon/another raster (both rasters does not have to be aligned).
@@ -2414,6 +2419,8 @@ class Dataset:
         touch: [bool]
             to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
             Default is True.
+        inplace: [bool]
+            True to make the changes in place.
 
         Returns
         -------
@@ -2428,6 +2435,11 @@ class Dataset:
             raise TypeError(
                 "The second parameter: mask could be either GeoDataFrame or Dataset object"
             )
+
+        if not inplace:
+            return dst
+        else:
+            self.__init__(dst)
 
         return dst
 
