@@ -729,7 +729,7 @@ Parameters
     method: [String]
         resampling technique default is "Nearest"
         https://gisgeography.com/raster-resampling/
-        "nearest neibour" for nearest neighbour,"cubic" for cubic convolution,
+        "nearest neigbour" for nearest neighbour,"cubic" for cubic convolution,
         "bilinear" for bilinear
     maintain_alighment : [bool]
         True to maintain the number of rows and columns of the raster the same after re-projection. Default is False.

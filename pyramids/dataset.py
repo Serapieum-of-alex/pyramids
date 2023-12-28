@@ -1646,8 +1646,8 @@ class Dataset:
                 >>> print(gdf.columns)
                 >>> Index(['Band_1', 'geometry'], dtype='object')
 
-        the resulted geodataframe will have the band value under the name of the band (if the raster file has a metadata,
-        if not, the bands will be indexed from 1 to the number of bands)
+        the resulted geodataframe will have the band value under the name of the band (if the raster file has a
+        metadata, if not, the bands will be indexed from 1 to the number of bands)
         """
         # Get raster band names. open the dataset using gdal.Open
         band_names = self.band_names
@@ -1661,7 +1661,7 @@ class Dataset:
         if tile:
             df_list = []  # DataFrames of each tile.
             for arr in Dataset.get_tile(src.raster):
-                # Assume multiband
+                # Assume multi-band
                 idx = (1, 2)
                 if arr.ndim == 2:
                     # Handle single band rasters
@@ -1792,7 +1792,7 @@ class Dataset:
         dst = Dataset.dataset_like(self, src_array, driver=driver, path=path)
         return dst
 
-    def resample(self, cell_size: Union[int, float], method: str = "nearest neibour"):
+    def resample(self, cell_size: Union[int, float], method: str = "nearest neigbour"):
         """resample.
 
         resample method reproject a raster to any projection
@@ -1807,7 +1807,7 @@ class Dataset:
         method : [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "nearest neibour" for nearest neighbour,"cubic" for cubic convolution,
+            "nearest neigbour" for nearest neighbour,"cubic" for cubic convolution,
             "bilinear" for bilinear
 
         Returns
@@ -1871,7 +1871,7 @@ class Dataset:
     def to_crs(
         self,
         to_epsg: int,
-        method: str = "nearest neibour",
+        method: str = "nearest neigbour",
         maintain_alighment: int = False,
         inplace: bool = False,
     ):
@@ -1888,7 +1888,7 @@ class Dataset:
         method: [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "nearest neibour" for nearest neighbour,"cubic" for cubic convolution,
+            "nearest neigbour" for nearest neighbour,"cubic" for cubic convolution,
             "bilinear" for bilinear
         maintain_alighment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
@@ -1934,7 +1934,7 @@ class Dataset:
             return dst_obj
 
     def _reproject_with_ReprojectImage(
-        self, to_epsg: int, method: str = "nearest neibour"
+        self, to_epsg: int, method: str = "nearest neigbour"
     ) -> object:
         src_gt = self.geotransform
         src_x = self.columns
@@ -3716,7 +3716,7 @@ class Datacube:
     def to_crs(
         self,
         to_epsg: int = 3857,
-        method: str = "nearest neibour",
+        method: str = "nearest neigbour",
         maintain_alighment: int = False,
     ):
         """to_epsg.
