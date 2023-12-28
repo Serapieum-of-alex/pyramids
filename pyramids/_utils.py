@@ -121,7 +121,7 @@ DTYPE_CONVERSION_DF = DataFrame(
 )
 
 INTERPOLATION_METHODS = {
-    "nearest neibour": gdal.GRA_NearestNeighbour,
+    "nearest neigbour": gdal.GRA_NearestNeighbour,
     "cubic": gdal.GRA_Cubic,
     "bilinear": gdal.GRA_Bilinear,
 }

@@ -714,9 +714,9 @@ class TestCrop:
         src_no_data_value: float,
     ):
         mask_obj = Dataset(src)
-        aligned_raster = Dataset(aligned_raster)
-        croped = aligned_raster._crop_alligned(mask_obj)
-        dst_arr_cropped = croped.raster.ReadAsArray()
+        aligned_raster: Dataset = Dataset(aligned_raster)
+        cropped: Dataset = aligned_raster._crop_alligned(mask_obj)
+        dst_arr_cropped = cropped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
@@ -731,11 +731,11 @@ class TestCrop:
         mask_obj = Dataset(sentinel_crop)
         aligned_raster = Dataset(sentinel_raster)
 
-        croped = aligned_raster._crop_alligned(mask_obj)
-        dst_arr_cropped = croped.raster.ReadAsArray()
+        cropped: Dataset = aligned_raster._crop_alligned(mask_obj)
+        dst_arr_cropped = cropped.raster.ReadAsArray()
         # filter the no_data_value out of the array
         arr = dst_arr_cropped[
-            ~np.isclose(dst_arr_cropped, croped.no_data_value[0], rtol=0.001)
+            ~np.isclose(dst_arr_cropped, cropped.no_data_value[0], rtol=0.001)
         ]
         assert np.array_equal(sentinel_crop_arr_without_no_data_value, arr)
 
@@ -746,8 +746,8 @@ class TestCrop:
         src_no_data_value: float,
     ):
         aligned_raster = Dataset(aligned_raster)
-        croped = aligned_raster._crop_alligned(src_arr, mask_noval=src_no_data_value)
-        dst_arr_cropped = croped.raster.ReadAsArray()
+        cropped = aligned_raster._crop_alligned(src_arr, mask_noval=src_no_data_value)
+        dst_arr_cropped = cropped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
@@ -757,11 +757,11 @@ class TestCrop:
         self,
         soil_raster: gdal.Dataset,
         aligned_raster: gdal.Dataset,
-        crop_saveto: str,
+        crop_save_to: str,
     ):
         # the soil raster has epsg=2116 and
         # Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
-        # the aligned_raster has a epsg = 32618 and
+        # the aligned_raster has an epsg = 32618 and
         # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
         mask_obj = Dataset(soil_raster)
         aligned_raster = Dataset(aligned_raster)
@@ -780,17 +780,67 @@ class TestCropWithPolygon:
         assert cropped_raster.geotransform == src_obj.geotransform
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
-    def test_by_warp(
+    def test_inplace(
         self,
         rhine_raster: gdal.Dataset,
         polygon_mask: gpd.GeoDataFrame,
+        crop_by_wrap_touch_true_result: gdal.Dataset,
     ):
+        """
+        Check that the inplace option is working
+        """
+        dataset = Dataset(rhine_raster)
+        cells = dataset.count_domain_cells()
+        dataset.crop(polygon_mask, touch=True, inplace=True)
+        new_cells = dataset.count_domain_cells()
+        assert not cells == new_cells
+
+    def test_by_warp_touch_true(
+        self,
+        rhine_raster: gdal.Dataset,
+        polygon_mask: gpd.GeoDataFrame,
+        crop_by_wrap_touch_true_result: gdal.Dataset,
+    ):
+        """
+        when the touch option is True in the function the cells that touches the mask polygon but does not lie
+        entirely inside the mask will be included
+
+        Check the number of the cropped cells and the no_data_value
+        """
         src_obj = Dataset(rhine_raster)
-        cropped_raster = src_obj._crop_with_polygon_warp(polygon_mask)
+        cropped_raster = src_obj._crop_with_polygon_warp(polygon_mask, touch=True)
+
+        validation_dataset = Dataset(crop_by_wrap_touch_true_result)
+        assert (
+            validation_dataset.count_domain_cells()
+            == cropped_raster.count_domain_cells()
+        )
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
-    def test_with_irrigular_polygon(
+    def test_by_warp_touch_false(
+        self,
+        rhine_raster: gdal.Dataset,
+        polygon_mask: gpd.GeoDataFrame,
+        crop_by_wrap_touch_false_result: gdal.Dataset,
+    ):
+        """
+        when the touch option is False in the function only the cells that lie entirely inside the mask will be included
+
+        Check the number of the cropped cells and the no_data_value
+        """
+        src_obj = Dataset(rhine_raster)
+        cropped_raster = src_obj._crop_with_polygon_warp(polygon_mask, touch=False)
+
+        validation_dataset = Dataset(crop_by_wrap_touch_false_result)
+        assert (
+            validation_dataset.count_domain_cells()
+            == cropped_raster.count_domain_cells()
+        )
+        assert isinstance(cropped_raster.raster, gdal.Dataset)
+        assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+
+    def test_with_irregular_polygon(
         self,
         raster_1band_coello_gdal_dataset: Dataset,
         rasterized_mask_values: np.ndarray,
@@ -803,14 +853,17 @@ class TestCropWithPolygon:
         rasterized_mask_values: array for comparison
         """
         dataset = Dataset(raster_1band_coello_gdal_dataset)
-        # test with irrigular mask polygon
-        cropped = dataset._crop_with_polygon_warp(coello_irregular_polygon_gdf)
+        # test with irregular mask polygon
+        cropped = dataset._crop_with_polygon_warp(
+            coello_irregular_polygon_gdf, touch=False
+        )
+
         assert isinstance(cropped, Dataset)
         arr = cropped.raster.ReadAsArray()
         values = arr[~np.isclose(arr, dataset.no_data_value[0], rtol=0.0001)]
         assert np.array_equal(
             values, rasterized_mask_values
-        ), "the extracted values in the dataframe does not equa the real values in the array"
+        ), "the extracted values in the dataframe does not equal the real values in the array"
 
 
 class TestCluster2:
@@ -927,7 +980,7 @@ class TestToFeatureCollection:
     #     )
 
     class TestWithMask:
-        def test_polygon_entirly_inside_raster(
+        def test_polygon_entirely_inside_raster(
             self,
             raster_1band_coello_gdal_dataset: Dataset,
             polygon_corner_coello_gdf: GeoDataFrame,
@@ -941,27 +994,21 @@ class TestToFeatureCollection:
             """
             dataset = Dataset(raster_1band_coello_gdal_dataset)
             gdf = dataset.to_feature_collection(
-                polygon_corner_coello_gdf, add_geometry="Point"
+                polygon_corner_coello_gdf, add_geometry="Point", touch=False
             )
 
             poly_gdf = dataset.to_feature_collection(
-                polygon_corner_coello_gdf, add_geometry="Polygon"
+                polygon_corner_coello_gdf, add_geometry="Polygon", touch=False
             )
             assert isinstance(gdf, GeoDataFrame)
             assert isinstance(poly_gdf, GeoDataFrame)
-            assert np.array_equal(gdf["Band_1"].values, rasterized_mask_values), (
-                "the extracted values in the dataframe "
-                "does not "
-                "equa the real "
-                "values in the array"
-            )
+            assert np.array_equal(
+                gdf["Band_1"].values, rasterized_mask_values
+            ), "the extracted values in the dataframe does not equal the real values in the array"
             assert all(gdf["geometry"].geom_type == "Point")
-            assert np.array_equal(poly_gdf["Band_1"].values, rasterized_mask_values), (
-                "the extracted values in the dataframe "
-                "does not "
-                "equa the real "
-                "values in the array"
-            )
+            assert np.array_equal(
+                poly_gdf["Band_1"].values, rasterized_mask_values
+            ), "the extracted values in the dataframe does not equal the real values in the array"
             assert all(poly_gdf["geometry"].geom_type == "Polygon")
 
         def test_polygon_partly_outside_raster(
@@ -979,10 +1026,10 @@ class TestToFeatureCollection:
             """
             dataset = Dataset(raster_1band_coello_gdal_dataset)
             gdf = dataset.to_feature_collection(
-                coello_irregular_polygon_gdf, add_geometry="Point"
+                coello_irregular_polygon_gdf, add_geometry="Point", touch=False
             )
             poly_gdf = dataset.to_feature_collection(
-                coello_irregular_polygon_gdf, add_geometry="Polygon"
+                coello_irregular_polygon_gdf, add_geometry="Polygon", touch=False
             )
             assert isinstance(gdf, GeoDataFrame)
             assert isinstance(poly_gdf, GeoDataFrame)
@@ -1263,4 +1310,33 @@ class TestStats:
             era5_image_stats.iloc[0, :].values,
             rtol=0.000001,
             atol=0.00001,
+        ).all()
+
+    def test_all_bands_with_mask(
+        self,
+        era5_image: gdal.Dataset,
+        era5_image_stats: DataFrame,
+        era5_mask: GeoDataFrame,
+    ):
+        """
+        Test the stats function with a mask.
+        The mask covers only the second row of the array, the test checks if the mean of the second row is equal to the
+        mean calculated by the stats function.
+        """
+        dataset = Dataset(era5_image)
+        stats = dataset.stats(mask=era5_mask)
+        assert isinstance(stats, DataFrame)
+        assert all(stats.columns == ["min", "max", "mean", "std"])
+        arr = dataset.read_array()
+        mean = arr[:, 1, :].mean(axis=1)
+        std = arr[:, 1, :].std(axis=1)
+        min_val = arr[:, 1, :].min(axis=1)
+        max_val = arr[:, 1, :].max(axis=1)
+        assert np.isclose(stats["mean"].values, mean, rtol=0.000001, atol=0.00001).all()
+        assert np.isclose(stats["std"].values, std, rtol=0.000001, atol=0.00001).all()
+        assert np.isclose(
+            stats["min"].values, min_val, rtol=0.000001, atol=0.00001
+        ).all()
+        assert np.isclose(
+            stats["max"].values, max_val, rtol=0.000001, atol=0.00001
         ).all()

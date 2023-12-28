@@ -318,7 +318,7 @@ class TestCrop:
 
         cube = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         cube.open_datacube()
-        cube.crop(polygon_mask, inplace=True)
+        cube.crop(polygon_mask, inplace=True, touch=False)
         # cube.to_file(crop_aligned_folder_saveto)
         arr = cube.values[0, :, :]
         no_data_value = cube.base.no_data_value[0]
