@@ -46,18 +46,18 @@ Installing pyramids
 Installing `pyramids` from the `conda-forge` channel can be achieved by:
 
 ```
-conda install -c conda-forge pyramids=0.5.2
+conda install -c conda-forge pyramids=0.5.3
 ```
 
-It is possible to list all of the versions of `pyramids` available on your platform with:
+It is possible to list all the versions of `pyramids` available on your platform with:
 
 ```
 conda search pyramids --channel conda-forge
 ```
 
-## Install from Github
+## Install from GitHub
 
-to install the last development to time you can install the library from github
+to install the last development to time, you can install the library from GitHub
 
 ```
 pip install git+https://github.com/Serapieum-of-alex/pyramids
@@ -65,10 +65,10 @@ pip install git+https://github.com/Serapieum-of-alex/pyramids
 
 ## pip
 
-to install the last release you can easly use pip
+to install the last release, you can easily use pip
 
 ```
-pip install pyramids-gis==0.5.2
+pip install pyramids-gis==0.5.3
 ```
 
 Quick start

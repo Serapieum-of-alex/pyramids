@@ -10,7 +10,7 @@ History
 0.2.9 (2022-12-19)
 ------------------
 
-* Use environment.yaml and requirements.txt instead of pyproject.toml and replace poetry env byconda env
+* Use environment.yaml and requirements.txt instead of pyproject.toml and replace poetry env by conda env
 
 0.2.10 (2022-12-25)
 ------------------
@@ -37,7 +37,7 @@ History
 0.3.1 (2023-01-25)
 ------------------
 * add pyarrow to use parquet data type for saving dataframes and geodataframes
-* add H3 indexing package, and add new module indexing with functions to convert geometries to indeces back and forth.
+* add H3 indexing package, and add new module indexing with functions to convert geometries to indices back and forth.
 * fix bug in calculating pivot point of the netcdf file
 * rasterToDataFrame function will create geometries of the cells only based on the add_geometry parameter.
 
@@ -70,7 +70,7 @@ History
 * add cluster method to dataset class.
 * time_stamp attribute returns None if there is no time_stamp.
 * restructure the no_data_value related functions.
-* plot function can plot rgb imagr for multi-band rasters.
+* plot function can plot rgb image for multi-band rasters.
 * to_file detect the driver type from the extension in the path.
 
 0.4.2 (2023-04-27)
@@ -84,10 +84,10 @@ History
 ------------------
 Dataset
 """""""
-* The dtype attribure is not initialized in the __init__, but initialized when using the dtype property.
+* The dtype attribute is not initialized in the __init__, but initialized when using the dtype property.
 * Create band_names setter method.
-* add gdal_dtype, numpy_dtype, and dtype arrtibute to change between the dtype (data type general name), and the coresponding data type in numpy and gdal.
-* Create color_table attribure, getter & setter property to set a symbology (assign color to different values in each band).
+* add gdal_dtype, numpy_dtype, and dtype attribute to change between the dtype (data type general name), and the corresponding data type in numpy and gdal.
+* Create color_table attribute, getter & setter property to set a symbology (assign color to different values in each band).
 * The read_array method returns array with the same type as the dtype of the first band in the raster.
 * add a setter method to the band_names property.
 * The methods (create_driver_from_scratch, get_band_names) is converted to private method.
@@ -101,13 +101,13 @@ Dataset
 
 DataCube
 """"""""
-* rename the read_separate_files to read_multiple_files, and enable it to use regex strigs to filter files in a given directory.
+* rename the read_separate_files to read_multiple_files, and enable it to use regex strings to filter files in a given directory.
 * rename read_dataset to open_datacube.
 * rename the data attribute to values
 
 FeatureCollection
 """""""""""""""""
-* Add a pivot_point attribure to return the top left corner/first coordinates of the polygon.
+* Add a pivot_point attribute to return the top left corner/first coordinates of the polygon.
 * Add a layers_count property to return the number of layers in the file.
 * Add a layer_names property to return the layers names.
 * Add a column property to return column names.
@@ -130,3 +130,13 @@ Dataset
 """""""
 * add _iloc method to get the gdal band object by index.
 * add stats method to calculate the statistics of the raster bands.
+
+0.5.3 (2023-12-28)
+------------------
+Dataset
+"""""""
+* Introduce a new parameter touch to the crop method in the Dataset to enable considering the cells that most of the
+cell lies inside the mask, not only the cells that lie entirely inside the mask.
+* Introduce a new parameter inplace to the crop method in the Dataset to enable replacing the dataset object with the
+new cropped dataset.
+* Adjust the stats method to take a mask to calculate the stats inside this mask.
