@@ -2436,12 +2436,10 @@ class Dataset:
                 "The second parameter: mask could be either GeoDataFrame or Dataset object"
             )
 
-        if not inplace:
-            return dst
+        if inplace:
+            self.__init__(dst.raster)
         else:
-            self.__init__(dst)
-
-        return dst
+            return dst
 
     @staticmethod
     def _nearest_neighbour(

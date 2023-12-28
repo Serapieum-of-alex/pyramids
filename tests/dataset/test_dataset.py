@@ -715,8 +715,8 @@ class TestCrop:
     ):
         mask_obj = Dataset(src)
         aligned_raster = Dataset(aligned_raster)
-        croped = aligned_raster._crop_alligned(mask_obj)
-        dst_arr_cropped = croped.raster.ReadAsArray()
+        cropped = aligned_raster._crop_alligned(mask_obj)
+        dst_arr_cropped = cropped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
@@ -731,11 +731,11 @@ class TestCrop:
         mask_obj = Dataset(sentinel_crop)
         aligned_raster = Dataset(sentinel_raster)
 
-        croped = aligned_raster._crop_alligned(mask_obj)
-        dst_arr_cropped = croped.raster.ReadAsArray()
+        cropped = aligned_raster._crop_alligned(mask_obj)
+        dst_arr_cropped = cropped.raster.ReadAsArray()
         # filter the no_data_value out of the array
         arr = dst_arr_cropped[
-            ~np.isclose(dst_arr_cropped, croped.no_data_value[0], rtol=0.001)
+            ~np.isclose(dst_arr_cropped, cropped.no_data_value[0], rtol=0.001)
         ]
         assert np.array_equal(sentinel_crop_arr_without_no_data_value, arr)
 
@@ -779,6 +779,21 @@ class TestCropWithPolygon:
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.geotransform == src_obj.geotransform
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+
+    def test_inplace(
+        self,
+        rhine_raster: gdal.Dataset,
+        polygon_mask: gpd.GeoDataFrame,
+        crop_by_wrap_touch_true_result: gdal.Dataset,
+    ):
+        """
+        just check that the inplace option is working
+        """
+        dataset = Dataset(rhine_raster)
+        cells = dataset.count_domain_cells()
+        dataset.crop(polygon_mask, touch=True, inplace=True)
+        new_cells = dataset.count_domain_cells()
+        assert not cells == new_cells
 
     def test_by_warp_touch_true(
         self,
