@@ -1610,6 +1610,7 @@ class Dataset:
         add_geometry: str = None,
         tile: bool = False,
         tile_size: int = 1500,
+        touch: bool = True,
     ) -> Union[DataFrame, GeoDataFrame]:
         """Convert a raster to a vector.
 
@@ -1634,6 +1635,9 @@ class Dataset:
             True to use tiles in extracting the values from the raster. Default is False.
         tile_size: [int]
             tile size. Default is 1500.
+        touch: [bool]
+            to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
+            Default is True.
 
         Returns
         -------
@@ -1650,7 +1654,7 @@ class Dataset:
 
         # Create a mask from the pixels touched by the vector_mask.
         if vector_mask is not None:
-            src = self.crop(mask=vector_mask)
+            src = self.crop(mask=vector_mask, touch=touch)
         else:
             src = self
 
@@ -2357,7 +2361,9 @@ class Dataset:
 
         return cropped_obj
 
-    def _crop_with_polygon_warp(self, feature: Union[FeatureCollection, GeoDataFrame]):
+    def _crop_with_polygon_warp(
+        self, feature: Union[FeatureCollection, GeoDataFrame], touch: bool = True
+    ):
         """Crop raster with polygon.
 
             - do not convert the polygon into a raster but rather use it directly to crop the raster using the
@@ -2366,10 +2372,14 @@ class Dataset:
         Parameters
         ----------
         feature: [FeatureCollection]
+                vector mask.
+        touch: [bool]
+            to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
+            Default is True.
 
         Returns
         -------
-        gdal.Dataset
+        Dataset Object.
         """
         if isinstance(feature, GeoDataFrame):
             feature = FeatureCollection(feature)
@@ -2383,7 +2393,7 @@ class Dataset:
         warp_options = gdal.WarpOptions(
             format="VRT",
             # outputBounds=feature.total_bounds,
-            cropToCutline=True,
+            cropToCutline=not touch,
             cutlineDSName=feature.file_name,
             # cutlineLayer=feature.layer_names[0],
             multithread=True,
@@ -2392,8 +2402,8 @@ class Dataset:
         dst_obj = Dataset(dst)
         return dst_obj
 
-    def crop(self, mask: Union[GeoDataFrame, FeatureCollection]):
-        """
+    def crop(self, mask: Union[GeoDataFrame, FeatureCollection], touch: bool = True):
+        """crop.
 
             clip the Dataset object using a polygon/another raster (both rasters does not have to be aligned).
 
@@ -2401,6 +2411,9 @@ class Dataset:
         ----------
         mask: [Polygon GeoDataFrame/Dataset object]
             GeodataFrame with a geometry of polygon type
+        touch: [bool]
+            to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
+            Default is True.
 
         Returns
         -------
@@ -2408,7 +2421,7 @@ class Dataset:
         """
         if isinstance(mask, GeoDataFrame):
             # dst = self._crop_with_polygon_by_rasterizing(mask)
-            dst = self._crop_with_polygon_warp(mask)
+            dst = self._crop_with_polygon_warp(mask, touch=touch)
         elif isinstance(mask, Dataset):
             dst = self._crop_with_raster(mask)
         else:
@@ -3760,7 +3773,7 @@ class Datacube:
         self._base = dst
 
     def crop(
-        self, mask: Union[Dataset, str], inplace: bool = False
+        self, mask: Union[Dataset, str], inplace: bool = False, touch: bool = True
     ) -> Union[None, Dataset]:
         """cropAlignedFolder.
 
@@ -3778,11 +3791,14 @@ class Datacube:
             is the first parameter to the function.
         inplace: [bool]
             True to make the changes in place.
+        touch: [bool]
+            to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
+            Default is True.
 
         Returns
         -------
         new rasters have the values from rasters in B_input_path with the NoDataValue in the same
-        locations like raster A.
+        locations as raster A.
 
         Examples
         --------
@@ -3793,7 +3809,7 @@ class Datacube:
         """
         for i in range(self.time_length):
             src = self.iloc(i)
-            dst = src.crop(mask)
+            dst = src.crop(mask, touch=touch)
             arr = dst.read_array()
             if i == 0:
                 # create the array

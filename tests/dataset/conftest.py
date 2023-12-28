@@ -303,7 +303,7 @@ def crop_aligned_folder_saveto() -> str:
 
 
 @pytest.fixture(scope="module")
-def crop_saveto() -> str:
+def crop_save_to() -> str:
     return "examples/data/crop_using_crop.tif"
 
 
@@ -355,6 +355,18 @@ def rasters_folder_between_dates_raster_number() -> int:
 @pytest.fixture(scope="module")
 def polygon_mask() -> gpd.GeoDataFrame:
     return gpd.read_file("tests/data/polygon_germany.geojson")
+
+
+@pytest.fixture(scope="module")
+def crop_by_wrap_touch_true_result() -> gdal.Dataset:
+    """This is the result of the Dataset._crop_with_polygon_warp function with touch=True"""
+    return gdal.Open("tests/data/crop_by_wrap_touch_true_result.tif")
+
+
+@pytest.fixture(scope="module")
+def crop_by_wrap_touch_false_result() -> gdal.Dataset:
+    """This is the result of the Dataset._crop_with_polygon_warp function with touch=True"""
+    return gdal.Open("tests/data/crop_by_wrap_touch_false_result.tif")
 
 
 @pytest.fixture(scope="module")
