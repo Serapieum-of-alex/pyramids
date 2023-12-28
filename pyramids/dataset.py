@@ -537,27 +537,32 @@ class Dataset:
         band = self.raster.GetRasterBand(i + 1)
         return band
 
-    def stats(self, band: int = None) -> DataFrame:
+    def stats(self, band: int = None, mask: GeoDataFrame = None) -> DataFrame:
         """stats.
 
-            - Get statistics of a band.
-                [min, max, mean, std]
+            - Get statistics of a band [Min, max, mean, std].
+
         Parameters
         ----------
         band: [int]
             band index, if None, the statistics of all bands will be returned.
+        mask: [Polygon GeoDataFrame/Dataset object]
+            GeodataFrame with a geometry of polygon type
 
         Returns
         -------
         DataFrame:
             DataFrame of statistics values of each band, the dataframe has the following columns:
             [min, max, mean, std], the index of the dataframe is the band names.
-                           min         max        mean       std
-            Band_1  270.369720  270.762299  270.551361  0.154270
-            Band_2  269.611938  269.744751  269.673645  0.043788
-            Band_3  273.641479  274.168823  273.953979  0.198447
-            Band_4  273.991516  274.540344  274.310669  0.205754
+            >>>                Min         max        mean       std
+            >>> Band_1  270.369720  270.762299  270.551361  0.154270
+            >>> Band_2  269.611938  269.744751  269.673645  0.043788
+            >>> Band_3  273.641479  274.168823  273.953979  0.198447
+            >>> Band_4  273.991516  274.540344  274.310669  0.205754
         """
+        if mask is not None:
+            dst = self.crop(mask, touch=True)
+
         if band is None:
             df = pd.DataFrame(
                 index=self.band_names,
@@ -565,14 +570,20 @@ class Dataset:
                 dtype=np.float32,
             )
             for i in range(self.band_count):
-                df.iloc[i, :] = self._get_stats(i)
+                if mask is not None:
+                    df.iloc[i, :] = dst._get_stats(i)
+                else:
+                    df.iloc[i, :] = self._get_stats(i)
         else:
             df = pd.DataFrame(
                 index=[self.band_names[band]],
                 columns=["min", "max", "mean", "std"],
                 dtype=np.float32,
             )
-            df.iloc[0, :] = self._get_stats(band)
+            if mask is not None:
+                df.iloc[0, :] = dst._get_stats(band)
+            else:
+                df.iloc[0, :] = self._get_stats(band)
 
         return df
 

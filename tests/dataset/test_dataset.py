@@ -1311,3 +1311,32 @@ class TestStats:
             rtol=0.000001,
             atol=0.00001,
         ).all()
+
+    def test_all_bands_with_mask(
+        self,
+        era5_image: gdal.Dataset,
+        era5_image_stats: DataFrame,
+        era5_mask: GeoDataFrame,
+    ):
+        """
+        test the stats function with a mask.
+        The mask covers only the second row of the array, the test checks if the mean of the second row is equal to the
+        mean calculated by the stats function.
+        """
+        dataset = Dataset(era5_image)
+        stats = dataset.stats(mask=era5_mask)
+        assert isinstance(stats, DataFrame)
+        assert all(stats.columns == ["min", "max", "mean", "std"])
+        arr = dataset.read_array()
+        mean = arr[:, 1, :].mean(axis=1)
+        std = arr[:, 1, :].std(axis=1)
+        min_val = arr[:, 1, :].min(axis=1)
+        max_val = arr[:, 1, :].max(axis=1)
+        assert np.isclose(stats["mean"].values, mean, rtol=0.000001, atol=0.00001).all()
+        assert np.isclose(stats["std"].values, std, rtol=0.000001, atol=0.00001).all()
+        assert np.isclose(
+            stats["min"].values, min_val, rtol=0.000001, atol=0.00001
+        ).all()
+        assert np.isclose(
+            stats["max"].values, max_val, rtol=0.000001, atol=0.00001
+        ).all()
