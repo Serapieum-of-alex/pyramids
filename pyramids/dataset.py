@@ -1,6 +1,6 @@
 """
 raster contains python functions to handle raster data align them together based on a source raster, perform any
-algebric operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
+algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
 import datetime as dt
 import os
@@ -51,7 +51,7 @@ from pyramids import _io
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog(raster_driver=True)
 
-# By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead they return an error
+# By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return an error
 # value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
 # this behavior in GDAL and OGR by calling the UseExceptions()
 gdal.UseExceptions()
@@ -61,7 +61,7 @@ gdal.UseExceptions()
 class Dataset:
     """Dataset.
 
-    class contains methods to deal with rasters and netcdf files, change projection and coordinate
+    The Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate
     systems.
     """
 
@@ -80,7 +80,7 @@ class Dataset:
         self._meta_data = src.GetMetadata()
         self._file_name = src.GetDescription()
         # projection data
-        # the epsg property returns the value of the _epsg attribute so if the projection changes in any function the
+        # the epsg property returns the value of the _epsg attribute, so if the projection changes in any function, the
         # function should also change the value of the _epsg attribute.
         self._epsg = self._get_epsg()
         # variables and subsets
@@ -289,7 +289,7 @@ class Dataset:
 
     @property
     def variables(self):
-        """Variables in the raster (resambles the variables in netcdf files.)"""
+        """Variables in the raster (resembles the variables in netcdf files.)"""
         return self._variables
 
     @property
@@ -406,7 +406,7 @@ class Dataset:
         path : [str]
             Path of file to open.
         read_only : [bool]
-            File mode, set to False to open in "update" mode.
+            File mode, set to False, to open in "update" mode.
 
         Returns
         -------
@@ -429,14 +429,14 @@ class Dataset:
         bands : int or None
             Number of bands to create in the output raster.
         no_data_value : float or None
-            No data value, if None uses the same as ``src``.
+            No data value, if None uses the same as `src`.
 
         Returns
         -------
         gdal.DataSet
         """
         bands = int(bands) if bands is not None else src.RasterCount
-        # create the obhect
+        # create the object
         src_obj = cls(src)
         # Create the driver.
         dst = src_obj._create_gdal_dataset(
@@ -545,7 +545,7 @@ class Dataset:
         Parameters
         ----------
         band: [int]
-            band index, if None the statistics of all bands will be returned.
+            band index, if None, the statistics of all bands will be returned.
 
         Returns
         -------
@@ -662,7 +662,7 @@ class Dataset:
             point_size: [Any]
                 size of the point.
             pid_color: [str]
-                the color of the anotation of the point. Default is blue.
+                the color of the annotation of the point. Default is blue.
             pid_size: [Any]
                 size of the point annotation.
             figsize : [tuple], optional
@@ -709,10 +709,10 @@ class Dataset:
             display_cell_value : [bool]
                 True if you want to display the values of the cells as a text
             num_size : integer, optional
-                size of the numbers plotted intop of each cells. The default is 8.
+                size of the numbers plotted in top of each cells. The default is 8.
             background_color_threshold : [float/integer], optional
                 threshold value if the value of the cell is greater, the plotted
-                numbers will be black and if smaller the plotted number will be white
+                numbers will be black, and if smaller the plotted number will be white
                 if None given the maxvalue/2 will be considered. The default is None.
 
         Returns
@@ -723,7 +723,7 @@ class Dataset:
             the figure object
         """
         import_cleopatra(
-            "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
+            "The current function uses cleopatra package to for plotting, please install it manually, for more info "
             "check https://github.com/Serapieum-of-alex/cleopatra"
         )
         from cleopatra.array import Array
@@ -815,7 +815,7 @@ class Dataset:
         driver: str = "MEM",
         path: str = None,
     ) -> gdal.Dataset:
-        """Create GDAL driver.
+        """Create a GDAL driver.
 
             creates a driver and save it to disk and in memory if path is not given.
 
@@ -847,7 +847,7 @@ class Dataset:
                     raise TypeError(
                         "The path to save the created raster should end with .tif"
                     )
-            # LZW is a lossless compression method achieve the highst compression but with lot of computation
+            # LZW is a lossless compression method achieve the highest compression but with a lot of computation
             src = gdal.GetDriverByName(driver).Create(
                 path, cols, rows, bands, dtype, ["COMPRESS=LZW"]
             )
@@ -877,7 +877,7 @@ class Dataset:
             geotransform tuple [minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize].
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
-                (default 3857 the reference no of WGS84 web mercator )
+                (default 3857 the reference no of WGS84 web mercator)
         no_data_value : Any, optional
             no data value to mask the cells out of the domain. The default is -9999.
 
@@ -2445,12 +2445,12 @@ class Dataset:
     def _nearest_neighbour(
         array: np.ndarray, nodatavalue: Union[float, int], rows: list, cols: list
     ) -> np.ndarray:
-        """nearestNeighbour.
+        """_nearest_neighbour.
 
-            - fills the cells of a given indices in rows and cols with the value of the nearest
-            neighbour.
+            -The _nearest_neighbour method fills the cells with a given indices in rows and cols with the value of the
+            nearest neighbour.
             - Ss the raster grid is square so the 4 perpendicular direction are of the same proximity so the function
-            gives priority to the right then left then bottom then top and the same for 45 degree inclined direction
+            gives priority to the right, left, bottom, and then top and the same for 45 degree inclined direction
             right bottom then left bottom then left Top then right Top.
 
         Parameters
@@ -2649,14 +2649,14 @@ class Dataset:
     ) -> np.ndarray:
         """Extract.
 
-            - Extract method get all the values in a raster, and exclude the values in the exclude_value parameter.
-            - If the feature parameter is given the raster will be cliped to the extent of the given feature and the
+            - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
+            - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
             values within the feature are extracted.
 
         Parameters
         ----------
         exclude_value: [Numeric]
-            values you want to exclude from exteacted values
+            values you want to exclude from extracted values
         feature: [FeatureCollection/GeoDataFrame]
             vector file contains geometries you want to extract the values at their location. Default is None.
         """
@@ -2701,12 +2701,12 @@ class Dataset:
         Returns
         -------
         Dictionary:
-            dictonary with a list of values in the basemap as keys and for each key a list of all the intersected
+            dictionary with a list of values in the basemap as keys and for each key a list of all the intersected
             values in the maps from the path.
         """
         if not self._check_alignment(classes_map):
             raise AlignmentError(
-                "The class Dataset is not aligned with the current raster, plase use the method "
+                "The class Dataset is not aligned with the current raster, please use the method "
                 "'align' to align both rasters."
             )
         arr = self.read_array(band=band)
@@ -2747,8 +2747,8 @@ class Dataset:
         band: [int]
             band index. Default is 0.
         exclude_values:
-            if you want to exclude_values a certain value in the raster with another value inter the two values as a list of tuples a
-            [(value_to_be_exclude_valuesd, new_value)]
+            if you want to exclude_values a certain value in the raster with another value inter the two values as a
+            list of tuples a [(value_to_be_exclude_valuesd, new_value)]
             >>> exclude_values = [0]
             - This parameter is introduced particularly for the case of rasters that has the nodatavalue stored in the
             array does not match the value stored in array, so this option can correct this behavior.
@@ -2757,8 +2757,8 @@ class Dataset:
         -------
         GeoDataFrame:
             - geodataframe containing the polygon representing the extent of the raster. the extent column should
-            contains a value of  2 only.
-            - if the dataset had separate polygons each polygon will be in a separate row.
+            contain a value of 2 only.
+            - if the dataset had separate polygons, each polygon will be in a separate row.
         """
         arr = self.read_array(band=band)
         no_data_val = self.no_data_value[band]
@@ -2766,22 +2766,22 @@ class Dataset:
         if no_data_val is None:
             if not (np.isnan(arr)).any():
                 logger.warning(
-                    "the nodata values stored in the raster does not exist in the raster "
-                    "so either the raster extent is all full with data or the nodatavalue stored in the raster is"
+                    "The nodata value stored in the raster does not exist in the raster "
+                    "so either the raster extent is all full of data, or the nodatavalue stored in the raster is"
                     " not correct"
                 )
         else:
             if not (np.isclose(arr, no_data_val, rtol=0.00001)).any():
                 logger.warning(
-                    "the nodata values stored in the raster does not exist in the raster "
-                    "so either the raster extent is all full with data or the nodatavalue stored in the raster is"
+                    "the nodata value stored in the raster does not exist in the raster "
+                    "so either the raster extent is all full of data, or the nodatavalue stored in the raster is"
                     " not correct"
                 )
         # if you want to exclude_values any value in the raster
         if exclude_values:
             for val in exclude_values:
                 try:
-                    # in case the val2 is None and the array is int type the following line will give error as None
+                    # in case the val2 is None, and the array is int type the following line will give error as None
                     # is considered as float
                     arr[np.isclose(arr, val)] = no_data_val
                 except TypeError:
@@ -2876,16 +2876,16 @@ class Dataset:
             Dataset array in form [band][y][x].
         """
         for xoff, yoff, xsize, ysize in self._window(size=size):
-            # read the array at a certain indeces
+            # read the array at a certain indices
             yield self.raster.ReadAsArray(
                 xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize
             )
 
     @staticmethod
-    def _groupNeighbours(
+    def _group_neighbours(
         array, i, j, lowervalue, uppervalue, position, values, count, cluster
     ):
-        """group neibiuring cells with the same values"""
+        """group neighbouring cells with the same values"""
 
         # bottom cell
         if (
@@ -2896,7 +2896,7 @@ class Dataset:
             position.append([i + 1, j])
             values.append(array[i + 1, j])
             cluster[i + 1, j] = count
-            Dataset._groupNeighbours(
+            Dataset._group_neighbours(
                 array,
                 i + 1,
                 j,
@@ -2917,7 +2917,7 @@ class Dataset:
             position.append([i + 1, j + 1])
             values.append(array[i + 1, j + 1])
             cluster[i + 1, j + 1] = count
-            Dataset._groupNeighbours(
+            Dataset._group_neighbours(
                 array,
                 i + 1,
                 j + 1,
@@ -2937,7 +2937,7 @@ class Dataset:
             position.append([i, j + 1])
             values.append(array[i, j + 1])
             cluster[i, j + 1] = count
-            Dataset._groupNeighbours(
+            Dataset._group_neighbours(
                 array,
                 i,
                 j + 1,
@@ -2958,7 +2958,7 @@ class Dataset:
             position.append([i - 1, j + 1])
             values.append(array[i - 1, j + 1])
             cluster[i - 1, j + 1] = count
-            Dataset._groupNeighbours(
+            Dataset._group_neighbours(
                 array,
                 i - 1,
                 j + 1,
@@ -2978,7 +2978,7 @@ class Dataset:
             position.append([i - 1, j])
             values.append(array[i - 1, j])
             cluster[i - 1, j] = count
-            Dataset._groupNeighbours(
+            Dataset._group_neighbours(
                 array,
                 i - 1,
                 j,
@@ -2999,7 +2999,7 @@ class Dataset:
             position.append([i - 1, j - 1])
             values.append(array[i - 1, j - 1])
             cluster[i - 1, j - 1] = count
-            Dataset._groupNeighbours(
+            Dataset._group_neighbours(
                 array,
                 i - 1,
                 j - 1,
@@ -3019,7 +3019,7 @@ class Dataset:
             position.append([i, j - 1])
             values.append(array[i, j - 1])
             cluster[i, j - 1] = count
-            Dataset._groupNeighbours(
+            Dataset._group_neighbours(
                 array,
                 i,
                 j - 1,
@@ -3040,7 +3040,7 @@ class Dataset:
             position.append([i + 1, j - 1])
             values.append(array[i + 1, j - 1])
             cluster[i + 1, j - 1] = count
-            Dataset._groupNeighbours(
+            Dataset._group_neighbours(
                 array,
                 i + 1,
                 j - 1,
@@ -3073,9 +3073,9 @@ class Dataset:
         count : [integer]
             number of the clusters in the array.
         position : [list]
-            list contains two indeces [x,y] for the position of each value .
+            list contains two indices [x,y] for the position of each value.
         values : [numeric]
-            the values stored in each cell in the cluster .
+            the values stored in each cell in the cluster.
         """
         data = self.read_array()
         position = []
@@ -3086,7 +3086,7 @@ class Dataset:
         for i in range(data.shape[0]):
             for j in range(data.shape[1]):
                 if lower_bound <= data[i, j] <= upper_bound and cluster[i, j] == 0:
-                    self._groupNeighbours(
+                    self._group_neighbours(
                         data,
                         i,
                         j,
@@ -3117,7 +3117,7 @@ class Dataset:
         Parameters
         ----------
         band: [int]
-            raster band index 0, 1, 2, 3,..
+            raster band index 0, 1, 2, 3,…
 
         Returns
         -------
@@ -3150,8 +3150,8 @@ class Dataset:
             True if you want to overwrite the existing color table. Default is False.
         """
         import_cleopatra(
-            "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
-            "check https://github.com/Serapieum-of-alex/cleopatra"
+            "The current function uses cleopatra package to for plotting, please install it manually, for more info"
+            " check https://github.com/Serapieum-of-alex/cleopatra"
         )
         from cleopatra.colors import Colors
 
@@ -3180,7 +3180,7 @@ class Dataset:
 
         Parameters
         ----------
-        band : [int], optional
+        band: [int], optional
             band index, Default is None.
 
         Returns
@@ -3199,21 +3199,6 @@ class Dataset:
                 df.loc[i, ["band", "values"]] = band + 1, i
 
         return df
-
-    def listAttributes(self):
-        """Print Attributes List."""
-
-        print("\n")
-        print(
-            f"Attributes List of: { repr(self.__dict__['name'])} - {self.__class__.__name__}  Instance\n"
-        )
-        self_keys = list(self.__dict__.keys())
-        self_keys.sort()
-        for key in self_keys:
-            if key != "name":
-                print(str(key) + " : " + repr(self.__dict__[key]))
-
-        print("\n")
 
 
 class Datacube:
@@ -3393,10 +3378,10 @@ class Datacube:
             raise TypeError(f"path input should be string/list type, given{type(path)}")
 
         if isinstance(path, str):
-            # check wether the path exist or not
+            # check wither the path exists or not
             if not os.path.exists(path):
                 raise FileNotFoundError("The path you have provided does not exist")
-            # get list of all files
+            # get a list of all files
             files = os.listdir(path)
             files = [i for i in files if i.endswith(extension)]
             # files = glob.glob(os.path.join(path, "*.tif"))
@@ -3418,8 +3403,8 @@ class Datacube:
             if date:
                 if file_name_data_fmt is None:
                     raise ValueError(
-                        f"To read the raster with a certain order (with_order = {with_order}, then you have to enter the "
-                        f"value of the parameter file_name_data_fmt(given: {file_name_data_fmt})"
+                        f"To read the raster with a certain order (with_order = {with_order}, then you have to enter "
+                        f"the value of the parameter file_name_data_fmt(given: {file_name_data_fmt})"
                     )
                 fn = lambda x: dt.datetime.strptime(x.group(), file_name_data_fmt)
             else:
@@ -3511,9 +3496,9 @@ class Datacube:
         """Data attribute.
 
         - setting the data (array) does not allow different dimension from the dimension that have been
-        defined increating the dataset.
+        defined in creating the dataset.
         """
-        # if the attribute is defined before check the dimension
+        # if the at5tribute is defined before check the dimension
         if hasattr(self, "values"):
             if self._values.shape != val.shape:
                 raise ValueError(
@@ -3592,18 +3577,18 @@ class Datacube:
         band : [integer]
             the band you want to get its data. Default is 0
         exclude_value: [Any]
-            value to execlude from the plot. Default is None.
+            value to exclude from the plot. Default is None.
         **kwargs
             points : [array]
-                3 column array with the first column as the value you want to display for the point, the second is the rows
-                index of the point in the array, and the third column as the column index in the array.
-                - the second and third column tells the location of the point in the array.
+                3 column array with the first column as the value you want to display for the point, the second is the
+                rows index of the point in the array, and the third column as the column index in the array.
+                the second and third column tells the location of the point in the array.
             point_color: [str]
                 color.
             point_size: [Any]
                 size of the point.
             pid_color: [str]
-                the color of the anotation of the point. Default is blue.
+                the color of the annotation of the point. Default is blue.
             pid_size: [Any]
                 size of the point annotation.
             figsize : [tuple], optional
@@ -3650,7 +3635,7 @@ class Datacube:
             display_cell_value : [bool]
                 True if you want to display the values of the cells as a text
             num_size : integer, optional
-                size of the numbers plotted intop of each cells. The default is 8.
+                size of the numbers plotted in top of each cells. The default is 8.
             background_color_threshold : [float/integer], optional
                 threshold value if the value of the cell is greater, the plotted
                 numbers will be black and if smaller the plotted number will be white
@@ -3727,7 +3712,7 @@ class Datacube:
         self,
         to_epsg: int = 3857,
         method: str = "nearest neigbour",
-        maintain_alighment: int = False,
+        maintain_alignment: int = False,
     ):
         """to_epsg.
 
@@ -3744,7 +3729,7 @@ class Datacube:
             https://gisgeography.com/raster-resampling/
             "Nearest" for nearest neighbour,"cubic" for cubic convolution,
             "bilinear" for bilinear
-        maintain_alighment : [bool]
+        maintain_alignment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
 
         Returns
@@ -3761,7 +3746,7 @@ class Datacube:
         for i in range(self.time_length):
             src = self.iloc(i)
             dst = src.to_crs(
-                to_epsg, method=method, maintain_alighment=maintain_alighment
+                to_epsg, method=method, maintain_alighment=maintain_alignment
             )
             arr = dst.read_array()
             if i == 0:
@@ -3982,12 +3967,12 @@ class Datacube:
     def align(self, alignment_src: Dataset):
         """matchDataAlignment.
 
-        this function matches the coordinate system and the number of of rows & columns
+        this function matches the coordinate system and the number of rows & columns
         between two rasters
         Raster A is the source of the coordinate system, no of rows and no of columns & cell size
         rasters_dir is path to the folder where Raster B exist where  Raster B is
         the source of data values in cells
-        the result will be a raster with the same structure like RasterA but with
+        the result will be a raster with the same structure as RasterA but with
         values from RasterB using Nearest Neighbour interpolation algorithm
 
         Parameters
@@ -4140,7 +4125,7 @@ class Datacube:
         Returns
         -------
         Dictionary:
-            dictonary with a list of values in the basemap as keys and for each key a list of all the intersected
+            dictionary with a list of values in the basemap as keys and for each key a list of all the intersected
             values in the maps from the path.
         """
         values = {}
@@ -4148,8 +4133,8 @@ class Datacube:
             src = self.iloc(i)
             dict_i = src.overlay(classes_map, exclude_value)
 
-            # these are the destinct values from the BaseMap which are keys in the
-            # ExtractedValuesi dict with each one having a list of values
+            # these are the distinct values from the BaseMap which are keys in the
+            # values dict with each one having a list of values
             classes = list(dict_i.keys())
 
             for class_i in classes:
