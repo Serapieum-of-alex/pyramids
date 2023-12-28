@@ -550,6 +550,19 @@ Band statistics (stats)
     >>>     Band_3  273.641479  274.168823  273.953979  0.198447
     >>>     Band_4  273.991516  274.540344  274.310669  0.205754
 
+- The method can also take a mask (polygon/dataset) to calculate the statistics of the masked area only.
+
+.. code:: py
+    era5_image = "tests/data/geotiff/era5_land_monthly_averaged.tif"
+    dataset = Dataset.read_file(era5_image)
+    mask = gpd.read_file("tests/data/geotiff/era5-mask.geojson")
+    stats = dataset.stats(mask=mask)
+    print(stats)
+    >>>                min         max        mean       std
+    >>>     Band_1  270.369720  270.399017  270.384369  0.014648
+    >>>     Band_2  269.651001  269.744751  269.697876  0.046875
+    >>>     Band_3  273.889526  273.901245  273.895386  0.005859
+    >>>     Band_4  274.235657  274.255188  274.245422  0.009766
 
 Write raster to disk
 ====================
@@ -772,9 +785,7 @@ crop
 
 Crop array using a raster
 ^^^^^^^^^^^^^^^^^^^^^^^^^
-- `crop` clip/crop (matches the location of nodata value from src raster to dst raster), Both raster's have to
-    have the same dimensions (no of rows & columns) so MatchRasterAlignment should be used prior to this function to
-    align both raster's.
+- The `crop` method clips/crops (matches the location of nodata value from source raster to destination raster).
 
 Parameters
 """"""""""
@@ -790,15 +801,14 @@ Parameters
 Returns
 """""""
     dst: [gdal.dataset]
-        the second raster with NoDataValue stored in its cells
-        exactly the same like src raster
+        the second raster with NoDataValue stored in its cells exactly the same like src raster
 
 
 .. code:: py
 
     aligned_raster = "examples/data/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
     band = 1
-    dst = Raster.Open(aligned_raster)
+    dst = Dataset.Open(aligned_raster)
     dst_arr = dst.read_array()
     dst_nodataval = dst.no_data_value[band - 1]
 
@@ -857,27 +867,22 @@ Crop raster using array
 
 crop
 ^^^^
-- `crop` method crops a raster using another raster (both rasters does not have to be aligned).
+- `crop` method crops a raster using another raster/polygon.
 
 Parameters
 """"""""""
-    src: [string/gdal.Dataset]
-        the raster you want to crop as a path or a gdal object
-    mask : [string/gdal.Dataset]
-        the raster you want to use as a mask to crop other raster,
-        the mask can be also a path or a gdal object.
-    output_path : [string]
-        if you want to save the cropped raster directly to disk
-        enter the value of the OutputPath as the path.
-    save : [boolen]
-        True if you want to save the cropped raster directly to disk.
+    mask: [Polygon GeoDataFrame/Dataset]
+            GeodataFrame with a polygon geometry, or a Dataset object.
+    touch: [bool]
+        To include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
+        Default is True.
+    inplace: [bool]
+        True to make the changes in place.
 
 Returns
 """""""
-    dst : [gdal.Dataset]
-        the cropped raster will be returned, if the save parameter was True,
-        the cropped raster will also be saved to disk in the OutputPath
-        directory.
+    Dataset:
+        Dataset object.
 
 
 .. code:: py
@@ -1234,7 +1239,7 @@ color_table
 
 
 - When saving the raster to disk, the following file will be created along side the raster file.
-<RASTER-FILE-NAME.aux.xml>
+    <RASTER-FILE-NAME.aux.xml>
 
 .. code:: xml
 

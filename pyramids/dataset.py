@@ -2309,20 +2309,18 @@ class Dataset:
     ) -> gdal.Dataset:
         """crop.
 
-            crop method crops a raster using another raster (both rasters does not have to be aligned).
+            crop method crops a raster using another raster.
 
         Parameters
         -----------
-        mask : [string/Dataset]
-            the raster you want to use as a mask to crop other raster,
+        string/Dataset:
+            The raster you want to use as a mask to crop another raster,
             the mask can be also a path or a gdal object.
 
         Returns
         -------
-        dst : [Dataset]
-            the cropped raster will be returned, if the save parameter was True,
-            the cropped raster will also be saved to disk in the OutputPath
-            directory.
+        Dataset:
+            The cropped raster.
         """
         # get information from the mask raster
         if isinstance(mask, str):
@@ -2344,12 +2342,13 @@ class Dataset:
     def _crop_with_polygon_by_rasterizing(self, poly: GeoDataFrame):
         """cropWithPolygon.
 
-            clip the Raster object using a polygon vector.
+            Clip the Raster object using a polygon vector.
 
         Parameters
         ----------
         poly: [Polygon GeoDataFrame]
             GeodataFrame with a geometry of polygon type.
+
         Returns
         -------
         Dataset
@@ -2385,7 +2384,7 @@ class Dataset:
         feature: [FeatureCollection]
                 vector mask.
         touch: [bool]
-            to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
+            To include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
             Default is True.
 
         Returns
@@ -2421,14 +2420,14 @@ class Dataset:
     ):
         """crop.
 
-            clip the Dataset object using a polygon/another raster (both rasters does not have to be aligned).
+            Clip the Dataset object using a polygon/raster.
 
         Parameters
         ----------
-        mask: [Polygon GeoDataFrame/Dataset object]
-            GeodataFrame with a geometry of polygon type
+        mask: [Polygon GeoDataFrame/Dataset]
+            GeodataFrame with a polygon geometry, or a Dataset object.
         touch: [bool]
-            to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
+            To include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
             Default is True.
         inplace: [bool]
             True to make the changes in place.
@@ -2458,29 +2457,27 @@ class Dataset:
     ) -> np.ndarray:
         """_nearest_neighbour.
 
-            -The _nearest_neighbour method fills the cells with a given indices in rows and cols with the value of the
+            - The _nearest_neighbour method fills the cells with a given indices in rows and cols with the value of the
             nearest neighbour.
-            - Ss the raster grid is square so the 4 perpendicular direction are of the same proximity so the function
+            - Ss the raster grid is square, so the 4 perpendicular directions are of the same proximity, so the function
             gives priority to the right, left, bottom, and then top and the same for 45 degree inclined direction
             right bottom then left bottom then left Top then right Top.
 
         Parameters
         ----------
         array: [numpy.array]
-            Array to fill some of its cells with Nearest value.
+            Array to fill some of its cells with the Nearest value.
         nodatavalue: [float32]
             value stored in cells that is out of the domain
         rows: [List]
-            list of the rows index of the cells you want to fill it with
-            nearest neighbour.
+            list of the rows' index of the cells you want to fill it with the nearest neighbour.
         cols: [List]
-            list of the column index of the cells you want to fill it with
-            nearest neighbour.
+            list of the column index of the cells you want to fill it with the nearest neighbour.
 
         Returns
         -------
         array: [numpy array]
-            Cells of given indices will be filled with value of the Nearest neighbour
+            Cells of given indices will be filled with the value of the Nearest neighbour
 
         Examples
         --------
@@ -4084,20 +4081,17 @@ class Datacube:
         gdal_merge.main(parameters)
 
     def apply(self, ufunc: Callable):
-        """folderCalculator.
+        """apply.
 
-        this function matches the location of nodata value from src raster to dst
-        raster
-        Dataset A is where the NoDatavalue will be taken and the location of this value
-        B_input_path is path to the folder where Dataset B exist where  we need to put
-        the NoDataValue of RasterA in RasterB at the same locations
+        apply a function on each raster in the datacube.
 
         Parameters
         ----------
         ufunc: [function]
             callable universal function ufunc (builtin or user defined)
             https://numpy.org/doc/stable/reference/ufuncs.html
-            - to create a ufunc from a normal function (https://numpy.org/doc/stable/reference/generated/numpy.frompyfunc.html)
+            - To create an ufunc from a normal function
+            (https://numpy.org/doc/stable/reference/generated/numpy.frompyfunc.html)
 
         Returns
         -------
@@ -4111,7 +4105,7 @@ class Datacube:
         >>> dataset.apply(ufunc)
         """
         if not callable(ufunc):
-            raise TypeError("second argument should be a function")
+            raise TypeError("The Second argument should be a function")
         arr = self.values
         no_data_value = self.base.no_data_value[0]
         # execute the function on each raster

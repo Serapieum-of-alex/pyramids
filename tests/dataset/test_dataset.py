@@ -714,8 +714,8 @@ class TestCrop:
         src_no_data_value: float,
     ):
         mask_obj = Dataset(src)
-        aligned_raster = Dataset(aligned_raster)
-        cropped = aligned_raster._crop_alligned(mask_obj)
+        aligned_raster: Dataset = Dataset(aligned_raster)
+        cropped: Dataset = aligned_raster._crop_alligned(mask_obj)
         dst_arr_cropped = cropped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -731,7 +731,7 @@ class TestCrop:
         mask_obj = Dataset(sentinel_crop)
         aligned_raster = Dataset(sentinel_raster)
 
-        cropped = aligned_raster._crop_alligned(mask_obj)
+        cropped: Dataset = aligned_raster._crop_alligned(mask_obj)
         dst_arr_cropped = cropped.raster.ReadAsArray()
         # filter the no_data_value out of the array
         arr = dst_arr_cropped[
@@ -787,7 +787,7 @@ class TestCropWithPolygon:
         crop_by_wrap_touch_true_result: gdal.Dataset,
     ):
         """
-        just check that the inplace option is working
+        Check that the inplace option is working
         """
         dataset = Dataset(rhine_raster)
         cells = dataset.count_domain_cells()
@@ -1319,7 +1319,7 @@ class TestStats:
         era5_mask: GeoDataFrame,
     ):
         """
-        test the stats function with a mask.
+        Test the stats function with a mask.
         The mask covers only the second row of the array, the test checks if the mean of the second row is equal to the
         mean calculated by the stats function.
         """
