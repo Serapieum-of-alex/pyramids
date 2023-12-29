@@ -863,20 +863,6 @@ class TestCropWithPolygon:
             values, rasterized_mask_values
         ), "the extracted values in the dataframe do not equal the real values in the array"
 
-    def test_bug(self):
-        dataset = Dataset.read_file("tests/bug/02_RFCF.tif")
-        gdf = gpd.read_file("tests/bug/coello-basin-extended.geojson")
-        cropped = dataset.crop(gdf, touch=False)
-        cropped
-        cropped.to_file("tests/bug/touch_false.tif")
-        cropped_2 = dataset.crop(gdf)
-        cropped.to_file("tests/bug/touch_None.tif")
-        cropped_3 = dataset.crop(gdf, touch=True)
-        cropped.to_file("tests/bug/touch_true.tif")
-        print(dataset.count_domain_cells())
-        print(cropped.count_domain_cells())
-        print("xxx")
-
 
 class TestCluster2:
     """Test converting raster to polygon."""
