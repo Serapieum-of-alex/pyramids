@@ -587,10 +587,16 @@ class Dataset:
 
         return df
 
-    def _get_stats(self, band: int = None):
+    def _get_stats(self, band: int = None) -> List[float]:
         """_get_stats."""
         band_i = self._iloc(band)
-        vals = band_i.GetStatistics(True, True)
+        try:
+            vals = band_i.GetStatistics(True, True)
+        except RuntimeError:
+            # when the GetStatistics gives an error "RuntimeError: Failed to compute statistics, no valid pixels
+            # found in sampling."
+            vals = [0]
+
         if sum(vals) == 0:
             warnings.warn(
                 f"Band {band} has no statistics, and the statistics are going to be calculate"
@@ -655,14 +661,14 @@ class Dataset:
         band : [integer]
             the band you want to get its data. Default is 0
         exclude_value: [Any]
-            value to execlude from the plot. Default is None.
+            value to exclude from the plot. Default is None.
         rgb: [List]
             Default is [3,2,1]
         surface_reflectance: [int]
-            Default is  10000
+            Default is 10,000.
         cutoff: [List]
-            clip the range of pixel values for each band. (take only the pixel values from 0 to value of the cutoff and
-            scale them back to between 0 and 1. Default is None.
+            clip the range of pixel values for each band. (take only the pixel values from 0 to the value of the cutoff
+            and scale them back to between 0 and 1). Default is None.
         **kwargs
             points : [array]
                 3 column array with the first column as the value you want to display for the point, the second is the rows
@@ -676,27 +682,27 @@ class Dataset:
                 the color of the annotation of the point. Default is blue.
             pid_size: [Any]
                 size of the point annotation.
-            figsize : [tuple], optional
+            figsize: [tuple], optional
                 figure size. The default is (8,8).
-            title : [str], optional
+            title: [str], optional
                 title of the plot. The default is 'Total Discharge'.
-            title_size : [integer], optional
+            title_size: [integer], optional
                 title size. The default is 15.
-            orientation : [string], optional
-                orintation of the colorbar horizontal/vertical. The default is 'vertical'.
-            rotation : [number], optional
-                rotation of the colorbar label. The default is -90.
-            orientation : [string], optional
-                orintation of the colorbar horizontal/vertical. The default is 'vertical'.
-            cbar_length : [float], optional
-                ratio to control the height of the colorbar. The default is 0.75.
-            ticks_spacing : [integer], optional
-                Spacing in the colorbar ticks. The default is 2.
-            cbar_label_size : integer, optional
+            orientation: [string], optional
+                orientation of the color bar horizontal/vertical. The default is 'vertical'.
+            rotation: [number], optional
+                rotation of the color bar label. The default is -90.
+            orientation: [string], optional
+                orientation of the color bar horizontal/vertical. The default is 'vertical'.
+            cbar_length: [float], optional
+                ratio to control the height of the color bar. The default is 0.75.
+            ticks_spacing: [integer], optional
+                Spacing in the color bar ticks. The default is 2.
+            cbar_label_size: integer, optional
                 size of the color bar label. The default is 12.
-            cbar_label : str, optional
+            cbar_label: str, optional
                 label of the color bar. The default is 'Discharge m3/s'.
-            color_scale : integer, optional
+            color_scale: integer, optional
                 there are 5 options to change the scale of the colors. The default is 1.
                 1- color_scale 1 is the normal scale
                 2- color_scale 2 is the power scale
@@ -704,24 +710,24 @@ class Dataset:
                 4- color_scale 4 is the PowerNorm scale
                 5- color_scale 5 is the BoundaryNorm scale
                 ------------------------------------------------------------------
-                gamma : [float], optional
-                    value needed for option 2 . The default is 1./2..
-                line_threshold : [float], optional
+                gamma: [float], optional
+                    value needed for option 2. The default is 1./2.
+                line_threshold: [float], optional
                     value needed for option 3. The default is 0.0001.
-                line_scale : [float], optional
+                line_scale: [float], optional
                     value needed for option 3. The default is 0.001.
                 bounds: [List]
                     a list of number to be used as a discrete bounds for the color scale 4.Default is None,
-                midpoint : [float], optional
+                midpoint: [float], optional
                     value needed for option 5. The default is 0.
                 ------------------------------------------------------------------
-            cmap : [str], optional
+            cmap: [str], optional
                 color style. The default is 'coolwarm_r'.
-            display_cell_value : [bool]
+            display_cell_value: [bool]
                 True if you want to display the values of the cells as a text
-            num_size : integer, optional
-                size of the numbers plotted in top of each cells. The default is 8.
-            background_color_threshold : [float/integer], optional
+            num_size: integer, optional
+                size of the numbers plotted on top of each cell. The default is 8.
+            background_color_threshold: [float/integer], optional
                 threshold value if the value of the cell is greater, the plotted
                 numbers will be black, and if smaller the plotted number will be white
                 if None given the maxvalue/2 will be considered. The default is None.
@@ -942,9 +948,9 @@ class Dataset:
 
         Parameters
         ----------
-        src : [gdal.dataset]
+        src: [gdal.dataset]
             source raster to get the spatial information
-        array : [numpy array]
+        array: [numpy array]
             to store in the new raster
         driver:[str]
             gdal driver type. Default is "GTiff"
@@ -1332,7 +1338,7 @@ class Dataset:
         # create a new dataset
         new_dataset = Dataset(dst)
         # the new_value could change inside the _set_no_data_value method before it is used to set the no_data_value
-        # attrbute in gdal object/pyramids object and to fill the band.
+        # attribute in the gdal object/pyramids object and to fill the band.
         new_dataset._set_no_data_value(new_value)
         # now we have to use the no_data_value value in the no_data_value attribute in the Dataset object as it is
         # updated.
@@ -1358,8 +1364,8 @@ class Dataset:
     ) -> np.ndarray:
         """GetCoords.
 
-        Returns the coordinates of the cell centres inside the domain (only the cells that
-        does not have nodata value)
+        Returns the coordinates of the cell centers inside the domain (only the cells that
+        do not have nodata value)
 
         Parameters
         ----------
@@ -1367,14 +1373,14 @@ class Dataset:
             location of the coordinates "center" for the center of a cell, corner for the corner of the cell.
             the corner is the top left corner.
         mask: [bool]
-            True to Execlude the cells out of the doain. Default is False.
+            True to exclude the cells out of the domain. Default is False.
 
         Returns
         -------
         coords : [np.ndarray]
             Array with a list of the coordinates to be interpolated, without the Nan
         mat_range : [np.ndarray]
-            Array with all the centres of cells in the domain of the DEM
+            Array with all the centers of cells in the domain of the DEM
         """
         # check the location parameter
         location = location.lower()
@@ -1385,7 +1391,7 @@ class Dataset:
             )
 
         if location == "center":
-            # Adding 0.5*cell size to get the centre
+            # Adding 0.5*cell size to get the center
             add_value = 0.5
         else:
             add_value = 0
@@ -1419,7 +1425,7 @@ class Dataset:
             mask = None
         indices = get_indices2(arr, mask=mask)
 
-        # execlude the no_data_values cells.
+        # exclude the no_data_values cells.
         f1 = [i[0] for i in indices]
         f2 = [i[1] for i in indices]
         x = [x_init + cell_size_x * (i + add_value) for i in f2]
@@ -1510,7 +1516,7 @@ class Dataset:
         Parameters
         ----------
         path: [string]
-            a path includng the name of the raster and extention.
+            a path including the name of the raster and extention.
             >>> path = "data/cropped.tif"
         band: [int]
             band index, needed only in case of ascii drivers. Default is 0.
@@ -1607,8 +1613,8 @@ class Dataset:
         dst_ds = FeatureCollection.create_ds("memory")
         dst_layer = dst_ds.CreateLayer(col_name, srs=srs)
         dtype = gdal_to_ogr_dtype(self.raster)
-        newField = ogr.FieldDefn(col_name, dtype)
-        dst_layer.CreateField(newField)
+        new_field = ogr.FieldDefn(col_name, dtype)
+        dst_layer.CreateField(new_field)
         gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
 
         vector = FeatureCollection(dst_ds)
@@ -1625,40 +1631,40 @@ class Dataset:
     ) -> Union[DataFrame, GeoDataFrame]:
         """Convert a raster to a vector.
 
-            The function do the following
-            - Flatten the array in each band in the raster then mask the values if a vector_mask
-            file is given otherwise it will flatten all values.
-            - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
-            data in the raster band exists, an index number will be used [1, 2, 3, ...]
-            - The function has a add_geometry parameter with two possible values ["point", "polygon"], which you can
-            specify the type of shapely geometry you want to create from each cell,
-                - If point is chosen, the created point will be at the center of each cell
-                - If a polygon is chosen, a square polygon will be created that covers the entire cell.
+        g            The function does the following
+                    - Flatten the array in each band in the raster then mask the values if a vector_mask
+                    file is given otherwise it will flatten all values.
+                    - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
+                    data in the raster band exists, an index number will be used [1, 2, 3, ...]
+                    - The function has an add_geometry parameter with two possible values ["point", "polygon"], which you can
+                    specify the type of shapely geometry you want to create from each cell,
+                        - If point is chosen, the created point will be at the center of each cell
+                        - If a polygon is chosen, a square polygon will be created that covers the entire cell.
 
-        Parameters
-        ----------
-        vector_mask : Optional[GeoDataFrame]
-            GeoDataFrame for the vector_mask. If given, it will be used to clip the raster
-        add_geometry: [str]
-            "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
-            Default is None.
-        tile: [bool]
-            True to use tiles in extracting the values from the raster. Default is False.
-        tile_size: [int]
-            tile size. Default is 1500.
-        touch: [bool]
-            to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
-            Default is True.
+                Parameters
+                ----------
+                vector_mask : Optional[GeoDataFrame]
+                    GeoDataFrame for the vector_mask. If given, it will be used to clip the raster
+                add_geometry: [str]
+                    "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
+                    Default is None.
+                tile: [bool]
+                    True to use tiles in extracting the values from the raster. Default is False.
+                tile_size: [int]
+                    tile size. Default is 1500.
+                touch: [bool]
+                    to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
+                    Default is True.
 
-        Returns
-        -------
-        DataFrame/GeoDataFrame
-            columndL:
-                >>> print(gdf.columns)
-                >>> Index(['Band_1', 'geometry'], dtype='object')
+                Returns
+                -------
+                DataFrame/GeoDataFrame
+                    columndL:
+                        >>> print(gdf.columns)
+                        >>> Index(['Band_1', 'geometry'], dtype='object')
 
-        the resulted geodataframe will have the band value under the name of the band (if the raster file has a
-        metadata, if not, the bands will be indexed from 1 to the number of bands)
+                the resulted geodataframe will have the band value under the name of the band (if the raster file has a
+                metadata, if not, the bands will be indexed from 1 to the number of bands)
         """
         # Get raster band names. open the dataset using gdal.Open
         band_names = self.band_names
@@ -1739,7 +1745,7 @@ class Dataset:
         >>> new_raster = Dataset.apply(src_raster, func)
         """
         if not callable(fun):
-            raise TypeError("second argument should be a function")
+            raise TypeError("The second argument should be a function")
 
         no_data_value = self.no_data_value[band]
         src_array = self.read_array(band)
@@ -1803,7 +1809,7 @@ class Dataset:
         dst = Dataset.dataset_like(self, src_array, driver=driver, path=path)
         return dst
 
-    def resample(self, cell_size: Union[int, float], method: str = "nearest neigbour"):
+    def resample(self, cell_size: Union[int, float], method: str = "nearest neighbour"):
         """resample.
 
         resample method reproject a raster to any projection
@@ -1818,7 +1824,7 @@ class Dataset:
         method : [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "nearest neigbour" for nearest neighbour,"cubic" for cubic convolution,
+            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
             "bilinear" for bilinear
 
         Returns
@@ -1828,7 +1834,7 @@ class Dataset:
         """
         if not isinstance(method, str):
             raise TypeError(
-                " please enter correct method more information see docmentation "
+                "Please enter correct method, for more information, see documentation"
             )
         if method not in INTERPOLATION_METHODS.keys():
             raise ValueError(
@@ -1882,8 +1888,8 @@ class Dataset:
     def to_crs(
         self,
         to_epsg: int,
-        method: str = "nearest neigbour",
-        maintain_alighment: int = False,
+        method: str = "nearest neighbour",
+        maintain_alignment: int = False,
         inplace: bool = False,
     ):
         """to_epsg.
@@ -1899,9 +1905,9 @@ class Dataset:
         method: [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "nearest neigbour" for nearest neighbour,"cubic" for cubic convolution,
+            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
             "bilinear" for bilinear
-        maintain_alighment : [bool]
+        maintain_alignment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
         inplace: [bool]
             True to make changes inplace. Default is False.
@@ -1909,7 +1915,7 @@ class Dataset:
         Returns
         -------
         Dataset:
-            Dataset object, if inplace is true the method returns None.
+            Dataset object, if inplace is True, the method returns None.
 
         Examples
         --------
@@ -1924,16 +1930,16 @@ class Dataset:
             )
         if not isinstance(method, str):
             raise TypeError(
-                "please enter correct method more information see " "docmentation "
+                "Please enter a correct method, for more information, see documentation "
             )
         if method not in INTERPOLATION_METHODS.keys():
             raise ValueError(
-                f"The given interpolation method does not exist, existing methods are {INTERPOLATION_METHODS.keys()}"
+                f"The given interpolation method: {method} does not exist, existing methods are {INTERPOLATION_METHODS.keys()}"
             )
 
         method = INTERPOLATION_METHODS.get(method)
 
-        if maintain_alighment:
+        if maintain_alignment:
             dst_obj = self._reproject_with_ReprojectImage(to_epsg, method)
         else:
             dst = gdal.Warp("", self.raster, dstSRS=f"EPSG:{to_epsg}", format="VRT")
@@ -1945,7 +1951,7 @@ class Dataset:
             return dst_obj
 
     def _reproject_with_ReprojectImage(
-        self, to_epsg: int, method: str = "nearest neigbour"
+        self, to_epsg: int, method: str = "nearest neighbour"
     ) -> object:
         src_gt = self.geotransform
         src_x = self.columns
@@ -1956,8 +1962,8 @@ class Dataset:
 
         dst_sr = self._create_sr_from_epsg(to_epsg)
 
-        # in case the source crs is GCS and longitude is in the west hemisphere gdal
-        # reads longitude from 0 to 360 and transformation factor wont work with values
+        # in case the source crs is GCS and longitude is in the west hemisphere, gdal
+        # reads longitude from 0 to 360 and a transformation factor wont work with values
         # greater than 180
         if src_epsg != to_epsg:
             if src_epsg == "4326" and src_gt[0] > 180:
@@ -1998,7 +2004,7 @@ class Dataset:
         ys = [src_gt[3], src_gt[3]]
 
         if src_epsg != to_epsg:
-            # transform the two points coordinates to the new crs to calculate the new cell size
+            # transform the two-point coordinates to the new crs to calculate the new cell size
             new_ys, new_xs = FeatureCollection.reproject_points(
                 ys, xs, from_epsg=src_epsg, to_epsg=to_epsg, precision=6
             )
@@ -2057,7 +2063,7 @@ class Dataset:
         """
         # align function only equate the no of rows and columns only
         # match nodatavalue inserts nodatavalue in src raster to all places like mask
-        # still places that has nodatavalue in the src raster but it is not nodatavalue in the mask
+        # still places that has nodatavalue in the src raster, but it is not nodatavalue in the mask
         # and now has to be filled with values
         # compare no of element that is not nodatavalue in both rasters to make sure they are matched
         # if both inputs are rasters
@@ -2074,12 +2080,12 @@ class Dataset:
             elem_src = src_array.size - np.count_nonzero(
                 (src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)])
             )
-            # count the out of domian cells in the mask
+            # count the out of domain cells in the mask
             elem_mask = mask_array.size - np.count_nonzero(
                 (mask_array[np.isclose(mask_array, mask_noval, rtol=0.001)])
             )
 
-            # if not equal then store indices of those cells that doesn't matchs
+            # if not equal, then store indices of those cells that don't match
             if elem_mask > elem_src:
                 rows = [
                     i
@@ -2095,22 +2101,22 @@ class Dataset:
                     if np.isclose(src_array[i, j], self.no_data_value[0], rtol=0.001)
                     and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
                 ]
-            # interpolate those missing cells by nearest neighbour
+            # interpolate those missing cells by the nearest neighbour
             if elem_mask > elem_src:
                 src_array = Dataset._nearest_neighbour(
                     src_array, self.no_data_value[0], rows, cols
                 )
             return src_array
 
-    def _crop_alligned(
+    def _crop_aligned(
         self,
         mask: Union[gdal.Dataset, np.ndarray],
         mask_noval: Union[int, float] = None,
         fill_gaps: bool = False,
     ) -> Union[np.ndarray, gdal.Dataset]:
-        """cropAlligned.
+        """_crop_aligned.
 
-        cropAlligned clip/crop (matches the location of nodata value from mask to src
+        _crop_aligned clip/crop (matches the location of nodata value from mask to src
         raster),
             - Both rasters have to have the same dimensions (no of rows & columns)
             so MatchRasterAlignment should be used prior to this function to align both
@@ -2158,7 +2164,7 @@ class Dataset:
 
         if not row == self.rows or not col == self.columns:
             raise ValueError(
-                "Two rasters has different number of columns or rows please resample or match both rasters"
+                "Two rasters have different number of columns or rows, please resample or match both rasters"
             )
 
         if isinstance(mask, Dataset):
@@ -2167,7 +2173,7 @@ class Dataset:
                 or not self.cell_size == mask.cell_size
             ):
                 raise ValueError(
-                    "location of upper left corner of both rasters are not the same or cell size is "
+                    "the location of the upper left corner of both rasters is not the same or cell size is "
                     "different please match both rasters first "
                 )
 
@@ -2204,9 +2210,9 @@ class Dataset:
         dst = Dataset._create_gdal_dataset(
             col, row, band_count, self.gdal_dtype[0], driver="MEM"
         )
-        # but with lot of computation
-        # if the mask is an array and the mask_gt is not defined use the src_gt as both the mask and the src
-        # are aligned so they have the sam gt
+        # but with a lot of computation
+        # if the mask is an array and the mask_gt is not defined, use the src_gt as both the mask and the src
+        # are aligned, so they have the sam gt
         try:
             # set the geotransform
             dst.SetGeoTransform(mask_gt)
@@ -2241,12 +2247,12 @@ class Dataset:
 
         align method copies the following data
             - The coordinate system
-            - The number of of rows & columns
+            - The number of rows & columns
             - cell size
-        from alignment_src to a the raster (the source of data values in cells)
+        from alignment_src to the raster (the source of data values in cells)
 
-        the result will be a raster with the same structure like alignment_src but with
-        values from data_src using Nearest Neighbour interpolation algorithm
+        the result will be a raster with the same structure as alignment_src but with
+        values from data_src using the Nearest Neighbour interpolation algorithm
 
         Parameters
         ----------
@@ -2329,13 +2335,13 @@ class Dataset:
             mask = mask
         else:
             raise TypeError(
-                "Second parameter has to be either path to the mask raster or a gdal.Datacube object"
+                "The second parameter has to be either path to the mask raster or a gdal.Datacube object"
             )
         if not self._check_alignment(mask):
             # first align the mask with the src raster
             mask = mask.align(self)
         # crop the src raster with the aligned mask
-        dst_obj = self._crop_alligned(mask)
+        dst_obj = self._crop_aligned(mask)
 
         return dst_obj
 
@@ -2557,7 +2563,7 @@ class Dataset:
         """map_to_array_coordinates.
 
             - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by
-            finding the cell indices (rows, col) of nearest cell in the raster.
+            finding the cell indices (rows, col) of the nearest cell in the raster.
             - The point coordinate system of the raster has to be projected to be able to calculate the distance
 
         Parameters
@@ -2596,7 +2602,7 @@ class Dataset:
         else:
             points = points.loc[:, ["x", "y"]].values
 
-        # since first row is x-coords so the first column in the indices is the column index
+        # since the first row is x-coords so the first column in the indices is the column index
         indices = locate_values(points, self.x, self.y)
         # rearrange the columns to make the row index first
         indices = indices[:, [1, 0]]
@@ -2789,7 +2795,7 @@ class Dataset:
         if exclude_values:
             for val in exclude_values:
                 try:
-                    # in case the val2 is None, and the array is int type the following line will give error as None
+                    # in case the val2 is None, and the array is int type, the following line will give error as None
                     # is considered as float
                     arr[np.isclose(arr, val)] = no_data_val
                 except TypeError:
@@ -3319,68 +3325,68 @@ class Datacube:
     ):
         r"""read_multiple_files.
 
-            - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
-            the folder and length as the number of files.
+                    - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
+                    the folder and length as the number of files.
 
-        inside the folder.
-        - All rasters should have the same dimensions
-        - If you want to read the rasters with a certain order, then all raster file names should have a date that follows
-            the same format (YYYY.MM .DD / YYYY-MM-DD or YYYY_MM_DD) (i.e. "MSWEP_1979.01.01.tif").
+                inside the folder.
+                - All rasters should have the same dimensions
+                - If you want to read the rasters with a certain order, then all raster file names should have a date that follows
+                    the same format (YYYY.MM .DD / YYYY-MM-DD or YYYY_MM_DD) (i.e. "MSWEP_1979.01.01.tif").
 
-        Parameters
-        ----------
-        path:[str/list]
-            path of the folder that contains all the rasters, ora list contains the paths of the rasters to read.
-        with_order: [bool]
-            True if the rasters names' follows a certain order, then the rasters names should have a date that follows
-            the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD).
-            >>> "MSWEP_1979.01.01.tif"
-            >>> "MSWEP_1979.01.02.tif"
-            >>> ...
-            >>> "MSWEP_1979.01.20.tif"
-        regex_string: [str]
-            a regex string that we can use to locate the date in the file names.Default is r"\d{4}.\d{
-            2}.\d{2}".
-            >>> fname = "MSWEP_YYYY.MM.DD.tif"
-            >>> regex_string = r"\d{4}.\d{2}.\d{2}"
-            - or
-            >>> fname = "MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d{4}_\d{1}_\d{1}"
-            - if there is a number at the beginning of the name
-            >>> fname = "1_MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d+"
-        date: [bool]
-            True if the number in the file name is a date. Default is True.
-        file_name_data_fmt : [str]
-            if the files names' have a date and you want to read them ordered .Default is None
-            >>> "MSWEP_YYYY.MM.DD.tif"
-            >>> file_name_data_fmt = "%Y.%m.%d"
-        start: [str]
-            start date if you want to read the input raster for a specific period only and not all rasters,
-            if not given all rasters in the given path will be read.
-        end: [str]
-            end date if you want to read the input temperature for a specific period only,
-            if not given all rasters in the given path will be read.
-        fmt: [str]
-            format of the given date in the start/end parameter.
-        extension: [str]
-            the extension of the files you want to read from the given path. Default is ".tif".
+                Parameters
+                ----------
+                path:[str/list]
+                    path of the folder that contains all the rasters, ora list contains the paths of the rasters to read.
+                with_order: [bool]
+        `            True if the rasters names' follows a certain order, then the rasters' names should have a date that follows
+                    the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD).
+                    >>> "MSWEP_1979.01.01.tif"
+                    >>> "MSWEP_1979.01.02.tif"
+                    >>> ...
+                    >>> "MSWEP_1979.01.20.tif"
+                regex_string: [str]
+                    a regex string that we can use to locate the date in the file names.Default is r"\d{4}.\d{
+                    2}.\d{2}".
+                    >>> fname = "MSWEP_YYYY.MM.DD.tif"
+                    >>> regex_string = r"\d{4}.\d{2}.\d{2}"
+                    - or
+                    >>> fname = "MSWEP_YYYY_M_D.tif"
+                    >>> regex_string = r"\d{4}_\d{1}_\d{1}"
+                    - if there is a number at the beginning of the name
+                    >>> fname = "1_MSWEP_YYYY_M_D.tif"
+                    >>> regex_string = r"\d+"
+                date: [bool]
+                    True if the number in the file name is a date. Default is True.
+                file_name_data_fmt : [str]
+                    if the files names' have a date and you want to read them ordered .Default is None
+                    >>> "MSWEP_YYYY.MM.DD.tif"
+                    >>> file_name_data_fmt = "%Y.%m.%d"
+                start: [str]
+                    start date if you want to read the input raster for a specific period only and not all rasters,
+                    if not given all rasters in the given path will be read.
+                end: [str]
+                    end date if you want to read the input temperature for a specific period only,
+                    if not given all rasters in the given path will be read.
+                fmt: [str]
+                    format of the given date in the start/end parameter.
+                extension: [str]
+                    the extension of the files you want to read from the given path. Default is ".tif".
 
-        Returns
-        -------
-        DataCube:
-            instance of the datacube class.
+                Returns
+                -------
+                DataCube:
+                    instance of the datacube class.
 
-        Example
-        -------
-        >>> from pyramids.dataset import Datacube
-        >>> raster_folder = "examples/GIS/data/raster-folder"
-        >>> prec = Datacube.read_multiple_files(raster_folder)
+                Example
+                -------
+                >>> from pyramids.dataset import Datacube
+                >>> raster_folder = "examples/GIS/data/raster-folder"
+                >>> prec = Datacube.read_multiple_files(raster_folder)
 
-        >>> import glob
-        >>> search_criteria = "*.tif"
-        >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Datacube.read_multiple_files(file_list, with_order=False)
+                >>> import glob
+                >>> search_criteria = "*.tif"
+                >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
+                >>> prec = Datacube.read_multiple_files(file_list, with_order=False)
         """
         if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")
@@ -3452,7 +3458,7 @@ class Datacube:
         return cls(sample, len(files), files)
 
     def open_datacube(self, band: int = 0):
-        """Read array.
+        """open_datacube.
 
             Read values form the given bands as Arrays for all files
 
@@ -3506,7 +3512,7 @@ class Datacube:
         - setting the data (array) does not allow different dimension from the dimension that have been
         defined in creating the dataset.
         """
-        # if the at5tribute is defined before check the dimension
+        # if the attribute is defined before check the dimension
         if hasattr(self, "values"):
             if self._values.shape != val.shape:
                 raise ValueError(
@@ -3599,27 +3605,27 @@ class Datacube:
                 the color of the annotation of the point. Default is blue.
             pid_size: [Any]
                 size of the point annotation.
-            figsize : [tuple], optional
+            figsize: [tuple], optional
                 figure size. The default is (8,8).
-            title : [str], optional
+            title: [str], optional
                 title of the plot. The default is 'Total Discharge'.
-            title_size : [integer], optional
+            title_size: [integer], optional
                 title size. The default is 15.
-            orientation : [string], optional
-                orintation of the colorbar horizontal/vertical. The default is 'vertical'.
-            rotation : [number], optional
-                rotation of the colorbar label. The default is -90.
-            orientation : [string], optional
-                orintation of the colorbar horizontal/vertical. The default is 'vertical'.
-            cbar_length : [float], optional
-                ratio to control the height of the colorbar. The default is 0.75.
-            ticks_spacing : [integer], optional
-                Spacing in the colorbar ticks. The default is 2.
-            cbar_label_size : integer, optional
+            orientation: [string], optional
+                orientation of the color bar horizontal/vertical. The default is 'vertical'.
+            rotation: [number], optional
+                rotation of the color bar label. The default is -90.
+            orientation: [string], optional
+                orientation of the color bar horizontal/vertical. The default is 'vertical'.
+            cbar_length: [float], optional
+                ratio to control the height of the color bar. The default is 0.75.
+            ticks_spacing: [integer], optional
+                Spacing in the color bar ticks. The default is 2.
+            cbar_label_size: integer, optional
                 size of the color bar label. The default is 12.
-            cbar_label : str, optional
+            cbar_label: str, optional
                 label of the color bar. The default is 'Discharge m3/s'.
-            color_scale : integer, optional
+            color_scale: integer, optional
                 there are 5 options to change the scale of the colors. The default is 1.
                 1- color_scale 1 is the normal scale
                 2- color_scale 2 is the power scale
@@ -3719,7 +3725,7 @@ class Datacube:
     def to_crs(
         self,
         to_epsg: int = 3857,
-        method: str = "nearest neigbour",
+        method: str = "nearest neighbour",
         maintain_alignment: int = False,
     ):
         """to_epsg.
@@ -3754,7 +3760,7 @@ class Datacube:
         for i in range(self.time_length):
             src = self.iloc(i)
             dst = src.to_crs(
-                to_epsg, method=method, maintain_alighment=maintain_alignment
+                to_epsg, method=method, maintain_alignment=maintain_alignment
             )
             arr = dst.read_array()
             if i == 0:

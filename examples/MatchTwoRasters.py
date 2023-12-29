@@ -4,7 +4,7 @@
 
 match two rasters
 """
-#%links
+# %links
 import os
 
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
@@ -17,11 +17,11 @@ from osgeo import gdal
 from pyramids.dataset import Dataset
 
 # import matplotlib.pyplot as plt
-#%% inputs
+# %% inputs
 RasterAPath = f"{rpath}/examples/data/DEM5km_Rhine_burned_acc.tif"
 RasterBPath = f"{rpath}/examples/data/MSWEP_1979010100_reprojected.tif"
 SaveTo = f"{rpath}/examples/data/MSWEP_1979010100_Matched.tif"
-#%% Read the Input rasters
+# %% Read the Input rasters
 # the source raster is of the ASCII format
 src = gdal.Open(RasterAPath)
 src_Array = src.ReadAsArray()
@@ -45,7 +45,7 @@ assert (
 
 # %% Match the NODataValue
 # TODO : fix bug in nearestneighbor
-NewRasterB_ND = Dataset._crop_alligned(src, NewRasterB)
+NewRasterB_ND = Dataset._crop_aligned(src, NewRasterB)
 
 NoDataValue = NewRasterB_ND.GetRasterBand(1).GetNoDataValue()
 
