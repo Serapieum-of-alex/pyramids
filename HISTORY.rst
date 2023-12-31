@@ -140,3 +140,10 @@ cell lies inside the mask, not only the cells that lie entirely inside the mask.
 * Introduce a new parameter inplace to the crop method in the Dataset to enable replacing the dataset object with the
 new cropped dataset.
 * Adjust the stats method to take a mask to calculate the stats inside this mask.
+
+0.5.4 (2023-12-31)
+------------------
+Dataset
+"""""""
+* fix the un-updated array dimension bug in the crop method when the mask is a vector mask and the touch parameter is
+True.
