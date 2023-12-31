@@ -39,8 +39,8 @@ from pyramids._utils import (
 
 try:
     from osgeo_utils import gdal_merge
-except ModuleNotFoundError:
-    logger.warning(
+except ModuleNotFoundError:  # pragma: no cover
+    logger.warning(  # pragma: no cover
         "osgeo_utils module does not exist try install pip install osgeo-utils "
     )
 
@@ -69,7 +69,7 @@ class Dataset:
 
     def __init__(self, src: gdal.Dataset):
         if not isinstance(src, gdal.Dataset):
-            raise TypeError(
+            raise TypeError(  # pragma: no cover
                 "src should be read using gdal (gdal dataset please read it using gdal"
                 f" library) given {type(src)}"
             )

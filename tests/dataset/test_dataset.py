@@ -278,6 +278,14 @@ class TestProperties:
         src = Dataset(src)
         assert src.gdal_dtype == [6]
 
+    def test__str__(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert isinstance(src.__str__(), str)
+
+    def test__repr__(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert isinstance(src.__repr__(), str)
+
 
 class TestSpatialProperties:
     def test_read_array(
