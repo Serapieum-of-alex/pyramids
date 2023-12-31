@@ -252,7 +252,7 @@ class TestProperties:
         src = Dataset(src)
         name_list = ["new_name"]
         src._set_band_names(name_list)
-        # chack that the name is chaged in the dataset object
+        # check that the name is changed in the dataset object
         assert src.band_names == name_list
         assert src.raster.GetRasterBand(1).GetDescription() == name_list[0]
         # return back the old name so that the test_get_band_names pass the test.
@@ -277,6 +277,14 @@ class TestProperties:
     def test_gdal_dtype(self, src: gdal.Dataset):
         src = Dataset(src)
         assert src.gdal_dtype == [6]
+
+    def test__str__(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert isinstance(src.__str__(), str)
+
+    def test__repr__(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert isinstance(src.__repr__(), str)
 
 
 class TestSpatialProperties:
@@ -439,9 +447,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
         assert len(coords) == src_shape[0] * src_shape[1]
         assert np.isclose(
             coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001
-        ).all(), (
-            "the coordinates of the first 4 rows differs from the validation coords"
-        )
+        ).all(), "the coordinates of the first 4 rows differ from the validation coords"
         assert np.isclose(
             coords[-4:, :], src_cell_center_coords_last_4_rows, rtol=0.000001
         ).all(), "the coordinates of the last 4 rows differs from the validation coords"
@@ -483,7 +489,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
         assert len(gdf) == 5
         assert gdf.crs.to_epsg() == 4326
 
-    # TODO: create a tesk using a mask
+    # TODO: create a test using a mask
 
 
 class TestSave:
@@ -611,7 +617,7 @@ class TestResample:
 
 
 class TestReproject:
-    def test_option_maintain_alighment_single_band(
+    def test_option_maintain_alignment_single_band(
         self,
         src: gdal.Dataset,
         project_raster_to_epsg: int,
@@ -620,7 +626,7 @@ class TestReproject:
         src_shape: tuple,
     ):
         src = Dataset(src)
-        dst = src.to_crs(to_epsg=project_raster_to_epsg, maintain_alighment=True)
+        dst = src.to_crs(to_epsg=project_raster_to_epsg, maintain_alignment=True)
 
         proj = dst.raster.GetProjection()
         sr = osr.SpatialReference(wkt=proj)
@@ -629,18 +635,18 @@ class TestReproject:
         dst_arr = dst.raster.ReadAsArray()
         assert dst_arr.shape == src_shape
 
-    def test_option_maintain_alighment_multi_band(
+    def test_option_maintain_alignment_multi_band(
         self,
         sentinel_raster: gdal.Dataset,
     ):
         epsg = 32637
         src = Dataset(sentinel_raster)
-        dst = src.to_crs(to_epsg=epsg, maintain_alighment=True)
+        dst = src.to_crs(to_epsg=epsg, maintain_alignment=True)
         assert dst.band_count == src.band_count
         assert dst.epsg == epsg
         # assert dst.shape == src.shape
 
-    def test_option_donot_maintain_alighment(
+    def test_option_donot_maintain_alignment(
         self,
         src: gdal.Dataset,
         project_raster_to_epsg: int,
@@ -649,7 +655,7 @@ class TestReproject:
         src_shape: tuple,
     ):
         src = Dataset(src)
-        dst = src.to_crs(to_epsg=project_raster_to_epsg, maintain_alighment=False)
+        dst = src.to_crs(to_epsg=project_raster_to_epsg, maintain_alignment=False)
 
         proj = dst.crs
         sr = osr.SpatialReference(wkt=proj)
@@ -658,13 +664,13 @@ class TestReproject:
         dst_arr = dst.raster.ReadAsArray()
         assert dst_arr.shape == src_shape
 
-    def test_option_donot_maintain_alighment_multi_band(
+    def test_option_do_not_maintain_alignment_multi_band(
         self,
         sentinel_raster: gdal.Dataset,
     ):
         epsg = 32637
         src = Dataset(sentinel_raster)
-        dst = src.to_crs(to_epsg=epsg, maintain_alighment=False)
+        dst = src.to_crs(to_epsg=epsg, maintain_alignment=False)
         assert dst.band_count == src.band_count
         assert dst.epsg == epsg
         # assert dst.shape == src.shape
@@ -715,7 +721,7 @@ class TestCrop:
     ):
         mask_obj = Dataset(src)
         aligned_raster: Dataset = Dataset(aligned_raster)
-        cropped: Dataset = aligned_raster._crop_alligned(mask_obj)
+        cropped: Dataset = aligned_raster._crop_aligned(mask_obj)
         dst_arr_cropped = cropped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -731,7 +737,7 @@ class TestCrop:
         mask_obj = Dataset(sentinel_crop)
         aligned_raster = Dataset(sentinel_raster)
 
-        cropped: Dataset = aligned_raster._crop_alligned(mask_obj)
+        cropped: Dataset = aligned_raster._crop_aligned(mask_obj)
         dst_arr_cropped = cropped.raster.ReadAsArray()
         # filter the no_data_value out of the array
         arr = dst_arr_cropped[
@@ -746,7 +752,7 @@ class TestCrop:
         src_no_data_value: float,
     ):
         aligned_raster = Dataset(aligned_raster)
-        cropped = aligned_raster._crop_alligned(src_arr, mask_noval=src_no_data_value)
+        cropped = aligned_raster._crop_aligned(src_arr, mask_noval=src_no_data_value)
         dst_arr_cropped = cropped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -825,7 +831,8 @@ class TestCropWithPolygon:
         crop_by_wrap_touch_false_result: gdal.Dataset,
     ):
         """
-        when the touch option is False in the function only the cells that lie entirely inside the mask will be included
+        when the touch option is False in the function, only the cells that lie entirely inside the mask will be
+        included
 
         Check the number of the cropped cells and the no_data_value
         """
@@ -839,6 +846,39 @@ class TestCropWithPolygon:
         )
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+
+    def test_by_warp_touch_multi_band(
+        self,
+        era5_image: gdal.Dataset,
+        era5_mask: GeoDataFrame,
+    ):
+        """
+        when the touch option is False in the function, only the cells that lie entirely inside the mask will be included
+
+        Check the number of the cropped cells and the no_data_value
+        """
+        src_obj = Dataset(era5_image)
+
+        cropped_raster = src_obj._crop_with_polygon_warp(era5_mask, touch=True)
+        assert isinstance(cropped_raster.raster, gdal.Dataset)
+        assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+        assert cropped_raster.band_count == src_obj.band_count
+        assert cropped_raster.shape == (9, 1, 2)
+        arr = cropped_raster.read_array()
+        vals = np.array(
+            [
+                [[2.70369720e02, 2.70399017e02]],
+                [[2.69744751e02, 2.69651001e02]],
+                [[2.73901245e02, 2.73889526e02]],
+                [[2.74255188e02, 2.74235657e02]],
+                [[2.75303284e02, 2.75260315e02]],
+                [[3.67523193e-01, 3.67843628e-01]],
+                [[3.72436523e-01, 3.73031616e-01]],
+                [[3.85742188e-01, 3.90228271e-01]],
+                [[1.88440349e-03, 1.81000944e-03]],
+            ]
+        )
+        assert np.isclose(arr, vals, rtol=0.00001).all()
 
     def test_with_irregular_polygon(
         self,
@@ -863,11 +903,11 @@ class TestCropWithPolygon:
         values = arr[~np.isclose(arr, dataset.no_data_value[0], rtol=0.0001)]
         assert np.array_equal(
             values, rasterized_mask_values
-        ), "the extracted values in the dataframe does not equal the real values in the array"
+        ), "the extracted values in the dataframe do not equal the real values in the array"
 
 
 class TestCluster2:
-    """Tect converting raster to polygon."""
+    """Test converting raster to polygon."""
 
     def test_single_band(
         self,
@@ -917,10 +957,9 @@ class TestToFeatureCollection:
             arr_flatten = raster_to_df_arr.reshape((rows * cols, 1))
             extracted_values = gdf.loc[:, gdf.columns[0]].values
             extracted_values = extracted_values.reshape(arr_flatten.shape)
-            assert np.array_equal(extracted_values, arr_flatten), (
-                "the extracted values in the dataframe does not equa the real "
-                "values in the array"
-            )
+            assert np.array_equal(
+                extracted_values, arr_flatten
+            ), "the extracted values in the dataframe do not equal the real values in the array"
 
         def test_multi_band(
             self, era5_image: gdal.Dataset, era5_image_gdf: GeoDataFrame
