@@ -878,7 +878,7 @@ class Dataset:
     def create_from_array(
         cls,
         arr: np.ndarray,
-        geo: Tuple[int, int, int, int, int, int],
+        geo: Tuple[float, float, float, float, float, float],
         epsg: Union[str, int],
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
     ):
@@ -888,10 +888,10 @@ class Dataset:
 
         Parameters
         ----------
-        arr : [np.ndarray]
+        arr: [np.ndarray]
             numpy array.
         geo : [Tuple]
-            geotransform tuple [minimum lon/x, pixelsize, rotation, maximum lat/y, rotation, pixelsize].
+            geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator)
@@ -900,7 +900,7 @@ class Dataset:
 
         Returns
         -------
-        dst : [DataSet].
+        dst: [DataSet].
             Dataset object will be returned.
         """
         if len(arr.shape) == 2:
@@ -919,10 +919,10 @@ class Dataset:
 
         srse = Dataset._create_sr_from_epsg(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
+        dst_ds.SetGeoTransform(geo)
         dst_obj = cls(dst_ds)
         dst_obj._set_no_data_value(no_data_value=no_data_value)
 
-        dst_obj.raster.SetGeoTransform(geo)
         if bands == 1:
             dst_obj.raster.GetRasterBand(1).WriteArray(arr)
         else:
@@ -2416,7 +2416,45 @@ class Dataset:
         )
         dst = gdal.Warp("", self.raster, options=warp_options)
         dst_obj = Dataset(dst)
+
+        if touch:
+            dst_obj = Dataset.correct_wrap_cutline_error(dst_obj)
+
         return dst_obj
+
+    def correct_wrap_cutline_error(src):
+        """correct_wrap_cutline_error.
+        https://github.com/Serapieum-of-alex/pyramids/issues/74
+        """
+        big_array = src.read_array()
+        value_to_remove = src.no_data_value[0]
+        """Remove rows and columns that are all filled with a certain value from a 2D array."""
+        # Find rows and columns to be removed
+        if big_array.ndim == 2:
+            rows_to_remove = np.all(big_array == value_to_remove, axis=1)
+            cols_to_remove = np.all(big_array == value_to_remove, axis=0)
+            # Use boolean indexing to remove rows and columns
+            small_array = big_array[~rows_to_remove][:, ~cols_to_remove]
+        elif big_array.ndim == 3:
+            rows_to_remove = np.all(big_array == value_to_remove, axis=(0, 2))
+            cols_to_remove = np.all(big_array == value_to_remove, axis=(0, 1))
+            # Use boolean indexing to remove rows and columns
+            small_array = big_array[:, ~rows_to_remove, ~cols_to_remove]
+            n_rows = np.count_nonzero(~rows_to_remove)
+            n_cols = np.count_nonzero(~cols_to_remove)
+            small_array = small_array.reshape((src.band_count, n_rows, n_cols))
+        else:
+            raise ValueError("Array must be 2D or 3D")
+
+        x_ind = np.where(~rows_to_remove)[0][0]
+        y_ind = np.where(~cols_to_remove)[0][0]
+        new_x = src.x[y_ind] - src.cell_size / 2
+        new_y = src.y[x_ind] + src.cell_size / 2
+        new_gt = (new_x, src.cell_size, 0, new_y, 0, -src.cell_size)
+        new_src = src.create_from_array(
+            small_array, new_gt, src.epsg, src.no_data_value
+        )
+        return new_src
 
     def crop(
         self,

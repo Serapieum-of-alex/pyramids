@@ -823,7 +823,8 @@ class TestCropWithPolygon:
         crop_by_wrap_touch_false_result: gdal.Dataset,
     ):
         """
-        when the touch option is False in the function, only the cells that lie entirely inside the mask will be included
+        when the touch option is False in the function, only the cells that lie entirely inside the mask will be
+        included
 
         Check the number of the cropped cells and the no_data_value
         """
@@ -837,6 +838,39 @@ class TestCropWithPolygon:
         )
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+
+    def test_by_warp_touch_multi_band(
+        self,
+        era5_image: gdal.Dataset,
+        era5_mask: GeoDataFrame,
+    ):
+        """
+        when the touch option is False in the function, only the cells that lie entirely inside the mask will be included
+
+        Check the number of the cropped cells and the no_data_value
+        """
+        src_obj = Dataset(era5_image)
+
+        cropped_raster = src_obj._crop_with_polygon_warp(era5_mask, touch=True)
+        assert isinstance(cropped_raster.raster, gdal.Dataset)
+        assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+        assert cropped_raster.band_count == src_obj.band_count
+        assert cropped_raster.shape == (9, 1, 2)
+        arr = cropped_raster.read_array()
+        vals = np.array(
+            [
+                [[2.70369720e02, 2.70399017e02]],
+                [[2.69744751e02, 2.69651001e02]],
+                [[2.73901245e02, 2.73889526e02]],
+                [[2.74255188e02, 2.74235657e02]],
+                [[2.75303284e02, 2.75260315e02]],
+                [[3.67523193e-01, 3.67843628e-01]],
+                [[3.72436523e-01, 3.73031616e-01]],
+                [[3.85742188e-01, 3.90228271e-01]],
+                [[1.88440349e-03, 1.81000944e-03]],
+            ]
+        )
+        assert np.isclose(arr, vals, rtol=0.00001).all()
 
     def test_with_irregular_polygon(
         self,
