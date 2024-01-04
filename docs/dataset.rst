@@ -1079,6 +1079,35 @@ To extract the
 
     ExtractedValues, Cells = R.OverlayMap(Path+"DepthMax22489.zip", BaseMapF,ExcludedValue, Compressed,OccupiedCellsOnly)
 
+count_domain_cells
+------------------
+- To number of cells in a raster that are not `no_data_value` value.
+
+Parameters
+^^^^^^^^^^
+band: [int]
+    band index. Default is 0.
+
+Returns
+^^^^^^^
+int:
+    Number of cells
+
+.. code:: py
+
+        path = "examples/data/dem/DEM5km_Rhine_burned_fill.tif"
+        dataset = Dataset.read_file(path)
+        cells = dataset.count_domain_cells()
+        print(f"Number of cells = {cells}")
+
+        Number of cells = 6374
+
+in case the dataset is a multi-band raster, you can specify the band index.
+
+.. code:: py
+
+        cells = dataset.count_domain_cells(band=1)
+
 
 Mathematical operations
 =======================
