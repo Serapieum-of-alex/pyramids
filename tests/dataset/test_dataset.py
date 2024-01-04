@@ -418,6 +418,18 @@ class TestSetCRS:
             pass
 
 
+class TestCountDomainCells:
+    """test count domain cells"""
+
+    def test_single_band(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.count_domain_cells() == 89
+
+    def test_multi_band(self, era5_image: gdal.Dataset):
+        src = Dataset(era5_image)
+        assert src.count_domain_cells() == 5
+
+
 class TestGetCellCoordsAndCreateCellGeometry:
     def test_cell_center_masked_cells(
         self,
