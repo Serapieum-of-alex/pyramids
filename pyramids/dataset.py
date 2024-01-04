@@ -50,7 +50,7 @@ from pyramids import _io
 
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog(raster_driver=True)
-OVERVIEW_LEVELS = [2, 4, 8, 16, 32]
+OVERVIEW_LEVELS = [2, 4, 8, 16, 32, 64, 128]
 RESAMPLING_METHODS = [
     "NEAREST",
     "CUBIC",
@@ -408,6 +408,11 @@ class Dataset:
             )
 
         self._set_color_table(df, overwrite=True)
+
+    @property
+    def overviews(self):
+        """overviews"""
+        return self._overviews
 
     @classmethod
     def read_file(cls, path: str, read_only=True):
@@ -3290,6 +3295,13 @@ class Dataset:
         else:
             if not isinstance(overview_levels, list):
                 raise TypeError("overview_levels should be a list")
+
+            # if self.raster.HasArbitraryOverviews():
+            if not all(elem in OVERVIEW_LEVELS for elem in overview_levels):
+                raise ValueError(
+                    "overview_levels are restricted to the typical power-of-two reduction factors "
+                    "(like 2, 4, 8, 16, etc.)"
+                )
 
         if resampling_method not in RESAMPLING_METHODS:
             raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")

@@ -236,6 +236,14 @@ def era5_image() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/era5_land_monthly_averaged.tif")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def delete_test_files():
+    try:
+        os.remove("tests/data/geotiff/era5_land_monthly_averaged.tif.ovr")
+    except OSError as e:
+        print(f"Error: {e.strerror}")
+
+
 @pytest.fixture(scope="module")
 def era5_image_gdf() -> GeoDataFrame:
     return gpd.read_file("tests/data/geotiff/era5_land_monthly_averaged.geojson")
