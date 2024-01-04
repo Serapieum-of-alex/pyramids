@@ -1083,7 +1083,7 @@ class Dataset:
         """
         arr = self.read_array(band=band)
         domain_count = np.size(arr[:, :]) - np.count_nonzero(
-            (arr[np.isclose(arr, self.no_data_value[0], rtol=0.001)])
+            (arr[np.isclose(arr, self.no_data_value[band], rtol=0.001)])
         )
         return domain_count
 
