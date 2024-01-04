@@ -50,7 +50,19 @@ from pyramids import _io
 
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog(raster_driver=True)
-
+OVERVIEW_LEVELS = [2, 4, 8, 16, 32]
+RESAMPLING_METHODS = [
+    "NEAREST",
+    "CUBIC",
+    "AVERAGE",
+    "GAUSS",
+    "CUBICSPLINE",
+    "LANCZOS",
+    "MODE",
+    "AVERAGE_MAGPHASE",
+    "RMS",
+    "BILINEAR",
+]
 # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return an error
 # value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
 # this behavior in GDAL and OGR by calling the UseExceptions()
@@ -3255,6 +3267,38 @@ class Dataset:
                 df.loc[i, ["band", "values"]] = band + 1, i
 
         return df
+
+    def create_overviews(
+        self, resampling_method: str = "NEAREST", overview_levels: list = None
+    ):
+        """Create overviews for the dataset.
+
+        Parameters
+        ----------
+        resampling_method : str, optional
+            The resampling method used to create the overviews, by default "NEAREST"
+        overview_levels : list, optional
+            The overview levels, by default [2, 4, 8, 16, 32]
+
+        Returns
+        -------
+        Dataset
+            The dataset with overviews.
+        """
+        if overview_levels is None:
+            overview_levels = OVERVIEW_LEVELS
+        else:
+            if not isinstance(overview_levels, list):
+                raise TypeError("overview_levels should be a list")
+
+        if resampling_method not in RESAMPLING_METHODS:
+            raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
+        # Define the overview levels (the reduction factor).
+        # e.g., 2 means the overview will be half the resolution of the original dataset.
+
+        # Build overviews using nearest neighbor resampling
+        # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
+        self.raster.BuildOverviews(resampling_method, overview_levels)
 
 
 class Datacube:
