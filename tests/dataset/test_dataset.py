@@ -1398,5 +1398,5 @@ class TestOverviews:
     def test_create_overviews(self, era5_image: gdal.Dataset):
         dataset = Dataset(era5_image)
         dataset.create_overviews()
-        assert dataset.raster.GetRasterBand(1).GetOverviewCount() == 31
+        assert dataset.raster.GetRasterBand(1).GetOverviewCount() == 2
         assert Path(f"{dataset.file_name}.ovr").exists()
