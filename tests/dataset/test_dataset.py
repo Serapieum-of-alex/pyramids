@@ -1395,18 +1395,14 @@ class TestStats:
 
 
 class TestOverviews:
-    def test_create_overviews(self, delete_test_files, era5_image: gdal.Dataset):
+    def test_create_overviews(
+        self, era5_image: gdal.Dataset, clean_overview_after_test
+    ):
         dataset = Dataset(era5_image)
-        path = Path(f"{dataset.file_name}.ovr")
-        # Delete the overview file if exists
-        if path.exists():
-            path.unlink()
 
         dataset.create_overviews()
         assert dataset.raster.GetRasterBand(1).GetOverviewCount() == 2
-        # dataset.raster = None
-        assert path.exists()
-        # path.unlink()
+        assert Path(f"{dataset.file_name}.ovr").exists()
 
     def test_wrong_overview_resampling_method(self, era5_image: gdal.Dataset):
         dataset = Dataset(era5_image)

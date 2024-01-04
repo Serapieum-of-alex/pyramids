@@ -231,15 +231,29 @@ def modis_surf_temp() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/modis_surftemp.tif")
 
 
+@pytest.fixture(scope="session")
+def era5_raster_path() -> str:
+    return "tests/data/geotiff/era5_land_monthly_averaged.tif"
+
+
 @pytest.fixture(scope="module")
-def era5_image() -> gdal.Dataset:
-    return gdal.Open("tests/data/geotiff/era5_land_monthly_averaged.tif")
+def era5_image(era5_raster_path: str) -> gdal.Dataset:
+    return gdal.Open(era5_raster_path)
 
 
 @pytest.fixture(scope="session", autouse=True)
-def delete_test_files():
+def clean_overview_before_test(era5_raster_path: str) -> None:
     try:
-        os.remove("tests/data/geotiff/era5_land_monthly_averaged.tif.ovr")
+        os.remove(f"{era5_raster_path}.ovr")
+    except OSError as e:
+        print(f"Error: {e.strerror}")
+
+
+@pytest.fixture
+def clean_overview_after_test(era5_raster_path: str) -> None:
+    yield
+    try:
+        os.remove(f"{era5_raster_path}.ovr")
     except OSError as e:
         print(f"Error: {e.strerror}")
 
