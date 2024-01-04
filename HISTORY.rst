@@ -147,3 +147,10 @@ Dataset
 """""""
 * fix the un-updated array dimension bug in the crop method when the mask is a vector mask and the touch parameter is
 True.
+
+
+0.5.* (*******)
+------------------
+Dataset
+"""""""
+* Count domain cells for a specific band.
