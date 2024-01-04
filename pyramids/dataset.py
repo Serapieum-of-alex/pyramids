@@ -1081,9 +1081,7 @@ class Dataset:
         int:
             Number of cells
         """
-        # count cells inside the domain
         arr = self.read_array(band=band)
-        # arr = self.raster.ReadAsArray()
         domain_count = np.size(arr[:, :]) - np.count_nonzero(
             (arr[np.isclose(arr, self.no_data_value[0], rtol=0.001)])
         )
