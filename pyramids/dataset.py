@@ -415,6 +415,16 @@ class Dataset:
 
         return self._overview_number
 
+    @property
+    def overview(self) -> gdal.Band:
+        """Overview"""
+        if not hasattr(self, "_overview"):
+            raise AttributeError(
+                "The dataset does not have overviews, please use the `create_overviews` and `get_overviews` method"
+            )
+
+        return self._overview
+
     @classmethod
     def read_file(cls, path: str, read_only=True):
         """read_file.
@@ -3288,8 +3298,11 @@ class Dataset:
 
         Returns
         -------
-        Dataset
-            The dataset with overviews.
+        .ovr file
+            the overview (also known as pyramids) file will be created in the same directory of the dataset,
+            with the same name of the dataset and .ovr extension.
+        overview_number: [list]
+            a list property attribute of the number of overviews for each band.
         """
         if overview_levels is None:
             overview_levels = OVERVIEW_LEVELS
@@ -3317,7 +3330,7 @@ class Dataset:
             overview_number.append(self._iloc(i).GetOverviewCount())
         self._overview_number = overview_number
 
-    def get_overview(self, band: int = 0, overview_index: int = 0):
+    def get_overviews(self, band: int = 0, overview_index: int = 0):
         """Get an overview of a band.
 
         Parameters
@@ -3329,13 +3342,15 @@ class Dataset:
 
         Returns
         -------
-        Dataset
-            The overview dataset.
+        overview:
+            Attribute of the dataset overview.
         """
         band = self._iloc(band)
         n_views = band.GetOverviewCount()
         if n_views == 0:
-            raise ValueError("The band has no overviews")
+            raise ValueError(
+                "The band has no overviews, please use the `create_overviews` method to build the overviews"
+            )
 
         if overview_index > n_views:
             raise ValueError(f"overview_level should be less than {n_views}")

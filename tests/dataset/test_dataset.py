@@ -1399,7 +1399,7 @@ class TestOverviews:
         # test getting overview before creating it
         dataset = Dataset(era5_image)
         with pytest.raises(ValueError):
-            dataset.get_overview(0, 0)
+            dataset.get_overviews(0, 0)
 
     def test_create_overviews(
         self, era5_image: gdal.Dataset, clean_overview_after_test
@@ -1431,5 +1431,5 @@ class TestOverviews:
         band = 0
         overview_index = 0
         dataset.create_overviews()
-        dataset.get_overview(band, overview_index)
+        dataset.get_overviews(band, overview_index)
         assert isinstance(dataset._overview, gdal.Band)
