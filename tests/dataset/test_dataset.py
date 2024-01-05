@@ -1399,9 +1399,12 @@ class TestOverviews:
         self, era5_image: gdal.Dataset, clean_overview_after_test
     ):
         dataset = Dataset(era5_image)
-
+        with pytest.raises(ValueError):
+            dataset.get_overview(0, 0)
         dataset.create_overviews()
         assert dataset.raster.GetRasterBand(1).GetOverviewCount() == 2
+        # test the overview_number property
+        assert dataset.overview_number == [2] * dataset.band_count
         assert Path(f"{dataset.file_name}.ovr").exists()
 
     def test_wrong_overview_resampling_method(self, era5_image: gdal.Dataset):
@@ -1418,3 +1421,12 @@ class TestOverviews:
         dataset = Dataset(era5_image)
         with pytest.raises(ValueError):
             dataset.create_overviews(overview_levels=[2, 3])
+
+    def test_get_overview(self, era5_image: gdal.Dataset, clean_overview_after_test):
+        dataset = Dataset(era5_image)
+        band = 0
+        overview_index = 0
+        dataset.create_overviews()
+
+        dataset.get_overview(band, overview_index)
+        assert isinstance(dataset._overview, gdal.Band)

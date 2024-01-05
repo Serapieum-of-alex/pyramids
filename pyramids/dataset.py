@@ -410,9 +410,10 @@ class Dataset:
         self._set_color_table(df, overwrite=True)
 
     @property
-    def overviews(self):
-        """overviews"""
-        return self._overviews
+    def overview_number(self) -> List[int]:
+        """Number of the overviews for each band"""
+
+        return self._overview_number
 
     @classmethod
     def read_file(cls, path: str, read_only=True):
@@ -532,7 +533,7 @@ class Dataset:
 
         return dst
 
-    def _iloc(self, i) -> gdal.Band:
+    def _iloc(self, i: int) -> gdal.Band:
         """_iloc.
 
             - Access dataset array using index.
@@ -2200,13 +2201,13 @@ class Dataset:
 
             if not mask_epsg == self.epsg:
                 raise ValueError(
-                    "Dataset A & B are using different coordinate system please reproject one of them to "
+                    "Dataset A & B are using different coordinate systems please reproject one of them to "
                     "the other raster coordinate system"
                 )
 
         if band_count > 1:
-            # check if the no data value for the src comply with the dtype of the src as sometimes the band is full
-            # of values and the no_data_value is not used at all in the band and when we try to replace any value in
+            # check if the no data value for the src complies with the dtype of the src as sometimes the band is full
+            # of values and the no_data_value is not used at all in the band, and when we try to replace any value in
             # the array with the no_data_value it will raise an error.
             no_data_value = self._check_no_data_value(self.no_data_value)
 
@@ -2231,7 +2232,7 @@ class Dataset:
         dst = Dataset._create_gdal_dataset(
             col, row, band_count, self.gdal_dtype[0], driver="MEM"
         )
-        # but with a lot of computation
+        # but with a lot of computations,
         # if the mask is an array and the mask_gt is not defined, use the src_gt as both the mask and the src
         # are aligned, so they have the sam gt
         try:
@@ -3311,6 +3312,34 @@ class Dataset:
         # Build overviews using nearest neighbor resampling
         # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
         self.raster.BuildOverviews(resampling_method, overview_levels)
+        overview_number = []
+        for i in range(self.band_count):
+            overview_number.append(self._iloc(i).GetOverviewCount())
+        self._overview_number = overview_number
+
+    def get_overview(self, band: int = 0, overview_index: int = 0):
+        """Get an overview of a band.
+
+        Parameters
+        ----------
+        band : int, optional
+            The band index, by default 0
+        overview_index: [int]
+            index of the overview. Default is 0.
+
+        Returns
+        -------
+        Dataset
+            The overview dataset.
+        """
+        band = self._iloc(band)
+        n_views = band.GetOverviewCount()
+        if n_views == 0:
+            raise ValueError("The band has no overviews")
+
+        if overview_index > n_views:
+            raise ValueError(f"overview_level should be less than {n_views}")
+        self._overview = band.GetOverview(overview_index)
 
 
 class Datacube:
