@@ -412,8 +412,11 @@ class Dataset:
     @property
     def overview_count(self) -> List[int]:
         """Number of the overviews for each band"""
+        overview_number = []
+        for i in range(self.band_count):
+            overview_number.append(self._iloc(i).GetOverviewCount())
 
-        return self._overview_count
+        return overview_number
 
     @property
     def overview(self) -> gdal.Band:
@@ -3325,11 +3328,6 @@ class Dataset:
         # Build overviews using nearest neighbor resampling
         # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
         self.raster.BuildOverviews(resampling_method, overview_levels)
-
-        overview_number = []
-        for i in range(self.band_count):
-            overview_number.append(self._iloc(i).GetOverviewCount())
-        self._overview_count = overview_number
 
     def get_overview(self, band: int = 0, overview_index: int = 0):
         """Get an overview of a band.
