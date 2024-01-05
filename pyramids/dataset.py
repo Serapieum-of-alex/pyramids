@@ -419,7 +419,7 @@ class Dataset:
     def overview(self) -> gdal.Band:
         """Overview"""
         if not hasattr(self, "_overview"):
-            raise AttributeError(
+            raise ValueError(
                 "The dataset does not have overviews, please use the `create_overviews` and `get_overviews` method"
             )
 
@@ -3330,7 +3330,7 @@ class Dataset:
             overview_number.append(self._iloc(i).GetOverviewCount())
         self._overview_number = overview_number
 
-    def get_overviews(self, band: int = 0, overview_index: int = 0):
+    def get_overview(self, band: int = 0, overview_index: int = 0):
         """Get an overview of a band.
 
         Parameters
