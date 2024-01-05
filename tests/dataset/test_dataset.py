@@ -1439,3 +1439,6 @@ class TestOverviews:
         dataset.get_overview(band, overview_index)
         ovr = dataset._overview
         assert isinstance(ovr, gdal.Band)
+
+        with pytest.raises(ValueError):
+            dataset.get_overview(band, 5)

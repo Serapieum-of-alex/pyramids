@@ -3352,7 +3352,7 @@ class Dataset:
                 "The band has no overviews, please use the `create_overviews` method to build the overviews"
             )
 
-        if overview_index > n_views:
+        if overview_index >= n_views:
             raise ValueError(f"overview_level should be less than {n_views}")
         self._overview = band.GetOverview(overview_index)
 
