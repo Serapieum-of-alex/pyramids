@@ -1395,12 +1395,16 @@ class TestStats:
 
 
 class TestOverviews:
+    def test_get_overview_error(self, era5_image: gdal.Dataset):
+        # test getting overview before creating it
+        dataset = Dataset(era5_image)
+        with pytest.raises(ValueError):
+            dataset.get_overview(0, 0)
+
     def test_create_overviews(
         self, era5_image: gdal.Dataset, clean_overview_after_test
     ):
         dataset = Dataset(era5_image)
-        with pytest.raises(ValueError):
-            dataset.get_overview(0, 0)
         dataset.create_overviews()
         assert dataset.raster.GetRasterBand(1).GetOverviewCount() == 2
         # test the overview_number property
@@ -1427,6 +1431,5 @@ class TestOverviews:
         band = 0
         overview_index = 0
         dataset.create_overviews()
-
         dataset.get_overview(band, overview_index)
         assert isinstance(dataset._overview, gdal.Band)
