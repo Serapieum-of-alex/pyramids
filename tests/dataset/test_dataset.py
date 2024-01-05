@@ -1437,4 +1437,5 @@ class TestOverviews:
         overview_index = 0
         dataset.create_overviews()
         dataset.get_overview(band, overview_index)
-        assert isinstance(dataset._overview, gdal.Band)
+        ovr = dataset._overview
+        assert isinstance(ovr, gdal.Band)
