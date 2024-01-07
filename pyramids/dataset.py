@@ -418,25 +418,15 @@ class Dataset:
 
         return overview_number
 
-    @property
-    def overview(self) -> gdal.Band:
-        """Overview"""
-        if not hasattr(self, "_overview"):
-            raise ValueError(
-                "The dataset does not have overviews, please use the `create_overviews` and `get_overviews` method"
-            )
-
-        return self._overview
-
     @classmethod
     def read_file(cls, path: str, read_only=True):
         """read_file.
 
         Parameters
         ----------
-        path : [str]
+        path: [str]
             Path of file to open.
-        read_only : [bool]
+        read_only: [bool]
             File mode, set to False, to open in "update" mode.
 
         Returns
@@ -1246,7 +1236,7 @@ class Dataset:
         for band in range(self.band_count):
             try:
                 # now the no_data_value is converted to the dtype of the raster bands and updated in the
-                # dataset attribure, gdal nodatavalue attribute, used to fill the raster band.
+                # dataset attribute, gdal nodatavalue attribute, used to fill the raster band.
                 # from here you have to use the no_data_value stored in the no_data_value attribute as it is updated.
                 self._set_no_data_value_backend(band, no_data_value[band])
             except Exception as e:
@@ -3301,11 +3291,17 @@ class Dataset:
 
         Returns
         -------
-        .ovr file
-            the overview (also known as pyramids) file will be created in the same directory of the dataset,
-            with the same name of the dataset and .ovr extension.
+        internal/external overviews:
+            The overview (also known as pyramids) could be internal or external depending on the state you read
+            the dataset with.
+            - External (.ovr file):
+                If the dataset is read with a`read_only=True` then the overviews' file will be created as an
+                in the same directory of the dataset, with the same name of the dataset and .ovr extension.
+            - Internal:
+                If the dataset is read with a`read_only=False` then the overviews will be created internally in the
+                dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
         overview_number: [list]
-            a list property attribute of the number of overviews for each band.
+            a list property attribute of the overviews for each band.
         """
         if overview_levels is None:
             overview_levels = OVERVIEW_LEVELS
@@ -3328,6 +3324,33 @@ class Dataset:
         # Build overviews using nearest neighbor resampling
         # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
         self.raster.BuildOverviews(resampling_method, overview_levels)
+
+    def recreate_overviews(self, resampling_method: str = "NEAREST"):
+        """Recreate internal overviews for the dataset.
+
+        Parameters
+        ----------
+        resampling_method : str, optional
+            The resampling method used to create the overviews, by default "NEAREST"
+
+        Returns
+        -------
+
+        """
+        if resampling_method not in RESAMPLING_METHODS:
+            raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
+        # Build overviews using nearest neighbor resampling
+        # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
+        try:
+            for i in range(self.band_count):
+                band = self._iloc(i)
+                for j in range(self.overview_count[i]):
+                    ovr = self.get_overview(i, j)
+                    gdal.RegenerateOverview(band, ovr, resampling_method)
+        except RuntimeError:
+            raise ReadOnlyError(
+                "The Dataset is opened with a read only. Please read the dataset using read_only=False"
+            )
 
     def get_overview(self, band: int = 0, overview_index: int = 0):
         """Get an overview of a band.
@@ -3353,7 +3376,8 @@ class Dataset:
 
         if overview_index >= n_views:
             raise ValueError(f"overview_level should be less than {n_views}")
-        self._overview = band.GetOverview(overview_index)
+
+        return band.GetOverview(overview_index)
 
 
 class Datacube:

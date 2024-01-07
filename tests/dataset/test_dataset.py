@@ -1395,11 +1395,6 @@ class TestStats:
 
 
 class TestOverviews:
-    def test_overview_property_error(self, era5_image: gdal.Dataset):
-        dataset = Dataset(era5_image)
-        with pytest.raises(ValueError):
-            dataset.overview
-
     def test_get_overview_error(self, era5_image: gdal.Dataset):
         # test getting overview before creating it
         dataset = Dataset(era5_image)
@@ -1416,17 +1411,17 @@ class TestOverviews:
         assert dataset.overview_count == [2] * dataset.band_count
         assert Path(f"{dataset.file_name}.ovr").exists()
 
-    def test_wrong_overview_resampling_method(self, era5_image: gdal.Dataset):
+    def test_create_overviews_wrong_resampling_method(self, era5_image: gdal.Dataset):
         dataset = Dataset(era5_image)
         with pytest.raises(ValueError):
             dataset.create_overviews(resampling_method="wrong_method")
 
-    def test_overview_wrong_level_type(self, era5_image: gdal.Dataset):
+    def test_create_overviews_wrong_level_type(self, era5_image: gdal.Dataset):
         dataset = Dataset(era5_image)
         with pytest.raises(TypeError):
             dataset.create_overviews(overview_levels=2)
 
-    def test_overview_wrong_level(self, era5_image: gdal.Dataset):
+    def test_create_overviews_wrong_level(self, era5_image: gdal.Dataset):
         dataset = Dataset(era5_image)
         with pytest.raises(ValueError):
             dataset.create_overviews(overview_levels=[2, 3])
@@ -1436,9 +1431,25 @@ class TestOverviews:
         band = 0
         overview_index = 0
         dataset.create_overviews()
-        dataset.get_overview(band, overview_index)
-        ovr = dataset._overview
+        ovr = dataset.get_overview(band, overview_index)
         assert isinstance(ovr, gdal.Band)
 
         with pytest.raises(ValueError):
             dataset.get_overview(band, 5)
+
+    def test_recreate_overviews(
+        self,
+        era5_image__external_overviews_read_only_false: Dataset,
+        clean_overview_after_test,
+    ):
+        dataset = Dataset(era5_image__external_overviews_read_only_false)
+        dataset.recreate_overviews(resampling_method="AVERAGE")
+
+    def test_recreate_overviews_erorr(
+        self,
+        era5_image_external_overviews_read_only_true: gdal.Dataset,
+        clean_overview_after_test,
+    ):
+        dataset = Dataset(era5_image_external_overviews_read_only_true)
+        with pytest.raises(ReadOnlyError):
+            dataset.recreate_overviews(resampling_method="AVERAGE")
