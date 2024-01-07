@@ -167,14 +167,14 @@ def extract_from_gz(input_file: str, output_file: str, delete=False):
 def read_file(path: str, read_only: bool = True):
     """Open file.
 
-        - for a geotiff and ASCII files.
+        - for geotiff and ASCII files.
 
     Parameters
     ----------
     path : [str]
-        Path of file to open(works for ascii, geotiff).
+        Path of file to open (works for ascii, geotiff).
     read_only : [bool]
-        File mode, set to False to open in "update" mode.
+        File mode, set to `False` to open in "update" mode.
 
     Returns
     -------
@@ -192,8 +192,8 @@ def read_file(path: str, read_only: bool = True):
         if str(e).__contains__(" not recognized as a supported file format."):
             if any(path.endswith(i) for i in COMPRESSED_FILES_EXTENSIONS):
                 raise FileFormatNoSupported(
-                    "File format is not supported, if you provided a gzip compressed file with multiple internal "
-                    "files. Currently it is not supported to read gzip files with multiple compressed internal "
+                    "File format is not supported if you provided a gzip compressed file with multiple internal "
+                    "files. Currently, it is not supported to read gzip files with multiple compressed internal "
                     "files"
                 )
         elif any(path.__contains__(i) for i in DOES_NOT_SUPPORT_INTERNAL) and not any(

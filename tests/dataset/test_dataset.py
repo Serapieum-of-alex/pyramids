@@ -1445,7 +1445,7 @@ class TestOverviews:
         dataset = Dataset(era5_image__external_overviews_read_only_false)
         dataset.recreate_overviews(resampling_method="AVERAGE")
 
-    def test_recreate_overviews_erorr(
+    def test_recreate_overviews_error(
         self,
         era5_image_external_overviews_read_only_true: gdal.Dataset,
         clean_overview_after_test,
