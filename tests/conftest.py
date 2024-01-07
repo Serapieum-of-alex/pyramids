@@ -1,17 +1,7 @@
 from pathlib import Path
-from typing import Tuple, List
 
-import geopandas as gpd
-import numpy as np
-import pytest
-import pandas as pd
-from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal
-from osgeo.gdal import Dataset
-from shapely import wkt
 from shapely.geometry import Polygon
 
-from tests.dem.conftest import *
 from tests.dataset.conftest import *
 from tests.feature.conftest import *
 
@@ -242,7 +232,7 @@ def era5_image(era5_raster_path: str) -> gdal.Dataset:
 
 
 @pytest.fixture(scope="function")
-def era5_image__external_overviews_read_only_false() -> Dataset:
+def era5_image_internal_overviews_read_only_false() -> Dataset:
     return gdal.OpenShared(
         "tests/data/geotiff/era5_land_monthly_averaged-internal-overviews.tif",
         gdal.GA_Update,

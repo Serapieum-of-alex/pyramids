@@ -1439,10 +1439,10 @@ class TestOverviews:
 
     def test_recreate_overviews(
         self,
-        era5_image__external_overviews_read_only_false: Dataset,
+            era5_image_internal_overviews_read_only_false: Dataset,
         clean_overview_after_test,
     ):
-        dataset = Dataset(era5_image__external_overviews_read_only_false)
+        dataset = Dataset(era5_image_internal_overviews_read_only_false)
         dataset.recreate_overviews(resampling_method="AVERAGE")
 
     def test_recreate_overviews_error(
