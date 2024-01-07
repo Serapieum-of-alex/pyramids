@@ -3346,6 +3346,11 @@ class Dataset:
                 band = self._iloc(i)
                 for j in range(self.overview_count[i]):
                     ovr = self.get_overview(i, j)
+                    # TODO: if this method takes a long time, we can use the gdal.RegenerateOverviews() method
+                    #  which is faster but it does not give the option to choose the resampling method. and the
+                    #  overviews has to be given to the function as a list.
+                    #  overviews = [band.GetOverview(i) for i in range(band.GetOverviewCount())]
+                    #  band.RegenerateOverviews(overviews) or gdal.RegenerateOverviews(overviews)
                     gdal.RegenerateOverview(band, ovr, resampling_method)
         except RuntimeError:
             raise ReadOnlyError(
