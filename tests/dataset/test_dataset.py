@@ -1481,13 +1481,13 @@ class TestOverviews:
             with pytest.raises(ValueError):
                 dataset.read_overview_array(band=99, overview_index=0)
 
-        # def test_valid_band_no_overview(
-        #     self, era5_image: gdal.Dataset, clean_overview_after_test
-        # ):
-        #     dataset = Dataset(era5_image)
-        #     # Assuming band 0 has no overviews
-        #     with pytest.raises(ValueError):
-        #         dataset.read_overview_array(band=0, overview_index=0)
+        def test_valid_band_no_overview(
+            self, modis_surf_temp: gdal.Dataset, clean_overview_after_test
+        ):
+            dataset = Dataset(modis_surf_temp)
+            # Assuming band 0 has no overviews
+            with pytest.raises(ValueError):
+                dataset.read_overview_array(band=0, overview_index=0)
 
         # def test_multi_band_some_without_overview(self, multi_band_dataset):
         #     # Assuming some bands in the dataset do not have overviews
