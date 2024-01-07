@@ -240,7 +240,7 @@ def era5_image_internal_overviews_read_only_false() -> Dataset:
 
 
 @pytest.fixture(scope="function")
-def era5_image_external_overviews_read_only_true() -> Dataset:
+def era5_image_internal_overviews_read_only_true() -> Dataset:
     return gdal.OpenShared(
         "tests/data/geotiff/era5_land_monthly_averaged-internal-overviews.tif",
         gdal.GA_ReadOnly,

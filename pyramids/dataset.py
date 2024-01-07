@@ -551,6 +551,9 @@ class Dataset:
         Band:
             Gdal Band.
         """
+        if i < 0:
+            raise IndexError("negative index not supported")
+
         if i > self.band_count - 1:
             raise IndexError(
                 f"index {i} is out of bounds for axis 0 with size {self.band_count}"
@@ -664,6 +667,58 @@ class Dataset:
 
         return arr
 
+    def read_overview_array(
+        self, band: int = None, overview_index: int = 0
+    ) -> np.ndarray:
+        """Read Array
+
+            - read the values stored in a given band.
+
+        Parameters
+        ----------
+        band : [integer]
+            the band you want to get its data, If None, the data of all bands will be read. Default is None
+        overview_index: [int]
+            index of the overview. Default is 0.
+
+        Returns
+        -------
+        array : [array]
+            array with all the values in the raster.
+        """
+        if band is None and self.band_count > 1:
+            if all(elem == 0 for elem in self.overview_count):
+                raise ValueError(
+                    "some bands do not have overviews, please create overviews first"
+                )
+            # read the array from the first overview to get the size of the array.
+            arr = self.get_overview(0, 0).ReadAsArray()
+            arr = np.ones(
+                (
+                    self.band_count,
+                    arr.shape[0],
+                    arr.shape[1],
+                ),
+                dtype=self.numpy_dtype[0],
+            )
+            for i in range(self.band_count):
+                arr[i, :, :] = self.get_overview(i, overview_index).ReadAsArray()
+        else:
+            if band is None:
+                band = 0
+            else:
+                if band > self.band_count - 1:
+                    raise ValueError(
+                        f"band index should be between 0 and {self.band_count - 1}"
+                    )
+                if self.overview_count[band] == 0:
+                    raise ValueError(
+                        f"band {band} has no overviews, please create overviews first"
+                    )
+            arr = self.get_overview(band, overview_index).ReadAsArray()
+
+        return arr
+
     def plot(
         self,
         band: int = None,
@@ -671,6 +726,8 @@ class Dataset:
         rgb: List[int] = None,
         surface_reflectance: int = 10000,
         cutoff: List = None,
+        overview: bool = False,
+        overview_index: int = 0,
         **kwargs,
     ):
         """Read Array
@@ -690,6 +747,10 @@ class Dataset:
         cutoff: [List]
             clip the range of pixel values for each band. (take only the pixel values from 0 to the value of the cutoff
             and scale them back to between 0 and 1). Default is None.
+        overview: [bool]
+            True if you want to plot the overview. Default is False.
+        overview_index: [int]
+            index of the overview. Default is 0.
         **kwargs
             points : [array]
                 3 column array with the first column as the value you want to display for the point, the second is the rows
@@ -767,7 +828,15 @@ class Dataset:
         from cleopatra.array import Array
 
         no_data_value = [np.nan if i is None else i for i in self.no_data_value]
-        arr = self.read_array(band=band)
+        if overview:
+            arr = []
+            for i in range(self.band_count):
+                ovr = self.get_overview(i, 0)
+                arr.append(ovr.ReadAsArray())
+
+            arr = np.stack(arr)
+        else:
+            arr = self.read_array(band=band)
         # if the raster has three bands or more.
         if self.band_count >= 3:
             if band is None:

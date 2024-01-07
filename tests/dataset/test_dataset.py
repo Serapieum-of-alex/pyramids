@@ -1327,10 +1327,10 @@ class TestIloc:
         src_no_data_value: float,
     ):
         dataset = Dataset(src)
-        try:
+        with pytest.raises(IndexError):
             dataset._iloc(1)
-        except IndexError:
-            pass
+        with pytest.raises(IndexError):
+            dataset._iloc(-1)
 
     def test_iloc(
         self,
@@ -1439,7 +1439,7 @@ class TestOverviews:
 
     def test_recreate_overviews(
         self,
-            era5_image_internal_overviews_read_only_false: Dataset,
+        era5_image_internal_overviews_read_only_false: Dataset,
         clean_overview_after_test,
     ):
         dataset = Dataset(era5_image_internal_overviews_read_only_false)
@@ -1447,9 +1447,49 @@ class TestOverviews:
 
     def test_recreate_overviews_error(
         self,
-        era5_image_external_overviews_read_only_true: gdal.Dataset,
+        era5_image_internal_overviews_read_only_true: Dataset,
         clean_overview_after_test,
     ):
-        dataset = Dataset(era5_image_external_overviews_read_only_true)
+        dataset = Dataset(era5_image_internal_overviews_read_only_true)
         with pytest.raises(ReadOnlyError):
             dataset.recreate_overviews(resampling_method="AVERAGE")
+
+    class TestReadOverviewArray:
+        def test_single_band_valid_overview(self, rhine_raster):
+            dataset = Dataset(rhine_raster)
+            # Test with single-band dataset and valid overview
+            arr = dataset.read_overview_array(band=0, overview_index=0)
+            assert isinstance(arr, np.ndarray)
+            assert arr.shape == (63, 47)
+
+        def test_multi_band_all_valid_overview(
+            self, era5_image_internal_overviews_read_only_true
+        ):
+            dataset = Dataset(era5_image_internal_overviews_read_only_true)
+            # Test with all bands in a multi-band dataset
+            arr = dataset.read_overview_array(band=None, overview_index=0)
+            assert isinstance(arr, np.ndarray)
+            assert arr.shape[0] == dataset.band_count
+            assert arr.shape[1] == 2
+            assert arr.shape[2] == 1
+
+        def test_band_index_out_of_range(
+            self, era5_image_internal_overviews_read_only_true
+        ):
+            dataset = Dataset(era5_image_internal_overviews_read_only_true)
+            # Test with invalid band index (higher than available)
+            with pytest.raises(ValueError):
+                dataset.read_overview_array(band=99, overview_index=0)
+
+        # def test_valid_band_no_overview(
+        #     self, era5_image: gdal.Dataset, clean_overview_after_test
+        # ):
+        #     dataset = Dataset(era5_image)
+        #     # Assuming band 0 has no overviews
+        #     with pytest.raises(ValueError):
+        #         dataset.read_overview_array(band=0, overview_index=0)
+
+        # def test_multi_band_some_without_overview(self, multi_band_dataset):
+        #     # Assuming some bands in the dataset do not have overviews
+        #     with pytest.raises(ValueError):
+        #         multi_band_dataset.read_overview_array(band=None, overview_index=0)
