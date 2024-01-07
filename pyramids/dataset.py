@@ -50,7 +50,7 @@ from pyramids import _io
 
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog(raster_driver=True)
-OVERVIEW_LEVELS = [2, 4, 8, 16, 32, 64, 128]
+OVERVIEW_LEVELS = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
 RESAMPLING_METHODS = [
     "NEAREST",
     "CUBIC",
@@ -3287,7 +3287,8 @@ class Dataset:
         resampling_method : str, optional
             The resampling method used to create the overviews, by default "NEAREST"
         overview_levels : list, optional
-            The overview levels, by default [2, 4, 8, 16, 32]
+            The overview levels, overview_levels are restricted to the typical power-of-two reduction factors.
+            Default [2, 4, 8, 16, 32]
 
         Returns
         -------
