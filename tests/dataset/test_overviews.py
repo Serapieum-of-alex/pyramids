@@ -77,6 +77,9 @@ class TestReadOverviewArray:
         arr = dataset.read_overview_array(band=0, overview_index=0)
         assert isinstance(arr, np.ndarray)
         assert arr.shape == (63, 47)
+        # test if the band is None
+        arr = dataset.read_overview_array(band=None, overview_index=0)
+        assert isinstance(arr, np.ndarray)
 
     def test_multi_band_all_valid_overview(
         self, era5_image_internal_overviews_read_only_true
