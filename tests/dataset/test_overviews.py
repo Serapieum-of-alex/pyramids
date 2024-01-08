@@ -103,6 +103,9 @@ class TestReadOverviewArray:
         dataset = Dataset(modis_surf_temp)
         # Assuming band 0 has no overviews
         with pytest.raises(ValueError):
+            dataset.read_overview_array(band=None, overview_index=0)
+
+        with pytest.raises(ValueError):
             dataset.read_overview_array(band=0, overview_index=0)
 
     # def test_multi_band_some_without_overview(self, multi_band_dataset):

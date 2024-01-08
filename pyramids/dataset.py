@@ -687,9 +687,9 @@ class Dataset:
             array with all the values in the raster.
         """
         if band is None and self.band_count > 1:
-            if all(elem == 0 for elem in self.overview_count):
+            if any(elem == 0 for elem in self.overview_count):
                 raise ValueError(
-                    "some bands do not have overviews, please create overviews first"
+                    "Some bands do not have overviews, please create overviews first"
                 )
             # read the array from the first overview to get the size of the array.
             arr = self.get_overview(0, 0).ReadAsArray()
