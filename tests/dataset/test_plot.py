@@ -33,6 +33,20 @@ class TestPlotDataSet:
         fig, ax = dataset.plot(rgb=[3, 2, 1])
         assert isinstance(fig, Figure)
 
+    @pytest.mark.plot
+    def test_multi_band_overviews(
+        self,
+        era5_image_internal_overviews_read_only_true: Dataset,
+        src_shape: tuple,
+        src_arr: np.ndarray,
+    ):
+        from matplotlib.figure import Figure
+
+        dataset = Dataset(era5_image_internal_overviews_read_only_true)
+        fig, ax = dataset.plot(band=0, overview=True, overview_index=0)
+
+        assert isinstance(fig, Figure)
+
 
 class TestPlotDataCube:
     @pytest.mark.plot

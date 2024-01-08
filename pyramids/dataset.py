@@ -829,12 +829,7 @@ class Dataset:
 
         no_data_value = [np.nan if i is None else i for i in self.no_data_value]
         if overview:
-            arr = []
-            for i in range(self.band_count):
-                ovr = self.get_overview(i, 0)
-                arr.append(ovr.ReadAsArray())
-
-            arr = np.stack(arr)
+            arr = self.read_overview_array(band=band, overview_index=overview_index)
         else:
             arr = self.read_array(band=band)
         # if the raster has three bands or more.
