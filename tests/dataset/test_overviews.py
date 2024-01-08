@@ -70,6 +70,15 @@ def test_recreate_overviews_error(
         dataset.recreate_overviews(resampling_method="AVERAGE")
 
 
+def test_recreate_overviews_error(
+    era5_image_internal_overviews_read_only_true: Dataset,
+    clean_overview_after_test,
+):
+    dataset = Dataset(era5_image_internal_overviews_read_only_true)
+    with pytest.raises(ValueError):
+        dataset.recreate_overviews(resampling_method="wrong_method")
+
+
 class TestReadOverviewArray:
     def test_single_band_valid_overview(self, rhine_raster):
         dataset = Dataset(rhine_raster)
