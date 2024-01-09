@@ -50,7 +50,19 @@ from pyramids import _io
 
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog(raster_driver=True)
-
+OVERVIEW_LEVELS = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
+RESAMPLING_METHODS = [
+    "NEAREST",
+    "CUBIC",
+    "AVERAGE",
+    "GAUSS",
+    "CUBICSPLINE",
+    "LANCZOS",
+    "MODE",
+    "AVERAGE_MAGPHASE",
+    "RMS",
+    "BILINEAR",
+]
 # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return an error
 # value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
 # this behavior in GDAL and OGR by calling the UseExceptions()
@@ -397,15 +409,24 @@ class Dataset:
 
         self._set_color_table(df, overwrite=True)
 
+    @property
+    def overview_count(self) -> List[int]:
+        """Number of the overviews for each band"""
+        overview_number = []
+        for i in range(self.band_count):
+            overview_number.append(self._iloc(i).GetOverviewCount())
+
+        return overview_number
+
     @classmethod
     def read_file(cls, path: str, read_only=True):
         """read_file.
 
         Parameters
         ----------
-        path : [str]
+        path: [str]
             Path of file to open.
-        read_only : [bool]
+        read_only: [bool]
             File mode, set to False, to open in "update" mode.
 
         Returns
@@ -515,7 +536,7 @@ class Dataset:
 
         return dst
 
-    def _iloc(self, i) -> gdal.Band:
+    def _iloc(self, i: int) -> gdal.Band:
         """_iloc.
 
             - Access dataset array using index.
@@ -530,6 +551,9 @@ class Dataset:
         Band:
             Gdal Band.
         """
+        if i < 0:
+            raise IndexError("negative index not supported")
+
         if i > self.band_count - 1:
             raise IndexError(
                 f"index {i} is out of bounds for axis 0 with size {self.band_count}"
@@ -643,6 +667,58 @@ class Dataset:
 
         return arr
 
+    def read_overview_array(
+        self, band: int = None, overview_index: int = 0
+    ) -> np.ndarray:
+        """Read Array
+
+            - read the values stored in a given band.
+
+        Parameters
+        ----------
+        band : [integer]
+            the band you want to get its data, If None, the data of all bands will be read. Default is None
+        overview_index: [int]
+            index of the overview. Default is 0.
+
+        Returns
+        -------
+        array : [array]
+            array with all the values in the raster.
+        """
+        if band is None and self.band_count > 1:
+            if any(elem == 0 for elem in self.overview_count):
+                raise ValueError(
+                    "Some bands do not have overviews, please create overviews first"
+                )
+            # read the array from the first overview to get the size of the array.
+            arr = self.get_overview(0, 0).ReadAsArray()
+            arr = np.ones(
+                (
+                    self.band_count,
+                    arr.shape[0],
+                    arr.shape[1],
+                ),
+                dtype=self.numpy_dtype[0],
+            )
+            for i in range(self.band_count):
+                arr[i, :, :] = self.get_overview(i, overview_index).ReadAsArray()
+        else:
+            if band is None:
+                band = 0
+            else:
+                if band > self.band_count - 1:
+                    raise ValueError(
+                        f"band index should be between 0 and {self.band_count - 1}"
+                    )
+                if self.overview_count[band] == 0:
+                    raise ValueError(
+                        f"band {band} has no overviews, please create overviews first"
+                    )
+            arr = self.get_overview(band, overview_index).ReadAsArray()
+
+        return arr
+
     def plot(
         self,
         band: int = None,
@@ -650,6 +726,8 @@ class Dataset:
         rgb: List[int] = None,
         surface_reflectance: int = 10000,
         cutoff: List = None,
+        overview: bool = False,
+        overview_index: int = 0,
         **kwargs,
     ):
         """Read Array
@@ -669,6 +747,10 @@ class Dataset:
         cutoff: [List]
             clip the range of pixel values for each band. (take only the pixel values from 0 to the value of the cutoff
             and scale them back to between 0 and 1). Default is None.
+        overview: [bool]
+            True if you want to plot the overview. Default is False.
+        overview_index: [int]
+            index of the overview. Default is 0.
         **kwargs
             points : [array]
                 3 column array with the first column as the value you want to display for the point, the second is the rows
@@ -746,7 +828,10 @@ class Dataset:
         from cleopatra.array import Array
 
         no_data_value = [np.nan if i is None else i for i in self.no_data_value]
-        arr = self.read_array(band=band)
+        if overview:
+            arr = self.read_overview_array(band=band, overview_index=overview_index)
+        else:
+            arr = self.read_array(band=band)
         # if the raster has three bands or more.
         if self.band_count >= 3:
             if band is None:
@@ -1215,7 +1300,7 @@ class Dataset:
         for band in range(self.band_count):
             try:
                 # now the no_data_value is converted to the dtype of the raster bands and updated in the
-                # dataset attribure, gdal nodatavalue attribute, used to fill the raster band.
+                # dataset attribute, gdal nodatavalue attribute, used to fill the raster band.
                 # from here you have to use the no_data_value stored in the no_data_value attribute as it is updated.
                 self._set_no_data_value_backend(band, no_data_value[band])
             except Exception as e:
@@ -2183,13 +2268,13 @@ class Dataset:
 
             if not mask_epsg == self.epsg:
                 raise ValueError(
-                    "Dataset A & B are using different coordinate system please reproject one of them to "
+                    "Dataset A & B are using different coordinate systems please reproject one of them to "
                     "the other raster coordinate system"
                 )
 
         if band_count > 1:
-            # check if the no data value for the src comply with the dtype of the src as sometimes the band is full
-            # of values and the no_data_value is not used at all in the band and when we try to replace any value in
+            # check if the no data value for the src complies with the dtype of the src as sometimes the band is full
+            # of values and the no_data_value is not used at all in the band, and when we try to replace any value in
             # the array with the no_data_value it will raise an error.
             no_data_value = self._check_no_data_value(self.no_data_value)
 
@@ -2214,7 +2299,7 @@ class Dataset:
         dst = Dataset._create_gdal_dataset(
             col, row, band_count, self.gdal_dtype[0], driver="MEM"
         )
-        # but with a lot of computation
+        # but with a lot of computations,
         # if the mask is an array and the mask_gt is not defined, use the src_gt as both the mask and the src
         # are aligned, so they have the sam gt
         try:
@@ -3255,6 +3340,127 @@ class Dataset:
                 df.loc[i, ["band", "values"]] = band + 1, i
 
         return df
+
+    def create_overviews(
+        self, resampling_method: str = "nearest", overview_levels: list = None
+    ):
+        """Create overviews for the dataset.
+
+        Parameters
+        ----------
+        resampling_method : str, optional
+            The resampling method used to create the overviews, by default "nearest"
+            possible values are:
+                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
+                "BILINEAR".
+        overview_levels : list, optional
+            The overview levels, overview_levels are restricted to the typical power-of-two reduction factors.
+            Default [2, 4, 8, 16, 32]
+
+        Returns
+        -------
+        internal/external overviews:
+            The overview (also known as pyramids) could be internal or external depending on the state you read
+            the dataset with.
+            - External (.ovr file):
+                If the dataset is read with a`read_only=True` then the overviews' file will be created as an
+                in the same directory of the dataset, with the same name of the dataset and .ovr extension.
+            - Internal:
+                If the dataset is read with a`read_only=False` then the overviews will be created internally in the
+                dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
+        overview_count: [list]
+            a list property attribute of the overviews for each band.
+        """
+        if overview_levels is None:
+            overview_levels = OVERVIEW_LEVELS
+        else:
+            if not isinstance(overview_levels, list):
+                raise TypeError("overview_levels should be a list")
+
+            # if self.raster.HasArbitraryOverviews():
+            if not all(elem in OVERVIEW_LEVELS for elem in overview_levels):
+                raise ValueError(
+                    "overview_levels are restricted to the typical power-of-two reduction factors "
+                    "(like 2, 4, 8, 16, etc.)"
+                )
+
+        if resampling_method.upper() not in RESAMPLING_METHODS:
+            raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
+        # Define the overview levels (the reduction factor).
+        # e.g., 2 means the overview will be half the resolution of the original dataset.
+
+        # Build overviews using nearest neighbor resampling
+        # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
+        self.raster.BuildOverviews(resampling_method, overview_levels)
+
+    def recreate_overviews(self, resampling_method: str = "nearest"):
+        """Recreate overviews for the dataset.
+
+        Parameters
+        ----------
+        resampling_method : str, optional
+            The resampling method used to create the overviews, by default "nearest"
+            possible values are:
+                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
+                "BILINEAR".
+
+        Raises
+        ------
+        ValueError
+            resampling_method should be one of {"NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS",
+            "MODE", "AVERAGE_MAGPHASE", "RMS", "BILINEAR"}
+        ReadOnlyError
+            If the overviews are internal and the Dataset is opened with a read only. Please read the dataset using
+            read_only=False
+        """
+        if resampling_method.upper() not in RESAMPLING_METHODS:
+            raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
+        # Build overviews using nearest neighbor resampling
+        # nearest is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
+        try:
+            for i in range(self.band_count):
+                band = self._iloc(i)
+                for j in range(self.overview_count[i]):
+                    ovr = self.get_overview(i, j)
+                    # TODO: if this method takes a long time, we can use the gdal.RegenerateOverviews() method
+                    #  which is faster but it does not give the option to choose the resampling method. and the
+                    #  overviews has to be given to the function as a list.
+                    #  overviews = [band.GetOverview(i) for i in range(band.GetOverviewCount())]
+                    #  band.RegenerateOverviews(overviews) or gdal.RegenerateOverviews(overviews)
+                    gdal.RegenerateOverview(band, ovr, resampling_method)
+        except RuntimeError:
+            raise ReadOnlyError(
+                "The Dataset is opened with a read only. Please read the dataset using read_only=False"
+            )
+
+    def get_overview(self, band: int = 0, overview_index: int = 0) -> gdal.Band:
+        """Get an overview of a band.
+
+        Parameters
+        ----------
+        band : int, optional
+            The band index, by default 0
+        overview_index: [int]
+            index of the overview. Default is 0.
+
+        Returns
+        -------
+        gdal.Band
+            gdal band object
+        """
+        band = self._iloc(band)
+        n_views = band.GetOverviewCount()
+        if n_views == 0:
+            raise ValueError(
+                "The band has no overviews, please use the `create_overviews` method to build the overviews"
+            )
+
+        if overview_index >= n_views:
+            raise ValueError(f"overview_level should be less than {n_views}")
+
+        # TODO:find away to create a Dataset object from the overview band and to return the Dataset object instead
+        #  of the gdal band.
+        return band.GetOverview(overview_index)
 
 
 class Datacube:

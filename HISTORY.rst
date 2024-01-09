@@ -154,3 +154,13 @@ True.
 Dataset
 """""""
 * Count domain cells for a specific band.
+
+
+0.5.6 (2024-01-09)
+------------------
+Dataset
+"""""""
+* create `create_overviews`, `recreate_overview`, `read_overview_array` methods, and `overview_count` attribute to
+handle overviews.
+* The `plot` method takes an extra parameters `overviews` and `overview_index` to enable plotting overviews instead
+of the real values in the bands.

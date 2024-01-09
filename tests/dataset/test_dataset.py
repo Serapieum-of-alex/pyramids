@@ -1,3 +1,4 @@
+"""Test the Dataset class."""
 import os
 from types import GeneratorType
 from typing import List, Tuple
@@ -1326,10 +1327,10 @@ class TestIloc:
         src_no_data_value: float,
     ):
         dataset = Dataset(src)
-        try:
+        with pytest.raises(IndexError):
             dataset._iloc(1)
-        except IndexError:
-            pass
+        with pytest.raises(IndexError):
+            dataset._iloc(-1)
 
     def test_iloc(
         self,

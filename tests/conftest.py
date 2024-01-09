@@ -1,17 +1,7 @@
 from pathlib import Path
-from typing import Tuple, List
 
-import geopandas as gpd
-import numpy as np
-import pytest
-import pandas as pd
-from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal
-from osgeo.gdal import Dataset
-from shapely import wkt
 from shapely.geometry import Polygon
 
-from tests.dem.conftest import *
 from tests.dataset.conftest import *
 from tests.feature.conftest import *
 
@@ -33,16 +23,16 @@ def nan_raster() -> Dataset:
 
 @pytest.fixture(scope="session")
 def polygon_corner_coello_path() -> str:
-    """polygon vector at the top left corner of coello."""
+    """polygon vector in the top left corner of coello."""
     return "tests/data/mask.geojson"
 
 
 @pytest.fixture(scope="function")
 def polygon_corner_coello_gdf(polygon_corner_coello_path: str) -> GeoDataFrame:
     """
-    polygon vector at the top left corner of coello.
+    polygon vector in the top left corner of coello.
     columns: ["fid"]
-    geometries: one polygon at the top left corner of the coello catchment
+    geometries: one polygon in the top left corner of the coello catchment
     """
     return gpd.read_file(polygon_corner_coello_path)
 
@@ -50,9 +40,9 @@ def polygon_corner_coello_gdf(polygon_corner_coello_path: str) -> GeoDataFrame:
 @pytest.fixture(scope="function")
 def coello_irregular_polygon_gdf() -> GeoDataFrame:
     """
-    polygon vector at the top left corner of coello.
+    polygon vector in the top left corner of coello.
     columns: ["fid"]
-    geometries: one polygon at the top left corner of the coello catchment
+    geometries: one polygon in the top left corner of the coello catchment
     """
     return gpd.read_file("tests/data/coello_irregular_polygon.geojson")
 
@@ -60,9 +50,9 @@ def coello_irregular_polygon_gdf() -> GeoDataFrame:
 @pytest.fixture(scope="function")
 def polygons_coello_gdf() -> GeoDataFrame:
     """
-    polygon vector at the top left corner of coello.
+    polygon vector in the top left corner of coello.
     columns: ["fid"]
-    geometries: one polygon at the top left corner of the coello catchment
+    geometries: one polygon in the top left corner of the coello catchment
     """
     return gpd.read_file("tests/data/coello_polygons.geojson")
 
@@ -231,9 +221,47 @@ def modis_surf_temp() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/modis_surftemp.tif")
 
 
+@pytest.fixture(scope="session")
+def era5_raster_path() -> str:
+    return "tests/data/geotiff/era5_land_monthly_averaged.tif"
+
+
 @pytest.fixture(scope="module")
-def era5_image() -> gdal.Dataset:
-    return gdal.Open("tests/data/geotiff/era5_land_monthly_averaged.tif")
+def era5_image(era5_raster_path: str) -> gdal.Dataset:
+    return gdal.Open(era5_raster_path)
+
+
+@pytest.fixture(scope="function")
+def era5_image_internal_overviews_read_only_false() -> Dataset:
+    return gdal.OpenShared(
+        "tests/data/geotiff/era5_land_monthly_averaged-internal-overviews.tif",
+        gdal.GA_Update,
+    )
+
+
+@pytest.fixture(scope="function")
+def era5_image_internal_overviews_read_only_true() -> Dataset:
+    return gdal.OpenShared(
+        "tests/data/geotiff/era5_land_monthly_averaged-internal-overviews.tif",
+        gdal.GA_ReadOnly,
+    )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def clean_overview_before_test(era5_raster_path: str) -> None:
+    try:
+        os.remove(f"{era5_raster_path}.ovr")
+    except OSError as e:
+        print(f"Error: {e.strerror}")
+
+
+@pytest.fixture
+def clean_overview_after_test(era5_raster_path: str) -> None:
+    yield
+    try:
+        os.remove(f"{era5_raster_path}.ovr")
+    except OSError as e:
+        print(f"Error: {e.strerror}")
 
 
 @pytest.fixture(scope="module")
