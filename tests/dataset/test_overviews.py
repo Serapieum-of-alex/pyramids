@@ -53,30 +53,43 @@ def test_get_overview(era5_image: gdal.Dataset, clean_overview_after_test):
         dataset.get_overview(band, 5)
 
 
-def test_recreate_overviews(
-    era5_image_internal_overviews_read_only_false: Dataset,
-    clean_overview_after_test,
-):
-    dataset = Dataset(era5_image_internal_overviews_read_only_false)
-    dataset.recreate_overviews(resampling_method="average")
-
-
-def test_recreate_overviews_error(
-    era5_image_internal_overviews_read_only_true: Dataset,
-    clean_overview_after_test,
-):
-    dataset = Dataset(era5_image_internal_overviews_read_only_true)
-    with pytest.raises(ReadOnlyError):
+class TestReCreateOverviews:
+    def test_recreate_overviews_internal(
+        self,
+        era5_image_internal_overviews_read_only_false: Dataset,
+        clean_overview_after_test,
+    ):
+        """Test recreating overviews for a dataset with internal overviews"""
+        dataset = Dataset(era5_image_internal_overviews_read_only_false)
         dataset.recreate_overviews(resampling_method="average")
 
+    def test_recreate_overviews_external(
+        self,
+        era5_image: gdal.Dataset,
+        clean_overview_after_test,
+    ):
+        """Test recreating overviews for a dataset with external overviews"""
+        dataset = Dataset(era5_image)
+        dataset.create_overviews(overview_levels=[])
+        dataset.recreate_overviews(resampling_method="average")
 
-def test_recreate_overviews_error(
-    era5_image_internal_overviews_read_only_true: Dataset,
-    clean_overview_after_test,
-):
-    dataset = Dataset(era5_image_internal_overviews_read_only_true)
-    with pytest.raises(ValueError):
-        dataset.recreate_overviews(resampling_method="wrong_method")
+    def test_recreate_overviews_error_read_only(
+        self,
+        era5_image_internal_overviews_read_only_true: Dataset,
+        clean_overview_after_test,
+    ):
+        dataset = Dataset(era5_image_internal_overviews_read_only_true)
+        with pytest.raises(ReadOnlyError):
+            dataset.recreate_overviews(resampling_method="average")
+
+    def test_recreate_overviews_error_wrong_resampling(
+        self,
+        era5_image_internal_overviews_read_only_true: Dataset,
+        clean_overview_after_test,
+    ):
+        dataset = Dataset(era5_image_internal_overviews_read_only_true)
+        with pytest.raises(ValueError):
+            dataset.recreate_overviews(resampling_method="wrong_method")
 
 
 class TestReadOverviewArray:
