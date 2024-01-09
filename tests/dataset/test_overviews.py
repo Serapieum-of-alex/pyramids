@@ -58,7 +58,7 @@ def test_recreate_overviews(
     clean_overview_after_test,
 ):
     dataset = Dataset(era5_image_internal_overviews_read_only_false)
-    dataset.recreate_overviews(resampling_method="AVERAGE")
+    dataset.recreate_overviews(resampling_method="average")
 
 
 def test_recreate_overviews_error(
@@ -67,7 +67,7 @@ def test_recreate_overviews_error(
 ):
     dataset = Dataset(era5_image_internal_overviews_read_only_true)
     with pytest.raises(ReadOnlyError):
-        dataset.recreate_overviews(resampling_method="AVERAGE")
+        dataset.recreate_overviews(resampling_method="average")
 
 
 def test_recreate_overviews_error(

@@ -3342,7 +3342,7 @@ class Dataset:
         return df
 
     def create_overviews(
-        self, resampling_method: str = "NEAREST", overview_levels: list = None
+        self, resampling_method: str = "nearest", overview_levels: list = None
     ):
         """Create overviews for the dataset.
 
@@ -3381,7 +3381,7 @@ class Dataset:
                     "(like 2, 4, 8, 16, etc.)"
                 )
 
-        if resampling_method not in RESAMPLING_METHODS:
+        if resampling_method.upper() not in RESAMPLING_METHODS:
             raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
         # Define the overview levels (the reduction factor).
         # e.g., 2 means the overview will be half the resolution of the original dataset.
@@ -3390,7 +3390,7 @@ class Dataset:
         # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
         self.raster.BuildOverviews(resampling_method, overview_levels)
 
-    def recreate_overviews(self, resampling_method: str = "NEAREST"):
+    def recreate_overviews(self, resampling_method: str = "nearest"):
         """Recreate internal overviews for the dataset.
 
         Parameters
@@ -3402,7 +3402,7 @@ class Dataset:
         -------
 
         """
-        if resampling_method not in RESAMPLING_METHODS:
+        if resampling_method.upper() not in RESAMPLING_METHODS:
             raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
         # Build overviews using nearest neighbor resampling
         # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
