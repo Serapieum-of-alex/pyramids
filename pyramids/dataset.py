@@ -3402,13 +3402,13 @@ class Dataset:
             The resampling method used to create the overviews, by default "nearest"
             possible values are:
                 "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
+                "BILINEAR".
 
         Raises
         ------
         ValueError
             resampling_method should be one of {"NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS",
-            "MODE", "AVERAGE_MAGPHASE", "RMS",}
-                "BILINEAR"
+            "MODE", "AVERAGE_MAGPHASE", "RMS", "BILINEAR"}
         ReadOnlyError
             If the overviews are internal and the Dataset is opened with a read only. Please read the dataset using
             read_only=False
