@@ -70,7 +70,7 @@ class TestReCreateOverviews:
     ):
         """Test recreating overviews for a dataset with external overviews"""
         dataset = Dataset(era5_image)
-        dataset.create_overviews(overview_levels=[])
+        dataset.create_overviews(overview_levels=[2])
         dataset.recreate_overviews(resampling_method="average")
 
     def test_recreate_overviews_error_read_only(
