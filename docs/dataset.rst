@@ -534,12 +534,13 @@ read_array
         -3.402823e+38, -3.402823e+38]], dtype=float32)
 
 Band statistics (stats)
----------------
+-----------------------
 - To get a summary statistics (min, max, mean, std) of a band/all bands.
 - The method returns a `DataFrame` of statistics values of each band, the dataframe has the following columns:
     [min, max, mean, std], the index of the dataframe is the band names.
 
 .. code:: py
+
     era5_image = "tests/data/geotiff/era5_land_monthly_averaged.tif"
     dataset = Dataset.read_file(era5_image)
     stats = dataset.stats()
@@ -553,6 +554,7 @@ Band statistics (stats)
 - The method can also take a mask (polygon/dataset) to calculate the statistics of the masked area only.
 
 .. code:: py
+
     era5_image = "tests/data/geotiff/era5_land_monthly_averaged.tif"
     dataset = Dataset.read_file(era5_image)
     mask = gpd.read_file("tests/data/geotiff/era5-mask.geojson")
@@ -1294,6 +1296,115 @@ color_table
 
     - The values in the `values` column in the `DataFrame` should cover the entir range of  values in the raster.
     - Any value that is not in the `values` column will not be assigned any color.
+
+Overviews
+---------
+Overviews are essentially lower resolution versions of a raster dataset. They are used to improve the performance of
+rendering large raster datasets by providing pyramid layers of the same data at different resolutions. When you view
+a large image at a small scale (zoomed out), `Pyramids` can use these overviews instead of the full-resolution data,
+which speeds up the loading and display of the raster.
+
+overviews can be stored in two ways:
+
+    Internal Overviews:
+        These are overviews that are stored within the same file as the main dataset. Many raster formats support
+        internal overviews.
+
+    External Overviews:
+        These are overviews stored in separate files, typically with the extension .ovr. External overviews are
+        useful when the raster format does not support internal overviews or when you want to keep the overviews
+        separate from the main dataset file.
+
+To create an overview for a raster dataset you can use the `create_overviews` method.
+
+
+create_overviews
+^^^^^^^^^^^^^^^^
+
+Parameters
+""""""""""
+    resampling_method : str, optional
+        The resampling method used to create the overviews, by default "NEAREST"
+        possible values are:
+                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
+                "BILINEAR".
+    overview_levels : list, optional
+        The overview levels, overview_levels are restricted to the typical power-of-two reduction factors.
+        Default [2, 4, 8, 16, 32]
+
+Returns
+"""""""
+    internal/external overviews:
+        The overview (also known as pyramids) could be internal or external depending on the state you read
+        the dataset with.
+
+        - External (.ovr file):
+            If the dataset is read with a`read_only=True` then the overviews' file will be created as an
+            in the same directory of the dataset, with the same name of the dataset and .ovr extension.
+        - Internal:
+            If the dataset is read with a`read_only=False` then the overviews will be created internally in the
+            dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
+    overview_count: [list]
+        a list property attribute of the overviews for each band.
+
+.. code:: py
+
+    path = "tests\data\geotiff\rhine\0_Rainfall_MSWEP_mm_daily_1979_1_1.tif"
+    dataset = Dataset.read_file(path)
+    dataset.create_overviews(resampling_method="nearest", overview_levels=[2, 4, 8, 16, 32])
+
+    print(dataset.overview_number)
+
+    >>> [5]
+
+The previous code will create 5 overviews for each band in the dataset.
+
+get_overview
+^^^^^^^^^^^^
+
+To get the overview of a certain band you can use the `get_overview` method. The overview is a gdal band object.
+
+Parameters
+""""""""""
+    band : int, optional
+        The band index, by default 0
+    overview_index: [int]
+        index of the overview. Default is 0.
+
+Returns
+"""""""
+    gdal.Band
+        gdal band object
+
+
+.. code:: py
+
+    overview = dataset.get_overview(band=0, overview_index=0)
+    print(overview)
+
+    >>> <osgeo.gdal.Band; proxy of <Swig Object of type 'GDALRasterBandShadow *' at 0x0000020C1F9F9C60> >
+
+
+recreate_overviews
+^^^^^^^^^^^^^^^^^^
+
+Parameters
+""""""""""
+    resampling_method : str, optional
+        The resampling method used to create the overviews, by default "nearest"
+        possible values are:
+            "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
+            "BILINEAR".
+
+Raises
+""""""
+ValueError
+    resampling_method should be one of {"NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS",
+    "MODE", "AVERAGE_MAGPHASE", "RMS",}
+        "BILINEAR"
+ReadOnlyError
+    If the overviews are internal and the Dataset is opened with a read only. Please read the dataset using
+    read_only=False
 
 **********
 References

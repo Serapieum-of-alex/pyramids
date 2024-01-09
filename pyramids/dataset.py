@@ -3349,7 +3349,10 @@ class Dataset:
         Parameters
         ----------
         resampling_method : str, optional
-            The resampling method used to create the overviews, by default "NEAREST"
+            The resampling method used to create the overviews, by default "nearest"
+            possible values are:
+                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
+                "BILINEAR".
         overview_levels : list, optional
             The overview levels, overview_levels are restricted to the typical power-of-two reduction factors.
             Default [2, 4, 8, 16, 32]
@@ -3365,7 +3368,7 @@ class Dataset:
             - Internal:
                 If the dataset is read with a`read_only=False` then the overviews will be created internally in the
                 dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
-        overview_number: [list]
+        overview_count: [list]
             a list property attribute of the overviews for each band.
         """
         if overview_levels is None:
@@ -3391,21 +3394,29 @@ class Dataset:
         self.raster.BuildOverviews(resampling_method, overview_levels)
 
     def recreate_overviews(self, resampling_method: str = "nearest"):
-        """Recreate internal overviews for the dataset.
+        """Recreate overviews for the dataset.
 
         Parameters
         ----------
         resampling_method : str, optional
-            The resampling method used to create the overviews, by default "NEAREST"
+            The resampling method used to create the overviews, by default "nearest"
+            possible values are:
+                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
 
-        Returns
-        -------
-
+        Raises
+        ------
+        ValueError
+            resampling_method should be one of {"NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS",
+            "MODE", "AVERAGE_MAGPHASE", "RMS",}
+                "BILINEAR"
+        ReadOnlyError
+            If the overviews are internal and the Dataset is opened with a read only. Please read the dataset using
+            read_only=False
         """
         if resampling_method.upper() not in RESAMPLING_METHODS:
             raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
         # Build overviews using nearest neighbor resampling
-        # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
+        # nearest is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
         try:
             for i in range(self.band_count):
                 band = self._iloc(i)
@@ -3422,7 +3433,7 @@ class Dataset:
                 "The Dataset is opened with a read only. Please read the dataset using read_only=False"
             )
 
-    def get_overview(self, band: int = 0, overview_index: int = 0):
+    def get_overview(self, band: int = 0, overview_index: int = 0) -> gdal.Band:
         """Get an overview of a band.
 
         Parameters
@@ -3434,8 +3445,8 @@ class Dataset:
 
         Returns
         -------
-        overview:
-            Attribute of the dataset overview.
+        gdal.Band
+            gdal band object
         """
         band = self._iloc(band)
         n_views = band.GetOverviewCount()
@@ -3447,6 +3458,8 @@ class Dataset:
         if overview_index >= n_views:
             raise ValueError(f"overview_level should be less than {n_views}")
 
+        # TODO:find away to create a Dataset object from the overview band and to return the Dataset object instead
+        #  of the gdal band.
         return band.GetOverview(overview_index)
 
 
