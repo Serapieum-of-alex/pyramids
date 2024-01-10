@@ -15,7 +15,7 @@ import sys
 # import sphinx_rtd_theme
 
 # General information about the project.
-project = "pyramids-gis"
+project = "pyramids"
 author = "Mostafa Farrag"
 
 # copyright = u"2013-2019, "
@@ -28,7 +28,7 @@ html_theme_path = ["."]
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath("../pyramids-gis"))
+sys.path.insert(0, os.path.abspath("../pyramids"))
 sys.path.insert(0, os.path.abspath(".."))
 sys.path.insert(0, os.path.abspath("../examples"))
 
@@ -37,7 +37,7 @@ sys.path.insert(0, os.path.abspath("../examples"))
 # os.path.abspath to make it absolute, like shown here.
 sys.path.append(os.path.abspath("sphinxext"))
 
-# import pyramids-gis
+# import pyramids
 
 
 # -- General configuration -----------------------------------------------------
@@ -218,8 +218,8 @@ htmlhelp_basename = "pyramids-gisdoc"
 latex_documents = [
     (
         "index",
-        "pyramids-gis.tex",
-        "pyramids-gis Documentation",
+        "pyramids.tex",
+        "pyramids Documentation",
         "Mostafa Farrag",
         "report",
     )
@@ -250,7 +250,7 @@ latex_domain_indices = False
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "pyramids-gis", "pyramids-gis Documentation", [author], 1)]
+man_pages = [("index", "pyramids", "pyramids Documentation", [author], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -264,8 +264,8 @@ man_pages = [("index", "pyramids-gis", "pyramids-gis Documentation", [author], 1
 texinfo_documents = [
     (
         "index",
-        "pyramids-gis",
-        "pyramids-gis Documentation",
+        "pyramids",
+        "pyramids Documentation",
         "Mostafa Farrag",
         "One line description of project.",
         "Miscellaneous",
@@ -292,5 +292,5 @@ autodoc_mock_imports = [
     #    "netCDF4_utils",
     #    "netcdftime",
     #    "pyproj",
-    #    "pyramids-gis.version",
+    #    "pyramids.version",
 ]
