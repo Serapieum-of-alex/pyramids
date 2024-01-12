@@ -26,7 +26,7 @@ class DEM(Dataset):
         super().__init__(src)
 
     def D8(self):
-        """D8 method generate flow direction raster from DEM and fill sinks.
+        """D8 method generates flow direction raster from DEM and fills sinks.
 
         Returns
         -------
@@ -36,19 +36,28 @@ class DEM(Dataset):
         elev_sinkless: [numpy array]
             DEM after filling sinks
         """
-        cellsize = self.cell_size
-        dist2 = cellsize * np.sqrt(2)
+        cell_size = self.cell_size
+        dist2 = cell_size * np.sqrt(2)
         no_columns = self.columns
         no_rows = self.rows
 
         elev = self.read_array(band=0)
-        # get the value stores in novalue cells
+        # get the value stores in no data value cells
         dem_no_val = self.no_data_value[0]
         elev = elev.astype(np.float32)
         elev[np.isclose(elev, dem_no_val, rtol=0.00001)] = np.nan
 
         slopes = np.ones((no_rows, no_columns, 9)) * np.nan
-        distances = [cellsize, dist2, cellsize, dist2, cellsize, dist2, cellsize, dist2]
+        distances = [
+            cell_size,
+            dist2,
+            cell_size,
+            dist2,
+            cell_size,
+            dist2,
+            cell_size,
+            dist2,
+        ]
 
         # filling sinks
         elev_sinkless = elev
@@ -369,8 +378,11 @@ class DEM(Dataset):
 
         return flow_direction_cell, elev_sinkless
 
-    def flowDirectionIndex(self) -> np.ndarray:
-        """this function takes flow firection raster and convert codes for the 8 directions (1,2,4,8,16,32,64,128) into indices of the Downstream cell.
+    def flow_direction_index(self) -> np.ndarray:
+        """flow_direction_index.
+
+            flow_direction_index takes flow direction raster and convert codes for the 8 directions
+            (1,2,4,8,16,32,64,128) into indices of the Downstream cell.
 
         flow_direct:
             [gdal.dataset] flow direction raster obtained from catchment delineation
@@ -431,10 +443,12 @@ class DEM(Dataset):
 
         return fd_cell
 
-    def flowDirectionTable(self) -> Dict:
+    def flow_direction_table(self) -> Dict:
         """Flow Direction Table.
-            - This function takes flow direction indices created by FlowDirectِِIndex function and create a
-            dictionary with the cells indices as a key and  indices of directly upstream cells as values (list of tuples)
+
+            - flow_direction_table takes flow direction indices created by FlowDirectِِIndex function and creates a
+            dictionary with the cells' indices as a key and indices of directly upstream cells as values
+            (list of tuples).
 
 
             flow_direct:
@@ -447,81 +461,83 @@ class DEM(Dataset):
             [Dict] dictionary with the cells indices as a key and indices of directly
             upstream cells as values (list of tuples)
         """
-        FDI = self.flowDirectionIndex()
+        flow_direction_index = self.flow_direction_index()
 
         rows = self.rows
         cols = self.columns
 
-        celli = []
-        cellj = []
+        cell_i = []
+        cell_j = []
         celli_content = []
         cellj_content = []
         for i in range(rows):
             for j in range(cols):
-                if not np.isnan(FDI[i, j, 0]):
+                if not np.isnan(flow_direction_index[i, j, 0]):
                     # store the indexes of not empty cells and the indexes stored inside these cells
-                    celli.append(i)
-                    cellj.append(j)
+                    cell_i.append(i)
+                    cell_j.append(j)
                     # store the index of the receiving cells
-                    celli_content.append(FDI[i, j, 0])
-                    cellj_content.append(FDI[i, j, 1])
+                    celli_content.append(flow_direction_index[i, j, 0])
+                    cellj_content.append(flow_direction_index[i, j, 1])
 
         flow_acc_table = {}
         # for each cell store the directly giving cells
         for i in range(rows):
             for j in range(cols):
-                if not np.isnan(FDI[i, j, 0]):
+                if not np.isnan(flow_direction_index[i, j, 0]):
                     # get the indexes of the cell and use it as a key in a dictionary
                     name = str(i) + "," + str(j)
                     flow_acc_table[name] = []
                     for k in range(len(celli_content)):
                         # search if any cell are giving this cell
                         if i == celli_content[k] and j == cellj_content[k]:
-                            flow_acc_table[name].append((celli[k], cellj[k]))
+                            flow_acc_table[name].append((cell_i[k], cell_j[k]))
 
         return flow_acc_table
 
     @staticmethod
-    def deleteBasins(basins, pathout):
+    def delete_basins(basins: gdal.Dataset, path: str):
         """Delete Basins
 
-            - this function deletes all the basins in a basin raster created when delineating a catchment and leave
+            delete_basins deletes all the basins in a basin raster created when delineating a catchment and leaves
             only the first basin which is the biggest basin in the raster.
 
         Parameters
         ----------
         basins: [gdal.dataset]
-            raster you create during delineation of a catchment
+            raster you create during delineation of the catchment
             values of its cells are the number of the basin it belongs to
-        pathout: [str]
+        path: [str]
              path you want to save the resulted raster to it should include
             the extension ".tif"
 
         Returns
         -------
-        raster with only one basin (the basin that its name is 1 )
+        raster with only one basin (the basin that its name is 1)
         """
-        assert type(pathout) == str, "A_path input should be string type"
-        assert (
-            type(basins) == gdal.Dataset
-        ), "basins raster should be read using gdal (gdal dataset please read it using gdal library) "
+        if not isinstance(path, str):
+            raise TypeError(f"path: {path} input should be string type")
+        if not isinstance(basins, gdal.Dataset):
+            raise TypeError(
+                "basins raster should be read using gdal (gdal dataset please read it using gdal library)"
+            )
 
         # get number of rows
         rows = basins.RasterYSize
         # get number of columns
         cols = basins.RasterXSize
         # array
-        basins_A = basins.ReadAsArray()
+        basins_a = basins.ReadAsArray()
         # no data value
         no_val = np.float32(basins.GetRasterBand(1).GetNoDataValue())
         # get number of basins and there names
         basins_val = list(
             set(
                 [
-                    int(basins_A[i, j])
+                    int(basins_a[i, j])
                     for i in range(rows)
                     for j in range(cols)
-                    if basins_A[i, j] != no_val
+                    if basins_a[i, j] != no_val
                 ]
             )
         )
@@ -529,26 +545,7 @@ class DEM(Dataset):
         # keep the first basin and delete the others by filling their cells by nodata value
         for i in range(rows):
             for j in range(cols):
-                if basins_A[i, j] != no_val and basins_A[i, j] != basins_val[0]:
-                    basins_A[i, j] = no_val
+                if basins_a[i, j] != no_val and basins_a[i, j] != basins_val[0]:
+                    basins_a[i, j] = no_val
 
-        Dataset.dataset_like(basins, basins_A, pathout)
-
-    def listAttributes(self):
-        """Print Attributes List."""
-
-        print("\n")
-        print(
-            "Attributes List of: "
-            + repr(self.__dict__["name"])
-            + " - "
-            + self.__class__.__name__
-            + " Instance\n"
-        )
-        self_keys = list(self.__dict__.keys())
-        self_keys.sort()
-        for key in self_keys:
-            if key != "name":
-                print(str(key) + " : " + repr(self.__dict__[key]))
-
-        print("\n")
+        Dataset.dataset_like(basins, basins_a, path)
