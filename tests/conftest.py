@@ -1,7 +1,7 @@
 from pathlib import Path
 
+import numpy as np
 from shapely.geometry import Polygon
-
 from tests.dataset.conftest import *
 from tests.feature.conftest import *
 
@@ -323,3 +323,13 @@ def era5_image_stats() -> DataFrame:
         0.000044,
     ]
     return df
+
+
+@pytest.fixture(scope="function")
+def flow_direction_array() -> np.ndarray:
+    return np.load("tests/data/dem/flow_direction_array.npy")
+
+
+@pytest.fixture(scope="function")
+def elev_sinkless_valid() -> np.ndarray:
+    return np.load("tests/data/dem/elevation.npy")

@@ -11,15 +11,17 @@ def test_create_dem_instance(rhine_raster: gdal.Dataset):
     assert hasattr(dem, "band_count")
 
 
-def test_d8(coello_df_4000: gdal.Dataset):
-    flow_dir_validation = np.load("tests/data/dem/flow_direction_array.npy")
-    elev_sinkless_valid = np.load("tests/data/dem/elevation.npy")
+def test_d8(
+    coello_df_4000: gdal.Dataset,
+    flow_direction_array: np.ndarray,
+    elev_sinkless_valid: np.ndarray,
+):
     dem = DEM(coello_df_4000)
     fd_cell, elev = dem.D8()
     assert isinstance(fd_cell, np.ndarray)
     assert fd_cell.shape == (dem.rows, dem.columns, 2)
     assert elev.shape == (dem.rows, dem.columns)
-    assert np.array_equal(fd_cell, flow_dir_validation, equal_nan=True)
+    assert np.array_equal(fd_cell, flow_direction_array, equal_nan=True)
     assert np.array_equal(elev, elev_sinkless_valid, equal_nan=True)
 
 
