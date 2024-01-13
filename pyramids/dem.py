@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 import numpy as np
 from osgeo import gdal
 
@@ -26,15 +26,13 @@ class DEM(Dataset):
     def __init__(self, src: gdal.Dataset):
         super().__init__(src)
 
-    def compute_slopes(self, elev: np.ndarray, distances: list) -> np.ndarray:
-        """
+    def calculate_slope(self, elev: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """compute_slopes.
 
         Parameters
         ----------
         elev: [numpy array]
             elevation array
-        distances: [list]
-            list of distances between the cell and its neighbors.
 
         Returns
         -------
@@ -43,6 +41,18 @@ class DEM(Dataset):
         slopes: [numpy array]
             slopes array
         """
+        cell_size = self.cell_size
+        dist2 = cell_size * np.sqrt(2)
+        distances = [
+            cell_size,
+            dist2,
+            cell_size,
+            dist2,
+            cell_size,
+            dist2,
+            cell_size,
+            dist2,
+        ]
         no_columns = self.columns
         no_rows = self.rows
         flow_direction = np.ones((no_rows, no_columns)) * np.nan
@@ -261,18 +271,6 @@ class DEM(Dataset):
         elev_sinkless: [numpy array]
             DEM after filling sinks
         """
-        cell_size = self.cell_size
-        dist2 = cell_size * np.sqrt(2)
-        distances = [
-            cell_size,
-            dist2,
-            cell_size,
-            dist2,
-            cell_size,
-            dist2,
-            cell_size,
-            dist2,
-        ]
         no_columns = self.columns
         no_rows = self.rows
 
@@ -282,10 +280,9 @@ class DEM(Dataset):
         elev[np.isclose(elev, dem_no_val, rtol=0.00001)] = np.nan
         elev = self.fill_sinks(elev)
 
-        flow_direction, slope = self.compute_slopes(elev, distances)
+        flow_direction, slope = self.calculate_slope(elev)
         flow_direction_cell = np.ones((no_rows, no_columns, 2)) * np.nan
-        # for i in range(1,no_rows-1):
-        #    for j in range(1,no_columns-1):
+
         for i in range(no_rows):
             for j in range(no_columns):
                 if flow_direction[i, j] == 0:
@@ -354,8 +351,10 @@ class DEM(Dataset):
         for i in range(rows):
             for j in range(cols):
                 if fd[i, j] == 1:
-                    fd_cell[i, j, 0] = i  # index of the rows
-                    fd_cell[i, j, 1] = j + 1  # index of the column
+                    # index of the rows
+                    fd_cell[i, j, 0] = i
+                    # index of the column
+                    fd_cell[i, j, 1] = j + 1
                 elif fd[i, j] == 128:
                     fd_cell[i, j, 0] = i - 1
                     fd_cell[i, j, 1] = j + 1
