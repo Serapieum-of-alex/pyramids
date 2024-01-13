@@ -17,6 +17,7 @@ def test_d8(
     elev_sinkless_valid: np.ndarray,
 ):
     dem = DEM(coello_df_4000)
+    # fd_cell, elev = dem.D8_new()
     fd_cell, elev = dem.D8()
     assert isinstance(fd_cell, np.ndarray)
     assert fd_cell.shape == (dem.rows, dem.columns, 2)
