@@ -5,6 +5,7 @@ from osgeo import gdal
 from pyramids.dataset import Dataset
 import sys
 
+
 sys.setrecursionlimit(5000)
 
 
@@ -25,7 +26,23 @@ class DEM(Dataset):
     def __init__(self, src: gdal.Dataset):
         super().__init__(src)
 
-    def compute_slopes(self, elev_sinkless, distances):
+    def compute_slopes(self, elev: np.ndarray, distances: list) -> np.ndarray:
+        """
+
+        Parameters
+        ----------
+        elev: [numpy array]
+            elevation array
+        distances: [list]
+            list of distances between the cell and its neighbors.
+
+        Returns
+        -------
+        flow_direction: [numpy array]
+            flow direction array
+        slopes: [numpy array]
+            slopes array
+        """
         no_columns = self.columns
         no_rows = self.rows
         flow_direction = np.ones((no_rows, no_columns)) * np.nan
@@ -34,255 +51,176 @@ class DEM(Dataset):
         for i in range(1, no_rows - 1):
             for j in range(1, no_columns - 1):
                 # calculate only if cell in elev is not nan
-                if not np.isnan(elev_sinkless[i, j]):
-                    # calculate slope
-                    # slope with cell to the right
-                    slopes[i, j, 0] = (
-                        elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-                    ) / distances[0]
+                if not np.isnan(elev[i, j]):
+                    # calculate the slope
+                    #  with cell to the right
+                    slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
                     # slope with cell to the top right
-                    slopes[i, j, 1] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j + 1]
-                    ) / distances[1]
+                    slopes[i, j, 1] = (elev[i, j] - elev[i - 1, j + 1]) / distances[1]
                     # slope with cell to the top
-                    slopes[i, j, 2] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-                    ) / distances[2]
+                    slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
                     # slope with cell to the top left
-                    slopes[i, j, 3] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j - 1]
-                    ) / distances[3]
+                    slopes[i, j, 3] = (elev[i, j] - elev[i - 1, j - 1]) / distances[3]
                     # slope with cell to the left
-                    slopes[i, j, 4] = (
-                        elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-                    ) / distances[4]
+                    slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
                     # slope with cell to the bottom left
-                    slopes[i, j, 5] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j - 1]
-                    ) / distances[5]
+                    slopes[i, j, 5] = (elev[i, j] - elev[i + 1, j - 1]) / distances[5]
                     # slope with cell to the bottom
-                    slopes[i, j, 6] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-                    ) / distances[6]
+                    slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
                     # slope with cell to the bottom right
-                    slopes[i, j, 7] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j + 1]
-                    ) / distances[7]
+                    slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
+                    # get the maximum slope and store it in the last column
+                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
                     # get the flow direction index
                     flow_direction[i, j] = np.where(
                         slopes[i, j, :] == np.nanmax(slopes[i, j, :])
                     )[0][0]
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
         # first rows without corners
         for i in [0]:
             for j in range(1, no_columns - 1):  # all columns
-                if not np.isnan(elev_sinkless[i, j]):
+                if not np.isnan(elev[i, j]):
                     # slope with cell to the right
-                    slopes[i, j, 0] = (
-                        elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-                    ) / distances[0]
+                    slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
                     # slope with cell to the left
-                    slopes[i, j, 4] = (
-                        elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-                    ) / distances[4]
+                    slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
                     # slope with cell to the bottom left
-                    slopes[i, j, 5] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j - 1]
-                    ) / distances[5]
+                    slopes[i, j, 5] = (elev[i, j] - elev[i + 1, j - 1]) / distances[5]
                     # slope with cell to the bottom
-                    slopes[i, j, 6] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-                    ) / distances[6]
+                    slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
                     # slope with cell to the bottom right
-                    slopes[i, j, 7] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j + 1]
-                    ) / distances[7]
-
+                    slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
+                    # get the maximum slope and store it in the last column
+                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
                     flow_direction[i, j] = np.where(
                         slopes[i, j, :] == np.nanmax(slopes[i, j, :])
                     )[0][0]
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
         # last rows without corners
         for i in [no_rows - 1]:
             for j in range(1, no_columns - 1):  # all columns
-                if not np.isnan(elev_sinkless[i, j]):
+                if not np.isnan(elev[i, j]):
                     # slope with cell to the right
-                    slopes[i, j, 0] = (
-                        elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-                    ) / distances[0]
+                    slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
                     # slope with cell to the top right
-                    slopes[i, j, 1] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j + 1]
-                    ) / distances[1]
+                    slopes[i, j, 1] = (elev[i, j] - elev[i - 1, j + 1]) / distances[1]
                     # slope with cell to the top
-                    slopes[i, j, 2] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-                    ) / distances[2]
+                    slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
                     # slope with cell to the top left
-                    slopes[i, j, 3] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j - 1]
-                    ) / distances[3]
+                    slopes[i, j, 3] = (elev[i, j] - elev[i - 1, j - 1]) / distances[3]
                     # slope with cell to the left
-                    slopes[i, j, 4] = (
-                        elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-                    ) / distances[4]
-
+                    slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
+                    # get the maximum slope and store it in the last column
+                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
                     flow_direction[i, j] = np.where(
                         slopes[i, j, :] == np.nanmax(slopes[i, j, :])
                     )[0][0]
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
         # top left corner
         i = 0
         j = 0
-        if not np.isnan(elev_sinkless[i, j]):
+        if not np.isnan(elev[i, j]):
             # slope with cell to the left
-            slopes[i, j, 0] = (
-                elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-            ) / distances[0]
+            slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
             # slope with cell to the bottom
-            slopes[i, j, 6] = (
-                elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-            ) / distances[6]
+            slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
             # slope with cell to the bottom right
-            slopes[i, j, 7] = (
-                elev_sinkless[i, j] - elev_sinkless[i + 1, j + 1]
-            ) / distances[7]
-
+            slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
+            # get the maximum slope and store it in the last column
+            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
             flow_direction[i, j] = np.where(
                 slopes[i, j, :] == np.nanmax(slopes[i, j, :])
             )[0][0]
-            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
         # top right corner
         i = 0
         j = no_columns - 1
-        if not np.isnan(elev_sinkless[i, j]):
+        if not np.isnan(elev[i, j]):
             # slope with cell to the left
-            slopes[i, j, 4] = (
-                elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-            ) / distances[4]
+            slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
             # slope with cell to the bottom left
-            slopes[i, j, 5] = (
-                elev_sinkless[i, j] - elev_sinkless[i + 1, j - 1]
-            ) / distances[5]
+            slopes[i, j, 5] = (elev[i, j] - elev[i + 1, j - 1]) / distances[5]
             # slope with cell to the bott
-            slopes[i, j, 6] = (
-                elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-            ) / distances[6]
-
+            slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
+            # get the maximum slope and store it in the last column
+            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
             flow_direction[i, j] = np.where(
                 slopes[i, j, :] == np.nanmax(slopes[i, j, :])
             )[0][0]
-            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
         # bottom left corner
         i = no_rows - 1
         j = 0
-        if not np.isnan(elev_sinkless[i, j]):
+        if not np.isnan(elev[i, j]):
             # slope with cell to the right
-            slopes[i, j, 0] = (
-                elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-            ) / distances[0]
+            slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
             # slope with cell to the top right
-            slopes[i, j, 1] = (
-                elev_sinkless[i, j] - elev_sinkless[i - 1, j + 1]
-            ) / distances[1]
+            slopes[i, j, 1] = (elev[i, j] - elev[i - 1, j + 1]) / distances[1]
             # slope with cell to the top
-            slopes[i, j, 2] = (
-                elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-            ) / distances[2]
-
+            slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
+            # get the maximum slope and store it in the last column
+            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
             flow_direction[i, j] = np.where(
                 slopes[i, j, :] == np.nanmax(slopes[i, j, :])
             )[0][0]
-            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
         # bottom right
         i = no_rows - 1
         j = no_columns - 1
-        if not np.isnan(elev_sinkless[i, j]):
+        if not np.isnan(elev[i, j]):
             # slope with cell to the top
-            slopes[i, j, 2] = (
-                elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-            ) / distances[2]
+            slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
             # slope with cell to the top left
-            slopes[i, j, 3] = (
-                elev_sinkless[i, j] - elev_sinkless[i - 1, j - 1]
-            ) / distances[3]
+            slopes[i, j, 3] = (elev[i, j] - elev[i - 1, j - 1]) / distances[3]
             # slope with cell to the left
-            slopes[i, j, 4] = (
-                elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-            ) / distances[4]
-
+            slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
+            # get the maximum slope and store it in the last column
+            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
             flow_direction[i, j] = np.where(
                 slopes[i, j, :] == np.nanmax(slopes[i, j, :])
             )[0][0]
-            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
         # first column
         for i in range(1, no_rows - 1):
             for j in [0]:
-                if not np.isnan(elev_sinkless[i, j]):
+                if not np.isnan(elev[i, j]):
                     # slope with cell to the right
-                    slopes[i, j, 0] = (
-                        elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-                    ) / distances[0]
+                    slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
                     # slope with cell to the top right
-                    slopes[i, j, 1] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j + 1]
-                    ) / distances[1]
+                    slopes[i, j, 1] = (elev[i, j] - elev[i - 1, j + 1]) / distances[1]
                     # slope with cell to the top
-                    slopes[i, j, 2] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-                    ) / distances[2]
+                    slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
                     # slope with cell to the bottom
-                    slopes[i, j, 6] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-                    ) / distances[6]
+                    slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
                     # slope with cell to the bottom right
-                    slopes[i, j, 7] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j + 1]
-                    ) / distances[7]
+                    slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
+                    # get the maximum slope and store it in the last column
+                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
                     # get the flow direction index
                     flow_direction[i, j] = np.where(
                         slopes[i, j, :] == np.nanmax(slopes[i, j, :])
                     )[0][0]
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
 
         # last column
         for i in range(1, no_rows - 1):
             for j in [no_columns - 1]:
-                if not np.isnan(elev_sinkless[i, j]):
+                if not np.isnan(elev[i, j]):
                     # slope with cell to the top
-                    slopes[i, j, 2] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-                    ) / distances[2]
+                    slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
                     # slope with cell to the top left
-                    slopes[i, j, 3] = (
-                        elev_sinkless[i, j] - elev_sinkless[i - 1, j - 1]
-                    ) / distances[3]
+                    slopes[i, j, 3] = (elev[i, j] - elev[i - 1, j - 1]) / distances[3]
                     # slope with cell to the left
-                    slopes[i, j, 4] = (
-                        elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-                    ) / distances[4]
+                    slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
                     # slope with cell to the bottom left
-                    slopes[i, j, 5] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j - 1]
-                    ) / distances[5]
+                    slopes[i, j, 5] = (elev[i, j] - elev[i + 1, j - 1]) / distances[5]
                     # slope with cell to the bottom
-                    slopes[i, j, 6] = (
-                        elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-                    ) / distances[6]
+                    slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
+                    # get the maximum slope and store it in the last column
+                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
                     # get the flow direction index
-
                     flow_direction[i, j] = np.where(
                         slopes[i, j, :] == np.nanmax(slopes[i, j, :])
                     )[0][0]
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-        #        print(str(i)+","+str(j))
 
         return flow_direction, slopes
 
