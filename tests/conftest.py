@@ -333,3 +333,8 @@ def flow_direction_array() -> np.ndarray:
 @pytest.fixture(scope="function")
 def elev_sinkless_valid() -> np.ndarray:
     return np.load("tests/data/dem/elevation.npy")
+
+
+@pytest.fixture(scope="function")
+def coello_slope() -> np.ndarray:
+    return np.load("tests/data/dem/slope.npy")

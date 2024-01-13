@@ -23,12 +23,12 @@ def test_fill_sinks(coello_df_4000: gdal.Dataset, elev_sinkless_valid: np.ndarra
     assert np.array_equal(dem_filled, elev_sinkless_valid, equal_nan=True)
 
 
-# def test_compute_slope(coello_df_4000: gdal.Dataset, coello_slope: np.ndarray):
-#     dem = DEM(coello_df_4000)
-#     slope = dem.slope()
-#     assert isinstance(slope, np.ndarray)
-#     assert slope.shape == (dem.rows, dem.columns)
-#     assert np.array_equal(slope, coello_slope, equal_nan=True)
+def test_calculate_slope(coello_df_4000: gdal.Dataset, coello_slope: np.ndarray):
+    dem = DEM(coello_df_4000)
+    elev = dem.read_array(band=0).astype(np.float32)
+    flow_direction, slope = dem.calculate_slope(elev)
+    assert isinstance(slope, np.ndarray)
+    assert np.array_equal(slope, coello_slope, equal_nan=True)
 
 
 def test_d8(
