@@ -25,359 +25,6 @@ class DEM(Dataset):
     def __init__(self, src: gdal.Dataset):
         super().__init__(src)
 
-    # def D8(self):
-    #     """D8 method generates flow direction raster from DEM and fills sinks.
-    #
-    #     Returns
-    #     -------
-    #     flow_direction_cell: [numpy array]
-    #         with the same dimensions of the raster and 2 layers
-    #         first layer for rows index and second rows for column index
-    #     elev_sinkless: [numpy array]
-    #         DEM after filling sinks
-    #     """
-    #     cell_size = self.cell_size
-    #     dist2 = cell_size * np.sqrt(2)
-    #     no_columns = self.columns
-    #     no_rows = self.rows
-    #
-    #     elev = self.read_array(band=0)
-    #     # get the value stores in no data value cells
-    #     dem_no_val = self.no_data_value[0]
-    #     elev = elev.astype(np.float32)
-    #     elev[np.isclose(elev, dem_no_val, rtol=0.00001)] = np.nan
-    #
-    #     # filling sinks
-    #     elev_sinkless = elev
-    #     for i in range(1, no_rows - 1):
-    #         for j in range(1, no_columns - 1):
-    #             # get elevation of surrounding cells
-    #             f = [
-    #                 elev[i - 1, j],
-    #                 elev[i - 1, j - 1],
-    #                 elev[i, j - 1],
-    #                 elev[i + 1, j - 1],
-    #                 elev[i + 1, j],
-    #                 elev[i + 1, j + 1],
-    #                 elev[i, j + 1],
-    #                 elev[i - 1, j + 1],
-    #             ]
-    #             if elev[i, j] < min(f):
-    #                 elev_sinkless[i, j] = min(f) + 0.1
-    #
-    #     flow_direction = np.ones((no_rows, no_columns)) * np.nan
-    #
-    #     slopes = np.ones((no_rows, no_columns, 9)) * np.nan
-    #     distances = [
-    #         cell_size,
-    #         dist2,
-    #         cell_size,
-    #         dist2,
-    #         cell_size,
-    #         dist2,
-    #         cell_size,
-    #         dist2,
-    #     ]
-    #
-    #     for i in range(1, no_rows - 1):
-    #         for j in range(1, no_columns - 1):
-    #             # calculate only if cell in elev is not nan
-    #             if not np.isnan(elev[i, j]):
-    #                 # calculate slope
-    #                 # slope with cell to the right
-    #                 slopes[i, j, 0] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-    #                 ) / distances[0]
-    #                 # slope with cell to the top right
-    #                 slopes[i, j, 1] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j + 1]
-    #                 ) / distances[1]
-    #                 # slope with cell to the top
-    #                 slopes[i, j, 2] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-    #                 ) / distances[2]
-    #                 # slope with cell to the top left
-    #                 slopes[i, j, 3] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j - 1]
-    #                 ) / distances[3]
-    #                 # slope with cell to the left
-    #                 slopes[i, j, 4] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-    #                 ) / distances[4]
-    #                 # slope with cell to the bottom left
-    #                 slopes[i, j, 5] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j - 1]
-    #                 ) / distances[5]
-    #                 # slope with cell to the bottom
-    #                 slopes[i, j, 6] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-    #                 ) / distances[6]
-    #                 # slope with cell to the bottom right
-    #                 slopes[i, j, 7] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j + 1]
-    #                 ) / distances[7]
-    #                 # get the flow direction index
-    #                 flow_direction[i, j] = np.where(
-    #                     slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-    #                 )[0][0]
-    #                 slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-    #
-    #     # first rows without corners
-    #     for i in [0]:
-    #         for j in range(1, no_columns - 1):  # all columns
-    #             if not np.isnan(elev[i, j]):
-    #                 # slope with cell to the right
-    #                 slopes[i, j, 0] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-    #                 ) / distances[0]
-    #                 # slope with cell to the left
-    #                 slopes[i, j, 4] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-    #                 ) / distances[4]
-    #                 # slope with cell to the bottom left
-    #                 slopes[i, j, 5] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j - 1]
-    #                 ) / distances[5]
-    #                 # slope with cell to the bottom
-    #                 slopes[i, j, 6] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-    #                 ) / distances[6]
-    #                 # slope with cell to the bottom right
-    #                 slopes[i, j, 7] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j + 1]
-    #                 ) / distances[7]
-    #
-    #                 flow_direction[i, j] = np.where(
-    #                     slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-    #                 )[0][0]
-    #                 slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-    #
-    #     # last rows without corners
-    #     for i in [no_rows - 1]:
-    #         for j in range(1, no_columns - 1):  # all columns
-    #             if not np.isnan(elev[i, j]):
-    #                 # slope with cell to the right
-    #                 slopes[i, j, 0] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-    #                 ) / distances[0]
-    #                 # slope with cell to the top right
-    #                 slopes[i, j, 1] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j + 1]
-    #                 ) / distances[1]
-    #                 # slope with cell to the top
-    #                 slopes[i, j, 2] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-    #                 ) / distances[2]
-    #                 # slope with cell to the top left
-    #                 slopes[i, j, 3] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j - 1]
-    #                 ) / distances[3]
-    #                 # slope with cell to the left
-    #                 slopes[i, j, 4] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-    #                 ) / distances[4]
-    #
-    #                 flow_direction[i, j] = np.where(
-    #                     slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-    #                 )[0][0]
-    #                 slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-    #
-    #     # top left corner
-    #     i = 0
-    #     j = 0
-    #     if not np.isnan(elev[i, j]):
-    #         # slope with cell to the left
-    #         slopes[i, j, 0] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-    #         ) / distances[0]
-    #         # slope with cell to the bottom
-    #         slopes[i, j, 6] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-    #         ) / distances[6]
-    #         # slope with cell to the bottom right
-    #         slopes[i, j, 7] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i + 1, j + 1]
-    #         ) / distances[7]
-    #
-    #         flow_direction[i, j] = np.where(
-    #             slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-    #         )[0][0]
-    #         slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-    #
-    #     # top right corner
-    #     i = 0
-    #     j = no_columns - 1
-    #     if not np.isnan(elev[i, j]):
-    #         # slope with cell to the left
-    #         slopes[i, j, 4] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-    #         ) / distances[4]
-    #         # slope with cell to the bottom left
-    #         slopes[i, j, 5] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i + 1, j - 1]
-    #         ) / distances[5]
-    #         # slope with cell to the bott
-    #         slopes[i, j, 6] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-    #         ) / distances[6]
-    #
-    #         flow_direction[i, j] = np.where(
-    #             slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-    #         )[0][0]
-    #         slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-    #
-    #     # bottom left corner
-    #     i = no_rows - 1
-    #     j = 0
-    #     if not np.isnan(elev[i, j]):
-    #         # slope with cell to the right
-    #         slopes[i, j, 0] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-    #         ) / distances[0]
-    #         # slope with cell to the top right
-    #         slopes[i, j, 1] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i - 1, j + 1]
-    #         ) / distances[1]
-    #         # slope with cell to the top
-    #         slopes[i, j, 2] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-    #         ) / distances[2]
-    #
-    #         flow_direction[i, j] = np.where(
-    #             slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-    #         )[0][0]
-    #         slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-    #
-    #     # bottom right
-    #     i = no_rows - 1
-    #     j = no_columns - 1
-    #     if not np.isnan(elev[i, j]):
-    #         slopes[i, j, 2] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-    #         ) / distances[
-    #             2
-    #         ]  # slope with cell to the top
-    #         slopes[i, j, 3] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i - 1, j - 1]
-    #         ) / distances[
-    #             3
-    #         ]  # slope with cell to the top left
-    #         slopes[i, j, 4] = (
-    #             elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-    #         ) / distances[
-    #             4
-    #         ]  # slope with cell to the left
-    #
-    #         flow_direction[i, j] = np.where(
-    #             slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-    #         )[0][0]
-    #         slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-    #
-    #     # first column
-    #     for i in range(1, no_rows - 1):
-    #         for j in [0]:
-    #             if not np.isnan(elev[i, j]):
-    #                 slopes[i, j, 0] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i, j + 1]
-    #                 ) / distances[
-    #                     0
-    #                 ]  # slope with cell to the right
-    #                 slopes[i, j, 1] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j + 1]
-    #                 ) / distances[
-    #                     1
-    #                 ]  # slope with cell to the top right
-    #                 slopes[i, j, 2] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-    #                 ) / distances[
-    #                     2
-    #                 ]  # slope with cell to the top
-    #                 slopes[i, j, 6] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-    #                 ) / distances[
-    #                     6
-    #                 ]  # slope with cell to the bottom
-    #                 slopes[i, j, 7] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j + 1]
-    #                 ) / distances[
-    #                     7
-    #                 ]  # slope with cell to the bottom right
-    #                 # get the flow direction index
-    #
-    #                 flow_direction[i, j] = np.where(
-    #                     slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-    #                 )[0][0]
-    #                 slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-    #
-    #     # last column
-    #     for i in range(1, no_rows - 1):
-    #         for j in [no_columns - 1]:
-    #             if not np.isnan(elev[i, j]):
-    #                 slopes[i, j, 2] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j]
-    #                 ) / distances[
-    #                     2
-    #                 ]  # slope with cell to the top
-    #                 slopes[i, j, 3] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i - 1, j - 1]
-    #                 ) / distances[
-    #                     3
-    #                 ]  # slope with cell to the top left
-    #                 slopes[i, j, 4] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i, j - 1]
-    #                 ) / distances[
-    #                     4
-    #                 ]  # slope with cell to the left
-    #                 slopes[i, j, 5] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j - 1]
-    #                 ) / distances[
-    #                     5
-    #                 ]  # slope with cell to the bottom left
-    #                 slopes[i, j, 6] = (
-    #                     elev_sinkless[i, j] - elev_sinkless[i + 1, j]
-    #                 ) / distances[
-    #                     6
-    #                 ]  # slope with cell to the bottom
-    #                 # get the flow direction index
-    #
-    #                 flow_direction[i, j] = np.where(
-    #                     slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-    #                 )[0][0]
-    #                 slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-    #     #        print(str(i)+","+str(j))
-    #
-    #     flow_direction_cell = np.ones((no_rows, no_columns, 2)) * np.nan
-    #     # for i in range(1,no_rows-1):
-    #     #    for j in range(1,no_columns-1):
-    #     for i in range(no_rows):
-    #         for j in range(no_columns):
-    #             if flow_direction[i, j] == 0:
-    #                 flow_direction_cell[i, j, 0] = i  # index of the rows
-    #                 flow_direction_cell[i, j, 1] = j + 1  # index of the column
-    #             elif flow_direction[i, j] == 1:
-    #                 flow_direction_cell[i, j, 0] = i - 1
-    #                 flow_direction_cell[i, j, 1] = j + 1
-    #             elif flow_direction[i, j] == 2:
-    #                 flow_direction_cell[i, j, 0] = i - 1
-    #                 flow_direction_cell[i, j, 1] = j
-    #             elif flow_direction[i, j] == 3:
-    #                 flow_direction_cell[i, j, 0] = i - 1
-    #                 flow_direction_cell[i, j, 1] = j - 1
-    #             elif flow_direction[i, j] == 4:
-    #                 flow_direction_cell[i, j, 0] = i
-    #                 flow_direction_cell[i, j, 1] = j - 1
-    #             elif flow_direction[i, j] == 5:
-    #                 flow_direction_cell[i, j, 0] = i + 1
-    #                 flow_direction_cell[i, j, 1] = j - 1
-    #             elif flow_direction[i, j] == 6:
-    #                 flow_direction_cell[i, j, 0] = i + 1
-    #                 flow_direction_cell[i, j, 1] = j
-    #             elif flow_direction[i, j] == 7:
-    #                 flow_direction_cell[i, j, 0] = i + 1
-    #                 flow_direction_cell[i, j, 1] = j + 1
-    #
-    #     return flow_direction_cell, elev_sinkless
-
     def compute_slopes(self, elev_sinkless, distances):
         no_columns = self.columns
         no_rows = self.rows
@@ -639,6 +286,32 @@ class DEM(Dataset):
 
         return flow_direction, slopes
 
+    def fill_sinks(self, elev: np.ndarray) -> np.ndarray:
+        """
+
+        Parameters
+        ----------
+        elev: [numpy array]
+            elevation array
+
+        Returns
+        -------
+        elev_sinkless: [numpy array]
+            DEM after filling sinks.
+        """
+        elev_sinkless = np.copy(elev)
+        for i in range(1, self.rows - 1):
+            for j in range(1, self.columns - 1):
+                # Get elevation of surrounding cells
+                f = elev[i - 1 : i + 2, j - 1 : j + 2].flatten()
+                # Exclude the center cell
+                f[4] = np.nan
+                min_f = np.nanmin(f)
+                if elev_sinkless[i, j] < min_f:
+                    elev_sinkless[i, j] = min_f + 0.1
+
+        return elev_sinkless
+
     def D8(self):
         """D8 method generates flow direction raster from DEM and fills sinks.
 
@@ -669,20 +342,9 @@ class DEM(Dataset):
         # get the value stores in no data value cells
         dem_no_val = self.no_data_value[0]
         elev[np.isclose(elev, dem_no_val, rtol=0.00001)] = np.nan
+        elev = self.fill_sinks(elev)
 
-        # filling sinks
-        elev_sinkless = np.copy(elev)
-        for i in range(1, no_rows - 1):
-            for j in range(1, no_columns - 1):
-                # Get elevation of surrounding cells
-                f = elev[i - 1 : i + 2, j - 1 : j + 2].flatten()
-                # Exclude the center cell
-                f[4] = np.nan
-                min_f = np.nanmin(f)
-                if elev_sinkless[i, j] < min_f:
-                    elev_sinkless[i, j] = min_f + 0.1
-
-        flow_direction, slope = self.compute_slopes(elev_sinkless, distances)
+        flow_direction, slope = self.compute_slopes(elev, distances)
         flow_direction_cell = np.ones((no_rows, no_columns, 2)) * np.nan
         # for i in range(1,no_rows-1):
         #    for j in range(1,no_columns-1):
@@ -713,7 +375,7 @@ class DEM(Dataset):
                     flow_direction_cell[i, j, 0] = i + 1
                     flow_direction_cell[i, j, 1] = j + 1
 
-        return flow_direction_cell, elev_sinkless
+        return flow_direction_cell
 
     def flow_direction_index(self) -> np.ndarray:
         """flow_direction_index.
