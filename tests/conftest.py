@@ -1,7 +1,16 @@
+from typing import List, Tuple
 from pathlib import Path
-
+import pytest
+import os
 import numpy as np
+from osgeo import gdal
+from osgeo.gdal import Dataset
+import pandas as pd
+from pandas import DataFrame
+from geopandas import GeoDataFrame
+import geopandas as gpd
 from shapely.geometry import Polygon
+from shapely import wkt
 from tests.dataset.conftest import *
 from tests.feature.conftest import *
 
@@ -326,7 +335,7 @@ def era5_image_stats() -> DataFrame:
 
 
 @pytest.fixture(scope="function")
-def flow_direction_array() -> np.ndarray:
+def flow_direction_array_cells_indices() -> np.ndarray:
     return np.load("tests/data/dem/flow_direction_array.npy")
 
 
@@ -338,3 +347,8 @@ def elev_sinkless_valid() -> np.ndarray:
 @pytest.fixture(scope="function")
 def coello_slope() -> np.ndarray:
     return np.load("tests/data/dem/slope.npy")
+
+
+@pytest.fixture(scope="function")
+def coello_flow_direction_cell_index() -> np.ndarray:
+    return np.load("tests/data/dem/coello_flow_direction_cell_index.npy")

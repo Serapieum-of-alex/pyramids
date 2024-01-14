@@ -23,24 +23,30 @@ def test_fill_sinks(coello_df_4000: gdal.Dataset, elev_sinkless_valid: np.ndarra
     assert np.array_equal(dem_filled, elev_sinkless_valid, equal_nan=True)
 
 
-def test_calculate_slope(coello_df_4000: gdal.Dataset, coello_slope: np.ndarray):
+def test_calculate_slope(
+    coello_df_4000: gdal.Dataset,
+    elev_sinkless_valid: np.ndarray,
+    coello_slope: np.ndarray,
+    coello_flow_direction_cell_index: np.ndarray,
+):
     dem = DEM(coello_df_4000)
-    elev = dem.read_array(band=0).astype(np.float32)
-    flow_direction, slope = dem.calculate_slope(elev)
+    flow_direction, slope = dem.calculate_slope(elev_sinkless_valid)
     assert isinstance(slope, np.ndarray)
     assert np.array_equal(slope, coello_slope, equal_nan=True)
+    assert np.array_equal(
+        flow_direction, coello_flow_direction_cell_index, equal_nan=True
+    )
 
 
 def test_d8(
     coello_df_4000: gdal.Dataset,
-    flow_direction_array: np.ndarray,
+    flow_direction_array_cells_indices: np.ndarray,
 ):
     dem = DEM(coello_df_4000)
-    # fd_cell, elev = dem.D8_new()
     fd_cell = dem.D8()
     assert isinstance(fd_cell, np.ndarray)
     assert fd_cell.shape == (dem.rows, dem.columns, 2)
-    assert np.array_equal(fd_cell, flow_direction_array, equal_nan=True)
+    assert np.array_equal(fd_cell, flow_direction_array_cells_indices, equal_nan=True)
 
 
 def test_flowDirectionIndex(coello_df_4000: gdal.Dataset):

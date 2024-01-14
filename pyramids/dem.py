@@ -37,7 +37,9 @@ class DEM(Dataset):
         Returns
         -------
         flow_direction: [numpy array]
-            flow direction array
+            flow direction array. The array contains values [0,1,2,3,4,5,6,7] referring to the 8 directions,
+            where 0 is the top cell, 1 is the top left cell, 2 is the left cell, 3 is the bottom left cell, 4 is the
+            bottom cell, 5 is the bottom right cell, 6 is the right cell, and 7 is the top right cell.
         slopes: [numpy array]
             slopes array
         """
@@ -81,10 +83,6 @@ class DEM(Dataset):
                     slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
                     # get the maximum slope and store it in the last column
                     slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-                    # get the flow direction index
-                    flow_direction[i, j] = np.where(
-                        slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-                    )[0][0]
 
         # first rows without corners
         for i in [0]:
@@ -102,9 +100,6 @@ class DEM(Dataset):
                     slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
                     # get the maximum slope and store it in the last column
                     slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-                    flow_direction[i, j] = np.where(
-                        slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-                    )[0][0]
 
         # last rows without corners
         for i in [no_rows - 1]:
@@ -122,9 +117,6 @@ class DEM(Dataset):
                     slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
                     # get the maximum slope and store it in the last column
                     slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-                    flow_direction[i, j] = np.where(
-                        slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-                    )[0][0]
 
         # top left corner
         i = 0
@@ -138,9 +130,6 @@ class DEM(Dataset):
             slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
             # get the maximum slope and store it in the last column
             slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-            flow_direction[i, j] = np.where(
-                slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-            )[0][0]
 
         # top right corner
         i = 0
@@ -154,9 +143,6 @@ class DEM(Dataset):
             slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
             # get the maximum slope and store it in the last column
             slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-            flow_direction[i, j] = np.where(
-                slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-            )[0][0]
 
         # bottom left corner
         i = no_rows - 1
@@ -170,9 +156,6 @@ class DEM(Dataset):
             slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
             # get the maximum slope and store it in the last column
             slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-            flow_direction[i, j] = np.where(
-                slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-            )[0][0]
 
         # bottom right
         i = no_rows - 1
@@ -186,9 +169,6 @@ class DEM(Dataset):
             slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
             # get the maximum slope and store it in the last column
             slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-            flow_direction[i, j] = np.where(
-                slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-            )[0][0]
 
         # first column
         for i in range(1, no_rows - 1):
@@ -206,10 +186,6 @@ class DEM(Dataset):
                     slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
                     # get the maximum slope and store it in the last column
                     slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-                    # get the flow direction index
-                    flow_direction[i, j] = np.where(
-                        slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-                    )[0][0]
 
         # last column
         for i in range(1, no_rows - 1):
@@ -227,7 +203,12 @@ class DEM(Dataset):
                     slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
                     # get the maximum slope and store it in the last column
                     slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
-                    # get the flow direction index
+
+        # get the flow direction index
+        for i in range(no_rows):
+            for j in range(no_columns):
+                # calculate only if cell in elev is not nan
+                if not np.isnan(elev[i, j]):
                     flow_direction[i, j] = np.where(
                         slopes[i, j, :] == np.nanmax(slopes[i, j, :])
                     )[0][0]
@@ -324,14 +305,9 @@ class DEM(Dataset):
 
         Returns
         -------
-        fd_indices:
-            [numpy array] with the same dimensions of the raster and 2 layers
+        [numpy array]:
+            with the same dimensions of the raster and 2 layers
             first layer for rows index and second rows for column index
-
-        Example:
-        ----------
-            fd=gdal.Open("Flowdir.tif")
-            fd_indices=FlowDirectِِIndex(fd)
         """
         # check flow direction input raster
         no_val = self.no_data_value[0]
