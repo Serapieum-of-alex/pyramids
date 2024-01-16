@@ -101,3 +101,8 @@ def coello_fdt() -> Dict:
         "12,1": [],
         "12,2": [],
     }
+
+
+@pytest.fixture(scope="module")
+def coello_dem_4000() -> gdal.Dataset:
+    return gdal.Open("tests/data/geotiff/coello/coello-dem-4000.tif")

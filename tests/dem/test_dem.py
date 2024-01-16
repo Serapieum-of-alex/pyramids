@@ -11,8 +11,8 @@ def test_create_dem_instance(rhine_raster: gdal.Dataset):
     assert hasattr(dem, "band_count")
 
 
-def test_fill_sinks(coello_df_4000: gdal.Dataset, elev_sinkless_valid: np.ndarray):
-    dem = DEM(coello_df_4000)
+def test_fill_sinks(coello_dem_4000: gdal.Dataset, elev_sink_free: np.ndarray):
+    dem = DEM(coello_dem_4000)
     elev = dem.read_array(band=0).astype(np.float32)
     # get the value stores in no data value cells
     dem_no_val = dem.no_data_value[0]
@@ -20,29 +20,38 @@ def test_fill_sinks(coello_df_4000: gdal.Dataset, elev_sinkless_valid: np.ndarra
 
     dem_filled = dem.fill_sinks(elev)
     assert dem_filled.shape == (dem.rows, dem.columns)
-    assert np.array_equal(dem_filled, elev_sinkless_valid, equal_nan=True)
+    assert np.array_equal(dem_filled, elev_sink_free, equal_nan=True)
 
 
 def test_calculate_slope(
     coello_df_4000: gdal.Dataset,
-    elev_sinkless_valid: np.ndarray,
+    elev_sink_free: np.ndarray,
     coello_slope: np.ndarray,
     coello_flow_direction_cell_index: np.ndarray,
 ):
     dem = DEM(coello_df_4000)
-    flow_direction, slope = dem.calculate_slope(elev_sinkless_valid)
+    slope = dem.calculate_slope(elev_sink_free)
     assert isinstance(slope, np.ndarray)
     assert np.array_equal(slope, coello_slope, equal_nan=True)
-    assert np.array_equal(
-        flow_direction, coello_flow_direction_cell_index, equal_nan=True
-    )
+
+
+def test_calculate_flow_direction(
+    coello_df_4000: gdal.Dataset,
+    elev_sink_free: np.ndarray,
+    coello_slope: np.ndarray,
+    coello_flow_direction_cell_index: np.ndarray,
+):
+    dem = DEM(coello_df_4000)
+    fd = dem.calculate_flow_direction(elev_sink_free, coello_slope)
+    assert isinstance(fd, np.ndarray)
+    assert np.array_equal(fd, coello_flow_direction_cell_index, equal_nan=True)
 
 
 def test_d8(
-    coello_df_4000: gdal.Dataset,
+    coello_dem_4000: gdal.Dataset,
     flow_direction_array_cells_indices: np.ndarray,
 ):
-    dem = DEM(coello_df_4000)
+    dem = DEM(coello_dem_4000)
     fd_cell = dem.D8()
     assert isinstance(fd_cell, np.ndarray)
     assert fd_cell.shape == (dem.rows, dem.columns, 2)

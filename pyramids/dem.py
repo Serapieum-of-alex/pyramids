@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict
 import numpy as np
 from osgeo import gdal
 
@@ -26,7 +26,7 @@ class DEM(Dataset):
     def __init__(self, src: gdal.Dataset):
         super().__init__(src)
 
-    def calculate_slope(self, elev: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def calculate_slope(self, elev: np.ndarray) -> np.ndarray:
         """compute_slopes.
 
         Parameters
@@ -37,11 +37,11 @@ class DEM(Dataset):
         Returns
         -------
         flow_direction: [numpy array]
-            flow direction array. The array contains values [0,1,2,3,4,5,6,7] referring to the 8 directions,
+            flow direction array. The array contains values [0, 1, 2, 3, 4, 5, 6, 7] referring to the 8 directions,
             where 0 is the top cell, 1 is the top left cell, 2 is the left cell, 3 is the bottom left cell, 4 is the
             bottom cell, 5 is the bottom right cell, 6 is the right cell, and 7 is the top right cell.
         slopes: [numpy array]
-            slopes array
+            The slope array.
         """
         cell_size = self.cell_size
         dist2 = cell_size * np.sqrt(2)
@@ -55,165 +55,80 @@ class DEM(Dataset):
             cell_size,
             dist2,
         ]
-        no_columns = self.columns
-        no_rows = self.rows
-        flow_direction = np.ones((no_rows, no_columns)) * np.nan
-        slopes = np.ones((no_rows, no_columns, 9)) * np.nan
+        rows, cols = elev.shape
+        slopes = np.full(
+            (rows, cols, 8), np.nan, dtype=np.float32
+        )  # Initialize slopes array
 
-        for i in range(1, no_rows - 1):
-            for j in range(1, no_columns - 1):
-                # calculate only if cell in elev is not nan
-                if not np.isnan(elev[i, j]):
-                    # calculate the slope
-                    #  with cell to the right
-                    slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
-                    # slope with cell to the top right
-                    slopes[i, j, 1] = (elev[i, j] - elev[i - 1, j + 1]) / distances[1]
-                    # slope with cell to the top
-                    slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
-                    # slope with cell to the top left
-                    slopes[i, j, 3] = (elev[i, j] - elev[i - 1, j - 1]) / distances[3]
-                    # slope with cell to the left
-                    slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
-                    # slope with cell to the bottom left
-                    slopes[i, j, 5] = (elev[i, j] - elev[i + 1, j - 1]) / distances[5]
-                    # slope with cell to the bottom
-                    slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
-                    # slope with cell to the bottom right
-                    slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
-                    # get the maximum slope and store it in the last column
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
+        # padding = 2
+        # pad_1 = padding - 1
+        # Create a padded elevation array for boundary conditions
+        padded_elev = np.full((rows + 2, cols + 2), np.nan, dtype=np.float32)
+        padded_elev[1:-1, 1:-1] = elev
 
-        # first rows without corners
-        for i in [0]:
-            for j in range(1, no_columns - 1):  # all columns
-                if not np.isnan(elev[i, j]):
-                    # slope with cell to the right
-                    slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
-                    # slope with cell to the left
-                    slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
-                    # slope with cell to the bottom left
-                    slopes[i, j, 5] = (elev[i, j] - elev[i + 1, j - 1]) / distances[5]
-                    # slope with cell to the bottom
-                    slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
-                    # slope with cell to the bottom right
-                    slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
-                    # get the maximum slope and store it in the last column
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
+        # Calculate elevation differences using slicing
+        diff_right = padded_elev[1:-1, 1:-1] - padded_elev[1:-1, 2:]
+        diff_top_right = padded_elev[1:-1, 1:-1] - padded_elev[:-2, 2:]
+        diff_top = padded_elev[1:-1, 1:-1] - padded_elev[:-2, 1:-1]
+        diff_top_left = padded_elev[1:-1, 1:-1] - padded_elev[:-2, :-2]
+        diff_left = padded_elev[1:-1, 1:-1] - padded_elev[1:-1, :-2]
+        diff_bottom_left = padded_elev[1:-1, 1:-1] - padded_elev[2:, :-2]
+        diff_bottom = padded_elev[1:-1, 1:-1] - padded_elev[2:, 1:-1]
+        diff_bottom_right = padded_elev[1:-1, 1:-1] - padded_elev[2:, 2:]
 
-        # last rows without corners
-        for i in [no_rows - 1]:
-            for j in range(1, no_columns - 1):  # all columns
-                if not np.isnan(elev[i, j]):
-                    # slope with cell to the right
-                    slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
-                    # slope with cell to the top right
-                    slopes[i, j, 1] = (elev[i, j] - elev[i - 1, j + 1]) / distances[1]
-                    # slope with cell to the top
-                    slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
-                    # slope with cell to the top left
-                    slopes[i, j, 3] = (elev[i, j] - elev[i - 1, j - 1]) / distances[3]
-                    # slope with cell to the left
-                    slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
-                    # get the maximum slope and store it in the last column
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
+        # Calculate slopes
+        slopes[:, :, 4] = diff_top / distances[4]
+        slopes[:, :, 3] = diff_top_left / distances[3]
+        slopes[:, :, 2] = diff_left / distances[2]
+        slopes[:, :, 1] = diff_bottom_left / distances[1]
+        slopes[:, :, 0] = diff_bottom / distances[0]
+        slopes[:, :, 7] = diff_bottom_right / distances[7]
+        slopes[:, :, 6] = diff_right / distances[6]
+        slopes[:, :, 5] = diff_top_right / distances[5]
 
-        # top left corner
-        i = 0
-        j = 0
-        if not np.isnan(elev[i, j]):
-            # slope with cell to the left
-            slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
-            # slope with cell to the bottom
-            slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
-            # slope with cell to the bottom right
-            slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
-            # get the maximum slope and store it in the last column
-            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
+        return slopes
 
-        # top right corner
-        i = 0
-        j = no_columns - 1
-        if not np.isnan(elev[i, j]):
-            # slope with cell to the left
-            slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
-            # slope with cell to the bottom left
-            slopes[i, j, 5] = (elev[i, j] - elev[i + 1, j - 1]) / distances[5]
-            # slope with cell to the bott
-            slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
-            # get the maximum slope and store it in the last column
-            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
+    @staticmethod
+    def calculate_flow_direction(elev: np.ndarray, slopes: np.ndarray) -> np.ndarray:
+        """calculate_flow_direction.
 
-        # bottom left corner
-        i = no_rows - 1
-        j = 0
-        if not np.isnan(elev[i, j]):
-            # slope with cell to the right
-            slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
-            # slope with cell to the top right
-            slopes[i, j, 1] = (elev[i, j] - elev[i - 1, j + 1]) / distances[1]
-            # slope with cell to the top
-            slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
-            # get the maximum slope and store it in the last column
-            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
+        Parameters
+        ----------
+        elev: [np.ndarray]
+            elevation array.
+        slopes: [numpy array]
+            The slopes' array.
 
-        # bottom right
-        i = no_rows - 1
-        j = no_columns - 1
-        if not np.isnan(elev[i, j]):
-            # slope with cell to the top
-            slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
-            # slope with cell to the top left
-            slopes[i, j, 3] = (elev[i, j] - elev[i - 1, j - 1]) / distances[3]
-            # slope with cell to the left
-            slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
-            # get the maximum slope and store it in the last column
-            slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
+        Returns
+        -------
+        flow_direction: [numpy array]
+            flow direction array. The array contains values [0, 1, 2, 3, 4, 5, 6, 7] referring to the 8 directions,
+            where 0 is the bottom cell, 1 is the bottom left cell, 2 is the left cell, 3 is the top left cell,
+            4 is the top cell, 5 is the top right cell, 6 is the right cell, and 7 is the bottom right cell.
+        """
+        # Create a mask for non-NaN cells in the elevation array
+        mask = ~np.isnan(elev)
 
-        # first column
-        for i in range(1, no_rows - 1):
-            for j in [0]:
-                if not np.isnan(elev[i, j]):
-                    # slope with cell to the right
-                    slopes[i, j, 0] = (elev[i, j] - elev[i, j + 1]) / distances[0]
-                    # slope with cell to the top right
-                    slopes[i, j, 1] = (elev[i, j] - elev[i - 1, j + 1]) / distances[1]
-                    # slope with cell to the top
-                    slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
-                    # slope with cell to the bottom
-                    slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
-                    # slope with cell to the bottom right
-                    slopes[i, j, 7] = (elev[i, j] - elev[i + 1, j + 1]) / distances[7]
-                    # get the maximum slope and store it in the last column
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
+        # Create a mask for cells with at least one non-NaN slope
+        valid_mask = ~np.all(np.isnan(slopes), axis=2)
 
-        # last column
-        for i in range(1, no_rows - 1):
-            for j in [no_columns - 1]:
-                if not np.isnan(elev[i, j]):
-                    # slope with cell to the top
-                    slopes[i, j, 2] = (elev[i, j] - elev[i - 1, j]) / distances[2]
-                    # slope with cell to the top left
-                    slopes[i, j, 3] = (elev[i, j] - elev[i - 1, j - 1]) / distances[3]
-                    # slope with cell to the left
-                    slopes[i, j, 4] = (elev[i, j] - elev[i, j - 1]) / distances[4]
-                    # slope with cell to the bottom left
-                    slopes[i, j, 5] = (elev[i, j] - elev[i + 1, j - 1]) / distances[5]
-                    # slope with cell to the bottom
-                    slopes[i, j, 6] = (elev[i, j] - elev[i + 1, j]) / distances[6]
-                    # get the maximum slope and store it in the last column
-                    slopes[i, j, 8] = np.nanmax(slopes[i, j, :])
+        # Combine masks to identify cells where calculations should be done
+        valid_cells_mask = mask & valid_mask
 
-        # get the flow direction index
-        for i in range(no_rows):
-            for j in range(no_columns):
-                # calculate only if cell in elev is not nan
-                if not np.isnan(elev[i, j]):
-                    flow_direction[i, j] = np.where(
-                        slopes[i, j, :] == np.nanmax(slopes[i, j, :])
-                    )[0][0]
+        # Initialize the flow_direction array with NaN values
+        flow_direction = np.full(elev.shape, np.nan)
 
-        return flow_direction, slopes
+        # Calculate the maximum slope and corresponding direction for each cell
+        # max_slope = np.nanmax(slopes, axis=2)
+        # Apply np.nanargmax only where the mask is True
+        flow_direction[valid_cells_mask] = np.nanargmax(
+            slopes[valid_cells_mask], axis=1
+        )
+
+        # Apply the mask to only update non-NaN cells
+        # flow_direction[mask] = max_slope_direction[mask]
+
+        return flow_direction
 
     def fill_sinks(self, elev: np.ndarray) -> np.ndarray:
         """
@@ -261,7 +176,8 @@ class DEM(Dataset):
         elev[np.isclose(elev, dem_no_val, rtol=0.00001)] = np.nan
         elev = self.fill_sinks(elev)
 
-        flow_direction, slope = self.calculate_slope(elev)
+        slope = self.calculate_slope(elev)
+        flow_direction = self.calculate_flow_direction(elev, slope)
         flow_direction_cell = np.ones((no_rows, no_columns, 2)) * np.nan
 
         for i in range(no_rows):

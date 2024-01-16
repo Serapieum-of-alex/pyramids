@@ -340,8 +340,8 @@ def flow_direction_array_cells_indices() -> np.ndarray:
 
 
 @pytest.fixture(scope="function")
-def elev_sinkless_valid() -> np.ndarray:
-    return np.load("tests/data/dem/elevation.npy")
+def elev_sink_free() -> np.ndarray:
+    return np.load("tests/data/dem/elevation-sink-free.npy")
 
 
 @pytest.fixture(scope="function")

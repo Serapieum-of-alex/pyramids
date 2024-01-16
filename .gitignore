@@ -125,7 +125,7 @@ venv.bak/
 .spyderproject
 .spyproject
 
-*.npy
+#*.npy
 *.pkl
 
 # conda smithy ci-skeleton start
@@ -162,3 +162,9 @@ tests/data/raster-folder-coello/*
 examples/old/*
 tests/data/not-used/*
 *.xml
+/tests/data/delete/central-europe.geojson
+/tests/data/delete/delta.geojson
+/tests/data/delete/delta.gpkg
+/tests/data/delete/delta1.gpkg
+/tests/data/delete/era5-mask.qmd
+/tests/data/delete/mask.gpkg
