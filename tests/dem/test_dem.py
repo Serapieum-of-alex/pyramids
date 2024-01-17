@@ -11,48 +11,65 @@ def test_create_dem_instance(rhine_raster: gdal.Dataset):
     assert hasattr(dem, "band_count")
 
 
+class TestProperties:
+    def test_values(self, coello_dem_4000: gdal.Dataset):
+        """Test if the 'values' property actually replaces the no data values with np.nan"""
+        dem = DEM(coello_dem_4000)
+        arr = dem.values
+        assert isinstance(arr, np.ndarray)
+        assert np.isnan(arr[0, 0])
+
+
 def test_fill_sinks(coello_dem_4000: gdal.Dataset, elev_sink_free: np.ndarray):
     dem = DEM(coello_dem_4000)
-    elev = dem.read_array(band=0).astype(np.float32)
-    # get the value stores in no data value cells
-    dem_no_val = dem.no_data_value[0]
-    elev[np.isclose(elev, dem_no_val, rtol=0.00001)] = np.nan
+    dem_filled = dem.fill_sinks()
+    assert isinstance(dem_filled, DEM)
+    assert dem_filled.shape == dem.shape
+    assert np.array_equal(dem_filled.values, elev_sink_free, equal_nan=True)
+    # test if the changes are made inplace
+    dem_filled = dem.fill_sinks(inplace=True)
+    assert dem_filled is None
 
-    dem_filled = dem.fill_sinks(elev)
-    assert dem_filled.shape == (dem.rows, dem.columns)
-    assert np.array_equal(dem_filled, elev_sink_free, equal_nan=True)
+
+class TestSlope:
+    def test_get_8_direction_slopes(
+        self,
+        coello_dem_4000: gdal.Dataset,
+        coello_slope: np.ndarray,
+    ):
+        dem = DEM(coello_dem_4000)
+        slope = dem._get_8_direction_slopes()
+        assert isinstance(slope, np.ndarray)
+        assert np.array_equal(slope, coello_slope, equal_nan=True)
+
+    def test_slope(
+        self,
+        coello_dem_4000: gdal.Dataset,
+        coello_max_slope: np.ndarray,
+    ):
+        dem = DEM(coello_dem_4000)
+        slope = dem.slope()
+        assert isinstance(slope, DEM)
+        assert slope.shape == dem.shape
+        assert np.array_equal(slope.values, coello_max_slope, equal_nan=True)
 
 
-def test_calculate_slope(
-    coello_df_4000: gdal.Dataset,
-    elev_sink_free: np.ndarray,
-    coello_slope: np.ndarray,
+def test_flow_direction(
+    coello_dem_4000: gdal.Dataset,
     coello_flow_direction_cell_index: np.ndarray,
 ):
-    dem = DEM(coello_df_4000)
-    slope = dem.calculate_slope(elev_sink_free)
-    assert isinstance(slope, np.ndarray)
-    assert np.array_equal(slope, coello_slope, equal_nan=True)
-
-
-def test_calculate_flow_direction(
-    coello_df_4000: gdal.Dataset,
-    elev_sink_free: np.ndarray,
-    coello_slope: np.ndarray,
-    coello_flow_direction_cell_index: np.ndarray,
-):
-    dem = DEM(coello_df_4000)
-    fd = dem.calculate_flow_direction(elev_sink_free, coello_slope)
+    dem = DEM(coello_dem_4000)
+    fd = dem.flow_direction()
     assert isinstance(fd, np.ndarray)
     assert np.array_equal(fd, coello_flow_direction_cell_index, equal_nan=True)
 
 
-def test_d8(
+def test_flow_direction_array_cells_indices(
     coello_dem_4000: gdal.Dataset,
     flow_direction_array_cells_indices: np.ndarray,
 ):
     dem = DEM(coello_dem_4000)
-    fd_cell = dem.D8()
+    fd_cell = dem.convert_flow_direction_to_cell_indices()
     assert isinstance(fd_cell, np.ndarray)
     assert fd_cell.shape == (dem.rows, dem.columns, 2)
     assert np.array_equal(fd_cell, flow_direction_array_cells_indices, equal_nan=True)

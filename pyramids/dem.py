@@ -1,38 +1,75 @@
-from typing import Dict
+"""DEM module."""
+from typing import Any, Dict, Tuple
 import numpy as np
 from osgeo import gdal
 
 from pyramids.dataset import Dataset
 import sys
 
-
 sys.setrecursionlimit(5000)
+
+INDEX = [0, 1, 2, 3, 4, 5, 6, 7]
+X_INDEX = [0, -1, -1, -1, 0, 1, 1, 1]
+Y_INDEX = [1, 1, 0, -1, -1, -1, 0, 1]
 
 
 class DEM(Dataset):
-    """GISCatchment class contains methods to deal with the MED and generate the flow direction based on the D8 method and process the DEM.
+    """DEM class.
 
-    Methods:
-        1- D8
-        2- FlowDirectIndex
-        3- FlowDirecTable
-        4- DeleteBasins
-        5- NearestCell
-        6- GroupNeighbours
-        7- Cluster
-        8- ListAttributes
+    DEM contains methods to deal with the digital elevation model (DEM) and generate the flow direction based on
+    the D8 method and process the DEM.
     """
 
     def __init__(self, src: gdal.Dataset):
         super().__init__(src)
 
-    def calculate_slope(self, elev: np.ndarray) -> np.ndarray:
-        """compute_slopes.
+    @property
+    def values(self):
+        """values.
+
+        The Values property retrieves the values of the raster and replaces the no data values with np.nan
+        """
+        values = self.read_array(band=0).astype(np.float32)
+        # get the value stores in no data value cells
+        no_val = self.no_data_value[0]
+        values[np.isclose(values, no_val, rtol=0.00001)] = np.nan
+        return values
+
+    def fill_sinks(self, inplace: bool = False) -> Tuple[Any, Dataset]:
+        """fill_sinks.
 
         Parameters
         ----------
-        elev: [numpy array]
-            elevation array
+        inplace: [bool]
+            Default is False.
+
+        Returns
+        -------
+        [numpy array]
+            DEM after filling sinks.
+        """
+        elev = self.values
+
+        elev_sinkless = np.copy(elev)
+        for i in range(1, self.rows - 1):
+            for j in range(1, self.columns - 1):
+                # Get elevation of surrounding cells
+                f = elev[i - 1 : i + 2, j - 1 : j + 2].flatten()
+                # Exclude the center cell
+                f[4] = np.nan
+                min_f = np.nanmin(f)
+                if elev_sinkless[i, j] < min_f:
+                    elev_sinkless[i, j] = min_f + 0.1
+
+        src = self.dataset_like(self, elev_sinkless)
+        if inplace:
+            self.__init__(src.raster)
+        else:
+            return src
+
+    def _get_8_direction_slopes(self) -> np.ndarray:
+        """compute_slopes.
+
 
         Returns
         -------
@@ -43,6 +80,7 @@ class DEM(Dataset):
         slopes: [numpy array]
             The slope array.
         """
+        elev = self.values
         cell_size = self.cell_size
         dist2 = cell_size * np.sqrt(2)
         distances = [
@@ -56,9 +94,7 @@ class DEM(Dataset):
             dist2,
         ]
         rows, cols = elev.shape
-        slopes = np.full(
-            (rows, cols, 8), np.nan, dtype=np.float32
-        )  # Initialize slopes array
+        slopes = np.full((rows, cols, 8), np.nan, dtype=np.float32)
 
         # padding = 2
         # pad_1 = padding - 1
@@ -77,27 +113,27 @@ class DEM(Dataset):
         diff_bottom_right = padded_elev[1:-1, 1:-1] - padded_elev[2:, 2:]
 
         # Calculate slopes
-        slopes[:, :, 4] = diff_top / distances[4]
-        slopes[:, :, 3] = diff_top_left / distances[3]
-        slopes[:, :, 2] = diff_left / distances[2]
-        slopes[:, :, 1] = diff_bottom_left / distances[1]
         slopes[:, :, 0] = diff_bottom / distances[0]
-        slopes[:, :, 7] = diff_bottom_right / distances[7]
-        slopes[:, :, 6] = diff_right / distances[6]
+        slopes[:, :, 1] = diff_bottom_left / distances[1]
+        slopes[:, :, 2] = diff_left / distances[2]
+        slopes[:, :, 3] = diff_top_left / distances[3]
+        slopes[:, :, 4] = diff_top / distances[4]
         slopes[:, :, 5] = diff_top_right / distances[5]
+        slopes[:, :, 6] = diff_right / distances[6]
+        slopes[:, :, 7] = diff_bottom_right / distances[7]
 
         return slopes
 
-    @staticmethod
-    def calculate_flow_direction(elev: np.ndarray, slopes: np.ndarray) -> np.ndarray:
-        """calculate_flow_direction.
+    def slope(self):
+        """slope."""
+        slope = self._get_8_direction_slopes()
+        max_slope = np.nanmax(slope, axis=2)
 
-        Parameters
-        ----------
-        elev: [np.ndarray]
-            elevation array.
-        slopes: [numpy array]
-            The slopes' array.
+        src = self.dataset_like(self, max_slope)
+        return src
+
+    def flow_direction(self) -> np.ndarray:
+        """flow_direction.
 
         Returns
         -------
@@ -106,6 +142,8 @@ class DEM(Dataset):
             where 0 is the bottom cell, 1 is the bottom left cell, 2 is the left cell, 3 is the top left cell,
             4 is the top cell, 5 is the top right cell, 6 is the right cell, and 7 is the bottom right cell.
         """
+        elev = self.values
+        slopes = self._get_8_direction_slopes()
         # Create a mask for non-NaN cells in the elevation array
         mask = ~np.isnan(elev)
 
@@ -118,45 +156,15 @@ class DEM(Dataset):
         # Initialize the flow_direction array with NaN values
         flow_direction = np.full(elev.shape, np.nan)
 
-        # Calculate the maximum slope and corresponding direction for each cell
-        # max_slope = np.nanmax(slopes, axis=2)
-        # Apply np.nanargmax only where the mask is True
+        # Apply np.nanargmax only where the mask is True to get the index of the maximum slope
+        # hence, the flow direction.
         flow_direction[valid_cells_mask] = np.nanargmax(
             slopes[valid_cells_mask], axis=1
         )
 
-        # Apply the mask to only update non-NaN cells
-        # flow_direction[mask] = max_slope_direction[mask]
-
         return flow_direction
 
-    def fill_sinks(self, elev: np.ndarray) -> np.ndarray:
-        """
-
-        Parameters
-        ----------
-        elev: [numpy array]
-            elevation array
-
-        Returns
-        -------
-        elev_sinkless: [numpy array]
-            DEM after filling sinks.
-        """
-        elev_sinkless = np.copy(elev)
-        for i in range(1, self.rows - 1):
-            for j in range(1, self.columns - 1):
-                # Get elevation of surrounding cells
-                f = elev[i - 1 : i + 2, j - 1 : j + 2].flatten()
-                # Exclude the center cell
-                f[4] = np.nan
-                min_f = np.nanmin(f)
-                if elev_sinkless[i, j] < min_f:
-                    elev_sinkless[i, j] = min_f + 0.1
-
-        return elev_sinkless
-
-    def D8(self):
+    def convert_flow_direction_to_cell_indices(self):
         """D8 method generates flow direction raster from DEM and fills sinks.
 
         Returns
@@ -164,55 +172,28 @@ class DEM(Dataset):
         flow_direction_cell: [numpy array]
             with the same dimensions of the raster and 2 layers
             first layer for rows index and second rows for column index
-        elev_sinkless: [numpy array]
-            DEM after filling sinks
         """
         no_columns = self.columns
         no_rows = self.rows
 
-        elev = self.read_array(band=0).astype(np.float32)
-        # get the value stores in no data value cells
-        dem_no_val = self.no_data_value[0]
-        elev[np.isclose(elev, dem_no_val, rtol=0.00001)] = np.nan
-        elev = self.fill_sinks(elev)
+        flow_direction = self.flow_direction()
 
-        slope = self.calculate_slope(elev)
-        flow_direction = self.calculate_flow_direction(elev, slope)
+        # convert index of the flow direction to the index of the cell
         flow_direction_cell = np.ones((no_rows, no_columns, 2)) * np.nan
 
         for i in range(no_rows):
             for j in range(no_columns):
-                if flow_direction[i, j] == 0:
-                    flow_direction_cell[i, j, 0] = i  # index of the rows
-                    flow_direction_cell[i, j, 1] = j + 1  # index of the column
-                elif flow_direction[i, j] == 1:
-                    flow_direction_cell[i, j, 0] = i - 1
-                    flow_direction_cell[i, j, 1] = j + 1
-                elif flow_direction[i, j] == 2:
-                    flow_direction_cell[i, j, 0] = i - 1
-                    flow_direction_cell[i, j, 1] = j
-                elif flow_direction[i, j] == 3:
-                    flow_direction_cell[i, j, 0] = i - 1
-                    flow_direction_cell[i, j, 1] = j - 1
-                elif flow_direction[i, j] == 4:
-                    flow_direction_cell[i, j, 0] = i
-                    flow_direction_cell[i, j, 1] = j - 1
-                elif flow_direction[i, j] == 5:
-                    flow_direction_cell[i, j, 0] = i + 1
-                    flow_direction_cell[i, j, 1] = j - 1
-                elif flow_direction[i, j] == 6:
-                    flow_direction_cell[i, j, 0] = i + 1
-                    flow_direction_cell[i, j, 1] = j
-                elif flow_direction[i, j] == 7:
-                    flow_direction_cell[i, j, 0] = i + 1
-                    flow_direction_cell[i, j, 1] = j + 1
+                if not np.isnan(flow_direction[i, j]):
+                    ind = int(flow_direction[i, j])
+                    flow_direction_cell[i, j, 0] = i + X_INDEX[ind]
+                    flow_direction_cell[i, j, 1] = j + Y_INDEX[ind]
 
         return flow_direction_cell
 
     def flow_direction_index(self) -> np.ndarray:
         """flow_direction_index.
 
-            flow_direction_index takes flow direction raster and convert codes for the 8 directions
+            flow_direction_index takes flow direction raster and converts codes for the 8 directions
             (1,2,4,8,16,32,64,128) into indices of the Downstream cell.
 
         flow_direct:
