@@ -48,6 +48,7 @@ from hpc.indexing import get_pixels, get_indices2, get_pixels2, locate_values
 from pyramids.featurecollection import FeatureCollection
 from pyramids import _io
 
+
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog(raster_driver=True)
 OVERVIEW_LEVELS = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
@@ -67,6 +68,7 @@ RESAMPLING_METHODS = [
 # value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
 # this behavior in GDAL and OGR by calling the UseExceptions()
 gdal.UseExceptions()
+
 # gdal.ErrorReset()
 
 
@@ -168,7 +170,7 @@ class Dataset:
     @property
     def values(self) -> np.ndarray:
         """array values."""
-        return self.read_array(band=None)
+        return self.read_array()
 
     @property
     def rows(self) -> int:
@@ -265,7 +267,7 @@ class Dataset:
                 pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
             ]
         else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
+            # in case the lat and lon are read from the netcdf file, just read the values from the file
             y_coords = self._lat
         return np.array(y_coords)
 
@@ -419,7 +421,7 @@ class Dataset:
         return overview_number
 
     @classmethod
-    def read_file(cls, path: str, read_only=True):
+    def read_file(cls, path: str, read_only=True) -> "Dataset":
         """read_file.
 
         Parameters
@@ -439,7 +441,7 @@ class Dataset:
     @classmethod
     def _create_empty_driver(
         cls, src: gdal.Dataset, path: str = None, bands: int = 1, no_data_value=None
-    ):
+    ) -> "Dataset":
         """Create a new empty driver from another dataset.
 
         Parameters
@@ -485,7 +487,7 @@ class Dataset:
         epsg: int,
         no_data_value: Any = None,
         path: str = None,
-    ):
+    ) -> "Dataset":
         """Create a new empty driver from another dataset.
 
             - The new dataset will have an array filled with the no_data_value.
@@ -854,6 +856,7 @@ class Dataset:
         cleo = Array(
             arr,
             exclude_value=exclude_value,
+            extent=self.bbox,
             rgb=rgb,
             surface_reflectance=surface_reflectance,
             cutoff=cutoff,
@@ -966,7 +969,7 @@ class Dataset:
         geo: Tuple[float, float, float, float, float, float],
         epsg: Union[str, int],
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
-    ):
+    ) -> "Dataset":
         """create_from_array.
 
             - Create_from_array method creates a raster from a given array and geotransform data
@@ -1023,13 +1026,13 @@ class Dataset:
         array: np.ndarray,
         driver: str = "MEM",
         path: str = None,
-    ) -> Union[gdal.Dataset, None]:
-        """rasterLike.
+    ) -> Union["Dataset", None]:
+        """dataset_like.
 
-        rasterLike method creates a Geotiff raster like another input raster, new raster
-        will have the same projection, coordinates or the top left corner of the original
-        raster, cell size, nodata velue, and number of rows and columns
-        the raster and the dem should have the same number of columns and rows
+            dataset_like method creates a Dataset from an array like another source dataset. The new dataset
+            will have the same `projection`, `coordinates` or the `top left corner` of the original dataset,
+            `cell size`, `no_data_velue`, and number of `rows` and `columns`.
+            the array and the source dataset should have the same number of columns and rows
 
         Parameters
         ----------
@@ -1051,14 +1054,10 @@ class Dataset:
 
         Example
         -------
-        >>> array = np.load("RAIN_5k.npy")
-        >>> src = gdal.Open("DEM.tif")
+        >>> src_array = np.load("RAIN_5k.npy")
+        >>> src_dataset = Dataset.read_file("DEM.tif")
         >>> name = "rain.tif"
-        >>> Dataset.dataset_like(src, array, driver="GTiff", path=name)
-        - or create a raster in memory
-        >>> array = np.load("RAIN_5k.npy")
-        >>> src = gdal.Open("DEM.tif")
-        >>> dst = Dataset.dataset_like(src, array, driver="MEM")
+        >>> new_dataset = src_dataset.dataset_like(src, src_array, driver="GTiff")
         """
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
@@ -1138,12 +1137,13 @@ class Dataset:
 
         return epsg
 
-    def get_variables(self):
-        """
+    def get_variables(self) -> Dict["Dataset", "Dataset"]:
+        """get_variables.
 
         Returns
         -------
-
+        Dict["Dataset", "Dataset"]
+            Dictionary of the netcdf variables
         """
         variables = {}
         for i, var in enumerate(self.subsets):
@@ -1192,7 +1192,7 @@ class Dataset:
         return sr
 
     def _get_band_names(self) -> List[str]:
-        """Get band names from band meta data if exists otherwise will return idex [1,2, ...]
+        """Get band names from band metadata if exists otherwise will return idex [1,2, ...]
 
         Returns
         -------
@@ -1207,7 +1207,7 @@ class Dataset:
                 # Use the band_i description.
                 names.append(band_i.GetDescription())
             else:
-                # Check for metedata.
+                # Check for metadata.
                 band_i_name = "Band_{}".format(band_i.GetBand())
                 metadata = band_i.GetDataset().GetMetadata_Dict()
 
@@ -1279,12 +1279,12 @@ class Dataset:
     ):
         """setNoDataValue.
 
-            - Set the no data value in a all raster bands.
-            - Fills the whole raster with the no_data_value.
+            - Set the no data value in all raster bands.
+            - Fill the whole raster with the no_data_value.
             - used only when creating an empty driver.
 
             now the no_data_value is converted to the dtype of the raster bands and updated in the
-            dataset attribure, gdal nodatavalue attribute, used to fill the raster band.
+            dataset attribute, gdal nodatavalue attribute, used to fill the raster band.
             from here you have to use the no_data_value stored in the no_data_value attribute as it is updated.
 
         Parameters
@@ -1405,8 +1405,8 @@ class Dataset:
     def change_no_data_value(self, new_value: Any, old_value: Any = None):
         """Change No Data Value.
 
-            - Set the no data value in a all raster bands.
-            - Fills the whole raster with the no_data_value.
+            - Set the no data value in all raster bands.
+            - Fill the whole raster with the no_data_value.
             - Change the no_data_value in the array in all bands.
 
         Parameters
@@ -1415,7 +1415,7 @@ class Dataset:
             no data value to set in the raster bands.
 
         old_value: [numeric]
-            old no data value that are already in the raster bands.
+            old no data value that is already in the raster bands.
         """
         if not isinstance(new_value, list):
             new_value = [new_value] * self.band_count
@@ -1720,40 +1720,40 @@ class Dataset:
     ) -> Union[DataFrame, GeoDataFrame]:
         """Convert a raster to a vector.
 
-        g            The function does the following
-                    - Flatten the array in each band in the raster then mask the values if a vector_mask
-                    file is given otherwise it will flatten all values.
-                    - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
-                    data in the raster band exists, an index number will be used [1, 2, 3, ...]
-                    - The function has an add_geometry parameter with two possible values ["point", "polygon"], which you can
-                    specify the type of shapely geometry you want to create from each cell,
-                        - If point is chosen, the created point will be at the center of each cell
-                        - If a polygon is chosen, a square polygon will be created that covers the entire cell.
+        The function does the following
+            - Flatten the array in each band in the raster then mask the values if a vector_mask
+            file is given otherwise it will flatten all values.
+            - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
+            data in the raster band exists, an index number will be used [1, 2, 3, ...]
+            - The function has an add_geometry parameter with two possible values ["point", "polygon"], which you can
+            specify the type of shapely geometry you want to create from each cell,
+                - If point is chosen, the created point will be at the center of each cell
+                - If a polygon is chosen, a square polygon will be created that covers the entire cell.
 
-                Parameters
-                ----------
-                vector_mask : Optional[GeoDataFrame]
-                    GeoDataFrame for the vector_mask. If given, it will be used to clip the raster
-                add_geometry: [str]
-                    "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
-                    Default is None.
-                tile: [bool]
-                    True to use tiles in extracting the values from the raster. Default is False.
-                tile_size: [int]
-                    tile size. Default is 1500.
-                touch: [bool]
-                    to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
-                    Default is True.
+        Parameters
+        ----------
+        vector_mask : Optional[GeoDataFrame]
+            GeoDataFrame for the vector_mask. If given, it will be used to clip the raster
+        add_geometry: [str]
+            "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
+            Default is None.
+        tile: [bool]
+            True to use tiles in extracting the values from the raster. Default is False.
+        tile_size: [int]
+            tile size. Default is 1500.
+        touch: [bool]
+            to include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
+            Default is True.
 
-                Returns
-                -------
-                DataFrame/GeoDataFrame
-                    columndL:
-                        >>> print(gdf.columns)
-                        >>> Index(['Band_1', 'geometry'], dtype='object')
+        Returns
+        -------
+        DataFrame/GeoDataFrame
+            columndL:
+                >>> print(gdf.columns)
+                >>> Index(['Band_1', 'geometry'], dtype='object')
 
-                the resulted geodataframe will have the band value under the name of the band (if the raster file has a
-                metadata, if not, the bands will be indexed from 1 to the number of bands)
+        the resulted geodataframe will have the band value under the name of the band (if the raster file has a
+        metadata, if not, the bands will be indexed from 1 to the number of bands)
         """
         # Get raster band names. open the dataset using gdal.Open
         band_names = self.band_names
@@ -1808,12 +1808,12 @@ class Dataset:
 
         return df
 
-    def apply(self, fun, band: int = 0):
-        """mapAlgebra.
+    def apply(self, fun, band: int = 0) -> "Dataset":
+        """apply.
 
-        - mapAlgebra executes a mathematical operation on raster array and returns
-        the result
-        - The mapAlgebra executes the function only on one cell at a time.
+            - apply method executes a mathematical operation on raster array and returns
+            the result
+            - The apply method executes the function only on one cell at a time.
 
         Parameters
         ----------
@@ -1865,10 +1865,10 @@ class Dataset:
 
     def fill(
         self, val: Union[float, int], driver: str = "MEM", path: str = None
-    ) -> Union[None, gdal.Dataset]:
+    ) -> Union["Dataset", None]:
         """Fill.
 
-            Fill takes a raster and fill it with one value
+            Fill takes a raster and fills it with one value
 
         Parameters
         ----------
@@ -1881,9 +1881,8 @@ class Dataset:
 
         Returns
         -------
-        raster : [None/gdal.Datacube]
-            if the raster is saved directly to the path you provided the returned value will be None, otherwise the
-            returned value will be the gdal.Datacube itself.
+        Dataset:
+            the returned value will be a Dataset.
         """
         no_data_value = self.no_data_value[0]
         src_array = self.raster.ReadAsArray()
@@ -1898,7 +1897,9 @@ class Dataset:
         dst = Dataset.dataset_like(self, src_array, driver=driver, path=path)
         return dst
 
-    def resample(self, cell_size: Union[int, float], method: str = "nearest neighbour"):
+    def resample(
+        self, cell_size: Union[int, float], method: str = "nearest neighbour"
+    ) -> "Dataset":
         """resample.
 
         resample method reproject a raster to any projection
@@ -1918,7 +1919,7 @@ class Dataset:
 
         Returns
         -------
-        raster : [Dataset]
+        Dataset:
              Dataset object.
         """
         if not isinstance(method, str):
@@ -1980,7 +1981,7 @@ class Dataset:
         method: str = "nearest neighbour",
         maintain_alignment: int = False,
         inplace: bool = False,
-    ):
+    ) -> Union["Dataset", None]:
         """to_epsg.
 
         to_epsg reprojects a raster to any projection
@@ -2041,7 +2042,7 @@ class Dataset:
 
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neighbour"
-    ) -> object:
+    ) -> "Dataset":
         src_gt = self.geotransform
         src_x = self.columns
         src_y = self.rows
@@ -2138,7 +2139,7 @@ class Dataset:
         )
         return dst_obj
 
-    def fill_gaps(self, mask, src_array):
+    def fill_gaps(self, mask, src_array: np.ndarray) -> np.ndarray:
         """fill_gaps.
 
         Parameters
@@ -2202,7 +2203,7 @@ class Dataset:
         mask: Union[gdal.Dataset, np.ndarray],
         mask_noval: Union[int, float] = None,
         fill_gaps: bool = False,
-    ) -> Union[np.ndarray, gdal.Dataset]:
+    ) -> "Dataset":
         """_crop_aligned.
 
         _crop_aligned clip/crop (matches the location of nodata value from mask to src
@@ -2331,7 +2332,7 @@ class Dataset:
     def align(
         self,
         alignment_src,
-    ) -> gdal.Dataset:
+    ) -> "Dataset":
         """align.
 
         align method copies the following data
@@ -2401,7 +2402,7 @@ class Dataset:
     def _crop_with_raster(
         self,
         mask: Union[gdal.Dataset, str],
-    ) -> gdal.Dataset:
+    ) -> "Dataset":
         """crop.
 
             crop method crops a raster using another raster.
@@ -2434,7 +2435,7 @@ class Dataset:
 
         return dst_obj
 
-    def _crop_with_polygon_by_rasterizing(self, poly: GeoDataFrame):
+    def _crop_with_polygon_by_rasterizing(self, poly: GeoDataFrame) -> "Dataset":
         """cropWithPolygon.
 
             Clip the Raster object using a polygon vector.
@@ -2468,7 +2469,7 @@ class Dataset:
 
     def _crop_with_polygon_warp(
         self, feature: Union[FeatureCollection, GeoDataFrame], touch: bool = True
-    ):
+    ) -> "Dataset":
         """Crop raster with polygon.
 
             - do not convert the polygon into a raster but rather use it directly to crop the raster using the
@@ -2511,7 +2512,8 @@ class Dataset:
 
         return dst_obj
 
-    def correct_wrap_cutline_error(src):
+    @staticmethod
+    def correct_wrap_cutline_error(src: "Dataset"):
         """correct_wrap_cutline_error.
         https://github.com/Serapieum-of-alex/pyramids/issues/74
         """
@@ -2550,10 +2552,10 @@ class Dataset:
         mask: Union[GeoDataFrame, FeatureCollection],
         touch: bool = True,
         inplace: bool = False,
-    ):
+    ) -> Union["Dataset", None]:
         """crop.
 
-            Clip the Dataset object using a polygon/raster.
+            Crop/Clip the Dataset object using a polygon/raster.
 
         Parameters
         ----------
@@ -2827,7 +2829,7 @@ class Dataset:
     ) -> Dict[List[float], List[float]]:
         """Overlay.
 
-            overlay extracts all the values in raster file, if you have two maps one with classes, and the other map
+            overlay extracts all the values in raster file if you have two maps one with classes, and the other map
             contains any type of values, and you want to know the values in each class.
 
         Parameters
@@ -4072,14 +4074,11 @@ class Datacube:
                 # create the array
                 array = (
                     np.ones(
-                        (
-                            self.time_length,
-                            arr.shape[0],
-                            arr.shape[1],
-                        )
+                        (self.time_length, arr.shape[0], arr.shape[1]),
                     )
                     * np.nan
                 )
+
             array[i, :, :] = arr
 
         if inplace:
@@ -4268,14 +4267,11 @@ class Datacube:
                 # create the array
                 array = (
                     np.ones(
-                        (
-                            self.time_length,
-                            arr.shape[0],
-                            arr.shape[1],
-                        )
+                        (self.time_length, arr.shape[0], arr.shape[1]),
                     )
                     * np.nan
                 )
+
             array[i, :, :] = arr
 
         self._values = array
