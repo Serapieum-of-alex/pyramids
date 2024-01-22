@@ -446,12 +446,13 @@ class Dataset:
 
         Parameters
         ----------
-        src : [gdal.Datacube]
+        src: [gdal.Dataset]
             gdal dataset
-        path : str
-        bands : int or None
+        path: [str]
+            path on disk.
+        bands: [int/None]
             Number of bands to create in the output raster.
-        no_data_value : float or None
+        no_data_value: float or None
             No data value, if None uses the same as `src`.
 
         Returns
@@ -488,7 +489,7 @@ class Dataset:
         no_data_value: Any = None,
         path: str = None,
     ) -> "Dataset":
-        """Create a new empty driver from another dataset.
+        """Create a new empty driver from scratch.
 
             - The new dataset will have an array filled with the no_data_value.
 
@@ -501,7 +502,12 @@ class Dataset:
         columns: [int]
             number of columns.
         dtype: [int]
-            data type.
+            gdal data type, the data type should be one of the following code:
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], which refers to the following data types:.
+            GDT_Unknown	0	GDT_UInt32	4	GDT_CInt16	8	GDT_UInt64	12
+            GDT_Byte	1	GDT_Int32	5	GDT_CInt32	9	GDT_Int64	13
+            GDT_UInt16	2	GDT_Float32 6	GDT_CFloat32 10	GDT_Int8	14
+            GDT_Int16	3	GDT_Float64 7	GDT_CFloat64 11	GDT_TypeCount 15
         bands : int or None
             Number of bands to create in the output raster.
         top_left_coords: [Tuple]
@@ -922,7 +928,7 @@ class Dataset:
     ) -> gdal.Dataset:
         """Create a GDAL driver.
 
-            creates a driver and save it to disk and in memory if path is not given.
+            creates a driver and save it to disk and in memory if the path is not given.
 
         Parameters
         ----------
@@ -939,6 +945,13 @@ class Dataset:
         dtype:
             gdal data type, use the functions in the utils module to map data types from numpy or ogr to gdal.
 
+            gdal data type, the data type should be one of the following code:
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], which refers to the following data types:.
+            GDT_Unknown	0	GDT_UInt32	4	GDT_CInt16	8	GDT_UInt64	12
+            GDT_Byte	1	GDT_Int32	5	GDT_CInt32	9	GDT_Int64	13
+            GDT_UInt16	2	GDT_Float32 6	GDT_CFloat32 10	GDT_Int8	14
+            GDT_Int16	3	GDT_Float64 7	GDT_CFloat64 11	GDT_TypeCount 15
+
         Returns
         -------
         gdal driver
@@ -952,7 +965,7 @@ class Dataset:
                     raise TypeError(
                         "The path to save the created raster should end with .tif"
                     )
-            # LZW is a lossless compression method achieve the highest compression but with a lot of computation
+            # LZW is a lossless compression method achieve the highest compression but with a lot of computations.
             src = gdal.GetDriverByName(driver).Create(
                 path, cols, rows, bands, dtype, ["COMPRESS=LZW"]
             )
@@ -972,7 +985,7 @@ class Dataset:
     ) -> "Dataset":
         """create_from_array.
 
-            - Create_from_array method creates a raster from a given array and geotransform data
+            - Create_from_array method creates a `Dataset` from a given array and geotransform data.
 
         Parameters
         ----------

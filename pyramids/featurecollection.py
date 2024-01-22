@@ -909,20 +909,20 @@ class FeatureCollection:
         else:
             return FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
 
-    def xy(self):
+    def xy(self) -> None:
         """XY.
 
-        XY function takes a geodataframe and process the geometry column and return
-        the x and y coordinates of all the votrices
+            XY function takes a geodataframe and processes the geometry column and returns
+            the x and y coordinates of all the vortices
 
         Returns
         -------
-        x :[dataframe column]
-            column contains the x coordinates of all the votices of the geometry
-            object in each rows
-        y :[dataframe column]
-            column contains the y coordinates of all the votices of the geometry
-            object in each rows
+        x:[dataframe column]
+            column contains the x coordinates of all the vortices of the geometry
+            object in each row.
+        y:[dataframe column]
+            column contains the y coordinates of all the vortices of the geometry
+            object in each row.
         """
         # explode the gdf if the Geometry of type MultiPolygon
         gdf = self._explode_gdf(self._feature, geometry="multipolygon")
