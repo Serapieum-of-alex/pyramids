@@ -166,10 +166,13 @@ class DEM(Dataset):
 
         Returns
         -------
-        flow_direction: [numpy array]
-            flow direction array. The array contains values [0, 1, 2, 3, 4, 5, 6, 7] referring to the 8 directions,
+        flow_direction: [GeoDataFrame]
+            GeoDataFrame containing point geometry and direction value for each point.
+            The direction values are [0, 1, 2, 3, 4, 5, 6, 7] referring to the 8 directions,
             where 0 is the bottom cell, 1 is the bottom left cell, 2 is the left cell, 3 is the top left cell,
             4 is the top cell, 5 is the top right cell, 6 is the right cell, and 7 is the bottom right cell.
+            >>>     fid                       geometry  direction
+            >>> 0    1  POINT (486334.785 478325.599)          6
         """
         elev = self.values
         slopes = self._get_8_direction_slopes()
