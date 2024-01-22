@@ -1,6 +1,8 @@
 import numpy as np
 from osgeo import gdal
+from geopandas import GeoDataFrame
 from pyramids.dem import DEM
+from pyramids.dataset import Dataset
 
 
 def test_create_dem_instance(rhine_raster: gdal.Dataset):
@@ -54,14 +56,48 @@ class TestSlope:
         assert np.array_equal(slope.values, coello_max_slope, equal_nan=True)
 
 
-def test_flow_direction(
+class TestFlowDirection:
+    def test_flow_direction(
+        self,
+        coello_dem_4000: gdal.Dataset,
+        coello_outfall: GeoDataFrame,
+        coello_flow_direction_4000: gdal.Dataset,
+    ):
+        """Test if the flow direction is calculated correctly.
+        The test sets the flow direction of the outfall to 6 (east) and checks if the flow direction
+        """
+        dem = DEM(coello_dem_4000)
+        flow_direction_validation = DEM(coello_flow_direction_4000)
+        coello_outfall.to_crs(dem.epsg, inplace=True)
+        coello_outfall["direction"] = 6
+        fd = dem.flow_direction(forced_direction=coello_outfall)
+        assert isinstance(fd, Dataset)
+        assert fd.no_data_value == [Dataset.default_no_data_value]
+        assert fd.dtype == ["int32"]
+        arr = fd.read_array()
+        # check that the no data value is set correctly in the array.
+        assert arr[0, 0] == Dataset.default_no_data_value
+        arr_validation = flow_direction_validation.read_array()
+        assert np.array_equal(arr, arr_validation, equal_nan=True)
+
+
+def test_flow_accumulation(
     coello_dem_4000: gdal.Dataset,
-    coello_flow_direction_cell_index: np.ndarray,
+    coello_flow_direction_4000: gdal.Dataset,
 ):
     dem = DEM(coello_dem_4000)
-    fd = dem.flow_direction()
-    assert isinstance(fd, np.ndarray)
-    assert np.array_equal(fd, coello_flow_direction_cell_index, equal_nan=True)
+    flow_direction = DEM(coello_flow_direction_4000)
+    acc = dem.flow_accumulation(flow_direction)
+    assert isinstance(acc, Dataset)
+    # assert np.array_equal(fd, coello_flow_direction_cell_index, equal_nan=True)
+    assert isinstance(acc, Dataset)
+    assert acc.no_data_value == [Dataset.default_no_data_value]
+    assert acc.dtype == ["int32"]
+    arr = acc.read_array()
+    # check that the no data value is set correctly in the array.
+    assert arr[0, 0] == Dataset.default_no_data_value
+    arr_validation = acc.read_array()
+    assert np.array_equal(arr, arr_validation, equal_nan=True)
 
 
 def test_flow_direction_array_cells_indices(

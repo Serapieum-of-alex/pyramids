@@ -2,15 +2,25 @@
 from typing import Any, Dict, Tuple
 import numpy as np
 from osgeo import gdal
-
+from geopandas import GeoDataFrame
 from pyramids.dataset import Dataset
 import sys
 
-sys.setrecursionlimit(5000)
 
-INDEX = [0, 1, 2, 3, 4, 5, 6, 7]
-X_INDEX = [0, -1, -1, -1, 0, 1, 1, 1]
-Y_INDEX = [1, 1, 0, -1, -1, -1, 0, 1]
+sys.setrecursionlimit(50000)
+
+# South, Southwest, West, Northwest, North, Northeast, East, Southeast
+# bottom, bottom left, left, top left, top, top right, right, bottom right
+DIR_OFFSETS = {
+    0: (0, 1),  # bottom
+    1: (-1, 1),  # bottom left
+    2: (-1, 0),  # left
+    3: (-1, -1),  # top left
+    4: (0, -1),  # top
+    5: (1, -1),  # top right
+    6: (1, 0),  # right
+    7: (1, 1),  # bottom right
+}
 
 
 class DEM(Dataset):
@@ -124,7 +134,7 @@ class DEM(Dataset):
 
         return slopes
 
-    def slope(self):
+    def slope(self) -> Dataset:
         """slope."""
         slope = self._get_8_direction_slopes()
         max_slope = np.nanmax(slope, axis=2)
@@ -132,7 +142,26 @@ class DEM(Dataset):
         src = self.dataset_like(self, max_slope)
         return src
 
-    def flow_direction(self) -> np.ndarray:
+    def set_outflow(
+        self, outflow: GeoDataFrame, direction: int, inplace: bool = False
+    ) -> Dataset:
+        """set_outflow.
+
+        Parameters
+        ----------
+        outflow: [GeoDataFrame]
+            outflow point.
+        direction: [int]
+            flow direction.
+        inplace: [bool]
+            Default is False.
+
+        Returns
+        -------
+        """
+        print()
+
+    def flow_direction(self, forced_direction: GeoDataFrame = None) -> "Dataset":
         """flow_direction.
 
         Returns
@@ -154,7 +183,9 @@ class DEM(Dataset):
         valid_cells_mask = mask & valid_mask
 
         # Initialize the flow_direction array with NaN values
-        flow_direction = np.full(elev.shape, np.nan)
+        flow_direction = np.full(
+            elev.shape, Dataset.default_no_data_value, dtype=np.int32
+        )
 
         # Apply np.nanargmax only where the mask is True to get the index of the maximum slope
         # hence, the flow direction.
@@ -162,9 +193,121 @@ class DEM(Dataset):
             slopes[valid_cells_mask], axis=1
         )
 
-        return flow_direction
+        if forced_direction is not None:
+            indices = self.map_to_array_coordinates(forced_direction)
+            for i, ind in enumerate(indices):
+                flow_direction[tuple(ind)] = forced_direction.loc[i, "direction"]
 
-    def convert_flow_direction_to_cell_indices(self):
+        src = self.create_from_array(
+            flow_direction, self.geotransform, self.epsg, self.default_no_data_value
+        )
+        return src
+
+    def accumulate_flow(self, r, c, flow_dir, acc, dir_offsets) -> int:
+        """accumulate_flow.
+
+        Parameters
+        ----------
+        r: [int]
+            row index of the cell.
+        c: [int]
+            column index of the cell.
+        flow_dir: [numpy array]
+            flow direction array. The array contains values [0, 1, 2, 3, 4, 5, 6, 7] referring to the 8 directions,
+            where 0 is the bottom cell, 1 is the bottom left cell, 2 is the left cell, 3 is the top left cell,
+            4 is the top cell, 5 is the top right cell, 6 is the right cell, and 7 is the bottom right cell.
+        acc: [numpy array]
+            flow accumulation array.
+        dir_offsets: [Dict]
+            Default is DIR_OFFSETS.
+
+        Returns
+        -------
+        [int]
+            number of cells that flow into the cell.
+        """
+        rows, cols = flow_dir.shape
+        # if the upstream cell is inside the domain.
+        if 0 <= r < rows and 0 <= c < cols:
+            # if the upstream cell is not processed yet
+            if acc[r, c] >= 0:
+                count = acc[r, c]
+                return count
+        else:
+            return 0
+
+        # Start with 1 to count the cell itself
+        total = 0
+        # for each direction, check which cell is the upstream cell, by looping over the 8 directions
+        # and get the cell that has the opposite direction to the current cell. and that will be the upstream cell
+        for dc, dr in dir_offsets.values():
+            rr, cc = r + dr, c + dc
+            # check again if the indices of the cell are inside the domain.
+            if 0 <= rr < rows and 0 <= cc < cols:
+                new_fd = flow_dir[rr, cc]
+            else:
+                continue
+            current_opposite = self.opposite_direction(dr, dc, dir_offsets)
+            if 0 <= rr < rows and 0 <= cc < cols and new_fd == current_opposite:
+                total = (
+                    total + self.accumulate_flow(rr, cc, flow_dir, acc, dir_offsets) + 1
+                )
+
+        acc[r, c] = total
+        return total
+
+    @staticmethod
+    def opposite_direction(dr, dc, dir_offsets):
+        """opposite_direction."""
+        for d, (d_col, d_row) in dir_offsets.items():
+            if d_row == -dr and d_col == -dc:
+                return d
+        return None
+
+    def flow_accumulation(
+        self, flow_direction: "DEM", dir_offsets: Dict = None
+    ) -> "Dataset":
+        """flow_accumulation.
+
+        Parameters
+        ----------
+        flow_direction: [DEM]
+            flow direction raster obtained from catchment delineation
+            it only contains values [0, 1, 2, 3, 4, 5, 6, 7].
+        dir_offsets: [Dict]
+            Default is DIR_OFFSETS.
+            DIR_OFFSETS = {
+                0: (0, 1),  # bottom
+                1: (-1, 1),  # bottom left
+                2: (-1, 0),  # left
+                3: (-1, -1),  # top left
+                4: (0, -1),  # top
+                5: (1, -1),  # top right
+                6: (1, 0),  # right
+                7: (1, 1)  # bottom right
+            }
+        """
+        if dir_offsets is None:
+            dir_offsets = DIR_OFFSETS
+
+        fd_array = flow_direction.read_array()
+        rows, cols = fd_array.shape
+        acc = np.full((rows, cols), Dataset.default_no_data_value, dtype=np.int32)
+        elev = self.values
+        # Initialize with -1 to indicate unprocessed cells
+        acc[~np.isnan(elev)] = -1
+
+        for i in range(rows):
+            for j in range(cols):
+                if acc[i, j] == -1:  # Only process unprocessed cells
+                    self.accumulate_flow(i, j, fd_array, acc, dir_offsets)
+
+        src = self.create_from_array(
+            acc, self.geotransform, self.epsg, self.default_no_data_value
+        )
+        return src
+
+    def convert_flow_direction_to_cell_indices(self) -> np.ndarray:
         """D8 method generates flow direction raster from DEM and fills sinks.
 
         Returns
@@ -177,16 +320,17 @@ class DEM(Dataset):
         no_rows = self.rows
 
         flow_direction = self.flow_direction()
-
+        flow_dir = flow_direction.values
         # convert index of the flow direction to the index of the cell
         flow_direction_cell = np.ones((no_rows, no_columns, 2)) * np.nan
 
         for i in range(no_rows):
             for j in range(no_columns):
-                if not np.isnan(flow_direction[i, j]):
-                    ind = int(flow_direction[i, j])
-                    flow_direction_cell[i, j, 0] = i + X_INDEX[ind]
-                    flow_direction_cell[i, j, 1] = j + Y_INDEX[ind]
+                if not np.isnan(flow_dir[i, j]):
+                    ind = int(flow_dir[i, j])
+                    indices = DIR_OFFSETS[ind]
+                    flow_direction_cell[i, j, 0] = i + indices[0]
+                    flow_direction_cell[i, j, 1] = j + indices[1]
 
         return flow_direction_cell
 

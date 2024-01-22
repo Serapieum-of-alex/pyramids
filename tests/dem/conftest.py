@@ -1,6 +1,8 @@
 from typing import Dict
 import pytest
 from osgeo import gdal
+from geopandas import GeoDataFrame
+import geopandas as gpd
 
 
 @pytest.fixture(scope="module")
@@ -106,3 +108,19 @@ def coello_fdt() -> Dict:
 @pytest.fixture(scope="module")
 def coello_dem_4000() -> gdal.Dataset:
     return gdal.Open("tests/data/geotiff/coello/coello-dem-4000.tif")
+
+
+@pytest.fixture(scope="module")
+def coello_flow_direction_4000() -> gdal.Dataset:
+    return gdal.Open("tests/data/dem/flow-direction-with-outfall.tif")
+
+
+@pytest.fixture(scope="module")
+def coello_flow_accumulation_4000() -> gdal.Dataset:
+    return gdal.Open("tests/data/dem/flow-accumulation.tif")
+
+
+@pytest.fixture(scope="module")
+def coello_outfall() -> GeoDataFrame:
+    """Point Geometry of the Coello river outfall"""
+    return gpd.read_file("tests/data/geometries/coello-outfall.geojson")
