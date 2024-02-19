@@ -164,3 +164,8 @@ Dataset
 handle overviews.
 * The `plot` method takes an extra parameters `overviews` and `overview_index` to enable plotting overviews instead
 of the real values in the bands.
+
+
+0.6.0 (2024-02-24)
+------------------
+* move the dem module to a separate package "digital-rivers".
