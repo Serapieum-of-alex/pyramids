@@ -332,28 +332,3 @@ def era5_image_stats() -> DataFrame:
         0.000044,
     ]
     return df
-
-
-@pytest.fixture(scope="function")
-def flow_direction_array_cells_indices() -> np.ndarray:
-    return np.load("tests/data/dem/flow_direction_array.npy")
-
-
-@pytest.fixture(scope="function")
-def elev_sink_free() -> np.ndarray:
-    return np.load("tests/data/dem/elevation-sink-free.npy")
-
-
-@pytest.fixture(scope="function")
-def coello_slope() -> np.ndarray:
-    return np.load("tests/data/dem/slope.npy")
-
-
-@pytest.fixture(scope="function")
-def coello_max_slope() -> np.ndarray:
-    return np.load("tests/data/dem/coello-max-slope.npy")
-
-
-@pytest.fixture(scope="function")
-def coello_flow_direction_cell_index() -> np.ndarray:
-    return np.load("tests/data/dem/coello_flow_direction_cell_index.npy")
