@@ -80,12 +80,14 @@ Main Features
   needed to build the model (align rasters with the DEM), in addition to various methods to manipulate and
   convert different forms of distributed data (rasters, NetCDF, shapefiles)
 
-.. digraph:: Linking
+.. graphviz::
 
-    pyramids -> dataset;
-    pyramids -> datacube;
-    pyramids -> featurecollection;
-    pyramids -> dem;
+    digraph example {
+        pyramids -> dataset;
+        pyramids -> datacube;
+        pyramids -> featurecollection;
+        pyramids -> dem;
+    }
     dpi=200;
 
 .. toctree::

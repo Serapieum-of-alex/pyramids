@@ -1,7 +1,6 @@
 channels:
   - conda-forge
 dependencies:
-  - sphinxcontrib-plantuml
   - pyramids
   - numpydoc==1.1.0
   - typing-extensions==3.10.*

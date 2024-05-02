@@ -31,7 +31,6 @@ extensions = [
     "sphinx.ext.viewcode",  # Adds links to the source code
     "sphinx.ext.graphviz",  # Allows rendering of graphviz diagrams
 ]
-autodoc_mock_imports = ["graphviz"]  # Mock graphviz for readthedocs
 
 templates_path = ["_templates"]
 exclude_patterns = []
