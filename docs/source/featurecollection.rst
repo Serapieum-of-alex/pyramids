@@ -2,7 +2,7 @@
 FeatureCollection
 *****************
 
-.. automodule:: pyramids.featurecollection
+.. automodule:: featurecollection
    :members: FeatureCollection
    :undoc-members:
    :show-inheritance:

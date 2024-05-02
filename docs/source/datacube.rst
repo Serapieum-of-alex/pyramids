@@ -205,7 +205,7 @@ Propteties
 - update the data in the `DataCube` object
 
 
-.. automodule:: pyramids.dataset
+.. automodule:: dataset
    :members: DataCube
    :undoc-members:
    :show-inheritance:
