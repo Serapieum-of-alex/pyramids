@@ -96,7 +96,6 @@ Main Features
     Dataset <dataset.rst>
     DataCube <datacube.rst>
     Feature Collection <featurecollection.rst>
-    DEM <dem.rst>
 
 Indices and tables
 ==================
