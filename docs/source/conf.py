@@ -10,6 +10,7 @@
 import os
 import sys
 
+
 # for the auto documentation to work
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -30,6 +31,7 @@ extensions = [
     "sphinx.ext.viewcode",  # Adds links to the source code
     "sphinx.ext.graphviz",  # Allows rendering of graphviz diagrams
 ]
+autodoc_mock_imports = ["graphviz"]  # Mock graphviz for readthedocs
 
 templates_path = ["_templates"]
 exclude_patterns = []
@@ -40,7 +42,6 @@ root_doc = "index"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "pydata_sphinx_theme"
-
 
 # Set the theme name
 # Optionally, you can customize the theme's configuration
