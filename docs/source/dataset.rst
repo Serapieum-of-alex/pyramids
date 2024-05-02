@@ -1414,3 +1414,9 @@ References
 .. target-notes::
 .. _`Digital-Earth`: https://github.com/Serapieum-of-alex/Digital-Earth
 .. _`cropAlignedFolder`: https://github.com/MAfarrag/pyramids/tree/main/examples/data/crop_aligned_folder
+
+.. automodule:: pyramids.dataset
+   :members: Dataset
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __init__

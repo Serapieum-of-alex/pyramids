@@ -203,3 +203,10 @@ create_cube
 Propteties
 ===========
 - update the data in the `DataCube` object
+
+
+.. automodule:: pyramids.dataset
+   :members: DataCube
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __init__
