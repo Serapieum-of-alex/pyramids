@@ -1,1 +1,2 @@
+gdal>=3.8.4
 pydata_sphinx_theme>=0.15.2
