@@ -74,7 +74,7 @@ Returns:
     >>> 2   POINT (90.00000 -1.00000)
     >>> 3   POINT (42.00000 14.00000)
 
-.. image:: images/indexing/points.png
+.. image:: _images/indexing/points.png
     :width: 500pt
 
 .. code-block:: py
@@ -89,7 +89,7 @@ Returns:
     >>> 3    8152bffffffffff
     >>> Name: h3, dtype: object
 
-.. image:: images/indexing/hexagons_level1.png
+.. image:: _images/indexing/hexagons_level1.png
     :width: 500pt
 
 .. code-block:: py
@@ -104,7 +104,7 @@ Returns:
     >>> 3    8053fffffffffff
     >>>  Name: h3, dtype: object
 
-.. image:: images/indexing/hexagons_level0.png
+.. image:: _images/indexing/hexagons_level0.png
     :width: 500pt
 
 

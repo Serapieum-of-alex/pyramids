@@ -97,3 +97,10 @@ Main Features
     DataCube <datacube.rst>
     Feature Collection <featurecollection.rst>
     DEM <dem.rst>
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

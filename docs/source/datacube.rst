@@ -7,7 +7,7 @@ DataCube
 - DataCube represent a stack of rasters which have the same dimensions, contains data that have same dimensions (rows
     & columns).
 
-.. image:: /images/datacube/logo.png
+.. image:: /_images/datacube/logo.png
    :width: 700pt
    :align: center
 
@@ -22,7 +22,7 @@ operation on multiple rasters.
 
 - The detailed module attributes and methods are summarized in the following figure.
 
-.. image:: /images/datacube/detailed.png
+.. image:: /_images/datacube/detailed.png
    :width: 700pt
    :align: center
 
@@ -39,7 +39,7 @@ The `DataCube` object will have the following attributes
 #. shape: (time_length, rows, columns).
 #. files: file that have been read.
 
-.. image:: /images/datacube/attributes.png
+.. image:: /_images/datacube/attributes.png
    :width: 150pt
    :align: center
 
