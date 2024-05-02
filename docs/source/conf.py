@@ -28,6 +28,7 @@ release = "0.1.0"
 extensions = [
     "sphinx.ext.autodoc",  # Enables autodoc
     "sphinx.ext.viewcode",  # Adds links to the source code
+    "sphinx.ext.graphviz",  # Allows rendering of graphviz diagrams
 ]
 
 templates_path = ["_templates"]
