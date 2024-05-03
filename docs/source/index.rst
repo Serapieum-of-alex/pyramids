@@ -67,6 +67,10 @@ Current release info
 .. image:: https://img.shields.io/github/last-commit/mafarrag/pyramids
     :alt: GitHub last commit
 
+.. image:: https://codecov.io/gh/Serapieum-of-alex/pyramids/graph/badge.svg?token=g0DV4dCa8N
+ :target: https://codecov.io/gh/Serapieum-of-alex/pyramids
+
+
 pyramids - GIS utility package
 ==============================
 
