@@ -6,4 +6,5 @@ dependencies:
   - typing-extensions==3.10.*
   - pip:
     - pydata_sphinx_theme>=0.15.2
+    - sphinxcontrib-napoleon
     - nbsphinx
