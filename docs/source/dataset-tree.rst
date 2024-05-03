@@ -2,6 +2,11 @@
 Dataset
 #######
 
+.. image:: /_images/pyramids-dataset.svg
+   :width: 1500pt
+   :align: center
+
+
 .. toctree::
    :hidden:
    :maxdepth: 2

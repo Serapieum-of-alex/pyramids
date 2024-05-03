@@ -2,6 +2,11 @@
 Datacube
 ########
 
+.. image:: /_images/pyramids-datacube.svg
+   :width: 1000pt
+   :align: center
+
+
 .. toctree::
    :hidden:
    :maxdepth: 2
