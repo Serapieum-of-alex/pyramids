@@ -95,8 +95,8 @@ Main Features
    :maxdepth: 2
 
     Installation <installation.rst>
-    Dataset <dataset.rst>
-    DataCube <datacube.rst>
+    Dataset <dataset-tree.rst>
+    DataCube <datacube-tree.rst>
     Feature Collection <featurecollection.rst>
 
 Indices and tables
