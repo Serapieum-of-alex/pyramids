@@ -4,7 +4,7 @@ Datacube
 
 :doc:`Datacube Class <datacube-class>`
 
-:doc: `Datacube Examples <datacube>`
+:doc:`Datacube Examples <datacube>`
 
 
 
