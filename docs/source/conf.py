@@ -30,7 +30,7 @@ extensions = [
     "sphinx.ext.autodoc",  # Enables autodoc
     "sphinx.ext.viewcode",  # Adds links to the source code
     "sphinx.ext.graphviz",  # Allows rendering of graphviz diagrams
-    "sphinxcontrib.napoleon",  # Allows for Google-style and Numpy docstrings
+    "sphinx.ext.napoleon",  # Allows for Google-style and Numpy docstrings
 ]
 
 templates_path = ["_templates"]
