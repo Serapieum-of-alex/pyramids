@@ -205,6 +205,10 @@ Propteties
 - update the data in the `DataCube` object
 
 
+**************
+DataCube Class
+**************
+
 .. automodule:: dataset
    :members: DataCube
    :undoc-members:

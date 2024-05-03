@@ -1,6 +1,6 @@
-*****************
-FeatureCollection
-*****************
+***********************
+FeatureCollection Class
+***********************
 
 .. automodule:: featurecollection
    :members: FeatureCollection
