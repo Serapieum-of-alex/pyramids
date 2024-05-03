@@ -67,6 +67,10 @@ Current release info
 .. image:: https://img.shields.io/github/last-commit/mafarrag/pyramids
     :alt: GitHub last commit
 
+.. image:: https://codecov.io/gh/Serapieum-of-alex/pyramids/graph/badge.svg?token=g0DV4dCa8N
+ :target: https://codecov.io/gh/Serapieum-of-alex/pyramids
+
+
 pyramids - GIS utility package
 ==============================
 
@@ -80,12 +84,14 @@ Main Features
   needed to build the model (align rasters with the DEM), in addition to various methods to manipulate and
   convert different forms of distributed data (rasters, NetCDF, shapefiles)
 
-.. digraph:: Linking
+.. graphviz::
 
-    pyramids -> dataset;
-    pyramids -> datacube;
-    pyramids -> featurecollection;
-    pyramids -> dem;
+    digraph example {
+        pyramids -> dataset;
+        pyramids -> datacube;
+        pyramids -> featurecollection;
+        pyramids -> dem;
+    }
     dpi=200;
 
 .. toctree::
@@ -93,7 +99,13 @@ Main Features
    :maxdepth: 2
 
     Installation <installation.rst>
-    Dataset <dataset.rst>
-    DataCube <datacube.rst>
+    Dataset <dataset-tree.rst>
+    DataCube <datacube-tree.rst>
     Feature Collection <featurecollection.rst>
-    DEM <dem.rst>
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

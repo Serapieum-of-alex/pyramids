@@ -39,7 +39,7 @@ Case 2: Return the output Polygon
     >>> 3  475  POLYGON ((-92.03450 41.27256, -92.03450 41.270...
 
 
-.. image:: images/convert/raster_to_polygon.png
+.. image:: _images/convert/raster_to_polygon.png
     :width: 500pt
 
 ***************
@@ -68,7 +68,7 @@ Case 1: First two input parameters are paths for files on disk
     )
 
 
-.. image:: images/convert/raster_to_polygon.png
+.. image:: _images/convert/raster_to_polygon.png
     :width: 500pt
 
 .. note::
@@ -161,7 +161,7 @@ Parameters
     >>> 181     182  POINT (486968.121 470007.788)
     >>> [182 rows x 2 columns]
 
-.. image:: images/convert/raster_to_geodataframe.png
+.. image:: _images/convert/raster_to_geodataframe.png
     :width: 500pt
 
 ***********************
@@ -193,5 +193,5 @@ Case 2: Mask the raster
     >>> 14      45    1
     >>> 15      46    1
 
-.. image:: images/convert/raster_to_df_with_mask.png
+.. image:: _images/convert/raster_to_df_with_mask.png
     :width: 500pt

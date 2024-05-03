@@ -26,7 +26,7 @@ pyramids - GIS utility package
 
 pyramids
 
-![1](/docs/images/package-work-flow/overall.png)
+![1](/docs/source/_images/package-work-flow/overall.png)
 
 Main Features
 -------------
@@ -77,9 +77,3 @@ Quick start
 ```
   >>> import pyramids
 ```
-
-[other code samples](https://pyramids-gis.readthedocs.io/en/latest/?badge=latest)
-
-## Coverage
-
-[![codecov](https://codecov.io/gh/Serapieum-of-alex/pyramids/branch/main/graphs/sunburst.svg?token=g0DV4dCa8N)](https://codecov.io/gh/Serapieum-of-alex/pyramids)
