@@ -1416,10 +1416,6 @@ References
 .. _`cropAlignedFolder`: https://github.com/MAfarrag/pyramids/tree/main/examples/data/crop_aligned_folder
 
 
-*************
-Dataset Class
-*************
-
 .. automodule:: dataset
    :members: Dataset
    :undoc-members:
