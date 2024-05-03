@@ -3,7 +3,7 @@ DataCube Class
 ##############
 
 .. automodule:: dataset
-   :members: DataCube
+   :members: Datacube
    :undoc-members:
    :show-inheritance:
    :special-members: __init__
