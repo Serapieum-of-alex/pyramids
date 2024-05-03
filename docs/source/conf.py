@@ -30,6 +30,7 @@ extensions = [
     "sphinx.ext.autodoc",  # Enables autodoc
     "sphinx.ext.viewcode",  # Adds links to the source code
     "sphinx.ext.graphviz",  # Allows rendering of graphviz diagrams
+    "sphinxcontrib.napoleon",  # Allows for Google-style and Numpy docstrings
 ]
 
 templates_path = ["_templates"]
@@ -49,6 +50,17 @@ html_theme_options = {
     "show_prev_next": False,
     "show_toc_level": 2,
     # Add any other theme options here
+    "canonical_url": "",
+    "logo_only": False,
+    "display_version": True,
+    "prev_next_buttons_location": "bottom",
+    "style_external_links": False,
+    "style_nav_header_background": "#2980B9",
+    # Toc options
+    "collapse_navigation": True,
+    "sticky_navigation": True,
+    "includehidden": True,
+    "titles_only": False,
 }
 
 html_static_path = ["_static"]
@@ -61,3 +73,7 @@ html_sidebars = {
         "searchbox.html",
     ]
 }
+
+# -- Options for autodoc -----------------------------------------------------
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
