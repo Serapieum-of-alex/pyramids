@@ -2,8 +2,8 @@
 Dataset
 #######
 
-:doc:`Dataset Class <dataset-class.rst>`
-:doc: `Dataset Examples <dataset.rst>`
+:doc:`Dataset Class <dataset-class>`
+:doc: `Dataset Examples <dataset>`
 
 .. image:: /_images/pyramids-dataset.svg
    :width: 1500pt

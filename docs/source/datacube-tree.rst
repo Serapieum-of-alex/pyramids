@@ -2,8 +2,9 @@
 Datacube
 ########
 
-:doc:`Datacube Class <datacube-class.rst>`
-:doc: `Datacube Examples <datacube.rst>`
+:doc:`Datacube Class <datacube-class>`
+:doc: `Datacube Examples <datacube>`
+
 
 
 .. image:: /_images/pyramids-datacube.svg
