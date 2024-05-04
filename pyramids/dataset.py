@@ -169,7 +169,7 @@ class Dataset:
 
     @property
     def values(self) -> np.ndarray:
-        """array values."""
+        """values of all the bands."""
         return self.read_array()
 
     @property
@@ -184,12 +184,12 @@ class Dataset:
 
     @property
     def shape(self):
-        """Dataset shape"""
+        """Dataset shape(bands, rows, columns)."""
         return self.band_count, self.rows, self.columns
 
     @property
     def geotransform(self):
-        """WKT projection."""
+        """WKT projection.(x, cell_size, 0, y, 0, -cell_size)"""
         return self._geotransform
 
     @property
@@ -200,7 +200,7 @@ class Dataset:
 
     @property
     def bounds(self) -> GeoDataFrame:
-        """bounds"""
+        """bounds-the bbox as a geodataframe with a polygon geometry"""
         return self._calculate_bounds()
 
     @property
@@ -210,7 +210,7 @@ class Dataset:
 
     @property
     def epsg(self):
-        """WKT projection."""
+        """EPSG number."""
         return self._epsg
 
     @property
@@ -243,7 +243,7 @@ class Dataset:
 
     @property
     def x(self):
-        """x-coordinate"""
+        """x-coordinate/longitude"""
         # X_coordinate = upperleft corner x + index * cell size + celsize/2
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
@@ -258,7 +258,7 @@ class Dataset:
 
     @property
     def y(self):
-        """y-coordinate"""
+        """y-coordinate/latitude"""
         # X_coordinate = upperleft corner x + index * cell size + celsize/2
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
@@ -319,6 +319,9 @@ class Dataset:
         Notes
         -----
             - the setter does not change the values of the cells to the new no_data_value, it only changes the
+            `no_data_value` attribute.
+            - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
+            - to change the values of the cells to the new no_data_value, use the `change_no_data_value` method.
         """
         if isinstance(value, list):
             for i, val in enumerate(value):
@@ -547,12 +550,12 @@ class Dataset:
     def _iloc(self, i: int) -> gdal.Band:
         """_iloc.
 
-            - Access dataset array using index.
+            - Access dataset bands using index.
 
         Parameters
         ----------
         i: [int]
-            index, the index starts from 0.
+            index, the index starts from 1.
 
         Returns
         -------
@@ -738,7 +741,7 @@ class Dataset:
         overview_index: int = 0,
         **kwargs,
     ):
-        """Read Array
+        """plot
 
             - read the values stored in a given band.
 
