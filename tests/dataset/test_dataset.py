@@ -299,6 +299,16 @@ class TestSpatialProperties:
         arr = src.read_array(band=0)
         assert np.array_equal(src_arr, arr)
 
+    def test_read_block(
+        self,
+        src: Dataset,
+        src_shape: tuple,
+        src_arr: np.ndarray,
+    ):
+        src = Dataset(src)
+        arr = src.read_array(band=0, window=[0, 0, 5, 5])
+        assert np.array_equal(src_arr[:5, :5], arr)
+
     def test_read_array_multi_bands(
         self,
         multi_band: gdal.Dataset,
