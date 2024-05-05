@@ -533,6 +533,31 @@ read_array
         -3.402823e+38, -3.402823e+38, -3.402823e+38, -3.402823e+38,
         -3.402823e+38, -3.402823e+38]], dtype=float32)
 
+Blocksize and ReadAsArray
+^^^^^^^^^^^^^^^^^^^^^^^^^
+- The `read_array` method reads the raster as a numpy array, the method can take a block size to read the raster
+    in blocks, this is useful when the raster is too large to be read at once.
+
+When you know the block size, you can more effectively plan and execute data processing tasks:
+- Data Reading/Writing: When reading or writing data, doing so in multiples of the block size can reduce the number of
+    disk accesses required, as each access operation will align with the blocks on disk.
+- Optimizations: Some formats are optimized for specific block sizes, or for being accessed in certain ways. For
+    example, tiled TIFFs might perform better with square block sizes.
+
+.. code:: py
+
+    dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
+    arr = dataset.read_array(window=[0, 0, 5, 5])
+    print(arr.shape)
+    (5, 5)
+
+- to get the block size of the dataset
+
+.. code:: py
+
+    print(dataset.blocksize)
+    >>> (128, 128)
+
 Band statistics (stats)
 -----------------------
 - To get a summary statistics (min, max, mean, std) of a band/all bands.
