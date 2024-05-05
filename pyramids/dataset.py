@@ -743,7 +743,9 @@ class Dataset:
 
         Returns
         -------
-        np.ndarray
+        np.ndarray[window[2], window[3]]
+            array with the values of the block. the shape of the array is (window[2], window[3]), and the location of
+            the block in the raster is (window[0], window[1]).
         """
         try:
             block = self._iloc(band).ReadAsArray(
