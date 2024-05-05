@@ -676,9 +676,7 @@ class Dataset:
                     # arr[i, :, :] = self._iloc(i).ReadAsArray()
                     arr[i, :, :] = self._raster.GetRasterBand(i + 1).ReadAsArray()
                 else:
-                    arr[i, :, :] = self._iloc(i).ReadAsArray(
-                        window[0], window[1], window[2], window[3]
-                    )
+                    arr[i, :, :] = self._read_block(i, window)
         else:
             # given band number or the raster has only one band
             if band is None:
@@ -691,11 +689,26 @@ class Dataset:
             if window is None:
                 arr = self._iloc(band).ReadAsArray()
             else:
-                arr = self._iloc(band).ReadAsArray(
-                    window[0], window[1], window[2], window[3]
-                )
+                arr = self._read_block(band, window)
 
         return arr
+
+    def _read_block(self, band: int, window=List[int]) -> np.ndarray:
+        """Read block of data from the dataset.
+
+        Parameters
+        ----------
+        band : int
+            Band index.
+        window: [List]
+            window to specify a block of data to read from the dataset. the window should be a list of 4 integers
+            [offset_x, offset_y, window_columns, window_rows]. Default is None.
+
+        Returns
+        -------
+        np.ndarray
+        """
+        return self._iloc(band).ReadAsArray(window[0], window[1], window[2], window[3])
 
     def read_overview_array(
         self, band: int = None, overview_index: int = 0
