@@ -364,6 +364,13 @@ class Dataset:
 
         The block size is the size of the block that the raster is divided into, the block size is used to read and
         write the raster data in blocks.
+
+        Examples
+        --------
+        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
+        >>> size = dataset.block_size
+        >>> print(size)
+        >>> (128, 128)
         """
         return [
             self.raster.GetRasterBand(i).GetBlockSize()
