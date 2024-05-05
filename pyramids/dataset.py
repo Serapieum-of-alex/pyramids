@@ -680,6 +680,13 @@ class Dataset:
         -------
         array : [array]
             array with all the values in the raster.
+
+        Examples
+        --------
+        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
+        >>> arr = dataset.read_array(window=[0, 0, 5, 5])
+        >>> print(arr.shape)
+        >>> (5, 5)
         """
         if band is None and self.band_count > 1:
             rows = self.rows if window is None else window[3]
