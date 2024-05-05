@@ -658,6 +658,16 @@ class Dataset:
 
             - read the values stored in a given band.
 
+        Data Chuncks/blocks
+            When a raster dataset is stored on disk, it might not be stored as one continuous chunk of data. Instead,
+            it can be divided into smaller rectangular blocks or tiles. These blocks can be individually accessed,
+            which is particularly useful for large datasets:
+                Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
+                    at once. This is especially beneficial when only a small portion of the data needs to be processed.
+                Performance: For certain file formats and operations, working with optimal block sizes can significantly
+                    improve performance. For example, if the block size matches the reading or processing window,
+                        Pyramids can minimize disk access and data transfer.
+
         Parameters
         ----------
         band : [integer]
