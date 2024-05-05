@@ -279,6 +279,10 @@ class TestProperties:
         src = Dataset(src)
         assert src.gdal_dtype == [6]
 
+    def test_block_size(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.block_size == [[128, 128]]
+
     def test__str__(self, src: gdal.Dataset):
         src = Dataset(src)
         assert isinstance(src.__str__(), str)

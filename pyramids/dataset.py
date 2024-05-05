@@ -359,6 +359,18 @@ class Dataset:
         ]
 
     @property
+    def block_size(self) -> List[Tuple[int, int]]:
+        """Block Size
+
+        The block size is the size of the block that the raster is divided into, the block size is used to read and
+        write the raster data in blocks.
+        """
+        return [
+            self.raster.GetRasterBand(i).GetBlockSize()
+            for i in range(1, self.band_count + 1)
+        ]
+
+    @property
     def file_name(self):
         """file name"""
         if self._file_name.startswith("NETCDF"):
