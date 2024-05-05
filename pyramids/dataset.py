@@ -659,11 +659,13 @@ class Dataset:
             array with all the values in the raster.
         """
         if band is None and self.band_count > 1:
+            rows = self.rows if window is None else window[3]
+            columns = self.columns if window is None else window[2]
             arr = np.ones(
                 (
                     self.band_count,
-                    self.rows,
-                    self.columns,
+                    rows,
+                    columns,
                 ),
                 dtype=self.numpy_dtype[0],
             )

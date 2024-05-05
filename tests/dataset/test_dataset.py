@@ -299,6 +299,14 @@ class TestSpatialProperties:
         arr = src.read_array(band=0)
         assert np.array_equal(src_arr, arr)
 
+    def test_read_array_multi_bands(
+        self,
+        multi_band: gdal.Dataset,
+    ):
+        src = Dataset(multi_band)
+        arr = src.read_array()
+        assert np.array_equal(multi_band.ReadAsArray(), arr)
+
     def test_read_block(
         self,
         src: Dataset,
@@ -309,13 +317,13 @@ class TestSpatialProperties:
         arr = src.read_array(band=0, window=[0, 0, 5, 5])
         assert np.array_equal(src_arr[:5, :5], arr)
 
-    def test_read_array_multi_bands(
+    def test_read_block_multi_bands(
         self,
         multi_band: gdal.Dataset,
     ):
         src = Dataset(multi_band)
-        arr = src.read_array()
-        assert np.array_equal(multi_band.ReadAsArray(), arr)
+        arr = src.read_array(window=[0, 0, 5, 5])
+        assert np.array_equal(multi_band.ReadAsArray()[:, :5, :5], arr)
 
     def test_create_sr_from_epsg(self):
         sr = Dataset._create_sr_from_epsg(4326)
