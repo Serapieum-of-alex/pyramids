@@ -9,7 +9,7 @@ import pytest
 from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, osr
 
-from pyramids._errors import NoDataValueError, ReadOnlyError
+from pyramids._errors import NoDataValueError, ReadOnlyError, OutOfBoundsError
 from pyramids.dataset import Dataset
 
 
@@ -316,6 +316,16 @@ class TestSpatialProperties:
         src = Dataset(src)
         arr = src.read_array(band=0, window=[0, 0, 5, 5])
         assert np.array_equal(src_arr[:5, :5], arr)
+
+    def test_read_block_bigger_than_array(
+        self,
+        src: Dataset,
+        src_shape: tuple,
+        src_arr: np.ndarray,
+    ):
+        src = Dataset(src)
+        with pytest.raises(OutOfBoundsError):
+            src.read_array(band=0, window=[0, 0, 20, 20])
 
     def test_read_block_multi_bands(
         self,

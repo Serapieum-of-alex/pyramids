@@ -24,6 +24,7 @@ from pyramids._errors import (
     FailedToSaveError,
     NoDataValueError,
     ReadOnlyError,
+    OutOfBoundsError,
 )
 from pyramids._utils import (
     Catalog,
@@ -708,7 +709,18 @@ class Dataset:
         -------
         np.ndarray
         """
-        return self._iloc(band).ReadAsArray(window[0], window[1], window[2], window[3])
+        try:
+            block = self._iloc(band).ReadAsArray(
+                window[0], window[1], window[2], window[3]
+            )
+        except Exception as e:
+            if e.args[0].__contains__("Access window out of range in RasterIO()"):
+                raise OutOfBoundsError(
+                    f"The window you entered ({window})is out of the raster bounds: {self.rows, self.columns}"
+                )
+            else:
+                raise e
+        return block
 
     def read_overview_array(
         self, band: int = None, overview_index: int = 0
