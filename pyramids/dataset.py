@@ -105,6 +105,9 @@ class Dataset:
         self._rows = src.RasterYSize
         self._columns = src.RasterXSize
         self._band_count = src.RasterCount
+        self._block_size = [
+            src.GetRasterBand(i).GetBlockSize() for i in range(1, self._band_count + 1)
+        ]
         if len(self.subsets) > 0:
             self._time_stamp = self._get_time_variable()
             self._lat, self._lon = self._get_lat_lon()
@@ -376,6 +379,14 @@ class Dataset:
             self.raster.GetRasterBand(i).GetBlockSize()
             for i in range(1, self.band_count + 1)
         ]
+        return self._block_size
+
+    @block_size.setter
+    def block_size(self, value: Tuple[int, int]):
+        if len(value) != 2:
+            raise ValueError("block size should be a tuple of 2 integers")
+
+        self._block_size = value
 
     @property
     def file_name(self):
@@ -1695,24 +1706,23 @@ class Dataset:
         return gdf
 
     def to_file(self, path: str, band: int = 0) -> None:
-        """Save to geotiff format.
+        """to_file.
 
-            save saves a raster to a path, the type of the driver (georiff/netcdf/ascii) will be implied from the
+            to_file a raster to a path, the type of the driver (georiff/netcdf/ascii) will be implied from the
             extension at the end of the given path.
 
         Parameters
         ----------
         path: [string]
-            a path including the name of the raster and extention.
-            >>> path = "data/cropped.tif"
+            a path including the name of the dataset whti the extention at the end (i.e. "data/cropped.tif").
         band: [int]
             band index, needed only in case of ascii drivers. Default is 0.
 
         Examples
         --------
-        >>> raster_obj = Dataset.read_file("path/to/file/***.tif")
-        >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_file(output_path)
+        >>> dataset = Dataset.read_file("path/to/file/***.tif")
+        >>> path = "examples/GIS/data/save_raster_test.tif"
+        >>> dataset.to_file(path)
         """
         if not isinstance(path, str):
             raise TypeError("path input should be string type")
@@ -1728,8 +1738,18 @@ class Dataset:
             _io.to_ascii(arr, self.cell_size, xmin, ymin, no_data_value, path)
         else:
             # saving rasters with color table fails with a runtime error
+            options = ["COMPRESS=DEFLATE"]
+            if self._block_size is not None:
+                options += [
+                    "TILED=YES",
+                    "BLOCKXSIZE={}".format(self._block_size[0][0]),
+                    "BLOCKYSIZE={}".format(self._block_size[0][1]),
+                ]
+
             try:
-                dst = gdal.GetDriverByName(driver_name).CreateCopy(path, self.raster, 0)
+                dst = gdal.GetDriverByName(driver_name).CreateCopy(
+                    path, self.raster, 0, options=options
+                )
             except RuntimeError:
                 if not os.path.exists(path):
                     raise FailedToSaveError(
