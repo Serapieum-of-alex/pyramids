@@ -5,6 +5,7 @@ from typing import List, Tuple
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import pytest
 from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, osr
@@ -1429,3 +1430,29 @@ class TestStats:
         assert np.isclose(
             stats["max"].values, max_val, rtol=0.000001, atol=0.00001
         ).all()
+
+
+class TestDistributedRead:  # unittest.TestCase
+    def test_get_block_arrangement_default(self, src: Dataset):
+        dataset = Dataset(src)
+        dataset.block_size = [[5, 5]]
+        df = dataset.get_block_arrangement()
+
+        # Check if the DataFrame is correct
+        expected_df = pd.DataFrame(
+            [
+                {"x_offset": 0, "y_offset": 0, "window_xsize": 5, "window_ysize": 5},
+                {"x_offset": 5, "y_offset": 0, "window_xsize": 5, "window_ysize": 5},
+                {"x_offset": 10, "y_offset": 0, "window_xsize": 4, "window_ysize": 5},
+                {"x_offset": 0, "y_offset": 5, "window_xsize": 5, "window_ysize": 5},
+                {"x_offset": 5, "y_offset": 5, "window_xsize": 5, "window_ysize": 5},
+                {"x_offset": 10, "y_offset": 5, "window_xsize": 4, "window_ysize": 5},
+                {"x_offset": 0, "y_offset": 10, "window_xsize": 5, "window_ysize": 3},
+                {"x_offset": 5, "y_offset": 10, "window_xsize": 5, "window_ysize": 3},
+                {"x_offset": 10, "y_offset": 10, "window_xsize": 4, "window_ysize": 3},
+                # Add more rows as needed to fully test all cases
+            ],
+            columns=["x_offset", "y_offset", "window_xsize", "window_ysize"],
+        )
+
+        pd.testing.assert_frame_equal(df, expected_df)

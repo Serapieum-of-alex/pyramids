@@ -391,6 +391,61 @@ class Dataset:
 
         self._block_size = value
 
+    def get_block_arrangement(
+        self, band: int = 0, x_block_size: int = None, y_block_size: int = None
+    ) -> DataFrame:
+        """Get Block Arrangement
+
+        Parameters
+        ----------
+        band : int, optional
+            band index, by default 0
+        x_block_size : int, optional
+            x block size, by default None
+        y_block_size : int, optional
+            y block size, by default None
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with the following columns: [x_offset, y_offset, window_xsize, window_ysize]
+
+        Examples
+        --------
+        >>> dataset = Dataset.read_file("tests/data/acc4000.tif")
+        >>> df = dataset.get_block_arrangement(x_block_size=5, y_block_size=5)
+        >>> print(df)
+        >>>    x_offset  y_offset  window_xsize  window_ysize
+        0         0         0             5             5
+        1         5         0             5             5
+        2        10         0             4             5
+        3         0         5             5             5
+        4         5         5             5             5
+        5        10         5             4             5
+        6         0        10             5             3
+        7         5        10             5             3
+        8        10        10             4             3
+
+        """
+        block_sizes = self.block_size[band]
+        x_block_size = block_sizes[0] if x_block_size is None else x_block_size
+        y_block_size = block_sizes[1] if y_block_size is None else y_block_size
+
+        df = pd.DataFrame(
+            [
+                {
+                    "x_offset": x,
+                    "y_offset": y,
+                    "window_xsize": min(x_block_size, self.columns - x),
+                    "window_ysize": min(y_block_size, self.rows - y),
+                }
+                for y in range(0, self.rows, y_block_size)
+                for x in range(0, self.columns, x_block_size)
+            ],
+            columns=["x_offset", "y_offset", "window_xsize", "window_ysize"],
+        )
+        return df
+
     @property
     def file_name(self):
         """file name"""
