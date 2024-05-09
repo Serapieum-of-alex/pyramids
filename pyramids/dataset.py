@@ -373,13 +373,20 @@ class Dataset:
         >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
         >>> size = dataset.block_size
         >>> print(size)
-        >>> (128, 128)
+        >>> [(128, 128)]
         """
         return self._block_size
 
     @block_size.setter
-    def block_size(self, value: Tuple[int, int]):
-        if len(value) != 2:
+    def block_size(self, value: List[Tuple[int, int]]):
+        """Block Size
+
+        Parameters
+        ----------
+        value : List[Tuple[int, int]]
+            block size for each band in the raster(512, 512).
+        """
+        if len(value[0]) != 2:
             raise ValueError("block size should be a tuple of 2 integers")
 
         self._block_size = value

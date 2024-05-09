@@ -285,8 +285,8 @@ class TestProperties:
 
     def test_block_size_setter(self, src: gdal.Dataset):
         src = Dataset(src)
-        src.block_size = [5, 5]
-        assert src.block_size == [5, 5]
+        src.block_size = [[5, 5]]
+        assert src.block_size == [[5, 5]]
 
     def test__str__(self, src: gdal.Dataset):
         src = Dataset(src)
