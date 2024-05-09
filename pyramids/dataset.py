@@ -375,10 +375,6 @@ class Dataset:
         >>> print(size)
         >>> (128, 128)
         """
-        return [
-            self.raster.GetRasterBand(i).GetBlockSize()
-            for i in range(1, self.band_count + 1)
-        ]
         return self._block_size
 
     @block_size.setter
