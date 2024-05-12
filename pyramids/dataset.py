@@ -252,13 +252,21 @@ class Dataset:
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
             cell_size = self.cell_size
-            x_coords = [
-                pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-            ]
+            x_coords = Dataset.get_x_lon_dimension_array(
+                pivot_x, cell_size, self.columns
+            )
+            # x_coords = [
+            #     pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
+            # ]
         else:
             # in case the lat and lon are read from the netcdf file just read the values from the file
             x_coords = self._lon
         return np.array(x_coords)
+
+    @staticmethod
+    def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> List[float]:
+        x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
+        return x_coords
 
     @property
     def y(self):
@@ -267,13 +275,19 @@ class Dataset:
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
-            y_coords = [
-                pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
-            ]
+            # y_coords = [
+            #     pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
+            # ]
+            y_coords = Dataset.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
             # in case the lat and lon are read from the netcdf file, just read the values from the file
             y_coords = self._lat
         return np.array(y_coords)
+
+    @staticmethod
+    def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> List[float]:
+        y_coords = [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
+        return y_coords
 
     @property
     def crs(self) -> str:
