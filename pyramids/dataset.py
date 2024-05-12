@@ -569,7 +569,7 @@ class Dataset:
         # create the object
         src_obj = cls(src)
         # Create the driver.
-        dst = src_obj._create_gdal_dataset(
+        dst = src_obj._create_mem_gtiff_dataset(
             src_obj.columns, src_obj.rows, bands, src_obj.gdal_dtype[0], path=path
         )
 
@@ -630,7 +630,7 @@ class Dataset:
         Dataset
         """
         # Create the driver.
-        dst = Dataset._create_gdal_dataset(columns, rows, bands, dtype, path=path)
+        dst = Dataset._create_mem_gtiff_dataset(columns, rows, bands, dtype, path=path)
         geotransform = (
             top_left_coords[0],
             cell_size,
@@ -1086,7 +1086,7 @@ class Dataset:
         return var_ds
 
     @staticmethod
-    def _create_gdal_dataset(
+    def _create_mem_gtiff_dataset(
         cols: int,
         rows: int,
         bands: int,
@@ -1250,7 +1250,7 @@ class Dataset:
 
         dtype = numpy_to_gdal_dtype(array)
 
-        dst = Dataset._create_gdal_dataset(
+        dst = Dataset._create_mem_gtiff_dataset(
             src.columns, src.rows, bands, dtype, driver=driver, path=path
         )
 
@@ -2040,7 +2040,7 @@ class Dataset:
                     new_array[i, j] = fun(src_array[i, j])
 
         # create the output raster
-        dst = Dataset._create_gdal_dataset(
+        dst = Dataset._create_mem_gtiff_dataset(
             self.columns, self.rows, 1, dtype, driver="MEM"
         )
         # set the geotransform
@@ -2146,7 +2146,7 @@ class Dataset:
         dtype = self.gdal_dtype[0]
         bands = self.band_count
 
-        dst = Dataset._create_gdal_dataset(cols, rows, bands, dtype)
+        dst = Dataset._create_mem_gtiff_dataset(cols, rows, bands, dtype)
         # set the geotransform
         dst.SetGeoTransform(new_geo)
         # set the projection
@@ -2301,7 +2301,7 @@ class Dataset:
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
         dtype = self.gdal_dtype[0]
-        dst = Dataset._create_gdal_dataset(cols, rows, self.band_count, dtype)
+        dst = Dataset._create_mem_gtiff_dataset(cols, rows, self.band_count, dtype)
 
         # new geotransform
         new_geo = (
@@ -2487,7 +2487,7 @@ class Dataset:
         if fill_gaps:
             src_array = self.fill_gaps(mask, src_array)
 
-        dst = Dataset._create_gdal_dataset(
+        dst = Dataset._create_mem_gtiff_dataset(
             col, row, band_count, self.gdal_dtype[0], driver="MEM"
         )
         # but with a lot of computations,
@@ -2566,7 +2566,7 @@ class Dataset:
         else:
             reprojected_RasterB = self
         # create a new raster
-        dst = Dataset._create_gdal_dataset(
+        dst = Dataset._create_mem_gtiff_dataset(
             src.columns, src.rows, self.band_count, src.gdal_dtype[0], driver="MEM"
         )
         # set the geotransform
