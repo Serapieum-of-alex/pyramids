@@ -1185,6 +1185,9 @@ class Dataset:
         dst_ds = Dataset._create_gdal_dataset(
             cols, rows, bands, dtype, driver="MEM", path=None
         )
+            dst_ds = Dataset._create_mem_gtiff_dataset(
+                cols, rows, bands, dtype, driver="MEM", path=None
+            )
 
         srse = Dataset._create_sr_from_epsg(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
