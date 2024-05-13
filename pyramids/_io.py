@@ -187,7 +187,7 @@ def read_file(path: str, read_only: bool = True):
     path = _parse_path(path)
     access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
     try:
-        src = gdal.OpenShared(path, access)
+        src = gdal.OpenEx(path, access)
     except Exception as e:
         if str(e).__contains__(" not recognized as a supported file format."):
             if any(path.endswith(i) for i in COMPRESSED_FILES_EXTENSIONS):

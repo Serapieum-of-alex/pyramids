@@ -1422,7 +1422,7 @@ class Dataset:
         variables = {}
         for i, var in enumerate(self.variable_names):
             name = var[1].split(" ")[1]
-            src = gdal.Open(self.variable_names[i][0])
+            src = gdal.OpenEx(self.variable_names[i][0])
             variables[name] = Dataset(src)
 
         return variables
