@@ -20,7 +20,7 @@ class TestCreateRasterObject:
         src_no_data_value: float,
     ):
         src = Dataset(src)
-        assert hasattr(src, "subsets")
+        assert hasattr(src, "variable_names")
         assert hasattr(src, "meta_data")
         assert hasattr(src, "variables")
         assert isinstance(src, Dataset)
@@ -31,7 +31,7 @@ class TestCreateRasterObject:
         src_no_data_value: float,
     ):
         src = Dataset(multi_band)
-        assert hasattr(src, "subsets")
+        assert hasattr(src, "variable_names")
         assert hasattr(src, "meta_data")
         assert hasattr(src, "variables")
         assert src.band_count == 13

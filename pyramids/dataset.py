@@ -98,8 +98,8 @@ class Dataset:
         # the epsg property returns the value of the _epsg attribute, so if the projection changes in any function, the
         # function should also change the value of the _epsg attribute.
         self._epsg = self._get_epsg()
-        # variables and subsets
-        self.subsets = src.GetSubDatasets()
+        # variables and variable_names
+        self.variable_names = src.GetSubDatasets()
         self._variables = self.get_variables()
         # array and dimensions
         self._rows = src.RasterYSize
@@ -108,7 +108,7 @@ class Dataset:
         self._block_size = [
             src.GetRasterBand(i).GetBlockSize() for i in range(1, self._band_count + 1)
         ]
-        if len(self.subsets) > 0:
+        if len(self.variable_names) > 0:
             self._time_stamp = self._get_time_variable()
             self._lat, self._lon = self._get_lat_lon()
 
@@ -1420,9 +1420,9 @@ class Dataset:
             Dictionary of the netcdf variables
         """
         variables = {}
-        for i, var in enumerate(self.subsets):
+        for i, var in enumerate(self.variable_names):
             name = var[1].split(" ")[1]
-            src = gdal.Open(self.subsets[i][0])
+            src = gdal.Open(self.variable_names[i][0])
             variables[name] = Dataset(src)
 
         return variables
