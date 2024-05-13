@@ -9,7 +9,6 @@ import pandas as pd
 import pytest
 from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, osr
-
 from pyramids._errors import NoDataValueError, ReadOnlyError, OutOfBoundsError
 from pyramids.dataset import Dataset
 
@@ -105,6 +104,30 @@ class TestCreateRasterObject:
             rtol=0.00001,
         )
         assert src.raster.GetGeoTransform() == src_geotransform
+
+    # def test_netcdf_create_from_array(
+    #     self,
+    #     src_arr: np.ndarray,
+    #     src_geotransform: tuple,
+    #     src_epsg: int,
+    #     src_no_data_value: float,
+    # ):
+    #     src_arr = np.array([src_arr, src_arr, src_arr])
+    #     src = Dataset.create_from_array(
+    #         arr=src_arr,
+    #         geo=src_geotransform,
+    #         epsg=src_epsg,
+    #         no_data_value=src_no_data_value,
+    #         driver_type="netcdf"
+    #     )
+    #     assert isinstance(src.raster, gdal.Dataset)
+    #     assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
+    #     assert np.isclose(
+    #         src.raster.GetRasterBand(1).GetNoDataValue(),
+    #         src_no_data_value,
+    #         rtol=0.00001,
+    #     )
+    #     assert src.raster.GetGeoTransform() == src_geotransform
 
     def test_create_driver_from_scratch(self):
         cell_size = 4000

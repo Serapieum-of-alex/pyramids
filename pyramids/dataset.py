@@ -320,8 +320,8 @@ class Dataset:
         self._set_band_names(name_list)
 
     @property
-    def variables(self):
-        """Variables in the raster (resembles the variables in netcdf files.)"""
+    def variables(self) -> Dict["Dataset", "Dataset"]:
+        """Variables in the dataset (resembles the variables in netcdf files.)"""
         return self._variables
 
     @property
@@ -1012,7 +1012,7 @@ class Dataset:
         if self.band_count >= 3:
             if band is None:
                 if rgb is None:
-                    rgb = [3, 2, 1]
+                    rgb = [2, 1, 0]
                 # first make the band index the first band in the rgb list (red band)
                 band = rgb[0]
         # elif self.band_count == 1:
@@ -1143,13 +1143,42 @@ class Dataset:
             src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, dtype)
         return src
 
+    @staticmethod
+    def create_main_dimension(
+        group: gdal.Group, dim_name: str, dtype: int, values: np.ndarray
+    ) -> gdal.Dimension:
+        """
+
+        Parameters
+        ----------
+        group: [gdal.Group]
+            Dataset group
+        dim_name: [str]
+            dimension name
+        dtype: [int]
+            data type of the dimension
+        values: [np.ndarray]
+            values of the dimension
+
+        Returns
+        -------
+        gdal.Dimension
+        """
+        dim = group.CreateDimension(dim_name, None, None, values.shape[0])
+        x_values = group.CreateMDArray(dim_name, [dim], dtype)
+        x_values.Write(values)
+        dim.SetIndexingVariable(x_values)
+        return dim
+
     @classmethod
     def create_from_array(
         cls,
         arr: np.ndarray,
         geo: Tuple[float, float, float, float, float, float],
-        epsg: Union[str, int],
+        bands_values: List = None,
+        epsg: Union[str, int] = 4326,
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+        driver_type: str = "MEM",
     ) -> "Dataset":
         """create_from_array.
 
@@ -1161,18 +1190,22 @@ class Dataset:
             numpy array.
         geo : [Tuple]
             geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
+        bands_values: [List]
+            Name of the bands to be used in the netcdf file. Default is None,
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator)
         no_data_value : Any, optional
             no data value to mask the cells out of the domain. The default is -9999.
+        driver_type: [str] optional
+            driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM"
 
         Returns
         -------
         dst: [DataSet].
             Dataset object will be returned.
         """
-        if len(arr.shape) == 2:
+        if arr.ndim == 2:
             bands = 1
             rows = int(arr.shape[0])
             cols = int(arr.shape[1])
@@ -1181,18 +1214,39 @@ class Dataset:
             rows = int(arr.shape[1])
             cols = int(arr.shape[2])
 
+        if driver_type != "netcdf":
+            dst_obj = cls._create_gtiff_from_array(
+                arr, cols, rows, bands, geo, epsg, no_data_value
+            )
+        else:
+            if bands_values is None:
+                bands_values = list(range(1, bands + 1))
+            dst_ds = cls._create_netcdf_from_array(
+                arr, cols, rows, bands, bands_values, geo, epsg, no_data_value
+            )
+            dst_obj = cls(dst_ds)
+
+        return dst_obj
+
+    @staticmethod
+    def _create_gtiff_from_array(
+        arr: np.ndarray,
+        cols: int,
+        rows: int,
+        bands: int = None,
+        geo: Tuple[float, float, float, float, float, float] = None,
+        epsg: Union[str, int] = None,
+        no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+    ) -> gdal.Dataset:
         dtype = numpy_to_gdal_dtype(arr)
-        dst_ds = Dataset._create_gdal_dataset(
+        dst_ds = Dataset._create_mem_gtiff_dataset(
             cols, rows, bands, dtype, driver="MEM", path=None
         )
-            dst_ds = Dataset._create_mem_gtiff_dataset(
-                cols, rows, bands, dtype, driver="MEM", path=None
-            )
 
         srse = Dataset._create_sr_from_epsg(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
         dst_ds.SetGeoTransform(geo)
-        dst_obj = cls(dst_ds)
+        dst_obj = Dataset(dst_ds)
         dst_obj._set_no_data_value(no_data_value=no_data_value)
 
         if bands == 1:
@@ -1202,6 +1256,42 @@ class Dataset:
                 dst_obj.raster.GetRasterBand(i + 1).WriteArray(arr[i, :, :])
 
         return dst_obj
+
+    @staticmethod
+    def _create_netcdf_from_array(
+        arr: np.ndarray,
+        cols: int,
+        rows: int,
+        bands: int = None,
+        bands_values: List = None,
+        geo: Tuple[float, float, float, float, float, float] = None,
+        epsg: Union[str, int] = None,
+        no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+    ) -> gdal.Dataset:
+        dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
+        x_dim_values = Dataset.get_x_lon_dimension_array(geo[0], geo[1], cols)
+        y_dim_values = Dataset.get_y_lat_dimension_array(geo[3], geo[1], rows)
+
+        src = gdal.GetDriverByName("MEM").CreateMultiDimensional("netcdf")
+        rg = src.GetRootGroup()
+
+        dim_x = Dataset.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))
+        dim_y = Dataset.create_main_dimension(rg, "y", dtype, np.array(y_dim_values))
+        if arr.ndim == 3:
+            dim_bands = Dataset.create_main_dimension(
+                rg, "bands", dtype, np.array(bands_values)
+            )
+            md_arr = rg.CreateMDArray("values", [dim_y, dim_x, dim_bands], dtype)
+        else:
+            md_arr = rg.CreateMDArray("values", [dim_y, dim_x], dtype)
+        arr = np.moveaxis(arr, 0, -1)
+
+        md_arr.Write(arr)
+        md_arr.SetNoDataValueDouble(no_data_value)
+        srse = Dataset._create_sr_from_epsg(epsg=epsg)
+        md_arr.SetSpatialRef(srse)
+
+        return src
 
     @classmethod
     def dataset_like(
@@ -2736,7 +2826,7 @@ class Dataset:
         new_y = src.y[x_ind] + src.cell_size / 2
         new_gt = (new_x, src.cell_size, 0, new_y, 0, -src.cell_size)
         new_src = src.create_from_array(
-            small_array, new_gt, src.epsg, src.no_data_value
+            small_array, new_gt, epsg=src.epsg, no_data_value=src.no_data_value
         )
         return new_src
 
@@ -3140,7 +3230,7 @@ class Dataset:
 
             arr[~np.isclose(arr, no_data_val, rtol=0.00001)] = 2
         new_dataset = self.create_from_array(
-            arr, self.geotransform, self.epsg, self.no_data_value
+            arr, self.geotransform, epsg=self.epsg, no_data_value=self.no_data_value
         )
         # then convert the raster into polygon
         gdf = new_dataset.cluster2(band=band)
