@@ -99,7 +99,7 @@ class Dataset:
         # function should also change the value of the _epsg attribute.
         self._epsg = self._get_epsg()
         # variables and variable_names
-        self.variable_names = src.GetSubDatasets()
+        self.variable_names = self.get_variable_names()
         self._variables = self.get_variables()
         # array and dimensions
         self._rows = src.RasterYSize
@@ -1085,6 +1085,36 @@ class Dataset:
             var_ds = None
         return var_ds
 
+    def get_variable_names(self) -> List[str]:
+        """get_variable_names."""
+        rg = self._raster.GetRootGroup()
+        if rg is not None:
+            variable_names = rg.GetMDArrayNames()
+            dims = rg.GetDimensions()
+            dims = [dim.GetName() for dim in dims]
+            variable_names = [var for var in variable_names if var not in dims]
+        else:
+            variable_names = [
+                var[1].split(" ")[1] for var in self._raster.GetSubDatasets()
+            ]
+
+        return variable_names
+
+    def get_variables(self) -> Dict["Dataset", "Dataset"]:
+        """get_variables.
+
+        Returns
+        -------
+        Dict["Dataset", "Dataset"]
+            Dictionary of the netcdf variables
+        """
+        variables = {}
+        for i, var in enumerate(self.variable_names):
+            src = gdal.Open(f"NETCDF:{self.file_name}:{var}")
+            variables[var] = Dataset(src)
+
+        return variables
+
     @staticmethod
     def _create_mem_gtiff_dataset(
         cols: int,
@@ -1410,22 +1440,6 @@ class Dataset:
         epsg = FeatureCollection.get_epsg_from_Prj(prj)
 
         return epsg
-
-    def get_variables(self) -> Dict["Dataset", "Dataset"]:
-        """get_variables.
-
-        Returns
-        -------
-        Dict["Dataset", "Dataset"]
-            Dictionary of the netcdf variables
-        """
-        variables = {}
-        for i, var in enumerate(self.variable_names):
-            name = var[1].split(" ")[1]
-            src = gdal.OpenEx(self.variable_names[i][0])
-            variables[name] = Dataset(src)
-
-        return variables
 
     def count_domain_cells(self, band: int = 0) -> int:
         """Count cells inside the domain
