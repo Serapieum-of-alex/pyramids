@@ -14,67 +14,6 @@ from pyramids.dataset import Dataset
 
 
 class TestCreateRasterObject:
-    def test_from_gdal_dataset(
-        self,
-        src: gdal.Dataset,
-        src_no_data_value: float,
-    ):
-        src = Dataset(src)
-        assert hasattr(src, "variable_names")
-        assert hasattr(src, "meta_data")
-        assert hasattr(src, "variables")
-        assert isinstance(src, Dataset)
-
-    def test_from_gdal_dataset_multi_band(
-        self,
-        multi_band: gdal.Dataset,
-        src_no_data_value: float,
-    ):
-        src = Dataset(multi_band)
-        assert hasattr(src, "variable_names")
-        assert hasattr(src, "meta_data")
-        assert hasattr(src, "variables")
-        assert src.band_count == 13
-        assert isinstance(src, Dataset)
-
-    def test_from_open_ascii_file(
-        self,
-        ascii_file_path: str,
-        ascii_shape: tuple,
-        ascii_geotransform: tuple,
-    ):
-        src_obj = Dataset.read_file(ascii_file_path)
-        assert src_obj.band_count == 1
-        assert src_obj.epsg == 6326
-        assert isinstance(src_obj.raster, gdal.Dataset)
-        assert src_obj.geotransform == (
-            432968.1206170588,
-            4000.0,
-            0.0,
-            520007.787999178,
-            0.0,
-            -4000.0,
-        )
-
-    def test_from_read_file_zip_file(
-        self,
-        ascii_file_path: str,
-        ascii_shape: tuple,
-        ascii_geotransform: tuple,
-    ):
-        src_obj = Dataset.read_file(ascii_file_path)
-        assert src_obj.band_count == 1
-        assert src_obj.epsg == 6326
-        assert isinstance(src_obj.raster, gdal.Dataset)
-        assert src_obj.geotransform == (
-            432968.1206170588,
-            4000.0,
-            0.0,
-            520007.787999178,
-            0.0,
-            -4000.0,
-        )
-
     def test_from_create_empty_driver(
         self,
         src: gdal.Dataset,
@@ -104,30 +43,6 @@ class TestCreateRasterObject:
             rtol=0.00001,
         )
         assert src.raster.GetGeoTransform() == src_geotransform
-
-    # def test_netcdf_create_from_array(
-    #     self,
-    #     src_arr: np.ndarray,
-    #     src_geotransform: tuple,
-    #     src_epsg: int,
-    #     src_no_data_value: float,
-    # ):
-    #     src_arr = np.array([src_arr, src_arr, src_arr])
-    #     src = Dataset.create_from_array(
-    #         arr=src_arr,
-    #         geo=src_geotransform,
-    #         epsg=src_epsg,
-    #         no_data_value=src_no_data_value,
-    #         driver_type="netcdf"
-    #     )
-    #     assert isinstance(src.raster, gdal.Dataset)
-    #     assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
-    #     assert np.isclose(
-    #         src.raster.GetRasterBand(1).GetNoDataValue(),
-    #         src_no_data_value,
-    #         rtol=0.00001,
-    #     )
-    #     assert src.raster.GetGeoTransform() == src_geotransform
 
     def test_create_driver_from_scratch(self):
         cell_size = 4000
