@@ -1114,8 +1114,14 @@ class Dataset:
             Dictionary of the netcdf variables
         """
         variables = {}
+        prefix = self.driver_type.upper()
         for i, var in enumerate(self.variable_names):
-            src = gdal.Open(f"NETCDF:{self.file_name}:{var}")
+            if prefix == "MEMORY":
+                # src = gdal.OpenEx(self.file_name, gdal.OF_MULTIDIM_RASTER)
+                rg = self._raster.GetRootGroup()
+                src = rg.OpenMDArray(var).AsClassicDataset(2, 1, rg)
+            else:
+                src = gdal.Open(f"{prefix}:{self.file_name}:{var}")
             variables[var] = Dataset(src)
 
         return variables
