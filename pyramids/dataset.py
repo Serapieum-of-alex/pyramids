@@ -527,7 +527,9 @@ class Dataset:
         return overview_number
 
     @classmethod
-    def read_file(cls, path: str, read_only=True) -> "Dataset":
+    def read_file(
+        cls, path: str, read_only=True, open_as_multi_dimensional: bool = False
+    ) -> "Dataset":
         """read_file.
 
         Parameters
@@ -536,12 +538,14 @@ class Dataset:
             Path of file to open.
         read_only: [bool]
             File mode, set to False, to open in "update" mode.
+        open_as_multi_dimensional: [bool]
+            Default is False.
 
         Returns
         -------
         Dataset
         """
-        src = _io.read_file(path, read_only)
+        src = _io.read_file(path, read_only, open_as_multi_dimensional)
         return cls(src)
 
     @classmethod
