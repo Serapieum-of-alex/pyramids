@@ -1226,6 +1226,7 @@ class Dataset:
         epsg: Union[str, int] = 4326,
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
+        path: str = None,
     ) -> "Dataset":
         """create_from_array.
 
@@ -1246,6 +1247,8 @@ class Dataset:
             no data value to mask the cells out of the domain. The default is -9999.
         driver_type: [str] optional
             driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM"
+        path : [str]
+            path to save the driver.
 
         Returns
         -------
@@ -1263,13 +1266,30 @@ class Dataset:
 
         if driver_type != "netcdf":
             dst_obj = cls._create_gtiff_from_array(
-                arr, cols, rows, bands, geo, epsg, no_data_value
+                arr,
+                cols,
+                rows,
+                bands,
+                geo,
+                epsg,
+                no_data_value,
+                driver_type=driver_type,
+                path=path,
             )
         else:
             if bands_values is None:
                 bands_values = list(range(1, bands + 1))
             dst_ds = cls._create_netcdf_from_array(
-                arr, cols, rows, bands, bands_values, geo, epsg, no_data_value
+                arr,
+                cols,
+                rows,
+                bands,
+                bands_values,
+                geo,
+                epsg,
+                no_data_value,
+                driver_type=driver_type,
+                path=path,
             )
             dst_obj = cls(dst_ds)
 
@@ -1284,10 +1304,12 @@ class Dataset:
         geo: Tuple[float, float, float, float, float, float] = None,
         epsg: Union[str, int] = None,
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+        driver_type: str = "MEM",
+        path: str = None,
     ) -> gdal.Dataset:
         dtype = numpy_to_gdal_dtype(arr)
         dst_ds = Dataset._create_mem_gtiff_dataset(
-            cols, rows, bands, dtype, driver="MEM", path=None
+            cols, rows, bands, dtype, driver=driver_type, path=path
         )
 
         srse = Dataset._create_sr_from_epsg(epsg=epsg)
@@ -1314,12 +1336,17 @@ class Dataset:
         geo: Tuple[float, float, float, float, float, float] = None,
         epsg: Union[str, int] = None,
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+        driver_type: str = "MEM",
+        path: str = None,
     ) -> gdal.Dataset:
         dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
         x_dim_values = Dataset.get_x_lon_dimension_array(geo[0], geo[1], cols)
         y_dim_values = Dataset.get_y_lat_dimension_array(geo[3], geo[1], rows)
 
-        src = gdal.GetDriverByName("MEM").CreateMultiDimensional("netcdf")
+        if path is None and driver_type == "netcdf":
+            path = "netcdf"
+            driver_type = "MEM"
+        src = gdal.GetDriverByName(driver_type).CreateMultiDimensional(path)
         rg = src.GetRootGroup()
 
         dim_x = Dataset.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))
