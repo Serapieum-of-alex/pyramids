@@ -1182,7 +1182,11 @@ class Dataset:
     def create_main_dimension(
         group: gdal.Group, dim_name: str, dtype: int, values: np.ndarray
     ) -> gdal.Dimension:
-        """
+        """Create NetCDF dimension
+
+        if the dimension name is y, lat, latitude, the dimension type will be horizontal y,
+        if the dimension name is x, lon, longitude, the dimension type will be horizontal x,
+        if the dimension name is bands, time, the dimension type will be temporal.
 
         Parameters
         ----------
@@ -1199,7 +1203,15 @@ class Dataset:
         -------
         gdal.Dimension
         """
-        dim = group.CreateDimension(dim_name, None, None, values.shape[0])
+        if dim_name in ["y", "lat", "latitude"]:
+            dim_type = gdal.DIM_TYPE_HORIZONTAL_Y
+        elif dim_name in ["x", "lon", "longitude"]:
+            dim_type = gdal.DIM_TYPE_HORIZONTAL_X
+        elif dim_name in ["bands", "time"]:
+            dim_type = gdal.DIM_TYPE_TEMPORAL
+        else:
+            dim_type = None
+        dim = group.CreateDimension(dim_name, dim_type, None, values.shape[0])
         x_values = group.CreateMDArray(dim_name, [dim], dtype)
         x_values.Write(values)
         dim.SetIndexingVariable(x_values)
