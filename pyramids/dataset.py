@@ -482,7 +482,8 @@ class Dataset:
     @property
     def driver_type(self):
         """Driver Type"""
-        driver_type = self.raster.GetDriver().GetDescription()
+        drv = self.raster.GetDriver()
+        driver_type = drv.GetDescription() if drv is not None else None
         return CATALOG.get_driver_name(driver_type)
 
     @property
