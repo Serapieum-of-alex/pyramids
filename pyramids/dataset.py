@@ -1355,10 +1355,10 @@ class Dataset:
             dim_bands = Dataset.create_main_dimension(
                 rg, "bands", dtype, np.array(bands_values)
             )
-            md_arr = rg.CreateMDArray("values", [dim_y, dim_x, dim_bands], dtype)
+            md_arr = rg.CreateMDArray("values", [dim_bands, dim_y, dim_x], dtype)
+            # arr = np.moveaxis(arr, 0, -1)
         else:
             md_arr = rg.CreateMDArray("values", [dim_y, dim_x], dtype)
-        arr = np.moveaxis(arr, 0, -1)
 
         md_arr.Write(arr)
         md_arr.SetNoDataValueDouble(no_data_value)
