@@ -1962,7 +1962,7 @@ class Dataset:
         else:
             # saving rasters with color table fails with a runtime error
             options = ["COMPRESS=DEFLATE"]
-            if self._block_size is not None:
+            if self._block_size is not None and self._block_size != []:
                 options += [
                     "TILED=YES",
                     "BLOCKXSIZE={}".format(self._block_size[0][0]),
