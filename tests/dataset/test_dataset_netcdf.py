@@ -12,8 +12,10 @@ class TestReadNetCDF:
         assert dataset.variable_names == ["Band1", "Band2", "Band3", "Band4"]
         assert list(dataset.variables.keys()) == ["Band1", "Band2", "Band3", "Band4"]
         assert not dataset.is_subset
+        assert not dataset.is_md_array
         var = dataset.variables["Band1"]
         assert var.is_subset
+        assert not var.is_md_array
         assert var.shape == (1, 360, 720)
         assert var.dtype == ["float32"]
         assert np.isclose(var.no_data_value[0], -9.96920996e36)

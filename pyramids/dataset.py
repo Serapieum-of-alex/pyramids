@@ -100,6 +100,7 @@ class Dataset:
         self._epsg = self._get_epsg()
         # set the is_subset to false before retrieving the variables
         self._is_subset = False
+        self._is_md_array = False
         # variables and variable_names
         self.variable_names = self.get_variable_names()
         self._variables = self.get_variables()
@@ -1122,9 +1123,13 @@ class Dataset:
                 # src = gdal.OpenEx(self.file_name, gdal.OF_MULTIDIM_RASTER)
                 rg = self._raster.GetRootGroup()
                 src = rg.OpenMDArray(var).AsClassicDataset(2, 1, rg)
+                variables[var] = Dataset(src)
+                variables[var]._is_md_array = True
             else:
                 src = gdal.Open(f"{prefix}:{self.file_name}:{var}")
-            variables[var] = Dataset(src)
+                variables[var] = Dataset(src)
+                variables[var]._is_md_array = False
+
             variables[var]._is_subset = True
 
         return variables
@@ -1139,6 +1144,17 @@ class Dataset:
             True if the dataset is a sub_dataset .
         """
         return self._is_subset
+
+    @property
+    def is_md_array(self):
+        """is_md_array.
+
+        Returns
+        -------
+        bool
+            True if the dataset is a multidimensional array.
+        """
+        return self._is_md_array
 
     @staticmethod
     def _create_mem_gtiff_dataset(
