@@ -1392,7 +1392,6 @@ class Dataset:
                 rg, "bands", dtype, np.array(bands_values)
             )
             md_arr = rg.CreateMDArray("values", [dim_bands, dim_y, dim_x], dtype)
-            # arr = np.moveaxis(arr, 0, -1)
         else:
             md_arr = rg.CreateMDArray("values", [dim_y, dim_x], dtype)
 
