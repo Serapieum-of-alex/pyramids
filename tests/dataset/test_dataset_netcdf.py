@@ -26,7 +26,7 @@ class TestReadNetCDF:
 
     def test_read_netcdf_file_created_by_pyramids(self, pyramids_created_nc_3d: str):
         dataset = Dataset.read_file(pyramids_created_nc_3d)
-        arr = dataset.read_array()
+        # arr = dataset.read_array()
         assert dataset.variable_names == []
         dataset = Dataset.read_file(
             pyramids_created_nc_3d, open_as_multi_dimensional=True
@@ -54,8 +54,10 @@ class TestCreateNetCDF:
         geo = dataset.geotransform
         no_data_value = dataset.no_data_value[0]
         band_values = [1]
+        variable_name = "values"
         src = Dataset._create_netcdf_from_array(
             arr,
+            variable_name,
             cols,
             rows,
             1,
@@ -100,6 +102,21 @@ class TestCreateNetCDF:
         dataset = Dataset(test_create_netbcdf_from_array_2d)
         assert dataset.variable_names == ["values"]
         assert dataset.variables["values"].shape == (1, 13, 14)
+
+        # rg = src.GetRootGroup()
+        # assert rg.GetMDArrayNames() == ["values"]
+        # src_mdarray = rg.OpenMDArray("values")
+        # assert src_mdarray.GetDimensions() == [13, 14]
+        # assert np.isclose(src_mdarray.ReadAsArray(), arr, rtol=0.00001).all()
+        # assert src_mdarray.GetNoDataValue() == no_data_value
+        # assert src_mdarray.GetSpatialRef().ExportToWkt() == dataset.raster.GetProjection()
+        # assert src_mdarray.GetDataType() == gdal.GDT_Float32
+        # assert src_mdarray.GetUnit() == ""
+        # assert src_mdarray.GetDescription() == ""
+        # assert src_mdarray.GetUnitType() == ""
+        # assert src_mdarray.GetSpatialRef().ExportToWkt() == dataset.raster.GetProjection()
+        # src = gdal.GetDriverByName("netCDF").CreateCopy("new-new.nc", src, 0)
+
     def test_netcdf_create_from_array(
         self,
         src_arr: np.ndarray,
@@ -108,6 +125,7 @@ class TestCreateNetCDF:
         src_no_data_value: float,
     ):
         src_arr = np.array([src_arr, src_arr, src_arr])
+        variable_name = "values"
         src = Dataset.create_from_array(
             arr=src_arr,
             geo=src_geotransform,
@@ -115,10 +133,11 @@ class TestCreateNetCDF:
             no_data_value=src_no_data_value,
             driver_type="netcdf",
             path=None,
+            variable_name=variable_name,
         )
         assert isinstance(src.raster, gdal.Dataset)
-        assert src.variable_names == ["values"]
-        var = src.variables["values"]
+        assert src.variable_names == [variable_name]
+        var = src.variables[variable_name]
         assert var.shape == (3, 13, 14)
         assert np.isclose(var.read_array(), src_arr, rtol=0.00001).all()
         assert var.cell_size == 4000

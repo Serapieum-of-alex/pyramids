@@ -1265,6 +1265,7 @@ class Dataset:
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
+        variable_name: str = None,
     ) -> "Dataset":
         """create_from_array.
 
@@ -1287,6 +1288,8 @@ class Dataset:
             driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM"
         path : [str]
             path to save the driver.
+        variable_name: [str]
+            name of the variable in the netcdf file. Default is None.
 
         Returns
         -------
@@ -1319,6 +1322,7 @@ class Dataset:
                 bands_values = list(range(1, bands + 1))
             dst_ds = cls._create_netcdf_from_array(
                 arr,
+                variable_name,
                 cols,
                 rows,
                 bands,
@@ -1367,6 +1371,7 @@ class Dataset:
     @staticmethod
     def _create_netcdf_from_array(
         arr: np.ndarray,
+        variable_name: str,
         cols: int,
         rows: int,
         bands: int = None,
@@ -1377,6 +1382,9 @@ class Dataset:
         driver_type: str = "MEM",
         path: str = None,
     ) -> gdal.Dataset:
+        if variable_name is None:
+            raise ValueError("Variable_name can not be None")
+
         dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
         x_dim_values = Dataset.get_x_lon_dimension_array(geo[0], geo[1], cols)
         y_dim_values = Dataset.get_y_lat_dimension_array(geo[3], geo[1], rows)
@@ -1393,9 +1401,9 @@ class Dataset:
             dim_bands = Dataset.create_main_dimension(
                 rg, "bands", dtype, np.array(bands_values)
             )
-            md_arr = rg.CreateMDArray("values", [dim_bands, dim_y, dim_x], dtype)
+            md_arr = rg.CreateMDArray(variable_name, [dim_bands, dim_y, dim_x], dtype)
         else:
-            md_arr = rg.CreateMDArray("values", [dim_y, dim_x], dtype)
+            md_arr = rg.CreateMDArray(variable_name, [dim_y, dim_x], dtype)
 
         md_arr.Write(arr)
         md_arr.SetNoDataValueDouble(no_data_value)
