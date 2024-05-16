@@ -1382,6 +1382,38 @@ class Dataset:
         driver_type: str = "MEM",
         path: str = None,
     ) -> gdal.Dataset:
+        """_create_netcdf_from_array.
+
+        Parameters
+        ----------
+        arr: [np.array]
+            numpy array.
+        variable_name: [str]
+            variable name in the netcdf file.
+        cols: [int]
+            number of columns in the array.
+        rows: [int]
+            number of rows in the array.
+        bands: [int]
+            number of bands, the array is 3d and bands is the first dimension.
+        bands_values: [List]
+            Name of the bands to be used in the netcdf file. Default is None,
+        geo : [Tuple]
+            geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
+        epsg: [integer]
+            integer reference number to the new projection (https://epsg.io/)
+                (default 3857 the reference no of WGS84 web mercator)
+        no_data_value : Any, optional
+            no data value to mask the cells out of the domain. The default is -9999.
+        driver_type: [str] optional
+            driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM"
+        path : [str]
+            path to save the driver.
+
+        Returns
+        -------
+        gdal.Dataset
+        """
         if variable_name is None:
             raise ValueError("Variable_name can not be None")
 
