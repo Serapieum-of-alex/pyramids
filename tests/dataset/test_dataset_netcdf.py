@@ -1,4 +1,5 @@
 import os
+import pytest
 from osgeo import gdal
 import numpy as np
 from pyramids.dataset import Dataset
@@ -43,6 +44,62 @@ class TestReadNetCDF:
 
 
 class TestCreateNetCDF:
+    @pytest.fixture(scope="module")
+    def test_create_netbcdf_from_array_2d(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        rows = dataset.rows
+        cols = dataset.columns
+        arr = dataset.read_array()
+        epsg = dataset.epsg
+        geo = dataset.geotransform
+        no_data_value = dataset.no_data_value[0]
+        band_values = [1]
+        src = Dataset._create_netcdf_from_array(
+            arr,
+            cols,
+            rows,
+            1,
+            band_values,
+            geo,
+            epsg,
+            no_data_value,
+            driver_type="netcdf",
+        )
+        rg = src.GetRootGroup()
+        assert rg.GetMDArrayNames() == ["values", "x", "y"]
+        dims = rg.GetDimensions()
+        assert [dim.GetName() for dim in dims] == ["x", "y"]
+        dim_x = rg.OpenMDArray("x")
+        assert np.isclose(
+            dim_x.ReadAsArray(),
+            [
+                434968.12,
+                438968.12,
+                442968.12,
+                446968.12,
+                450968.12,
+                454968.12,
+                458968.12,
+                462968.12,
+                466968.12,
+                470968.12,
+                474968.12,
+                478968.12,
+                482968.12,
+                486968.12,
+            ],
+        ).all()
+        return src
+
+    def test_instantiate_dataset_from_2d_mdarray(
+        self, test_create_netbcdf_from_array_2d: gdal.Dataset
+    ):
+        """
+        mainly to test the self.get_variables() method
+        """
+        dataset = Dataset(test_create_netbcdf_from_array_2d)
+        assert dataset.variable_names == ["values"]
+        assert dataset.variables["values"].shape == (1, 13, 14)
     def test_netcdf_create_from_array(
         self,
         src_arr: np.ndarray,

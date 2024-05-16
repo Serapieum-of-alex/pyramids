@@ -1122,7 +1122,9 @@ class Dataset:
             if prefix == "MEMORY":
                 # src = gdal.OpenEx(self.file_name, gdal.OF_MULTIDIM_RASTER)
                 rg = self._raster.GetRootGroup()
-                src = rg.OpenMDArray(var).AsClassicDataset(2, 1, rg)
+                md_arr = rg.OpenMDArray(var)
+                dims = md_arr.GetDimensions()
+                src = md_arr.AsClassicDataset(len(dims) - 1, len(dims) - 2, rg)
                 variables[var] = Dataset(src)
                 variables[var]._is_md_array = True
             else:
