@@ -11,12 +11,15 @@ class TestReadNetCDF:
         assert dataset.shape == (0, 512, 512)
         assert dataset.variable_names == ["Band1", "Band2", "Band3", "Band4"]
         assert list(dataset.variables.keys()) == ["Band1", "Band2", "Band3", "Band4"]
-        assert dataset.variables["Band1"].shape == (1, 360, 720)
-        assert dataset.variables["Band1"].dtype == ["float32"]
-        assert np.isclose(dataset.variables["Band1"].no_data_value[0], -9.96920996e36)
-        assert dataset.variables["Band1"].block_size == [[720, 1]]
+        assert not dataset.is_subset
+        var = dataset.variables["Band1"]
+        assert var.is_subset
+        assert var.shape == (1, 360, 720)
+        assert var.dtype == ["float32"]
+        assert np.isclose(var.no_data_value[0], -9.96920996e36)
+        assert var.block_size == [[720, 1]]
         assert dataset.block_size == []
-        assert dataset.variables["Band1"].cell_size == 0.5
+        assert var.cell_size == 0.5
 
     def test_read_netcdf_file_created_by_pyramids(self, pyramids_created_nc_3d: str):
         dataset = Dataset.read_file(pyramids_created_nc_3d)

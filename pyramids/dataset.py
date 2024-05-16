@@ -98,6 +98,8 @@ class Dataset:
         # the epsg property returns the value of the _epsg attribute, so if the projection changes in any function, the
         # function should also change the value of the _epsg attribute.
         self._epsg = self._get_epsg()
+        # set the is_subset to false before retrieving the variables
+        self._is_subset = False
         # variables and variable_names
         self.variable_names = self.get_variable_names()
         self._variables = self.get_variables()
@@ -1123,8 +1125,20 @@ class Dataset:
             else:
                 src = gdal.Open(f"{prefix}:{self.file_name}:{var}")
             variables[var] = Dataset(src)
+            variables[var]._is_subset = True
 
         return variables
+
+    @property
+    def is_subset(self) -> bool:
+        """is_subset.
+
+        Returns
+        -------
+        bool
+            True if the dataset is a sub_dataset .
+        """
+        return self._is_subset
 
     @staticmethod
     def _create_mem_gtiff_dataset(
