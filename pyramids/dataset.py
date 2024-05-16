@@ -1444,6 +1444,27 @@ class Dataset:
 
         return src
 
+    @staticmethod
+    def _add_md_array_to_group(dst_group, var_name, src_mdarray):
+        src_dims = src_mdarray.GetDimensions()
+        arr = src_mdarray.ReadAsArray()
+        new_md_array = dst_group.CreateMDArray(
+            var_name, src_dims, src_mdarray.GetDataType()
+        )
+        new_md_array.Write(arr)
+        new_md_array.SetNoDataValueDouble(src_mdarray.GetNoDataValue())
+        new_md_array.SetSpatialRef(src_mdarray.GetSpatialRef())
+
+        # return dst_group
+
+    def add_variable(self, variable_name: str, dataset: "Dataset"):
+        src_rg = self._raster.GetRootGroup()
+        var_rg = dataset._raster.GetRootGroup()
+        names = dataset.variable_names
+        md_arr = var_rg.OpenMDArray(names[0])
+        self._add_md_array_to_group(src_rg, variable_name, md_arr)
+        self.__init__(self._raster)
+
     @classmethod
     def dataset_like(
         cls,

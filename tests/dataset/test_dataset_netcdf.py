@@ -45,7 +45,7 @@ class TestReadNetCDF:
 
 class TestCreateNetCDF:
     @pytest.fixture(scope="module")
-    def test_create_netbcdf_from_array_2d(self, src: gdal.Dataset):
+    def test_create_netcdf_from_array_2d(self, src: gdal.Dataset):
         dataset = Dataset(src)
         rows = dataset.rows
         cols = dataset.columns
@@ -94,29 +94,16 @@ class TestCreateNetCDF:
         return src
 
     def test_instantiate_dataset_from_2d_mdarray(
-        self, test_create_netbcdf_from_array_2d: gdal.Dataset
+        self, test_create_netcdf_from_array_2d: gdal.Dataset
     ):
         """
         mainly to test the self.get_variables() method
         """
-        dataset = Dataset(test_create_netbcdf_from_array_2d)
+        dataset = Dataset(test_create_netcdf_from_array_2d)
         assert dataset.variable_names == ["values"]
         assert dataset.variables["values"].shape == (1, 13, 14)
 
-        # rg = src.GetRootGroup()
-        # assert rg.GetMDArrayNames() == ["values"]
-        # src_mdarray = rg.OpenMDArray("values")
-        # assert src_mdarray.GetDimensions() == [13, 14]
-        # assert np.isclose(src_mdarray.ReadAsArray(), arr, rtol=0.00001).all()
-        # assert src_mdarray.GetNoDataValue() == no_data_value
-        # assert src_mdarray.GetSpatialRef().ExportToWkt() == dataset.raster.GetProjection()
-        # assert src_mdarray.GetDataType() == gdal.GDT_Float32
-        # assert src_mdarray.GetUnit() == ""
-        # assert src_mdarray.GetDescription() == ""
-        # assert src_mdarray.GetUnitType() == ""
-        # assert src_mdarray.GetSpatialRef().ExportToWkt() == dataset.raster.GetProjection()
-        # src = gdal.GetDriverByName("netCDF").CreateCopy("new-new.nc", src, 0)
-
+    @pytest.fixture(scope="module")
     def test_netcdf_create_from_array(
         self,
         src_arr: np.ndarray,
@@ -150,3 +137,15 @@ class TestCreateNetCDF:
         path = "save_created_netcdf_file.nc"
         assert src.to_file(path) is None
         os.remove(path)
+        return src
+
+    def test_add_variable(self, test_netcdf_create_from_array):
+        dataset = test_netcdf_create_from_array
+        dataset.add_variable("new_variable", test_netcdf_create_from_array)
+
+        assert all(
+            [item in dataset.variable_names for item in ["values", "new_variable"]]
+        )
+
+        var = dataset.variables["new_variable"]
+        assert var.shape == (3, 13, 14)
