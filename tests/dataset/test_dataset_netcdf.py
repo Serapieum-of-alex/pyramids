@@ -143,7 +143,7 @@ class TestCreateNetCDF:
 class TestAddVariable:
     def test_add_variable(self, test_netcdf_create_from_array):
         dataset = test_netcdf_create_from_array
-        dataset.add_variable("new_variable", test_netcdf_create_from_array)
+        dataset.add_variable(test_netcdf_create_from_array)
 
         assert all(
             [item in dataset.variable_names for item in ["values", "values-new"]]

@@ -1478,15 +1478,15 @@ class Dataset:
 
         new_md_array.SetSpatialRef(src_mdarray.GetSpatialRef())
 
-    def add_variable(self, variable_name: str, dataset: "Dataset"):
+    def add_variable(self, dataset: "Dataset", variable_name: str = None):
         """add_variable.
 
         Parameters
         ----------
-        variable_name: [str]
-            variable name in the netcdf file.
         dataset: [Dataset]
             dataset to add to the current dataset.
+        variable_name: [str], Optional, Default = None
+            variable name in the netcdf file. if not given all the variable in the given dataset will be added.
 
 
         Example
@@ -1495,11 +1495,14 @@ class Dataset:
         >>>         "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
         >>> )
         >>> dataset_2 = Dataset.read_file("tests/data/netcdf/noah-precipitation-1979.nc")
-        >>> dataset_1.add_variable("temperature", dataset_2)
+        >>> dataset_1.add_variable(dataset_2, "temperature")
         """
         src_rg = self._raster.GetRootGroup()
         var_rg = dataset._raster.GetRootGroup()
-        for var in dataset.variable_names:
+        if variable_name is None:
+            variable_name = dataset.variable_names
+
+        for var in variable_name:
             md_arr = var_rg.OpenMDArray(var)
             # incase the variable name already exists in the destination dataset.
             if var in self.variable_names:
