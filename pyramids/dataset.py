@@ -1468,21 +1468,43 @@ class Dataset:
     def _add_md_array_to_group(dst_group, var_name, src_mdarray):
         src_dims = src_mdarray.GetDimensions()
         arr = src_mdarray.ReadAsArray()
-        new_md_array = dst_group.CreateMDArray(
-            var_name, src_dims, src_mdarray.GetDataType()
-        )
+        dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
+        new_md_array = dst_group.CreateMDArray(var_name, src_dims, dtype)
         new_md_array.Write(arr)
-        new_md_array.SetNoDataValueDouble(src_mdarray.GetNoDataValue())
+        try:
+            new_md_array.SetNoDataValueDouble(src_mdarray.GetNoDataValue())
+        except:
+            new_md_array.SetNoDataValueDouble(-9999)
+
         new_md_array.SetSpatialRef(src_mdarray.GetSpatialRef())
 
-        # return dst_group
-
     def add_variable(self, variable_name: str, dataset: "Dataset"):
+        """add_variable.
+
+        Parameters
+        ----------
+        variable_name: [str]
+            variable name in the netcdf file.
+        dataset: [Dataset]
+            dataset to add to the current dataset.
+
+
+        Example
+        -------
+        >>> dataset_1 = Dataset.read_file(
+        >>>         "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
+        >>> )
+        >>> dataset_2 = Dataset.read_file("tests/data/netcdf/noah-precipitation-1979.nc")
+        >>> dataset_1.add_variable("temperature", dataset_2)
+        """
         src_rg = self._raster.GetRootGroup()
         var_rg = dataset._raster.GetRootGroup()
-        names = dataset.variable_names
-        md_arr = var_rg.OpenMDArray(names[0])
-        self._add_md_array_to_group(src_rg, variable_name, md_arr)
+        for var in dataset.variable_names:
+            md_arr = var_rg.OpenMDArray(var)
+            # incase the variable name already exists in the destination dataset.
+            if var in self.variable_names:
+                var = f"{var}-new"
+            self._add_md_array_to_group(src_rg, var, md_arr)
         self.__init__(self._raster)
 
     @classmethod
