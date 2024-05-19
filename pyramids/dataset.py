@@ -1507,6 +1507,36 @@ class Dataset:
             self._add_md_array_to_group(src_rg, var, md_arr)
         self.__init__(self._raster)
 
+    def remove_variable(self, variable_name: str):
+        """remove_variable.
+
+        Parameters
+        ----------
+        variable_name: [str]
+            variable name
+
+        Returns
+        -------
+        Memory Dataset:
+            an updated in-memory dataset will be returned even if the original dataset was saved on desk
+
+        Notes
+        -----
+        The method will not remove the variable from the disk if the dataset is saved on disk. Rather the method will
+        make a Memory driver and copy the original dataset to the memory driver. and then remove the variable from the
+        memory dataset.
+        """
+        if self.driver_type == "memory":
+            # first copy the dataset to memory
+            dst = self._raster
+        else:
+            dst = gdal.GetDriverByName("MEM").CreateCopy("", self._raster, 0)
+
+        rg = dst.GetRootGroup()
+        rg.DeleteMDArray(variable_name)
+
+        self.__init__(dst)
+
     @classmethod
     def dataset_like(
         cls,
@@ -2084,8 +2114,12 @@ class Dataset:
         Examples
         --------
         >>> dataset = Dataset.read_file("path/to/file/***.tif")
-        >>> path = "examples/GIS/data/save_raster_test.tif"
-        >>> dataset.to_file(path)
+        >>> dataset.to_file("save_raster_test.tif")
+
+        Notes
+        -----
+        The object will still refers to the dataset before saving. if you want to use the new saved dataset you have
+        to read the file again.
         """
         if not isinstance(path, str):
             raise TypeError("path input should be string type")

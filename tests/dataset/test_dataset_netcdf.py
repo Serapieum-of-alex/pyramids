@@ -151,3 +151,9 @@ class TestAddVariable:
 
         var = dataset.variables["values-new"]
         assert var.shape == (3, 13, 14)
+
+    def test_remove_variable_in_memory_driver(self, test_netcdf_create_from_array):
+        dataset = test_netcdf_create_from_array
+        variable_name = "values"
+        dataset.remove_variable(variable_name)
+        assert variable_name not in dataset.variable_names
