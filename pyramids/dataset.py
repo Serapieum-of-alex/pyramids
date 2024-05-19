@@ -1108,8 +1108,28 @@ class Dataset:
 
         return variable_names
 
-    def get_variables(self) -> Dict["Dataset", "Dataset"]:
+    def _read_md_array(self, variable_name: str) -> gdal.Dataset:
+        rg = self._raster.GetRootGroup()
+        md_arr = rg.OpenMDArray(variable_name)
+        dtype = md_arr.GetDataType()
+        dims = md_arr.GetDimensions()
+        if len(dims) == 1:
+            if dtype.GetClass() == gdal.GEDTC_STRING:
+                src = md_arr
+            else:
+                src = md_arr.AsClassicDataset(0, 1, rg)
+        else:
+            src = md_arr.AsClassicDataset(len(dims) - 1, len(dims) - 2, rg)
+
+        return src
+
+    def get_variables(self, read_only: bool = True) -> Dict["Dataset", "Dataset"]:
         """get_variables.
+
+        Parameters
+        ----------
+        read_only: [bool]
+            Default is True.
 
         Returns
         -------
@@ -1118,15 +1138,15 @@ class Dataset:
         """
         variables = {}
         prefix = self.driver_type.upper()
+        rg = self._raster.GetRootGroup()
         for i, var in enumerate(self.variable_names):
-            if prefix == "MEMORY":
-                # src = gdal.OpenEx(self.file_name, gdal.OF_MULTIDIM_RASTER)
-                rg = self._raster.GetRootGroup()
-                md_arr = rg.OpenMDArray(var)
-                dims = md_arr.GetDimensions()
-                src = md_arr.AsClassicDataset(len(dims) - 1, len(dims) - 2, rg)
-                variables[var] = Dataset(src)
-                variables[var]._is_md_array = True
+            if prefix == "MEMORY" or rg is not None:
+                src = self._read_md_array(var)
+                if isinstance(src, gdal.Dataset):
+                    variables[var] = Dataset(src)
+                    variables[var]._is_md_array = True
+                else:
+                    variables[var] = src
             else:
                 src = gdal.Open(f"{prefix}:{self.file_name}:{var}")
                 variables[var] = Dataset(src)
