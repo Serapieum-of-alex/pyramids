@@ -6,6 +6,7 @@ import datetime as dt
 import os
 import re
 import warnings
+import logging
 from numbers import Number
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
@@ -27,15 +28,13 @@ from pyramids._errors import (
     OutOfBoundsError,
 )
 from pyramids._utils import (
-    Catalog,
     DTYPE_CONVERSION_DF,
     INTERPOLATION_METHODS,
-    create_time_conversion_func,
     gdal_to_numpy_dtype,
     gdal_to_ogr_dtype,
     import_cleopatra,
     numpy_to_gdal_dtype,
-)  # NUMPY_GDAL_DATA_TYPES,
+)
 
 
 try:
@@ -48,32 +47,21 @@ except ModuleNotFoundError:  # pragma: no cover
 from hpc.indexing import get_pixels, get_indices2, get_pixels2, locate_values
 from pyramids.featurecollection import FeatureCollection
 from pyramids import _io
+from pyramids.abstract_dataset import AbstractDataset
+from pyramids.abstract_dataset import (
+    DEFAULT_NO_DATA_VALUE,
+    CATALOG,
+    OVERVIEW_LEVELS,
+    RESAMPLING_METHODS,
+)
 
-
-DEFAULT_NO_DATA_VALUE = -9999
-CATALOG = Catalog(raster_driver=True)
-OVERVIEW_LEVELS = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
-RESAMPLING_METHODS = [
-    "NEAREST",
-    "CUBIC",
-    "AVERAGE",
-    "GAUSS",
-    "CUBICSPLINE",
-    "LANCZOS",
-    "MODE",
-    "AVERAGE_MAGPHASE",
-    "RMS",
-    "BILINEAR",
-]
 # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return an error
 # value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
 # this behavior in GDAL and OGR by calling the UseExceptions()
 gdal.UseExceptions()
 
-# gdal.ErrorReset()
 
-
-class Dataset:
+class Dataset(AbstractDataset):
     """Dataset.
 
     The Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate
@@ -83,43 +71,12 @@ class Dataset:
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
     def __init__(self, src: gdal.Dataset):
-        if not isinstance(src, gdal.Dataset):
-            raise TypeError(  # pragma: no cover
-                "src should be read using gdal (gdal dataset please read it using gdal"
-                f" library) given {type(src)}"
-            )
-        self._raster = src
-        self._geotransform = src.GetGeoTransform()
-        self._cell_size = self.geotransform[1]
-        # replace with a loop over the GetMetadata for each separate band
-        self._meta_data = src.GetMetadata()
-        self._file_name = src.GetDescription()
-        # projection data
-        # the epsg property returns the value of the _epsg attribute, so if the projection changes in any function, the
-        # function should also change the value of the _epsg attribute.
-        self._epsg = self._get_epsg()
-        # set the is_subset to false before retrieving the variables
-        self._is_subset = False
-        self._is_md_array = False
-        # variables and variable_names
-        self.variable_names = self.get_variable_names()
-        self._variables = self.get_variables()
-        # array and dimensions
-        self._rows = src.RasterYSize
-        self._columns = src.RasterXSize
-        self._band_count = src.RasterCount
-        self._block_size = [
-            src.GetRasterBand(i).GetBlockSize() for i in range(1, self._band_count + 1)
-        ]
-        if len(self.variable_names) > 0:
-            self._time_stamp = self._get_time_variable()
-            self._lat, self._lon = self._get_lat_lon()
+        self.logger = logging.getLogger(__name__)
+        super().__init__(src)
 
-        no_data_value = [
+        self._no_data_value = [
             src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
         ]
-
-        self._no_data_value = no_data_value
         self._band_names = self._get_band_names()
 
     def __str__(self):
@@ -129,7 +86,6 @@ class Dataset:
             EPSG: {self.epsg}
             Number of Bands: {self.band_count}
             Band names: {self.band_names}
-            Variables: {self.variables}
             Mask: {self._no_data_value[0]}
             Data type: {self.gdal_dtype[0]}
             File: {self.file_name}
@@ -143,12 +99,11 @@ class Dataset:
             EPSG: {3}
             Number of Bands: {4}
             Band names: {5}
-            Variables: {6}
-            Mask: {7}
-            Data type: {8}
-            projection: {9}
-            Metadata: {10}
-            File: {11}
+            Mask: {6}
+            Data type: {7}
+            projection: {8}
+            Metadata: {9}
+            File: {10}
         """.format(
             self.cell_size,
             self.rows,
@@ -156,9 +111,10 @@ class Dataset:
             self.epsg,
             self.band_count,
             self.band_names,
-            self.variables,
-            self._no_data_value[0],
-            self.gdal_dtype[0],
+            self._no_data_value
+            if self._no_data_value == []
+            else self._no_data_value[0],
+            self.gdal_dtype if self.gdal_dtype == [] else self.gdal_dtype[0],
             self.crs,
             self.meta_data,
             self.file_name,
@@ -168,7 +124,7 @@ class Dataset:
     @property
     def raster(self) -> gdal.Dataset:
         """GDAL Dataset"""
-        return self._raster
+        return super().raster
 
     @raster.setter
     def raster(self, value: gdal.Dataset):
@@ -197,13 +153,237 @@ class Dataset:
     @property
     def geotransform(self):
         """WKT projection.(x, cell_size, 0, y, 0, -cell_size)"""
-        return self._geotransform
+        return super().geotransform
+
+    @property
+    def epsg(self):
+        """EPSG number."""
+        return self._epsg
+
+    @property
+    def crs(self) -> str:
+        """Coordinate reference system."""
+        return self._get_crs()
+
+    @crs.setter
+    def crs(self, value: str):
+        """Coordinate reference system."""
+        self.set_crs(value)
+
+    @property
+    def cell_size(self) -> int:
+        """Cell size."""
+        return self._cell_size
+
+    @property
+    def band_count(self):
+        """Number of bands in the raster."""
+        return self._band_count
+
+    @property
+    def band_names(self):
+        """Band names."""
+        return self._get_band_names()
+
+    @band_names.setter
+    def band_names(self, name_list: List):
+        """band_names setter"""
+        self._set_band_names(name_list)
+
+    @property
+    def no_data_value(self):
+        """No data value that marks the cells out of the domain"""
+        return self._no_data_value
+
+    @no_data_value.setter
+    def no_data_value(self, value: Union[List, Number]):
+        """
+        No data value that marks the cells out of the domain
+
+        Notes
+        -----
+            - the setter does not change the values of the cells to the new no_data_value, it only changes the
+            `no_data_value` attribute.
+            - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
+            - to change the values of the cells to the new no_data_value, use the `change_no_data_value` method.
+        """
+        if isinstance(value, list):
+            for i, val in enumerate(value):
+                self._change_no_data_value_attr(i, val)
+        else:
+            self._change_no_data_value_attr(0, value)
+
+    @property
+    def meta_data(self):
+        """Meta data"""
+        return super().meta_data
+
+    @property
+    def block_size(self) -> List[Tuple[int, int]]:
+        """Block Size
+
+        The block size is the size of the block that the raster is divided into, the block size is used to read and
+        write the raster data in blocks.
+
+        Examples
+        --------
+        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
+        >>> size = dataset.block_size
+        >>> print(size)
+        >>> [(128, 128)]
+        """
+        return self._block_size
+
+    @block_size.setter
+    def block_size(self, value: List[Tuple[int, int]]):
+        """Block Size
+
+        Parameters
+        ----------
+        value : List[Tuple[int, int]]
+            block size for each band in the raster(512, 512).
+        """
+        if len(value[0]) != 2:
+            raise ValueError("block size should be a tuple of 2 integers")
+
+        self._block_size = value
+
+    @property
+    def file_name(self):
+        """file name"""
+        return super().file_name
+
+    @property
+    def driver_type(self):
+        """Driver Type"""
+        return super().driver_type
+
+    @classmethod
+    def read_file(
+        cls,
+        path: str,
+        read_only=True,
+    ) -> "Dataset":
+        """read_file.
+
+        Parameters
+        ----------
+        path: [str]
+            Path of file to open.
+        read_only: [bool]
+            File mode, set to False, to open in "update" mode.
+
+        Returns
+        -------
+        Dataset
+        """
+        src = _io.read_file(path, read_only=read_only)
+        return cls(src)
+
+    def read_array(self, band: int = None, window: List[int] = None) -> np.ndarray:
+        """Read Array
+
+            - read the values stored in a given band.
+
+        Data Chuncks/blocks
+            When a raster dataset is stored on disk, it might not be stored as one continuous chunk of data. Instead,
+            it can be divided into smaller rectangular blocks or tiles. These blocks can be individually accessed,
+            which is particularly useful for large datasets:
+                Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
+                    at once. This is especially beneficial when only a small portion of the data needs to be processed.
+                Performance: For certain file formats and operations, working with optimal block sizes can significantly
+                    improve performance. For example, if the block size matches the reading or processing window,
+                        Pyramids can minimize disk access and data transfer.
+
+        Parameters
+        ----------
+        band : [integer]
+            the band you want to get its data, If None the data of all bands will be read. Default is None
+        window: [List]
+            window to specify a block of data to read from the dataset. the window should be a list of 4 integers
+            [offset_x, offset_y, window_columns, window_rows]. Default is None.
+
+        Returns
+        -------
+        array : [array]
+            array with all the values in the raster.
+
+        Examples
+        --------
+        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
+        >>> arr = dataset.read_array(window=[0, 0, 5, 5])
+        >>> print(arr.shape)
+        >>> (5, 5)
+        """
+        if band is None and self.band_count > 1:
+            rows = self.rows if window is None else window[3]
+            columns = self.columns if window is None else window[2]
+            arr = np.ones(
+                (
+                    self.band_count,
+                    rows,
+                    columns,
+                ),
+                dtype=self.numpy_dtype[0],
+            )
+
+            for i in range(self.band_count):
+                if window is None:
+                    # this line could be replaced with the following line
+                    # arr[i, :, :] = self._iloc(i).ReadAsArray()
+                    arr[i, :, :] = self._raster.GetRasterBand(i + 1).ReadAsArray()
+                else:
+                    arr[i, :, :] = self._read_block(i, window)
+        else:
+            # given band number or the raster has only one band
+            if band is None:
+                band = 0
+            else:
+                if band > self.band_count - 1:
+                    raise ValueError(
+                        f"band index should be between 0 and {self.band_count - 1}"
+                    )
+            if window is None:
+                arr = self._iloc(band).ReadAsArray()
+            else:
+                arr = self._read_block(band, window)
+
+        return arr
+
+    def _read_block(self, band: int, window=List[int]) -> np.ndarray:
+        """Read block of data from the dataset.
+
+        Parameters
+        ----------
+        band : int
+            Band index.
+        window: [List]
+            window to specify a block of data to read from the dataset. the window should be a list of 4 integers
+            [offset_x, offset_y, window_columns, window_rows]. Default is None.
+
+        Returns
+        -------
+        np.ndarray[window[2], window[3]]
+            array with the values of the block. the shape of the array is (window[2], window[3]), and the location of
+            the block in the raster is (window[0], window[1]).
+        """
+        try:
+            block = self._iloc(band).ReadAsArray(
+                window[0], window[1], window[2], window[3]
+            )
+        except Exception as e:
+            if e.args[0].__contains__("Access window out of range in RasterIO()"):
+                raise OutOfBoundsError(
+                    f"The window you entered ({window})is out of the raster bounds: {self.rows, self.columns}"
+                )
+            else:
+                raise e
+        return block
 
     @property
     def pivot_point(self):
         """Top left corner coordinates."""
-        xmin, _, _, ymax, _, _ = self._geotransform
-        return xmin, ymax
+        return super().pivot_point
 
     @property
     def bounds(self) -> GeoDataFrame:
@@ -214,11 +394,6 @@ class Dataset:
     def bbox(self) -> List:
         """[xmin, ymin, xmax, ymax]"""
         return self._calculate_bbox()
-
-    @property
-    def epsg(self):
-        """EPSG number."""
-        return self._epsg
 
     @property
     def lon(self):
@@ -293,69 +468,6 @@ class Dataset:
         return y_coords
 
     @property
-    def crs(self) -> str:
-        """Coordinate reference system."""
-        return self._get_crs()
-
-    @crs.setter
-    def crs(self, value: str):
-        """Coordinate reference system."""
-        self.set_crs(value)
-
-    @property
-    def cell_size(self) -> int:
-        """Cell size."""
-        return self._cell_size
-
-    @property
-    def band_count(self):
-        """Number of bands in the raster."""
-        return self._band_count
-
-    @property
-    def band_names(self):
-        """Band names."""
-        return self._get_band_names()
-
-    @band_names.setter
-    def band_names(self, name_list: List):
-        """band_names setter"""
-        self._set_band_names(name_list)
-
-    @property
-    def variables(self) -> Dict["Dataset", "Dataset"]:
-        """Variables in the dataset (resembles the variables in netcdf files.)"""
-        return self._variables
-
-    @property
-    def no_data_value(self):
-        """No data value that marks the cells out of the domain"""
-        return self._no_data_value
-
-    @no_data_value.setter
-    def no_data_value(self, value: Union[List, Number]):
-        """
-        No data value that marks the cells out of the domain
-
-        Notes
-        -----
-            - the setter does not change the values of the cells to the new no_data_value, it only changes the
-            `no_data_value` attribute.
-            - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
-            - to change the values of the cells to the new no_data_value, use the `change_no_data_value` method.
-        """
-        if isinstance(value, list):
-            for i, val in enumerate(value):
-                self._change_no_data_value_attr(i, val)
-        else:
-            self._change_no_data_value_attr(0, value)
-
-    @property
-    def meta_data(self):
-        """Meta data"""
-        return self._meta_data
-
-    @property
     def gdal_dtype(self):
         """Data Type"""
         return [
@@ -377,36 +489,6 @@ class Dataset:
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "name"].values[0]
             for i in self.gdal_dtype
         ]
-
-    @property
-    def block_size(self) -> List[Tuple[int, int]]:
-        """Block Size
-
-        The block size is the size of the block that the raster is divided into, the block size is used to read and
-        write the raster data in blocks.
-
-        Examples
-        --------
-        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
-        >>> size = dataset.block_size
-        >>> print(size)
-        >>> [(128, 128)]
-        """
-        return self._block_size
-
-    @block_size.setter
-    def block_size(self, value: List[Tuple[int, int]]):
-        """Block Size
-
-        Parameters
-        ----------
-        value : List[Tuple[int, int]]
-            block size for each band in the raster(512, 512).
-        """
-        if len(value[0]) != 2:
-            raise ValueError("block size should be a tuple of 2 integers")
-
-        self._block_size = value
 
     def get_block_arrangement(
         self, band: int = 0, x_block_size: int = None, y_block_size: int = None
@@ -462,95 +544,6 @@ class Dataset:
             columns=["x_offset", "y_offset", "window_xsize", "window_ysize"],
         )
         return df
-
-    @property
-    def file_name(self):
-        """file name"""
-        if self._file_name.startswith("NETCDF"):
-            name = self._file_name.split(":")[1][1:-1]
-        else:
-            name = self._file_name
-        return name
-
-    @property
-    def time_stamp(self):
-        """Time stamp"""
-        if hasattr(self, "_time_stamp"):
-            val = self._time_stamp
-        else:
-            val = None
-
-        return val
-
-    @property
-    def driver_type(self):
-        """Driver Type"""
-        drv = self.raster.GetDriver()
-        driver_type = drv.GetDescription() if drv is not None else None
-        return CATALOG.get_driver_name(driver_type)
-
-    @property
-    def color_table(self, band: int = None) -> DataFrame:
-        """Color table"""
-        return self._get_color_table(band)
-
-    @color_table.setter
-    def color_table(self, df: DataFrame):
-        """color_table.
-
-        Parameters
-        ----------
-        df: [DataFrame]
-            DataFrame with columns: band, values, color
-            print(df)
-                    band  values    color
-                0    1       1  #709959
-                1    1       2  #F2EEA2
-                2    1       3  #F2CE85
-                3    2       1  #C28C7C
-                4    2       2  #D6C19C
-                5    2       3  #D6C19C
-        """
-        if not isinstance(df, DataFrame):
-            raise TypeError(f"df should be a DataFrame not {type(df)}")
-
-        if not {"band", "values", "color"}.issubset(df.columns):
-            raise ValueError(  # noqa
-                "df should have the following columns: band, values, color"
-            )
-
-        self._set_color_table(df, overwrite=True)
-
-    @property
-    def overview_count(self) -> List[int]:
-        """Number of the overviews for each band"""
-        overview_number = []
-        for i in range(self.band_count):
-            overview_number.append(self._iloc(i).GetOverviewCount())
-
-        return overview_number
-
-    @classmethod
-    def read_file(
-        cls, path: str, read_only=True, open_as_multi_dimensional: bool = False
-    ) -> "Dataset":
-        """read_file.
-
-        Parameters
-        ----------
-        path: [str]
-            Path of file to open.
-        read_only: [bool]
-            File mode, set to False, to open in "update" mode.
-        open_as_multi_dimensional: [bool]
-            Default is False.
-
-        Returns
-        -------
-        Dataset
-        """
-        src = _io.read_file(path, read_only, open_as_multi_dimensional)
-        return cls(src)
 
     @classmethod
     def _create_empty_driver(
@@ -751,158 +744,6 @@ class Dataset:
 
         return vals
 
-    def read_array(self, band: int = None, window: List[int] = None) -> np.ndarray:
-        """Read Array
-
-            - read the values stored in a given band.
-
-        Data Chuncks/blocks
-            When a raster dataset is stored on disk, it might not be stored as one continuous chunk of data. Instead,
-            it can be divided into smaller rectangular blocks or tiles. These blocks can be individually accessed,
-            which is particularly useful for large datasets:
-                Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
-                    at once. This is especially beneficial when only a small portion of the data needs to be processed.
-                Performance: For certain file formats and operations, working with optimal block sizes can significantly
-                    improve performance. For example, if the block size matches the reading or processing window,
-                        Pyramids can minimize disk access and data transfer.
-
-        Parameters
-        ----------
-        band : [integer]
-            the band you want to get its data, If None the data of all bands will be read. Default is None
-        window: [List]
-            window to specify a block of data to read from the dataset. the window should be a list of 4 integers
-            [offset_x, offset_y, window_columns, window_rows]. Default is None.
-
-        Returns
-        -------
-        array : [array]
-            array with all the values in the raster.
-
-        Examples
-        --------
-        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
-        >>> arr = dataset.read_array(window=[0, 0, 5, 5])
-        >>> print(arr.shape)
-        >>> (5, 5)
-        """
-        if band is None and self.band_count > 1:
-            rows = self.rows if window is None else window[3]
-            columns = self.columns if window is None else window[2]
-            arr = np.ones(
-                (
-                    self.band_count,
-                    rows,
-                    columns,
-                ),
-                dtype=self.numpy_dtype[0],
-            )
-
-            for i in range(self.band_count):
-                if window is None:
-                    # this line could be replaced with the following line
-                    # arr[i, :, :] = self._iloc(i).ReadAsArray()
-                    arr[i, :, :] = self._raster.GetRasterBand(i + 1).ReadAsArray()
-                else:
-                    arr[i, :, :] = self._read_block(i, window)
-        else:
-            # given band number or the raster has only one band
-            if band is None:
-                band = 0
-            else:
-                if band > self.band_count - 1:
-                    raise ValueError(
-                        f"band index should be between 0 and {self.band_count - 1}"
-                    )
-            if window is None:
-                arr = self._iloc(band).ReadAsArray()
-            else:
-                arr = self._read_block(band, window)
-
-        return arr
-
-    def _read_block(self, band: int, window=List[int]) -> np.ndarray:
-        """Read block of data from the dataset.
-
-        Parameters
-        ----------
-        band : int
-            Band index.
-        window: [List]
-            window to specify a block of data to read from the dataset. the window should be a list of 4 integers
-            [offset_x, offset_y, window_columns, window_rows]. Default is None.
-
-        Returns
-        -------
-        np.ndarray[window[2], window[3]]
-            array with the values of the block. the shape of the array is (window[2], window[3]), and the location of
-            the block in the raster is (window[0], window[1]).
-        """
-        try:
-            block = self._iloc(band).ReadAsArray(
-                window[0], window[1], window[2], window[3]
-            )
-        except Exception as e:
-            if e.args[0].__contains__("Access window out of range in RasterIO()"):
-                raise OutOfBoundsError(
-                    f"The window you entered ({window})is out of the raster bounds: {self.rows, self.columns}"
-                )
-            else:
-                raise e
-        return block
-
-    def read_overview_array(
-        self, band: int = None, overview_index: int = 0
-    ) -> np.ndarray:
-        """Read Array
-
-            - read the values stored in a given band.
-
-        Parameters
-        ----------
-        band : [integer]
-            the band you want to get its data, If None, the data of all bands will be read. Default is None
-        overview_index: [int]
-            index of the overview. Default is 0.
-
-        Returns
-        -------
-        array : [array]
-            array with all the values in the raster.
-        """
-        if band is None and self.band_count > 1:
-            if any(elem == 0 for elem in self.overview_count):
-                raise ValueError(
-                    "Some bands do not have overviews, please create overviews first"
-                )
-            # read the array from the first overview to get the size of the array.
-            arr = self.get_overview(0, 0).ReadAsArray()
-            arr = np.ones(
-                (
-                    self.band_count,
-                    arr.shape[0],
-                    arr.shape[1],
-                ),
-                dtype=self.numpy_dtype[0],
-            )
-            for i in range(self.band_count):
-                arr[i, :, :] = self.get_overview(i, overview_index).ReadAsArray()
-        else:
-            if band is None:
-                band = 0
-            else:
-                if band > self.band_count - 1:
-                    raise ValueError(
-                        f"band index should be between 0 and {self.band_count - 1}"
-                    )
-                if self.overview_count[band] == 0:
-                    raise ValueError(
-                        f"band {band} has no overviews, please create overviews first"
-                    )
-            arr = self.get_overview(band, overview_index).ReadAsArray()
-
-        return arr
-
     def plot(
         self,
         band: int = None,
@@ -916,7 +757,7 @@ class Dataset:
     ):
         """plot
 
-            - read the values stored in a given band.
+            - plot the values/overviews of a given band.
 
         Parameters
         ----------
@@ -1047,137 +888,6 @@ class Dataset:
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
 
-    def _get_time_variable(self):
-        """
-
-        Returns
-        -------
-
-        """
-        # time_vars = [(i, self.meta_data.get(i)) for i in self.meta_data.keys() if i.startswith("time")]
-        # time_var_name = time_vars[0][0].split("#")[0]
-        extra_dim = self.meta_data.get("NETCDF_DIM_EXTRA")
-        if extra_dim is not None:
-            time_var_name = extra_dim.replace("{", "").replace("}", "")
-            units = self.meta_data.get(f"{time_var_name}#units")
-            func = create_time_conversion_func(units)
-            time_vals = self._read_variable(time_var_name)
-            time_stamp = list(map(func, time_vals[0]))
-        else:
-            time_stamp = None
-        return time_stamp
-
-    def _get_lat_lon(self):
-        lon = self._read_variable("lon")
-        lat = self._read_variable("lat")
-        return lat, lon
-
-    def _read_variable(self, var: str) -> Union[gdal.Dataset, None]:
-        """_read_variable.
-
-        Read variables in a dataset
-
-        Parameters
-        ----------
-        var: [str]
-            variable name in the dataset
-
-        Returns
-        -------
-        GDAL dataset/None
-            if the variable exists in the dataset it will return a gdal dataset otherwise it will return None.
-        """
-        try:
-            var_ds = gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
-        except RuntimeError:
-            var_ds = None
-        return var_ds
-
-    def get_variable_names(self) -> List[str]:
-        """get_variable_names."""
-        rg = self._raster.GetRootGroup()
-        if rg is not None:
-            variable_names = rg.GetMDArrayNames()
-            dims = rg.GetDimensions()
-            dims = [dim.GetName() for dim in dims]
-            variable_names = [var for var in variable_names if var not in dims]
-        else:
-            variable_names = [
-                var[1].split(" ")[1] for var in self._raster.GetSubDatasets()
-            ]
-
-        return variable_names
-
-    def _read_md_array(self, variable_name: str) -> gdal.Dataset:
-        rg = self._raster.GetRootGroup()
-        md_arr = rg.OpenMDArray(variable_name)
-        dtype = md_arr.GetDataType()
-        dims = md_arr.GetDimensions()
-        if len(dims) == 1:
-            if dtype.GetClass() == gdal.GEDTC_STRING:
-                src = md_arr
-            else:
-                src = md_arr.AsClassicDataset(0, 1, rg)
-        else:
-            src = md_arr.AsClassicDataset(len(dims) - 1, len(dims) - 2, rg)
-
-        return src
-
-    def get_variables(self, read_only: bool = True) -> Dict["Dataset", "Dataset"]:
-        """get_variables.
-
-        Parameters
-        ----------
-        read_only: [bool]
-            Default is True.
-
-        Returns
-        -------
-        Dict["Dataset", "Dataset"]
-            Dictionary of the netcdf variables
-        """
-        variables = {}
-        prefix = self.driver_type.upper()
-        rg = self._raster.GetRootGroup()
-        for i, var in enumerate(self.variable_names):
-            if prefix == "MEMORY" or rg is not None:
-                src = self._read_md_array(var)
-                if isinstance(src, gdal.Dataset):
-                    variables[var] = Dataset(src)
-                    variables[var]._is_md_array = True
-                else:
-                    variables[var] = src
-            else:
-                src = gdal.Open(f"{prefix}:{self.file_name}:{var}")
-                variables[var] = Dataset(src)
-                variables[var]._is_md_array = False
-
-            variables[var]._is_subset = True
-
-        return variables
-
-    @property
-    def is_subset(self) -> bool:
-        """is_subset.
-
-        Returns
-        -------
-        bool
-            True if the dataset is a sub_dataset .
-        """
-        return self._is_subset
-
-    @property
-    def is_md_array(self):
-        """is_md_array.
-
-        Returns
-        -------
-        bool
-            True if the dataset is a multidimensional array.
-        """
-        return self._is_md_array
-
     @staticmethod
     def _create_mem_gtiff_dataset(
         cols: int,
@@ -1236,56 +946,15 @@ class Dataset:
             src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, dtype)
         return src
 
-    @staticmethod
-    def create_main_dimension(
-        group: gdal.Group, dim_name: str, dtype: int, values: np.ndarray
-    ) -> gdal.Dimension:
-        """Create NetCDF dimension
-
-        if the dimension name is y, lat, latitude, the dimension type will be horizontal y,
-        if the dimension name is x, lon, longitude, the dimension type will be horizontal x,
-        if the dimension name is bands, time, the dimension type will be temporal.
-
-        Parameters
-        ----------
-        group: [gdal.Group]
-            Dataset group
-        dim_name: [str]
-            dimension name
-        dtype: [int]
-            data type of the dimension
-        values: [np.ndarray]
-            values of the dimension
-
-        Returns
-        -------
-        gdal.Dimension
-        """
-        if dim_name in ["y", "lat", "latitude"]:
-            dim_type = gdal.DIM_TYPE_HORIZONTAL_Y
-        elif dim_name in ["x", "lon", "longitude"]:
-            dim_type = gdal.DIM_TYPE_HORIZONTAL_X
-        elif dim_name in ["bands", "time"]:
-            dim_type = gdal.DIM_TYPE_TEMPORAL
-        else:
-            dim_type = None
-        dim = group.CreateDimension(dim_name, dim_type, None, values.shape[0])
-        x_values = group.CreateMDArray(dim_name, [dim], dtype)
-        x_values.Write(values)
-        dim.SetIndexingVariable(x_values)
-        return dim
-
     @classmethod
     def create_from_array(
         cls,
         arr: np.ndarray,
         geo: Tuple[float, float, float, float, float, float],
-        bands_values: List = None,
         epsg: Union[str, int] = 4326,
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
-        variable_name: str = None,
     ) -> "Dataset":
         """create_from_array.
 
@@ -1297,8 +966,6 @@ class Dataset:
             numpy array.
         geo : [Tuple]
             geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
-        bands_values: [List]
-            Name of the bands to be used in the netcdf file. Default is None,
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator)
@@ -1308,8 +975,6 @@ class Dataset:
             driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM"
         path : [str]
             path to save the driver.
-        variable_name: [str]
-            name of the variable in the netcdf file. Default is None.
 
         Returns
         -------
@@ -1325,35 +990,17 @@ class Dataset:
             rows = int(arr.shape[1])
             cols = int(arr.shape[2])
 
-        if driver_type != "netcdf":
-            dst_obj = cls._create_gtiff_from_array(
-                arr,
-                cols,
-                rows,
-                bands,
-                geo,
-                epsg,
-                no_data_value,
-                driver_type=driver_type,
-                path=path,
-            )
-        else:
-            if bands_values is None:
-                bands_values = list(range(1, bands + 1))
-            dst_ds = cls._create_netcdf_from_array(
-                arr,
-                variable_name,
-                cols,
-                rows,
-                bands,
-                bands_values,
-                geo,
-                epsg,
-                no_data_value,
-                driver_type=driver_type,
-                path=path,
-            )
-            dst_obj = cls(dst_ds)
+        dst_obj = cls._create_gtiff_from_array(
+            arr,
+            cols,
+            rows,
+            bands,
+            geo,
+            epsg,
+            no_data_value,
+            driver_type=driver_type,
+            path=path,
+        )
 
         return dst_obj
 
@@ -1387,158 +1034,6 @@ class Dataset:
                 dst_obj.raster.GetRasterBand(i + 1).WriteArray(arr[i, :, :])
 
         return dst_obj
-
-    @staticmethod
-    def _create_netcdf_from_array(
-        arr: np.ndarray,
-        variable_name: str,
-        cols: int,
-        rows: int,
-        bands: int = None,
-        bands_values: List = None,
-        geo: Tuple[float, float, float, float, float, float] = None,
-        epsg: Union[str, int] = None,
-        no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
-        driver_type: str = "MEM",
-        path: str = None,
-    ) -> gdal.Dataset:
-        """_create_netcdf_from_array.
-
-        Parameters
-        ----------
-        arr: [np.array]
-            numpy array.
-        variable_name: [str]
-            variable name in the netcdf file.
-        cols: [int]
-            number of columns in the array.
-        rows: [int]
-            number of rows in the array.
-        bands: [int]
-            number of bands, the array is 3d and bands is the first dimension.
-        bands_values: [List]
-            Name of the bands to be used in the netcdf file. Default is None,
-        geo : [Tuple]
-            geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
-        epsg: [integer]
-            integer reference number to the new projection (https://epsg.io/)
-                (default 3857 the reference no of WGS84 web mercator)
-        no_data_value : Any, optional
-            no data value to mask the cells out of the domain. The default is -9999.
-        driver_type: [str] optional
-            driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM"
-        path : [str]
-            path to save the driver.
-
-        Returns
-        -------
-        gdal.Dataset
-        """
-        if variable_name is None:
-            raise ValueError("Variable_name can not be None")
-
-        dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
-        x_dim_values = Dataset.get_x_lon_dimension_array(geo[0], geo[1], cols)
-        y_dim_values = Dataset.get_y_lat_dimension_array(geo[3], geo[1], rows)
-
-        if path is None and driver_type == "netcdf":
-            path = "netcdf"
-            driver_type = "MEM"
-        src = gdal.GetDriverByName(driver_type).CreateMultiDimensional(path)
-        rg = src.GetRootGroup()
-
-        dim_x = Dataset.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))
-        dim_y = Dataset.create_main_dimension(rg, "y", dtype, np.array(y_dim_values))
-        if arr.ndim == 3:
-            dim_bands = Dataset.create_main_dimension(
-                rg, "bands", dtype, np.array(bands_values)
-            )
-            md_arr = rg.CreateMDArray(variable_name, [dim_bands, dim_y, dim_x], dtype)
-        else:
-            md_arr = rg.CreateMDArray(variable_name, [dim_y, dim_x], dtype)
-
-        md_arr.Write(arr)
-        md_arr.SetNoDataValueDouble(no_data_value)
-        srse = Dataset._create_sr_from_epsg(epsg=epsg)
-        md_arr.SetSpatialRef(srse)
-
-        return src
-
-    @staticmethod
-    def _add_md_array_to_group(dst_group, var_name, src_mdarray):
-        src_dims = src_mdarray.GetDimensions()
-        arr = src_mdarray.ReadAsArray()
-        dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
-        new_md_array = dst_group.CreateMDArray(var_name, src_dims, dtype)
-        new_md_array.Write(arr)
-        try:
-            new_md_array.SetNoDataValueDouble(src_mdarray.GetNoDataValue())
-        except:
-            new_md_array.SetNoDataValueDouble(-9999)
-
-        new_md_array.SetSpatialRef(src_mdarray.GetSpatialRef())
-
-    def add_variable(self, dataset: "Dataset", variable_name: str = None):
-        """add_variable.
-
-        Parameters
-        ----------
-        dataset: [Dataset]
-            dataset to add to the current dataset.
-        variable_name: [str], Optional, Default = None
-            variable name in the netcdf file. if not given all the variable in the given dataset will be added.
-
-
-        Example
-        -------
-        >>> dataset_1 = Dataset.read_file(
-        >>>         "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
-        >>> )
-        >>> dataset_2 = Dataset.read_file("tests/data/netcdf/noah-precipitation-1979.nc")
-        >>> dataset_1.add_variable(dataset_2, "temperature")
-        """
-        src_rg = self._raster.GetRootGroup()
-        var_rg = dataset._raster.GetRootGroup()
-        if variable_name is None:
-            variable_name = dataset.variable_names
-
-        for var in variable_name:
-            md_arr = var_rg.OpenMDArray(var)
-            # incase the variable name already exists in the destination dataset.
-            if var in self.variable_names:
-                var = f"{var}-new"
-            self._add_md_array_to_group(src_rg, var, md_arr)
-        self.__init__(self._raster)
-
-    def remove_variable(self, variable_name: str):
-        """remove_variable.
-
-        Parameters
-        ----------
-        variable_name: [str]
-            variable name
-
-        Returns
-        -------
-        Memory Dataset:
-            an updated in-memory dataset will be returned even if the original dataset was saved on desk
-
-        Notes
-        -----
-        The method will not remove the variable from the disk if the dataset is saved on disk. Rather the method will
-        make a Memory driver and copy the original dataset to the memory driver. and then remove the variable from the
-        memory dataset.
-        """
-        if self.driver_type == "memory":
-            # first copy the dataset to memory
-            dst = self._raster
-        else:
-            dst = gdal.GetDriverByName("MEM").CreateCopy("", self._raster, 0)
-
-        rg = dst.GetRootGroup()
-        rg.DeleteMDArray(variable_name)
-
-        self.__init__(dst)
 
     @classmethod
     def dataset_like(
@@ -1642,6 +1137,71 @@ class Dataset:
                 sr = Dataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
                 self._epsg = epsg
+
+    def to_crs(
+        self,
+        to_epsg: int,
+        method: str = "nearest neighbour",
+        maintain_alignment: int = False,
+        inplace: bool = False,
+    ) -> Union["Dataset", None]:
+        """to_epsg.
+
+        to_epsg reprojects a raster to any projection
+        (default the WGS84 web mercator projection, without resampling)
+
+        Parameters
+        ----------
+        to_epsg: [integer]
+            reference number to the new projection (https://epsg.io/)
+            (default 3857 the reference no of WGS84 web mercator )
+        method: [String]
+            resampling technique default is "Nearest"
+            https://gisgeography.com/raster-resampling/
+            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
+            "bilinear" for bilinear
+        maintain_alignment : [bool]
+            True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
+        inplace: [bool]
+            True to make changes inplace. Default is False.
+
+        Returns
+        -------
+        Dataset:
+            Dataset object, if inplace is True, the method returns None.
+
+        Examples
+        --------
+        >>> from pyramids.dataset import Dataset
+        >>> dataset = Dataset.read_file("path/raster_name.tif")
+        >>> reprojected_dataset = dataset.to_crs(to_epsg=3857)
+        """
+        if not isinstance(to_epsg, int):
+            raise TypeError(
+                "please enter correct integer number for to_epsg more information "
+                f"https://epsg.io/, given {type(to_epsg)}"
+            )
+        if not isinstance(method, str):
+            raise TypeError(
+                "Please enter a correct method, for more information, see documentation "
+            )
+        if method not in INTERPOLATION_METHODS.keys():
+            raise ValueError(
+                f"The given interpolation method: {method} does not exist, existing methods are {INTERPOLATION_METHODS.keys()}"
+            )
+
+        method = INTERPOLATION_METHODS.get(method)
+
+        if maintain_alignment:
+            dst_obj = self._reproject_with_ReprojectImage(to_epsg, method)
+        else:
+            dst = gdal.Warp("", self.raster, dstSRS=f"EPSG:{to_epsg}", format="VRT")
+            dst_obj = Dataset(dst)
+
+        if inplace:
+            self.__init__(dst_obj.raster)
+        else:
+            return dst_obj
 
     def _get_epsg(self) -> int:
         """GetEPSG.
@@ -1879,7 +1439,6 @@ class Dataset:
             - Change only the no_data_value attribute in the gdal Datacube object.
             - Change the no_data_value in the Dataset object for the given band index.
             - The corresponding value in the array will not be changed.
-            - Band index starts from 0
 
         Parameters
         ----------
@@ -2492,71 +2051,6 @@ class Dataset:
         )
 
         return dst_obj
-
-    def to_crs(
-        self,
-        to_epsg: int,
-        method: str = "nearest neighbour",
-        maintain_alignment: int = False,
-        inplace: bool = False,
-    ) -> Union["Dataset", None]:
-        """to_epsg.
-
-        to_epsg reprojects a raster to any projection
-        (default the WGS84 web mercator projection, without resampling)
-
-        Parameters
-        ----------
-        to_epsg: [integer]
-            reference number to the new projection (https://epsg.io/)
-            (default 3857 the reference no of WGS84 web mercator )
-        method: [String]
-            resampling technique default is "Nearest"
-            https://gisgeography.com/raster-resampling/
-            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
-            "bilinear" for bilinear
-        maintain_alignment : [bool]
-            True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
-        inplace: [bool]
-            True to make changes inplace. Default is False.
-
-        Returns
-        -------
-        Dataset:
-            Dataset object, if inplace is True, the method returns None.
-
-        Examples
-        --------
-        >>> from pyramids.dataset import Dataset
-        >>> dataset = Dataset.read_file("path/raster_name.tif")
-        >>> reprojected_dataset = dataset.to_crs(to_epsg=3857)
-        """
-        if not isinstance(to_epsg, int):
-            raise TypeError(
-                "please enter correct integer number for to_epsg more information "
-                f"https://epsg.io/, given {type(to_epsg)}"
-            )
-        if not isinstance(method, str):
-            raise TypeError(
-                "Please enter a correct method, for more information, see documentation "
-            )
-        if method not in INTERPOLATION_METHODS.keys():
-            raise ValueError(
-                f"The given interpolation method: {method} does not exist, existing methods are {INTERPOLATION_METHODS.keys()}"
-            )
-
-        method = INTERPOLATION_METHODS.get(method)
-
-        if maintain_alignment:
-            dst_obj = self._reproject_with_ReprojectImage(to_epsg, method)
-        else:
-            dst = gdal.Warp("", self.raster, dstSRS=f"EPSG:{to_epsg}", format="VRT")
-            dst_obj = Dataset(dst)
-
-        if inplace:
-            self.__init__(dst_obj.raster)
-        else:
-            return dst_obj
 
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neighbour"
@@ -3792,74 +3286,14 @@ class Dataset:
 
         return gdf
 
-    def _set_color_table(self, color_df: DataFrame, overwrite: bool = False):
-        """
+    @property
+    def overview_count(self) -> List[int]:
+        """Number of the overviews for each band"""
+        overview_number = []
+        for i in range(self.band_count):
+            overview_number.append(self._iloc(i).GetOverviewCount())
 
-        Parameters
-        ----------
-        color_df: [DataFrame]
-            DataFrame with columns: band, values, color
-            print(df)
-                    band  values    color
-                0    1       1  #709959
-                1    1       2  #F2EEA2
-                2    1       3  #F2CE85
-                3    2       1  #C28C7C
-                4    2       2  #D6C19C
-                5    2       3  #D6C19C
-        overwrite: [bool]
-            True if you want to overwrite the existing color table. Default is False.
-        """
-        import_cleopatra(
-            "The current function uses cleopatra package to for plotting, please install it manually, for more info"
-            " check https://github.com/Serapieum-of-alex/cleopatra"
-        )
-        from cleopatra.colors import Colors
-
-        color = Colors(color_df["color"].tolist())
-        color_rgb = color.get_rgb(normalized=False)
-        color_df.loc[:, ["red", "green", "blue"]] = color_rgb
-
-        for band, df_band in color_df.groupby("band"):
-            band = self.raster.GetRasterBand(band)
-
-            if overwrite:
-                color_table = gdal.ColorTable()
-            else:
-                color_table = band.GetColorTable()
-
-            for i, row in df_band.iterrows():
-                color_table.SetColorEntry(
-                    row["values"], (row["red"], row["green"], row["blue"])
-                )
-
-            band.SetColorTable(color_table)
-            # band.SetRasterColorInterpretation(gdal.GCI_PaletteIndex)
-
-    def _get_color_table(self, band: int = None) -> DataFrame:
-        """get_color_table.
-
-        Parameters
-        ----------
-        band: [int], optional
-            band index, Default is None.
-
-        Returns
-        -------
-        [type]
-            [description]
-        """
-        df = pd.DataFrame(columns=["band", "values", "red", "green", "blue", "alpha"])
-        bands = range(self.band_count) if band is None else band
-        for band in bands:
-            color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
-            for i in range(color_table.GetCount()):
-                df.loc[
-                    i, ["red", "green", "blue", "alpha"]
-                ] = color_table.GetColorEntry(i)
-                df.loc[i, ["band", "values"]] = band + 1, i
-
-        return df
+        return overview_number
 
     def create_overviews(
         self, resampling_method: str = "nearest", overview_levels: list = None
@@ -3981,6 +3415,159 @@ class Dataset:
         # TODO:find away to create a Dataset object from the overview band and to return the Dataset object instead
         #  of the gdal band.
         return band.GetOverview(overview_index)
+
+    def read_overview_array(
+        self, band: int = None, overview_index: int = 0
+    ) -> np.ndarray:
+        """Read Array
+
+            - read the values stored in a given band.
+
+        Parameters
+        ----------
+        band : [integer]
+            the band you want to get its data, If None, the data of all bands will be read. Default is None
+        overview_index: [int]
+            index of the overview. Default is 0.
+
+        Returns
+        -------
+        array : [array]
+            array with all the values in the raster.
+        """
+        if band is None and self.band_count > 1:
+            if any(elem == 0 for elem in self.overview_count):
+                raise ValueError(
+                    "Some bands do not have overviews, please create overviews first"
+                )
+            # read the array from the first overview to get the size of the array.
+            arr = self.get_overview(0, 0).ReadAsArray()
+            arr = np.ones(
+                (
+                    self.band_count,
+                    arr.shape[0],
+                    arr.shape[1],
+                ),
+                dtype=self.numpy_dtype[0],
+            )
+            for i in range(self.band_count):
+                arr[i, :, :] = self.get_overview(i, overview_index).ReadAsArray()
+        else:
+            if band is None:
+                band = 0
+            else:
+                if band > self.band_count - 1:
+                    raise ValueError(
+                        f"band index should be between 0 and {self.band_count - 1}"
+                    )
+                if self.overview_count[band] == 0:
+                    raise ValueError(
+                        f"band {band} has no overviews, please create overviews first"
+                    )
+            arr = self.get_overview(band, overview_index).ReadAsArray()
+
+        return arr
+
+    @property
+    def color_table(self, band: int = None) -> DataFrame:
+        """Color table"""
+        return self._get_color_table(band)
+
+    @color_table.setter
+    def color_table(self, df: DataFrame):
+        """color_table.
+
+        Parameters
+        ----------
+        df: [DataFrame]
+            DataFrame with columns: band, values, color
+            print(df)
+                    band  values    color
+                0    1       1  #709959
+                1    1       2  #F2EEA2
+                2    1       3  #F2CE85
+                3    2       1  #C28C7C
+                4    2       2  #D6C19C
+                5    2       3  #D6C19C
+        """
+        if not isinstance(df, DataFrame):
+            raise TypeError(f"df should be a DataFrame not {type(df)}")
+
+        if not {"band", "values", "color"}.issubset(df.columns):
+            raise ValueError(  # noqa
+                "df should have the following columns: band, values, color"
+            )
+
+        self._set_color_table(df, overwrite=True)
+
+    def _set_color_table(self, color_df: DataFrame, overwrite: bool = False):
+        """
+
+        Parameters
+        ----------
+        color_df: [DataFrame]
+            DataFrame with columns: band, values, color
+            print(df)
+                    band  values    color
+                0    1       1  #709959
+                1    1       2  #F2EEA2
+                2    1       3  #F2CE85
+                3    2       1  #C28C7C
+                4    2       2  #D6C19C
+                5    2       3  #D6C19C
+        overwrite: [bool]
+            True if you want to overwrite the existing color table. Default is False.
+        """
+        import_cleopatra(
+            "The current function uses cleopatra package to for plotting, please install it manually, for more info"
+            " check https://github.com/Serapieum-of-alex/cleopatra"
+        )
+        from cleopatra.colors import Colors
+
+        color = Colors(color_df["color"].tolist())
+        color_rgb = color.get_rgb(normalized=False)
+        color_df.loc[:, ["red", "green", "blue"]] = color_rgb
+
+        for band, df_band in color_df.groupby("band"):
+            band = self.raster.GetRasterBand(band)
+
+            if overwrite:
+                color_table = gdal.ColorTable()
+            else:
+                color_table = band.GetColorTable()
+
+            for i, row in df_band.iterrows():
+                color_table.SetColorEntry(
+                    row["values"], (row["red"], row["green"], row["blue"])
+                )
+
+            band.SetColorTable(color_table)
+            # band.SetRasterColorInterpretation(gdal.GCI_PaletteIndex)
+
+    def _get_color_table(self, band: int = None) -> DataFrame:
+        """get_color_table.
+
+        Parameters
+        ----------
+        band: [int], optional
+            band index, Default is None.
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        df = pd.DataFrame(columns=["band", "values", "red", "green", "blue", "alpha"])
+        bands = range(self.band_count) if band is None else band
+        for band in bands:
+            color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
+            for i in range(color_table.GetCount()):
+                df.loc[
+                    i, ["red", "green", "blue", "alpha"]
+                ] = color_table.GetColorEntry(i)
+                df.loc[i, ["band", "values"]] = band + 1, i
+
+        return df
 
 
 class Datacube:

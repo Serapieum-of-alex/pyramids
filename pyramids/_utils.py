@@ -358,8 +358,6 @@ class Catalog:
         Dict:
             Driver dictionary
         """
-        diver_name = self.get_driver_name_by_extension(extension)
-        return self.get_driver(diver_name)
         driver_name = self.get_driver_name_by_extension(extension)
         return self.get_driver(driver_name)
 
