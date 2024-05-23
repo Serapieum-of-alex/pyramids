@@ -13,7 +13,7 @@ except PackageNotFoundError:  # pragma: no cover
 
 # documentation format
 __author__ = "Mostafa Farrag"
-__email__ = "moah.farag@gmail.com"
+__email__ = "moah.farrag@gmail.com"
 __docformat__ = "restructuredtext"
 
 # Let users know if they're missing any of our hard dependencies
