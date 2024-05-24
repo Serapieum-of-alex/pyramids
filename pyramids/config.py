@@ -1,0 +1,42 @@
+""" Configuration module for the pyramids package. """
+import yaml
+import logging
+from osgeo import gdal, ogr
+from . import __path__
+
+class Config:
+    """ Configuration class for the pyramids package. """
+
+    def __init__(self, config_file='config.yaml'):
+        self.config_file = config_file
+        self.config = self.load_config()
+        self.initialize_gdal()
+        self.setup_logging()
+
+    def load_config(self):
+        """ Load the configuration from the config file."""
+        with open(f"{__path__[0]}/{self.config_file}", 'r') as file:
+            return yaml.safe_load(file)
+
+    def initialize_gdal(self):
+        """ Initialize the GDAL and OGR configuration."""
+        gdal.UseExceptions()
+        ogr.UseExceptions()
+        for key, value in self.config.get('gdal', {}).items():
+            gdal.SetConfigOption(key, value)
+        for key, value in self.config.get('ogr', {}).items():
+            gdal.SetConfigOption(key, value)
+
+    def setup_logging(self):
+        """ Setup the logging configuration."""
+        log_config = self.config.get('logging', {})
+        logging.basicConfig(
+            level=log_config.get('level', 'INFO'),
+            format=log_config.get('format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
+            filename=log_config.get('file', None)
+        )
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("Logging is configured.")
+
+
+config = Config()

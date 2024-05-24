@@ -1,0 +1,13 @@
+gdal:
+  GDAL_CACHEMAX: "512"
+  GDAL_PAM_ENABLED: "YES"  # Enable Persistent Auxiliary Metadata
+  GDAL_VRT_ENABLE_PYTHON: "YES"  # Enable Python in VRT (Virtual Dataset) functions
+  #   GDAL_DATA: "/usr/share/gdal"
+ogr:
+  OGR_SRS_PARSER: "strict"
+
+# Logging configuration
+logging:
+  level: "DEBUG"  # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"  # Log format
+  file: "pyramids.log"  # Log file path

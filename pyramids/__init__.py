@@ -1,3 +1,4 @@
+from pyramids.config import config
 __all__ = ["dataset", "netcdf", "featurecollection"]
 
 try:
