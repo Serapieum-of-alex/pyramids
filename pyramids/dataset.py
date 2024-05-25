@@ -36,7 +36,6 @@ from pyramids._utils import (
     numpy_to_gdal_dtype,
 )
 
-
 try:
     from osgeo_utils import gdal_merge
 except ModuleNotFoundError:  # pragma: no cover
@@ -54,11 +53,6 @@ from pyramids.abstract_dataset import (
     OVERVIEW_LEVELS,
     RESAMPLING_METHODS,
 )
-
-# By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return an error
-# value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
-# this behavior in GDAL and OGR by calling the UseExceptions()
-gdal.UseExceptions()
 
 
 class Dataset(AbstractDataset):
@@ -1660,7 +1654,7 @@ class Dataset(AbstractDataset):
         gdf["id"] = gdf.index
         return gdf
 
-    def to_file(self, path: str, band: int = 0) -> None:
+    def to_file(self, path: str, band: int = 0, tile_length: int = None) -> None:
         """to_file.
 
             to_file a raster to a path, the type of the driver (georiff/netcdf/ascii) will be implied from the
@@ -1672,6 +1666,8 @@ class Dataset(AbstractDataset):
             a path including the name of the dataset whti the extention at the end (i.e. "data/cropped.tif").
         band: [int]
             band index, needed only in case of ascii drivers. Default is 0.
+        tile_length: int, Optional, Default 256.
+            length of the tiles in the driver.
 
         Examples
         --------
@@ -1698,9 +1694,13 @@ class Dataset(AbstractDataset):
         else:
             # saving rasters with color table fails with a runtime error
             options = ["COMPRESS=DEFLATE"]
-            if self._block_size is not None and self._block_size != []:
+            if tile_length is not None:
                 options += [
                     "TILED=YES",
+                    f"TILE_LENGTH={tile_length}",
+                ]
+            if self._block_size is not None and self._block_size != []:
+                options += [
                     "BLOCKXSIZE={}".format(self._block_size[0][0]),
                     "BLOCKYSIZE={}".format(self._block_size[0][1]),
                 ]
