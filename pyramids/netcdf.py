@@ -16,11 +16,6 @@ from pyramids import _io
 from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 
-# By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return an error
-# value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
-# this behavior in GDAL and OGR by calling the UseExceptions()
-gdal.UseExceptions()
-
 
 class NetCDF(Dataset):
     """AbstractDataset.
