@@ -74,9 +74,9 @@ class NetCDF(Dataset):
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
             cell_size = self.cell_size
-            x_coords = [
-                pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-            ]
+            x_coords = NetCDF.get_x_lon_dimension_array(
+                pivot_x, cell_size, self.columns
+            )
         else:
             # in case the lat and lon are read from the netcdf file just read the values from the file
             x_coords = self._lon
@@ -88,9 +88,7 @@ class NetCDF(Dataset):
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
-            y_coords = [
-                pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
-            ]
+            y_coords = NetCDF.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
             # in case the lat and lon are read from the netcdf file just read the values from the file
             y_coords = self._lat
@@ -111,11 +109,6 @@ class NetCDF(Dataset):
             x_coords = self._lon
         return np.array(x_coords)
 
-    @staticmethod
-    def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> List[float]:
-        x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
-        return x_coords
-
     @property
     def y(self):
         """y-coordinate/latitude"""
@@ -130,12 +123,23 @@ class NetCDF(Dataset):
         return np.array(y_coords)
 
     @staticmethod
-    def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> List[float]:
+    def get_y_lat_dimension_array(
+        pivot_y: float, cell_size: int, rows: int
+    ) -> List[float]:
+        """get_y_lat_dimension_array."""
         y_coords = [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
         return y_coords
 
+    @staticmethod
+    def get_x_lon_dimension_array(
+        pivot_x: float, cell_size: int, columns: int
+    ) -> List[float]:
+        """get_x_lon_dimension_array."""
+        x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
+        return x_coords
+
     @property
-    def variables(self) -> Dict["Dataset", "Dataset"]:
+    def variables(self) -> Dict[str, "NetCDF"]:
         """Variables in the dataset (resembles the variables in netcdf files.)"""
         return self._variables
 
@@ -279,7 +283,7 @@ class NetCDF(Dataset):
 
         return src
 
-    def get_variables(self, read_only: bool = True) -> Dict["Dataset", "Dataset"]:
+    def get_variables(self, read_only: bool = True) -> Dict[str, "NetCDF"]:
         """get_variables.
 
         Parameters
