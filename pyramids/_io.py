@@ -212,6 +212,8 @@ def read_file(
                     "files. Currently, it is not supported to read gzip files with multiple compressed internal "
                     "files"
                 )
+            else:
+                raise e
         elif any(path.__contains__(i) for i in DOES_NOT_SUPPORT_INTERNAL) and not any(
             path.endswith(i) for i in DOES_NOT_SUPPORT_INTERNAL
         ):
