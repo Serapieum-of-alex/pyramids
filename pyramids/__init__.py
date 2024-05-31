@@ -1,4 +1,5 @@
-from pyramids.config import config
+from pyramids.config import Config
+
 __all__ = ["dataset", "netcdf", "featurecollection"]
 
 try:
@@ -13,6 +14,9 @@ try:
     __version__ = version(__name__)
 except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
+
+config = Config()
+config.set_error_handler()
 
 # documentation format
 __author__ = "Mostafa Farrag"

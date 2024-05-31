@@ -26,6 +26,7 @@ class Config:
         # this behavior in GDAL and OGR by calling the UseExceptions()
         gdal.UseExceptions()
         ogr.UseExceptions()
+        # gdal.ErrorReset()
         for key, value in self.config.get("gdal", {}).items():
             gdal.SetConfigOption(key, value)
         for key, value in self.config.get("ogr", {}).items():
@@ -44,5 +45,20 @@ class Config:
         self.logger = logging.getLogger(__name__)
         self.logger.info("Logging is configured.")
 
+    @staticmethod
+    def set_error_handler():
+        """Set the error handler for GDAL."""
 
-config = Config()
+        def gdal_error_handler(err_class, err_num, err_msg):
+            """Error handler for GDAL."""
+            if err_class >= gdal.CE_Warning:
+                pass  # Ignore warnings and higher level messages (errors, fatal errors)
+            else:
+                print(
+                    "GDAL error (class {}, number {}): {}".format(
+                        err_class, err_num, err_msg
+                    )
+                )
+
+        gdal.PushErrorHandler(gdal_error_handler)
+
