@@ -10,10 +10,7 @@ import numpy as np
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr  # gdalconst,
 from osgeo.osr import SpatialReference
-
-from pyramids._utils import (
-    Catalog,
-)
+from pyramids._utils import Catalog
 from pyramids.featurecollection import FeatureCollection
 
 
@@ -32,12 +29,6 @@ RESAMPLING_METHODS = [
     "RMS",
     "BILINEAR",
 ]
-# By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return an error
-# value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
-# this behavior in GDAL and OGR by calling the UseExceptions()
-gdal.UseExceptions()
-
-# gdal.ErrorReset()
 
 
 class AbstractDataset(ABC):
