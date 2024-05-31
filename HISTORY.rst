@@ -169,3 +169,10 @@ of the real values in the bands.
 0.6.0 (2024-02-24)
 ------------------
 * move the dem module to a separate package "digital-rivers".
+
+
+0.7.0 (2024-06-01)
+------------------
+* create a separate module for the netcdf files.
+* add configuration file and module for setting gdal configurations.
+* install viz, dev, all packages through pip.

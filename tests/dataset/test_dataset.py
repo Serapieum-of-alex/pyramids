@@ -5,76 +5,15 @@ from typing import List, Tuple
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import pytest
 from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, osr
-
-from pyramids._errors import NoDataValueError, ReadOnlyError
+from pyramids._errors import NoDataValueError, ReadOnlyError, OutOfBoundsError
 from pyramids.dataset import Dataset
 
 
 class TestCreateRasterObject:
-    def test_from_gdal_dataset(
-        self,
-        src: gdal.Dataset,
-        src_no_data_value: float,
-    ):
-        src = Dataset(src)
-        assert hasattr(src, "subsets")
-        assert hasattr(src, "meta_data")
-        assert hasattr(src, "variables")
-        assert isinstance(src, Dataset)
-
-    def test_from_gdal_dataset_multi_band(
-        self,
-        multi_band: gdal.Dataset,
-        src_no_data_value: float,
-    ):
-        src = Dataset(multi_band)
-        assert hasattr(src, "subsets")
-        assert hasattr(src, "meta_data")
-        assert hasattr(src, "variables")
-        assert src.band_count == 13
-        assert isinstance(src, Dataset)
-
-    def test_from_open_ascii_file(
-        self,
-        ascii_file_path: str,
-        ascii_shape: tuple,
-        ascii_geotransform: tuple,
-    ):
-        src_obj = Dataset.read_file(ascii_file_path)
-        assert src_obj.band_count == 1
-        assert src_obj.epsg == 6326
-        assert isinstance(src_obj.raster, gdal.Dataset)
-        assert src_obj.geotransform == (
-            432968.1206170588,
-            4000.0,
-            0.0,
-            520007.787999178,
-            0.0,
-            -4000.0,
-        )
-
-    def test_from_read_file_zip_file(
-        self,
-        ascii_file_path: str,
-        ascii_shape: tuple,
-        ascii_geotransform: tuple,
-    ):
-        src_obj = Dataset.read_file(ascii_file_path)
-        assert src_obj.band_count == 1
-        assert src_obj.epsg == 6326
-        assert isinstance(src_obj.raster, gdal.Dataset)
-        assert src_obj.geotransform == (
-            432968.1206170588,
-            4000.0,
-            0.0,
-            520007.787999178,
-            0.0,
-            -4000.0,
-        )
-
     def test_from_create_empty_driver(
         self,
         src: gdal.Dataset,
@@ -279,6 +218,15 @@ class TestProperties:
         src = Dataset(src)
         assert src.gdal_dtype == [6]
 
+    def test_block_size(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.block_size == [[128, 128]]
+
+    def test_block_size_setter(self, src: gdal.Dataset):
+        src = Dataset(src)
+        src.block_size = [[5, 5]]
+        assert src.block_size == [[5, 5]]
+
     def test__str__(self, src: gdal.Dataset):
         src = Dataset(src)
         assert isinstance(src.__str__(), str)
@@ -306,6 +254,34 @@ class TestSpatialProperties:
         src = Dataset(multi_band)
         arr = src.read_array()
         assert np.array_equal(multi_band.ReadAsArray(), arr)
+
+    def test_read_block(
+        self,
+        src: Dataset,
+        src_shape: tuple,
+        src_arr: np.ndarray,
+    ):
+        src = Dataset(src)
+        arr = src.read_array(band=0, window=[0, 0, 5, 5])
+        assert np.array_equal(src_arr[:5, :5], arr)
+
+    def test_read_block_bigger_than_array(
+        self,
+        src: Dataset,
+        src_shape: tuple,
+        src_arr: np.ndarray,
+    ):
+        src = Dataset(src)
+        with pytest.raises(OutOfBoundsError):
+            src.read_array(band=0, window=[0, 0, 20, 20])
+
+    def test_read_block_multi_bands(
+        self,
+        multi_band: gdal.Dataset,
+    ):
+        src = Dataset(multi_band)
+        arr = src.read_array(window=[0, 0, 5, 5])
+        assert np.array_equal(multi_band.ReadAsArray()[:, :5, :5], arr)
 
     def test_create_sr_from_epsg(self):
         sr = Dataset._create_sr_from_epsg(4326)
@@ -1392,3 +1368,29 @@ class TestStats:
         assert np.isclose(
             stats["max"].values, max_val, rtol=0.000001, atol=0.00001
         ).all()
+
+
+class TestDistributedRead:  # unittest.TestCase
+    def test_get_block_arrangement_default(self, src: Dataset):
+        dataset = Dataset(src)
+        dataset.block_size = [[5, 5]]
+        df = dataset.get_block_arrangement()
+
+        # Check if the DataFrame is correct
+        expected_df = pd.DataFrame(
+            [
+                {"x_offset": 0, "y_offset": 0, "window_xsize": 5, "window_ysize": 5},
+                {"x_offset": 5, "y_offset": 0, "window_xsize": 5, "window_ysize": 5},
+                {"x_offset": 10, "y_offset": 0, "window_xsize": 4, "window_ysize": 5},
+                {"x_offset": 0, "y_offset": 5, "window_xsize": 5, "window_ysize": 5},
+                {"x_offset": 5, "y_offset": 5, "window_xsize": 5, "window_ysize": 5},
+                {"x_offset": 10, "y_offset": 5, "window_xsize": 4, "window_ysize": 5},
+                {"x_offset": 0, "y_offset": 10, "window_xsize": 5, "window_ysize": 3},
+                {"x_offset": 5, "y_offset": 10, "window_xsize": 5, "window_ysize": 3},
+                {"x_offset": 10, "y_offset": 10, "window_xsize": 4, "window_ysize": 3},
+                # Add more rows as needed to fully test all cases
+            ],
+            columns=["x_offset", "y_offset", "window_xsize", "window_ysize"],
+        )
+
+        pd.testing.assert_frame_equal(df, expected_df)

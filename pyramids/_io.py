@@ -123,7 +123,8 @@ def _parse_path(path: str, file_i: int = 0) -> str:
 
     Returns
     -------
-    file path
+    file path: [str]
+        path to the file to read.
     """
     if _is_zip(path):
         new_path = _get_zip_path(path, file_i=file_i)
@@ -164,7 +165,9 @@ def extract_from_gz(input_file: str, output_file: str, delete=False):
         os.remove(input_file)
 
 
-def read_file(path: str, read_only: bool = True):
+def read_file(
+    path: str, read_only: bool = True, open_as_multi_dimensional: bool = False
+):
     """Open file.
 
         - for geotiff and ASCII files.
@@ -175,6 +178,8 @@ def read_file(path: str, read_only: bool = True):
         Path of file to open (works for ascii, geotiff).
     read_only : [bool]
         File mode, set to `False` to open in "update" mode.
+    open_as_multi_dimensional: [bool]
+        Default is False.
 
     Returns
     -------
@@ -187,7 +192,18 @@ def read_file(path: str, read_only: bool = True):
     path = _parse_path(path)
     access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
     try:
-        src = gdal.OpenShared(path, access)
+        # get the file extension
+        # file_extension = path.split(".")[-1].lower()
+        # Example criteria for using gdal.OpenEx with OF_MULTIDIM_RASTER for complex multi-dimensional formats
+        if (
+            open_as_multi_dimensional
+        ):  # file_extension in ["hdf", "h5", "nc", "nc4", "grib", "grib2", "jp2"]:
+            # Use OpenEx with the OF_MULTIDIM_RASTER flag for formats that often require handling of multi-dimensional
+            # data
+            src = gdal.OpenEx(path, access | gdal.OF_MULTIDIM_RASTER)
+        else:
+            # Use OpenShared for potentially frequently accessed raster files
+            src = gdal.OpenShared(path, access)
     except Exception as e:
         if str(e).__contains__(" not recognized as a supported file format."):
             if any(path.endswith(i) for i in COMPRESSED_FILES_EXTENSIONS):
@@ -196,6 +212,8 @@ def read_file(path: str, read_only: bool = True):
                     "files. Currently, it is not supported to read gzip files with multiple compressed internal "
                     "files"
                 )
+            else:
+                raise e
         elif any(path.__contains__(i) for i in DOES_NOT_SUPPORT_INTERNAL) and not any(
             path.endswith(i) for i in DOES_NOT_SUPPORT_INTERNAL
         ):

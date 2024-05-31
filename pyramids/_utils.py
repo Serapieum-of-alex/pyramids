@@ -299,7 +299,8 @@ class Catalog:
             path = "ogr_drivers.yaml"
         self.catalog = self._get_gdal_catalog(path)
 
-    def _get_gdal_catalog(self, path: str):
+    @staticmethod
+    def _get_gdal_catalog(path: str):
         with open(f"{__path__[0]}/{path}", "r") as stream:
             gdal_catalog = yaml.safe_load(stream)
 
@@ -357,8 +358,8 @@ class Catalog:
         Dict:
             Driver dictionary
         """
-        diver_name = self.get_driver_name_by_extension(extension)
-        return self.get_driver(diver_name)
+        driver_name = self.get_driver_name_by_extension(extension)
+        return self.get_driver(driver_name)
 
     def exists(self, driver: str):
         """check if the driver exist in the catalog"""

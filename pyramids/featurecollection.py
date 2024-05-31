@@ -1232,17 +1232,3 @@ class FeatureCollection:
         poly["center_point"] = FeatureCollection.create_point(coords_list)
 
         return poly
-
-    def listAttributes(self):
-        """Print Attributes List."""
-        print("\n")
-        print(
-            f"Attributes List of: {repr(self.__dict__['name'])} - {self.__class__.__name__} Instance\n"
-        )
-        self_keys = list(self.__dict__.keys())
-        self_keys.sort()
-        for key in self_keys:
-            if key != "name":
-                print(str(key) + " : " + repr(self.__dict__[key]))
-
-        print("\n")

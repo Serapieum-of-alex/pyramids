@@ -71,3 +71,12 @@ class FailedToSaveError(Exception):
         logger.error(error_message)
 
     pass
+
+
+class OutOfBoundsError(Exception):
+    """Out of bounds error"""
+
+    def __init__(self, error_message: str):
+        logger.error(error_message)
+
+    pass
