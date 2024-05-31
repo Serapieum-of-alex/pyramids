@@ -50,14 +50,14 @@ class Config:
         """Set the error handler for GDAL."""
 
         def gdal_error_handler(err_class, err_num, err_msg):
-            """ Error handler for GDAL."""
+            """Error handler for GDAL."""
             if err_class >= gdal.CE_Warning:
                 pass  # Ignore warnings and higher level messages (errors, fatal errors)
             else:
-                print("GDAL error (class {}, number {}): {}".format(err_class, err_num, err_msg))
+                print(
+                    "GDAL error (class {}, number {}): {}".format(
+                        err_class, err_num, err_msg
+                    )
+                )
 
         gdal.PushErrorHandler(gdal_error_handler)
-
-
-config = Config()
-config.set_error_handler()
