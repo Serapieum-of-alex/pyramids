@@ -659,6 +659,53 @@ class Dataset(AbstractDataset):
         band = self.raster.GetRasterBand(i + 1)
         return band
 
+    def add_band(self, arr: np.ndarray, unit: Any = None, inplace: bool = False):
+        """add_band.
+
+            - Add a new band to the dataset.
+
+        Parameters
+        ----------
+        arr: [np.ndarray]
+            2D array to add as a new band.
+        unit: [Any] optional
+            unit of the values in the new band.
+        inplace: [bool] optional
+            if True the new band will be added to the current dataset, if False the new band will be added to a new
+            dataset.
+
+        Returns
+        -------
+
+        """
+        # check the dimensions of the new array
+        if arr.ndim != 2:
+            raise ValueError("The array must be 2D.")
+        if arr.shape[0] != self.rows or arr.shape[1] != self.columns:
+            raise ValueError(
+                f"The array must have the same dimensions as the raster.{self.rows} {self.columns}"
+            )
+        # check if the dataset is opened in write mode
+        if inplace:
+            src = self._raster
+            if src.GetRootGroup() is None:
+                raise ValueError("The dataset is not opened in write mode.")
+        else:
+            src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
+
+        dtype = numpy_to_gdal_dtype(arr.dtype)
+        num_bands = src.RasterCount
+        src.AddBand(dtype, [])
+        band = src.GetRasterBand(num_bands + 1)
+        if unit is not None:
+            band.SetUnitType(unit)
+        band.WriteArray(arr)
+
+        if inplace:
+            return self.__init__(src)
+        else:
+            return Dataset(src)
+
     def stats(self, band: int = None, mask: GeoDataFrame = None) -> DataFrame:
         """stats.
 

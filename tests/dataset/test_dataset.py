@@ -132,6 +132,25 @@ class TestCreateRasterObject:
             assert src_obj.geotransform == dst_obj.geotransform
 
 
+class TestAddBand:
+    def test_add_band(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        arr = dataset.read_array()
+        # test add different dimension array
+        new_dataset = dataset.add_band(arr, unit="meter")
+        assert new_dataset.band_count == 2
+        band = new_dataset._iloc(1)
+        assert band.GetUnitType() == "meter"
+        np.testing.assert_array_equal(band.ReadAsArray(), arr)
+
+    def test_wrong_dims_array(self, src: gdal.Dataset):
+        # test add different dimension array
+        dataset = Dataset(src)
+        arr = dataset.read_array()[:5, :5]
+        with pytest.raises(ValueError):
+            dataset.add_band(arr)
+
+
 class TestProperties:
     def test_pivot_point(self, src: gdal.Dataset):
         dataset = Dataset(src)
