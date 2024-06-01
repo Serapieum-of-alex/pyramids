@@ -659,6 +659,49 @@ class Dataset(AbstractDataset):
         band = self.raster.GetRasterBand(i + 1)
         return band
 
+    @staticmethod
+    def _df_to_attribute_table(df: DataFrame) -> gdal.RasterAttributeTable:
+        """df_to_attribute_table.
+
+            Convert a DataFrame to a GDAL RasterAttributeTable.
+
+        Parameters
+        ----------
+        df: [DataFrame]
+            DataFrame with columns to be converted to RAT columns.
+
+        Returns
+        -------
+        gdal.RasterAttributeTable:
+            The resulting RasterAttributeTable.
+        """
+        # Create a new RasterAttributeTable
+        rat = gdal.RasterAttributeTable()
+
+        # Create columns in the RAT based on the DataFrame columns
+        for column in df.columns:
+            dtype = df[column].dtype
+            if pd.api.types.is_integer_dtype(dtype):
+                rat.CreateColumn(column, gdal.GFT_Integer, gdal.GFU_Generic)
+            elif pd.api.types.is_float_dtype(dtype):
+                rat.CreateColumn(column, gdal.GFT_Real, gdal.GFU_Generic)
+            else:  # Assume string for any other type
+                rat.CreateColumn(column, gdal.GFT_String, gdal.GFU_Generic)
+
+        # Populate the RAT with the DataFrame data
+        for row_index in range(len(df)):
+            for col_index, column in enumerate(df.columns):
+                dtype = df[column].dtype
+                value = df.iloc[row_index, col_index]
+                if pd.api.types.is_integer_dtype(dtype):
+                    rat.SetValueAsInt(row_index, col_index, int(value))
+                elif pd.api.types.is_float_dtype(dtype):
+                    rat.SetValueAsDouble(row_index, col_index, float(value))
+                else:  # Assume string for any other type
+                    rat.SetValueAsString(row_index, col_index, str(value))
+
+        return rat
+
     def add_band(self, arr: np.ndarray, unit: Any = None, inplace: bool = False):
         """add_band.
 

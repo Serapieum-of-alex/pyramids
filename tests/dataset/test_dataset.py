@@ -132,6 +132,18 @@ class TestCreateRasterObject:
             assert src_obj.geotransform == dst_obj.geotransform
 
 
+class TestAttributesTable:
+    def test_convert_df_to_attribute_table(self):
+        data = {
+            "Value": [1, 2, 3],
+            "ClassName": ["Forest", "Water", "Urban"],
+            "Color": ["#008000", "#0000FF", "#808080"],
+        }
+        df = pd.DataFrame(data)
+        rat = Dataset._df_to_attribute_table(df)
+        assert isinstance(rat, gdal.RasterAttributeTable)
+
+
 class TestAddBand:
     def test_add_band(self, src: gdal.Dataset):
         dataset = Dataset(src)
