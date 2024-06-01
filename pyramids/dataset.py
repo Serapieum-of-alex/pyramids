@@ -6,7 +6,7 @@ import os
 import warnings
 import logging
 from numbers import Number
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import geopandas as gpd
 import numpy as np
@@ -70,7 +70,7 @@ class Dataset(AbstractDataset):
             Number of Bands: {self.band_count}
             Band names: {self.band_names}
             Mask: {self._no_data_value[0]}
-            Data type: {self.gdal_dtype[0]}
+            Data type: {self.dtype[0]}
             File: {self.file_name}
         """
         return message
@@ -97,7 +97,7 @@ class Dataset(AbstractDataset):
             self._no_data_value
             if self._no_data_value == []
             else self._no_data_value[0],
-            self.gdal_dtype if self.gdal_dtype == [] else self.gdal_dtype[0],
+            self.dtype if self.dtype == [] else self.dtype[0],
             self.crs,
             self.meta_data,
             self.file_name,
