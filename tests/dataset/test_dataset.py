@@ -155,6 +155,23 @@ class TestAddBand:
         assert band.GetUnitType() == "meter"
         np.testing.assert_array_equal(band.ReadAsArray(), arr)
 
+    def test_add_band_with_attribute_table(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        arr = dataset.read_array()
+        data = {
+            "Value": [1, 2, 3],
+            "ClassName": ["Forest", "Water", "Urban"],
+            "Color": ["#008000", "#0000FF", "#808080"],
+        }
+        df = pd.DataFrame(data)
+        # test add different dimension array
+        new_dataset = dataset.add_band(arr, unit="meter", attribute_table=df)
+        band = new_dataset._iloc(1)
+        assert band.GetDefaultRAT() is not None
+        # new_dataset.to_file("test_add_band_with_attribute_table.tif")
+        # assert os.path.exists("test_add_band_with_attribute_table.tif.aux.xml")
+        # os.remove("dataset_with_attribute_table.tif.aux.xml")
+
     def test_wrong_dims_array(self, src: gdal.Dataset):
         # test add different dimension array
         dataset = Dataset(src)

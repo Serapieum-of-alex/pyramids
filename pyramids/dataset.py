@@ -702,17 +702,33 @@ class Dataset(AbstractDataset):
 
         return rat
 
-    def add_band(self, arr: np.ndarray, unit: Any = None, inplace: bool = False):
+    def add_band(
+        self,
+        array: np.ndarray,
+        unit: Any = None,
+        attribute_table: DataFrame = None,
+        inplace: bool = False,
+    ):
         """add_band.
 
             - Add a new band to the dataset.
 
         Parameters
         ----------
-        arr: [np.ndarray]
+        array: [np.ndarray]
             2D array to add as a new band.
         unit: [Any] optional
             unit of the values in the new band.
+        attribute_table: [DataFrame] optional, Default is None
+            attribute_table provides a way to associate tabular data with the values of a raster band.
+            This is particularly useful for categorical raster data, such as land cover classifications, where each
+            pixel value corresponds to a category that has additional attributes (e.g., class name, color, description).
+            >>> data = {
+            >>>     "Value": [1, 2, 3],
+            >>>     "ClassName": ["Forest", "Water", "Urban"],
+            >>>     "Color": ["#008000", "#0000FF", "#808080"],
+            >>> }
+            >>> df = pd.DataFrame(data)
         inplace: [bool] optional
             if True the new band will be added to the current dataset, if False the new band will be added to a new
             dataset.
@@ -722,9 +738,9 @@ class Dataset(AbstractDataset):
 
         """
         # check the dimensions of the new array
-        if arr.ndim != 2:
+        if array.ndim != 2:
             raise ValueError("The array must be 2D.")
-        if arr.shape[0] != self.rows or arr.shape[1] != self.columns:
+        if array.shape[0] != self.rows or array.shape[1] != self.columns:
             raise ValueError(
                 f"The array must have the same dimensions as the raster.{self.rows} {self.columns}"
             )
@@ -736,13 +752,20 @@ class Dataset(AbstractDataset):
         else:
             src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
 
-        dtype = numpy_to_gdal_dtype(arr.dtype)
+        dtype = numpy_to_gdal_dtype(array.dtype)
         num_bands = src.RasterCount
         src.AddBand(dtype, [])
         band = src.GetRasterBand(num_bands + 1)
+
         if unit is not None:
             band.SetUnitType(unit)
-        band.WriteArray(arr)
+
+        if attribute_table is not None:
+            # Attach the RAT to the raster band
+            rat = Dataset._df_to_attribute_table(attribute_table)
+            band.SetDefaultRAT(rat)
+
+        band.WriteArray(array)
 
         if inplace:
             return self.__init__(src)
