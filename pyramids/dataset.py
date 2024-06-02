@@ -702,6 +702,50 @@ class Dataset(AbstractDataset):
 
         return rat
 
+    @staticmethod
+    def _attribute_table_to_df(rat: gdal.RasterAttributeTable) -> DataFrame:
+        """attribute_table_to_df.
+
+        Convert a GDAL RasterAttributeTable to a pandas DataFrame.
+
+        Parameters
+        ----------
+        rat: [gdal.RasterAttributeTable]
+            The RasterAttributeTable to convert.
+
+        Returns
+        -------
+        pd.DataFrame:
+            The resulting DataFrame.
+        """
+        columns = []
+        data = {}
+
+        # Get the column names and create empty lists for data
+        for col_index in range(rat.GetColumnCount()):
+            col_name = rat.GetNameOfCol(col_index)
+            col_type = rat.GetTypeOfCol(col_index)
+            columns.append((col_name, col_type))
+            data[col_name] = []
+
+        # Get the row count
+        row_count = rat.GetRowCount()
+
+        # Populate the data dictionary with RAT values
+        for row_index in range(row_count):
+            for col_index, (col_name, col_type) in enumerate(columns):
+                if col_type == gdal.GFT_Integer:
+                    value = rat.GetValueAsInt(row_index, col_index)
+                elif col_type == gdal.GFT_Real:
+                    value = rat.GetValueAsDouble(row_index, col_index)
+                else:  # gdal.GFT_String
+                    value = rat.GetValueAsString(row_index, col_index)
+                data[col_name].append(value)
+
+        # Create the DataFrame
+        df = pd.DataFrame(data)
+        return df
+
     def add_band(
         self,
         array: np.ndarray,
