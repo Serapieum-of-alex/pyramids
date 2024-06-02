@@ -635,8 +635,7 @@ class Dataset(AbstractDataset):
         return dst
 
     def copy(self):
-        """Deep copy.
-        """
+        """Deep copy."""
         src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
         return Dataset(src)
 

@@ -94,13 +94,15 @@ class TestCreateRasterObject:
         assert id(dst) != id(src)
         assert dst.raster.GetGeoTransform() == src.raster.GetGeoTransform()
         assert dst.raster.GetProjection() == src.raster.GetProjection()
-        assert dst.raster.GetRasterBand(1).GetNoDataValue() == src.raster.GetRasterBand(
-            1
-        ).GetNoDataValue()
+        assert (
+            dst.raster.GetRasterBand(1).GetNoDataValue()
+            == src.raster.GetRasterBand(1).GetNoDataValue()
+        )
         src_arr = dst.raster.GetRasterBand(1).ReadAsArray()
         dst_arr = src.raster.GetRasterBand(1).ReadAsArray()
-        np.testing.assert_array_equal(src_arr, dst_arr, err_msg="arrays are not equal", strict=True)
-
+        np.testing.assert_array_equal(
+            src_arr, dst_arr, err_msg="arrays are not equal", strict=True
+        )
 
     class TestRasterLike:
         def test_to_disk(
