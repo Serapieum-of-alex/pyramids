@@ -634,6 +634,12 @@ class Dataset(AbstractDataset):
 
         return dst
 
+    def copy(self):
+        """Deep copy.
+        """
+        src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
+        return Dataset(src)
+
     def _iloc(self, i: int) -> gdal.Band:
         """_iloc.
 
