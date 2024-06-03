@@ -176,6 +176,13 @@ class TestAttributesTable:
         df = self.dataset.get_attribute_table(band=1)
         pd.testing.assert_frame_equal(self.attribute_table, df)
 
+    def test_set_attribute_table(self):
+        dataset = Dataset(self.src)
+        dataset.set_attribute_table(self.attribute_table, band=0)
+        assert isinstance(
+            dataset._raster.GetRasterBand(1).GetDefaultRAT(), gdal.RasterAttributeTable
+        )
+
 
 class TestAddBand:
     def test_add_band(self, src: gdal.Dataset):

@@ -688,6 +688,22 @@ class Dataset(AbstractDataset):
 
         return df
 
+    def set_attribute_table(self, df: DataFrame, band: int = None) -> None:
+        """set_attribute_table.
+
+            - Set the attribute table for a band.
+
+        Parameters
+        ----------
+        df: [DataFrame]
+            DataFrame with the attribute table.
+        band: [int]
+            band index.
+        """
+        rat = self._df_to_attribute_table(df)
+        band = self._iloc(band)
+        band.SetDefaultRAT(rat)
+
     @staticmethod
     def _df_to_attribute_table(df: DataFrame) -> gdal.RasterAttributeTable:
         """df_to_attribute_table.
