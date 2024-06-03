@@ -3107,6 +3107,8 @@ class Dataset(AbstractDataset):
         np.ndarray:
             array of the mask. 0 value for cells out of the domain, and 255 for cells in the domain.
         """
+        # TODO: there is a CreateMaskBand method in the gdal.Dataset class, it creates a mask band for the dataset
+        #   either internally or externally.
         arr = self._iloc(band).GetMaskBand().ReadAsArray()
         return arr
 
@@ -3793,3 +3795,56 @@ class Dataset(AbstractDataset):
                 df.loc[i, ["band", "values"]] = band + 1, i
 
         return df
+
+    def get_histogram(
+        self,
+        band: int = 0,
+        bins: int = 6,
+        min_value: float = None,
+        max_value: float = None,
+        include_out_of_range: bool = False,
+        approx_ok: bool = False,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """get_histogram.
+
+        Parameters
+        ----------
+        band: [int], optional
+            band index, Default is 1.
+        bins: [int], optional
+            number of bins, Default is 6.
+        min_value: [float], optional
+            minimum value, Default is None.
+        max_value: [float], optional
+            maximum value, Default is None.
+        include_out_of_range : bool, default=False
+            if ``True``, add out-of-range values into the first and last buckets
+        approx_ok : bool, default=True
+            if ``True``, compute an approximate histogram by using subsampling or overviews
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            histogram values and bin edges.
+        """
+        band = self._iloc(band)
+        min_val, max_val = band.ComputeRasterMinMax()
+        if min_value is None:
+            min_value = min_val
+        if max_value is None:
+            max_value = max_val
+
+        bin_width = (max_value - min_value) / bins
+        ranges = [
+            (min_val + i * bin_width, min_val + (i + 1) * bin_width)
+            for i in range(bins)
+        ]
+
+        hist = band.GetHistogram(
+            min=min_value,
+            max=max_value,
+            buckets=bins,
+            include_out_of_range=include_out_of_range,
+            approx_ok=approx_ok,
+        )
+        return hist, ranges

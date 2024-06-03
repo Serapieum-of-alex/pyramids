@@ -1505,3 +1505,11 @@ class TestDistributedRead:  # unittest.TestCase
         )
 
         pd.testing.assert_frame_equal(df, expected_df)
+
+
+class TestHistogram:
+    def test_get_histogram(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        hist, ranges = dataset.get_histogram(band=0)
+        assert len(ranges) == 6
+        assert hist == [75, 6, 0, 4, 2, 1]
