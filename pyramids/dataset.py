@@ -664,6 +664,30 @@ class Dataset(AbstractDataset):
         band = self.raster.GetRasterBand(i + 1)
         return band
 
+    def get_attribute_table(self, band: int = 0) -> DataFrame:
+        """get_attribute_table.
+
+            - Get the attribute table of a band.
+
+        Parameters
+        ----------
+        band: [int]
+            band index, the index starts from 1.
+
+        Returns
+        -------
+        DataFrame:
+            DataFrame with the attribute table.
+        """
+        band = self._iloc(band)
+        rat = band.GetDefaultRAT()
+        if rat is None:
+            df = None
+        else:
+            df = self._attribute_table_to_df(rat)
+
+        return df
+
     @staticmethod
     def _df_to_attribute_table(df: DataFrame) -> gdal.RasterAttributeTable:
         """df_to_attribute_table.

@@ -155,6 +155,10 @@ class TestAttributesTable:
         "ClassName": ["Forest", "Water", "Urban"],
         "Color": ["#008000", "#0000FF", "#808080"],
     }
+    attribute_table = pd.DataFrame(data)
+    # the second band in the raster has an attribute table
+    src = gdal.Open("tests/data/geotiff/raster-with-attribute-table.tif")
+    dataset = Dataset(src)
 
     def test_convert_df_to_attribute_table(self):
         df = pd.DataFrame(self.data)
@@ -167,6 +171,10 @@ class TestAttributesTable:
         df2 = Dataset._attribute_table_to_df(rat)
         assert isinstance(df2, pd.DataFrame)
         assert df.equals(df2)
+
+    def test_add_attribute_table(self):
+        df = self.dataset.get_attribute_table(band=1)
+        pd.testing.assert_frame_equal(self.attribute_table, df)
 
 
 class TestAddBand:
