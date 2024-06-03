@@ -3094,6 +3094,22 @@ class Dataset(AbstractDataset):
 
         return values
 
+    def get_mask(self, band: int = 0) -> np.ndarray:
+        """get_mask.
+
+        Parameters
+        ----------
+        band: [int]
+            band index. Default is 0.
+
+        Returns
+        -------
+        np.ndarray:
+            array of the mask. 0 value for cells out of the domain, and 255 for cells in the domain.
+        """
+        arr = self._iloc(band).GetMaskBand().ReadAsArray()
+        return arr
+
     def footprint(
         self,
         band: int = 0,

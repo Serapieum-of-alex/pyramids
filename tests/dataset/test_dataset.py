@@ -188,7 +188,6 @@ class TestAttributesTable:
         assert dataset.set_attribute_table(self.attribute_table, band=1) is None
 
 
-
 class TestAddBand:
     def test_add_band(self, src: gdal.Dataset):
         dataset = Dataset(src)
@@ -1292,6 +1291,19 @@ class TestOverlay:
         extracted_classes = list(class_dict.keys())
         real_classes = class_values.tolist()
         assert all(i in real_classes for i in extracted_classes)
+
+
+class TestMAsk:
+    def test_get_mask(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        values = dataset.read_array()
+        no_data_value = dataset.no_data_value[0]
+        values[~np.isclose(values, no_data_value)] = 255
+        values[np.isclose(values, no_data_value)] = 0
+        arr = dataset.get_mask(band=0)
+        np.testing.assert_equal(values, arr)
+        vals = np.unique(arr)
+        assert np.array_equal(vals, [0, 255])
 
 
 class TestFootPrint:
