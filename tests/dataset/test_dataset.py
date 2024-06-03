@@ -183,6 +183,11 @@ class TestAttributesTable:
             dataset._raster.GetRasterBand(1).GetDefaultRAT(), gdal.RasterAttributeTable
         )
 
+    def test_overwrite_attribute_table(self):
+        dataset = Dataset(self.src)
+        assert dataset.set_attribute_table(self.attribute_table, band=1) is None
+
+
 
 class TestAddBand:
     def test_add_band(self, src: gdal.Dataset):
