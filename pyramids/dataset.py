@@ -61,6 +61,9 @@ class Dataset(AbstractDataset):
             src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
         ]
         self._band_names = self._get_band_names()
+        self._band_units = [
+            src.GetRasterBand(i).GetUnitType() for i in range(1, self.band_count + 1)
+        ]
 
     def __str__(self):
         message = f"""
@@ -172,6 +175,18 @@ class Dataset(AbstractDataset):
     def band_names(self, name_list: List):
         """band_names setter"""
         self._set_band_names(name_list)
+
+    @property
+    def band_units(self) -> List[str]:
+        """Band units."""
+        return self._band_units
+
+    @band_units.setter
+    def band_units(self, value: List[str]):
+        """Band units setter"""
+        self._band_units = value
+        for i, val in enumerate(value):
+            self._iloc(i).SetUnitType(val)
 
     @property
     def no_data_value(self):

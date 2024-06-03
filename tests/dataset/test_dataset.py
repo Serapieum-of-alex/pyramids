@@ -328,6 +328,12 @@ class TestProperties:
         src = Dataset(src)
         assert isinstance(src.__repr__(), str)
 
+    def test_band_units(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.band_units == [""]
+        src.band_units = ["meter"]
+        assert src._iloc(0).GetUnitType() == "meter"
+
 
 class TestSpatialProperties:
     def test_read_array(
