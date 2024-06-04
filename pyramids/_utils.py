@@ -209,6 +209,10 @@ def gdal_constant_to_color_name(gdal_constant: int) -> str:
     -------
     str
     """
+    if gdal_constant not in COLOR_INTERPRETATIONS:
+        raise ValueError(
+            f"{gdal_constant} is not a valid gdal constant, possible constants are: {COLOR_INTERPRETATIONS}"
+        )
     color_name = COLOR_TABLE.loc[
         COLOR_TABLE["gdal_constant"] == gdal_constant, "name"
     ].values[0]
