@@ -120,6 +120,50 @@ DTYPE_CONVERSION_DF = DataFrame(
     data=list(zip(GDAL_DTYPE_CODE, DTYPE_NAMES, NUMPY_DTYPE, GDAL_DTYPE, OGR_DTYPE)),
 )
 
+COLOR_INTERPRETATIONS = [
+    gdal.GCI_Undefined,  # 0
+    gdal.GCI_GrayIndex,  # 1
+    gdal.GCI_PaletteIndex,  # 2
+    gdal.GCI_RedBand,  # 3
+    gdal.GCI_GreenBand,  # 4
+    gdal.GCI_BlueBand,  # 5
+    gdal.GCI_AlphaBand,  # 6
+    gdal.GCI_HueBand,  # 7
+    gdal.GCI_SaturationBand,  # 8
+    gdal.GCI_LightnessBand,  # 9
+    gdal.GCI_CyanBand,  # 10
+    gdal.GCI_MagentaBand,  # 11
+    gdal.GCI_YellowBand,  # 12
+    gdal.GCI_BlackBand,  # 13
+    gdal.GCI_YCbCr_YBand,  # 14
+    gdal.GCI_YCbCr_CbBand,  # 15
+    gdal.GCI_YCbCr_CrBand,  # 16
+]
+
+COLOR_NAMES = [
+    "undefined",
+    "gray_index",
+    "palette_index",
+    "red",
+    "green",
+    "blue",
+    "alpha",
+    "hue",
+    "saturation",
+    "lightness",
+    "cyan",
+    "magenta",
+    "yellow",
+    "black",
+    "YCbCr_YBand",
+    "YCbCr_CbBand",
+    "YCbCr_CrBand",
+]
+
+COLOR_TABLE = DataFrame(
+    columns=["id", "gdal_constant", "name"],
+    data=list(zip(range(len(COLOR_NAMES)), COLOR_INTERPRETATIONS, COLOR_NAMES)),
+)
 INTERPOLATION_METHODS = {
     "nearest neighbour": gdal.GRA_NearestNeighbour,
     "cubic": gdal.GRA_Cubic,
@@ -128,6 +172,47 @@ INTERPOLATION_METHODS = {
 
 
 # TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
+
+
+def color_name_to_gdal_constant(color_name: str) -> int:
+    """Convert color name to GDAL constant.
+
+    Parameters
+    ----------
+    color_name: [str]
+        Color name
+
+    Returns
+    -------
+    int
+    """
+    if color_name not in COLOR_NAMES:
+        raise ValueError(
+            f"{color_name} is not a valid color name, possible names are: {COLOR_NAMES}"
+        )
+
+    gdal_constant = int(
+        COLOR_TABLE.loc[COLOR_TABLE["name"] == color_name, "gdal_constant"].values[0]
+    )
+    return gdal_constant
+
+
+def gdal_constant_to_color_name(gdal_constant: int) -> str:
+    """Convert GDAL constant to color name.
+
+    Parameters
+    ----------
+    gdal_constant: [int]
+        GDAL constant
+
+    Returns
+    -------
+    str
+    """
+    color_name = COLOR_TABLE.loc[
+        COLOR_TABLE["gdal_constant"] == gdal_constant, "name"
+    ].values[0]
+    return color_name
 
 
 def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype]) -> int:
