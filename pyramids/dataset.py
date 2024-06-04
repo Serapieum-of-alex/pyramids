@@ -256,6 +256,34 @@ class Dataset(AbstractDataset):
         """Driver Type"""
         return super().driver_type
 
+    @property
+    def scale(self):
+        """Scale"""
+        scale_list = []
+        for i in range(self.band_count):
+            band_scale = self._iloc(i).GetScale()
+            scale_list.append(band_scale if band_scale is not None else 1.0)
+        return scale_list
+
+    @scale.setter
+    def scale(self, value: List[float]):
+        for i, val in enumerate(value):
+            self._iloc(i).SetScale(val)
+
+    @property
+    def offset(self):
+        """Offset"""
+        offset_list = []
+        for i in range(self.band_count):
+            band_offset = self._iloc(i).GetOffset()
+            offset_list.append(band_offset if band_offset is not None else 1.0)
+        return offset_list
+
+    @offset.setter
+    def offset(self, value: List[float]):
+        for i, val in enumerate(value):
+            self._iloc(i).SetOffset(val)
+
     @classmethod
     def read_file(
         cls,
@@ -1715,7 +1743,7 @@ class Dataset(AbstractDataset):
     def get_cell_coords(
         self, location: str = "center", mask: bool = False
     ) -> np.ndarray:
-        """GetCoords.
+        """get_cell_coords.
 
         Returns the coordinates of the cell centers inside the domain (only the cells that
         do not have nodata value)
@@ -3804,7 +3832,7 @@ class Dataset(AbstractDataset):
         max_value: float = None,
         include_out_of_range: bool = False,
         approx_ok: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[Any, np.ndarray]:
         """get_histogram.
 
         Parameters

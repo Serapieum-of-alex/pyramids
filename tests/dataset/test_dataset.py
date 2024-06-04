@@ -333,6 +333,18 @@ class TestProperties:
         src.band_units = ["meter"]
         assert src._iloc(0).GetUnitType() == "meter"
 
+    def test_scale(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.scale == [1.0]
+        src.scale = [2.0]
+        assert src._iloc(0).GetScale() == 2.0
+
+    def test_offset(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.offset == [1.0]
+        src.offset = [2.0]
+        assert src._iloc(0).GetOffset() == 2.0
+
 
 class TestSpatialProperties:
     def test_read_array(
