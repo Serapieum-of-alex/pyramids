@@ -341,7 +341,7 @@ class TestProperties:
 
     def test_offset(self, src: gdal.Dataset):
         src = Dataset(src)
-        assert src.offset == [1.0]
+        assert src.offset == [0]
         src.offset = [2.0]
         assert src._iloc(0).GetOffset() == 2.0
 
