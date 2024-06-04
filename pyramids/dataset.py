@@ -276,7 +276,7 @@ class Dataset(AbstractDataset):
         offset_list = []
         for i in range(self.band_count):
             band_offset = self._iloc(i).GetOffset()
-            offset_list.append(band_offset if band_offset is not None else 1.0)
+            offset_list.append(band_offset if band_offset is not None else 0)
         return offset_list
 
     @offset.setter
