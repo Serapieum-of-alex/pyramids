@@ -347,6 +347,7 @@ class TestProperties:
 
     def test_band_color(self, src: gdal.Dataset):
         src = Dataset(src)
+        src = src.copy()
         assert src.band_color == {0: "gray_index"}
         src.band_color = {0: "undefined"}
         assert src._iloc(0).GetColorInterpretation() == 0
