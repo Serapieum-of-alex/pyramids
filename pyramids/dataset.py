@@ -3750,6 +3750,21 @@ class Dataset(AbstractDataset):
             gdal_const = color_name_to_gdal_constant(val)
             self._iloc(key).SetColorInterpretation(gdal_const)
 
+    def get_band_by_color(self, color_name: str) -> int:
+        """get_band_by_color.
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        colors = list(self.band_color.values())
+        if color_name not in colors:
+            band_index = None
+        else:
+            band_index = colors.index(color_name)
+        return band_index
+
     # TODO: find a better way to handle the color table in accordance with attribute_table
     # and figure out how to take a color ramp and convert it to a color table.
     # use the SetColorInterpretation method to assign the color (R/G/B) to a band.

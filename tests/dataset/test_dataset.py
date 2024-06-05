@@ -351,6 +351,11 @@ class TestProperties:
         src.band_color = {0: "undefined"}
         assert src._iloc(0).GetColorInterpretation() == 0
 
+    def test_get_band_by_color(self, src: gdal.Dataset):
+        src = Dataset(src)
+        band_index = src.get_band_by_color("gray_index")
+        assert band_index == 0
+
 
 class TestSpatialProperties:
     def test_read_array(
