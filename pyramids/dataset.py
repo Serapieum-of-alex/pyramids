@@ -996,7 +996,9 @@ class Dataset(AbstractDataset):
         exclude_value: [Any]
             value to exclude from the plot. Default is None.
         rgb: [List]
-            Default is [3,2,1]
+            The `plot` method will check it the rgb bands are defined in the raster file, if all the three bands (
+            red, green, blue)) are defined, the method will use them to plot the real image, if not the rgb bands
+            will be considered as [2,1,0].
         surface_reflectance: [int]
             Default is 10,000.
         cutoff: [List]
@@ -1091,7 +1093,13 @@ class Dataset(AbstractDataset):
         if self.band_count >= 3:
             if band is None:
                 if rgb is None:
-                    rgb = [2, 1, 0]
+                    rgb = [
+                        self.get_band_by_color("red"),
+                        self.get_band_by_color("green"),
+                        self.get_band_by_color("blue"),
+                    ]
+                    if None in rgb:
+                        rgb = [2, 1, 0]
                 # first make the band index the first band in the rgb list (red band)
                 band = rgb[0]
         # elif self.band_count == 1:
