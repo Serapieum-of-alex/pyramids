@@ -30,6 +30,8 @@ from pyramids._utils import (
     gdal_to_ogr_dtype,
     import_cleopatra,
     numpy_to_gdal_dtype,
+    color_name_to_gdal_constant,
+    gdal_constant_to_color_name,
 )
 
 from hpc.indexing import get_pixels, get_indices2, get_pixels2, locate_values
@@ -3720,6 +3722,34 @@ class Dataset(AbstractDataset):
 
         return arr
 
+    @property
+    def band_color(self) -> Dict[int, str]:
+        """band_color"""
+        color_dict = {}
+        for i in range(self.band_count):
+            band_color = self._iloc(i).GetColorInterpretation()
+            band_color = band_color if band_color is not None else 0
+            color_dict[i] = gdal_constant_to_color_name(band_color)
+        return color_dict
+
+    @band_color.setter
+    def band_color(self, values: Dict[int, str]):
+        """band_color
+
+        Parameters
+        ----------
+        values: [Dict[int, str]]
+            dictionary with band index as key and color name as value.
+            e.g. {1: 'Red', 2: 'Green', 3: 'Blue'}
+        """
+        for key, val in values.items():
+            if key > self.band_count:
+                raise ValueError(
+                    f"band index should be between 0 and {self.band_count}"
+                )
+            gdal_const = color_name_to_gdal_constant(val)
+            self._iloc(key).SetColorInterpretation(gdal_const)
+
     # TODO: find a better way to handle the color table in accordance with attribute_table
     # and figure out how to take a color ramp and convert it to a color table.
     # use the SetColorInterpretation method to assign the color (R/G/B) to a band.
@@ -3876,3 +3906,28 @@ class Dataset(AbstractDataset):
             approx_ok=approx_ok,
         )
         return hist, ranges
+
+    # def get_coverage(self, band: int = 0, polygon = GeoDataFrame) -> float:
+    #     """get_coverage.
+    #
+    #     Parameters
+    #     ----------
+    #     band: [int], optional
+    #         band index, Default is 1.
+    #
+    #     Returns
+    #     -------
+    #     [float]
+    #         percentage of non-zero values.
+    #     """
+    #     # convert the polygon vertices to array indices using the map_to_array_coordinates method
+    #     # then use the array indices in the GetDataCoverageStatus
+    #     #1- get the extent of the polygon
+    #     #2- convert the extent to array indices
+    #     arr = Dataset.map_to_array_coordinates()
+    #     # 3- use the array indices to get the GetDataCoverageStatus method
+    #     band = self._iloc(band)
+    #     sampling = 1
+    #     x_off, y_off =  # the top left corner point of the polygon.
+    #     flags, percent = band.GetDataCoverageStatus(x_off, y_off, x_size, y_size, sampling)
+    #     return percent

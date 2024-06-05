@@ -345,6 +345,12 @@ class TestProperties:
         src.offset = [2.0]
         assert src._iloc(0).GetOffset() == 2.0
 
+    def test_band_color(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.band_color == {0: "gray_index"}
+        src.band_color = {0: "undefined"}
+        assert src._iloc(0).GetColorInterpretation() == 0
+
 
 class TestSpatialProperties:
     def test_read_array(
