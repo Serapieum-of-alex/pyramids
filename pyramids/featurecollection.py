@@ -94,7 +94,7 @@ class FeatureCollection:
 
     @property
     def total_bounds(self) -> List[Number]:
-        """bounding coordinates"""
+        """bounding coordinates ``minx``, ``miny``, ``maxx``, ``maxy``"""
         if isinstance(self.feature, GeoDataFrame):
             bounds = self.feature.total_bounds.tolist()
         else:
@@ -942,7 +942,7 @@ class FeatureCollection:
         self._feature.reset_index(drop=True, inplace=True)
 
     @staticmethod
-    def create_polygon(coords: List[Tuple[float, float]], wkt: bool = False):
+    def create_polygon(coords: List[Tuple[float, float]], wkt: bool = False) -> Union[str, Polygon]:
         """Create a polygon Geometry.
 
         Create a polygon from coordinates
