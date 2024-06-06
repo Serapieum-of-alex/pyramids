@@ -7,6 +7,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pytest
+from shapely.geometry import Polygon
 from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, osr
 from pyramids._errors import NoDataValueError, ReadOnlyError, OutOfBoundsError
@@ -386,6 +387,17 @@ class TestSpatialProperties:
         src = Dataset(src)
         arr = src.read_array(band=0, window=[0, 0, 5, 5])
         assert np.array_equal(src_arr[:5, :5], arr)
+
+    def test_read_block_with_polygon(self, src: gdal.Dataset,):
+        dataset = Dataset(src)
+        x_coords = [456968.12, 460968.12, 460968.12, 456968.12, 456968.12]
+        y_coords = [508007.788, 508007.788, 504007.788, 504007.788, 508007.788]
+        coords = list(zip(x_coords, y_coords))
+        gdf = gpd.GeoDataFrame(columns=["id"], geometry=[Polygon(coords)], crs=32632, data=[[0]])
+        window = dataset._convert_polygon_to_window(gdf)
+        assert window == [5, 2, 1, 1]
+        arr = dataset.read_array(band=0, window=window)
+        assert arr[0] == 1
 
     def test_read_block_bigger_than_array(
         self,
@@ -889,7 +901,7 @@ class TestCropWithPolygon:
     def test_by_rasterizing(
         self,
         rhine_raster: gdal.Dataset,
-        polygon_mask: gpd.GeoDataFrame,
+        polygon_mask: GeoDataFrame,
     ):
         src_obj = Dataset(rhine_raster)
         cropped_raster = src_obj._crop_with_polygon_by_rasterizing(polygon_mask)
@@ -900,7 +912,7 @@ class TestCropWithPolygon:
     def test_inplace(
         self,
         rhine_raster: gdal.Dataset,
-        polygon_mask: gpd.GeoDataFrame,
+        polygon_mask: GeoDataFrame,
         crop_by_wrap_touch_true_result: gdal.Dataset,
     ):
         """
@@ -915,7 +927,7 @@ class TestCropWithPolygon:
     def test_by_warp_touch_true(
         self,
         rhine_raster: gdal.Dataset,
-        polygon_mask: gpd.GeoDataFrame,
+        polygon_mask: GeoDataFrame,
         crop_by_wrap_touch_true_result: gdal.Dataset,
     ):
         """
@@ -938,7 +950,7 @@ class TestCropWithPolygon:
     def test_by_warp_touch_false(
         self,
         rhine_raster: gdal.Dataset,
-        polygon_mask: gpd.GeoDataFrame,
+        polygon_mask: GeoDataFrame,
         crop_by_wrap_touch_false_result: gdal.Dataset,
     ):
         """

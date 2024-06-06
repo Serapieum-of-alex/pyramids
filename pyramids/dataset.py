@@ -408,6 +408,19 @@ class Dataset(AbstractDataset):
                 raise e
         return block
 
+    def _convert_polygon_to_window(self, poly: Union[GeoDataFrame, "FeatureCollection"]) -> List[Any]:
+        poly = FeatureCollection(poly)
+        bounds = poly.total_bounds
+        df = pd.DataFrame(columns=["id", "x", "y"])
+        df.loc["top_left", ["x", "y"]] = bounds[0], bounds[3]
+        df.loc["bottom_right", ["x", "y"]] = bounds[2], bounds[1]
+        arr_indeces = self.map_to_array_coordinates(df)
+        xoff = arr_indeces[0, 1]
+        yoff = arr_indeces[0, 0]
+        x_size = arr_indeces[1, 0] - arr_indeces[0, 0]
+        y_size = arr_indeces[1, 1] - arr_indeces[0, 1]
+        return [xoff, yoff, x_size, y_size]
+
     @property
     def pivot_point(self):
         """Top left corner coordinates."""
