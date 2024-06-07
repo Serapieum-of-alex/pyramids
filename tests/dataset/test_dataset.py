@@ -15,13 +15,6 @@ from pyramids.dataset import Dataset
 
 
 class TestCreateRasterObject:
-    def test_from_create_empty_driver(
-        self,
-        src: gdal.Dataset,
-        src_no_data_value: float,
-    ):
-        src = Dataset._create_empty_driver(src)
-        assert isinstance(src, Dataset)
 
     def test_create_from_array(
         self,

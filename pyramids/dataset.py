@@ -1057,44 +1057,6 @@ class Dataset(AbstractDataset):
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
 
-    # @classmethod
-    # def _create_empty_driver(
-    #     cls, src: gdal.Dataset, path: str = None, bands: int = 1, no_data_value=None
-    # ) -> "Dataset":
-    #     """Create a new empty driver from another dataset.
-    #
-    #     Parameters
-    #     ----------
-    #     src: [gdal.Dataset]
-    #         gdal dataset
-    #     path: [str]
-    #         path on disk.
-    #     bands: [int/None]
-    #         Number of bands to create in the output raster.
-    #     no_data_value: float or None
-    #         No data value, if None uses the same as `src`.
-    #
-    #     Returns
-    #     -------
-    #     gdal.DataSet
-    #     """
-    #     bands = int(bands) if bands is not None else src.RasterCount
-    #     # create the object
-    #     src_obj = cls(src)
-    #     # Create the driver.
-    #     dst = src_obj._create_dataset(
-    #         src_obj.columns, src_obj.rows, bands, src_obj.gdal_dtype[0], path=path
-    #     )
-    #
-    #     # Set the projection.
-    #     dst.SetGeoTransform(src_obj.geotransform)
-    #     dst.SetProjection(src_obj.raster.GetProjectionRef())
-    #     dst = cls(dst)
-    #     if no_data_value is not None:
-    #         dst._set_no_data_value(no_data_value=float(no_data_value))
-    #
-    #     return dst
-
     @staticmethod
     def _create_dataset(
         cols: int,
@@ -1110,35 +1072,48 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        src: [gdal.Dataset]
-            gdal dataset
+        cols: [int]
+            number of columns.
+        rows: [int]
+            number of rows.
+        bands: [int]
+            number of bands.
+        driver: [str]
+            driver type ["GTiff", "MEM"].
         path: [str]
-            path on disk.
-        bands: [int/None]
-            Number of bands to create in the output raster.
-        no_data_value: float or None
-            No data value, if None uses the same as `src`.
+            path to save the GTiff driver.
+        dtype:
+            gdal data type, use the functions in the utils module to map data types from numpy or ogr to gdal.
+
+            gdal data type, the data type should be one of the following code:
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], which refers to the following data types:.
+            GDT_Unknown	0	GDT_UInt32	4	GDT_CInt16	8	GDT_UInt64	12
+            GDT_Byte	1	GDT_Int32	5	GDT_CInt32	9	GDT_Int64	13
+            GDT_UInt16	2	GDT_Float32 6	GDT_CFloat32 10	GDT_Int8	14
+            GDT_Int16	3	GDT_Float64 7	GDT_CFloat64 11	GDT_TypeCount 15
 
         Returns
         -------
-        gdal.DataSet
+        gdal driver
         """
-        bands = int(bands) if bands is not None else src.RasterCount
-        # create the object
-        src_obj = cls(src)
-        # Create the driver.
-        dst = src_obj._create_dataset(
-            src_obj.columns, src_obj.rows, bands, src_obj.gdal_dtype[0], path=path
-        )
-
-        # Set the projection.
-        dst.SetGeoTransform(src_obj.geotransform)
-        dst.SetProjection(src_obj.raster.GetProjectionRef())
-        dst = cls(dst)
-        if no_data_value is not None:
-            dst._set_no_data_value(no_data_value=float(no_data_value))
-
-        return dst
+        if path:
+            driver = "GTiff" if driver == "MEM" else driver
+            if not isinstance(path, str):
+                raise TypeError("The path input should be string")
+            if driver == "GTiff":
+                if not path.endswith(".tif"):
+                    raise TypeError(
+                        "The path to save the created raster should end with .tif"
+                    )
+            # LZW is a lossless compression method achieve the highest compression but with a lot of computations.
+            src = gdal.GetDriverByName(driver).Create(
+                path, cols, rows, bands, dtype, ["COMPRESS=LZW"]
+            )
+        else:
+            # for memory drivers
+            driver = "MEM"
+            src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, dtype)
+        return src
 
     @classmethod
     def create(
@@ -1146,7 +1121,7 @@ class Dataset(AbstractDataset):
         cell_size: int,
         rows: int,
         columns: int,
-        dtype: int,
+        dtype: str,
         bands: int,
         top_left_coords: Tuple,
         epsg: int,
@@ -1228,64 +1203,6 @@ class Dataset(AbstractDataset):
             dst._set_no_data_value(no_data_value=no_data_value)
 
         return dst
-
-    @staticmethod
-    def _create_dataset(
-        cols: int,
-        rows: int,
-        bands: int,
-        dtype: int,
-        driver: str = "MEM",
-        path: str = None,
-    ) -> gdal.Dataset:
-        """Create a GDAL driver.
-
-            creates a driver and save it to disk and in memory if the path is not given.
-
-        Parameters
-        ----------
-        cols: [int]
-            number of columns.
-        rows: [int]
-            number of rows.
-        bands: [int]
-            number of bands.
-        driver: [str]
-            driver type ["GTiff", "MEM"].
-        path: [str]
-            path to save the GTiff driver.
-        dtype:
-            gdal data type, use the functions in the utils module to map data types from numpy or ogr to gdal.
-
-            gdal data type, the data type should be one of the following code:
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], which refers to the following data types:.
-            GDT_Unknown	0	GDT_UInt32	4	GDT_CInt16	8	GDT_UInt64	12
-            GDT_Byte	1	GDT_Int32	5	GDT_CInt32	9	GDT_Int64	13
-            GDT_UInt16	2	GDT_Float32 6	GDT_CFloat32 10	GDT_Int8	14
-            GDT_Int16	3	GDT_Float64 7	GDT_CFloat64 11	GDT_TypeCount 15
-
-        Returns
-        -------
-        gdal driver
-        """
-        if path:
-            driver = "GTiff" if driver == "MEM" else driver
-            if not isinstance(path, str):
-                raise TypeError("The path input should be string")
-            if driver == "GTiff":
-                if not path.endswith(".tif"):
-                    raise TypeError(
-                        "The path to save the created raster should end with .tif"
-                    )
-            # LZW is a lossless compression method achieve the highest compression but with a lot of computations.
-            src = gdal.GetDriverByName(driver).Create(
-                path, cols, rows, bands, dtype, ["COMPRESS=LZW"]
-            )
-        else:
-            # for memory drivers
-            driver = "MEM"
-            src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, dtype)
-        return src
 
     @classmethod
     def create_from_array(
