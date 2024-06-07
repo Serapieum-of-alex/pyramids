@@ -308,7 +308,7 @@ class Dataset(AbstractDataset):
         src = _io.read_file(path, read_only=read_only)
         return cls(src)
 
-    def read_array(self, band: int = None, window: List[int] = None) -> np.ndarray:
+    def read_array(self, band: int = None, window: Union[GeoDataFrame, List[int]] = None) -> np.ndarray:
         """Read Array
 
             - read the values stored in a given band.
@@ -327,9 +327,17 @@ class Dataset(AbstractDataset):
         ----------
         band : [integer]
             the band you want to get its data, If None the data of all bands will be read. Default is None
-        window: [List]
-            window to specify a block of data to read from the dataset. the window should be a list of 4 integers
-            [offset_x, offset_y, window_columns, window_rows]. Default is None.
+        window: [List/GeoDataFrame]
+            List:
+                window to specify a block of data to read from the dataset. the window should be a list of 4 integers
+                [offset_x, offset_y, window_columns, window_rows].
+                - offset_x: x offset of the block.
+                - offset_y: y offset of the block.
+                - window_columns: number of columns in the block.
+                - window_rows: number of rows in the block.
+            GeoDataFrame:
+                GeoDataFrame with a geometry column, the function will get the total_bounds of the geodataframe and
+                use it as a window to read the raster.
 
         Returns
         -------
@@ -378,16 +386,24 @@ class Dataset(AbstractDataset):
 
         return arr
 
-    def _read_block(self, band: int, window=List[int]) -> np.ndarray:
+    def _read_block(self, band: int, window: Union[GeoDataFrame, List[int]]) -> np.ndarray:
         """Read block of data from the dataset.
 
         Parameters
         ----------
         band : int
             Band index.
-        window: [List]
-            window to specify a block of data to read from the dataset. the window should be a list of 4 integers
-            [offset_x, offset_y, window_columns, window_rows]. Default is None.
+        window: [List/GeoDataFrame]
+            List:
+                window to specify a block of data to read from the dataset. the window should be a list of 4 integers
+                [offset_x, offset_y, window_columns, window_rows].
+                - offset_x: x offset of the block.
+                - offset_y: y offset of the block.
+                - window_columns: number of columns in the block.
+                - window_rows: number of rows in the block.
+            GeoDataFrame:
+                GeoDataFrame with a geometry column, the function will get the total_bounds of the geodataframe and
+                use it as a window to read the raster.
 
         Returns
         -------
@@ -395,6 +411,8 @@ class Dataset(AbstractDataset):
             array with the values of the block. the shape of the array is (window[2], window[3]), and the location of
             the block in the raster is (window[0], window[1]).
         """
+        if isinstance(window, GeoDataFrame):
+            window = self._convert_polygon_to_window(window)
         try:
             block = self._iloc(band).ReadAsArray(
                 window[0], window[1], window[2], window[3]

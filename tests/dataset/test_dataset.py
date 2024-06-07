@@ -378,7 +378,7 @@ class TestSpatialProperties:
         arr = src.read_array()
         assert np.array_equal(multi_band.ReadAsArray(), arr)
 
-    def test_read_block(
+    def test_read_block_with_list_window(
         self,
         src: Dataset,
         src_shape: tuple,
@@ -397,6 +397,8 @@ class TestSpatialProperties:
         window = dataset._convert_polygon_to_window(gdf)
         assert window == [5, 2, 1, 1]
         arr = dataset.read_array(band=0, window=window)
+        assert arr[0] == 1
+        arr = dataset.read_array(band=0, window=gdf)
         assert arr[0] == 1
 
     def test_read_block_bigger_than_array(
