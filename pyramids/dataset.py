@@ -1096,7 +1096,7 @@ class Dataset(AbstractDataset):
         return dst
 
     @classmethod
-    def create_driver_from_scratch(
+    def create(
         cls,
         cell_size: int,
         rows: int,

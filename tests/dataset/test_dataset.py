@@ -45,7 +45,7 @@ class TestCreateRasterObject:
         )
         assert src.raster.GetGeoTransform() == src_geotransform
 
-    def test_create_driver_from_scratch(self):
+    def test_create(self):
         cell_size = 4000
         rows = 13
         columns = 14
@@ -54,7 +54,7 @@ class TestCreateRasterObject:
         top_left_coords = (432968.1206170588, 520007.787999178)
         ds_epsg = 32618
         no_data_value = -3.4028230607370965e38
-        dataset_n = Dataset.create_driver_from_scratch(
+        dataset_n = Dataset.create(
             cell_size,
             rows,
             columns,

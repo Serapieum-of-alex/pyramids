@@ -503,7 +503,7 @@ class FeatureCollection:
         top_left_coords = (xmin, ymax)
 
         bands_count = 1 if not isinstance(attribute, list) else len(attribute)
-        dataset_n = Dataset.create_driver_from_scratch(
+        dataset_n = Dataset.create(
             cell_size,
             rows,
             columns,
