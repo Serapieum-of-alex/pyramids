@@ -1141,12 +1141,9 @@ class Dataset(AbstractDataset):
         columns: [int]
             number of columns.
         dtype: [int]
-            gdal data type, the data type should be one of the following code:
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], which refers to the following data types:.
-            GDT_Unknown	0	GDT_UInt32	4	GDT_CInt16	8	GDT_UInt64	12
-            GDT_Byte	1	GDT_Int32	5	GDT_CInt32	9	GDT_Int64	13
-            GDT_UInt16	2	GDT_Float32 6	GDT_CFloat32 10	GDT_Int8	14
-            GDT_Int16	3	GDT_Float64 7	GDT_CFloat64 11	GDT_TypeCount 15
+            data type, the data type should be one of the following code:
+            None, "byte", "uint16", "int16", "uint32", "int32", "float32", "float64", "complex-int16",
+            "complex-int32", "complex-float32", "complex-float64", "uint64", "int64", "int8", "count"
         bands : int or None
             Number of bands to create in the output raster.
         top_left_coords: [Tuple]
