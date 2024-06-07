@@ -610,112 +610,6 @@ class Dataset(AbstractDataset):
         )
         return df
 
-    @classmethod
-    def _create_empty_driver(
-        cls, src: gdal.Dataset, path: str = None, bands: int = 1, no_data_value=None
-    ) -> "Dataset":
-        """Create a new empty driver from another dataset.
-
-        Parameters
-        ----------
-        src: [gdal.Dataset]
-            gdal dataset
-        path: [str]
-            path on disk.
-        bands: [int/None]
-            Number of bands to create in the output raster.
-        no_data_value: float or None
-            No data value, if None uses the same as `src`.
-
-        Returns
-        -------
-        gdal.DataSet
-        """
-        bands = int(bands) if bands is not None else src.RasterCount
-        # create the object
-        src_obj = cls(src)
-        # Create the driver.
-        dst = src_obj._create_dataset(
-            src_obj.columns, src_obj.rows, bands, src_obj.gdal_dtype[0], path=path
-        )
-
-        # Set the projection.
-        dst.SetGeoTransform(src_obj.geotransform)
-        dst.SetProjection(src_obj.raster.GetProjectionRef())
-        dst = cls(dst)
-        if no_data_value is not None:
-            dst._set_no_data_value(no_data_value=float(no_data_value))
-
-        return dst
-
-    @classmethod
-    def create_driver_from_scratch(
-        cls,
-        cell_size: int,
-        rows: int,
-        columns: int,
-        dtype: int,
-        bands: int,
-        top_left_coords: Tuple,
-        epsg: int,
-        no_data_value: Any = None,
-        path: str = None,
-    ) -> "Dataset":
-        """Create a new empty driver from scratch.
-
-            - The new dataset will have an array filled with the no_data_value.
-
-        Parameters
-        ----------
-        cell_size: [Any]
-            cell size.
-        rows: [int]
-            number of rows.
-        columns: [int]
-            number of columns.
-        dtype: [int]
-            gdal data type, the data type should be one of the following code:
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], which refers to the following data types:.
-            GDT_Unknown	0	GDT_UInt32	4	GDT_CInt16	8	GDT_UInt64	12
-            GDT_Byte	1	GDT_Int32	5	GDT_CInt32	9	GDT_Int64	13
-            GDT_UInt16	2	GDT_Float32 6	GDT_CFloat32 10	GDT_Int8	14
-            GDT_Int16	3	GDT_Float64 7	GDT_CFloat64 11	GDT_TypeCount 15
-        bands : int or None
-            Number of bands to create in the output raster.
-        top_left_coords: [Tuple]
-            coordinates of the top left corner point.
-        epsg: [int]
-            epsg number to identify the projection of the coordinates in the created raster.
-        no_data_value : float or None
-            No data value.
-        path : [str]
-            path on disk.
-
-        Returns
-        -------
-        Dataset
-        """
-        # Create the driver.
-        dst = Dataset._create_dataset(columns, rows, bands, dtype, path=path)
-        geotransform = (
-            top_left_coords[0],
-            cell_size,
-            0,
-            top_left_coords[1],
-            0,
-            -1 * cell_size,
-        )
-        sr = Dataset._create_sr_from_epsg(epsg)
-
-        # Set the projection.
-        dst.SetGeoTransform(geotransform)
-        dst.SetProjection(sr.ExportToWkt())
-        dst = cls(dst)
-        if no_data_value is not None:
-            dst._set_no_data_value(no_data_value=no_data_value)
-
-        return dst
-
     def copy(self):
         """Deep copy."""
         src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
@@ -1162,6 +1056,111 @@ class Dataset(AbstractDataset):
         )
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
+
+    @classmethod
+    def _create_empty_driver(
+        cls, src: gdal.Dataset, path: str = None, bands: int = 1, no_data_value=None
+    ) -> "Dataset":
+        """Create a new empty driver from another dataset.
+
+        Parameters
+        ----------
+        src: [gdal.Dataset]
+            gdal dataset
+        path: [str]
+            path on disk.
+        bands: [int/None]
+            Number of bands to create in the output raster.
+        no_data_value: float or None
+            No data value, if None uses the same as `src`.
+
+        Returns
+        -------
+        gdal.DataSet
+        """
+        bands = int(bands) if bands is not None else src.RasterCount
+        # create the object
+        src_obj = cls(src)
+        # Create the driver.
+        dst = src_obj._create_dataset(
+            src_obj.columns, src_obj.rows, bands, src_obj.gdal_dtype[0], path=path
+        )
+
+        # Set the projection.
+        dst.SetGeoTransform(src_obj.geotransform)
+        dst.SetProjection(src_obj.raster.GetProjectionRef())
+        dst = cls(dst)
+        if no_data_value is not None:
+            dst._set_no_data_value(no_data_value=float(no_data_value))
+
+        return dst
+
+    @classmethod
+    def create_driver_from_scratch(
+        cls,
+        cell_size: int,
+        rows: int,
+        columns: int,
+        dtype: int,
+        bands: int,
+        top_left_coords: Tuple,
+        epsg: int,
+        no_data_value: Any = None,
+        path: str = None,
+    ) -> "Dataset":
+        """Create a new empty driver from scratch.
+
+            - The new dataset will have an array filled with the no_data_value.
+
+        Parameters
+        ----------
+        cell_size: [Any]
+            cell size.
+        rows: [int]
+            number of rows.
+        columns: [int]
+            number of columns.
+        dtype: [int]
+            gdal data type, the data type should be one of the following code:
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], which refers to the following data types:.
+            GDT_Unknown	0	GDT_UInt32	4	GDT_CInt16	8	GDT_UInt64	12
+            GDT_Byte	1	GDT_Int32	5	GDT_CInt32	9	GDT_Int64	13
+            GDT_UInt16	2	GDT_Float32 6	GDT_CFloat32 10	GDT_Int8	14
+            GDT_Int16	3	GDT_Float64 7	GDT_CFloat64 11	GDT_TypeCount 15
+        bands : int or None
+            Number of bands to create in the output raster.
+        top_left_coords: [Tuple]
+            coordinates of the top left corner point.
+        epsg: [int]
+            epsg number to identify the projection of the coordinates in the created raster.
+        no_data_value : float or None
+            No data value.
+        path : [str]
+            path on disk.
+
+        Returns
+        -------
+        Dataset
+        """
+        # Create the driver.
+        dst = Dataset._create_dataset(columns, rows, bands, dtype, path=path)
+        sr = Dataset._create_sr_from_epsg(epsg)
+        geotransform = (
+            top_left_coords[0],
+            cell_size,
+            0,
+            top_left_coords[1],
+            0,
+            -1 * cell_size,
+        )
+        dst.SetGeoTransform(geotransform)
+        # Set the projection.
+        dst.SetProjection(sr.ExportToWkt())
+        dst = cls(dst)
+        if no_data_value is not None:
+            dst._set_no_data_value(no_data_value=no_data_value)
+
+        return dst
 
     @staticmethod
     def _create_dataset(
@@ -2208,9 +2207,7 @@ class Dataset(AbstractDataset):
                     new_array[i, j] = fun(src_array[i, j])
 
         # create the output raster
-        dst = Dataset._create_dataset(
-            self.columns, self.rows, 1, dtype, driver="MEM"
-        )
+        dst = Dataset._create_dataset(self.columns, self.rows, 1, dtype, driver="MEM")
         # set the geotransform
         dst.SetGeoTransform(self.geotransform)
         # set the projection
