@@ -942,7 +942,9 @@ class FeatureCollection:
         self._feature.reset_index(drop=True, inplace=True)
 
     @staticmethod
-    def create_polygon(coords: List[Tuple[float, float]], wkt: bool = False) -> Union[str, Polygon]:
+    def create_polygon(
+        coords: List[Tuple[float, float]], wkt: bool = False
+    ) -> Union[str, Polygon]:
         """Create a polygon Geometry.
 
         Create a polygon from coordinates

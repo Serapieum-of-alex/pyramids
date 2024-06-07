@@ -308,7 +308,9 @@ class Dataset(AbstractDataset):
         src = _io.read_file(path, read_only=read_only)
         return cls(src)
 
-    def read_array(self, band: int = None, window: Union[GeoDataFrame, List[int]] = None) -> np.ndarray:
+    def read_array(
+        self, band: int = None, window: Union[GeoDataFrame, List[int]] = None
+    ) -> np.ndarray:
         """Read Array
 
             - read the values stored in a given band.
@@ -386,7 +388,9 @@ class Dataset(AbstractDataset):
 
         return arr
 
-    def _read_block(self, band: int, window: Union[GeoDataFrame, List[int]]) -> np.ndarray:
+    def _read_block(
+        self, band: int, window: Union[GeoDataFrame, List[int]]
+    ) -> np.ndarray:
         """Read block of data from the dataset.
 
         Parameters
@@ -426,7 +430,9 @@ class Dataset(AbstractDataset):
                 raise e
         return block
 
-    def _convert_polygon_to_window(self, poly: Union[GeoDataFrame, "FeatureCollection"]) -> List[Any]:
+    def _convert_polygon_to_window(
+        self, poly: Union[GeoDataFrame, "FeatureCollection"]
+    ) -> List[Any]:
         poly = FeatureCollection(poly)
         bounds = poly.total_bounds
         df = pd.DataFrame(columns=["id", "x", "y"])
