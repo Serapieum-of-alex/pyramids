@@ -22,6 +22,9 @@ def test_numpy_to_gdal_dtype(arr: np.ndarray):
     # test with  a dtye input
     gdal_type = numpy_to_gdal_dtype(arr.dtype)
     assert gdal_type is gdal.GDT_Float32
+    # test with  a dtye input
+    gdal_type = numpy_to_gdal_dtype("float32")
+    assert gdal_type is gdal.GDT_Float32
 
 
 def test_gdal_to_numpy_dtype():

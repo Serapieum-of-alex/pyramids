@@ -219,7 +219,7 @@ def gdal_constant_to_color_name(gdal_constant: int) -> str:
     return color_name
 
 
-def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype]) -> int:
+def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype, str]) -> int:
     """mapping functiuon between numpy and gdal data types.
 
     Parameters
@@ -233,8 +233,14 @@ def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype]) -> int:
     """
     if isinstance(arr, np.ndarray):
         np_dtype = arr.dtype
-    else:
+    elif isinstance(arr, np.dtype):
         np_dtype = arr
+    elif isinstance(arr, str):
+        np_dtype = np.dtype(arr)
+    else:
+        raise ValueError(
+            "The given input is not a numpy array or a numpy data type, please provide a valid input"
+        )
     # integer as gdal does not accept the dtype if it is int64
     gdal_type = int(
         DTYPE_CONVERSION_DF.loc[
