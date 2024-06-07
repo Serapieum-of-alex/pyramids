@@ -1057,11 +1057,56 @@ class Dataset(AbstractDataset):
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
 
-    @classmethod
-    def _create_empty_driver(
-        cls, src: gdal.Dataset, path: str = None, bands: int = 1, no_data_value=None
-    ) -> "Dataset":
-        """Create a new empty driver from another dataset.
+    # @classmethod
+    # def _create_empty_driver(
+    #     cls, src: gdal.Dataset, path: str = None, bands: int = 1, no_data_value=None
+    # ) -> "Dataset":
+    #     """Create a new empty driver from another dataset.
+    #
+    #     Parameters
+    #     ----------
+    #     src: [gdal.Dataset]
+    #         gdal dataset
+    #     path: [str]
+    #         path on disk.
+    #     bands: [int/None]
+    #         Number of bands to create in the output raster.
+    #     no_data_value: float or None
+    #         No data value, if None uses the same as `src`.
+    #
+    #     Returns
+    #     -------
+    #     gdal.DataSet
+    #     """
+    #     bands = int(bands) if bands is not None else src.RasterCount
+    #     # create the object
+    #     src_obj = cls(src)
+    #     # Create the driver.
+    #     dst = src_obj._create_dataset(
+    #         src_obj.columns, src_obj.rows, bands, src_obj.gdal_dtype[0], path=path
+    #     )
+    #
+    #     # Set the projection.
+    #     dst.SetGeoTransform(src_obj.geotransform)
+    #     dst.SetProjection(src_obj.raster.GetProjectionRef())
+    #     dst = cls(dst)
+    #     if no_data_value is not None:
+    #         dst._set_no_data_value(no_data_value=float(no_data_value))
+    #
+    #     return dst
+
+    @staticmethod
+    def _create_dataset(
+        cols: int,
+        rows: int,
+        bands: int,
+        dtype: int,
+        driver: str = "MEM",
+        path: str = None,
+    ) -> gdal.Dataset:
+        """Create a GDAL driver.
+
+            creates a driver and save it to disk and in memory if the path is not given.
 
         Parameters
         ----------
@@ -1108,7 +1153,7 @@ class Dataset(AbstractDataset):
         no_data_value: Any = None,
         path: str = None,
     ) -> "Dataset":
-        """Create a new empty driver from scratch.
+        """Create a new dataset and fill it with the no_data_value.
 
             - The new dataset will have an array filled with the no_data_value.
 
@@ -1135,14 +1180,36 @@ class Dataset(AbstractDataset):
             epsg number to identify the projection of the coordinates in the created raster.
         no_data_value : float or None
             No data value.
-        path : [str]
+        path: [str]
             path on disk.
 
         Returns
         -------
         Dataset
+
+        Hints
+        -------
+        - The no_data_value will be filled in the array of the output dataset.
+        - The coordinates of the top left corner point should be in the same projection as the epsg.
+        - The cell size should be in the same unit as the coordinates.
+        - The number of rows and columns should be positive integers.
+        - The dtype should be one of the following code:
+
+        Examples
+        --------
+        >>> cell_size = 10
+        >>> rows = 100
+        >>> columns = 100
+        >>> dtype = 1
+        >>> bands = 1
+        >>> top_left_coords = (0, 0)
+        >>> epsg = 4326
+        >>> no_data_value = -9999
+        >>> path = "test.tif"
+        >>> dst = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_coords, epsg, no_data_value, path)
         """
         # Create the driver.
+        dtype = numpy_to_gdal_dtype(dtype)
         dst = Dataset._create_dataset(columns, rows, bands, dtype, path=path)
         sr = Dataset._create_sr_from_epsg(epsg)
         geotransform = (

@@ -29,7 +29,6 @@ from shapely.geometry.multipolygon import MultiPolygon
 from pyramids._errors import DriverNotExistError
 from pyramids._utils import (
     Catalog,
-    numpy_to_gdal_dtype,
     ogr_ds_togdal_dataset,
     ogr_to_numpy_dtype,
 )
@@ -495,7 +494,7 @@ class FeatureCollection:
         else:
             numpy_dtype = self.dtypes[column_name]
 
-        dtype = numpy_to_gdal_dtype(numpy_dtype)
+        dtype = str(numpy_dtype)
         attribute = column_name
 
         # convert the vector to a gdal Dataset (vector but read by gdal.EX)

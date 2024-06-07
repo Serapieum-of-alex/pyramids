@@ -49,7 +49,7 @@ class TestCreateRasterObject:
         cell_size = 4000
         rows = 13
         columns = 14
-        dtype = 5  # np.int32
+        dtype = "int32"  # 5
         bands_count = 1
         top_left_coords = (432968.1206170588, 520007.787999178)
         ds_epsg = 32618
