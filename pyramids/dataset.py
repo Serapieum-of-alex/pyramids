@@ -1160,7 +1160,7 @@ class Dataset(AbstractDataset):
         Dataset
 
         Hints
-        -------
+        -----
         - The no_data_value will be filled in the array of the output dataset.
         - The coordinates of the top left corner point should be in the same projection as the epsg.
         - The cell size should be in the same unit as the coordinates.
@@ -1356,6 +1356,44 @@ class Dataset(AbstractDataset):
             dst_obj = None
 
         return dst_obj
+
+    def write_array(self, array: np.array, pivot_cell_indexes: List[Any] = None):
+        """Write an array to the dataset at the given xoff, yoff position.
+        Parameters
+        ----------
+        array : np.ndarray
+            The array to write
+        pivot_cell_indexes : List[float, float]
+            indexes [row, column]/[y_offset, x_offset] of the cell to write the array to. If None, the array will be
+            written to the top left corner of the dataset.
+
+        Raises
+        ------
+        Exception
+            If the array is not written successfully.
+
+        Hint
+        ----
+        - The `Dataset` has to be opened in a write mode `read_only=False`.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from pyramids.dataset import Dataset
+        >>> path = "tests.tif"
+        >>> dataset = Dataset.read_file(path, read_only=False)
+        >>> arr = np.array([[1, 2], [3, 4]])
+        >>> dataset.write_array(arr, xoff=5, yoff=3)
+        """
+        yoff, xoff = pivot_cell_indexes
+        try:
+            self._raster.WriteArray(array, xoff=xoff, yoff=yoff)
+        except Exception as e:
+            raise e
 
     def _get_crs(self) -> str:
         """Get coordinate reference system."""
