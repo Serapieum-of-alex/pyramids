@@ -55,9 +55,9 @@ class Dataset(AbstractDataset):
 
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
-    def __init__(self, src: gdal.Dataset):
+    def __init__(self, src: gdal.Dataset, access: str = "read_only"):
         self.logger = logging.getLogger(__name__)
-        super().__init__(src)
+        super().__init__(src, access=access)
 
         self._no_data_value = [
             src.GetRasterBand(i).GetNoDataValue() for i in range(1, self.band_count + 1)
@@ -108,6 +108,11 @@ class Dataset(AbstractDataset):
             self.file_name,
         )
         return message
+
+    @property
+    def access(self):
+        """open_mode."""
+        return super().access
 
     @property
     def raster(self) -> gdal.Dataset:
@@ -323,6 +328,18 @@ class Dataset(AbstractDataset):
         for i, val in enumerate(value):
             self._iloc(i).SetOffset(val)
 
+    def _check_opening_mode(self):
+        """Check opening mode."""
+        try:
+            self._raster.SetMetadata("TEST_KEY", "TEST_VALUE")
+            mode = True
+        except RuntimeError:
+            mode = False
+
+        return mode
+
+
+
     @classmethod
     def read_file(
         cls,
@@ -343,7 +360,7 @@ class Dataset(AbstractDataset):
         Dataset
         """
         src = _io.read_file(path, read_only=read_only)
-        return cls(src)
+        return cls(src, access="read_only" if read_only else "write")
 
     def read_array(
         self, band: int = None, window: Union[GeoDataFrame, List[int]] = None
@@ -870,7 +887,7 @@ class Dataset(AbstractDataset):
         band.WriteArray(array)
 
         if inplace:
-            return self.__init__(src)
+            self.__init__(src)
         else:
             return Dataset(src)
 
@@ -1210,8 +1227,8 @@ class Dataset(AbstractDataset):
             epsg number to identify the projection of the coordinates in the created raster.
         no_data_value : float or None
             No data value.
-        path: [str]
-            path on disk.
+        path: [str] Optional, Default is None
+            path on disk, if None the dataset will be created in memory.
 
         Returns
         -------
@@ -1233,7 +1250,7 @@ class Dataset(AbstractDataset):
         >>> dtype = 1
         >>> bands = 1
         >>> top_left_coords = (0, 0)
-        >>> epsg = 4326
+        >>> epsg = 32618
         >>> no_data_value = -9999
         >>> path = "test.tif"
         >>> dst = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_coords, epsg, no_data_value, path)
@@ -1253,7 +1270,12 @@ class Dataset(AbstractDataset):
         dst.SetGeoTransform(geotransform)
         # Set the projection.
         dst.SetProjection(sr.ExportToWkt())
-        dst = cls(dst)
+        if path is None:
+            access = "write"
+        else:
+            access = "read_only"
+
+        dst = cls(dst, access=access)
         if no_data_value is not None:
             dst._set_no_data_value(no_data_value=no_data_value)
 
@@ -1328,7 +1350,7 @@ class Dataset(AbstractDataset):
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
-    ) -> gdal.Dataset:
+    ) -> "Dataset":
         dtype = numpy_to_gdal_dtype(arr)
         dst_ds = Dataset._create_dataset(
             cols, rows, bands, dtype, driver=driver_type, path=path
@@ -1337,7 +1359,11 @@ class Dataset(AbstractDataset):
         srse = Dataset._create_sr_from_epsg(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
         dst_ds.SetGeoTransform(geo)
-        dst_obj = Dataset(dst_ds)
+        if path is None:
+            access = "write"
+        else:
+            access = "read_only"
+        dst_obj = Dataset(dst_ds, access=access)
         dst_obj._set_no_data_value(no_data_value=no_data_value)
 
         if bands == 1:
@@ -1405,7 +1431,11 @@ class Dataset(AbstractDataset):
         dst.SetGeoTransform(src.geotransform)
         dst.SetProjection(src.crs)
         # setting the NoDataValue does not accept double precision numbers
-        dst_obj = cls(dst)
+        if path is None:
+            access = "write"
+        else:
+            access = "read_only"
+        dst_obj = cls(dst, access=access)
         dst_obj._set_no_data_value(no_data_value=src.no_data_value[0])
 
         dst_obj.raster.GetRasterBand(1).WriteArray(array)

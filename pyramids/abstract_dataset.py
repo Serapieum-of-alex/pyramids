@@ -49,12 +49,13 @@ class AbstractDataset(ABC):
 
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
-    def __init__(self, src: gdal.Dataset):
+    def __init__(self, src: gdal.Dataset, access: str = "read_only"):
         if not isinstance(src, gdal.Dataset):
             raise TypeError(  # pragma: no cover
                 "src should be read using gdal (gdal dataset please read it using gdal"
                 f" library) given {type(src)}"
             )
+        self._access = access
         self._raster = src
         self._geotransform = src.GetGeoTransform()
         self._cell_size = self.geotransform[1]
@@ -80,6 +81,12 @@ class AbstractDataset(ABC):
     @abstractmethod
     def __repr__(self):
         pass
+
+    @property
+    @abstractmethod
+    def access(self):
+        """open_mode."""
+        return self._access
 
     @property
     @abstractmethod
@@ -175,7 +182,7 @@ class AbstractDataset(ABC):
     @abstractmethod
     def meta_data(self):
         """Meta data"""
-        return self._meta_data
+        return self._raster.GetMetadata()
 
     @property
     def block_size(self) -> List[Tuple[int, int]]:
