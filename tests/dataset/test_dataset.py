@@ -1551,3 +1551,26 @@ class TestHistogram:
         hist, ranges = dataset.get_histogram(band=0)
         assert len(ranges) == 6
         assert hist == [75, 6, 0, 4, 2, 1]
+
+
+class TestWriteArray:
+    def test_single_band(self):
+        path = "tests/data/geotiff/empty-to-fill-single-band.tif"
+        dataset = Dataset.read_file(path).copy()
+        arr = np.array([[1, 2], [3, 4]])
+        xoff = 5  # col
+        yoff = 3  # row
+        dataset.write_array(arr, pivot_cell_indexes=[yoff, xoff])
+        retrieved_arr = dataset._raster.ReadAsArray(xoff, yoff, 2, 2)
+        np.testing.assert_array_equal(arr, retrieved_arr)
+
+    def test_multi_band(self):
+        # %% Multi Band
+        path = "tests/data/geotiff/empty-to-fill-multi-band.tif"
+        dataset = Dataset.read_file(path).copy()
+        arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+        xoff = 5
+        yoff = 3
+        dataset.write_array(arr, pivot_cell_indexes=[yoff, xoff])
+        retrieved_arr = dataset._raster.ReadAsArray(xoff, yoff, 2, 2)
+        np.testing.assert_array_equal(arr, retrieved_arr)
