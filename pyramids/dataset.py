@@ -328,18 +328,6 @@ class Dataset(AbstractDataset):
         for i, val in enumerate(value):
             self._iloc(i).SetOffset(val)
 
-    def _check_opening_mode(self):
-        """Check opening mode."""
-        try:
-            self._raster.SetMetadata("TEST_KEY", "TEST_VALUE")
-            mode = True
-        except RuntimeError:
-            mode = False
-
-        return mode
-
-
-
     @classmethod
     def read_file(
         cls,
