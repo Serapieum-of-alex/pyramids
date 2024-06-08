@@ -356,6 +356,13 @@ class TestProperties:
         band_index = src.get_band_by_color("gray_index")
         assert band_index == 0
 
+    def test_metadata(self, src: gdal.Dataset):
+        src = Dataset(src)
+        src = src.copy()
+        assert src.meta_data == {"AREA_OR_POINT": "Area"}
+        src.meta_data = {"key": "value"}
+        assert src.meta_data == {"AREA_OR_POINT": "Area", "key": "value"}
+
 
 class TestSpatialProperties:
     def test_read_array(

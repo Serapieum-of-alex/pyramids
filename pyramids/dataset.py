@@ -223,6 +223,24 @@ class Dataset(AbstractDataset):
         """Meta data"""
         return super().meta_data
 
+    @meta_data.setter
+    def meta_data(self, value: Dict[str, str]):
+        """Meta data
+
+        Hint
+        ----
+        - This property does not need the Dataset to be opened in a write mode to be set.
+        - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
+        .aux.xml, the content of the file will be like the following:
+            <PAMDataset>
+              <Metadata>
+                <MDI key="key">value</MDI>
+              </Metadata>
+            </PAMDataset>
+        """
+        for key, value in value.items():
+            self._raster.SetMetadataItem(key, value)
+
     @property
     def block_size(self) -> List[Tuple[int, int]]:
         """Block Size
