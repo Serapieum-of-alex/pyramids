@@ -325,18 +325,21 @@ class TestProperties:
 
     def test_band_units(self, src: gdal.Dataset):
         src = Dataset(src)
+        src = src.copy()
         assert src.band_units == [""]
         src.band_units = ["meter"]
         assert src._iloc(0).GetUnitType() == "meter"
 
     def test_scale(self, src: gdal.Dataset):
         src = Dataset(src)
+        src = src.copy()
         assert src.scale == [1.0]
         src.scale = [2.0]
         assert src._iloc(0).GetScale() == 2.0
 
     def test_offset(self, src: gdal.Dataset):
         src = Dataset(src)
+        src = src.copy()
         assert src.offset == [0]
         src.offset = [2.0]
         assert src._iloc(0).GetOffset() == 2.0
