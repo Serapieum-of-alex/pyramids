@@ -15,7 +15,6 @@ from pyramids.dataset import Dataset
 
 
 class TestCreateRasterObject:
-
     def test_create_from_array(
         self,
         src_arr: np.ndarray,
@@ -64,6 +63,9 @@ class TestCreateRasterObject:
         assert dataset_n.pivot_point == top_left_coords
         assert dataset_n.band_count == bands_count
         assert dataset_n.dtype == ["int32"]
+        arr = dataset_n.read_array()
+        # check that the raster is filled with the no_data_value value.
+        assert np.unique(arr) == dataset_n.no_data_value[0]
         # the dtype is np.int32, and the no_data_value is -3.4028230607370965e+38
         # Dataset_check_no_data_value()
         # trying to convert the no_data_value to int32 will give the following error
