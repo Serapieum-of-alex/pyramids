@@ -260,7 +260,9 @@ class Dataset(AbstractDataset):
 
     @property
     def scale(self):
-        """Scale"""
+        """Scale
+        The value of the scale is used to convert the pixel values to the real-world values.
+        """
         scale_list = []
         for i in range(self.band_count):
             band_scale = self._iloc(i).GetScale()
@@ -269,12 +271,47 @@ class Dataset(AbstractDataset):
 
     @scale.setter
     def scale(self, value: List[float]):
+        """Scale
+
+        The value of the scale is used to convert the pixel values to the real-world values.
+
+        Hint
+        ----
+        - This property does not need the Dataset to be opened in a write mode to be set.
+        - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
+        .aux.xml, the content of the file will be like the following:
+            <PAMDataset>
+              <PAMRasterBand band="1">
+                <Description>Band_1</Description>
+                <UnitType>m</UnitType>
+                <Offset>100</Offset>
+                <Scale>2</Scale>
+              </PAMRasterBand>
+            </PAMDataset>
+        """
         for i, val in enumerate(value):
             self._iloc(i).SetScale(val)
 
     @property
     def offset(self):
-        """Offset"""
+        """Offset
+
+        The value of the offset is used to convert the pixel values to the real-world values.
+
+        Hint
+        ----
+        - This property does not need the Dataset to be opened in a write mode to be set.
+        - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
+        .aux.xml, the content of the file will be like the following:
+            <PAMDataset>
+              <PAMRasterBand band="1">
+                <Description>Band_1</Description>
+                <UnitType>m</UnitType>
+                <Offset>100</Offset>
+                <Scale>2</Scale>
+              </PAMRasterBand>
+            </PAMDataset>
+        """
         offset_list = []
         for i in range(self.band_count):
             band_offset = self._iloc(i).GetOffset()
@@ -800,7 +837,7 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-
+        None
         """
         # check the dimensions of the new array
         if array.ndim != 2:
@@ -859,6 +896,27 @@ class Dataset(AbstractDataset):
             >>> Band_2  269.611938  269.744751  269.673645  0.043788
             >>> Band_3  273.641479  274.168823  273.953979  0.198447
             >>> Band_4  273.991516  274.540344  274.310669  0.205754
+
+        Hint
+        ----
+        Hint
+        ----
+        - The value of the stats will be stored in an xml file by the name of the raster file with the extension of
+        .aux.xml, the content of the file will be like the following:
+
+        <PAMDataset>
+          <PAMRasterBand band="1">
+            <Description>Band_1</Description>
+            <Metadata>
+              <MDI key="RepresentationType">ATHEMATIC</MDI>
+              <MDI key="STATISTICS_MAXIMUM">88</MDI>
+              <MDI key="STATISTICS_MEAN">7.9662921348315</MDI>
+              <MDI key="STATISTICS_MINIMUM">0</MDI>
+              <MDI key="STATISTICS_STDDEV">18.294377743948</MDI>
+              <MDI key="STATISTICS_VALID_PERCENT">48.9</MDI>
+            </Metadata>
+          </PAMRasterBand>
+        </PAMDataset>
         """
         if mask is not None:
             dst = self.crop(mask, touch=True)
@@ -3960,6 +4018,27 @@ class Dataset(AbstractDataset):
         -------
         Tuple[np.ndarray, np.ndarray]
             histogram values and bin edges.
+
+        Hint
+        ----
+        - The value of the histogram will be stored in an xml file by the name of the raster file with the extension of
+        .aux.xml, the content of the file will be like the following:
+
+        <PAMDataset>
+          <PAMRasterBand band="1">
+            <Description>Band_1</Description>
+            <Histograms>
+              <HistItem>
+                <HistMin>0</HistMin>
+                <HistMax>88</HistMax>
+                <BucketCount>6</BucketCount>
+                <IncludeOutOfRange>0</IncludeOutOfRange>
+                <Approximate>0</Approximate>
+                <HistCounts>75|6|0|4|2|1</HistCounts>
+              </HistItem>
+            </Histograms>
+          </PAMRasterBand>
+        </PAMDataset>
         """
         band = self._iloc(band)
         min_val, max_val = band.ComputeRasterMinMax()
