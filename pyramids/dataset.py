@@ -1,4 +1,6 @@
 """
+Dataset module.
+
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
@@ -56,6 +58,7 @@ class Dataset(AbstractDataset):
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
+        """__init__."""
         self.logger = logging.getLogger(__name__)
         super().__init__(src, access=access)
 
@@ -68,6 +71,7 @@ class Dataset(AbstractDataset):
         ]
 
     def __str__(self):
+        """__str__."""
         message = f"""
             Cell size: {self.cell_size}
             Dimension: {self.rows} * {self.columns}
@@ -81,6 +85,7 @@ class Dataset(AbstractDataset):
         return message
 
     def __repr__(self):
+        """__repr__."""
         message = """
             Cell size: {0}
             Dimension: {1} * {2}
@@ -116,7 +121,7 @@ class Dataset(AbstractDataset):
 
     @property
     def raster(self) -> gdal.Dataset:
-        """GDAL Dataset"""
+        """GDAL Dataset."""
         return super().raster
 
     @raster.setter
@@ -125,7 +130,7 @@ class Dataset(AbstractDataset):
 
     @property
     def values(self) -> np.ndarray:
-        """values of all the bands."""
+        """Values of all the bands."""
         return self.read_array()
 
     @property
@@ -140,12 +145,12 @@ class Dataset(AbstractDataset):
 
     @property
     def shape(self):
-        """Dataset shape(bands, rows, columns)."""
+        """Shape (bands, rows, columns)."""
         return self.band_count, self.rows, self.columns
 
     @property
     def geotransform(self):
-        """WKT projection.(x, cell_size, 0, y, 0, -cell_size)"""
+        """WKT projection.(x, cell_size, 0, y, 0, -cell_size)."""
         return super().geotransform
 
     @property
@@ -180,7 +185,7 @@ class Dataset(AbstractDataset):
 
     @band_names.setter
     def band_names(self, name_list: List):
-        """band_names setter"""
+        """Band names."""
         self._set_band_names(name_list)
 
     @property
@@ -190,19 +195,20 @@ class Dataset(AbstractDataset):
 
     @band_units.setter
     def band_units(self, value: List[str]):
-        """Band units setter"""
+        """Band units setter."""
         self._band_units = value
         for i, val in enumerate(value):
             self._iloc(i).SetUnitType(val)
 
     @property
     def no_data_value(self):
-        """No data value that marks the cells out of the domain"""
+        """No data value that marks the cells out of the domain."""
         return self._no_data_value
 
     @no_data_value.setter
     def no_data_value(self, value: Union[List, Number]):
-        """
+        """no_data_value.
+
         No data value that marks the cells out of the domain
 
         Notes
@@ -220,12 +226,12 @@ class Dataset(AbstractDataset):
 
     @property
     def meta_data(self):
-        """Meta data"""
+        """Meta data."""
         return super().meta_data
 
     @meta_data.setter
     def meta_data(self, value: Dict[str, str]):
-        """Meta data
+        """Meta data.
 
         Hint
         ----
@@ -243,7 +249,7 @@ class Dataset(AbstractDataset):
 
     @property
     def block_size(self) -> List[Tuple[int, int]]:
-        """Block Size
+        """Block Size.
 
         The block size is the size of the block that the raster is divided into, the block size is used to read and
         write the raster data in blocks.
@@ -259,7 +265,7 @@ class Dataset(AbstractDataset):
 
     @block_size.setter
     def block_size(self, value: List[Tuple[int, int]]):
-        """Block Size
+        """Block Size.
 
         Parameters
         ----------
@@ -273,17 +279,18 @@ class Dataset(AbstractDataset):
 
     @property
     def file_name(self):
-        """file name"""
+        """File name."""
         return super().file_name
 
     @property
     def driver_type(self):
-        """Driver Type"""
+        """Driver Type."""
         return super().driver_type
 
     @property
     def scale(self):
-        """Scale
+        """Scale.
+
         The value of the scale is used to convert the pixel values to the real-world values.
         """
         scale_list = []
@@ -294,7 +301,7 @@ class Dataset(AbstractDataset):
 
     @scale.setter
     def scale(self, value: List[float]):
-        """Scale
+        """Scale.
 
         The value of the scale is used to convert the pixel values to the real-world values.
 
@@ -317,7 +324,7 @@ class Dataset(AbstractDataset):
 
     @property
     def offset(self):
-        """Offset
+        """Offset.
 
         The value of the offset is used to convert the pixel values to the real-world values.
 
@@ -431,7 +438,7 @@ class Dataset(AbstractDataset):
     def read_array(
         self, band: int = None, window: Union[GeoDataFrame, List[int]] = None
     ) -> np.ndarray:
-        """Read Array
+        """Read Array.
 
             - read the values stored in a given band.
 
@@ -572,17 +579,17 @@ class Dataset(AbstractDataset):
 
     @property
     def bounds(self) -> GeoDataFrame:
-        """bounds-the bbox as a geodataframe with a polygon geometry"""
+        """Bounds - the bbox as a geodataframe with a polygon geometry."""
         return self._calculate_bounds()
 
     @property
     def bbox(self) -> List:
-        """[xmin, ymin, xmax, ymax]"""
+        """Bound box [xmin, ymin, xmax, ymax]."""
         return self._calculate_bbox()
 
     @property
     def lon(self):
-        """Longitude coordinates"""
+        """Longitude coordinates."""
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
             cell_size = self.cell_size
@@ -596,7 +603,7 @@ class Dataset(AbstractDataset):
 
     @property
     def lat(self):
-        """Latitude-coordinate"""
+        """Latitude-coordinate."""
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
@@ -610,8 +617,8 @@ class Dataset(AbstractDataset):
 
     @property
     def x(self):
-        """x-coordinate/longitude"""
-        # X_coordinate = upperleft corner x + index * cell size + celsize/2
+        """X-coordinate/Longitude."""
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
             cell_size = self.cell_size
@@ -628,13 +635,14 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> List[float]:
+        """Get X/Lon coordinates."""
         x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
         return x_coords
 
     @property
     def y(self):
-        """y-coordinate/latitude"""
-        # X_coordinate = upperleft corner x + index * cell size + celsize/2
+        """Y-coordinate/Latitude."""
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
@@ -649,19 +657,20 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> List[float]:
+        """Get Y/Lat coordinates."""
         y_coords = [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
         return y_coords
 
     @property
     def gdal_dtype(self):
-        """Data Type"""
+        """Data Type."""
         return [
             self.raster.GetRasterBand(i).DataType for i in range(1, self.band_count + 1)
         ]
 
     @property
     def numpy_dtype(self) -> List[type]:
-        """List of the numpy data Type of each band, the data type is a numpy function"""
+        """List of the numpy data Type of each band, the data type is a numpy function."""
         return [
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "numpy"].values[0]
             for i in self.gdal_dtype
@@ -669,7 +678,7 @@ class Dataset(AbstractDataset):
 
     @property
     def dtype(self) -> List[str]:
-        """List of the numpy data Type of each band"""
+        """List of the numpy data Type of each band."""
         return [
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "name"].values[0]
             for i in self.gdal_dtype
@@ -678,7 +687,7 @@ class Dataset(AbstractDataset):
     def get_block_arrangement(
         self, band: int = 0, x_block_size: int = None, y_block_size: int = None
     ) -> DataFrame:
-        """Get Block Arrangement
+        """Get Block Arrangement.
 
         Parameters
         ----------
@@ -1061,7 +1070,7 @@ class Dataset(AbstractDataset):
         overview_index: int = 0,
         **kwargs,
     ):
-        """plot
+        """Plot.
 
             - plot the values/overviews of a given band.
 
@@ -1517,6 +1526,7 @@ class Dataset(AbstractDataset):
 
     def write_array(self, array: np.array, pivot_cell_indexes: List[Any] = None):
         """Write an array to the dataset at the given xoff, yoff position.
+
         Parameters
         ----------
         array : np.ndarray
@@ -1670,7 +1680,7 @@ class Dataset(AbstractDataset):
         return epsg
 
     def count_domain_cells(self, band: int = 0) -> int:
-        """Count cells inside the domain
+        """Count cells inside the domain.
 
         Parameters
         ----------
@@ -1708,7 +1718,7 @@ class Dataset(AbstractDataset):
         return sr
 
     def _get_band_names(self) -> List[str]:
-        """Get band names from band metadata if exists otherwise will return idex [1,2, ...]
+        """Get band names from band metadata if exists otherwise will return index [1,2, ...].
 
         Returns
         -------
@@ -1736,7 +1746,7 @@ class Dataset(AbstractDataset):
         return names
 
     def _set_band_names(self, name_list: List):
-        """set band names from a given list of names
+        """Set band names from a given list of names.
 
         Returns
         -------
@@ -1747,7 +1757,7 @@ class Dataset(AbstractDataset):
             # first set the band name in the gdal dataset object
             band_i = self.raster.GetRasterBand(i + 1)
             band_i.SetDescription(name_list[i])
-            # second change the band names in the
+            # second change the band names in the _band_names property.
             self._band_names[i] = name_list[i]
 
     def _check_no_data_value(self, no_data_value: List):
@@ -1775,7 +1785,7 @@ class Dataset(AbstractDataset):
                     # None and np.nan
                     if self.dtype[i].startswith("u"):
                         # only Unsigned integer data types.
-                        # if None or np.nan it will make problem with the unsigned integer data type
+                        # if None or np.nan it will make a problem with the unsigned integer data type
                         # use the max bound of the data type as a no_data_value
                         no_data_value[i] = np.iinfo(self.dtype[i]).max
                     else:
@@ -1800,7 +1810,7 @@ class Dataset(AbstractDataset):
             - used only when creating an empty driver.
 
             now the no_data_value is converted to the dtype of the raster bands and updated in the
-            dataset attribute, gdal nodatavalue attribute, used to fill the raster band.
+            dataset attribute, gdal no_data_value attribute, used to fill the raster band.
             from here you have to use the no_data_value stored in the no_data_value attribute as it is updated.
 
         Parameters
@@ -1816,15 +1826,15 @@ class Dataset(AbstractDataset):
         for band in range(self.band_count):
             try:
                 # now the no_data_value is converted to the dtype of the raster bands and updated in the
-                # dataset attribute, gdal nodatavalue attribute, used to fill the raster band.
+                # dataset attribute, gdal no_data_value attribute, used to fill the raster band.
                 # from here you have to use the no_data_value stored in the no_data_value attribute as it is updated.
                 self._set_no_data_value_backend(band, no_data_value[band])
             except Exception as e:
                 if str(e).__contains__(
-                    "Attempt to write to read only dataset in GDALRasterBand::Fill()."
+                    "Attempt to write to read-only dataset in GDALRasterBand::Fill()."
                 ):
                     raise ReadOnlyError(
-                        "The Dataset is open with a read only, please read the raster using update "
+                        "The Dataset is open with a read-only, please read the raster using update "
                         "access mode"
                     )
                 elif str(e).__contains__(
@@ -1841,14 +1851,14 @@ class Dataset(AbstractDataset):
                     )
 
     def _calculate_bbox(self) -> List:
-        """calculate bounding box"""
+        """Calculate bounding box."""
         xmin, ymax = self.pivot_point
         ymin = ymax - self.rows * self.cell_size
         xmax = xmin + self.columns * self.cell_size
         return [xmin, ymin, xmax, ymax]
 
     def _calculate_bounds(self) -> GeoDataFrame:
-        """get the bbox as a geodataframe with a polygon geometry"""
+        """Get the bbox as a geodataframe with a polygon geometry."""
         xmin, ymin, xmax, ymax = self._calculate_bbox()
         coords = [(xmin, ymax), (xmin, ymin), (xmax, ymin), (xmax, ymax)]
         poly = FeatureCollection.create_polygon(coords)
@@ -1902,10 +1912,10 @@ class Dataset(AbstractDataset):
             self.raster.GetRasterBand(band + 1).SetNoDataValue(no_data_value)
         except Exception as e:
             if str(e).__contains__(
-                "Attempt to write to read only dataset in GDALRasterBand::Fill()."
+                "Attempt to write to read-only dataset in GDALRasterBand::Fill()."
             ):
                 raise ReadOnlyError(
-                    "The Dataset is open with a read only, please read the raster using update "
+                    "The Dataset is open with a read-only, please read the raster using update "
                     "access mode"
                 )
             # TypeError
@@ -2019,8 +2029,8 @@ class Dataset(AbstractDataset):
         arr = self.read_array(band=0)
         if mask is not None and no_val not in arr:
             logger.warning(
-                "The no data value does not exist in the band, so all the cells will be cosidered and the "
-                "mask will not be cosidered."
+                "The no data value does not exist in the band, so all the cells will be considered, and the "
+                "mask will not be considered."
             )
 
         if mask:
@@ -2133,7 +2143,7 @@ class Dataset(AbstractDataset):
 
         Notes
         -----
-        The object will still refers to the dataset before saving. if you want to use the new saved dataset you have
+        The object will still refer to the dataset before saving. if you want to use the new saved dataset you have
         to read the file again.
         """
         if not isinstance(path, str):
@@ -2790,7 +2800,7 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def _check_alignment(self, mask) -> bool:
-        """Check if raster is aligned with a given mask raster"""
+        """Check if raster is aligned with a given mask raster."""
         if not isinstance(mask, Dataset):
             raise TypeError("The second parameter should be a Dataset")
 
@@ -2981,7 +2991,8 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def correct_wrap_cutline_error(src: "Dataset"):
-        """correct_wrap_cutline_error.
+        """Correct wrap cutline error.
+
         https://github.com/Serapieum-of-alex/pyramids/issues/74
         """
         big_array = src.read_array()
@@ -3213,7 +3224,7 @@ class Dataset(AbstractDataset):
         rows_index: Union[List[Number], np.ndarray],
         center: bool = False,
     ) -> Tuple[List[Number], List[Number]]:
-        """array_to_map_coordinates
+        """Array indexes to map coordinates.
 
             - array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
 
@@ -3442,7 +3453,8 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def normalize(array: np.ndarray) -> np.ndarray:
-        """
+        """Normalize.
+
         Normalizes numpy arrays into scale 0.0 - 1.0
 
         Parameters
@@ -3466,7 +3478,7 @@ class Dataset(AbstractDataset):
         ----------
         size : [int]
             Size of window in pixels. One value required which is used for both the
-            x and y size. E.g 256 means a 256x256 window.
+            x and y size. e.g 256 means a 256x256 window.
 
         Yields
         ------
@@ -3490,13 +3502,13 @@ class Dataset(AbstractDataset):
                 yield xoff, yoff, xsize, ysize
 
     def get_tile(self, size=256) -> Generator[np.ndarray, None, None]:
-        """gets tile.
+        """Get tile.
 
         Parameters
         ----------
         size : int
-            Size of window in pixels. One value required which is used for both the
-            x and y size. E.g 256 means a 256x256 window.
+            Size of the window in pixels. One value required which is used for both the
+            x and y size. e.g., 256 means a 256x256 window.
 
         Yields
         ------
@@ -3513,8 +3525,7 @@ class Dataset(AbstractDataset):
     def _group_neighbours(
         array, i, j, lowervalue, uppervalue, position, values, count, cluster
     ):
-        """group neighbouring cells with the same values"""
-
+        """Group neighbouring cells with the same values."""
         # bottom cell
         if (
             lowervalue <= array[i + 1, j] <= uppervalue
@@ -3683,7 +3694,7 @@ class Dataset(AbstractDataset):
     def cluster(
         self, lower_bound: Any, upper_bound: Any
     ) -> Tuple[np.ndarray, int, list, list]:
-        """Cluster
+        """Cluster.
 
             - group all the connected values between two numbers in a raster in clusters.
 
@@ -3761,7 +3772,7 @@ class Dataset(AbstractDataset):
 
     @property
     def overview_count(self) -> List[int]:
-        """Number of the overviews for each band"""
+        """Number of the overviews for each band."""
         overview_number = []
         for i in range(self.band_count):
             overview_number.append(self._iloc(i).GetOverviewCount())
@@ -3892,7 +3903,7 @@ class Dataset(AbstractDataset):
     def read_overview_array(
         self, band: int = None, overview_index: int = 0
     ) -> np.ndarray:
-        """Read Array
+        """Read Array.
 
             - read the values stored in a given band.
 
@@ -3943,7 +3954,7 @@ class Dataset(AbstractDataset):
 
     @property
     def band_color(self) -> Dict[int, str]:
-        """band_color"""
+        """Band colors."""
         color_dict = {}
         for i in range(self.band_count):
             band_color = self._iloc(i).GetColorInterpretation()
@@ -3953,7 +3964,7 @@ class Dataset(AbstractDataset):
 
     @band_color.setter
     def band_color(self, values: Dict[int, str]):
-        """band_color
+        """band_color.
 
         Parameters
         ----------
@@ -3989,7 +4000,7 @@ class Dataset(AbstractDataset):
     # use the SetColorInterpretation method to assign the color (R/G/B) to a band.
     @property
     def color_table(self, band: int = None) -> DataFrame:
-        """Color table"""
+        """Color table."""
         return self._get_color_table(band)
 
     @color_table.setter
@@ -4020,7 +4031,7 @@ class Dataset(AbstractDataset):
         self._set_color_table(df, overwrite=True)
 
     def _set_color_table(self, color_df: DataFrame, overwrite: bool = False):
-        """
+        """_set_color_table.
 
         Parameters
         ----------
