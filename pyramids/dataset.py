@@ -1831,10 +1831,10 @@ class Dataset(AbstractDataset):
                 self._set_no_data_value_backend(band, no_data_value[band])
             except Exception as e:
                 if str(e).__contains__(
-                    "Attempt to write to read-only dataset in GDALRasterBand::Fill()."
+                    "Attempt to write to read only dataset in GDALRasterBand::Fill()."
                 ):
                     raise ReadOnlyError(
-                        "The Dataset is open with a read-only, please read the raster using update "
+                        "The Dataset is open with a read only, please read the raster using update "
                         "access mode"
                     )
                 elif str(e).__contains__(
@@ -1912,10 +1912,10 @@ class Dataset(AbstractDataset):
             self.raster.GetRasterBand(band + 1).SetNoDataValue(no_data_value)
         except Exception as e:
             if str(e).__contains__(
-                "Attempt to write to read-only dataset in GDALRasterBand::Fill()."
+                "Attempt to write to read only dataset in GDALRasterBand::Fill()."
             ):
                 raise ReadOnlyError(
-                    "The Dataset is open with a read-only, please read the raster using update "
+                    "The Dataset is open with a read only, please read the raster using update "
                     "access mode"
                 )
             # TypeError
