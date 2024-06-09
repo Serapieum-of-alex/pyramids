@@ -1,4 +1,6 @@
 """
+netcdf module.
+
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
@@ -25,6 +27,7 @@ class NetCDF(Dataset):
     """
 
     def __init__(self, src: gdal.Dataset):
+        """__init__."""
         super().__init__(src)
         # set the is_subset to false before retrieving the variables
         self._is_subset = False
@@ -38,6 +41,7 @@ class NetCDF(Dataset):
             self._lat, self._lon = self._get_lat_lon()
 
     def __str__(self):
+        """__str__."""
         message = f"""
             Cell size: {self.cell_size}
             Dimension: {self.rows} * {self.columns}
@@ -48,6 +52,7 @@ class NetCDF(Dataset):
         return message
 
     def __repr__(self):
+        """__repr__."""
         message = """
             Cell size: {0}
             Dimension: {1} * {2}
@@ -70,7 +75,7 @@ class NetCDF(Dataset):
 
     @property
     def lon(self):
-        """Longitude coordinates"""
+        """Longitude coordinates."""
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
             cell_size = self.cell_size
@@ -84,7 +89,7 @@ class NetCDF(Dataset):
 
     @property
     def lat(self):
-        """Latitude-coordinate"""
+        """Latitude-coordinate."""
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
@@ -96,7 +101,7 @@ class NetCDF(Dataset):
 
     @property
     def x(self):
-        """x-coordinate/longitude"""
+        """x-coordinate/longitude."""
         # X_coordinate = upperleft corner x + index * cell size + celsize/2
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
@@ -111,7 +116,7 @@ class NetCDF(Dataset):
 
     @property
     def y(self):
-        """y-coordinate/latitude"""
+        """y-coordinate/latitude."""
         # X_coordinate = upperleft corner x + index * cell size + celsize/2
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
@@ -140,17 +145,18 @@ class NetCDF(Dataset):
 
     @property
     def variables(self) -> Dict[str, "NetCDF"]:
-        """Variables in the dataset (resembles the variables in netcdf files.)"""
+        """Variables in the dataset (resembles the variables in netcdf files.)."""
         return self._variables
 
     @property
     def no_data_value(self):
-        """No data value that marks the cells out of the domain"""
+        """No data value that marks the cells out of the domain."""
         return self._no_data_value
 
     @no_data_value.setter
     def no_data_value(self, value: Union[List, Number]):
-        """
+        """no_data_value.
+
         No data value that marks the cells out of the domain
 
         Notes
@@ -168,7 +174,7 @@ class NetCDF(Dataset):
 
     @property
     def file_name(self):
-        """file name"""
+        """File name."""
         if self._file_name.startswith("NETCDF"):
             name = self._file_name.split(":")[1][1:-1]
         else:
@@ -177,7 +183,7 @@ class NetCDF(Dataset):
 
     @property
     def time_stamp(self):
-        """Time stamp"""
+        """Time stamp."""
         if hasattr(self, "_time_stamp"):
             val = self._time_stamp
         else:
@@ -208,12 +214,7 @@ class NetCDF(Dataset):
         return cls(src)
 
     def _get_time_variable(self):
-        """
-
-        Returns
-        -------
-
-        """
+        """_get_time_variable."""
         # time_vars = [(i, self.meta_data.get(i)) for i in self.meta_data.keys() if i.startswith("time")]
         # time_var_name = time_vars[0][0].split("#")[0]
         extra_dim = self.meta_data.get("NETCDF_DIM_EXTRA")
@@ -342,7 +343,7 @@ class NetCDF(Dataset):
     def create_main_dimension(
         group: gdal.Group, dim_name: str, dtype: int, values: np.ndarray
     ) -> gdal.Dimension:
-        """Create NetCDF dimension
+        """Create NetCDF dimension.
 
         if the dimension name is y, lat, latitude, the dimension type will be horizontal y,
         if the dimension name is x, lon, longitude, the dimension type will be horizontal x,
