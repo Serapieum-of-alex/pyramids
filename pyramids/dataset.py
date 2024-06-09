@@ -351,6 +351,7 @@ class Dataset(AbstractDataset):
         cls,
         path: str,
         read_only=True,
+        file_i: int = 0,
     ) -> "Dataset":
         """read_file.
 
@@ -360,12 +361,71 @@ class Dataset(AbstractDataset):
             Path of file to open.
         read_only: [bool]
             File mode, set to False, to open in "update" mode.
+        file_i: [int] default is 0
+            index to the file inside the compressed file you want to read, if the compressed file have only one file
 
         Returns
         -------
         Dataset
+
+        Examples
+        --------
+        Zip files:
+            - Internal Zip file path (one/multiple files inside the compressed file):
+                if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains
+                    the internal path inside the zip file, so just ad
+
+                >>> from pyramids.dataset import Dataset
+                >>> rdir = "tests/data/virtual-file-system"
+                >>> dataset = Dataset.read_file(f"{rdir}/multiple_compressed_files.zip/1.asc")
+                >>> print(dataset)
+                <BLANKLINE>
+                            Cell size: 4000.0
+                            Dimension: 13 * 14
+                            EPSG: 4326
+                            Number of Bands: 1
+                            Band names: ['Band_1']
+                            Mask: -3.4028230607370965e+38
+                            Data type: float32
+                            File: /vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/1.asc
+                <BLANKLINE>
+
+            - Only the Zip file path (one/multiple files inside the compressed file):
+                If you provide the name of the zip file with multiple files inside it, it will return the path to the first
+                file.
+
+                >>> dataset = Dataset.read_file(f"{rdir}/multiple_compressed_files.zip")
+                >>> print(dataset)
+                <BLANKLINE>
+                            Cell size: 4000.0
+                            Dimension: 13 * 14
+                            EPSG: 4326
+                            Number of Bands: 1
+                            Band names: ['Band_1']
+                            Mask: -3.4028230607370965e+38
+                            Data type: float32
+                            File: /vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/1.asc
+                <BLANKLINE>
+
+            - Zip file path and an index (one/multiple files inside the compressed file):
+                if you provide the path to the zip file and an index to the file inside the compressed file you want to
+                read.
+
+                >>> dataset = Dataset.read_file(f"{rdir}/multiple_compressed_files.zip", file_i=1)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Cell size: 4000.0
+                            Dimension: 13 * 14
+                            EPSG: 4326
+                            Number of Bands: 1
+                            Band names: ['Band_1']
+                            Mask: -3.4028230607370965e+38
+                            Data type: float32
+                            File: /vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/2.asc
+                <BLANKLINE>
+
         """
-        src = _io.read_file(path, read_only=read_only)
+        src = _io.read_file(path, read_only=read_only, file_i=file_i)
         return cls(src, access="read_only" if read_only else "write")
 
     def read_array(

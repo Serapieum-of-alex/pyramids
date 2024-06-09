@@ -42,8 +42,6 @@ def _get_zip_path(path: str, file_i: int = 0):
 
     Examples
     --------
-    - check if the given path contains a .zip in it
-
     - Internal Zip file path (one/multiple files inside the compressed file):
         if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains
         the internal path inside the zip file, so just ad
@@ -190,7 +188,7 @@ def extract_from_gz(input_file: str, output_file: str, delete=False):
 
 
 def read_file(
-    path: str, read_only: bool = True, open_as_multi_dimensional: bool = False
+    path: str, read_only: bool = True, open_as_multi_dimensional: bool = False, file_i: int = 0
 ):
     """Open file.
 
@@ -204,6 +202,8 @@ def read_file(
         File mode, set to `False` to open in "update" mode.
     open_as_multi_dimensional: [bool]
         Default is False.
+    file_i: [int] default is 0
+        index to the file inside the compressed file you want to read, if the compressed file have only one file
 
     Returns
     -------
@@ -213,7 +213,7 @@ def read_file(
         raise TypeError(
             f"the path parameter should be of string type, given: {type(path)}"
         )
-    path = _parse_path(path)
+    path = _parse_path(path, file_i=file_i)
     access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
     try:
         # get the file extension
