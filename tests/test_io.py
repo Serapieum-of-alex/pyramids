@@ -3,7 +3,7 @@ from typing import List
 
 import pytest
 from osgeo import gdal
-from pyramids._errors import FileFormatNoSupported
+from pyramids._errors import FileFormatNotSupported
 from pyramids._io import _parse_path, extract_from_gz, read_file
 
 
@@ -106,7 +106,7 @@ class TestReadGzip:
     def test_multiple_compressed_gzip_file_error(
         self, multiple_compressed_file_gzip: str
     ):
-        with pytest.raises(FileFormatNoSupported):
+        with pytest.raises(FileFormatNotSupported):
             read_file(multiple_compressed_file_gzip)
 
     def test_multiple_compressed_gzip_file_with_internal_path(
@@ -117,7 +117,7 @@ class TestReadGzip:
         first_file = multiple_compressed_file_gzip_content[0]
         try:
             read_file(f"{multiple_compressed_file_gzip}/{first_file}")
-        except FileFormatNoSupported:
+        except FileFormatNotSupported:
             pass
 
 
