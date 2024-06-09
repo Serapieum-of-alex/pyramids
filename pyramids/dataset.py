@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from geopandas.geodataframe import DataFrame, GeoDataFrame
 from loguru import logger
-from osgeo import gdal, ogr, osr  # gdalconst,
+from osgeo import gdal, ogr, osr
 from osgeo.osr import SpatialReference
 
 from pyramids._errors import (
@@ -848,12 +848,6 @@ class Dataset(AbstractDataset):
             attribute_table provides a way to associate tabular data with the values of a raster band.
             This is particularly useful for categorical raster data, such as land cover classifications, where each
             pixel value corresponds to a category that has additional attributes (e.g., class name, color, description).
-            >>> data = {
-            >>>     "Value": [1, 2, 3],
-            >>>     "ClassName": ["Forest", "Water", "Urban"],
-            >>>     "Color": ["#008000", "#0000FF", "#808080"],
-            >>> }
-            >>> df = pd.DataFrame(data)
         inplace: [bool] optional
             if True the new band will be added to the current dataset, if False the new band will be added to a new
             dataset.
@@ -861,6 +855,16 @@ class Dataset(AbstractDataset):
         Returns
         -------
         None
+
+        Examples
+        --------
+        - Example of the attribute_table:
+        >>> data = {
+        ...     "Value": [1, 2, 3],
+        ...     "ClassName": ["Forest", "Water", "Urban"],
+        ...     "Color": ["#008000", "#0000FF", "#808080"],
+        ... }
+        >>> df = pd.DataFrame(data)
         """
         # check the dimensions of the new array
         if array.ndim != 2:
