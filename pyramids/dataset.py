@@ -2,7 +2,7 @@
 Dataset module.
 
 raster contains python functions to handle raster data align them together based on a source raster, perform any
-algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
+algebraic operation on cell's values. gdal class: https://gdal.org/api/index.html#python-api.
 """
 import os
 import warnings

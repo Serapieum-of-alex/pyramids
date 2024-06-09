@@ -1,14 +1,13 @@
 """
 netcdf module.
 
-raster contains python functions to handle raster data align them together based on a source raster, perform any
-algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
+netcdf contains python functions to handle netcdf data. gdal class: https://gdal.org/api/index.html#python-api.
 """
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
-from osgeo import gdal  # gdalconst
+from osgeo import gdal
 from pyramids._utils import (
     create_time_conversion_func,
     numpy_to_gdal_dtype,
@@ -20,10 +19,9 @@ from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 
 
 class NetCDF(Dataset):
-    """AbstractDataset.
+    """NetCDF.
 
-    The Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate
-    systems.
+    The NetCDF class contains methods to deal with netcdf files.
     """
 
     def __init__(self, src: gdal.Dataset):
@@ -117,7 +115,7 @@ class NetCDF(Dataset):
     @property
     def y(self):
         """y-coordinate/latitude."""
-        # X_coordinate = upperleft corner x + index * cell size + celsize/2
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
@@ -164,7 +162,7 @@ class NetCDF(Dataset):
             - the setter does not change the values of the cells to the new no_data_value, it only changes the
             `no_data_value` attribute.
             - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
-            - to change the values of the cells to the new no_data_value, use the `change_no_data_value` method.
+            - to change the values of the cells, to the new no_data_value, use the `change_no_data_value` method.
         """
         if isinstance(value, list):
             for i, val in enumerate(value):
@@ -584,7 +582,7 @@ class NetCDF(Dataset):
 
         Notes
         -----
-        The method will not remove the variable from the disk if the dataset is saved on disk. Rather the method will
+        The method will not remove the variable from the disk if the dataset is saved on disk. Rather, the method will
         make a Memory driver and copy the original dataset to the memory driver. and then remove the variable from the
         memory dataset.
         """
