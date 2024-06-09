@@ -1,5 +1,6 @@
 import os
 import zipfile
+import tarfile
 import gzip
 import numpy as np
 import warnings
@@ -22,39 +23,56 @@ def _is_gzip(path: str):
 
 
 def _is_tar(path: str):
-    return path.endswith(".tar") or path.__contains__(".tar")
+    return path.endswith(".tar.gz") or path.__contains__(".tar")
 
 
 def _get_zip_path(path: str, file_i: int = 0):
     """Get Zip Path.
 
-            - check if the given path contains a .zip in it
-            - if the path contains a zip but does not end with zip (xxxx.zip/1.asc), so the path contains the
-    4        internal path inside the zip file, so just add the prefix
-            - anything else get the list of the files inside the zip and return the full path to first file.
+    Parameters
+    ----------
+    path: [str]
+        path to the zip file.
+    file_i: [int]
+        index to the file inside the compressed file you want to read.
 
-        Parameters
-        ----------
-        path: [str]
-            path to the zip file.
-        file_i: [int]
-            index to the file inside the compressed file you want to read.
+    Returns
+    -------
+    str path to gdal to read the zipped file.
 
-        Returns
-        -------
-        str path to gdal to read the zipped file.
+    Examples
+    --------
+    - check if the given path contains a .zip in it
+
+    - Internal Zip file path (one/multiple files inside the compressed file):
+        if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains
+        the internal path inside the zip file, so just ad
+    >>> rdir = "tests/data/virtual-file-system"
+    >>> path = _get_zip_path(f"{rdir}/multiple_compressed_files.zip/1.asc")
+    >>> print(path)
+    >>> "/vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/1.asc"
+    - Only the Zip file path (one/multiple files inside the compressed file):
+        If you provide the name of the zip file with multiple files inside it, it will return the path to the first
+        file.
+    >>> path = _get_zip_path(f"{rdir}/multiple_compressed_files.zip")
+    >>> print(path)
+    >>> "/vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/1.asc"
+    - Zip file path and an index (one/multiple files inside the compressed file):
+        if you provide the path to the zip file and an index to the file inside the compressed file you want to read
+    >>> path = _get_zip_path("compressed-file-name.zip", file_i=1)
+    >>> print(path)
+    >>> "/vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/2.asc"
     """
-    # get list of files inside the compressed file
+    # get a list of files inside the compressed file
     if path.__contains__(".zip") and not path.endswith(".zip"):
         vsi_path = f"/vsizip/{path}"
     else:
-        zfile = zipfile.ZipFile(path)
-        file_list = zfile.namelist()
+        file_list = zipfile.ZipFile(path).namelist()
         vsi_path = f"/vsizip/{path}/{file_list[file_i]}"
     return vsi_path
 
 
-def _get_gzip_path(path: str):
+def _get_gzip_path(path: str, file_i: int = 0):
     """Get Zip Path.
 
         - check if the given path contains a .gz in it
@@ -80,7 +98,13 @@ def _get_gzip_path(path: str):
     if path.__contains__(".gz") and not path.endswith(".gz"):
         vsi_path = f"/vsigzip/{path}"
     else:
-        vsi_path = f"/vsigzip/{path}"
+        try:
+            file_list = tarfile.open(path).getnames()
+            vsi_path = f"/vsigzip/{path}/{file_list[file_i]}"
+        except tarfile.ReadError:
+            # if the tarfile.open() does not give a getnames() method, it means the file contains one file
+            # so return the path of the main file
+            vsi_path = f"/vsigzip/{path}"
     return vsi_path
 
 
@@ -128,10 +152,10 @@ def _parse_path(path: str, file_i: int = 0) -> str:
     """
     if _is_zip(path):
         new_path = _get_zip_path(path, file_i=file_i)
-    elif _is_gzip(path):
-        new_path = _get_gzip_path(path)
     elif _is_tar(path):
         new_path = _get_tar_path(path)
+    elif _is_gzip(path):
+        new_path = _get_gzip_path(path, file_i=file_i)
     else:
         new_path = path
     return new_path
