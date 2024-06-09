@@ -6,7 +6,7 @@ import numpy as np
 import warnings
 from osgeo import gdal
 
-from pyramids._errors import FileFormatNoSupported
+from pyramids._errors import FileFormatNotSupported
 
 gdal.UseExceptions()
 
@@ -132,15 +132,14 @@ def _get_tar_path(path: str):
 
 
 def _parse_path(path: str, file_i: int = 0) -> str:
-    """Parse Path
-
+    """Parse Path.
 
     Parameters
     ----------
     path: [str]
         path to the file.
     file_i: [int]
-        index to the file inside the compressed file you want to read, if the compressed file have only one file
+        index to the file inside the compressed file you want to read, if the compressed file has only one file
         inside it will read this file, if multiple files are compressed, it will return the first file.
 
     Returns
@@ -160,12 +159,12 @@ def _parse_path(path: str, file_i: int = 0) -> str:
 
 
 def extract_from_gz(input_file: str, output_file: str, delete=False):
-    """ExtractFromGZ method extract data from the zip/.gz files, save the data.
+    """Extract data from the zip/.gz files, save the data.
 
     Parameters
     ----------
     input_file : [str]
-        zipped file name .
+        zipped file name.
     output_file : [str]
         directory where the unzipped data must be
                             stored.
@@ -188,7 +187,10 @@ def extract_from_gz(input_file: str, output_file: str, delete=False):
 
 
 def read_file(
-    path: str, read_only: bool = True, open_as_multi_dimensional: bool = False, file_i: int = 0
+    path: str,
+    read_only: bool = True,
+    open_as_multi_dimensional: bool = False,
+    file_i: int = 0,
 ):
     """Open file.
 
@@ -231,7 +233,7 @@ def read_file(
     except Exception as e:
         if str(e).__contains__(" not recognized as a supported file format."):
             if any(path.endswith(i) for i in COMPRESSED_FILES_EXTENSIONS):
-                raise FileFormatNoSupported(
+                raise FileFormatNotSupported(
                     "File format is not supported if you provided a gzip compressed file with multiple internal "
                     "files. Currently, it is not supported to read gzip files with multiple compressed internal "
                     "files"
@@ -241,7 +243,7 @@ def read_file(
         elif any(path.__contains__(i) for i in DOES_NOT_SUPPORT_INTERNAL) and not any(
             path.endswith(i) for i in DOES_NOT_SUPPORT_INTERNAL
         ):
-            raise FileFormatNoSupported(
+            raise FileFormatNotSupported(
                 "File format is not supported, if you provided a gzip/7z compressed file with multiple internal "
                 "files. Currently it is not supported to read gzip/7z files with multiple compressed internal "
                 "files"
@@ -258,14 +260,15 @@ def read_file(
     return src
 
 
-def stringSpace(inp):
+def insert_space(inp):
+    """Insert space between the ascii file values."""
     return str(inp) + "  "
 
 
 def to_ascii(
     arr: np.ndarray, cell_size: int, xmin, ymin, no_data_value, path: str
 ) -> None:
-    """write raster into ascii file.
+    """Write raster into ascii file.
 
         to_ascii reads writes the raster to disk into an ascii format.
 
@@ -305,7 +308,7 @@ def to_ascii(
     File.write("NODATA_value  " + str(no_data_value) + "\n")
     # write the array
     for i in range(rows):
-        File.writelines(list(map(stringSpace, arr[i, :])))
+        File.writelines(list(map(insert_space, arr[i, :])))
         File.write("\n")
 
     File.close()

@@ -1,4 +1,4 @@
-"""Utility module"""
+"""Utility module."""
 from typing import Union
 import yaml
 import datetime as dt
@@ -6,7 +6,7 @@ import numpy as np
 from pandas import DataFrame
 from osgeo import gdal, ogr, gdalconst  # gdal_array,
 from osgeo.gdal import Dataset
-from pyramids._errors import OptionalPackageDoesNontExist, DriverNotExistError
+from pyramids._errors import OptionalPackageDoesNotExist, DriverNotExistError
 from pyramids import __path__
 
 # from urllib.parse import urlparse as parse_url
@@ -220,7 +220,7 @@ def gdal_constant_to_color_name(gdal_constant: int) -> str:
 
 
 def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype, str]) -> int:
-    """mapping functiuon between numpy and gdal data types.
+    """Map function between numpy and gdal data types.
 
     Parameters
     ----------
@@ -251,7 +251,7 @@ def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype, str]) -> int:
 
 
 def ogr_to_numpy_dtype(dtype_code: int):
-    """converts OGR dtype into numpy dtype
+    """Convert OGR dtype into numpy dtype.
 
     Parameters
     ----------
@@ -301,7 +301,7 @@ def ogr_to_numpy_dtype(dtype_code: int):
 
 
 def gdal_to_numpy_dtype(dtype: int) -> str:
-    """converts gdal dtype into numpy dtype
+    """Convert gdal dtype into numpy dtype.
 
     Parameters
     ----------
@@ -324,7 +324,7 @@ def gdal_to_numpy_dtype(dtype: int) -> str:
 
 
 def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
-    """return the coresponding data type grom ogr to each gdal data type.
+    """Get The corresponding data type from ogr to each gdal data type.
 
     Parameters
     ----------
@@ -347,7 +347,7 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
 
 
 def create_time_conversion_func(time: str) -> callable:
-    """Create a function to convert the ordinal time to gregorian date
+    """Create a function to convert the ordinal time to gregorian date.
 
     Parameters
     ----------
@@ -388,6 +388,7 @@ class Catalog:
     """Data Catalog."""
 
     def __init__(self, raster_driver=True):
+        """Initialize the catalog."""
         if raster_driver:
             path = "gdal_drivers.yaml"
         else:
@@ -402,11 +403,11 @@ class Catalog:
         return gdal_catalog
 
     def get_driver(self, driver: str):
-        """get Driver data from the catalog"""
+        """Get Driver data from the catalog."""
         return self.catalog.get(driver)
 
     def get_gdal_name(self, driver: str):
-        """Get GDAL name"""
+        """Get GDAL name."""
         driver = self.get_driver(driver)
         return driver.get("GDAL Name")
 
@@ -457,7 +458,7 @@ class Catalog:
         return self.get_driver(driver_name)
 
     def exists(self, driver: str):
-        """check if the driver exist in the catalog"""
+        """Check if the driver exist in the catalog."""
         return driver in self.catalog.keys()
 
     def get_extension(self, driver: str):
@@ -466,7 +467,7 @@ class Catalog:
         return driver.get("extension")
 
     def get_driver_name(self, gdal_name) -> str:
-        """Get drivern name"""
+        """Get drivern name."""
         for key, value in self.catalog.items():
             name = value.get("GDAL Name")
             if gdal_name == name:
@@ -475,23 +476,23 @@ class Catalog:
 
 
 def import_geopy(message: str):
-    """try to import geopy."""
+    """Import geopy."""
     try:
         import geopy  # noqa
     except ImportError:
-        raise OptionalPackageDoesNontExist(message)
+        raise OptionalPackageDoesNotExist(message)
 
 
 def import_cleopatra(message: str):
-    """try to import cleopatra."""
+    """Import cleopatra."""
     try:
         import cleopatra  # noqa
     except ImportError:
-        raise OptionalPackageDoesNontExist(message)
+        raise OptionalPackageDoesNotExist(message)
 
 
 def ogr_ds_togdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
-    """Convert ogr.Datasource object to a gdal.Dataset
+    """Convert ogr.Datasource object to a gdal.Dataset.
 
     Parameters
     ----------
