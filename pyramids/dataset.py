@@ -1583,7 +1583,7 @@ class Dataset(AbstractDataset):
         else:
             if crs is not None:
                 self.raster.SetProjection(crs)
-                self._epsg = FeatureCollection.get_epsg_from_Prj(crs)
+                self._epsg = FeatureCollection.get_epsg_from_prj(crs)
             else:
                 sr = Dataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
@@ -1665,7 +1665,7 @@ class Dataset(AbstractDataset):
             epsg number
         """
         prj = self._get_crs()
-        epsg = FeatureCollection.get_epsg_from_Prj(prj)
+        epsg = FeatureCollection.get_epsg_from_prj(prj)
 
         return epsg
 
