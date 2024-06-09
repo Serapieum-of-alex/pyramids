@@ -189,11 +189,12 @@ Dataset
 * initialize the `GDAL_TIFF_INTERNAL_MASK` configuration to `No`
 * the add the `access` parameter to the constructor to set the access mode of the dataset.
 * add the `band_units` property to return the units of the bands.
-* the __str__ and the __repr__ methods return string numpy like data type (instead of the gdal constant) of the dataset.
+* the `__str__` and the `__repr__` methods return string numpy like data type (instead of the gdal constant) of the
+dataset.
 * add `meta_data` property setter to set any key:value as a metadata of the dataset.
 * add `scale` and `offset` properties to set the scale and offset of the bands.
 * add `copy` method to copy the dataset to memory.
-* add ` get_attribute_table`/`set_attribute_table` method to get/set the attribute table of a specific band.
+* add `get_attribute_table`set_attribute_table` method to get/set the attribute table of a specific band.
 * the `plot` method uses the rgb bands defined in the dataset plotting (if exist).
 * add `create` method to create a new dataset from scratch.
 * add `write_array` method to write an array to an existing dataset.
