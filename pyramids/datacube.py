@@ -1,3 +1,4 @@
+"""Datacube module."""
 import os
 import re
 from loguru import logger
@@ -37,6 +38,7 @@ class Datacube:
         time_length: int,
         files: List[str] = None,
     ):
+        """Construct Datacube object."""
         self._base = src
         self._files = files
         self._time_length = time_length
@@ -44,6 +46,7 @@ class Datacube:
         pass
 
     def __str__(self):
+        """__str__."""
         message = f"""
             Files: {len(self.files)}
             Cell size: {self._base.cell_size}
@@ -54,6 +57,7 @@ class Datacube:
         return message
 
     def __repr__(self):
+        """__repr__."""
         message = f"""
             Files: {len(self.files)}
             Cell size: {self._base.cell_size}
@@ -73,27 +77,27 @@ class Datacube:
 
     @property
     def files(self):
-        """Files"""
+        """Files."""
         return self._files
 
     @property
     def time_length(self) -> int:
-        """length of the dataset."""
+        """Length of the dataset."""
         return self._time_length
 
     @property
     def rows(self):
-        """Number of rows"""
+        """Number of rows."""
         return self._base.rows
 
     @property
     def shape(self):
-        """Number of rows"""
+        """Number of rows."""
         return self.time_length, self.rows, self.columns
 
     @property
     def columns(self):
-        """Number of columns"""
+        """Number of columns."""
         return self._base.columns
 
     @classmethod
@@ -303,7 +307,7 @@ class Datacube:
 
     @property
     def values(self) -> np.ndarray:
-        """data attribute.
+        """Values.
 
         - The attribute where the dataset array is stored.
         - the 3D numpy array, [dataset length, rows, cols], [dataset length, lons, lats]
@@ -312,9 +316,9 @@ class Datacube:
 
     @values.setter
     def values(self, val):
-        """Data attribute.
+        """Values.
 
-        - setting the data (array) does not allow different dimension from the dimension that have been
+        - setting the data (array) does not allow different dimension from the dimension that has been
         defined in creating the dataset.
         """
         # if the attribute is defined before check the dimension
@@ -333,19 +337,23 @@ class Datacube:
         self._values = None
 
     def __getitem__(self, key):
+        """Getitem."""
         if not hasattr(self, "values"):
             raise AttributeError("Please use the read_dataset method to read the data")
         return self._values[key, :, :]
 
     def __setitem__(self, key, value: np.ndarray):
+        """Setitem."""
         if not hasattr(self, "values"):
             raise AttributeError("Please use the read_dataset method to read the data")
         self._values[key, :, :] = value
 
     def __len__(self):
+        """Length of the Datacube."""
         return self._values.shape[0]
 
     def __iter__(self):
+        """Iterate over the Datacube."""
         return iter(self._values[:])
 
     def head(self, n: int = 5):
@@ -387,7 +395,7 @@ class Datacube:
         return Dataset(dst)
 
     def plot(self, band: int = 0, exclude_value: Any = None, **kwargs):
-        """Read Array
+        """Read Array.
 
             - read the values stored in a given band.
 
@@ -923,7 +931,7 @@ class Datacube:
         classes_map,
         exclude_value: Union[float, int] = None,
     ) -> Dict[List[float], List[float]]:
-        """this function is written to extract and return a list of all the values in an ASCII file.
+        """Overlay.
 
         Parameters
         ----------

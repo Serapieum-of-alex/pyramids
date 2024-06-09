@@ -1,4 +1,6 @@
 """
+FeatureCollection.
+
 ogr classes: https://gdal.org/java/org/gdal/ogr/package-summary.html
 ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
 
@@ -65,10 +67,12 @@ class FeatureCollection:
     """
 
     def __init__(self, gdf: Union[GeoDataFrame, DataSource]):
+        """Create a FeatureCollection object."""
         # read the drivers catalog
         self._feature = gdf
 
     def __str__(self):
+        """__str__."""
         message = f"""
             Feature: {self.feature}
         """
@@ -82,18 +86,18 @@ class FeatureCollection:
         return message
 
     @property
-    def feature(self):
-        """GeoDataFrame or DataSource"""
+    def feature(self) -> Union[GeoDataFrame, DataSource]:
+        """Geodataframe or DataSource."""
         return self._feature
 
     @property
     def epsg(self) -> int:
-        """EPSG number"""
+        """EPSG number."""
         return self._get_epsg()
 
     @property
     def total_bounds(self) -> List[Number]:
-        """bounding coordinates ``minx``, ``miny``, ``maxx``, ``maxy``"""
+        """Bounding coordinates `min-x`, `min-y`, `max-x`, `maxy`."""
         if isinstance(self.feature, GeoDataFrame):
             bounds = self.feature.total_bounds.tolist()
         else:
@@ -139,7 +143,7 @@ class FeatureCollection:
 
     @property
     def column(self) -> List:
-        """Column Names"""
+        """Column Names."""
         names = []
         if isinstance(self.feature, DataSource) or isinstance(
             self.feature, gdal.Dataset
@@ -156,8 +160,8 @@ class FeatureCollection:
         return names
 
     @property
-    def file_name(self):
-        """Get file name in case of the base object is an ogr.Datasource or gdal.Dataset"""
+    def file_name(self) -> str:
+        """Get file name in case of the base object is an ogr.Datasource or gdal.Dataset."""
         if isinstance(self.feature, DataSource):
             file_name = self.feature.name
         elif isinstance(self.feature, gdal.Dataset):
@@ -169,7 +173,8 @@ class FeatureCollection:
 
     @property
     def dtypes(self) -> Dict[str, str]:
-        """dtypes.
+        """Data Type.
+
             - Get the data types of the columns in the vector file.
 
         Returns
@@ -242,7 +247,7 @@ class FeatureCollection:
 
     @staticmethod
     def _create_driver(driver: str, path: str):
-        """Create Driver"""
+        """Create Driver."""
         return ogr.GetDriverByName(driver).CreateDataSource(path)
 
     @staticmethod
@@ -289,14 +294,14 @@ class FeatureCollection:
     def _gdf_to_ds(
         self, inplace: bool = False, gdal_dataset=False
     ) -> Union[DataSource, None]:
-        """convert a geopandas geodataframe into ogr DataSource.
+        """Convert a geopandas geodataframe into ogr DataSource.
 
         Parameters
         ----------
         inplace: [bool]
             convert the geodataframe to datasource inplace. Default is False.
         gdal_dataset: [bool]
-            True if you want to convert the geodataframe into a gdal Dataset (the onject created by reading the
+            True if you want to convert the geodataframe into a gdal Dataset (the object created by reading the
             vector with gdal.EX). Default is False
 
         Returns
@@ -555,7 +560,7 @@ class FeatureCollection:
 
     @staticmethod
     def _create_sr_from_proj(prj: str, string_type: str = None):
-        """Create spatial reference object from projection.
+        """Create a spatial reference object from projection.
 
         Parameters
         ----------
@@ -564,9 +569,6 @@ class FeatureCollection:
             >>> "GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]"
         string_type: [str]
             type of the string ["ESRI wkt", "WKT", "PROj4"]
-
-        Returns
-        -------
         """
         srs = osr.SpatialReference()
 
@@ -582,8 +584,8 @@ class FeatureCollection:
         return srs
 
     @staticmethod
-    def get_epsg_from_Prj(prj: str) -> int:
-        """create spatial reference from the projection then auto identify the epsg using the osr object.
+    def get_epsg_from_prj(prj: str) -> int:
+        """Create spatial reference from the projection then auto identify the epsg using the osr object.
 
         Parameters
         ----------
@@ -599,7 +601,7 @@ class FeatureCollection:
         >>> from pyramids.dataset import Dataset
         >>> src = Dataset.read_file("path/to/raster.tif")
         >>> prj = src.GetProjection()
-        >>> epsg = FeatureCollection.get_epsg_from_Prj(prj)
+        >>> epsg = FeatureCollection.get_epsg_from_prj(prj)
         """
         if prj != "":
             srs = FeatureCollection._create_sr_from_proj(prj)

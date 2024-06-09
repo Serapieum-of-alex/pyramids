@@ -1,4 +1,4 @@
-""" Configuration module for the pyramids package. """
+"""Configuration module for the pyramids package."""
 import yaml
 import logging
 from osgeo import gdal, ogr
@@ -9,6 +9,7 @@ class Config:
     """Configuration class for the pyramids package."""
 
     def __init__(self, config_file="config.yaml"):
+        """Initialize the configuration."""
         self.config_file = config_file
         self.config = self.load_config()
         self.initialize_gdal()
@@ -33,7 +34,7 @@ class Config:
             gdal.SetConfigOption(key, value)
 
     def setup_logging(self):
-        """Setup the logging configuration."""
+        """Set up the logging configuration."""
         log_config = self.config.get("logging", {})
         logging.basicConfig(
             level=log_config.get("level", "INFO"),
