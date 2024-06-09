@@ -192,8 +192,6 @@ Dataset
 * the __str__ and the __repr__ methods return string numpy like data type (instead of the gdal constant) of the dataset.
 * add `meta_data` property setter to set any key:value as a metadata of the dataset.
 * add `scale` and `offset` properties to set the scale and offset of the bands.
-* the `read_array` method takes and extra parameter `window` to lazily read a `window` of the raster, the window is
-[xoff, yoff, x-window, y-window], the `window` can also be a geodataframe.
 * add `copy` method to copy the dataset to memory.
 * add ` get_attribute_table`/`set_attribute_table` method to get/set the attribute table of a specific band.
 * the `plot` method uses the rgb bands defined in the dataset plotting (if exist).
@@ -203,7 +201,10 @@ Dataset
 * add `band_color` method to get the color assigned to a specific band (RGB).
 * add `get_band_by_color` method to get the band index by its color.
 * add `get_histogram` method to get/calculate  the histogram of a specific band.
-
+* the `read_array` method takes and extra parameter `window` to lazily read a `window` of the raster, the window is
+[xoff, yoff, x-window, y-window], the `window` can also be a geodataframe.
+* add `get_block_arrangement` method divide the raster into tiles based on the block size.
+* add tiff file writting options (compression/tile/tile_length)
 
 Datacube
 """"""""
