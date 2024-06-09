@@ -205,7 +205,7 @@ dataset.
 * the `read_array` method takes and extra parameter `window` to lazily read a `window` of the raster, the window is
 [xoff, yoff, x-window, y-window], the `window` can also be a geodataframe.
 * add `get_block_arrangement` method divide the raster into tiles based on the block size.
-* add tiff file writting options (compression/tile/tile_length)
+* add tiff file writing options (compression/tile/tile_length)
 
 Datacube
 """"""""
