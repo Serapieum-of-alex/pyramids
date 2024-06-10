@@ -190,6 +190,22 @@ class AbstractDataset(ABC):
         """Meta data."""
         return self._raster.GetMetadata()
 
+    @staticmethod
+    def get_x_lon_dimension_array(
+            pivot_x: float, cell_size: int, columns: int
+    ) -> List[float]:
+        """get_x_lon_dimension_array."""
+        x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
+        return x_coords
+
+    @staticmethod
+    def get_y_lat_dimension_array(
+            pivot_y: float, cell_size: int, rows: int
+    ) -> List[float]:
+        """get_y_lat_dimension_array."""
+        y_coords = [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
+        return y_coords
+
     @property
     def block_size(self) -> List[Tuple[int, int]]:
         """Block Size.
@@ -224,11 +240,7 @@ class AbstractDataset(ABC):
     @abstractmethod
     def file_name(self):
         """File name."""
-        if self._file_name.startswith("NETCDF"):
-            name = self._file_name.split(":")[1][1:-1]
-        else:
-            name = self._file_name
-        return name
+        return self._file_name
 
     @property
     @abstractmethod

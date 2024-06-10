@@ -56,8 +56,6 @@ class Dataset(AbstractDataset):
     systems.
     """
 
-    default_no_data_value = DEFAULT_NO_DATA_VALUE
-
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
         """__init__."""
         self.logger = logging.getLogger(__name__)
@@ -593,29 +591,21 @@ class Dataset(AbstractDataset):
     @property
     def lon(self):
         """Longitude coordinates."""
-        if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
-            cell_size = self.cell_size
-            x_coords = [
-                pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-            ]
-        else:
-            # in case the lat and lon are read from the DataCube file just read the values from the file
-            x_coords = self._lon
+        pivot_x = self.pivot_point[0]
+        cell_size = self.cell_size
+        x_coords = [
+            pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
+        ]
         return np.array(x_coords)
 
     @property
     def lat(self):
         """Latitude-coordinate."""
-        if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
-            cell_size = self.cell_size
-            y_coords = [
-                pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
-            ]
-        else:
-            # in case the lat and lon are read from the DataCube file just read the values from the file
-            y_coords = self._lat
+        pivot_y = self.pivot_point[1]
+        cell_size = self.cell_size
+        y_coords = [
+            pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
+        ]
         return np.array(y_coords)
 
     @property

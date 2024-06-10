@@ -24,9 +24,9 @@ class DataCube(Dataset):
     The DataCube class contains methods to deal with DataCube files.
     """
 
-    def __init__(self, src: gdal.Dataset):
+    def __init__(self, src: gdal.Dataset, access: str = "read_only"):
         """__init__."""
-        super().__init__(src)
+        super().__init__(src, access=access)
         # set the is_subset to false before retrieving the variables
         self._is_subset = False
         self._is_md_array = False
@@ -75,27 +75,21 @@ class DataCube(Dataset):
     def lon(self):
         """Longitude coordinates."""
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
-            cell_size = self.cell_size
-            x_coords = DataCube.get_x_lon_dimension_array(
-                pivot_x, cell_size, self.columns
-            )
+            x_coords = super().lon
         else:
             # in case the lat and lon are read from the DataCube file just read the values from the file
-            x_coords = self._lon
-        return np.array(x_coords)
+            x_coords = np.array(self._lon)
+        return x_coords
 
     @property
     def lat(self):
         """Latitude-coordinate."""
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
-            cell_size = self.cell_size
-            y_coords = DataCube.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
+            y_coords = super().lat
         else:
             # in case the lat and lon are read from the DataCube file just read the values from the file
-            y_coords = self._lat
-        return np.array(y_coords)
+            y_coords = np.array(self._lat)
+        return y_coords
 
     @property
     def x(self):
@@ -104,7 +98,7 @@ class DataCube(Dataset):
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
             cell_size = self.cell_size
-            x_coords = DataCube.get_x_lon_dimension_array(
+            x_coords = self.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
             )
         else:
@@ -119,27 +113,11 @@ class DataCube(Dataset):
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
-            y_coords = DataCube.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
+            y_coords = self.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
             # in case the lat and lon are read from the DataCube file, just read the values from the file
             y_coords = self._lat
         return np.array(y_coords)
-
-    @staticmethod
-    def get_y_lat_dimension_array(
-        pivot_y: float, cell_size: int, rows: int
-    ) -> List[float]:
-        """get_y_lat_dimension_array."""
-        y_coords = [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
-        return y_coords
-
-    @staticmethod
-    def get_x_lon_dimension_array(
-        pivot_x: float, cell_size: int, columns: int
-    ) -> List[float]:
-        """get_x_lon_dimension_array."""
-        x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
-        return x_coords
 
     @property
     def variables(self) -> Dict[str, "DataCube"]:
@@ -209,7 +187,7 @@ class DataCube(Dataset):
         DataCube
         """
         src = _io.read_file(path, read_only, open_as_multi_dimensional)
-        return cls(src)
+        return cls(src, access=read_only)
 
     def _get_time_variable(self):
         """_get_time_variable."""
@@ -322,7 +300,7 @@ class DataCube(Dataset):
         Returns
         -------
         bool
-            True if the dataset is a sub_dataset .
+            True if the dataset is a sub_dataset.
         """
         return self._is_subset
 
