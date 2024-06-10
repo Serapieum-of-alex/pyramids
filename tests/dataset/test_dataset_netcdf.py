@@ -2,16 +2,16 @@ import os
 import pytest
 from osgeo import gdal
 import numpy as np
-from pyramids.netcdf import NetCDF
+from pyramids.datacube import DataCube
 
 
 class TestProperties:
     def test__str__(self, noah_nc_path: str):
-        src = NetCDF.read_file(noah_nc_path)
+        src = DataCube.read_file(noah_nc_path)
         assert isinstance(src.__str__(), str)
 
     def test__repr__(self, noah_nc_path: str):
-        src = NetCDF.read_file(noah_nc_path)
+        src = DataCube.read_file(noah_nc_path)
         assert isinstance(src.__repr__(), str)
 
 
@@ -24,7 +24,7 @@ def test_netcdf_create_from_array(
 ):
     src_arr = np.array([src_arr, src_arr, src_arr])
     variable_name = "values"
-    src = NetCDF.create_from_array(
+    src = DataCube.create_from_array(
         arr=src_arr,
         geo=src_geotransform,
         epsg=src_epsg,
@@ -53,7 +53,7 @@ def test_netcdf_create_from_array(
 
 class TestReadNetCDF:
     def test_standard_netcdf(self, noah_nc_path):
-        dataset = NetCDF.read_file(noah_nc_path)
+        dataset = DataCube.read_file(noah_nc_path)
         assert dataset.raster is not None
         assert dataset.shape == (0, 512, 512)
         assert dataset.variable_names == ["Band1", "Band2", "Band3", "Band4"]
@@ -71,10 +71,10 @@ class TestReadNetCDF:
         assert var.cell_size == 0.5
 
     def test_read_netcdf_file_created_by_pyramids(self, pyramids_created_nc_3d: str):
-        dataset = NetCDF.read_file(pyramids_created_nc_3d)
+        dataset = DataCube.read_file(pyramids_created_nc_3d)
         # arr = dataset.read_array()
         assert dataset.variable_names == []
-        dataset = NetCDF.read_file(
+        dataset = DataCube.read_file(
             pyramids_created_nc_3d, open_as_multi_dimensional=True
         )
         assert dataset.variable_names == ["values"]
@@ -92,7 +92,7 @@ class TestReadNetCDF:
 class TestCreateNetCDF:
     @pytest.fixture(scope="module")
     def test_create_netcdf_from_array_2d(self, src: gdal.Dataset):
-        dataset = NetCDF(src)
+        dataset = DataCube(src)
         rows = dataset.rows
         cols = dataset.columns
         arr = dataset.read_array()
@@ -101,7 +101,7 @@ class TestCreateNetCDF:
         no_data_value = dataset.no_data_value[0]
         band_values = [1]
         variable_name = "values"
-        src = NetCDF._create_netcdf_from_array(
+        src = DataCube._create_netcdf_from_array(
             arr,
             variable_name,
             cols,
@@ -145,7 +145,7 @@ class TestCreateNetCDF:
         """
         mainly to test the self.get_variables() method
         """
-        dataset = NetCDF(test_create_netcdf_from_array_2d)
+        dataset = DataCube(test_create_netcdf_from_array_2d)
         assert dataset.variable_names == ["values"]
         assert dataset.variables["values"].shape == (1, 13, 14)
 

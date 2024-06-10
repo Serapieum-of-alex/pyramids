@@ -1,7 +1,7 @@
 """
-netcdf module.
+DataCube module.
 
-netcdf contains python functions to handle netcdf data. gdal class: https://gdal.org/api/index.html#python-api.
+DataCube contains python functions to handle DataCube data. gdal class: https://gdal.org/api/index.html#python-api.
 """
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union
@@ -18,10 +18,10 @@ from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 
 
-class NetCDF(Dataset):
-    """NetCDF.
+class DataCube(Dataset):
+    """DataCube.
 
-    The NetCDF class contains methods to deal with netcdf files.
+    The DataCube class contains methods to deal with DataCube files.
     """
 
     def __init__(self, src: gdal.Dataset):
@@ -77,11 +77,11 @@ class NetCDF(Dataset):
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
             cell_size = self.cell_size
-            x_coords = NetCDF.get_x_lon_dimension_array(
+            x_coords = DataCube.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
             )
         else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
+            # in case the lat and lon are read from the DataCube file just read the values from the file
             x_coords = self._lon
         return np.array(x_coords)
 
@@ -91,9 +91,9 @@ class NetCDF(Dataset):
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
-            y_coords = NetCDF.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
+            y_coords = DataCube.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
+            # in case the lat and lon are read from the DataCube file just read the values from the file
             y_coords = self._lat
         return np.array(y_coords)
 
@@ -104,11 +104,11 @@ class NetCDF(Dataset):
         if not hasattr(self, "_lon"):
             pivot_x = self.pivot_point[0]
             cell_size = self.cell_size
-            x_coords = NetCDF.get_x_lon_dimension_array(
+            x_coords = DataCube.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
             )
         else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
+            # in case the lat and lon are read from the DataCube file just read the values from the file
             x_coords = self._lon
         return np.array(x_coords)
 
@@ -119,9 +119,9 @@ class NetCDF(Dataset):
         if not hasattr(self, "_lat"):
             pivot_y = self.pivot_point[1]
             cell_size = self.cell_size
-            y_coords = NetCDF.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
+            y_coords = DataCube.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
-            # in case the lat and lon are read from the netcdf file, just read the values from the file
+            # in case the lat and lon are read from the DataCube file, just read the values from the file
             y_coords = self._lat
         return np.array(y_coords)
 
@@ -142,8 +142,8 @@ class NetCDF(Dataset):
         return x_coords
 
     @property
-    def variables(self) -> Dict[str, "NetCDF"]:
-        """Variables in the dataset (resembles the variables in netcdf files.)."""
+    def variables(self) -> Dict[str, "DataCube"]:
+        """Variables in the dataset (resembles the variables in DataCube files.)."""
         return self._variables
 
     @property
@@ -192,7 +192,7 @@ class NetCDF(Dataset):
     @classmethod
     def read_file(
         cls, path: str, read_only=True, open_as_multi_dimensional: bool = False
-    ) -> "NetCDF":
+    ) -> "DataCube":
         """read_file.
 
         Parameters
@@ -206,7 +206,7 @@ class NetCDF(Dataset):
 
         Returns
         -------
-        NetCDF
+        DataCube
         """
         src = _io.read_file(path, read_only, open_as_multi_dimensional)
         return cls(src)
@@ -282,7 +282,7 @@ class NetCDF(Dataset):
 
         return src
 
-    def get_variables(self, read_only: bool = True) -> Dict[str, "NetCDF"]:
+    def get_variables(self, read_only: bool = True) -> Dict[str, "DataCube"]:
         """get_variables.
 
         Parameters
@@ -302,13 +302,13 @@ class NetCDF(Dataset):
             if prefix == "MEMORY" or rg is not None:
                 src = self._read_md_array(var)
                 if isinstance(src, gdal.Dataset):
-                    variables[var] = NetCDF(src)
+                    variables[var] = DataCube(src)
                     variables[var]._is_md_array = True
                 else:
                     variables[var] = src
             else:
                 src = gdal.Open(f"{prefix}:{self.file_name}:{var}")
-                variables[var] = NetCDF(src)
+                variables[var] = DataCube(src)
                 variables[var]._is_md_array = False
 
             variables[var]._is_subset = True
@@ -341,7 +341,7 @@ class NetCDF(Dataset):
     def create_main_dimension(
         group: gdal.Group, dim_name: str, dtype: int, values: np.ndarray
     ) -> gdal.Dimension:
-        """Create NetCDF dimension.
+        """Create DataCube dimension.
 
         if the dimension name is y, lat, latitude, the dimension type will be horizontal y,
         if the dimension name is x, lon, longitude, the dimension type will be horizontal x,
@@ -399,7 +399,7 @@ class NetCDF(Dataset):
         geo : [Tuple]
             geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
         bands_values: [List]
-            Name of the bands to be used in the netcdf file. Default is None,
+            Name of the bands to be used in the DataCube file. Default is None,
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator)
@@ -495,8 +495,8 @@ class NetCDF(Dataset):
             raise ValueError("Variable_name can not be None")
 
         dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
-        x_dim_values = NetCDF.get_x_lon_dimension_array(geo[0], geo[1], cols)
-        y_dim_values = NetCDF.get_y_lat_dimension_array(geo[3], geo[1], rows)
+        x_dim_values = DataCube.get_x_lon_dimension_array(geo[0], geo[1], cols)
+        y_dim_values = DataCube.get_y_lat_dimension_array(geo[3], geo[1], rows)
 
         if path is None and driver_type == "netcdf":
             path = "netcdf"
@@ -504,10 +504,10 @@ class NetCDF(Dataset):
         src = gdal.GetDriverByName(driver_type).CreateMultiDimensional(path)
         rg = src.GetRootGroup()
 
-        dim_x = NetCDF.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))
-        dim_y = NetCDF.create_main_dimension(rg, "y", dtype, np.array(y_dim_values))
+        dim_x = DataCube.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))
+        dim_y = DataCube.create_main_dimension(rg, "y", dtype, np.array(y_dim_values))
         if arr.ndim == 3:
-            dim_bands = NetCDF.create_main_dimension(
+            dim_bands = DataCube.create_main_dimension(
                 rg, "bands", dtype, np.array(bands_values)
             )
             md_arr = rg.CreateMDArray(variable_name, [dim_bands, dim_y, dim_x], dtype)

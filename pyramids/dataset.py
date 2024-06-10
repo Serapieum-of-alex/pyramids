@@ -52,7 +52,7 @@ from pyramids.abstract_dataset import (
 class Dataset(AbstractDataset):
     """Dataset.
 
-    The Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate
+    The Dataset class contains methods to deal with rasters and DataCube files, change projection and coordinate
     systems.
     """
 
@@ -600,7 +600,7 @@ class Dataset(AbstractDataset):
                 pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
             ]
         else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
+            # in case the lat and lon are read from the DataCube file just read the values from the file
             x_coords = self._lon
         return np.array(x_coords)
 
@@ -614,7 +614,7 @@ class Dataset(AbstractDataset):
                 pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
             ]
         else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
+            # in case the lat and lon are read from the DataCube file just read the values from the file
             y_coords = self._lat
         return np.array(y_coords)
 
@@ -632,7 +632,7 @@ class Dataset(AbstractDataset):
             #     pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
             # ]
         else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
+            # in case the lat and lon are read from the DataCube file just read the values from the file
             x_coords = self._lon
         return np.array(x_coords)
 
@@ -654,7 +654,7 @@ class Dataset(AbstractDataset):
             # ]
             y_coords = Dataset.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
-            # in case the lat and lon are read from the netcdf file, just read the values from the file
+            # in case the lat and lon are read from the DataCube file, just read the values from the file
             y_coords = self._lat
         return np.array(y_coords)
 
