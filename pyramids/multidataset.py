@@ -1,4 +1,5 @@
-"""Datacube module."""
+"""MultiDataset module."""
+
 import os
 import re
 from loguru import logger
@@ -21,8 +22,8 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
-class Datacube:
-    """DataCube."""
+class MultiDataset:
+    """MultiDataset."""
 
     files: List[str]
     data: np.ndarray
@@ -38,7 +39,7 @@ class Datacube:
         time_length: int,
         files: List[str] = None,
     ):
-        """Construct Datacube object."""
+        """Construct MultiDataset object."""
         self._base = src
         self._files = files
         self._time_length = time_length
@@ -102,9 +103,9 @@ class Datacube:
 
     @classmethod
     def create_cube(cls, src: Dataset, dataset_length: int):
-        """Create Datacube.
+        """Create MultiDataset.
 
-            - Create Datacube from a sample raster and
+            - Create MultiDataset from a sample raster and
 
         Parameters
         ----------
@@ -115,7 +116,7 @@ class Datacube:
 
         Returns
         -------
-        Datacube object.
+        MultiDataset object.
         """
         return cls(src, dataset_length)
 
@@ -183,19 +184,19 @@ class Datacube:
 
         Returns
         -------
-        DataCube:
-            instance of the datacube class.
+        MultiDataset:
+            instance of the MultiDataset class.
 
         Example
         -------
-        >>> from pyramids.datacube import Datacube
+        >>> from pyramids.multidataset import MultiDataset
         >>> raster_folder = "examples/GIS/data/raster-folder"
-        >>> prec = Datacube.read_multiple_files(raster_folder)
+        >>> prec = MultiDataset.read_multiple_files(raster_folder)
 
         >>> import glob
         >>> search_criteria = "*.tif"
         >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Datacube.read_multiple_files(file_list, with_order=False)
+        >>> prec = MultiDataset.read_multiple_files(file_list, with_order=False)
         """
         if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")
@@ -266,8 +267,8 @@ class Datacube:
 
         return cls(sample, len(files), files)
 
-    def open_datacube(self, band: int = 0):
-        """open_datacube.
+    def open_MultiDataset(self, band: int = 0):
+        """open_MultiDataset.
 
             Read values form the given bands as Arrays for all files
 
@@ -349,11 +350,11 @@ class Datacube:
         self._values[key, :, :] = value
 
     def __len__(self):
-        """Length of the Datacube."""
+        """Length of the MultiDataset."""
         return self._values.shape[0]
 
     def __iter__(self):
-        """Iterate over the Datacube."""
+        """Iterate over the MultiDataset."""
         return iter(self._values[:])
 
     def head(self, n: int = 5):
@@ -627,7 +628,7 @@ class Datacube:
         >>> dem_path = "examples/GIS/data/acc4000.tif"
         >>> src_path = "examples/GIS/data/aligned_rasters/"
         >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-        >>> Datacube.crop(dem_path, src_path, out_path)
+        >>> MultiDataset.crop(dem_path, src_path, out_path)
         """
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -649,7 +650,7 @@ class Datacube:
             # use the last src as
             self._base = dst
         else:
-            dataset = Datacube(dst, time_length=self.time_length)
+            dataset = MultiDataset(dst, time_length=self.time_length)
             dataset._values = array
             return dataset
 
@@ -657,12 +658,12 @@ class Datacube:
     # # TODO: still needs to be tested
     # @staticmethod
     # def to_epsg(
-    #         src: gdal.Datacube,
+    #         src: gdal.MultiDataset,
     #         to_epsg: int = 3857,
     #         cell_size: int = [],
     #         method: str = "Nearest",
     #
-    # ) -> gdal.Datacube:
+    # ) -> gdal.MultiDataset:
     #     """to_epsg.
     #
     #         - to_epsg reprojects and resamples a folder of rasters to any projection
@@ -686,10 +687,10 @@ class Datacube:
     #
     #     Returns
     #     -------
-    #     raster: [gdal Datacube]
+    #     raster: [gdal MultiDataset]
     #          a GDAL in-memory file object, where you can ReadAsArray etc.
     #     """
-    #     if not isinstance(src, gdal.Datacube):
+    #     if not isinstance(src, gdal.MultiDataset):
     #         raise TypeError(
     #             "src should be read using gdal (gdal dataset please read it using gdal"
     #             f" library) given {type(src)}"
@@ -896,7 +897,7 @@ class Datacube:
     def apply(self, ufunc: Callable):
         """apply.
 
-        apply a function on each raster in the datacube.
+        apply a function on each raster in the MultiDataset.
 
         Parameters
         ----------

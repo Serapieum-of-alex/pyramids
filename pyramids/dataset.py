@@ -4,6 +4,7 @@ Dataset module.
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebraic operation on cell's values. gdal class: https://gdal.org/api/index.html#python-api.
 """
+
 import os
 import warnings
 import logging
@@ -104,9 +105,11 @@ class Dataset(AbstractDataset):
             self.epsg,
             self.band_count,
             self.band_names,
-            self._no_data_value
-            if self._no_data_value == []
-            else self._no_data_value[0],
+            (
+                self._no_data_value
+                if self._no_data_value == []
+                else self._no_data_value[0]
+            ),
             self.dtype if self.dtype == [] else self.dtype[0],
             self.crs,
             self.meta_data,
@@ -1483,7 +1486,7 @@ class Dataset(AbstractDataset):
         -------
         None:
             if the driver is "GTiff" the function will save the new raster to the given path.
-        Datacube:
+        Dataset:
             if the driver is "MEM" the function will return the created raster in memory.
 
         Example
@@ -1897,7 +1900,7 @@ class Dataset(AbstractDataset):
     def _change_no_data_value_attr(self, band: int, no_data_value):
         """Change the no_data_value attribute.
 
-            - Change only the no_data_value attribute in the gdal Datacube object.
+            - Change only the no_data_value attribute in the gdal Dataset object.
             - Change the no_data_value in the Dataset object for the given band index.
             - The corresponding value in the array will not be changed.
 
@@ -2368,7 +2371,7 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        Datacube
+        Dataset
             gdal dataset object
 
         Examples
@@ -2721,7 +2724,7 @@ class Dataset(AbstractDataset):
             row, col = mask.shape
         else:
             raise TypeError(
-                "The second parameter 'mask' has to be either gdal.Datacube or numpy array"
+                "The second parameter 'mask' has to be either gdal.Dataset or numpy array"
                 f"given - {type(mask)}"
             )
 
@@ -2760,16 +2763,16 @@ class Dataset(AbstractDataset):
                 if mask_noval is None:
                     src_array[band, np.isnan(mask_array)] = self.no_data_value[band]
                 else:
-                    src_array[
-                        band, np.isclose(mask_array, mask_noval, rtol=0.001)
-                    ] = no_data_value[band]
+                    src_array[band, np.isclose(mask_array, mask_noval, rtol=0.001)] = (
+                        no_data_value[band]
+                    )
         else:
             if mask_noval is None:
                 src_array[np.isnan(mask_array)] = self.no_data_value[0]
             else:
-                src_array[
-                    np.isclose(mask_array, mask_noval, rtol=0.001)
-                ] = self.no_data_value[0]
+                src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = (
+                    self.no_data_value[0]
+                )
 
         if fill_gaps:
             src_array = self.fill_gaps(mask, src_array)
@@ -2902,7 +2905,7 @@ class Dataset(AbstractDataset):
             mask = mask
         else:
             raise TypeError(
-                "The second parameter has to be either path to the mask raster or a gdal.Datacube object"
+                "The second parameter has to be either path to the mask raster or a gdal.Dataset object"
             )
         if not self._check_alignment(mask):
             # first align the mask with the src raster
@@ -4092,9 +4095,9 @@ class Dataset(AbstractDataset):
         for band in bands:
             color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
             for i in range(color_table.GetCount()):
-                df.loc[
-                    i, ["red", "green", "blue", "alpha"]
-                ] = color_table.GetColorEntry(i)
+                df.loc[i, ["red", "green", "blue", "alpha"]] = (
+                    color_table.GetColorEntry(i)
+                )
                 df.loc[i, ["band", "values"]] = band + 1, i
 
         return df

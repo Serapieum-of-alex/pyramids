@@ -4,7 +4,7 @@ import pandas as pd
 from pandas import DataFrame
 from osgeo import gdal
 from pyramids.dataset import Dataset
-from pyramids.datacube import Datacube
+from pyramids.multidataset import MultiDataset
 
 
 class TestPlotDataSet:
@@ -49,7 +49,7 @@ class TestPlotDataSet:
         assert isinstance(fig, Figure)
 
 
-class TestPlotDataCube:
+class TestPlotMultiDataset:
     @pytest.mark.plot
     def test_geotiff(
         self,
@@ -60,8 +60,8 @@ class TestPlotDataCube:
         from cleopatra.array import Array
         from matplotlib.animation import FuncAnimation
 
-        cube = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
-        cube.open_datacube()
+        cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
+        cube.open_MultiDataset()
         cleo = cube.plot()
         assert isinstance(cleo, Array)
 
