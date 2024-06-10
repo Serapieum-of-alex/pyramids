@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from osgeo import gdal, ogr
 
 from pyramids._errors import DriverNotExistError
@@ -9,6 +10,8 @@ from pyramids._utils import (
     Catalog,
     ogr_ds_togdal_dataset,
     ogr_to_numpy_dtype,
+    color_name_to_gdal_constant,
+    gdal_constant_to_color_name,
 )
 
 
@@ -18,6 +21,9 @@ def test_numpy_to_gdal_dtype(arr: np.ndarray):
     assert gdal_type is gdal.GDT_Float32
     # test with  a dtye input
     gdal_type = numpy_to_gdal_dtype(arr.dtype)
+    assert gdal_type is gdal.GDT_Float32
+    # test with  a dtye input
+    gdal_type = numpy_to_gdal_dtype("float32")
     assert gdal_type is gdal.GDT_Float32
 
 
@@ -87,3 +93,19 @@ class TestCatalog:
 def test_ogr_ds_togdal_dataset(data_source: ogr.DataSource):
     gdal_ds = ogr_ds_togdal_dataset(data_source)
     assert isinstance(gdal_ds, gdal.Dataset)
+
+
+def test_color_name_to_gdal_constant():
+    assert color_name_to_gdal_constant("red") == 3
+    assert color_name_to_gdal_constant("green") == 4
+    assert color_name_to_gdal_constant("blue") == 5
+    with pytest.raises(ValueError):
+        color_name_to_gdal_constant("fff")
+
+
+def test_gdal_constant_to_color_name():
+    assert gdal_constant_to_color_name(3) == "red"
+    assert gdal_constant_to_color_name(4) == "green"
+    assert gdal_constant_to_color_name(5) == "blue"
+    with pytest.raises(ValueError):
+        gdal_constant_to_color_name(17)

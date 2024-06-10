@@ -1,0 +1,71 @@
+<PAMDataset>
+  <PAMRasterBand band="1">
+    <Description>Band_1</Description>
+    <GDALRasterAttributeTable tableType="thematic">
+      <FieldDefn index="0">
+        <Name>Value</Name>
+        <Type>0</Type>
+        <Usage>0</Usage>
+      </FieldDefn>
+      <FieldDefn index="1">
+        <Name>ClassName</Name>
+        <Type>2</Type>
+        <Usage>0</Usage>
+      </FieldDefn>
+      <FieldDefn index="2">
+        <Name>Color</Name>
+        <Type>2</Type>
+        <Usage>0</Usage>
+      </FieldDefn>
+      <Row index="0">
+        <F>1</F>
+        <F>Forest</F>
+        <F>#008000</F>
+      </Row>
+      <Row index="1">
+        <F>2</F>
+        <F>Water</F>
+        <F>#0000FF</F>
+      </Row>
+      <Row index="2">
+        <F>3</F>
+        <F>Urban</F>
+        <F>#808080</F>
+      </Row>
+    </GDALRasterAttributeTable>
+  </PAMRasterBand>
+  <PAMRasterBand band="2">
+    <GDALRasterAttributeTable tableType="thematic">
+      <FieldDefn index="0">
+        <Name>Value</Name>
+        <Type>0</Type>
+        <Usage>0</Usage>
+      </FieldDefn>
+      <FieldDefn index="1">
+        <Name>ClassName</Name>
+        <Type>2</Type>
+        <Usage>0</Usage>
+      </FieldDefn>
+      <FieldDefn index="2">
+        <Name>Color</Name>
+        <Type>2</Type>
+        <Usage>0</Usage>
+      </FieldDefn>
+      <Row index="0">
+        <F>1</F>
+        <F>Forest</F>
+        <F>#008000</F>
+      </Row>
+      <Row index="1">
+        <F>2</F>
+        <F>Water</F>
+        <F>#0000FF</F>
+      </Row>
+      <Row index="2">
+        <F>3</F>
+        <F>Urban</F>
+        <F>#808080</F>
+      </Row>
+    </GDALRasterAttributeTable>
+  </PAMRasterBand>
+</PAMDataset>

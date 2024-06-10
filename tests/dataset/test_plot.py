@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from osgeo import gdal
-from pyramids.dataset import Dataset, Datacube
+from pyramids.dataset import Dataset
+from pyramids.datacube import Datacube
 
 
 class TestPlotDataSet:

@@ -2,7 +2,7 @@ import matplotlib
 
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
-from pyramids.dataset import Dataset, Datacube
+from pyramids.datacube import Dataset, Datacube
 
 path = "tests/data/raster-folder/1_MSWEP_1979.01.02.tif"
 #%%

@@ -1,4 +1,6 @@
 """
+Abstract Dataset.
+
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
@@ -49,12 +51,14 @@ class AbstractDataset(ABC):
 
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
-    def __init__(self, src: gdal.Dataset):
+    def __init__(self, src: gdal.Dataset, access: str = "read_only"):
+        """__init__."""
         if not isinstance(src, gdal.Dataset):
             raise TypeError(  # pragma: no cover
                 "src should be read using gdal (gdal dataset please read it using gdal"
                 f" library) given {type(src)}"
             )
+        self._access = access
         self._raster = src
         self._geotransform = src.GetGeoTransform()
         self._cell_size = self.geotransform[1]
@@ -75,16 +79,24 @@ class AbstractDataset(ABC):
 
     @abstractmethod
     def __str__(self):
+        """__str__."""
         pass
 
     @abstractmethod
     def __repr__(self):
+        """__repr__."""
         pass
 
     @property
     @abstractmethod
+    def access(self):
+        """Access mode."""
+        return self._access
+
+    @property
+    @abstractmethod
     def raster(self) -> gdal.Dataset:
-        """GDAL Dataset"""
+        """GDAL Dataset."""
         return self._raster
 
     @raster.setter
@@ -94,7 +106,7 @@ class AbstractDataset(ABC):
 
     @property
     def values(self) -> np.ndarray:
-        """values of all the bands."""
+        """Values of all the bands."""
         pass
 
     @property
@@ -110,13 +122,13 @@ class AbstractDataset(ABC):
     @property
     @abstractmethod
     def shape(self):
-        """Dataset shape(bands, rows, columns)."""
+        """Shape (bands, rows, columns)."""
         pass
 
     @property
     @abstractmethod
     def geotransform(self):
-        """WKT projection.(x, cell_size, 0, y, 0, -cell_size)"""
+        """WKT projection.(x, cell_size, 0, y, 0, -cell_size)."""
         return self._geotransform
 
     @property
@@ -153,13 +165,14 @@ class AbstractDataset(ABC):
     @property
     @abstractmethod
     def no_data_value(self):
-        """No data value that marks the cells out of the domain"""
+        """No data value that marks the cells out of the domain."""
         pass
 
     @no_data_value.setter
     @abstractmethod
     def no_data_value(self, value: Union[List, Number]):
-        """
+        """no_data_value.
+
         No data value that marks the cells out of the domain
 
         Notes
@@ -174,12 +187,12 @@ class AbstractDataset(ABC):
     @property
     @abstractmethod
     def meta_data(self):
-        """Meta data"""
-        return self._meta_data
+        """Meta data."""
+        return self._raster.GetMetadata()
 
     @property
     def block_size(self) -> List[Tuple[int, int]]:
-        """Block Size
+        """Block Size.
 
         The block size is the size of the block that the raster is divided into, the block size is used to read and
         write the raster data in blocks.
@@ -195,7 +208,7 @@ class AbstractDataset(ABC):
 
     @block_size.setter
     def block_size(self, value: List[Tuple[int, int]]):
-        """Block Size
+        """Block Size.
 
         Parameters
         ----------
@@ -210,7 +223,7 @@ class AbstractDataset(ABC):
     @property
     @abstractmethod
     def file_name(self):
-        """file name"""
+        """File name."""
         if self._file_name.startswith("NETCDF"):
             name = self._file_name.split(":")[1][1:-1]
         else:
@@ -220,7 +233,7 @@ class AbstractDataset(ABC):
     @property
     @abstractmethod
     def driver_type(self):
-        """Driver Type"""
+        """Driver Type."""
         drv = self.raster.GetDriver()
         driver_type = drv.GetDescription() if drv is not None else None
         return CATALOG.get_driver_name(driver_type)
@@ -228,14 +241,14 @@ class AbstractDataset(ABC):
     @classmethod
     @abstractmethod
     def read_file(cls, path: str, read_only=True) -> "AbstractDataset":
-        """read_file.
+        """Read file.
 
         Parameters
         ----------
         path: [str]
             Path of file to open.
         read_only: [bool]
-            File mode, set to False, to open in "update" mode.
+            File mode, set as False, to open in "update" mode.
 
         Returns
         -------
@@ -245,7 +258,7 @@ class AbstractDataset(ABC):
 
     @abstractmethod
     def read_array(self, band: int = None, window: List[int] = None) -> np.ndarray:
-        """Read Array
+        """Read Array.
 
             - read the values stored in a given band.
 
@@ -313,7 +326,7 @@ class AbstractDataset(ABC):
         overview_index: int = 0,
         **kwargs,
     ):
-        """plot
+        """Plot.
 
             - plot the values/overviews of a given band.
 
@@ -419,7 +432,7 @@ class AbstractDataset(ABC):
         path: str = None,
         variable_name: str = None,
     ) -> "AbstractDataset":
-        """create_from_array.
+        """Create dataset from array.
 
             - Create_from_array method creates a `Dataset` from a given array and geotransform data.
 
@@ -457,7 +470,7 @@ class AbstractDataset(ABC):
 
     @abstractmethod
     def set_crs(self, crs: Optional = None, epsg: int = None):
-        """set_crs.
+        """Set Coordinates reference system.
 
             Set the Coordinate Reference System (CRS) of a
 
@@ -482,7 +495,7 @@ class AbstractDataset(ABC):
         else:
             if crs is not None:
                 self.raster.SetProjection(crs)
-                self._epsg = FeatureCollection.get_epsg_from_Prj(crs)
+                self._epsg = FeatureCollection.get_epsg_from_prj(crs)
             else:
                 sr = AbstractDataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
@@ -496,7 +509,7 @@ class AbstractDataset(ABC):
         maintain_alignment: int = False,
         inplace: bool = False,
     ) -> Union["AbstractDataset", None]:
-        """to_epsg.
+        """To EPSG.
 
         to_epsg reprojects a raster to any projection
         (default the WGS84 web mercator projection, without resampling)
@@ -531,7 +544,7 @@ class AbstractDataset(ABC):
 
     @abstractmethod
     def _get_epsg(self) -> int:
-        """GetEPSG.
+        """Get EPSG.
 
             This function reads the projection of a GEOGCS file or tiff file
 
@@ -582,7 +595,7 @@ class AbstractDataset(ABC):
     def _set_no_data_value(
         self, no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE
     ):
-        """setNoDataValue.
+        """Set the NoDataValue.
 
             - Set the no data value in all raster bands.
             - Fill the whole raster with the no_data_value.
@@ -619,7 +632,7 @@ class AbstractDataset(ABC):
 
     @abstractmethod
     def to_file(self, path: str, band: int = 0) -> None:
-        """to_file.
+        """Save dataset to disk.
 
             to_file a raster to a path, the type of the driver (georiff/netcdf/ascii) will be implied from the
             extension at the end of the given path.
@@ -650,7 +663,7 @@ class AbstractDataset(ABC):
         touch: bool = True,
         inplace: bool = False,
     ) -> Union["AbstractDataset", None]:
-        """crop.
+        """Crop.
 
             Crop/Clip the Dataset object using a polygon/raster.
 
@@ -800,7 +813,7 @@ class AbstractDataset(ABC):
     def read_overview_array(
         self, band: int = None, overview_index: int = 0
     ) -> np.ndarray:
-        """Read Array
+        """Read an overview array.
 
             - read the values stored in a given band.
 
