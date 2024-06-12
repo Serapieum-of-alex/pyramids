@@ -1,4 +1,5 @@
 """ Tests for the MultiDataset class. """
+
 import os
 import shutil
 from typing import List
@@ -18,7 +19,9 @@ class TestCreateMultiDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset = MultiDataset.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         assert isinstance(dataset.base, Dataset)
         assert dataset.base.no_data_value[0] == 2147483648.0
         assert isinstance(dataset.files, list)
@@ -133,7 +136,9 @@ class TestOpenMultiDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset = MultiDataset.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         dataset.open_MultiDataset()
         assert dataset.values.shape == (
             rasters_folder_rasters_number,
@@ -165,7 +170,9 @@ class TestAccessDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        dataset = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset = MultiDataset.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         dataset.open_MultiDataset()
         src = dataset.iloc(2)
         assert isinstance(src, Dataset)
@@ -179,7 +186,9 @@ class TestReproject:
         rasters_folder_path: str,
     ):
         to_epsg = 4326
-        dataset = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
+        dataset = MultiDataset.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         dataset.open_MultiDataset()
         dataset.to_crs(to_epsg)
         assert dataset.base.epsg == to_epsg
@@ -196,7 +205,9 @@ class TestAlign:
         match_alignment_MultiDataset,
         src: MultiDataset,
     ):
-        cube = MultiDataset.read_multiple_files(match_alignment_MultiDataset, with_order=False)
+        cube = MultiDataset.read_multiple_files(
+            match_alignment_MultiDataset, with_order=False
+        )
         cube.open_MultiDataset()
         mask_obj = Dataset(src)
         cube.align(mask_obj)

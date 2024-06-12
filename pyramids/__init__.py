@@ -1,7 +1,8 @@
 """pyramids - GIS utility package."""
+
 from pyramids.config import Config
 
-__all__ = ["dataset", "datacube", "featurecollection"]
+__all__ = ["dataset", "multidataset", "datacube", "featurecollection"]
 
 try:
     from importlib.metadata import PackageNotFoundError  # type: ignore

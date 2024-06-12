@@ -106,7 +106,6 @@ class TestCreateNetCDF:
             variable_name,
             cols,
             rows,
-            1,
             band_values,
             geo,
             epsg,
@@ -147,7 +146,7 @@ class TestCreateNetCDF:
         """
         dataset = DataCube(test_create_netcdf_from_array_2d)
         assert dataset.variable_names == ["values"]
-        assert dataset  .variables["values"].shape == (1, 13, 14)
+        assert dataset.variables["values"].shape == (1, 13, 14)
 
 
 class TestAddVariable:

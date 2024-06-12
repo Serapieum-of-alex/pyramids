@@ -3,6 +3,7 @@ DataCube module.
 
 DataCube contains python functions to handle DataCube data. gdal class: https://gdal.org/api/index.html#python-api.
 """
+
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union
 
@@ -405,7 +406,6 @@ class DataCube(Dataset):
             variable_name,
             cols,
             rows,
-            bands,
             bands_values,
             geo,
             epsg,
@@ -423,7 +423,6 @@ class DataCube(Dataset):
         variable_name: str,
         cols: int,
         rows: int,
-        bands: int = None,
         bands_values: List = None,
         geo: Tuple[float, float, float, float, float, float] = None,
         epsg: Union[str, int] = None,
@@ -443,8 +442,6 @@ class DataCube(Dataset):
             number of columns in the array.
         rows: [int]
             number of rows in the array.
-        bands: [int]
-            number of bands, the array is 3d and bands is the first dimension.
         bands_values: [List]
             Name of the bands to be used in the netcdf file. Default is None,
         geo : [Tuple]
