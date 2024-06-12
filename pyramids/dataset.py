@@ -589,25 +589,29 @@ class Dataset(AbstractDataset):
         return self._calculate_bbox()
 
     @property
-    def lon(self):
+    def lon(self) -> np.ndarray:
         """Longitude coordinates."""
-        x_coords = self.get_x_lon_dimension_array(self.pivot_point[0], self.cell_size, self.columns)
+        x_coords = self.get_x_lon_dimension_array(
+            self.pivot_point[0], self.cell_size, self.columns
+        )
         return x_coords
 
     @property
-    def lat(self):
+    def lat(self) -> np.ndarray:
         """Latitude-coordinate."""
-        y_coords = self.get_y_lat_dimension_array(self.pivot_point[1], self.cell_size, self.rows)
+        y_coords = self.get_y_lat_dimension_array(
+            self.pivot_point[1], self.cell_size, self.rows
+        )
         return y_coords
 
     @property
-    def x(self):
+    def x(self) -> np.ndarray:
         """X-coordinate/Longitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         return self.lon
 
     @property
-    def y(self):
+    def y(self) -> np.ndarray:
         """Y-coordinate/Latitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         return self.lat
