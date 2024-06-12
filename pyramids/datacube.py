@@ -96,26 +96,16 @@ class DataCube(Dataset):
     def x(self):
         """x-coordinate/longitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
-        if not hasattr(self, "_lon"):
-            x_coords = self.get_x_lon_dimension_array()
-        else:
-            # in case the lat and lon are read from the DataCube file just read the values from the file
-            x_coords = self._lon
-        return np.array(x_coords)
+        return self.lon
 
     @property
     def y(self):
         """y-coordinate/latitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
-        if not hasattr(self, "_lat"):
-            y_coords = self.get_y_lat_dimension_array()
-        else:
-            # in case the lat and lon are read from the DataCube file, just read the values from the file
-            y_coords = self._lat
-        return np.array(y_coords)
+        return self.lat
 
     @property
-    def variables(self) -> Dict[str, "DataCube"]:
+    def variables(self) -> Dict[str, "Dataset"]:
         """Variables in the dataset (resembles the variables in DataCube files.)."""
         return self._variables
 
@@ -137,11 +127,7 @@ class DataCube(Dataset):
             - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
             - to change the values of the cells, to the new no_data_value, use the `change_no_data_value` method.
         """
-        if isinstance(value, list):
-            for i, val in enumerate(value):
-                self._change_no_data_value_attr(i, val)
-        else:
-            self._change_no_data_value_attr(0, value)
+        super().no_data_value = value
 
     @property
     def file_name(self):
