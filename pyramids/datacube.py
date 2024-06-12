@@ -94,13 +94,9 @@ class DataCube(Dataset):
     @property
     def x(self):
         """x-coordinate/longitude."""
-        # X_coordinate = upperleft corner x + index * cell size + celsize/2
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
-            cell_size = self.cell_size
-            x_coords = self.get_x_lon_dimension_array(
-                pivot_x, cell_size, self.columns
-            )
+            x_coords = self.get_x_lon_dimension_array()
         else:
             # in case the lat and lon are read from the DataCube file just read the values from the file
             x_coords = self._lon
@@ -111,9 +107,7 @@ class DataCube(Dataset):
         """y-coordinate/latitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
-            cell_size = self.cell_size
-            y_coords = self.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
+            y_coords = self.get_y_lat_dimension_array()
         else:
             # in case the lat and lon are read from the DataCube file, just read the values from the file
             y_coords = self._lat
@@ -470,7 +464,7 @@ class DataCube(Dataset):
         gdal.Dataset
         """
         if variable_name is None:
-            raise ValueError("Variable_name can not be None")
+            raise ValueError("Variable_name cannot be None")
 
         dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
         x_dim_values = DataCube.get_x_lon_dimension_array(geo[0], geo[1], cols)

@@ -591,68 +591,26 @@ class Dataset(AbstractDataset):
     @property
     def lon(self):
         """Longitude coordinates."""
-        pivot_x = self.pivot_point[0]
-        cell_size = self.cell_size
-        x_coords = [
-            pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-        ]
-        return np.array(x_coords)
+        x_coords = self.get_x_lon_dimension_array(self.pivot_point[0], self.cell_size, self.columns)
+        return x_coords
 
     @property
     def lat(self):
         """Latitude-coordinate."""
-        pivot_y = self.pivot_point[1]
-        cell_size = self.cell_size
-        y_coords = [
-            pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
-        ]
-        return np.array(y_coords)
+        y_coords = self.get_y_lat_dimension_array(self.pivot_point[1], self.cell_size, self.rows)
+        return y_coords
 
     @property
     def x(self):
         """X-coordinate/Longitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
-        if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
-            cell_size = self.cell_size
-            x_coords = Dataset.get_x_lon_dimension_array(
-                pivot_x, cell_size, self.columns
-            )
-            # x_coords = [
-            #     pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-            # ]
-        else:
-            # in case the lat and lon are read from the DataCube file just read the values from the file
-            x_coords = self._lon
-        return np.array(x_coords)
-
-    @staticmethod
-    def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> List[float]:
-        """Get X/Lon coordinates."""
-        x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
-        return x_coords
+        return self.lon
 
     @property
     def y(self):
         """Y-coordinate/Latitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
-        if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
-            cell_size = self.cell_size
-            # y_coords = [
-            #     pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
-            # ]
-            y_coords = Dataset.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
-        else:
-            # in case the lat and lon are read from the DataCube file, just read the values from the file
-            y_coords = self._lat
-        return np.array(y_coords)
-
-    @staticmethod
-    def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> List[float]:
-        """Get Y/Lat coordinates."""
-        y_coords = [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
-        return y_coords
+        return self.lat
 
     @property
     def gdal_dtype(self):

@@ -191,19 +191,17 @@ class AbstractDataset(ABC):
         return self._raster.GetMetadata()
 
     @staticmethod
-    def get_x_lon_dimension_array(
-            pivot_x: float, cell_size: int, columns: int
-    ) -> List[float]:
+    def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> np.ndarray:
         """get_x_lon_dimension_array."""
-        x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
+        x_coords = np.array([pivot_x + i * cell_size + cell_size / 2 for i in range(columns)])
         return x_coords
 
     @staticmethod
-    def get_y_lat_dimension_array(
-            pivot_y: float, cell_size: int, rows: int
-    ) -> List[float]:
+    def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> np.ndarray:
         """get_y_lat_dimension_array."""
-        y_coords = [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
+        y_coords = np.array([pivot_y - i * cell_size - cell_size / 2 for i in range(rows)])
         return y_coords
 
     @property
