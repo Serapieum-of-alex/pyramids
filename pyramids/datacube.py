@@ -105,6 +105,19 @@ class DataCube(Dataset):
         return self.lat
 
     @property
+    def geotransform(self):
+        """Geotransform."""
+        geotransform = (
+            self.lon[0] - self.cell_size / 2,
+            self.cell_size,
+            0,
+            self.lat[0] + self.cell_size / 2,
+            0,
+            -self.cell_size,
+        )
+        return geotransform
+
+    @property
     def variables(self) -> Dict[str, "Dataset"]:
         """Variables in the dataset (resembles the variables in DataCube files.)."""
         return self._variables
