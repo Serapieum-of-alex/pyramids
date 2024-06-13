@@ -95,7 +95,7 @@ class DataCube(Dataset):
             x_coords = super().lon
         else:
             # in case the lat and lon are read from the DataCube file just read the values from the file
-            x_coords = np.array(self._lon)
+            x_coords = self._lon
         return x_coords
 
     @property
@@ -113,7 +113,7 @@ class DataCube(Dataset):
             y_coords = super().lat
         else:
             # in case the lat and lon are read from the DataCube file just read the values from the file
-            y_coords = np.array(self._lat)
+            y_coords = self._lat
         return y_coords
 
     @property
