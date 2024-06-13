@@ -37,16 +37,6 @@ def src_with_color_table() -> Dataset:
 
 
 @pytest.fixture(scope="module")
-def noah_nc_path() -> str:
-    return "tests/data/netcdf/noah-precipitation-1979.nc"
-
-
-@pytest.fixture(scope="module")
-def pyramids_created_nc_3d() -> str:
-    return "tests/data/netcdf/pyramids-netcdf-3d.nc"
-
-
-@pytest.fixture(scope="module")
 def chang_no_data_dataset(src_path: str) -> Dataset:
     return gdal.OpenShared("tests/data/acc4000-change-no-data.tif", gdal.GA_ReadOnly)
 
