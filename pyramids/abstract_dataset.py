@@ -62,7 +62,7 @@ class AbstractDataset(ABC):
         self._access = access
         self._raster = src
         self._geotransform = src.GetGeoTransform()
-        self._cell_size = self.geotransform[1]
+        self._cell_size = self._geotransform[1]
         # replace with a loop over the GetMetadata for each separate band
         self._meta_data = src.GetMetadata()
         self._file_name = src.GetDescription()
