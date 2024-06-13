@@ -14,6 +14,11 @@ class TestProperties:
         src = DataCube.read_file(noah_nc_path)
         assert isinstance(src.__repr__(), str)
 
+    def test_x_lon(self, noah_nc_path: str):
+        cube = DataCube.read_file(noah_nc_path)
+        np.testing.assert_array_equal(cube.x, cube.lon)
+        np.testing.assert_array_equal(cube.y, cube.lat)
+
 
 @pytest.fixture(scope="module")
 def test_netcdf_create_from_array(

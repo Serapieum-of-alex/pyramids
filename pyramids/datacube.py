@@ -73,7 +73,7 @@ class DataCube(Dataset):
         return message
 
     @property
-    def lon(self):
+    def lon(self) -> np.ndarray:
         """Longitude coordinates."""
         if not hasattr(self, "_lon"):
             x_coords = super().lon
@@ -83,7 +83,7 @@ class DataCube(Dataset):
         return x_coords
 
     @property
-    def lat(self):
+    def lat(self) -> np.ndarray:
         """Latitude-coordinate."""
         if not hasattr(self, "_lat"):
             y_coords = super().lat
@@ -93,13 +93,13 @@ class DataCube(Dataset):
         return y_coords
 
     @property
-    def x(self):
+    def x(self) -> np.ndarray:
         """x-coordinate/longitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         return self.lon
 
     @property
-    def y(self):
+    def y(self) -> np.ndarray:
         """y-coordinate/latitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         return self.lat
@@ -168,6 +168,10 @@ class DataCube(Dataset):
         DataCube
         """
         src = _io.read_file(path, read_only, open_as_multi_dimensional)
+        if read_only:
+            read_only = "read_only"
+        else:
+            read_only = "write"
         return cls(src, access=read_only)
 
     def _get_time_variable(self):
@@ -185,9 +189,13 @@ class DataCube(Dataset):
             time_stamp = None
         return time_stamp
 
-    def _get_lat_lon(self):
+    def _get_lat_lon(self) -> Tuple[np.ndarray, np.ndarray]:
         lon = self._read_variable("lon")
         lat = self._read_variable("lat")
+        if lon is not None:
+            lon = lon.reshape(lon.size)
+        if lat is not None:
+            lat = lat.reshape(lat.size)
         return lat, lon
 
     def _read_variable(self, var: str) -> Union[gdal.Dataset, None]:
