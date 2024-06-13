@@ -26,7 +26,15 @@ class DataCube(Dataset):
     """
 
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
-        """__init__."""
+        """__init__.
+
+        Hint
+        ----
+        - The method will first look for the variables named "lat" and "lon" in the dataset.
+        - If the variables are not found, the method will look for the variables named "x" and "y".
+        - If the variables are not found, the method will return None.
+
+        """
         super().__init__(src, access=access)
         # set the is_subset to false before retrieving the variables
         self._is_subset = False
@@ -74,7 +82,15 @@ class DataCube(Dataset):
 
     @property
     def lon(self) -> np.ndarray:
-        """Longitude coordinates."""
+        """Longitude coordinates.
+
+        Hint
+        ----
+        - The method will first look for the variables "lon" in the dataset.
+        - If the variable is not found, the method will look for the variable "x".
+        - If the variables are not found, the method will Calculate the longitude coordinate using the
+        pivot point coordinates, cell size and the number of columns.
+        """
         if not hasattr(self, "_lon"):
             x_coords = super().lon
         else:
@@ -84,7 +100,15 @@ class DataCube(Dataset):
 
     @property
     def lat(self) -> np.ndarray:
-        """Latitude-coordinate."""
+        """Latitude-coordinate.
+
+                Hint
+        ----
+        - The method will first look for the variables "lat" in the dataset.
+        - If the variable is not found, the method will look for the variable "y".
+        - If the variables are not found, the method will Calculate the longitude coordinate using the
+        pivot point coordinates, cell size and the number of columns.
+        """
         if not hasattr(self, "_lat"):
             y_coords = super().lat
         else:
@@ -203,6 +227,22 @@ class DataCube(Dataset):
         return time_stamp
 
     def _get_lat_lon(self) -> Tuple[np.ndarray, np.ndarray]:
+        """_get_lat_lon.
+
+        Get latitude and longitude coordinates.
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            Latitude and Longitude coordinates.
+            If the variables are not found in the dataset, it will return None.
+
+        Hint
+        ----
+        - The method will first look for the variables named "lat" and "lon" in the dataset.
+        - If the variables are not found, the method will look for the variables named "x" and "y".
+        - If the variables are not found, the method will return None.
+        """
         lon = self._read_variable("lon")
         lat = self._read_variable("lat")
         if lon is not None:
