@@ -198,7 +198,7 @@ class DataCube(Dataset):
             lat = lat.reshape(lat.size)
         return lat, lon
 
-    def _read_variable(self, var: str) -> Union[gdal.Dataset, None]:
+    def _read_variable(self, var: str) -> Union[gdal.Dataset, None, np.ndarray]:
         """_read_variable.
 
         Read variables in a dataset
