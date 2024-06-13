@@ -211,7 +211,7 @@ class DataCube(Dataset):
             lat = lat.reshape(lat.size)
         return lat, lon
 
-    def _read_variable(self, var: str) -> Union[gdal.Dataset, None, np.ndarray]:
+    def _read_variable(self, var: str) -> Union[np.ndarray, None]:
         """_read_variable.
 
         Read variables in a dataset
@@ -262,13 +262,8 @@ class DataCube(Dataset):
 
         return src
 
-    def get_variables(self, read_only: bool = True) -> Dict[str, "DataCube"]:
+    def get_variables(self) -> Dict[str, "DataCube"]:
         """get_variables.
-
-        Parameters
-        ----------
-        read_only: [bool]
-            Default is True.
 
         Returns
         -------
@@ -367,7 +362,7 @@ class DataCube(Dataset):
         driver_type: str = "MEM",
         path: str = None,
         variable_name: str = None,
-    ) -> "Dataset":
+    ) -> "DataCube":
         """create_from_array.
 
             - Create_from_array method creates a `Dataset` from a given array and geotransform data.
