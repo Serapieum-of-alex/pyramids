@@ -42,10 +42,10 @@ class DataCube(Dataset):
         # variables and variable_names
         self.variable_names = self.get_variable_names()
         self._variables = self.get_variables()
+        self._dimension_names = self._get_dimension_names()
 
         if len(self.variable_names) > 0:
             self._time_stamp = self._get_time_variable()
-            self._lat, self._lon = self._get_lat_lon()
 
     def __str__(self):
         """__str__."""
@@ -81,8 +81,18 @@ class DataCube(Dataset):
         return message
 
     @property
+    def dimension_names(self) -> List[str]:
+        """dimension_names."""
+        return self._get_dimension_names()
+
+    @property
     def lon(self) -> np.ndarray:
         """Longitude coordinates.
+
+        Returns
+        -------
+        np.ndarray:
+            If the variables are not found in the dataset, it will return None.
 
         Hint
         ----
@@ -91,30 +101,35 @@ class DataCube(Dataset):
         - If the variables are not found, the method will Calculate the longitude coordinate using the
         pivot point coordinates, cell size and the number of columns.
         """
-        if not hasattr(self, "_lon"):
-            x_coords = super().lon
-        else:
-            # in case the lat and lon are read from the DataCube file just read the values from the file
-            x_coords = self._lon
-        return x_coords
+        lon = self._read_variable("lon")
+        if lon is None:
+            lon = self._read_variable("x")
+        if lon is not None:
+            lon = lon.reshape(lon.size)
+        return lon
 
     @property
     def lat(self) -> np.ndarray:
         """Latitude-coordinate.
 
-                Hint
+        Returns
+        -------
+        np.ndarray:
+            If the variables are not found in the dataset, it will return None.
+
+        Hint
         ----
         - The method will first look for the variables "lat" in the dataset.
         - If the variable is not found, the method will look for the variable "y".
         - If the variables are not found, the method will Calculate the longitude coordinate using the
         pivot point coordinates, cell size and the number of columns.
         """
-        if not hasattr(self, "_lat"):
-            y_coords = super().lat
-        else:
-            # in case the lat and lon are read from the DataCube file just read the values from the file
-            y_coords = self._lat
-        return y_coords
+        lat = self._read_variable("lat")
+        if lat is None:
+            lat = self._read_variable("y")
+        if lat is not None:
+            lat = lat.reshape(lat.size)
+        return lat
 
     @property
     def x(self) -> np.ndarray:
@@ -131,14 +146,17 @@ class DataCube(Dataset):
     @property
     def geotransform(self):
         """Geotransform."""
-        geotransform = (
-            self.lon[0] - self.cell_size / 2,
-            self.cell_size,
-            0,
-            self.lat[0] + self.cell_size / 2,
-            0,
-            -self.cell_size,
-        )
+        if self.lon is None:
+            geotransform = None
+        else:
+            geotransform = (
+                self.lon[0] - self.cell_size / 2,
+                self.cell_size,
+                0,
+                self.lat[0] + self.cell_size / 2,
+                0,
+                -self.cell_size,
+            )
         return geotransform
 
     @property
@@ -226,30 +244,24 @@ class DataCube(Dataset):
             time_stamp = None
         return time_stamp
 
-    def _get_lat_lon(self) -> Tuple[np.ndarray, np.ndarray]:
-        """_get_lat_lon.
+    def _get_dimension_names(self) -> List[str]:
+        rg = self._raster.GetRootGroup()
+        if rg is not None:
+            dims = rg.GetDimensions()
+            dims_names = [dim.GetName() for dim in dims]
+        else:
+            dims_names = None
+        return dims_names
 
-        Get latitude and longitude coordinates.
-
-        Returns
-        -------
-        Tuple[np.ndarray, np.ndarray]
-            Latitude and Longitude coordinates.
-            If the variables are not found in the dataset, it will return None.
-
-        Hint
-        ----
-        - The method will first look for the variables named "lat" and "lon" in the dataset.
-        - If the variables are not found, the method will look for the variables named "x" and "y".
-        - If the variables are not found, the method will return None.
-        """
-        lon = self._read_variable("lon")
-        lat = self._read_variable("lat")
-        if lon is not None:
-            lon = lon.reshape(lon.size)
-        if lat is not None:
-            lat = lat.reshape(lat.size)
-        return lat, lon
+    def _get_dimension(self, name: str) -> gdal.Dimension:
+        dim_names = self.dimension_names
+        if dim_names is not None and name in dim_names:
+            rg = self._raster.GetRootGroup()
+            dims = rg.GetDimensions()
+            dim = dims[dim_names.index(name)]
+        else:
+            dim = None
+        return dim
 
     def _read_variable(self, var: str) -> Union[np.ndarray, None]:
         """_read_variable.
@@ -269,7 +281,11 @@ class DataCube(Dataset):
         try:
             var_ds = gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
         except RuntimeError:
-            var_ds = None
+            dim = self._get_dimension(var)
+            var_ds = (
+                dim.GetIndexingVariable().ReadAsArray() if dim is not None else None
+            )
+
         return var_ds
 
     def get_variable_names(self) -> List[str]:
@@ -376,6 +392,10 @@ class DataCube(Dataset):
         Returns
         -------
         gdal.Dimension
+
+        Hint
+        ----
+        - The dimension will be saved as a dimension and a mdarray in the given group.
         """
         if dim_name in ["y", "lat", "latitude"]:
             dim_type = gdal.DIM_TYPE_HORIZONTAL_Y
