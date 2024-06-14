@@ -175,3 +175,24 @@ class TestAddVariable:
         variable_name = "values"
         dataset.remove_variable(variable_name)
         assert variable_name not in dataset.variable_names
+
+
+class TestMultiVariablesNC:
+    def test_x_lon_y_lat(self, two_variable_nc: str):
+        cube = DataCube.read_file(two_variable_nc)
+        np.testing.assert_array_equal(cube.x, np.array(range(-10, 11), dtype=float))
+        np.testing.assert_array_equal(cube.lon, np.array(range(-10, 11), dtype=float))
+        np.testing.assert_array_equal(cube.y, np.array(range(-10, 11), dtype=float))
+        np.testing.assert_array_equal(cube.lat, np.array(range(-10, 11), dtype=float))
+
+    def test_geotransform(self, two_variable_nc: str):
+        cube = DataCube.read_file(two_variable_nc)
+        assert cube.geotransform == (-10.5, 1.0, 0, -9.5, 0, -1.0)
+
+    def test_variables(self, two_variable_nc: str):
+        cube = DataCube.read_file(two_variable_nc)
+        assert cube.variable_names == ["z", "q"]
+        assert isinstance(cube.variables["q"], DataCube)
+        assert isinstance(cube.variables["z"], DataCube)
+        var = cube.variables["q"]
+        assert var.shape == (1, 21, 21)
