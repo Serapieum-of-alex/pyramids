@@ -39,10 +39,6 @@ class DataCube(Dataset):
         # set the is_subset to false before retrieving the variables
         self._is_subset = False
         self._is_md_array = False
-        # variables and variable_names
-        self.variable_names = self.get_variable_names()
-        self._variables = self.get_variables()
-        self._dimension_names = self._get_dimension_names()
 
         if len(self.variable_names) > 0:
             self._time_stamp = self._get_time_variable()
@@ -53,7 +49,7 @@ class DataCube(Dataset):
             Cell size: {self.cell_size}
             Dimension: {self.rows} * {self.columns}
             EPSG: {self.epsg}
-            Variables: {self.variables}
+            Variables: {self.variable_names}
             File: {self.file_name}
         """
         return message
@@ -160,9 +156,14 @@ class DataCube(Dataset):
         return geotransform
 
     @property
+    def variable_names(self) -> List[str]:
+        """variable_names."""
+        return self.get_variable_names()
+
+    @property
     def variables(self) -> Dict[str, "Dataset"]:
         """Variables in the dataset (resembles the variables in DataCube files.)."""
-        return self._variables
+        return self.get_variables()
 
     @property
     def no_data_value(self):
