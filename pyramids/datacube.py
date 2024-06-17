@@ -22,7 +22,11 @@ from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 class DataCube(Dataset):
     """DataCube.
 
+    DataCube class is a recursive data structure or self-referential object.
     The DataCube class contains methods to deal with DataCube files.
+
+    DataCube Creation guidelines:
+        https://acdguide.github.io/Governance/create/create-basics.html
     """
 
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
@@ -88,14 +92,13 @@ class DataCube(Dataset):
         Returns
         -------
         np.ndarray:
-            If the variables are not found in the dataset, it will return None.
+            If the longitude does not exist as a variable in the netcdf file, it will return None.
 
         Hint
         ----
         - The method will first look for the variables "lon" in the dataset.
         - If the variable is not found, the method will look for the variable "x".
-        - If the variables are not found, the method will Calculate the longitude coordinate using the
-        pivot point coordinates, cell size and the number of columns.
+        - If both lon/x are not found, the method will return None.
         """
         lon = self._read_variable("lon")
         if lon is None:
