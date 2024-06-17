@@ -1,4 +1,5 @@
 """Custom Errors."""
+
 from loguru import logger
 
 

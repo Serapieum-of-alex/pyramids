@@ -4,6 +4,7 @@ Dataset module.
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebraic operation on cell's values. gdal class: https://gdal.org/api/index.html#python-api.
 """
+
 import os
 import warnings
 import logging
@@ -51,11 +52,9 @@ from pyramids.abstract_dataset import (
 class Dataset(AbstractDataset):
     """Dataset.
 
-    The Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate
+    The Dataset class contains methods to deal with rasters and DataCube files, change projection and coordinate
     systems.
     """
-
-    default_no_data_value = DEFAULT_NO_DATA_VALUE
 
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
         """__init__."""
@@ -104,9 +103,11 @@ class Dataset(AbstractDataset):
             self.epsg,
             self.band_count,
             self.band_names,
-            self._no_data_value
-            if self._no_data_value == []
-            else self._no_data_value[0],
+            (
+                self._no_data_value
+                if self._no_data_value == []
+                else self._no_data_value[0]
+            ),
             self.dtype if self.dtype == [] else self.dtype[0],
             self.crs,
             self.meta_data,
@@ -588,78 +589,32 @@ class Dataset(AbstractDataset):
         return self._calculate_bbox()
 
     @property
-    def lon(self):
+    def lon(self) -> np.ndarray:
         """Longitude coordinates."""
-        if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
-            cell_size = self.cell_size
-            x_coords = [
-                pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-            ]
-        else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
-            x_coords = self._lon
-        return np.array(x_coords)
-
-    @property
-    def lat(self):
-        """Latitude-coordinate."""
-        if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
-            cell_size = self.cell_size
-            y_coords = [
-                pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
-            ]
-        else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
-            y_coords = self._lat
-        return np.array(y_coords)
-
-    @property
-    def x(self):
-        """X-coordinate/Longitude."""
-        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
-        if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
-            cell_size = self.cell_size
-            x_coords = Dataset.get_x_lon_dimension_array(
-                pivot_x, cell_size, self.columns
-            )
-            # x_coords = [
-            #     pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-            # ]
-        else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
-            x_coords = self._lon
-        return np.array(x_coords)
-
-    @staticmethod
-    def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> List[float]:
-        """Get X/Lon coordinates."""
-        x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
+        x_coords = self.get_x_lon_dimension_array(
+            self.pivot_point[0], self.cell_size, self.columns
+        )
         return x_coords
 
     @property
-    def y(self):
+    def lat(self) -> np.ndarray:
+        """Latitude-coordinate."""
+        y_coords = self.get_y_lat_dimension_array(
+            self.pivot_point[1], self.cell_size, self.rows
+        )
+        return y_coords
+
+    @property
+    def x(self) -> np.ndarray:
+        """X-coordinate/Longitude."""
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
+        return self.lon
+
+    @property
+    def y(self) -> np.ndarray:
         """Y-coordinate/Latitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
-        if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
-            cell_size = self.cell_size
-            # y_coords = [
-            #     pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
-            # ]
-            y_coords = Dataset.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
-        else:
-            # in case the lat and lon are read from the netcdf file, just read the values from the file
-            y_coords = self._lat
-        return np.array(y_coords)
-
-    @staticmethod
-    def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> List[float]:
-        """Get Y/Lat coordinates."""
-        y_coords = [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
-        return y_coords
+        return self.lat
 
     @property
     def gdal_dtype(self):
@@ -1483,7 +1438,7 @@ class Dataset(AbstractDataset):
         -------
         None:
             if the driver is "GTiff" the function will save the new raster to the given path.
-        Datacube:
+        Dataset:
             if the driver is "MEM" the function will return the created raster in memory.
 
         Example
@@ -1897,7 +1852,7 @@ class Dataset(AbstractDataset):
     def _change_no_data_value_attr(self, band: int, no_data_value):
         """Change the no_data_value attribute.
 
-            - Change only the no_data_value attribute in the gdal Datacube object.
+            - Change only the no_data_value attribute in the gdal Dataset object.
             - Change the no_data_value in the Dataset object for the given band index.
             - The corresponding value in the array will not be changed.
 
@@ -2368,7 +2323,7 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        Datacube
+        Dataset
             gdal dataset object
 
         Examples
@@ -2721,7 +2676,7 @@ class Dataset(AbstractDataset):
             row, col = mask.shape
         else:
             raise TypeError(
-                "The second parameter 'mask' has to be either gdal.Datacube or numpy array"
+                "The second parameter 'mask' has to be either gdal.Dataset or numpy array"
                 f"given - {type(mask)}"
             )
 
@@ -2760,16 +2715,16 @@ class Dataset(AbstractDataset):
                 if mask_noval is None:
                     src_array[band, np.isnan(mask_array)] = self.no_data_value[band]
                 else:
-                    src_array[
-                        band, np.isclose(mask_array, mask_noval, rtol=0.001)
-                    ] = no_data_value[band]
+                    src_array[band, np.isclose(mask_array, mask_noval, rtol=0.001)] = (
+                        no_data_value[band]
+                    )
         else:
             if mask_noval is None:
                 src_array[np.isnan(mask_array)] = self.no_data_value[0]
             else:
-                src_array[
-                    np.isclose(mask_array, mask_noval, rtol=0.001)
-                ] = self.no_data_value[0]
+                src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = (
+                    self.no_data_value[0]
+                )
 
         if fill_gaps:
             src_array = self.fill_gaps(mask, src_array)
@@ -2902,7 +2857,7 @@ class Dataset(AbstractDataset):
             mask = mask
         else:
             raise TypeError(
-                "The second parameter has to be either path to the mask raster or a gdal.Datacube object"
+                "The second parameter has to be either path to the mask raster or a gdal.Dataset object"
             )
         if not self._check_alignment(mask):
             # first align the mask with the src raster
@@ -4092,9 +4047,9 @@ class Dataset(AbstractDataset):
         for band in bands:
             color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
             for i in range(color_table.GetCount()):
-                df.loc[
-                    i, ["red", "green", "blue", "alpha"]
-                ] = color_table.GetColorEntry(i)
+                df.loc[i, ["red", "green", "blue", "alpha"]] = (
+                    color_table.GetColorEntry(i)
+                )
                 df.loc[i, ["band", "values"]] = band + 1, i
 
         return df
