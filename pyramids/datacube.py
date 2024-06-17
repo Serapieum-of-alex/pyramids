@@ -81,11 +81,6 @@ class DataCube(Dataset):
         return message
 
     @property
-    def dimension_names(self) -> List[str]:
-        """dimension_names."""
-        return self._get_dimension_names()
-
-    @property
     def lon(self) -> np.ndarray:
         """Longitude coordinates.
 
@@ -166,7 +161,10 @@ class DataCube(Dataset):
     @property
     def variables(self) -> Dict[str, "Dataset"]:
         """Variables in the dataset (resembles the variables in DataCube files.)."""
-        return self.get_variables()
+        vars_dict = {}
+        for var in self.variable_names:
+            vars_dict[var] = self.get_variable(var)
+        return vars_dict
 
     @property
     def no_data_value(self):
@@ -257,6 +255,11 @@ class DataCube(Dataset):
             dims_names = None
         return dims_names
 
+    @property
+    def dimension_names(self) -> List[str]:
+        """dimension_names."""
+        return self._get_dimension_names()
+
     def _get_dimension(self, name: str) -> gdal.Dimension:
         dim_names = self.dimension_names
         if dim_names is not None and name in dim_names:
@@ -322,7 +325,7 @@ class DataCube(Dataset):
 
         return src
 
-    def get_variables(self) -> Dict[str, "DataCube"]:
+    def get_variable(self, variable_name: str) -> "DataCube":
         """get_variables.
 
         Returns
@@ -330,25 +333,30 @@ class DataCube(Dataset):
         Dict["Dataset", "Dataset"]
             Dictionary of the netcdf variables
         """
-        variables = {}
+        # convert the variable_name to a list if it is a string
+        if variable_name not in self.variable_names:
+            raise ValueError(
+                f"{variable_name} is not a valid variable name in {self.variable_names}"
+            )
+
         prefix = self.driver_type.upper()
         rg = self._raster.GetRootGroup()
-        for i, var in enumerate(self.variable_names):
-            if prefix == "MEMORY" or rg is not None:
-                src = self._read_md_array(var)
-                if isinstance(src, gdal.Dataset):
-                    variables[var] = DataCube(src)
-                    variables[var]._is_md_array = True
-                else:
-                    variables[var] = src
+
+        if prefix == "MEMORY" or rg is not None:
+            src = self._read_md_array(variable_name)
+            if isinstance(src, gdal.Dataset):
+                cube = DataCube(src)
+                cube._is_md_array = True
             else:
-                src = gdal.Open(f"{prefix}:{self.file_name}:{var}")
-                variables[var] = DataCube(src)
-                variables[var]._is_md_array = False
+                cube = src
+        else:
+            src = gdal.Open(f"{prefix}:{self.file_name}:{variable_name}")
+            cube = DataCube(src)
+            cube._is_md_array = False
 
-            variables[var]._is_subset = True
+        cube._is_subset = True
 
-        return variables
+        return cube
 
     @property
     def is_subset(self) -> bool:

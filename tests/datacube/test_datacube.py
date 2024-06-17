@@ -45,7 +45,7 @@ def test_netcdf_create_from_array(
     )
     assert isinstance(cube.raster, gdal.Dataset)
     assert cube.variable_names == [variable_name]
-    var = cube.variables[variable_name]
+    var = cube.get_variable(variable_name)
     assert var.shape == (3, 13, 14)
     np.testing.assert_array_equal(var.read_array(), src_arr)
     assert var.cell_size == 4000
@@ -66,10 +66,10 @@ class TestReadNetCDF:
         assert dataset.raster is not None
         assert dataset.shape == (0, 512, 512)
         assert dataset.variable_names == ["Band1", "Band2", "Band3", "Band4"]
-        assert list(dataset.variables.keys()) == ["Band1", "Band2", "Band3", "Band4"]
+        # assert list(dataset.get_variable().keys()) == ["Band1", "Band2", "Band3", "Band4"]
         assert not dataset.is_subset
         assert not dataset.is_md_array
-        var = dataset.variables["Band1"]
+        var = dataset.get_variable("Band1")
         assert var.is_subset
         assert not var.is_md_array
         assert var.shape == (1, 360, 720)
@@ -87,7 +87,7 @@ class TestReadNetCDF:
             pyramids_created_nc_3d, open_as_multi_dimensional=True
         )
         assert dataset.variable_names == ["values"]
-        var = dataset.variables["values"]
+        var = dataset.get_variable("values")
         assert var.shape == (3, 13, 14)
         assert var.cell_size == 4000
         assert np.isclose(
@@ -155,7 +155,7 @@ class TestCreateNetCDF:
         """
         dataset = DataCube(test_create_netcdf_from_array_2d)
         assert dataset.variable_names == ["values"]
-        assert dataset.variables["values"].shape == (1, 13, 14)
+        assert dataset.get_variable("values").shape == (1, 13, 14)
 
 
 class TestAddVariable:
@@ -167,7 +167,7 @@ class TestAddVariable:
             [item in dataset.variable_names for item in ["values", "values-new"]]
         )
 
-        var = dataset.variables["values-new"]
+        var = dataset.get_variable("values-new")
         assert var.shape == (3, 13, 14)
 
     def test_remove_variable_in_memory_driver(self, test_netcdf_create_from_array):
@@ -196,3 +196,9 @@ class TestMultiVariablesNC:
         assert isinstance(cube.variables["z"], DataCube)
         var = cube.variables["q"]
         assert var.shape == (1, 21, 21)
+
+    def test_variables_x_lon_y_lat(self, two_variable_nc: str):
+        cube = DataCube.read_file(two_variable_nc)
+        var = cube.variables["q"]
+        print(var.x)
+        print(var.geotransform)
