@@ -179,6 +179,7 @@ class TestAddVariable:
 
 class TestMultiVariablesNC:
     def test_x_lon_y_lat(self, two_variable_nc: str):
+        """test getting the lat/lon/x/y values from the outer group"""
         cube = DataCube.read_file(two_variable_nc)
         np.testing.assert_array_equal(cube.x, np.array(range(-10, 11), dtype=float))
         np.testing.assert_array_equal(cube.lon, np.array(range(-10, 11), dtype=float))
@@ -194,11 +195,11 @@ class TestMultiVariablesNC:
         assert cube.variable_names == ["z", "q"]
         assert isinstance(cube.variables["q"], DataCube)
         assert isinstance(cube.variables["z"], DataCube)
-        var = cube.variables["q"]
+        var = cube.get_variable("q")
         assert var.shape == (1, 21, 21)
 
     def test_variables_x_lon_y_lat(self, two_variable_nc: str):
         cube = DataCube.read_file(two_variable_nc)
-        var = cube.variables["q"]
+        var = cube.get_variable("q")
         print(var.x)
         print(var.geotransform)
