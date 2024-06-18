@@ -159,7 +159,7 @@ class DataCube(Dataset):
         return self.get_variable_names()
 
     @property
-    def variables(self) -> Dict[str, "Dataset"]:
+    def variables(self) -> Dict[str, str]:
         """Variables in the dataset (resembles the variables in DataCube files.)."""
         vars_dict = {}
         for var in self.variable_names:
@@ -578,7 +578,9 @@ class DataCube(Dataset):
 
         new_md_array.SetSpatialRef(src_mdarray.GetSpatialRef())
 
-    def add_variable(self, dataset: "Dataset", variable_name: str = None):
+    def add_variable(
+        self, dataset: Union["Dataset", "DataCube"], variable_name: str = None
+    ):
         """add_variable.
 
         Parameters
@@ -591,10 +593,10 @@ class DataCube(Dataset):
 
         Example
         -------
-        >>> dataset_1 = Dataset.read_file(
+        >>> dataset_1 = DataCube.read_file(
         >>>         "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
         >>> )
-        >>> dataset_2 = Dataset.read_file("tests/data/netcdf/noah-precipitation-1979.nc")
+        >>> dataset_2 = DataCube.read_file("tests/data/netcdf/noah-precipitation-1979.nc")
         >>> dataset_1.add_variable(dataset_2, "temperature")
         """
         src_rg = self._raster.GetRootGroup()
