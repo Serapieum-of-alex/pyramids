@@ -38,10 +38,6 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          conda info
-          conda list
-          conda config --show-sources
-          conda config --show
           python -m pytest -sv -m "not plot"
 
       - name: Upload coverage reports to Codecov with GitHub Action
@@ -82,10 +78,6 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          conda info
-          conda list
-          conda config --show-sources
-          conda config --show
           python -m pytest -v --cov=pyramids --cov-report=xml
 
       - name: Upload coverage reports to Codecov with GitHub Action
