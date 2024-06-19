@@ -15,3 +15,4 @@ dependencies:
   - loguru >=0.7.2
   - pytest >=7.4.3
   - pytest-cov >=4.1.0
+  - nbval >=0.11.0
