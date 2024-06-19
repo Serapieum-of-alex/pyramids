@@ -89,5 +89,6 @@ jobs:
           pytest -sv
 
       - name: test Jupyter notebook
+        shell: bash -el {0}
         run: |
           pytest --nbval -k ".ipynb"
