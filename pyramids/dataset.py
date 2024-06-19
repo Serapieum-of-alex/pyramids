@@ -4,6 +4,7 @@ Dataset module.
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebraic operation on cell's values. gdal class: https://gdal.org/api/index.html#python-api.
 """
+
 import os
 import warnings
 import logging
@@ -51,7 +52,7 @@ from pyramids.abstract_dataset import (
 class Dataset(AbstractDataset):
     """Dataset.
 
-    The Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate
+    The Dataset class contains methods to deal with raster and netcdf files, change projection and coordinate
     systems.
     """
 
@@ -104,9 +105,11 @@ class Dataset(AbstractDataset):
             self.epsg,
             self.band_count,
             self.band_names,
-            self._no_data_value
-            if self._no_data_value == []
-            else self._no_data_value[0],
+            (
+                self._no_data_value
+                if self._no_data_value == []
+                else self._no_data_value[0]
+            ),
             self.dtype if self.dtype == [] else self.dtype[0],
             self.crs,
             self.meta_data,
@@ -121,16 +124,23 @@ class Dataset(AbstractDataset):
 
     @property
     def raster(self) -> gdal.Dataset:
-        """GDAL Dataset."""
+        """Base GDAL Dataset."""
         return super().raster
 
     @raster.setter
     def raster(self, value: gdal.Dataset):
+        """Contains GDAL Dataset."""
         self._raster = value
 
     @property
     def values(self) -> np.ndarray:
-        """Values of all the bands."""
+        """Values of all the bands.
+
+        Return
+        -------
+        np.ndarray:
+            the values of all the bands in the raster as a 3D numpy array (bands, rows, columns).
+        """
         return self.read_array()
 
     @property
@@ -150,17 +160,28 @@ class Dataset(AbstractDataset):
 
     @property
     def geotransform(self):
-        """WKT projection.(x, cell_size, 0, y, 0, -cell_size)."""
+        """WKT projection.
+
+        (top left corner X/lon coordinate, cell_size, 0, top left corner y/lat coordinate, 0, -cell_size).
+        >>> (432968.120, 4000.0, 0.0, 520007.787, 0.0, -4000)
+        """
         return super().geotransform
 
     @property
-    def epsg(self):
+    def epsg(self) -> int:
         """EPSG number."""
         return self._epsg
 
     @property
     def crs(self) -> str:
-        """Coordinate reference system."""
+        """Coordinate reference system.
+
+        Returns
+        -------
+        str:
+            the coordinate reference system of the raster.
+            >>> 'PROJCS["WGS 84 / UTM zone 18N",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",-75],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","32618"]]'
+        """
         return self._get_crs()
 
     @crs.setter
@@ -2760,16 +2781,16 @@ class Dataset(AbstractDataset):
                 if mask_noval is None:
                     src_array[band, np.isnan(mask_array)] = self.no_data_value[band]
                 else:
-                    src_array[
-                        band, np.isclose(mask_array, mask_noval, rtol=0.001)
-                    ] = no_data_value[band]
+                    src_array[band, np.isclose(mask_array, mask_noval, rtol=0.001)] = (
+                        no_data_value[band]
+                    )
         else:
             if mask_noval is None:
                 src_array[np.isnan(mask_array)] = self.no_data_value[0]
             else:
-                src_array[
-                    np.isclose(mask_array, mask_noval, rtol=0.001)
-                ] = self.no_data_value[0]
+                src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = (
+                    self.no_data_value[0]
+                )
 
         if fill_gaps:
             src_array = self.fill_gaps(mask, src_array)
@@ -4092,9 +4113,9 @@ class Dataset(AbstractDataset):
         for band in bands:
             color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
             for i in range(color_table.GetCount()):
-                df.loc[
-                    i, ["red", "green", "blue", "alpha"]
-                ] = color_table.GetColorEntry(i)
+                df.loc[i, ["red", "green", "blue", "alpha"]] = (
+                    color_table.GetColorEntry(i)
+                )
                 df.loc[i, ["band", "values"]] = band + 1, i
 
         return df

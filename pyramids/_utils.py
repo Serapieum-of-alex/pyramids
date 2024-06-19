@@ -1,4 +1,5 @@
 """Utility module."""
+
 from typing import Union
 import yaml
 import datetime as dt
