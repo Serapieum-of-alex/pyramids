@@ -87,3 +87,7 @@ jobs:
           conda config --show-sources
           conda config --show
           pytest -sv
+
+      - name: test Jupyter notebook
+        run: |
+          pytest --nbval -k ".ipynb"
