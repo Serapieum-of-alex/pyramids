@@ -112,3 +112,11 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+  - repo: local
+    hooks:
+      - id: nbval
+        name: nbval
+        entry: pytest --nbval
+        language: system
+        files: \.ipynb$
