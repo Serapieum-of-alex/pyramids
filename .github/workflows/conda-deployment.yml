@@ -82,6 +82,7 @@ jobs:
       - name: Generate coverage report
         shell: bash -el {0}
         run: |
+          conda activate test
           conda info
           conda list
           conda config --show-sources
@@ -91,4 +92,5 @@ jobs:
       - name: test Jupyter notebook
         shell: bash -el {0}
         run: |
-          python -m pytest --nbval -k ".ipynb"
+          conda activate test
+          pytest --nbval -k ".ipynb"
