@@ -91,4 +91,8 @@ jobs:
       - name: test Jupyter notebook
         shell: bash -el {0}
         run: |
+          conda info
+          conda list
+          conda config --show-sources
+          conda config --show
           pytest --nbval -k ".ipynb"
