@@ -309,7 +309,7 @@ class Dataset(AbstractDataset):
         return super().driver_type
 
     @property
-    def scale(self):
+    def scale(self) -> List[float]:
         """Scale.
 
         The value of the scale is used to convert the pixel values to the real-world values.
@@ -804,6 +804,18 @@ class Dataset(AbstractDataset):
         -------
         DataFrame:
             DataFrame with the attribute table.
+
+        Examples
+        --------
+        >>> dataset = Dataset.read_file("examples/data/geotiff/south-america-mswep_1979010100.tif")
+        >>> df = dataset.get_attribute_table()
+        >>> print(df)
+          Precipitation Range (mm)   Category              Description
+        0                     0-50        Low   Very low precipitation
+        1                   51-100   Moderate   Moderate precipitation
+        2                  101-200       High       High precipitation
+        3                  201-500  Very High  Very high precipitation
+        4                     >500    Extreme    Extreme precipitation
         """
         band = self._iloc(band)
         rat = band.GetDefaultRAT()
@@ -815,9 +827,18 @@ class Dataset(AbstractDataset):
         return df
 
     def set_attribute_table(self, df: DataFrame, band: int = None) -> None:
-        """set_attribute_table.
+        """Set the attribute table for a band.
 
-            - Set the attribute table for a band.
+            - The attribute table can be used to associate tabular data with the values of a raster band.
+            - This is particularly useful for categorical raster data, such as land cover classifications, where each
+            pixel value corresponds to a category that has additional attributes (e.g., class name, color
+            description).
+
+        Hint
+        ----
+        - The attribute table is stored in an xml file by the name of the raster file with the extension of .aux.xml,
+        - Setting an attribute table to a band will overwrite the existing attribute table if it exists.
+        - Setting an attribute table to a band does not neet the dataset to be opened in a write mode.
 
         Parameters
         ----------
@@ -825,6 +846,76 @@ class Dataset(AbstractDataset):
             DataFrame with the attribute table.
         band: [int]
             band index.
+
+        Examples
+        --------
+        - First create a dataset:
+            >>> dataset = Dataset.create(
+            ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_coords=(0, 0),
+            ... epsg=4326, no_data_value=-9999
+            ... )
+
+        - Create a DataFrame with the attribute table:
+            >>> data = {
+            ...     "Value": [1, 2, 3],
+            ...     "ClassName": ["Forest", "Water", "Urban"],
+            ...     "Color": ["#008000", "#0000FF", "#808080"],
+            ... }
+            >>> df = pd.DataFrame(data)
+
+        - Set the attribute table to the dataset:
+            >>> dataset.set_attribute_table(df, band=0)
+
+        - Then the attribute table can be retrieved using the `get_attribute_table` method.
+        - The content of the attribute table will be stored in an xml file by the name of the raster file with
+        the extension of .aux.xml, the content of the file will be like the following:
+
+        <PAMDataset>
+          <PAMRasterBand band="1">
+            <GDALRasterAttributeTable tableType="thematic">
+              <FieldDefn index="0">
+                <Name>Precipitation Range (mm)</Name>
+                <Type>2</Type>
+                <Usage>0</Usage>
+              </FieldDefn>
+              <FieldDefn index="1">
+                <Name>Category</Name>
+                <Type>2</Type>
+                <Usage>0</Usage>
+              </FieldDefn>
+              <FieldDefn index="2">
+                <Name>Description</Name>
+                <Type>2</Type>
+                <Usage>0</Usage>
+              </FieldDefn>
+              <Row index="0">
+                <F>0-50</F>
+                <F>Low</F>
+                <F>Very low precipitation</F>
+              </Row>
+              <Row index="1">
+                <F>51-100</F>
+                <F>Moderate</F>
+                <F>Moderate precipitation</F>
+              </Row>
+              <Row index="2">
+                <F>101-200</F>
+                <F>High</F>
+                <F>High precipitation</F>
+              </Row>
+              <Row index="3">
+                <F>201-500</F>
+                <F>Very High</F>
+                <F>Very high precipitation</F>
+              </Row>
+              <Row index="4">
+                <F>&gt;500</F>
+                <F>Extreme</F>
+                <F>Extreme precipitation</F>
+              </Row>
+            </GDALRasterAttributeTable>
+          </PAMRasterBand>
+        </PAMDataset>
         """
         rat = self._df_to_attribute_table(df)
         band = self._iloc(band)
@@ -1293,7 +1384,7 @@ class Dataset(AbstractDataset):
     @classmethod
     def create(
         cls,
-        cell_size: int,
+        cell_size: Union[int, float],
         rows: int,
         columns: int,
         dtype: str,
@@ -1347,13 +1438,24 @@ class Dataset(AbstractDataset):
         >>> cell_size = 10
         >>> rows = 100
         >>> columns = 100
-        >>> dtype = 1
+        >>> dtype = "float32"
         >>> bands = 1
         >>> top_left_coords = (0, 0)
         >>> epsg = 32618
         >>> no_data_value = -9999
         >>> path = "test.tif"
-        >>> dst = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_coords, epsg, no_data_value, path)
+        >>> dataset = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_coords, epsg, no_data_value, path)
+        >>> print(dataset)
+        <BLANKLINE>
+                    Cell size: 10.0
+                    Dimension: 100 * 100
+                    EPSG: 32618
+                    Number of Bands: 1
+                    Band names: ['Band_1']
+                    Mask: -9999.0
+                    Data type: float32
+                    File: test.tif
+        <BLANKLINE>
         """
         # Create the driver.
         dtype = numpy_to_gdal_dtype(dtype)
