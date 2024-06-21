@@ -1029,7 +1029,7 @@ class Dataset(AbstractDataset):
             attribute_table provides a way to associate tabular data with the values of a raster band.
             This is particularly useful for categorical raster data, such as land cover classifications, where each
             pixel value corresponds to a category that has additional attributes (e.g., class name, color, description).
-        inplace: [bool] optional
+        inplace: [bool] optional, Default is False
             if True the new band will be added to the current dataset, if False the new band will be added to a new
             dataset.
 
@@ -1039,13 +1039,30 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        - Example of the attribute_table:
-        >>> data = {
-        ...     "Value": [1, 2, 3],
-        ...     "ClassName": ["Forest", "Water", "Urban"],
-        ...     "Color": ["#008000", "#0000FF", "#808080"],
-        ... }
-        >>> df = pd.DataFrame(data)
+        - First create a dataset:
+            >>> dataset = Dataset.create(
+            ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_coords=(0, 0),
+            ... epsg=4326, no_data_value=-9999
+            ... )
+
+        - Create a 2D array to add as a new band:
+            >>> array = np.random.rand(10, 10)
+
+        - Add the new band to the dataset:
+            >>> updated_dataset = dataset.add_band(array, unit="m", attribute_table=None)
+            >>> print(updated_dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 2
+                        Band names: ['Band_1', 'Band_2']
+                        Mask: -9999.0
+                        Data type: float32
+                        File:...
+            <BLANKLINE>
+
+        - The new band will be added to the dataset inplace.
         """
         # check the dimensions of the new array
         if array.ndim != 2:
