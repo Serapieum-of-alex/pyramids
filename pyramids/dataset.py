@@ -1071,10 +1071,10 @@ class Dataset(AbstractDataset):
             raise ValueError(
                 f"The array must have the same dimensions as the raster.{self.rows} {self.columns}"
             )
-        # check if the dataset is opened in write mode
+        # check if the dataset is opened in a write mode
         if inplace:
             if self.access == "read_only":
-                raise ValueError("The dataset is not opened in write mode.")
+                raise ValueError("The dataset is not opened in a write mode.")
             else:
                 src = self._raster
         else:
