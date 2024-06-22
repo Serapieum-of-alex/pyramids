@@ -202,6 +202,12 @@ class TestAddBand:
         with pytest.raises(ValueError):
             dataset.add_band(arr, unit="meter", inplace=True)
 
+    def test_add_band_1d_array(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        arr = np.random.rand(13)
+        with pytest.raises(ValueError):
+            dataset.add_band(arr)
+
     def test_add_band_with_attribute_table(self, src: gdal.Dataset):
         dataset = Dataset(src)
         arr = dataset.read_array()
