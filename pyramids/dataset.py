@@ -1073,9 +1073,10 @@ class Dataset(AbstractDataset):
             )
         # check if the dataset is opened in write mode
         if inplace:
-            src = self._raster
-            if src.GetRootGroup() is None:
+            if self.access == "read_only":
                 raise ValueError("The dataset is not opened in write mode.")
+            else:
+                src = self._raster
         else:
             src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
 

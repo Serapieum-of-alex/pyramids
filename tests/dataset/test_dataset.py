@@ -186,7 +186,7 @@ class TestAttributesTable:
 
 
 class TestAddBand:
-    def test_add_band(self, src: gdal.Dataset):
+    def test_add_band_return_copy(self, src: gdal.Dataset):
         dataset = Dataset(src)
         arr = dataset.read_array()
         # test add different dimension array
@@ -195,6 +195,12 @@ class TestAddBand:
         band = new_dataset._iloc(1)
         assert band.GetUnitType() == "meter"
         np.testing.assert_array_equal(band.ReadAsArray(), arr)
+
+    def test_add_band_inplace(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        arr = dataset.read_array()
+        with pytest.raises(ValueError):
+            dataset.add_band(arr, unit="meter", inplace=True)
 
     def test_add_band_with_attribute_table(self, src: gdal.Dataset):
         dataset = Dataset(src)
