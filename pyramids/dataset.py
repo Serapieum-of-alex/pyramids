@@ -3149,7 +3149,9 @@ class Dataset(AbstractDataset):
             rows_to_remove = np.all(big_array == value_to_remove, axis=(0, 2))
             cols_to_remove = np.all(big_array == value_to_remove, axis=(0, 1))
             # Use boolean indexing to remove rows and columns
-            small_array = big_array[:, ~rows_to_remove, ~cols_to_remove]
+            # first remove the rows then the columns
+            small_array = big_array[:, ~rows_to_remove, :]
+            small_array = small_array[:, :, ~cols_to_remove]
             n_rows = np.count_nonzero(~rows_to_remove)
             n_cols = np.count_nonzero(~cols_to_remove)
             small_array = small_array.reshape((src.band_count, n_rows, n_cols))

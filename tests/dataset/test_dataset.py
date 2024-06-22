@@ -955,14 +955,14 @@ class TestCropWithPolygon:
         new_cells = dataset.count_domain_cells()
         assert not cells == new_cells
 
-    def test_by_warp_touch_true(
+    def test_by_warp_touch_true_single_band(
         self,
         rhine_raster: gdal.Dataset,
         polygon_mask: GeoDataFrame,
         crop_by_wrap_touch_true_result: gdal.Dataset,
     ):
         """
-        when the touch option is True in the function the cells that touches the mask polygon but does not lie
+        when the touch option is True in the function, the cells that touches the mask polygon but does not lie
         entirely inside the mask will be included
 
         Check the number of the cropped cells and the no_data_value
@@ -977,6 +977,19 @@ class TestCropWithPolygon:
         )
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+
+    def test_by_warp_touch_true_multi_band(self):
+        """Test that the function works with multi-band raster."""
+        arr = np.random.rand(4, 6, 5)
+        geotransform = (0, 0.05, 0, 0, 0, -0.05)
+        dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+        mask = gpd.GeoDataFrame(
+            geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])],
+            crs=4326,
+        )
+        cropped_dataset = dataset.crop(mask=mask, touch=True)
+        arr = cropped_dataset.read_array()
+        assert arr.shape == (4, 2, 2)
 
     def test_by_warp_touch_false(
         self,
