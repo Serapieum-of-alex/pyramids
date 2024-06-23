@@ -3051,6 +3051,7 @@ class Dataset(AbstractDataset):
         # crop the src raster with the aligned mask
         dst_obj = self._crop_aligned(mask)
 
+        dst_obj = Dataset.correct_wrap_cutline_error(dst_obj)
         return dst_obj
 
     def _crop_with_polygon_warp(
