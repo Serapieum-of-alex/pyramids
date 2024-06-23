@@ -423,7 +423,7 @@ class AbstractDataset(ABC):
         driver_type: str = "MEM",
         path: str = None,
         variable_name: str = None,
-    ) -> "AbstractDataset":
+    ):
         """Create dataset from array.
 
             - Create_from_array method creates a `Dataset` from a given array and geotransform data.
