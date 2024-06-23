@@ -1115,34 +1115,67 @@ class Dataset(AbstractDataset):
         Returns
         -------
         DataFrame:
-            DataFrame of statistics values of each band, the dataframe has the following columns:
+            DataFrame wit the stats of each band, the dataframe has the following columns:
             [min, max, mean, std], the index of the dataframe is the band names.
-            >>>                Min         max        mean       std
-            >>> Band_1  270.369720  270.762299  270.551361  0.154270
-            >>> Band_2  269.611938  269.744751  269.673645  0.043788
-            >>> Band_3  273.641479  274.168823  273.953979  0.198447
-            >>> Band_4  273.991516  274.540344  274.310669  0.205754
 
-        Hint
-        ----
+            .. code-block:: text
+
+                               Min         max        mean       std
+                Band_1  270.369720  270.762299  270.551361  0.154270
+                Band_2  269.611938  269.744751  269.673645  0.043788
+                Band_3  273.641479  274.168823  273.953979  0.198447
+                Band_4  273.991516  274.540344  274.310669  0.205754
+
         Hint
         ----
         - The value of the stats will be stored in an xml file by the name of the raster file with the extension of
         .aux.xml, the content of the file will be like the following:
 
-        <PAMDataset>
-          <PAMRasterBand band="1">
-            <Description>Band_1</Description>
-            <Metadata>
-              <MDI key="RepresentationType">ATHEMATIC</MDI>
-              <MDI key="STATISTICS_MAXIMUM">88</MDI>
-              <MDI key="STATISTICS_MEAN">7.9662921348315</MDI>
-              <MDI key="STATISTICS_MINIMUM">0</MDI>
-              <MDI key="STATISTICS_STDDEV">18.294377743948</MDI>
-              <MDI key="STATISTICS_VALID_PERCENT">48.9</MDI>
-            </Metadata>
-          </PAMRasterBand>
-        </PAMDataset>
+        .. code-block:: xml
+
+            <PAMDataset>
+              <PAMRasterBand band="1">
+                <Description>Band_1</Description>
+                <Metadata>
+                  <MDI key="RepresentationType">ATHEMATIC</MDI>
+                  <MDI key="STATISTICS_MAXIMUM">88</MDI>
+                  <MDI key="STATISTICS_MEAN">7.9662921348315</MDI>
+                  <MDI key="STATISTICS_MINIMUM">0</MDI>
+                  <MDI key="STATISTICS_STDDEV">18.294377743948</MDI>
+                  <MDI key="STATISTICS_VALID_PERCENT">48.9</MDI>
+                </Metadata>
+              </PAMRasterBand>
+            </PAMDataset>
+
+        Examples
+        --------
+        - Get the statistics of all bands in the dataset:
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
+            >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+            >>> print(dataset.stats()) # doctest: +SKIP
+                         min       max      mean       std
+            Band_1  0.006443  0.942943  0.468935  0.266634
+            Band_2  0.020377  0.978130  0.477189  0.306864
+            Band_3  0.019652  0.992184  0.537215  0.286502
+            Band_4  0.011955  0.984313  0.503616  0.295852
+            >>> print(dataset.stats(band=1))  # doctest: +SKIP
+                         min      max      mean       std
+            Band_2  0.020377  0.97813  0.477189  0.306864
+
+        - Get the statistics of all the bands using a mask polygon.
+            - Create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
+            0.2 -0.1] to cover the 4 cells.
+            >>> from shapely.geometry import Polygon
+            >>> import geopandas as gpd
+            >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])],crs=4326)
+            >>> print(dataset.stats(mask=mask))  # doctest: +SKIP
+                         min       max      mean       std
+            Band_1  0.193441  0.702108  0.541478  0.202932
+            Band_2  0.281281  0.932573  0.665602  0.239410
+            Band_3  0.031395  0.982235  0.493086  0.377608
+            Band_4  0.079562  0.930965  0.591025  0.341578
         """
         if mask is not None:
             dst = self.crop(mask, touch=True)
