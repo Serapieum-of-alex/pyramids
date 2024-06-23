@@ -3158,7 +3158,61 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        Dataset Object
+        Dataset:
+            The cropped raster. If inplace is True, the method will change the raster in place.
+
+        Examples
+        --------
+        - Crop the raster using a polygon mask:
+            - the polygon covers 4 cells in the 3rd and 4th rows and 3rd and 4th column `arr[2:4, 2:4]`,
+            so the result dataset will have the same number of bands `4`, 2 rows and 2 columns.
+            - First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
+            degree, the top left corner of the dataset is (0,0)
+            >>> import numpy as np
+            >>> import geopandas as gpd
+            >>> from shapely.geometry import Polygon
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
+            >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+
+            - Second create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
+            0.2 -0.1] to cover the 4 cells.
+            >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
+
+            - Pass the `geodataframe` to the crop method using the `mask` parameter.
+            >>> cropped_dataset = dataset.crop(mask=mask)
+
+            - Check the cropped dataset:
+            >>> print(cropped_dataset.shape)
+            (4, 2, 2)
+            >>> print(cropped_dataset.geotransform)
+            (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+            >>> print(cropped_dataset.read_array(band=0))# doctest: +SKIP
+            [[0.00921161 0.90841171]
+             [0.355636   0.18650262]]
+            >>> print(arr[0, 2:4, 2:4])# doctest: +SKIP
+            [[0.00921161 0.90841171]
+             [0.355636   0.18650262]]
+
+        - Crop a raster using another raster mask:
+            - create a mask dataset with the same extent of the polygon we use in the previous example.
+            >>> geotransform = (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+            >>> mask_dataset = Dataset.create_from_array(np.random.rand(2, 2), geo=geotransform, epsg=4326)
+
+            - then use the mask dataset to crop the dataset.
+            >>> cropped_dataset_2 = dataset.crop(mask=mask_dataset)
+            >>> print(cropped_dataset_2.shape)
+            (4, 2, 2)
+
+            - Check the cropped dataset:
+            >>> print(cropped_dataset_2.geotransform)
+            (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+            >>> print(cropped_dataset_2.read_array(band=0))# doctest: +SKIP
+            [[0.00921161 0.90841171]
+             [0.355636   0.18650262]]
+            >>> print(arr[0, 2:4, 2:4])# doctest: +SKIP
+             [[0.00921161 0.90841171]
+             [0.355636   0.18650262]]
         """
         if isinstance(mask, GeoDataFrame):
             # dst = self._crop_with_polygon_by_rasterizing(mask)
