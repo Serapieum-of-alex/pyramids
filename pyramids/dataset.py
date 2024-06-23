@@ -2852,7 +2852,7 @@ class Dataset(AbstractDataset):
             row = mask.rows
             col = mask.columns
             mask_noval = mask.no_data_value[0]
-            mask_array = mask.read_array()
+            mask_array = mask.read_array(band=0)
         elif isinstance(mask, np.ndarray):
             if mask_noval is None:
                 raise ValueError(
