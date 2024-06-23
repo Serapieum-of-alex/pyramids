@@ -866,7 +866,7 @@ class TestAlign:
 
 
 class TestCrop:
-    def test_crop_dataset_with_another_dataset_single_band(
+    def test_crop_single_band_dataset_with_single_band_mask(
         self,
         src: gdal.Dataset,
         aligned_raster,
@@ -882,7 +882,7 @@ class TestCrop:
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
         assert (dst_arr_cropped == src_arr).all()
 
-    def test_crop_dataset_with_another_dataset_multi_band(
+    def test_crop_multi_band_dataset_with_single_band_mask(
         self,
         sentinel_raster: gdal.Dataset,
         sentinel_crop,
