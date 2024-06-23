@@ -3161,6 +3161,10 @@ class Dataset(AbstractDataset):
         Dataset:
             The cropped raster. If inplace is True, the method will change the raster in place.
 
+        Hint
+        ----
+        - If the mask is a dataset with multi-bands, the `crop`` method will use the first band as the mask.
+
         Examples
         --------
         - Crop the raster using a polygon mask:
