@@ -899,6 +899,20 @@ class TestCrop:
         ]
         assert np.array_equal(sentinel_crop_arr_without_no_data_value, arr)
 
+    def test_crop_multi_band_dataset_with_multi_band_mask(self):
+        # the dataset has 4 bands
+        arr = np.random.rand(4, 6, 5)
+        geotransform = (0, 0.05, 0, 0, 0, -0.05)
+        dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+        # the mask has 3 bands
+        arr_mask = np.random.rand(3, 2, 2)
+        geotransform = (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+        mask = Dataset.create_from_array(arr_mask, geo=geotransform, epsg=4326)
+        cropped_dataset = dataset.crop(mask=mask)
+
+        assert cropped_dataset.shape == (4, 2, 2)
+        np.testing.assert_array_equal(arr[:, 2:4, 2:4], cropped_dataset.read_array())
+
     def test_crop_dataset_with_array(
         self,
         aligned_raster,

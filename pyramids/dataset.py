@@ -3220,7 +3220,6 @@ class Dataset(AbstractDataset):
              [0.355636   0.18650262]]
         """
         if isinstance(mask, GeoDataFrame):
-            # dst = self._crop_with_polygon_by_rasterizing(mask)
             dst = self._crop_with_polygon_warp(mask, touch=touch)
         elif isinstance(mask, Dataset):
             dst = self._crop_with_raster(mask)
