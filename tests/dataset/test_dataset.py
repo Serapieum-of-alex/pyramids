@@ -929,16 +929,6 @@ class TestCrop:
 
 
 class TestCropWithPolygon:
-    def test_by_rasterizing(
-        self,
-        rhine_raster: gdal.Dataset,
-        polygon_mask: GeoDataFrame,
-    ):
-        src_obj = Dataset(rhine_raster)
-        cropped_raster = src_obj._crop_with_polygon_by_rasterizing(polygon_mask)
-        assert isinstance(cropped_raster.raster, gdal.Dataset)
-        assert cropped_raster.geotransform == src_obj.geotransform
-        assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
     def test_inplace(
         self,

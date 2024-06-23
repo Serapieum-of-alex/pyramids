@@ -214,3 +214,8 @@ Datacube
 NetCDF
 """""""
 * move all the netcdf related functions to a separate module `netcdf`.
+
+Deprecated
+""""""""""
+*Cropping a raster using a polygon is done now directly using gdal.wrap nand the the `_crop_with_polygon_by_rasterizing`
+is deprecated

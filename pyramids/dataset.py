@@ -3053,38 +3053,6 @@ class Dataset(AbstractDataset):
 
         return dst_obj
 
-    def _crop_with_polygon_by_rasterizing(self, poly: GeoDataFrame) -> "Dataset":
-        """cropWithPolygon.
-
-            Clip the Raster object using a polygon vector.
-
-        Parameters
-        ----------
-        poly: [Polygon GeoDataFrame]
-            GeodataFrame with a geometry of polygon type.
-
-        Returns
-        -------
-        Dataset
-        """
-        if not isinstance(poly, GeoDataFrame):
-            raise TypeError(
-                "The second parameter: poly should be of type GeoDataFrame "
-            )
-
-        poly_epsg = poly.crs.to_epsg()
-        src_epsg = self.epsg
-        if poly_epsg != src_epsg:
-            raise ValueError(
-                "Projection Error: the raster and vector polygon have different projection please "
-                "unify projection"
-            )
-        vector = FeatureCollection(poly)
-        mask = vector.to_dataset(dataset=self)
-        cropped_obj = self._crop_with_raster(mask)
-
-        return cropped_obj
-
     def _crop_with_polygon_warp(
         self, feature: Union[FeatureCollection, GeoDataFrame], touch: bool = True
     ) -> "Dataset":
