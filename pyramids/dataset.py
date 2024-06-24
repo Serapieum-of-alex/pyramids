@@ -402,8 +402,6 @@ class Dataset(AbstractDataset):
             - Internal Zip file path (one/multiple files inside the compressed file):
                 if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains
                     the internal path inside the zip file, so just ad
-
-                >>> from pyramids.dataset import Dataset
                 >>> rdir = "tests/data/virtual-file-system"
                 >>> dataset = Dataset.read_file(f"{rdir}/multiple_compressed_files.zip/1.asc")
                 >>> print(dataset)
@@ -1585,8 +1583,6 @@ class Dataset(AbstractDataset):
         --------
         - Create dataset using the `cell_size` and `top_left_corner` parameters
                 >>> import numpy as np
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Polygon
                 >>> arr = np.random.rand(4, 10, 10)
                 >>> top_left_corner = (0, 0)
                 >>> cell_size = 0.05
