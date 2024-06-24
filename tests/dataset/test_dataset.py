@@ -23,6 +23,26 @@ class TestCreateRasterObject:
         src_epsg: int,
         src_no_data_value: float,
     ):
+        # Create dataset using top_left_corner and cell size
+        top_left_corner = (src_geotransform[0], src_geotransform[3])
+        cell_size = src_geotransform[1]
+        src = Dataset.create_from_array(
+            arr=src_arr,
+            top_left_corner=top_left_corner,
+            cell_size=cell_size,
+            # geo=src_geotransform,
+            epsg=src_epsg,
+            no_data_value=src_no_data_value,
+        )
+        assert isinstance(src.raster, gdal.Dataset)
+        assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
+        assert np.isclose(
+            src.raster.GetRasterBand(1).GetNoDataValue(),
+            src_no_data_value,
+            rtol=0.00001,
+        )
+        assert src.raster.GetGeoTransform() == src_geotransform
+        # create dataset with the geotransform
         src = Dataset.create_from_array(
             arr=src_arr,
             geo=src_geotransform,
