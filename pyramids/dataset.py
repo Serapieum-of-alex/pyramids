@@ -1538,7 +1538,9 @@ class Dataset(AbstractDataset):
     def create_from_array(
         cls,
         arr: np.ndarray,
-        geo: Tuple[float, float, float, float, float, float],
+        top_left_corner: Tuple[float, float] = None,
+        cell_size: Union[int, float] = None,
+        geo: Tuple[float, float, float, float, float, float] = None,
         epsg: Union[str, int] = 4326,
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
@@ -1552,23 +1554,86 @@ class Dataset(AbstractDataset):
         ----------
         arr: [np.ndarray]
             numpy array.
-        geo : [Tuple]
-            geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
+        top_left_corner: Tuple[float, float], Optional, Default is None.
+            the coordinates of the top left corner of the dataset.
+        cell_size: Union[int, float], Optional, Default is None.
+            cell size in the same units of the coordinate refernce system defined by the `epsg` parameter.
+        geo: [Tuple]
+            geotransform tuple (minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size).
         epsg: [integer]
             integer reference number to the new projection (https://epsg.io/)
                 (default 3857 the reference no of WGS84 web mercator)
-        no_data_value : Any, optional
+        no_data_value: Any, optional
             no data value to mask the cells out of the domain. The default is -9999.
         driver_type: [str] optional
             driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM"
-        path : [str]
+        path: [str]
             path to save the driver.
 
         Returns
         -------
         dst: [DataSet].
             Dataset object will be returned.
+
+        Hint
+        ----
+        - The `geo` parameter can replace both the `cell_size` and the `top_left_corner` parameters.
+        - the function will check first if the `geo` parameter is defined it will ignore the `cell_size` and the
+        `top_left_corner` parameters if given.`
+
+        Examples
+        --------
+        - Create dataset using the `cell_size` and `top_left_corner` parameters
+                >>> import numpy as np
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Polygon
+                >>> arr = np.random.rand(4, 10, 10)
+                >>> top_left_corner = (0, 0)
+                >>> cell_size = 0.05
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Cell size: 0.05
+                            Dimension: 10 * 10
+                            EPSG: 4326
+                            Number of Bands: 4
+                            Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                            Mask: -9999.0
+                            Data type: float64
+                            File: ...
+                <BLANKLINE>
+
+        - Create dataset using the `geo` parameter
+            - First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
+                degree, the top left corner of the dataset is (0,0)
+                >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
+                >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Cell size: 0.05
+                            Dimension: 10 * 10
+                            EPSG: 4326
+                            Number of Bands: 4
+                            Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                            Mask: -9999.0
+                            Data type: float64
+                            File: ...
+                <BLANKLINE>
         """
+        if geo is None:
+            if top_left_corner is None or cell_size is None:
+                raise ValueError(
+                    "Either top_left_corner and cell_size or geo should be provided."
+                )
+            geo = (
+                top_left_corner[0],
+                cell_size,
+                0,
+                top_left_corner[1],
+                0,
+                -1 * cell_size,
+            )
+
         if arr.ndim == 2:
             bands = 1
             rows = int(arr.shape[0])
@@ -3166,7 +3231,7 @@ class Dataset(AbstractDataset):
         new_y = src.y[x_ind] + src.cell_size / 2
         new_gt = (new_x, src.cell_size, 0, new_y, 0, -src.cell_size)
         new_src = src.create_from_array(
-            small_array, new_gt, epsg=src.epsg, no_data_value=src.no_data_value
+            small_array, geo=new_gt, epsg=src.epsg, no_data_value=src.no_data_value
         )
         return new_src
 
@@ -3213,7 +3278,7 @@ class Dataset(AbstractDataset):
             >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
             >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
 
-            - Second create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
+            - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
             0.2 -0.1] to cover the 4 cells.
             >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
 
@@ -3645,7 +3710,7 @@ class Dataset(AbstractDataset):
 
             arr[~np.isclose(arr, no_data_val, rtol=0.00001)] = 2
         new_dataset = self.create_from_array(
-            arr, self.geotransform, epsg=self.epsg, no_data_value=self.no_data_value
+            arr, geo=self.geotransform, epsg=self.epsg, no_data_value=self.no_data_value
         )
         # then convert the raster into polygon
         gdf = new_dataset.cluster2(band=band)
