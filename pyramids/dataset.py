@@ -479,8 +479,8 @@ class Dataset(AbstractDataset):
             List:
                 window to specify a block of data to read from the dataset. the window should be a list of 4 integers
                 [offset_x, offset_y, window_columns, window_rows].
-                - offset_x: x offset of the block.
-                - offset_y: y offset of the block.
+                - offset_x/column index: x offset of the block.
+                - offset_y/row index: y offset of the block.
                 - window_columns: number of columns in the block.
                 - window_rows: number of rows in the block.
             GeoDataFrame:
@@ -494,10 +494,43 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
-        >>> arr = dataset.read_array(window=[0, 0, 5, 5])
-        >>> print(arr.shape)
-        >>> (5, 5)
+        - Create `Dataset` consists of 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Read the all the values stored in a given band.
+            >>> arr = dataset.read_array(band=0) # doctest: +SKIP
+            array([[0.50482225, 0.45678043, 0.53294294, 0.28862223, 0.66753579],
+                   [0.38471912, 0.14617829, 0.05045189, 0.00761358, 0.25501918],
+                   [0.32689036, 0.37358843, 0.32233918, 0.75450564, 0.45197608],
+                   [0.22944676, 0.2780928 , 0.71605189, 0.71859309, 0.61896933],
+                   [0.47740168, 0.76490779, 0.07679277, 0.16142599, 0.73630836]])
+
+        - Read block of data from the first band, the block starts at the 2nd column (index 1) and 2st row (index 1),
+        the block size is 2*2 cells. (the first index is the column index)
+            >>> arr = dataset.read_array(band=0, window=[1, 1, 2, 2])
+            >>> print(arr) # doctest: +SKIP
+            array([[0.14617829, 0.05045189],
+                   [0.37358843, 0.32233918]])
+
+            - if you check the values of 2*2 block you will find them the same as the values in the entire array of band 0,
+            starting at the 1st row and 2nd column.
+        - Read block of data from the first band, the block is a `geodataframe` with a polygon geometry that covers
+        the same area covered by the window above.
+            >>> import geopandas as gpd
+            >>> from shapely.geometry import Polygon
+
+            - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
+            0.2 -0.1] to cover the 4 cells.
+            - The polygon covers the same cells that we extracted in the previous setp using the window=[1, 1, 2, 2].
+            >>> poly = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
+            >>> arr = dataset.read_array(band=0, window=poly)
+            >>> print(arr) # doctest: +SKIP
+            array([[0.14617829, 0.05045189],
+                   [0.37358843, 0.32233918]])
         """
         if band is None and self.band_count > 1:
             rows = self.rows if window is None else window[3]
