@@ -107,7 +107,7 @@ class FeatureCollection:
         return bounds
 
     @property
-    def pivot_point(self) -> List[Number]:
+    def top_left_corner(self) -> List[Number]:
         """Top left corner coordinates."""
         if isinstance(self.feature, GeoDataFrame):
             bounds = self.feature.total_bounds.tolist()
@@ -473,7 +473,7 @@ class FeatureCollection:
                 )
             # if the raster is given, the top left corner of the raster will be taken as the top left corner for
             # the rasterized polygon
-            xmin, ymax = dataset.pivot_point
+            xmin, ymax = dataset.top_left_corner
             no_data_value = (
                 dataset.no_data_value[0]
                 if dataset.no_data_value[0] is not None

@@ -125,7 +125,7 @@ class AbstractDataset(ABC):
 
     @property
     @abstractmethod
-    def pivot_point(self):
+    def top_left_corner(self):
         """Top left corner coordinates."""
         xmin, _, _, ymax, _, _ = self._geotransform
         return xmin, ymax

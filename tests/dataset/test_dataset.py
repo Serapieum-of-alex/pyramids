@@ -81,7 +81,7 @@ class TestCreateRasterObject:
         assert dataset_n.columns == columns
         assert dataset_n.epsg == ds_epsg
         assert dataset_n.cell_size == cell_size
-        assert dataset_n.pivot_point == top_left_coords
+        assert dataset_n.top_left_corner == top_left_coords
         assert dataset_n.band_count == bands_count
         assert dataset_n.dtype == ["int32"]
         arr = dataset_n.read_array()
@@ -260,9 +260,9 @@ class TestAddBand:
 
 
 class TestProperties:
-    def test_pivot_point(self, src: gdal.Dataset):
+    def test_top_left_corner(self, src: gdal.Dataset):
         dataset = Dataset(src)
-        xy = dataset.pivot_point
+        xy = dataset.top_left_corner
         assert xy[0] == 432968.1206170588
         assert xy[1] == 520007.787999178
 
@@ -882,7 +882,7 @@ class TestAlign:
         assert dataset_aligned.rows == resampled_multi_band_dims[0]
         assert dataset_aligned.columns == resampled_multi_band_dims[1]
         # assert dataset_aligned.no_data_value == dataset.no_data_value
-        assert dataset.pivot_point == dataset_aligned.pivot_point
+        assert dataset.top_left_corner == dataset_aligned.top_left_corner
 
 
 class TestCrop:
@@ -1480,14 +1480,14 @@ class TestNCtoGeoTIFF:
         new_dataset = dataset.convert_longitude()
         lon = new_dataset.lon
         assert lon.max() < 1805
-        assert new_dataset.pivot_point == (-180, 90)
+        assert new_dataset.top_left_corner == (-180, 90)
 
     def test_convert_0_360_to_180_180_longitude_inplace(self, noah: gdal.Dataset):
         dataset = Dataset(noah)
         dataset.convert_longitude(inplace=True)
         lon = dataset.lon
         assert lon.max() < 180
-        assert dataset.pivot_point == (-180, 90)
+        assert dataset.top_left_corner == (-180, 90)
 
 
 class TestTiling:

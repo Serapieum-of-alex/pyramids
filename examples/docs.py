@@ -6,7 +6,7 @@ from pyramids.dataset import Dataset
 geotiff_path = "examples/data/dem/DEM5km_Rhine_burned_fill.tif"
 ascii_path = "examples/data/dem/dem5km_rhine.asc"
 nc_path = "examples/data/dem/dem5km_rhine.nc"
-#%%
+# %%
 dataset = Dataset.read_file(geotiff_path)
 dataset.plot(
     title="Rhine river basin",
@@ -23,7 +23,7 @@ dataset.values
 dataset.shape
 dataset.rows
 dataset.columns
-dataset.pivot_point
+dataset.top_left_corner
 dataset.geotransform
 dataset.epsg
 dataset.bounds
@@ -47,7 +47,7 @@ dataset.driver_type
 
 # dataset.to_file("examples/data/dem/dem5km_rhine.asc", driver="ascii")
 # dataset.to_file("examples/data/dem/dem5km_rhine.nc", driver="netcdf")
-#%%
+# %%
 dataset = Dataset.read_file(ascii_path)
 dataset.plot(
     title="Rhine river basin",
@@ -57,7 +57,7 @@ dataset.plot(
     vmin=0,
     cbar_label="Elevation (m)",
 )
-#%%
+# %%
 dataset = Dataset.read_file(nc_path)
 dataset.plot(
     title="Rhine river basin",

@@ -625,9 +625,9 @@ class Dataset(AbstractDataset):
         return [xoff, yoff, x_size, y_size]
 
     @property
-    def pivot_point(self):
+    def top_left_corner(self):
         """Top left corner coordinates."""
-        return super().pivot_point
+        return super().top_left_corner
 
     @property
     def bounds(self) -> GeoDataFrame:
@@ -643,7 +643,7 @@ class Dataset(AbstractDataset):
     def lon(self):
         """Longitude coordinates."""
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
+            pivot_x = self.top_left_corner[0]
             cell_size = self.cell_size
             x_coords = [
                 pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
@@ -657,7 +657,7 @@ class Dataset(AbstractDataset):
     def lat(self):
         """Latitude-coordinate."""
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
+            pivot_y = self.top_left_corner[1]
             cell_size = self.cell_size
             y_coords = [
                 pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
@@ -672,7 +672,7 @@ class Dataset(AbstractDataset):
         """X-coordinate/Longitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
+            pivot_x = self.top_left_corner[0]
             cell_size = self.cell_size
             x_coords = Dataset.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
@@ -696,7 +696,7 @@ class Dataset(AbstractDataset):
         """Y-coordinate/Latitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
+            pivot_y = self.top_left_corner[1]
             cell_size = self.cell_size
             # y_coords = [
             #     pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
@@ -2120,7 +2120,7 @@ class Dataset(AbstractDataset):
 
     def _calculate_bbox(self) -> List:
         """Calculate bounding box."""
-        xmin, ymax = self.pivot_point
+        xmin, ymax = self.top_left_corner
         ymin = ymax - self.rows * self.cell_size
         xmax = xmin + self.columns * self.cell_size
         return [xmin, ymin, xmax, ymax]
@@ -2495,10 +2495,10 @@ class Dataset(AbstractDataset):
             dst.GetRasterBand(band + 1).WriteArray(arr_rearranged)
 
         # correct the geotransform
-        pivot_point = self.pivot_point
+        top_left_corner = self.top_left_corner
         gt = list(self.geotransform)
         if lon[-1] > 180:
-            new_gt = pivot_point[0] - 180
+            new_gt = top_left_corner[0] - 180
             gt[0] = new_gt
 
         dst.SetGeoTransform(gt)
@@ -3004,7 +3004,7 @@ class Dataset(AbstractDataset):
 
         if isinstance(mask, Dataset):
             if (
-                not self.pivot_point == mask.pivot_point
+                not self.top_left_corner == mask.top_left_corner
                 or not self.cell_size == mask.cell_size
             ):
                 raise ValueError(
