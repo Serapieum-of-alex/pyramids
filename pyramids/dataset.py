@@ -1751,9 +1751,8 @@ class Dataset(AbstractDataset):
     @classmethod
     def dataset_like(
         cls,
-        src,
+        src: "Dataset",
         array: np.ndarray,
-        driver: str = "MEM",
         path: str = None,
     ) -> Union["Dataset", None]:
         """dataset_like.
@@ -1765,42 +1764,53 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        src: [gdal.dataset]
+        src: [Dataset]
             source raster to get the spatial information
-        array: [numpy array]
+        array: [array]
             to store in the new raster
-        driver:[str]
-            gdal driver type. Default is "GTiff"
-        path : [String]
-            path to save the new raster including new raster name and extension (.tif)
+        path: [str]
+            path to save the new geotiff file, if not given the method will return in-memory dataset.
 
         Returns
         -------
-        None:
-            if the driver is "GTiff" the function will save the new raster to the given path.
-        Datacube:
-            if the driver is "MEM" the function will return the created raster in memory.
+        None/Dataset:
+            if the `path` is given the method will save the new raster to the given path, else the method will return
+            an in-memory dataset.
 
         Example
         -------
-        >>> src_array = np.load("RAIN_5k.npy")
-        >>> src_dataset = Dataset.read_file("DEM.tif")
-        >>> name = "rain.tif"
-        >>> new_dataset = src_dataset.dataset_like(src, src_array, driver="GTiff")
+        >>> import numpy as np
+        >>> arr = np.random.rand(5, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - now let's create another `dataset` from the previous dataset using the `dataset_like`
+            >>> new_arr = np.random.rand(5, 5)
+            >>> dataset_new = Dataset.dataset_like(dataset, new_arr, driver="MEM")
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 5 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
         """
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
 
-        if len(array.shape) == 2:
+        if array.ndim == 2:
             bands = 1
         else:
             bands = array.shape[0]
 
         dtype = numpy_to_gdal_dtype(array)
 
-        dst = Dataset._create_dataset(
-            src.columns, src.rows, bands, dtype, driver=driver, path=path
-        )
+        dst = Dataset._create_dataset(src.columns, src.rows, bands, dtype, path=path)
 
         dst.SetGeoTransform(src.geotransform)
         dst.SetProjection(src.crs)
@@ -2731,7 +2741,7 @@ class Dataset(AbstractDataset):
             src_array[~np.isclose(src_array, no_data_value, rtol=0.000001)] = val
         else:
             src_array[~np.isnan(src_array)] = val
-        dst = Dataset.dataset_like(self, src_array, driver=driver, path=path)
+        dst = Dataset.dataset_like(self, src_array, path=path)
         return dst
 
     def resample(
