@@ -1356,6 +1356,33 @@ class Dataset(AbstractDataset):
             the axes of the matplotlib figure
         fig: [matplotlib figure object]
             the figure object
+
+        Examples
+        --------
+        - Plot a certain band
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+            >>> dataset.plot(band=0)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        - plot using power scale.
+            >>> dataset.plot(band=0, color_scale=2)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        - plot using SymLogNorm scale.
+            >>> dataset.plot(band=0, color_scale=3)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        - plot using PowerNorm scale.
+            >>> dataset.plot(band=0, color_scale=4)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        - plot using BoundaryNorm scale.
+            >>> dataset.plot(band=0, color_scale=5)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
         """
         import_cleopatra(
             "The current function uses cleopatra package to for plotting, please install it manually, for more info "
