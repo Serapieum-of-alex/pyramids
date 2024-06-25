@@ -743,21 +743,25 @@ class Dataset(AbstractDataset):
         band : int, optional
             band index, by default 0
         x_block_size : int, optional
-            x block size, by default None
+            x block size/number of columns, by default None
         y_block_size : int, optional
-            y block size, by default None
+            y block size/number of rows, by default None
 
         Returns
         -------
-        DataFrame
-            DataFrame with the following columns: [x_offset, y_offset, window_xsize, window_ysize]
+        DataFrame:
+            with the following columns: [x_offset, y_offset, window_xsize, window_ysize]
 
         Examples
         --------
-        >>> dataset = Dataset.read_file("tests/data/acc4000.tif")
+        >>> import numpy as np
+        >>> arr = np.random.rand(13, 14)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
         >>> df = dataset.get_block_arrangement(x_block_size=5, y_block_size=5)
         >>> print(df)
-        >>>    x_offset  y_offset  window_xsize  window_ysize
+           x_offset  y_offset  window_xsize  window_ysize
         0         0         0             5             5
         1         5         0             5             5
         2        10         0             4             5
@@ -767,7 +771,6 @@ class Dataset(AbstractDataset):
         6         0        10             5             3
         7         5        10             5             3
         8        10        10             4             3
-
         """
         block_sizes = self.block_size[band]
         x_block_size = block_sizes[0] if x_block_size is None else x_block_size
