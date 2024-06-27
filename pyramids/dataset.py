@@ -1754,7 +1754,7 @@ class Dataset(AbstractDataset):
         src: "Dataset",
         array: np.ndarray,
         path: str = None,
-    ) -> Union["Dataset", None]:
+    ) -> "Dataset":
         """dataset_like.
 
             dataset_like method creates a Dataset from an array like another source dataset. The new dataset
@@ -1769,13 +1769,18 @@ class Dataset(AbstractDataset):
         array: [array]
             to store in the new raster
         path: [str]
-            path to save the new geotiff file, if not given the method will return in-memory dataset.
+            path to save the new geotiff file, if not given, the method will return in-memory dataset.
 
         Returns
         -------
-        None/Dataset:
-            if the `path` is given the method will save the new raster to the given path, else the method will return
+        Dataset:
+            if the `path` is given, the method will save the new raster to the given path, else the method will return
             an in-memory dataset.
+
+        Hint
+        ----
+        - If the given array is 3D, the bands have to be the first dimension, the x/lon has to be the second dimension,
+        and the y/lon has to be the third dimension of the array.
 
         Example
         -------
@@ -1815,17 +1820,22 @@ class Dataset(AbstractDataset):
         dst.SetGeoTransform(src.geotransform)
         dst.SetProjection(src.crs)
         # setting the NoDataValue does not accept double precision numbers
-        if path is None:
+        if path is not None:
             access = "write"
         else:
             access = "read_only"
+
         dst_obj = cls(dst, access=access)
         dst_obj._set_no_data_value(no_data_value=src.no_data_value[0])
 
-        dst_obj.raster.GetRasterBand(1).WriteArray(array)
+        if bands == 1:
+            dst_obj.raster.GetRasterBand(1).WriteArray(array)
+        else:
+            for band_i in range(bands):
+                dst_obj.raster.GetRasterBand(band_i + 1).WriteArray(array[bands, :, :])
+
         if path is not None:
             dst_obj.raster.FlushCache()
-            dst_obj = None
 
         return dst_obj
 
