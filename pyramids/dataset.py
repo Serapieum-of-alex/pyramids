@@ -1834,15 +1834,15 @@ class Dataset(AbstractDataset):
 
         return dst_obj
 
-    def write_array(self, array: np.array, pivot_cell_indexes: List[Any] = None):
+    def write_array(self, array: np.array, top_left_corner: List[Any] = None):
         """Write an array to the dataset at the given xoff, yoff position.
 
         Parameters
         ----------
         array : np.ndarray
             The array to write
-        pivot_cell_indexes : List[float, float]
-            indexes [row, column]/[y_offset, x_offset] of the cell to write the array to. If None, the array will be
+        top_left_corner : List[float, float]
+            indices [row, column]/[y_offset, x_offset] of the cell to write the array to. If None, the array will be
             written to the top left corner of the dataset.
 
         Raises
@@ -1860,16 +1860,32 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> import numpy as np
-        >>> from pyramids.dataset import Dataset
-        >>> path = "tests.tif"
-        >>> dataset = Dataset.read_file(path, read_only=False)
-        >>> arr = np.array([[1, 2], [3, 4]])
-        >>> dataset.write_array(arr, xoff=5, yoff=3)
+        - First, create a dataset on disk.
+            >>> import numpy as np
+            >>> arr = np.random.rand(5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> path = 'write_array.tif'
+            >>> dataset = Dataset.create_from_array(
+            >>>     arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326, path=path
+            >>> )
+            >>> dataset = None
+
+        - In a later session you can read the dataset in a `write` mode and update it.
+            >>> dataset = Dataset.read_file(path, read_only=False)
+            >>> arr = np.array([[1, 2], [3, 4]])
+            >>> dataset.write_array(arr, top_left_corner=[1, 1])
+            >>> dataset.read_array()    # doctest: +SKIP
+            array([[0.77359738, 0.64789596, 0.37912658, 0.03673771, 0.69571106],
+                   [0.60804387, 1.        , 2.        , 0.501909  , 0.99597122],
+                   [0.83879291, 3.        , 4.        , 0.33058081, 0.59824467],
+                   [0.774213  , 0.94338147, 0.16443719, 0.28041457, 0.61914179],
+                   [0.97201104, 0.81364799, 0.35157525, 0.65554998, 0.8589739 ]])
         """
-        yoff, xoff = pivot_cell_indexes
+        yoff, xoff = top_left_corner
         try:
             self._raster.WriteArray(array, xoff=xoff, yoff=yoff)
+            self._raster.FlushCache()
         except Exception as e:
             raise e
 

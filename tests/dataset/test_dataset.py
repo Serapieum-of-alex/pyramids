@@ -1632,7 +1632,7 @@ class TestWriteArray:
         arr = np.array([[1, 2], [3, 4]])
         xoff = 5  # col
         yoff = 3  # row
-        dataset.write_array(arr, pivot_cell_indexes=[yoff, xoff])
+        dataset.write_array(arr, top_left_corner=[yoff, xoff])
         retrieved_arr = dataset._raster.ReadAsArray(xoff, yoff, 2, 2)
         np.testing.assert_array_equal(arr, retrieved_arr)
 
@@ -1643,6 +1643,6 @@ class TestWriteArray:
         arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
         xoff = 5
         yoff = 3
-        dataset.write_array(arr, pivot_cell_indexes=[yoff, xoff])
+        dataset.write_array(arr, top_left_corner=[yoff, xoff])
         retrieved_arr = dataset._raster.ReadAsArray(xoff, yoff, 2, 2)
         np.testing.assert_array_equal(arr, retrieved_arr)
