@@ -1733,11 +1733,8 @@ class Dataset(AbstractDataset):
         srse = Dataset._create_sr_from_epsg(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
         dst_ds.SetGeoTransform(geo)
-        if path is None:
-            access = "write"
-        else:
-            access = "read_only"
-        dst_obj = Dataset(dst_ds, access=access)
+
+        dst_obj = Dataset(dst_ds, access="write")
         dst_obj._set_no_data_value(no_data_value=no_data_value)
 
         if bands == 1:
@@ -1746,6 +1743,9 @@ class Dataset(AbstractDataset):
             for i in range(bands):
                 dst_obj.raster.GetRasterBand(i + 1).WriteArray(arr[i, :, :])
 
+        # flush data to disk
+        if path is not None:
+            dst_obj._raster.FlushCache()
         return dst_obj
 
     @classmethod
