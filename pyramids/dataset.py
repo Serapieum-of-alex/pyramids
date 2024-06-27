@@ -234,10 +234,10 @@ class Dataset(AbstractDataset):
 
         Notes
         -----
-            - the setter does not change the values of the cells to the new no_data_value, it only changes the
+            - The setter does not change the values of the cells to the new no_data_value, it only changes the
             `no_data_value` attribute.
-            - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
-            - to change the values of the cells to the new no_data_value, use the `change_no_data_value` method.
+            - Use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
+            - To change the values of the cells, to the new no_data_value, use the `change_no_data_value` method.
         """
         if isinstance(value, list):
             for i, val in enumerate(value):
@@ -252,7 +252,7 @@ class Dataset(AbstractDataset):
 
     @meta_data.setter
     def meta_data(self, value: Dict[str, str]):
-        """Meta data.
+        """Meta-data.
 
         Hint
         ----
@@ -352,7 +352,7 @@ class Dataset(AbstractDataset):
         Hint
         ----
         - This property does not need the Dataset to be opened in a write mode to be set.
-        - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
+        - The value of the offset will be stored in xml file by the name of the raster file with the extension of
         .aux.xml, the content of the file will be like the following:
             <PAMDataset>
               <PAMRasterBand band="1">
@@ -474,7 +474,7 @@ class Dataset(AbstractDataset):
         Parameters
         ----------
         band : [integer]
-            the band you want to get its data, If None the data of all bands will be read. Default is None
+            the band you want to get its data, If None, the data of all bands will be read. Default is None
         window: [List/GeoDataFrame]
             List:
                 window to specify a block of data to read from the dataset. the window should be a list of 4 integers
@@ -1528,7 +1528,7 @@ class Dataset(AbstractDataset):
         no_data_value : float or None
             No data value.
         path: [str] Optional, Default is None
-            path on disk, if None the dataset will be created in memory.
+            path on disk, if None, the dataset is created in memory.
 
         Returns
         -------
@@ -3562,7 +3562,7 @@ class Dataset(AbstractDataset):
         rows_index: Union[List[Number], np.ndarray],
         center: bool = False,
     ) -> Tuple[List[Number], List[Number]]:
-        """Array indexes to map coordinates.
+        """Array indices to map coordinates.
 
             - array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
 
@@ -3744,14 +3744,14 @@ class Dataset(AbstractDataset):
             if not (np.isnan(arr)).any():
                 logger.warning(
                     "The nodata value stored in the raster does not exist in the raster "
-                    "so either the raster extent is all full of data, or the nodatavalue stored in the raster is"
+                    "so either the raster extent is all full of data, or the no_data_value stored in the raster is"
                     " not correct"
                 )
         else:
             if not (np.isclose(arr, no_data_val, rtol=0.00001)).any():
                 logger.warning(
                     "the nodata value stored in the raster does not exist in the raster "
-                    "so either the raster extent is all full of data, or the nodatavalue stored in the raster is"
+                    "so either the raster extent is all full of data, or the no_data_value stored in the raster is"
                     " not correct"
                 )
         # if you want to exclude_values any value in the raster
