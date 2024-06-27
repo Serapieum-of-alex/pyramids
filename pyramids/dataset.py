@@ -1792,7 +1792,7 @@ class Dataset(AbstractDataset):
 
         - now let's create another `dataset` from the previous dataset using the `dataset_like`
             >>> new_arr = np.random.rand(5, 5)
-            >>> dataset_new = Dataset.dataset_like(dataset, new_arr, driver="MEM")
+            >>> dataset_new = Dataset.dataset_like(dataset, new_arr)
             >>> print(dataset)
             <BLANKLINE>
                         Cell size: 0.05
@@ -1820,19 +1820,14 @@ class Dataset(AbstractDataset):
         dst.SetGeoTransform(src.geotransform)
         dst.SetProjection(src.crs)
         # setting the NoDataValue does not accept double precision numbers
-        if path is not None:
-            access = "write"
-        else:
-            access = "read_only"
-
-        dst_obj = cls(dst, access=access)
+        dst_obj = cls(dst, access="write")
         dst_obj._set_no_data_value(no_data_value=src.no_data_value[0])
 
         if bands == 1:
             dst_obj.raster.GetRasterBand(1).WriteArray(array)
         else:
             for band_i in range(bands):
-                dst_obj.raster.GetRasterBand(band_i + 1).WriteArray(array[bands, :, :])
+                dst_obj.raster.GetRasterBand(band_i + 1).WriteArray(array[band_i, :, :])
 
         if path is not None:
             dst_obj.raster.FlushCache()

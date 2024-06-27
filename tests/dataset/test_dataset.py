@@ -152,6 +152,7 @@ class TestCreateRasterObject:
             src_arr: np.ndarray,
             src_no_data_value: float,
         ):
+            # test single-band
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
 
@@ -164,6 +165,11 @@ class TestCreateRasterObject:
                 src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
             )
             assert src_obj.geotransform == dst_obj.geotransform
+
+            # test multi-band
+            arr = np.array([arr2, arr2])
+            dst_obj = Dataset.dataset_like(src_obj, arr)
+            assert dst_obj.shape == arr.shape
 
 
 class TestAttributesTable:
