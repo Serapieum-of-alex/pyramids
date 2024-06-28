@@ -170,7 +170,15 @@ class Dataset(AbstractDataset):
     @property
     def epsg(self) -> int:
         """EPSG number."""
-        return self._epsg
+        crs = self.raster.GetProjection()
+        return FeatureCollection.get_epsg_from_prj(crs)
+
+    @epsg.setter
+    def epsg(self, value: int):
+        """EPSG number."""
+        sr = Dataset._create_sr_from_epsg(value)
+        self.raster.SetProjection(sr.ExportToWkt())
+        self.__init__(self._raster)
 
     @property
     def crs(self) -> str:

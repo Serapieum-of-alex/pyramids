@@ -408,6 +408,13 @@ class TestProperties:
         src.meta_data = {"key": "value"}
         assert src.meta_data == {"AREA_OR_POINT": "Area", "key": "value"}
 
+    def test_epsg(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.epsg == 32618
+        dst = src.copy()
+        dst.epsg = 4326
+        assert dst.epsg == 4326
+
 
 class TestSpatialProperties:
     def test_read_array(
