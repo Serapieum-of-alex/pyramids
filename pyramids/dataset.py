@@ -1884,8 +1884,8 @@ class Dataset(AbstractDataset):
             >>> cell_size = 0.05
             >>> path = 'write_array.tif'
             >>> dataset = Dataset.create_from_array(
-            >>>     arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326, path=path
-            >>> )
+            ...     arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326, path=path
+            ... )
             >>> dataset = None
 
         - In a later session you can read the dataset in a `write` mode and update it.
@@ -1911,7 +1911,7 @@ class Dataset(AbstractDataset):
         return self.raster.GetProjection()
 
     def set_crs(self, crs: Optional = None, epsg: int = None):
-        """set_crs.
+        """Set the Coordinate Reference System (CRS).
 
             Set the Coordinate Reference System (CRS) of a
 
