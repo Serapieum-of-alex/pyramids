@@ -91,11 +91,6 @@ def lat_coords() -> list:
 
 
 @pytest.fixture(scope="function")
-def src_reset_crs() -> Dataset:
-    return gdal.Open("tests/data/reset_crs.tif")
-
-
-@pytest.fixture(scope="function")
 def src_set_no_data_value() -> Dataset:
     return gdal.Open("tests/data/src-set_no_data_value.tif")
 

@@ -552,24 +552,18 @@ class TestNoDataValue:
 
 
 class TestSetCRS:
-    def test_geotiff_using_epsg(
-        self,
-        src_reset_crs: gdal.Dataset,
-    ):
+    def test_geotiff_using_epsg(self, src: gdal.Dataset):
         proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
         proj_epsg = 4326
-        dataset = Dataset(src_reset_crs)
+        dataset = Dataset(src).copy()
         dataset.set_crs(epsg=proj_epsg)
         assert dataset.epsg == proj_epsg
         assert dataset.raster.GetProjection() == proj
 
-    def test_geotiff_using_wkt(
-        self,
-        src_reset_crs: gdal.Dataset,
-    ):
+    def test_geotiff_using_wkt(self, src: gdal.Dataset):
         proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
         proj_epsg = 4326
-        dataset = Dataset(src_reset_crs)
+        dataset = Dataset(src).copy()
         dataset.set_crs(crs=proj)
         assert dataset.epsg == proj_epsg
         assert dataset.raster.GetProjection() == proj
