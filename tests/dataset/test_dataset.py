@@ -1453,7 +1453,7 @@ class TestFootPrint:
         self, modis_surf_temp: gdal.Dataset, replace_values: List
     ):
         dataset = Dataset(modis_surf_temp)
-        # modis nodatavalue is gdal object is different than the array
+        # modis no_data_value in the gdal object is different than the array
         extent = dataset.footprint(exclude_values=replace_values)
         # extent column should have one class only
         assert len(set(extent[dataset.band_names[0]])) == 1
