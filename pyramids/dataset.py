@@ -3808,18 +3808,20 @@ class Dataset(AbstractDataset):
     ) -> Union[GeoDataFrame, None]:
         """footprint.
 
-            extract_extent takes a gdal raster object and returns
+            extract the real coverage of the values in a certain band.
 
         Parameters
         ----------
-        band: [int]
-            band index. Default is 0.
+        band: [int], Default is 0.
+            band index.
         exclude_values:
-            if you want to exclude_values a certain value in the raster with another value inter the two values as a
+            if you want to exclude a certain value in the raster with another value inter the two values as a
             list of tuples a [(value_to_be_exclude_valuesd, new_value)]
             >>> exclude_values = [0]
-            - This parameter is introduced particularly for the case of rasters that has the nodatavalue stored in the
-            array does not match the value stored in array, so this option can correct this behavior.
+
+            - This parameter is introduced particularly for the case of rasters that has the no_data_value stored in the
+            `no_data_value` property does not match the value stored in the band, so this option can correct this
+            behavior.
 
         Returns
         -------
@@ -3827,6 +3829,36 @@ class Dataset(AbstractDataset):
             - geodataframe containing the polygon representing the extent of the raster. the extent column should
             contain a value of 2 only.
             - if the dataset had separate polygons, each polygon will be in a separate row.
+
+        Examples
+        --------
+        - The following raster dataset has flood depth stored in its values and the non flooded cells are filled with
+        zero, so to extract the flood extent, we need to exclude the zero flood depth cells.
+            >>> dataset = Dataset.read_file("examples/data/geotiff/rhine-flood.tif")
+            >>> dataset.plot()
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+              .. image:: ../docs/source/_images/dataset/dataset-footprint-rhine-flood.png
+                  :alt: footprint
+                  :align: center
+
+            >>> extent = dataset.footprint(band=0, exclude_values=[0])
+            >>> print(extent)
+               Band_1                                           geometry
+            0     2.0  POLYGON ((4070974.181 3181069.473, 4070974.181...
+            1     2.0  POLYGON ((4077674.181 3181169.473, 4077674.181...
+            2     2.0  POLYGON ((4091174.181 3169169.473, 4091174.181...
+            3     2.0  POLYGON ((4088574.181 3176269.473, 4088574.181...
+            4     2.0  POLYGON ((4082974.181 3167869.473, 4082974.181...
+            5     2.0  POLYGON ((4092274.181 3168269.473, 4092274.181...
+            6     2.0  POLYGON ((4072474.181 3181169.473, 4072474.181...
+
+            >>> extent.plot()
+            <Axes: >
+
+            .. image:: ../docs/source/_images/dataset/dataset-footprint-rhine-flood-extent.png
+                  :alt: footprint
+                  :align: center
         """
         arr = self.read_array(band=band)
         no_data_val = self.no_data_value[band]
