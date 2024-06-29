@@ -1983,10 +1983,8 @@ class Dataset(AbstractDataset):
             reference number to the new projection (https://epsg.io/)
             (default 3857 the reference no of WGS84 web mercator )
         method: [String]
-            resampling technique default is "Nearest"
-            https://gisgeography.com/raster-resampling/
-            "nearest neighbor" for nearest neighbor,"cubic" for cubic convolution,
-            "bilinear" for bilinear
+            resampling method default is "Nearest" https://gisgeography.com/raster-resampling/
+            "nearest neighbor" for nearest neighbor,"cubic" for cubic convolution, "bilinear" for bilinear
         maintain_alignment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
         inplace: [bool]
@@ -1999,9 +1997,42 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> from pyramids.dataset import Dataset
-        >>> dataset = Dataset.read_file("path/raster_name.tif")
+        >>> import numpy as np
+        >>> arr = np.random.rand(4, 5, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+        >>> print(dataset)
+        <BLANKLINE>
+                    Cell size: 0.05
+                    Dimension: 5 * 5
+                    EPSG: 4326
+                    Number of Bands: 4
+                    Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                    Mask: -9999.0
+                    Data type: float64
+                    File:...
+        <BLANKLINE>
+        >>> print(dataset.crs)
+        GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
+        >>> print(dataset.epsg)
+        4326
         >>> reprojected_dataset = dataset.to_crs(to_epsg=3857)
+        >>> print(reprojected_dataset)
+        <BLANKLINE>
+                    Cell size: 5565.983370404396
+                    Dimension: 5 * 5
+                    EPSG: 3857
+                    Number of Bands: 4
+                    Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                    Mask: -9999.0
+                    Data type: float64
+                    File:...
+        <BLANKLINE>
+        >>> print(reprojected_dataset.crs)
+        PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Mercator_1SP"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],EXTENSION["PROJ4","+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs"],AUTHORITY["EPSG","3857"]]
+        >>> print(reprojected_dataset.epsg)
+        3857
         """
         if not isinstance(to_epsg, int):
             raise TypeError(
