@@ -25,7 +25,7 @@ class NetCDF(Dataset):
     The NetCDF class contains methods to deal with netcdf files.
     """
 
-    def __init__(self, src: gdal.Dataset):
+    def __init__(self, src: gdal.Dataset, access: str = "read_only"):
         """__init__."""
         super().__init__(src)
         # set the is_subset to false before retrieving the variables

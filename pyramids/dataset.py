@@ -2505,13 +2505,19 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> dataset = Dataset.read_file("path/to/file/***.tif")
-        >>> dataset.to_file("save_raster_test.tif")
+        - Create `Dataset` consists of 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset.file_name)
+            <BLANKLINE>
 
-        Notes
-        -----
-        The object will still refer to the dataset before saving. if you want to use the new saved dataset you have
-        to read the file again.
+        - Now to save the dataset as a geotiff file.
+            >>> dataset.to_file("my-dataset.tif")
+            >>> print(dataset.file_name)
+            my-dataset.tif
         """
         if not isinstance(path, str):
             raise TypeError("path input should be string type")
@@ -2543,14 +2549,12 @@ class Dataset(AbstractDataset):
                 dst = gdal.GetDriverByName(driver_name).CreateCopy(
                     path, self.raster, 0, options=options
                 )
+                self.__init__(dst, "write")
             except RuntimeError:
                 if not os.path.exists(path):
                     raise FailedToSaveError(
                         f"Failed to save the {driver_name} raster to the path: {path}"
                     )
-            dst = None  # Flush the dataset to disk
-            # print to go around the assigned but never used pre-commit issue
-            print(dst)
 
     def convert_longitude(self, inplace: bool = False):
         """Convert Longitude.

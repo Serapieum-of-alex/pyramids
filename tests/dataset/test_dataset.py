@@ -683,7 +683,9 @@ class TestSave:
             os.remove(save_raster_path)
         src = Dataset(src)
         src.to_file(save_raster_path)
+        assert src.file_name == save_raster_path
         assert os.path.exists(save_raster_path)
+        src = None
         os.remove(save_raster_path)
 
     def test_save_ascii(
