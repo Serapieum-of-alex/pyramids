@@ -318,10 +318,13 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
-        >>> size = dataset.block_size
-        >>> print(size)
-        >>> [(128, 128)]
+        >>> import numpy as np
+        >>> arr = np.random.rand(5, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+        >>> print(dataset.block_size)
+        [[5, 1]]
         """
         return self._block_size
 
@@ -2335,7 +2338,6 @@ class Dataset(AbstractDataset):
         ----------
         new_value: [numeric]
             no data value to set in the raster bands.
-
         old_value: [numeric]
             old no data value that is already in the raster bands.
         """
