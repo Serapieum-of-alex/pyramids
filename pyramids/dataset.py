@@ -163,7 +163,19 @@ class Dataset(AbstractDataset):
         """WKT projection.
 
         (top left corner X/lon coordinate, cell_size, 0, top left corner y/lat coordinate, 0, -cell_size).
-        >>> (432968.120, 4000.0, 0.0, 520007.787, 0.0, -4000)
+
+        Examples
+        --------
+        - Create a dataset
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To check the geotransform of the dataset, call the `geotransform` property
+            >>> print(dataset.geotransform)
+            (0.0, 0.05, 0.0, 0.0, 0.0, -0.05)
         """
         return super().geotransform
 
@@ -187,8 +199,20 @@ class Dataset(AbstractDataset):
         Returns
         -------
         str:
-            the coordinate reference system of the raster.
-            >>> 'PROJCS["WGS 84 / UTM zone 18N",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",-75],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","32618"]]'
+            the coordinate reference system of the dataset.
+
+        Examples
+        --------
+        - Create a dataset
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, to check the coordinate reference system, call the `crs` property
+            >>> print(dataset.crs)
+            GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
         """
         return self._get_crs()
 
@@ -2473,7 +2497,7 @@ class Dataset(AbstractDataset):
         Parameters
         ----------
         path: [string]
-            a path including the name of the dataset whti the extention at the end (i.e. "data/cropped.tif").
+            a path including the name of the dataset.
         band: [int]
             band index, needed only in case of ascii drivers. Default is 0.
         tile_length: int, Optional, Default 256.
