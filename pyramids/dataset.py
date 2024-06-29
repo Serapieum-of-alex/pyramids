@@ -2775,24 +2775,27 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> import numpy as np
-        >>> arr = np.random.uniform(-1, 1, size=(5, 5))
-        >>> top_left_corner = (0, 0)
-        >>> cell_size = 0.05
-        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-        >>> print(dataset.read_array())
-        [[ 0.94997539 -0.80083622 -0.30948769 -0.77439961 -0.83836424]
-         [-0.36810158 -0.23979251  0.88051216 -0.46882913  0.64511056]
-         [ 0.50585374 -0.46905902  0.67856589  0.2779605   0.05589759]
-         [ 0.63382852 -0.49259597  0.18471423 -0.49308984 -0.52840286]
-         [-0.34076174 -0.53073014 -0.18485789 -0.40033474 -0.38962938]]
-        >>> abs_dataset = dataset.apply(np.abs)
-        >>> print(abs_dataset.read_array())
-        [[0.94997539 0.80083622 0.30948769 0.77439961 0.83836424]
-         [0.36810158 0.23979251 0.88051216 0.46882913 0.64511056]
-         [0.50585374 0.46905902 0.67856589 0.2779605  0.05589759]
-         [0.63382852 0.49259597 0.18471423 0.49308984 0.52840286]
-         [0.34076174 0.53073014 0.18485789 0.40033474 0.38962938]]
+        - Create a dataset from an array filled with values between -1 and 1
+            >>> import numpy as np
+            >>> arr = np.random.uniform(-1, 1, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset.read_array()) # doctest: +SKIP
+            [[ 0.94997539 -0.80083622 -0.30948769 -0.77439961 -0.83836424]
+             [-0.36810158 -0.23979251  0.88051216 -0.46882913  0.64511056]
+             [ 0.50585374 -0.46905902  0.67856589  0.2779605   0.05589759]
+             [ 0.63382852 -0.49259597  0.18471423 -0.49308984 -0.52840286]
+             [-0.34076174 -0.53073014 -0.18485789 -0.40033474 -0.38962938]]
+
+        - Now, lets apply the absolute function to the dataset
+            >>> abs_dataset = dataset.apply(np.abs)
+            >>> print(abs_dataset.read_array()) # doctest: +SKIP
+            [[0.94997539 0.80083622 0.30948769 0.77439961 0.83836424]
+             [0.36810158 0.23979251 0.88051216 0.46882913 0.64511056]
+             [0.50585374 0.46905902 0.67856589 0.2779605  0.05589759]
+             [0.63382852 0.49259597 0.18471423 0.49308984 0.52840286]
+             [0.34076174 0.53073014 0.18485789 0.40033474 0.38962938]]
         """
         if not callable(func):
             raise TypeError("The second argument should be a function")
