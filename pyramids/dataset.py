@@ -4013,28 +4013,31 @@ class Dataset(AbstractDataset):
         Parameters
         ----------
         size : [int]
-            Size of window in pixels. One value required which is used for both the
+            Size of the window in pixels. One value required which is used for both the
             x and y size. e.g 256 means a 256x256 window.
 
         Yields
         ------
         tuple[int]
-            4 element tuple containing the x offset, y offset, x size and y size  of the window.
-            >>> dataset = Dataset.read_file("examples/GIS/data/acc4000.tif")
-            >>> tile_dimensions = list(dataset._window(6))
-            >>> print(tile_dimensions)
-            >>> [
-            >>>     (0, 0, 6, 6), (0, 6, 6, 6), (0, 12, 6, 1),
-            >>>     (6, 0, 6, 6), (6, 6, 6, 6), (6, 12, 6, 1),
-            >>>     (12, 0, 2, 6), (12, 6, 2, 6), (12, 12, 2, 1)
-            >>> ]
+            (x-offset/column-index, y-offset/row-index, x-size, y-size).
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> arr = np.random.rand(3, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+        >>> tile_dimensions = list(dataset._window(2))
+        >>> print(tile_dimensions)
+        [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
         """
         cols = self.columns
         rows = self.rows
-        for xoff in range(0, cols, size):
-            xsize = size if size + xoff <= cols else cols - xoff
-            for yoff in range(0, rows, size):
-                ysize = size if size + yoff <= rows else rows - yoff
+        for yoff in range(0, rows, size):
+            ysize = size if size + yoff <= rows else rows - yoff
+            for xoff in range(0, cols, size):
+                xsize = size if size + xoff <= cols else cols - xoff
                 yield xoff, yoff, xsize, ysize
 
     def get_tile(self, size=256) -> Generator[np.ndarray, None, None]:
