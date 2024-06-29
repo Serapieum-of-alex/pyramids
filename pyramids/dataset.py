@@ -3255,9 +3255,63 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> A = gdal.Open("examples/GIS/data/acc4000.tif")
-        >>> B = gdal.Open("examples/GIS/data/soil_raster.tif")
-        >>> RasterBMatched = Dataset.align(A,B)
+        - The source dataset has a `top_left_corner` at (0, 0) with a 5*5 alignment, and an 0.05 degree cell size.
+            >>> import numpy as np
+            >>> arr = np.random.rand(5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 5 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+        - The dataset to be aligned has a top_left_corner at ( -0.1, 0.1) (i.e it has two more rows in top of the
+        dataset, and two columns in the left of the dataset plus)
+            >>> arr = np.random.rand(10, 10)
+            >>> top_left_corner = (-0.1, 0.1)
+            >>> cell_size = 0.07
+            >>> dataset_target = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,
+            ... epsg=4326)
+            >>> print(dataset_target)
+            <BLANKLINE>
+                        Cell size: 0.07
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+          .. image:: ../docs/source/_images/dataset/align-source-target.png
+               :alt: Example Image
+               :align: center
+
+            >>> aligned_dataset = dataset_target.align(dataset)
+            >>> print(aligned_dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 5 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+        .. image:: ../docs/source/_images/dataset/align-result.png
+               :alt: Example Image
+               :align: center
         """
         if isinstance(alignment_src, Dataset):
             src = alignment_src
