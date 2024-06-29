@@ -2582,6 +2582,8 @@ class Dataset(AbstractDataset):
                     path, self.raster, 0, options=options
                 )
                 self.__init__(dst, "write")
+                # flush the data to the dataset on disk.
+                dst.FlushCache()
             except RuntimeError:
                 if not os.path.exists(path):
                     raise FailedToSaveError(
