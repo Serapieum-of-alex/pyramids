@@ -1969,14 +1969,13 @@ class Dataset(AbstractDataset):
     def to_crs(
         self,
         to_epsg: int,
-        method: str = "nearest neighbour",
+        method: str = "nearest neighbor",
         maintain_alignment: int = False,
         inplace: bool = False,
     ) -> Union["Dataset", None]:
-        """to_epsg.
+        """Reproject the dataset to any projection.
 
-        to_epsg reprojects a raster to any projection
-        (default the WGS84 web mercator projection, without resampling)
+            (default the WGS84 web mercator projection, without resampling)
 
         Parameters
         ----------
@@ -1986,7 +1985,7 @@ class Dataset(AbstractDataset):
         method: [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
+            "nearest neighbor" for nearest neighbor,"cubic" for cubic convolution,
             "bilinear" for bilinear
         maintain_alignment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
@@ -2811,7 +2810,7 @@ class Dataset(AbstractDataset):
         return dst
 
     def resample(
-        self, cell_size: Union[int, float], method: str = "nearest neighbour"
+        self, cell_size: Union[int, float], method: str = "nearest neighbor"
     ) -> "Dataset":
         """resample.
 
@@ -2827,7 +2826,7 @@ class Dataset(AbstractDataset):
         method : [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
+            "nearest neighbor" for nearest neighbor,"cubic" for cubic convolution,
             "bilinear" for bilinear
 
         Returns
@@ -2889,7 +2888,7 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def _reproject_with_ReprojectImage(
-        self, to_epsg: int, method: str = "nearest neighbour"
+        self, to_epsg: int, method: str = "nearest neighbor"
     ) -> "Dataset":
         src_gt = self.geotransform
         src_x = self.columns
@@ -3039,7 +3038,7 @@ class Dataset(AbstractDataset):
                     if np.isclose(src_array[i, j], self.no_data_value[0], rtol=0.001)
                     and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
                 ]
-            # interpolate those missing cells by the nearest neighbour
+            # interpolate those missing cells by the nearest neighbor
             if elem_mask > elem_src:
                 src_array = Dataset._nearest_neighbour(
                     src_array, self.no_data_value[0], rows, cols
@@ -3190,7 +3189,7 @@ class Dataset(AbstractDataset):
         from alignment_src to the raster (the source of data values in cells)
 
         the result will be a raster with the same structure as alignment_src but with
-        values from data_src using the Nearest Neighbour interpolation algorithm
+        values from data_src using the Nearest neighbor interpolation algorithm
 
         Parameters
         ----------
@@ -3470,7 +3469,7 @@ class Dataset(AbstractDataset):
         """_nearest_neighbour.
 
             - The _nearest_neighbour method fills the cells with a given indices in rows and cols with the value of the
-            nearest neighbour.
+            nearest neighbor.
             - Ss the raster grid is square, so the 4 perpendicular directions are of the same proximity, so the function
             gives priority to the right, left, bottom, and then top and the same for 45 degree inclined direction
             right bottom then left bottom then left Top then right Top.
@@ -3482,14 +3481,14 @@ class Dataset(AbstractDataset):
         nodatavalue: [float32]
             value stored in cells that is out of the domain
         rows: [List]
-            list of the rows' index of the cells you want to fill it with the nearest neighbour.
+            list of the rows' index of the cells you want to fill it with the nearest neighbor.
         cols: [List]
-            list of the column index of the cells you want to fill it with the nearest neighbour.
+            list of the column index of the cells you want to fill it with the nearest neighbor.
 
         Returns
         -------
         array: [numpy array]
-            Cells of given indices will be filled with the value of the Nearest neighbour
+            Cells of given indices will be filled with the value of the Nearest neighbor
 
         Examples
         --------
@@ -3924,7 +3923,7 @@ class Dataset(AbstractDataset):
     def _group_neighbours(
         array, i, j, lowervalue, uppervalue, position, values, count, cluster
     ):
-        """Group neighbouring cells with the same values."""
+        """Group neighboring cells with the same values."""
         # bottom cell
         if (
             lowervalue <= array[i + 1, j] <= uppervalue

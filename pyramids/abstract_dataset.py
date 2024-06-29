@@ -497,7 +497,7 @@ class AbstractDataset(ABC):
     def to_crs(
         self,
         to_epsg: int,
-        method: str = "nearest neighbour",
+        method: str = "nearest neighbor",
         maintain_alignment: int = False,
         inplace: bool = False,
     ) -> Union["AbstractDataset", None]:
@@ -514,7 +514,7 @@ class AbstractDataset(ABC):
         method: [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
+            "nearest neighbor" for nearest neighbor,"cubic" for cubic convolution,
             "bilinear" for bilinear
         maintain_alignment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.

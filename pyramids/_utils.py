@@ -166,7 +166,7 @@ COLOR_TABLE = DataFrame(
     data=list(zip(range(len(COLOR_NAMES)), COLOR_INTERPRETATIONS, COLOR_NAMES)),
 )
 INTERPOLATION_METHODS = {
-    "nearest neighbour": gdal.GRA_NearestNeighbour,
+    "nearest neighbor": gdal.GRA_NearestNeighbour,
     "cubic": gdal.GRA_Cubic,
     "bilinear": gdal.GRA_Bilinear,
 }

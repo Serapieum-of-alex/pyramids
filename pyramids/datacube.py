@@ -539,7 +539,7 @@ class Datacube:
     def to_crs(
         self,
         to_epsg: int = 3857,
-        method: str = "nearest neighbour",
+        method: str = "nearest neighbor",
         maintain_alignment: int = False,
     ):
         """to_epsg.
@@ -555,7 +555,7 @@ class Datacube:
         method: [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+            "Nearest" for nearest neighbor,"cubic" for cubic convolution,
             "bilinear" for bilinear
         maintain_alignment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
@@ -682,7 +682,7 @@ class Datacube:
     #     method: [String]
     #         resampling technique default is "Nearest"
     #         https://gisgeography.com/raster-resampling/
-    #         "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+    #         "Nearest" for nearest neighbor,"cubic" for cubic convolution,
     #         "bilinear" for bilinear
     #
     #     Returns
@@ -798,7 +798,7 @@ class Datacube:
         rasters_dir is path to the folder where Raster B exist where  Raster B is
         the source of data values in cells
         the result will be a raster with the same structure as RasterA but with
-        values from RasterB using Nearest Neighbour interpolation algorithm
+        values from RasterB using Nearest neighbor interpolation algorithm
 
         Parameters
         ----------
