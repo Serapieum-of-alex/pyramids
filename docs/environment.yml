@@ -1,8 +1,10 @@
+name: docs
 channels:
   - conda-forge
 dependencies:
   - numpydoc==1.1.0
   - typing-extensions==3.10.*
+  - gdal==3.8.4
   - pip:
     - pydata_sphinx_theme>=0.15.2
     - sphinxcontrib-napoleon
