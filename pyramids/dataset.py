@@ -167,6 +167,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Create a dataset
+
             >>> import numpy as np
             >>> arr = np.random.rand(4, 5, 5)
             >>> top_left_corner = (0, 0)
@@ -174,6 +175,7 @@ class Dataset(AbstractDataset):
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
         - To check the geotransform of the dataset, call the `geotransform` property
+
             >>> print(dataset.geotransform)
             (0.0, 0.05, 0.0, 0.0, 0.0, -0.05)
         """
@@ -204,6 +206,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Create a dataset
+
             >>> import numpy as np
             >>> arr = np.random.rand(4, 5, 5)
             >>> top_left_corner = (0, 0)
@@ -211,6 +214,7 @@ class Dataset(AbstractDataset):
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
         - Now, to check the coordinate reference system, call the `crs` property
+
             >>> print(dataset.crs)
             GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
         """
@@ -446,6 +450,7 @@ class Dataset(AbstractDataset):
             - Internal Zip file path (one/multiple files inside the compressed file):
                 if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains
                     the internal path inside the zip file, so just ad
+
                 >>> rdir = "tests/data/virtual-file-system"
                 >>> dataset = Dataset.read_file(f"{rdir}/multiple_compressed_files.zip/1.asc")
                 >>> print(dataset)
@@ -539,6 +544,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Create `Dataset` consists of 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
             >>> import numpy as np
             >>> arr = np.random.rand(4, 5, 5)
             >>> top_left_corner = (0, 0)
@@ -546,6 +552,7 @@ class Dataset(AbstractDataset):
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
         - Read all the values stored in a given band.
+
             >>> arr = dataset.read_array(band=0) # doctest: +SKIP
             array([[0.50482225, 0.45678043, 0.53294294, 0.28862223, 0.66753579],
                    [0.38471912, 0.14617829, 0.05045189, 0.00761358, 0.25501918],
@@ -555,6 +562,7 @@ class Dataset(AbstractDataset):
 
         - Read block of data from the first band, the block starts at the 2nd column (index 1) and 2st row (index 1),
         the block size is 2*2 cells. (the first index is the column index)
+
             >>> arr = dataset.read_array(band=0, window=[1, 1, 2, 2])
             >>> print(arr) # doctest: +SKIP
             array([[0.14617829, 0.05045189],
@@ -564,12 +572,14 @@ class Dataset(AbstractDataset):
             starting at the 2st row and 2nd column.
         - Read block of data from the first band, the block is a `geodataframe` with a polygon geometry that covers
         the same area covered by the window above.
+
             >>> import geopandas as gpd
             >>> from shapely.geometry import Polygon
 
             - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
             0.2 -0.1] to cover the 4 cells.
             - The polygon covers the same cells that we extracted in the previous setp using the window=[1, 1, 2, 2].
+
             >>> poly = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
             >>> arr = dataset.read_array(band=0, window=poly)
             >>> print(arr) # doctest: +SKIP
@@ -925,12 +935,14 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - First create a dataset:
+
             >>> dataset = Dataset.create(
             ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_coords=(0, 0),
             ... epsg=4326, no_data_value=-9999
             ... )
 
         - Create a DataFrame with the attribute table:
+
             >>> data = {
             ...     "Value": [1, 2, 3],
             ...     "ClassName": ["Forest", "Water", "Urban"],
@@ -939,6 +951,7 @@ class Dataset(AbstractDataset):
             >>> df = pd.DataFrame(data)
 
         - Set the attribute table to the dataset:
+
             >>> dataset.set_attribute_table(df, band=0)
 
         - Then the attribute table can be retrieved using the `get_attribute_table` method.
@@ -1115,15 +1128,18 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - First create a dataset:
+
             >>> dataset = Dataset.create(
             ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_coords=(0, 0),
             ... epsg=4326, no_data_value=-9999
             ... )
 
         - Create a 2D array to add as a new band:
+
             >>> array = np.random.rand(10, 10)
 
         - Add the new band to the dataset:
+
             >>> updated_dataset = dataset.add_band(array, unit="m", attribute_table=None)
             >>> print(updated_dataset)
             <BLANKLINE>
@@ -1225,6 +1241,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Get the statistics of all bands in the dataset:
+
             >>> import numpy as np
             >>> arr = np.random.rand(4, 10, 10)
             >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
@@ -1242,6 +1259,7 @@ class Dataset(AbstractDataset):
         - Get the statistics of all the bands using a mask polygon.
             - Create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
             0.2 -0.1] to cover the 4 cells.
+
             >>> from shapely.geometry import Polygon
             >>> import geopandas as gpd
             >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])],crs=4326)
@@ -1404,6 +1422,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Plot a certain band
+
             >>> import numpy as np
             >>> arr = np.random.rand(4, 10, 10)
             >>> top_left_corner = (0, 0)
@@ -1413,18 +1432,22 @@ class Dataset(AbstractDataset):
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using power scale.
+
             >>> dataset.plot(band=0, color_scale=2)
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using SymLogNorm scale.
+
             >>> dataset.plot(band=0, color_scale=3)
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using PowerNorm scale.
+
             >>> dataset.plot(band=0, color_scale=4, bounds=[0, 0.2, 0.4, 0.6, 0.8, 1])
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using BoundaryNorm scale.
+
             >>> dataset.plot(band=0, color_scale=5)
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
         """
@@ -1686,6 +1709,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Create dataset using the `cell_size` and `top_left_corner` parameters
+
                 >>> import numpy as np
                 >>> arr = np.random.rand(4, 10, 10)
                 >>> top_left_corner = (0, 0)
@@ -1706,6 +1730,7 @@ class Dataset(AbstractDataset):
         - Create dataset using the `geo` parameter
             - First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
                 degree, the top left corner of the dataset is (0,0)
+
                 >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
                 >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
                 >>> print(dataset)
@@ -1835,6 +1860,7 @@ class Dataset(AbstractDataset):
         >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
         - now let's create another `dataset` from the previous dataset using the `dataset_like`
+
             >>> new_arr = np.random.rand(5, 5)
             >>> dataset_new = Dataset.dataset_like(dataset, new_arr)
             >>> print(dataset)
@@ -1905,6 +1931,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - First, create a dataset on disk.
+
             >>> import numpy as np
             >>> arr = np.random.rand(5, 5)
             >>> top_left_corner = (0, 0)
@@ -1916,6 +1943,7 @@ class Dataset(AbstractDataset):
             >>> dataset = None
 
         - In a later session you can read the dataset in a `write` mode and update it.
+
             >>> dataset = Dataset.read_file(path, read_only=False)
             >>> arr = np.array([[1, 2], [3, 4]])
             >>> dataset.write_array(arr, top_left_corner=[1, 1])
@@ -2538,6 +2566,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Create `Dataset` consists of 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
             >>> import numpy as np
             >>> arr = np.random.rand(4, 5, 5)
             >>> top_left_corner = (0, 0)
@@ -2547,6 +2576,7 @@ class Dataset(AbstractDataset):
             <BLANKLINE>
 
         - Now to save the dataset as a geotiff file.
+
             >>> dataset.to_file("my-dataset.tif")
             >>> print(dataset.file_name)
             my-dataset.tif
@@ -2703,6 +2733,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Create a dataset from array with 2 bands and 3*3 array each.
+
             >>> import numpy as np
             >>> arr = np.random.rand(2, 3, 3)
             >>> top_left_corner = (0, 0)
@@ -2718,6 +2749,7 @@ class Dataset(AbstractDataset):
              [0.83741314 0.70446373 0.64913575]]
 
         - Convert the dataset to dataframe by calling the `to_feature_collection` method.
+
             >>> df = dataset.to_feature_collection()
             >>> print(df) # doctest: +SKIP
                  Band_1    Band_2
@@ -2734,6 +2766,7 @@ class Dataset(AbstractDataset):
         - Convert the dataset into geodataframe, i.e the same dataframe as the previously but with either a polygon
         or a point geometry that represents each cell.
         - to specify the geometry type use the parameter `add_geometry`
+
             >>> gdf = dataset.to_feature_collection(add_geometry="point")
             >>> print(gdf) # doctest: +SKIP
                  Band_1    Band_2                  geometry
@@ -2761,6 +2794,7 @@ class Dataset(AbstractDataset):
 
         - Use a mask to crop part of the dataset, and then convert the cropped part to a dataframe/geodataframe.
             - create a mask that covers only the cell in the middle of the dataset.
+
             >>> import geopandas as gpd
             >>> from shapely.geometry import Polygon
             >>> poly = gpd.GeoDataFrame(
@@ -2775,6 +2809,7 @@ class Dataset(AbstractDataset):
         at once but in tiles), you can use the `tile`, and the `tile_size` parameters.
         - The values definitely will be the same as the values above but the different here is how the dataset reads
         the values in chunks.
+
             >>> gdf = dataset.to_feature_collection(tile=True, tile_size=1)
             >>> print(gdf) # doctest: +SKIP
                  Band_1    Band_2
@@ -2863,6 +2898,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Create a dataset from an array filled with values between -1 and 1
+
             >>> import numpy as np
             >>> arr = np.random.uniform(-1, 1, size=(5, 5))
             >>> top_left_corner = (0, 0)
@@ -2973,7 +3009,7 @@ class Dataset(AbstractDataset):
         """
         if not isinstance(method, str):
             raise TypeError(
-                "Please enter correct method, for more information, see documentation"
+                "Please enter a correct method, for more information, see documentation"
             )
         if method not in INTERPOLATION_METHODS.keys():
             raise ValueError(
@@ -3337,12 +3373,13 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        dst : [Dataset]
+        dst: [Dataset]
             Dataset object
 
         Examples
         --------
         - The source dataset has a `top_left_corner` at (0, 0) with a 5*5 alignment, and an 0.05 degree cell size.
+
             >>> import numpy as np
             >>> arr = np.random.rand(5, 5)
             >>> top_left_corner = (0, 0)
@@ -3362,6 +3399,7 @@ class Dataset(AbstractDataset):
 
         - The dataset to be aligned has a top_left_corner at ( -0.1, 0.1) (i.e it has two more rows in top of the
         dataset, and two columns in the left of the dataset plus)
+
             >>> arr = np.random.rand(10, 10)
             >>> top_left_corner = (-0.1, 0.1)
             >>> cell_size = 0.07
@@ -3379,9 +3417,9 @@ class Dataset(AbstractDataset):
                         File:...
             <BLANKLINE>
 
-          .. image:: ../docs/source/_images/dataset/align-source-target.png
-               :alt: Example Image
-               :align: center
+        .. image:: ../docs/source/_images/dataset/align-source-target.png
+            :alt: Example Image
+            :align: center
 
             >>> aligned_dataset = dataset_target.align(dataset)
             >>> print(aligned_dataset)
@@ -3397,8 +3435,8 @@ class Dataset(AbstractDataset):
             <BLANKLINE>
 
         .. image:: ../docs/source/_images/dataset/align-result.png
-               :alt: Example Image
-               :align: center
+            :alt: Example Image
+            :align: center
         """
         if isinstance(alignment_src, Dataset):
             src = alignment_src
@@ -3593,6 +3631,7 @@ class Dataset(AbstractDataset):
             so the result dataset will have the same number of bands `4`, 2 rows and 2 columns.
             - First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
             degree, the top left corner of the dataset is (0,0)
+
             >>> import numpy as np
             >>> import geopandas as gpd
             >>> from shapely.geometry import Polygon
@@ -3602,12 +3641,15 @@ class Dataset(AbstractDataset):
 
             - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
             0.2 -0.1] to cover the 4 cells.
+
             >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
 
             - Pass the `geodataframe` to the crop method using the `mask` parameter.
+
             >>> cropped_dataset = dataset.crop(mask=mask)
 
             - Check the cropped dataset:
+
             >>> print(cropped_dataset.shape)
             (4, 2, 2)
             >>> print(cropped_dataset.geotransform)
@@ -3621,15 +3663,18 @@ class Dataset(AbstractDataset):
 
         - Crop a raster using another raster mask:
             - create a mask dataset with the same extent of the polygon we use in the previous example.
+
             >>> geotransform = (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
             >>> mask_dataset = Dataset.create_from_array(np.random.rand(2, 2), geo=geotransform, epsg=4326)
 
             - then use the mask dataset to crop the dataset.
+
             >>> cropped_dataset_2 = dataset.crop(mask=mask_dataset)
             >>> print(cropped_dataset_2.shape)
             (4, 2, 2)
 
             - Check the cropped dataset:
+
             >>> print(cropped_dataset_2.geotransform)
             (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
             >>> print(cropped_dataset_2.read_array(band=0))# doctest: +SKIP
@@ -4000,6 +4045,7 @@ class Dataset(AbstractDataset):
         --------
         - The following raster dataset has flood depth stored in its values and the non flooded cells are filled with
         zero, so to extract the flood extent, we need to exclude the zero flood depth cells.
+
             >>> dataset = Dataset.read_file("examples/data/geotiff/rhine-flood.tif")
             >>> dataset.plot()
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
@@ -4148,6 +4194,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - First, we will create a dataset with 3 rows and 5 columns.
+
             >>> import numpy as np
             >>> arr = np.random.rand(3, 5)
             >>> top_left_corner = (0, 0)
@@ -4171,6 +4218,7 @@ class Dataset(AbstractDataset):
              [0.22231314 0.96283065 0.15201337 0.03522544 0.44616888]]
 
         - the `get_tile` method splits the domain into tiles of the specified `size` using the `_window` function
+
             >>> tile_dimensions = list(dataset._window(2))
             >>> print(tile_dimensions)
             [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
@@ -4181,6 +4229,7 @@ class Dataset(AbstractDataset):
 
         - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
         - The `get_tile' method returns a generator object that can be used to iterate over the smaller chunks of the data
+
         >>> tiles_generator = dataset.get_tile(size=2)
         >>> print(tiles_generator)  # doctest: +SKIP
         <generator object Dataset.get_tile at 0x00000145AA39E680>
@@ -4393,6 +4442,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - First, we will create a dataset with 10 rows and 10 columns.
+
             >>> import numpy as np
             >>> np.random.seed(10)
             >>> arr = np.random.randint(1, 5, size=(5, 5))
@@ -4415,12 +4465,14 @@ class Dataset(AbstractDataset):
                   :align: center
 
         - Now let's cluster the values in the dataset that are between 2, and 4.
+
             >>> lower_value = 2
             >>> upper_value = 4
             >>> cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
 
         - The first returned output is a binary array with 1 indicating that the cell value is inside the cluster,
         and 0 is outside.
+
             >>> print(cluster_array)  # doctest: +SKIP
             [[1. 1. 1. 1. 1.]
              [1. 1. 0. 0. 0.]
@@ -4429,14 +4481,17 @@ class Dataset(AbstractDataset):
              [1. 1. 1. 1. 1.]]
 
         - The second returned value is the number of connected clusters.
+
             >>> print(count) # doctest: +SKIP
             2
 
         - The third returned value is the indices of the cells that belongs to the cluster.
+
             >>> print(position) # doctest: +SKIP
             [[1, 0], [2, 1], [2, 2], [3, 3], [4, 3], [4, 4], [3, 4], [2, 4], [2, 3], [4, 2], [4, 1], [3, 0], [4, 0], [1, 1], [0, 2], [0, 3], [0, 4], [0, 1], [0, 0]]
 
         - The fourth returned value is a list of the values that are in the cluster (extracted from these cells).
+
             >>> print(values) # doctest: +SKIP
             [3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 4, 4, 2, 4, 3, 2, 3, 3, 2]
         """
@@ -4489,6 +4544,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - First, we will create a 10*10 dataset full of random integer between 1, and 5.
+
             >>> import numpy as np
             >>> np.random.seed(200)
             >>> arr = np.random.randint(1, 5, size=(10, 10))
@@ -4508,6 +4564,7 @@ class Dataset(AbstractDataset):
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
         - Now, let's cluster the connected equal cells into polygons.
+
             >>> gdf = dataset.cluster2()
             >>> print(gdf)  # doctest: +SKIP
                 Band_1                                           geometry
