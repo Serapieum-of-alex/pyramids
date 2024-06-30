@@ -1486,15 +1486,38 @@ class TestFootPrint:
         assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
 
-def test_cluster(rhine_dem: gdal.Dataset, clusters: np.ndarray):
-    dataset = Dataset(rhine_dem)
-    lower_value = 0.1
-    upper_value = 20
-    cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
-    assert count == 155
-    assert np.array_equal(cluster_array, clusters)
-    assert len(position) == 2364
-    assert len(values) == 2364
+class TestClustering:
+
+    def test_generated_data(self):
+        np.random.seed(42)
+        arr = np.random.randint(1, 5, size=(3, 3))
+        top_left_corner = (0, 0)
+        cell_size = 0.05
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+        )
+
+        lower_value = 2
+        upper_value = 4
+        cluster_array, count, position, values = dataset.cluster(
+            lower_value, upper_value
+        )
+        assert isinstance(cluster_array, np.ndarray)
+        assert isinstance(count, int)
+        assert isinstance(position, list)
+        assert isinstance(values, list)
+
+    def test_cluster(self, rhine_dem: gdal.Dataset, clusters: np.ndarray):
+        dataset = Dataset(rhine_dem)
+        lower_value = 0.1
+        upper_value = 20
+        cluster_array, count, position, values = dataset.cluster(
+            lower_value, upper_value
+        )
+        assert count == 155
+        assert np.array_equal(cluster_array, clusters)
+        assert len(position) == 2364
+        assert len(values) == 2364
 
 
 class TestNCtoGeoTIFF:

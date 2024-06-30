@@ -4200,173 +4200,166 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def _group_neighbours(
-        array, i, j, lowervalue, uppervalue, position, values, count, cluster
+        array, i, j, lower_bound, upper_bound, position, values, count, cluster
     ):
         """Group neighboring cells with the same values."""
         # bottom cell
-        if (
-            lowervalue <= array[i + 1, j] <= uppervalue
-            and cluster[i + 1, j] == 0
-            and i + 1 < array.shape[0]
-        ):
-            position.append([i + 1, j])
-            values.append(array[i + 1, j])
-            cluster[i + 1, j] = count
-            Dataset._group_neighbours(
-                array,
-                i + 1,
-                j,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if i + 1 < array.shape[0]:
+            if lower_bound <= array[i + 1, j] <= upper_bound and cluster[i + 1, j] == 0:
+                position.append([i + 1, j])
+                values.append(array[i + 1, j])
+                cluster[i + 1, j] = count
+                Dataset._group_neighbours(
+                    array,
+                    i + 1,
+                    j,
+                    lower_bound,
+                    upper_bound,
+                    position,
+                    values,
+                    count,
+                    cluster,
+                )
+
         # bottom right
-        if (
-            j + 1 < array.shape[1]
-            and i + 1 < array.shape[0]
-            and lowervalue <= array[i + 1, j + 1] <= uppervalue
-            and cluster[i + 1, j + 1] == 0
-        ):
-            position.append([i + 1, j + 1])
-            values.append(array[i + 1, j + 1])
-            cluster[i + 1, j + 1] = count
-            Dataset._group_neighbours(
-                array,
-                i + 1,
-                j + 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j + 1 < array.shape[1]:
+            if i + 1 < array.shape[0]:
+                if (
+                    lower_bound <= array[i + 1, j + 1] <= upper_bound
+                    and cluster[i + 1, j + 1] == 0
+                ):
+                    position.append([i + 1, j + 1])
+                    values.append(array[i + 1, j + 1])
+                    cluster[i + 1, j + 1] = count
+                    Dataset._group_neighbours(
+                        array,
+                        i + 1,
+                        j + 1,
+                        lower_bound,
+                        upper_bound,
+                        position,
+                        values,
+                        count,
+                        cluster,
+                    )
+
         # right
-        if (
-            j + 1 < array.shape[1]
-            and lowervalue <= array[i, j + 1] <= uppervalue
-            and cluster[i, j + 1] == 0
-        ):
-            position.append([i, j + 1])
-            values.append(array[i, j + 1])
-            cluster[i, j + 1] = count
-            Dataset._group_neighbours(
-                array,
-                i,
-                j + 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j + 1 < array.shape[1]:
+            if lower_bound <= array[i, j + 1] <= upper_bound and cluster[i, j + 1] == 0:
+                position.append([i, j + 1])
+                values.append(array[i, j + 1])
+                cluster[i, j + 1] = count
+                Dataset._group_neighbours(
+                    array,
+                    i,
+                    j + 1,
+                    lower_bound,
+                    upper_bound,
+                    position,
+                    values,
+                    count,
+                    cluster,
+                )
+
         # upper right
-        if (
-            j + 1 < array.shape[1]
-            and i - 1 >= 0
-            and lowervalue <= array[i - 1, j + 1] <= uppervalue
-            and cluster[i - 1, j + 1] == 0
-        ):
-            position.append([i - 1, j + 1])
-            values.append(array[i - 1, j + 1])
-            cluster[i - 1, j + 1] = count
-            Dataset._group_neighbours(
-                array,
-                i - 1,
-                j + 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j + 1 < array.shape[1]:
+            if i - 1 >= 0:
+                if (
+                    lower_bound <= array[i - 1, j + 1] <= upper_bound
+                    and cluster[i - 1, j + 1] == 0
+                ):
+                    position.append([i - 1, j + 1])
+                    values.append(array[i - 1, j + 1])
+                    cluster[i - 1, j + 1] = count
+                    Dataset._group_neighbours(
+                        array,
+                        i - 1,
+                        j + 1,
+                        lower_bound,
+                        upper_bound,
+                        position,
+                        values,
+                        count,
+                        cluster,
+                    )
         # top
-        if (
-            i - 1 >= 0
-            and lowervalue <= array[i - 1, j] <= uppervalue
-            and cluster[i - 1, j] == 0
-        ):
-            position.append([i - 1, j])
-            values.append(array[i - 1, j])
-            cluster[i - 1, j] = count
-            Dataset._group_neighbours(
-                array,
-                i - 1,
-                j,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if i - 1 >= 0:
+            if lower_bound <= array[i - 1, j] <= upper_bound and cluster[i - 1, j] == 0:
+                position.append([i - 1, j])
+                values.append(array[i - 1, j])
+                cluster[i - 1, j] = count
+                Dataset._group_neighbours(
+                    array,
+                    i - 1,
+                    j,
+                    lower_bound,
+                    upper_bound,
+                    position,
+                    values,
+                    count,
+                    cluster,
+                )
+
         # top left
-        if (
-            i - 1 >= 0
-            and j - 1 >= 0
-            and lowervalue <= array[i - 1, j - 1] <= uppervalue
-            and cluster[i - 1, j - 1] == 0
-        ):
-            position.append([i - 1, j - 1])
-            values.append(array[i - 1, j - 1])
-            cluster[i - 1, j - 1] = count
-            Dataset._group_neighbours(
-                array,
-                i - 1,
-                j - 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if i - 1 >= 0:
+            if j - 1 >= 0:
+                if (
+                    lower_bound <= array[i - 1, j - 1] <= upper_bound
+                    and cluster[i - 1, j - 1] == 0
+                ):
+                    position.append([i - 1, j - 1])
+                    values.append(array[i - 1, j - 1])
+                    cluster[i - 1, j - 1] = count
+                    Dataset._group_neighbours(
+                        array,
+                        i - 1,
+                        j - 1,
+                        lower_bound,
+                        upper_bound,
+                        position,
+                        values,
+                        count,
+                        cluster,
+                    )
         # left
-        if (
-            j - 1 >= 0
-            and lowervalue <= array[i, j - 1] <= uppervalue
-            and cluster[i, j - 1] == 0
-        ):
-            position.append([i, j - 1])
-            values.append(array[i, j - 1])
-            cluster[i, j - 1] = count
-            Dataset._group_neighbours(
-                array,
-                i,
-                j - 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j - 1 >= 0:
+            if lower_bound <= array[i, j - 1] <= upper_bound and cluster[i, j - 1] == 0:
+                position.append([i, j - 1])
+                values.append(array[i, j - 1])
+                cluster[i, j - 1] = count
+                Dataset._group_neighbours(
+                    array,
+                    i,
+                    j - 1,
+                    lower_bound,
+                    upper_bound,
+                    position,
+                    values,
+                    count,
+                    cluster,
+                )
+
         # bottom left
-        if (
-            j - 1 >= 0
-            and i + 1 < array.shape[0]
-            and lowervalue <= array[i + 1, j - 1] <= uppervalue
-            and cluster[i + 1, j - 1] == 0
-        ):
-            position.append([i + 1, j - 1])
-            values.append(array[i + 1, j - 1])
-            cluster[i + 1, j - 1] = count
-            Dataset._group_neighbours(
-                array,
-                i + 1,
-                j - 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j - 1 >= 0:
+            if i + 1 < array.shape[0]:
+                if (
+                    lower_bound <= array[i + 1, j - 1] <= upper_bound
+                    and cluster[i + 1, j - 1] == 0
+                ):
+                    position.append([i + 1, j - 1])
+                    values.append(array[i + 1, j - 1])
+                    cluster[i + 1, j - 1] = count
+                    Dataset._group_neighbours(
+                        array,
+                        i + 1,
+                        j - 1,
+                        lower_bound,
+                        upper_bound,
+                        position,
+                        values,
+                        count,
+                        cluster,
+                    )
 
     def cluster(
         self, lower_bound: Any, upper_bound: Any
