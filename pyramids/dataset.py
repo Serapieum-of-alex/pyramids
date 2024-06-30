@@ -1596,7 +1596,7 @@ class Dataset(AbstractDataset):
         >>> top_left_coords = (0, 0)
         >>> epsg = 32618
         >>> no_data_value = -9999
-        >>> path = "test.tif"
+        >>> path = "create-new-dataset.tif"
         >>> dataset = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_coords, epsg, no_data_value, path)
         >>> print(dataset)
         <BLANKLINE>
