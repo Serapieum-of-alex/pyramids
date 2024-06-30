@@ -4175,6 +4175,10 @@ class Dataset(AbstractDataset):
             >>> print(tile_dimensions)
             [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
 
+        .. image:: ../docs/source/_images/dataset/get_tile.png
+                  :alt: footprint
+                  :align: center
+
         - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
         - The `get_tile' method returns a generator object that can be used to iterate over the smaller chunks of the data
         >>> tiles_generator = dataset.get_tile(size=2)
