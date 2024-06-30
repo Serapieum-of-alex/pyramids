@@ -1137,7 +1137,8 @@ class TestCluster2:
 class TestToFeatureCollection:
     """Test converting dataset to featurecollection."""
 
-    def test_tiling(self):
+    def test_tiling(self) -> None:
+        """Test converting dataset to featurecollection using tiling."""
         arr = np.random.rand(2, 2)
         top_left_corner = (0, 0)
         cell_size = 0.05
@@ -1145,7 +1146,7 @@ class TestToFeatureCollection:
             arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
         )
         df = dataset.to_feature_collection(tile=True, tile_size=1, add_geometry="point")
-        # compare extracted data with original data from array
+        # compare extracted data with original data from arr
         np.testing.assert_array_equal(
             df.loc[:, "Band_1"].values, arr.reshape(df.shape[0])
         )
