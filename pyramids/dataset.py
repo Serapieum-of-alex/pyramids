@@ -3655,13 +3655,13 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def _nearest_neighbour(
-        array: np.ndarray, nodatavalue: Union[float, int], rows: list, cols: list
+        array: np.ndarray, no_data_value: Union[float, int], rows: list, cols: list
     ) -> np.ndarray:
         """_nearest_neighbour.
 
             - The _nearest_neighbour method fills the cells with a given indices in rows and cols with the value of the
             nearest neighbor.
-            - Ss the raster grid is square, so the 4 perpendicular directions are of the same proximity, so the function
+            - The raster grid is square, so the 4 perpendicular directions are of the same proximity, so the function
             gives priority to the right, left, bottom, and then top and the same for 45 degree inclined direction
             right bottom then left bottom then left Top then right Top.
 
@@ -3669,7 +3669,7 @@ class Dataset(AbstractDataset):
         ----------
         array: [numpy.array]
             Array to fill some of its cells with the Nearest value.
-        nodatavalue: [float32]
+        no_data_value: [float32]
             value stored in cells that is out of the domain
         rows: [List]
             list of the rows' index of the cells you want to fill it with the nearest neighbor.
@@ -3678,47 +3678,53 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        array: [numpy array]
+        array:
             Cells of given indices will be filled with the value of the Nearest neighbor
 
         Examples
         --------
-        >>> raster = gdal.Open("dem.tif")
-        >>> req_rows = [3,12]
-        >>> req_cols = [9,2]
-        >>> new_array = Dataset._nearest_neighbour(raster, req_rows, req_cols)
+        >>> import numpy as np
+        >>> arr = np.random.rand(5, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+        >>> req_rows = [1,3]
+        >>> req_cols = [2,4]
+        >>> no_data_value = dataset.no_data_value[0]
+        >>> new_array = Dataset._nearest_neighbour(arr, no_data_value, req_rows, req_cols)
         """
         if not isinstance(array, np.ndarray):
             raise TypeError(
                 "src should be read using gdal (gdal dataset please read it using gdal library) "
             )
         if not isinstance(rows, list):
-            raise TypeError("rows input has to be of type list")
+            raise TypeError("The `rows` input has to be of type list")
         if not isinstance(cols, list):
-            raise TypeError("cols input has to be of type list")
+            raise TypeError("The `cols` input has to be of type list")
 
         no_rows = np.shape(array)[0]
         no_cols = np.shape(array)[1]
 
         for i in range(len(rows)):
             # give the cell the value of the cell that is at the right
-            if array[rows[i], cols[i] + 1] != nodatavalue and cols[i] + 1 <= no_cols:
-                array[rows[i], cols[i]] = array[rows[i], cols[i] + 1]
+            if cols[i] + 1 < no_cols:
+                if array[rows[i], cols[i] + 1] != no_data_value:
+                    array[rows[i], cols[i]] = array[rows[i], cols[i] + 1]
 
-            elif array[rows[i], cols[i] - 1] != nodatavalue and cols[i] - 1 > 0:
+            elif array[rows[i], cols[i] - 1] != no_data_value and cols[i] - 1 > 0:
                 # give the cell the value of the cell that is at the left
                 array[rows[i], cols[i]] = array[rows[i], cols[i] - 1]
 
-            elif array[rows[i] - 1, cols[i]] != nodatavalue and rows[i] - 1 > 0:
+            elif array[rows[i] - 1, cols[i]] != no_data_value and rows[i] - 1 > 0:
                 # give the cell the value of the cell that is at the bottom
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i]]
 
-            elif array[rows[i] + 1, cols[i]] != nodatavalue and rows[i] + 1 <= no_rows:
+            elif array[rows[i] + 1, cols[i]] != no_data_value and rows[i] + 1 < no_rows:
                 # give the cell the value of the cell that is at the Top
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i]]
 
             elif (
-                array[rows[i] - 1, cols[i] + 1] != nodatavalue
+                array[rows[i] - 1, cols[i] + 1] != no_data_value
                 and rows[i] - 1 > 0
                 and cols[i] + 1 <= no_cols
             ):
@@ -3726,7 +3732,7 @@ class Dataset(AbstractDataset):
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i] + 1]
 
             elif (
-                array[rows[i] - 1, cols[i] - 1] != nodatavalue
+                array[rows[i] - 1, cols[i] - 1] != no_data_value
                 and rows[i] - 1 > 0
                 and cols[i] - 1 > 0
             ):
@@ -3734,7 +3740,7 @@ class Dataset(AbstractDataset):
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i] - 1]
 
             elif (
-                array[rows[i] + 1, cols[i] - 1] != nodatavalue
+                array[rows[i] + 1, cols[i] - 1] != no_data_value
                 and rows[i] + 1 <= no_rows
                 and cols[i] - 1 > 0
             ):
@@ -3742,7 +3748,7 @@ class Dataset(AbstractDataset):
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i] - 1]
 
             elif (
-                array[rows[i] + 1, cols[i] + 1] != nodatavalue
+                array[rows[i] + 1, cols[i] + 1] != no_data_value
                 and rows[i] + 1 <= no_rows
                 and cols[i] + 1 <= no_cols
             ):

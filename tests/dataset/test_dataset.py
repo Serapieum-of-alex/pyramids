@@ -1663,3 +1663,17 @@ class TestWriteArray:
         dataset.write_array(arr, top_left_corner=[yoff, xoff])
         retrieved_arr = dataset._raster.ReadAsArray(xoff, yoff, 2, 2)
         np.testing.assert_array_equal(arr, retrieved_arr)
+
+
+def test_nearest_neigbors():
+    # TODO: create better test
+    arr = np.random.rand(5, 5)
+    top_left_corner = (0, 0)
+    cell_size = 0.05
+    dataset = Dataset.create_from_array(
+        arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+    )
+    req_rows = [1, 3]
+    req_cols = [2, 4]
+    no_data_value = dataset.no_data_value[0]
+    new_array = Dataset._nearest_neighbour(arr, no_data_value, req_rows, req_cols)
