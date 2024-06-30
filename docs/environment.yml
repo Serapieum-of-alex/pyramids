@@ -2,6 +2,7 @@ name: docs
 channels:
   - conda-forge
 dependencies:
+  - numpy >=1.25.2
   - numpydoc==1.1.0
   - typing-extensions==3.10.*
   - gdal==3.8.4
