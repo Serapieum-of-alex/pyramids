@@ -3826,9 +3826,9 @@ class Dataset(AbstractDataset):
         Parameters
         ----------
         top_left_x: [Number]
-            the x coordinate of the top left corner of the raster.
+            the x coordinate of the dataset top left corner.
         top_left_y: [Number]
-            the y coordinate of the top left corner of the raster.
+            the y coordinate of the dataset top left corner.
         cell_size: [Number]
             the cell size of the raster.
         column_index: [Union[List[Number], np.ndarray]]
