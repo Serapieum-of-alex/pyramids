@@ -2,10 +2,10 @@ name: docs
 channels:
   - conda-forge
 dependencies:
-  - numpy >=1.25.2
+  - numpy >=2.0.0
   - numpydoc==1.1.0
   - typing-extensions==3.10.*
-  - gdal==3.8.4
+  - gdal==3.9.0
   - pip:
     - pydata_sphinx_theme>=0.15.2
     - sphinxcontrib-napoleon
