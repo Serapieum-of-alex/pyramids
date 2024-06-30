@@ -545,7 +545,7 @@ class Dataset(AbstractDataset):
             >>> cell_size = 0.05
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - Read the all the values stored in a given band.
+        - Read all the values stored in a given band.
             >>> arr = dataset.read_array(band=0) # doctest: +SKIP
             array([[0.50482225, 0.45678043, 0.53294294, 0.28862223, 0.66753579],
                    [0.38471912, 0.14617829, 0.05045189, 0.00761358, 0.25501918],
@@ -561,7 +561,7 @@ class Dataset(AbstractDataset):
                    [0.37358843, 0.32233918]])
 
             - if you check the values of 2*2 block you will find them the same as the values in the entire array of band 0,
-            starting at the 1st row and 2nd column.
+            starting at the 2st row and 2nd column.
         - Read block of data from the first band, the block is a `geodataframe` with a polygon geometry that covers
         the same area covered by the window above.
             >>> import geopandas as gpd
@@ -2664,10 +2664,10 @@ class Dataset(AbstractDataset):
         vector_mask: GeoDataFrame = None,
         add_geometry: str = None,
         tile: bool = False,
-        tile_size: int = 1500,
+        tile_size: int = 256,
         touch: bool = True,
     ) -> Union[DataFrame, GeoDataFrame]:
-        """Convert a raster to a vector.
+        """Convert a dataset to a vector.
 
         The function does the following
             - Flatten the array in each band in the raster then mask the values if a vector_mask
@@ -2684,7 +2684,7 @@ class Dataset(AbstractDataset):
         vector_mask : Optional[GeoDataFrame]
             GeoDataFrame for the vector_mask. If given, it will be used to clip the raster
         add_geometry: [str]
-            "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
+            "Polygon", or "Point" if you want to add a polygon geometry of the cells as column in dataframe.
             Default is None.
         tile: [bool]
             True to use tiles in extracting the values from the raster. Default is False.
@@ -2696,13 +2696,97 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        DataFrame/GeoDataFrame
-            columndL:
-                >>> print(gdf.columns)
-                >>> Index(['Band_1', 'geometry'], dtype='object')
+        DataFrame/GeoDataFrame:
+            the resulted geodataframe will have the band value under the name of the band (if the raster file has a
+            metadata, if not, the bands will be indexed from 1 to the number of bands)
 
-        the resulted geodataframe will have the band value under the name of the band (if the raster file has a
-        metadata, if not, the bands will be indexed from 1 to the number of bands)
+        Examples
+        --------
+        - Create a dataset from array with 2 bands and 3*3 array each.
+            >>> import numpy as np
+            >>> arr = np.random.rand(2, 3, 3)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset.read_array(band=0)) # doctest: +SKIP
+            [[0.88625832 0.81804328 0.99372706]
+             [0.85333054 0.35448201 0.78079262]
+             [0.43887136 0.68166208 0.53170966]]
+            >>> print(dataset.read_array(band=1)) # doctest: +SKIP
+            [[0.07051872 0.67650833 0.17625027]
+             [0.41258071 0.38327938 0.18783139]
+             [0.83741314 0.70446373 0.64913575]]
+
+        - Convert the dataset to dataframe by calling the `to_feature_collection` method.
+            >>> df = dataset.to_feature_collection()
+            >>> print(df) # doctest: +SKIP
+                 Band_1    Band_2
+            0  0.886258  0.070519
+            1  0.818043  0.676508
+            2  0.993727  0.176250
+            3  0.853331  0.412581
+            4  0.354482  0.383279
+            5  0.780793  0.187831
+            6  0.438871  0.837413
+            7  0.681662  0.704464
+            8  0.531710  0.649136
+
+        - Convert the dataset into geodataframe, i.e the same dataframe as the previously but with either a polygon
+        or a point geometry that represents each cell.
+        - to specify the geometry type use the parameter `add_geometry`
+            >>> gdf = dataset.to_feature_collection(add_geometry="point")
+            >>> print(gdf) # doctest: +SKIP
+                 Band_1    Band_2                  geometry
+            0  0.886258  0.070519  POINT (0.02500 -0.02500)
+            1  0.818043  0.676508  POINT (0.07500 -0.02500)
+            2  0.993727  0.176250  POINT (0.12500 -0.02500)
+            3  0.853331  0.412581  POINT (0.02500 -0.07500)
+            4  0.354482  0.383279  POINT (0.07500 -0.07500)
+            5  0.780793  0.187831  POINT (0.12500 -0.07500)
+            6  0.438871  0.837413  POINT (0.02500 -0.12500)
+            7  0.681662  0.704464  POINT (0.07500 -0.12500)
+            8  0.531710  0.649136  POINT (0.12500 -0.12500)
+            >>> gdf = dataset.to_feature_collection(add_geometry="polygon")
+            >>> print(gdf) # doctest: +SKIP
+                 Band_1    Band_2                                           geometry
+            0  0.886258  0.070519  POLYGON ((0.00000 0.00000, 0.05000 0.00000, 0....
+            1  0.818043  0.676508  POLYGON ((0.05000 0.00000, 0.10000 0.00000, 0....
+            2  0.993727  0.176250  POLYGON ((0.10000 0.00000, 0.15000 0.00000, 0....
+            3  0.853331  0.412581  POLYGON ((0.00000 -0.05000, 0.05000 -0.05000, ...
+            4  0.354482  0.383279  POLYGON ((0.05000 -0.05000, 0.10000 -0.05000, ...
+            5  0.780793  0.187831  POLYGON ((0.10000 -0.05000, 0.15000 -0.05000, ...
+            6  0.438871  0.837413  POLYGON ((0.00000 -0.10000, 0.05000 -0.10000, ...
+            7  0.681662  0.704464  POLYGON ((0.05000 -0.10000, 0.10000 -0.10000, ...
+            8  0.531710  0.649136  POLYGON ((0.10000 -0.10000, 0.15000 -0.10000, ...
+
+        - Use a mask to crop part of the dataset, and then convert the cropped part to a dataframe/geodataframe.
+            - create a mask that covers only the cell in the middle of the dataset.
+            >>> import geopandas as gpd
+            >>> from shapely.geometry import Polygon
+            >>> poly = gpd.GeoDataFrame(
+            ...             geometry=[Polygon([(0.05, -0.05), (0.05, -0.1), (0.1, -0.1), (0.1, -0.05)])], crs=4326
+            ... )
+            >>> df = dataset.to_feature_collection(vector_mask=poly)
+            >>> print(df) # doctest: +SKIP
+                 Band_1    Band_2
+            0  0.354482  0.383279
+
+        - If you have a big dataset and you want to convert it to dataframe in tiles (do not read the whole dataset
+        at once but in tiles), you can use the `tile`, and the `tile_size` parameters.
+        - The values definitely will be the same as the values above but the different here is how the dataset reads
+        the values in chunks.
+            >>> gdf = dataset.to_feature_collection(tile=True, tile_size=1)
+            >>> print(gdf) # doctest: +SKIP
+                 Band_1    Band_2
+            0  0.886258  0.070519
+            1  0.818043  0.676508
+            2  0.993727  0.176250
+            3  0.853331  0.412581
+            4  0.354482  0.383279
+            5  0.780793  0.187831
+            6  0.438871  0.837413
+            7  0.681662  0.704464
+            8  0.531710  0.649136
         """
         # Get raster band names. open the dataset using gdal.Open
         band_names = self.band_names
@@ -2715,7 +2799,7 @@ class Dataset(AbstractDataset):
 
         if tile:
             df_list = []  # DataFrames of each tile.
-            for arr in Dataset.get_tile(src.raster):
+            for arr in self.get_tile(tile_size):
                 # Assume multi-band
                 idx = (1, 2)
                 if arr.ndim == 2:
@@ -2751,9 +2835,10 @@ class Dataset(AbstractDataset):
             else:
                 coords = src.get_cell_polygons(mask=True)
 
-        df = df.drop(columns=["burn_value", "geometry"], errors="ignore")
+        df.drop(columns=["burn_value", "geometry"], errors="ignore", inplace=True)
         if add_geometry:
-            df = gpd.GeoDataFrame(df, geometry=coords["geometry"])
+            df = gpd.GeoDataFrame(df.loc[:], geometry=coords["geometry"].to_list())
+            df.set_crs(coords.crs.to_epsg())
 
         return df
 
