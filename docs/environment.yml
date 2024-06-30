@@ -1,7 +1,6 @@
 channels:
   - conda-forge
 dependencies:
-  - geopandas>=0.14.1
   - numpydoc==1.1.0
   - typing-extensions==3.10.*
   - pip:
