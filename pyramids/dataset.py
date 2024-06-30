@@ -4472,19 +4472,57 @@ class Dataset(AbstractDataset):
         self,
         band: Union[int, List[int]] = None,
     ) -> GeoDataFrame:
-        """to_polygon.
+        """Cluster the connected equal cells into polygons.
 
-            - to_polygon creates vector polygons for all connected regions of pixels in the raster sharing a common
+            - Creates vector polygons for all connected regions of pixels in the raster sharing a common
             pixel value (group neighboring cells with the same value into one polygon).
 
         Parameters
         ----------
         band: [int]
-            raster band index 0, 1, 2, 3,…
+            band index 0, 1, 2, 3,…
 
         Returns
         -------
         GeoDataFrame
+
+        Examples
+        --------
+        - First, we will create a 10*10 dataset full of random integer between 1, and 5.
+            >>> import numpy as np
+            >>> np.random.seed(200)
+            >>> arr = np.random.randint(1, 5, size=(10, 10))
+            >>> print(arr)  # doctest: +SKIP
+            [[3 2 1 1 3 4 1 4 2 3]
+             [4 2 2 4 3 3 1 2 4 4]
+             [4 2 4 2 3 4 2 1 4 3]
+             [3 2 1 4 3 3 4 1 1 4]
+             [1 2 4 2 2 1 3 2 3 1]
+             [1 4 4 4 1 1 4 2 1 1]
+             [1 3 2 3 3 4 1 3 1 3]
+             [4 1 3 3 3 4 1 4 1 1]
+             [2 1 3 3 4 2 2 1 3 4]
+             [2 3 2 2 4 2 1 3 2 2]]
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's cluster the connected equal cells into polygons.
+            >>> gdf = dataset.cluster2()
+            >>> print(gdf)  # doctest: +SKIP
+                Band_1                                           geometry
+            0        3  POLYGON ((0 0, 0 -0.05, 0.05 -0.05, 0.05 0, 0 0))
+            1        1  POLYGON ((0.1 0, 0.1 -0.05, 0.2 -0.05, 0.2 0, ...
+            2        4  POLYGON ((0.25 0, 0.25 -0.05, 0.3 -0.05, 0.3 0...
+            3        4  POLYGON ((0.35 0, 0.35 -0.05, 0.4 -0.05, 0.4 0...
+            4        2  POLYGON ((0.4 0, 0.4 -0.05, 0.45 -0.05, 0.45 0...
+            5        3  POLYGON ((0.45 0, 0.45 -0.05, 0.5 -0.05, 0.5 0...
+            6        1  POLYGON ((0.3 0, 0.3 -0.1, 0.35 -0.1, 0.35 0, ...
+            7        4  POLYGON ((0.15 -0.05, 0.15 -0.1, 0.2 -0.1, 0.2...
+            8        2  POLYGON ((0.35 -0.05, 0.35 -0.1, 0.4 -0.1, 0.4...
+            9        4  POLYGON ((0 -0.05, 0 -0.15, 0.05 -0.15, 0.05 -...
+            10       4  POLYGON ((0.4 -0.05, 0.4 -0.15, 0.45 -0.15, 0....
+            11       4  POLYGON ((0.1 -0.1, 0.1 -0.15, 0.15 -0.15, 0.1...
         """
         if band is None:
             band = 0
