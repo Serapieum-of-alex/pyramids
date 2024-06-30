@@ -3,12 +3,12 @@ name: pypi-deployment
 on: [push]
 
 jobs:
-  Main-Package:
+  main-package:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.11", "3.12"]
     env:
       OS: ${{ matrix.os }}
 
@@ -43,12 +43,12 @@ jobs:
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3
 
-  Optional-packages:
+  optional-packages:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ ubuntu-latest]
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.11", "3.12"]
     env:
       OS: ${{ matrix.os }}
 
