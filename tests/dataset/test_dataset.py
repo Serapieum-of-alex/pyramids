@@ -1677,7 +1677,7 @@ class TestWriteArray:
         np.testing.assert_array_equal(arr, retrieved_arr)
 
     def test_multi_band(self):
-        # %% Multi Band
+        # Multi Band
         path = "tests/data/geotiff/empty-to-fill-multi-band.tif"
         dataset = Dataset.read_file(path).copy()
         arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])

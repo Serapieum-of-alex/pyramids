@@ -4366,25 +4366,75 @@ class Dataset(AbstractDataset):
     ) -> Tuple[np.ndarray, int, list, list]:
         """Cluster.
 
-            - group all the connected values between two numbers in a raster in clusters.
+            - group all the connected values between two bounds.
 
         Parameters
         ----------
-        lower_bound : [numeric]
+        lower_bound: [numeric]
             lower bound of the cluster.
-        upper_bound : [numeric]
+        upper_bound: [numeric]
             upper bound of the cluster.
 
         Returns
         -------
-        cluster : [array]
+        cluster: [array]
             array contains integer numbers representing the number of the cluster.
-        count : [integer]
+        count: [integer]
             number of the clusters in the array.
-        position : [list]
+        position: [list]
             list contains two indices [x,y] for the position of each value.
-        values : [numeric]
+        values: [numeric]
             the values stored in each cell in the cluster.
+
+        Examples
+        --------
+        - First, we will create a dataset with 10 rows and 10 columns.
+            >>> import numpy as np
+            >>> np.random.seed(10)
+            >>> arr = np.random.randint(1, 5, size=(5, 5))
+            >>> print(arr) # doctest: +SKIP
+            [[2 3 3 2 3]
+             [3 4 1 1 1]
+             [1 3 3 2 2]
+             [4 1 1 3 2]
+             [2 4 2 3 2]]
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> dataset.plot(
+            ...     color_scale=4, bounds=[1, 1.9, 4.1, 5], display_cell_value=True, num_size=12,
+            ...     background_color_threshold=5
+            ... )  # doctest: +SKIP
+
+            .. image:: ../docs/source/_images/dataset/cluster.png
+                  :alt: footprint
+                  :align: center
+
+        - Now lets cluster the values in the dataset that are between 2, and 4.
+            >>> lower_value = 2
+            >>> upper_value = 4
+            >>> cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
+
+        - The first returned output is a binary array with 1 indicating that the cell value is inside the cluster,
+        and 0 is outside.
+            >>> print(cluster_array)  # doctest: +SKIP
+            [[1. 1. 1. 1. 1.]
+             [1. 1. 0. 0. 0.]
+             [0. 1. 1. 1. 1.]
+             [1. 0. 0. 1. 1.]
+             [1. 1. 1. 1. 1.]]
+
+        - The second returned value is the number of connected clusters.
+            >>> print(count) # doctest: +SKIP
+            2
+
+        - The third returned value is the indices of the cells that belongs to the cluster.
+            >>> print(position) # doctest: +SKIP
+            [[1, 0], [2, 1], [2, 2], [3, 3], [4, 3], [4, 4], [3, 4], [2, 4], [2, 3], [4, 2], [4, 1], [3, 0], [4, 0], [1, 1], [0, 2], [0, 3], [0, 4], [0, 1], [0, 0]]
+
+        - The fourth returned value is a list of the values that are in the cluster (extracted from these cells).
+            >>> print(values) # doctest: +SKIP
+            [3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 4, 4, 2, 4, 3, 2, 3, 3, 2]
         """
         data = self.read_array()
         position = []
