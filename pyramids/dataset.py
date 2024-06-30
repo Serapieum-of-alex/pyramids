@@ -1421,7 +1421,7 @@ class Dataset(AbstractDataset):
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using PowerNorm scale.
-            >>> dataset.plot(band=0, color_scale=4)
+            >>> dataset.plot(band=0, color_scale=4, bounds=[0, 0.2, 0.4, 0.6, 0.8, 1])
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using BoundaryNorm scale.
@@ -4063,7 +4063,7 @@ class Dataset(AbstractDataset):
 
             arr[~np.isnan(arr)] = 2
         else:
-            # check if the whole raster is full of nodatavalue
+            # check if the whole raster is full of no_data_value
             if (np.isclose(arr, no_data_val, rtol=0.00001)).all():
                 logger.warning("the raster is full of no_data_value")
                 return None
@@ -4082,7 +4082,7 @@ class Dataset(AbstractDataset):
     def normalize(array: np.ndarray) -> np.ndarray:
         """Normalize.
 
-        Normalizes numpy arrays into scale 0.0 - 1.0
+        Normalizes numpy arrays into scale 0.0-1.0
 
         Parameters
         ----------
@@ -4414,7 +4414,7 @@ class Dataset(AbstractDataset):
                   :alt: footprint
                   :align: center
 
-        - Now lets cluster the values in the dataset that are between 2, and 4.
+        - Now let's cluster the values in the dataset that are between 2, and 4.
             >>> lower_value = 2
             >>> upper_value = 4
             >>> cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
@@ -4464,7 +4464,7 @@ class Dataset(AbstractDataset):
                         position.append([i, j])
                         values.append(data[i, j])
                         cluster[i, j] = count
-                    count = count + 1
+                    count += 1
 
         return cluster, count, position, values
 
