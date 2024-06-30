@@ -835,7 +835,7 @@ class Dataset(AbstractDataset):
         )
         return df
 
-    def copy(self):
+    def copy(self) -> "Dataset":
         """Deep copy."""
         src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
         return Dataset(src)
@@ -1607,7 +1607,7 @@ class Dataset(AbstractDataset):
                     Band names: ['Band_1']
                     Mask: -9999.0
                     Data type: float32
-                    File: test.tif
+                    File: create-new-dataset.tif
         <BLANKLINE>
         """
         # Create the driver.
@@ -4144,6 +4144,53 @@ class Dataset(AbstractDataset):
         ------
         np.ndarray
             Dataset array in form [band][y][x].
+
+        Examples
+        --------
+        - First, we will create a dataset with 3 rows and 5 columns.
+            >>> import numpy as np
+            >>> arr = np.random.rand(3, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 3 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+            >>> print(dataset.read_array())   # doctest: +SKIP
+            [[0.55332314 0.48364841 0.67794589 0.6901816  0.70516817]
+             [0.82518332 0.75657103 0.45693945 0.44331782 0.74677865]
+             [0.22231314 0.96283065 0.15201337 0.03522544 0.44616888]]
+
+        - the `get_tile` method splits the domain into tiles of the specified `size` using the `_window` function
+            >>> tile_dimensions = list(dataset._window(2))
+            >>> print(tile_dimensions)
+            [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
+
+        - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
+        - The `get_tile' method returns a generator object that can be used to iterate over the smaller chunks of the data
+        >>> tiles_generator = dataset.get_tile(size=2)
+        >>> print(tiles_generator)  # doctest: +SKIP
+        <generator object Dataset.get_tile at 0x00000145AA39E680>
+        >>> print(list(tiles_generator))  # doctest: +SKIP
+        [
+            array([[0.55332314, 0.48364841],
+                   [0.82518332, 0.75657103]]),
+            array([[0.67794589, 0.6901816 ],
+                   [0.45693945, 0.44331782]]),
+            array([[0.70516817], [0.74677865]]),
+            array([[0.22231314, 0.96283065]]),
+            array([[0.15201337, 0.03522544]]),
+            array([[0.44616888]])
+        ]
         """
         for xoff, yoff, xsize, ysize in self._window(size=size):
             # read the array at a certain indices
