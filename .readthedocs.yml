@@ -16,11 +16,5 @@ build:
 conda:
   environment: docs/environment.yml
 
-# # to install the package itself.
-# python:
-#   install:
-#     - method: pip
-#       path: .
-
 # Optionally build your docs in additional formats such as PDF and ePub
 formats: all
