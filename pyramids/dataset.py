@@ -4605,12 +4605,12 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        resampling_method : str, optional
+        resampling_method: str, optional
             The resampling method used to create the overviews, by default "nearest"
             possible values are:
                 "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
                 "BILINEAR".
-        overview_levels : list, optional
+        overview_levels: list, optional
             The overview levels, overview_levels are restricted to the typical power-of-two reduction factors.
             Default [2, 4, 8, 16, 32]
 
@@ -4620,13 +4620,61 @@ class Dataset(AbstractDataset):
             The overview (also known as pyramids) could be internal or external depending on the state you read
             the dataset with.
             - External (.ovr file):
-                If the dataset is read with a`read_only=True` then the overviews' file will be created as an
-                in the same directory of the dataset, with the same name of the dataset and .ovr extension.
+                If the dataset is read with a`read_only=True` then the overviews' file will be created as anexternal
+                file in the same directory of the dataset, with the same name of the dataset and .ovr extension.
             - Internal:
                 If the dataset is read with a`read_only=False` then the overviews will be created internally in the
                 dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
         overview_count: [list]
             a list property attribute of the overviews for each band.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's create overviews using the `create_overviews` method with the default parameters.
+
+            >>> dataset.create_overviews()
+            >>> print(dataset.overview_count)  # doctest: +SKIP
+            [4, 4, 4, 4]
+
+        - For each band there are 4 overview levels, that you can use to plot the bands.
+
+            >>> dataset.plot(band=0, overview=True, overview_index=0) # doctest: +SKIP
+
+        .. image:: ../docs/source/_images/dataset/overviews-level-0.png
+          :alt: footprint
+          :align: center
+
+        - As you see, however, the dataset originally is 10*10 but the first overview level (2) displays half of the
+        cells by aggregating all the cells using the nearest neighbor. and the second level displays only 3 cells in
+        each
+
+            >>> dataset.plot(band=0, overview=True, overview_index=1)   # doctest: +SKIP
+
+        .. image:: ../docs/source/_images/dataset/overviews-level-1.png
+          :alt: footprint
+          :align: center
+
+            >>> dataset.plot(band=0, overview=True, overview_index=2)       # doctest: +SKIP
+
+        .. image:: ../docs/source/_images/dataset/overviews-level-2.png
+          :alt: footprint
+          :align: center
+
+        See Also
+        --------
+        Dataset.recreate_overviews : recreate the dataset overviews if they exist
+        Dataset.get_overview : get an overview of a band
+        Dataset.overview_count : number of overviews
+        Dataset.read_overview_array : read overview values
+        Dataset.plot : plot a band
         """
         if overview_levels is None:
             overview_levels = OVERVIEW_LEVELS
@@ -4669,6 +4717,14 @@ class Dataset(AbstractDataset):
         ReadOnlyError
             If the overviews are internal and the Dataset is opened with a read only. Please read the dataset using
             read_only=False
+
+        See Also
+        --------
+        Dataset.create_overviews : recreate the dataset overviews if they exist
+        Dataset.get_overview : get an overview of a band
+        Dataset.overview_count : number of overviews
+        Dataset.read_overview_array : read overview values
+        Dataset.plot : plot a band
         """
         if resampling_method.upper() not in RESAMPLING_METHODS:
             raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
@@ -4704,6 +4760,65 @@ class Dataset(AbstractDataset):
         -------
         gdal.Band
             gdal band object
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1, 10, size=(4, 10, 10))
+            >>> print(arr[0, :, :]) # doctest: +SKIP
+            array([[6, 3, 3, 7, 4, 8, 4, 3, 8, 7],
+                   [6, 7, 3, 7, 8, 6, 3, 4, 3, 8],
+                   [5, 8, 9, 6, 7, 7, 5, 4, 6, 4],
+                   [2, 9, 9, 5, 8, 4, 9, 6, 8, 7],
+                   [5, 8, 3, 9, 1, 5, 7, 9, 5, 9],
+                   [8, 3, 7, 2, 2, 5, 2, 8, 7, 7],
+                   [1, 1, 4, 2, 2, 2, 6, 5, 9, 2],
+                   [6, 3, 2, 9, 8, 8, 1, 9, 7, 7],
+                   [4, 1, 3, 1, 6, 7, 5, 4, 8, 7],
+                   [9, 7, 2, 1, 4, 6, 1, 2, 3, 3]], dtype=int32)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's create overviews using the `create_overviews` method with the default parameters.
+
+            >>> dataset.create_overviews()
+            >>> print(dataset.overview_count)  # doctest: +SKIP
+            [4, 4, 4, 4]
+
+        - The overview is a raster band
+
+            >>> ovr = dataset.get_overview(band=0, overview_index=0)
+            >>> print(ovr)  # doctest: +SKIP
+            <osgeo.gdal.Band; proxy of <Swig Object of type 'GDALRasterBandShadow *' at 0x0000017E2B5AF1B0> >
+            >>> ovr.ReadAsArray()  # doctest: +SKIP
+            array([[6, 3, 4, 4, 8],
+                   [5, 9, 7, 5, 6],
+                   [5, 3, 1, 7, 5],
+                   [1, 4, 2, 6, 9],
+                   [4, 3, 6, 5, 8]], dtype=int32)
+            >>> ovr = dataset.get_overview(band=0, overview_index=1)
+            >>> ovr.ReadAsArray()  # doctest: +SKIP
+            array([[6, 7, 3],
+                   [2, 5, 6],
+                   [6, 9, 9]], dtype=int32)
+            >>> ovr = dataset.get_overview(band=0, overview_index=2)
+            >>> ovr.ReadAsArray()  # doctest: +SKIP
+            array([[6, 8],
+                   [8, 5]], dtype=int32)
+            >>> ovr = dataset.get_overview(band=0, overview_index=3)
+            >>> ovr.ReadAsArray()  # doctest: +SKIP
+            array([[6]], dtype=int32)
+
+        See Also
+        --------
+        Dataset.create_overviews : create the dataset overviews if they exist
+        Dataset.create_overviews : recreate the dataset overviews if they exist
+        Dataset.overview_count : number of overviews
+        Dataset.read_overview_array : read overview values
+        Dataset.plot : plot a band
         """
         band = self._iloc(band)
         n_views = band.GetOverviewCount()
@@ -4722,7 +4837,7 @@ class Dataset(AbstractDataset):
     def read_overview_array(
         self, band: int = None, overview_index: int = 0
     ) -> np.ndarray:
-        """Read Array.
+        """Read overview values.
 
             - read the values stored in a given band.
 
@@ -4737,6 +4852,63 @@ class Dataset(AbstractDataset):
         -------
         array : [array]
             array with all the values in the raster.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1, 10, size=(4, 10, 10))
+            >>> print(arr[0, :, :])     # doctest: +SKIP
+            array([[6, 3, 3, 7, 4, 8, 4, 3, 8, 7],
+                   [6, 7, 3, 7, 8, 6, 3, 4, 3, 8],
+                   [5, 8, 9, 6, 7, 7, 5, 4, 6, 4],
+                   [2, 9, 9, 5, 8, 4, 9, 6, 8, 7],
+                   [5, 8, 3, 9, 1, 5, 7, 9, 5, 9],
+                   [8, 3, 7, 2, 2, 5, 2, 8, 7, 7],
+                   [1, 1, 4, 2, 2, 2, 6, 5, 9, 2],
+                   [6, 3, 2, 9, 8, 8, 1, 9, 7, 7],
+                   [4, 1, 3, 1, 6, 7, 5, 4, 8, 7],
+                   [9, 7, 2, 1, 4, 6, 1, 2, 3, 3]], dtype=int32)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's create overviews using the `create_overviews` method with the default parameters.
+
+            >>> dataset.create_overviews()
+            >>> print(dataset.overview_count)  # doctest: +SKIP
+            [4, 4, 4, 4]
+
+        - The overview is a raster band
+
+            >>> arr = dataset.read_overview_array(band=0, overview_index=0)
+            >>> print(arr)  # doctest: +SKIP
+            array([[6, 3, 4, 4, 8],
+                   [5, 9, 7, 5, 6],
+                   [5, 3, 1, 7, 5],
+                   [1, 4, 2, 6, 9],
+                   [4, 3, 6, 5, 8]], dtype=int32)
+            >>> arr = dataset.read_overview_array(band=0, overview_index=1)
+            >>> print(arr)  # doctest: +SKIP
+            array([[6, 7, 3],
+                   [2, 5, 6],
+                   [6, 9, 9]], dtype=int32)
+            >>> arr = dataset.read_overview_array(band=0, overview_index=2)
+            >>> print(arr)  # doctest: +SKIP
+            array([[6, 8],
+                   [8, 5]], dtype=int32)
+            >>> arr = dataset.read_overview_array(band=0, overview_index=3)
+            >>> print(arr)  # doctest: +SKIP
+            array([[6]], dtype=int32)
+
+        See Also
+        --------
+        Dataset.create_overviews : create the dataset overviews.
+        Dataset.create_overviews : recreate the dataset overviews if they exist
+        Dataset.get_overview : get an overview of a band
+        Dataset.overview_count : number of overviews
+        Dataset.plot : plot a band
         """
         if band is None and self.band_count > 1:
             if any(elem == 0 for elem in self.overview_count):
