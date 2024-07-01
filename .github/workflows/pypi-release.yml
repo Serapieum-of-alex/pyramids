@@ -4,11 +4,12 @@
 name: pypi-release
 
 on:
+    workflow_dispatch:
     release:
         types: [created]
 
 jobs:
-    deploy:
+    publish:
         runs-on: ubuntu-latest
 
         steps:

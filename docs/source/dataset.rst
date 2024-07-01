@@ -540,9 +540,9 @@ Blocksize and ReadAsArray
 
 When you know the block size, you can more effectively plan and execute data processing tasks:
 - Data Reading/Writing: When reading or writing data, doing so in multiples of the block size can reduce the number of
-    disk accesses required, as each access operation will align with the blocks on disk.
+disk accesses required, as each access operation will align with the blocks on disk.
 - Optimizations: Some formats are optimized for specific block sizes, or for being accessed in certain ways. For
-    example, tiled TIFFs might perform better with square block sizes.
+example, tiled TIFFs might perform better with square block sizes.
 
 .. code:: py
 
@@ -889,7 +889,7 @@ Crop raster using array
     dst_cropped = Raster.cropAlligned(dst, arr, mask_noval=nodataval)
     Map.plot(dst_cropped, title="Cropped array", color_scale=1, ticks_spacing=0.01)
 
-.. image:: /_images/crop_raster_using_array.png
+.. image:: /_images/dataset/crop_raster_using_array.png
    :width: 500pt
 
 crop

@@ -1,4 +1,5 @@
 """Test the Dataset class."""
+
 import os
 from types import GeneratorType
 from typing import List, Tuple
@@ -22,6 +23,26 @@ class TestCreateRasterObject:
         src_epsg: int,
         src_no_data_value: float,
     ):
+        # Create dataset using top_left_corner and cell size
+        top_left_corner = (src_geotransform[0], src_geotransform[3])
+        cell_size = src_geotransform[1]
+        src = Dataset.create_from_array(
+            arr=src_arr,
+            top_left_corner=top_left_corner,
+            cell_size=cell_size,
+            # geo=src_geotransform,
+            epsg=src_epsg,
+            no_data_value=src_no_data_value,
+        )
+        assert isinstance(src.raster, gdal.Dataset)
+        assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
+        assert np.isclose(
+            src.raster.GetRasterBand(1).GetNoDataValue(),
+            src_no_data_value,
+            rtol=0.00001,
+        )
+        assert src.raster.GetGeoTransform() == src_geotransform
+        # create dataset with the geotransform
         src = Dataset.create_from_array(
             arr=src_arr,
             geo=src_geotransform,
@@ -60,7 +81,7 @@ class TestCreateRasterObject:
         assert dataset_n.columns == columns
         assert dataset_n.epsg == ds_epsg
         assert dataset_n.cell_size == cell_size
-        assert dataset_n.pivot_point == top_left_coords
+        assert dataset_n.top_left_corner == top_left_coords
         assert dataset_n.band_count == bands_count
         assert dataset_n.dtype == ["int32"]
         arr = dataset_n.read_array()
@@ -115,9 +136,9 @@ class TestCreateRasterObject:
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
             src_obj = Dataset(src)
-            Dataset.dataset_like(src_obj, arr2, driver="GTiff", path=raster_like_path)
+            dst_obj = Dataset.dataset_like(src_obj, arr2, path=raster_like_path)
             assert os.path.exists(raster_like_path)
-            dst_obj = Dataset.read_file(raster_like_path)
+
             arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
             assert np.isclose(
@@ -131,11 +152,12 @@ class TestCreateRasterObject:
             src_arr: np.ndarray,
             src_no_data_value: float,
         ):
+            # test single-band
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
 
             src_obj = Dataset(src)
-            dst_obj = Dataset.dataset_like(src_obj, arr2, driver="MEM")
+            dst_obj = Dataset.dataset_like(src_obj, arr2)
 
             arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
@@ -143,6 +165,11 @@ class TestCreateRasterObject:
                 src.GetRasterBand(1).GetNoDataValue(), src_no_data_value, rtol=0.00001
             )
             assert src_obj.geotransform == dst_obj.geotransform
+
+            # test multi-band
+            arr = np.array([arr2, arr2])
+            dst_obj = Dataset.dataset_like(src_obj, arr)
+            assert dst_obj.shape == arr.shape
 
 
 class TestAttributesTable:
@@ -185,7 +212,7 @@ class TestAttributesTable:
 
 
 class TestAddBand:
-    def test_add_band(self, src: gdal.Dataset):
+    def test_add_band_return_copy(self, src: gdal.Dataset):
         dataset = Dataset(src)
         arr = dataset.read_array()
         # test add different dimension array
@@ -194,6 +221,24 @@ class TestAddBand:
         band = new_dataset._iloc(1)
         assert band.GetUnitType() == "meter"
         np.testing.assert_array_equal(band.ReadAsArray(), arr)
+
+    def test_add_band_inplace(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        arr = dataset.read_array()
+        with pytest.raises(ValueError):
+            dataset.add_band(arr, unit="meter", inplace=True)
+
+    def test_add_band_1d_array(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        arr = np.random.rand(13)
+        with pytest.raises(ValueError):
+            dataset.add_band(arr)
+
+    def test_add_band_different_dimension(self, src: gdal.Dataset):
+        dataset = Dataset(src)
+        arr = np.random.rand(2, 2)
+        with pytest.raises(ValueError):
+            dataset.add_band(arr)
 
     def test_add_band_with_attribute_table(self, src: gdal.Dataset):
         dataset = Dataset(src)
@@ -221,9 +266,9 @@ class TestAddBand:
 
 
 class TestProperties:
-    def test_pivot_point(self, src: gdal.Dataset):
+    def test_top_left_corner(self, src: gdal.Dataset):
         dataset = Dataset(src)
-        xy = dataset.pivot_point
+        xy = dataset.top_left_corner
         assert xy[0] == 432968.1206170588
         assert xy[1] == 520007.787999178
 
@@ -362,6 +407,13 @@ class TestProperties:
         assert src.meta_data == {"AREA_OR_POINT": "Area"}
         src.meta_data = {"key": "value"}
         assert src.meta_data == {"AREA_OR_POINT": "Area", "key": "value"}
+
+    def test_epsg(self, src: gdal.Dataset):
+        src = Dataset(src)
+        assert src.epsg == 32618
+        dst = src.copy()
+        dst.epsg = 4326
+        assert dst.epsg == 4326
 
 
 class TestSpatialProperties:
@@ -507,24 +559,18 @@ class TestNoDataValue:
 
 
 class TestSetCRS:
-    def test_geotiff_using_epsg(
-        self,
-        src_reset_crs: gdal.Dataset,
-    ):
+    def test_geotiff_using_epsg(self, src: gdal.Dataset):
         proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
         proj_epsg = 4326
-        dataset = Dataset(src_reset_crs)
+        dataset = Dataset(src).copy()
         dataset.set_crs(epsg=proj_epsg)
         assert dataset.epsg == proj_epsg
         assert dataset.raster.GetProjection() == proj
 
-    def test_geotiff_using_wkt(
-        self,
-        src_reset_crs: gdal.Dataset,
-    ):
+    def test_geotiff_using_wkt(self, src: gdal.Dataset):
         proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
         proj_epsg = 4326
-        dataset = Dataset(src_reset_crs)
+        dataset = Dataset(src).copy()
         dataset.set_crs(crs=proj)
         assert dataset.epsg == proj_epsg
         assert dataset.raster.GetProjection() == proj
@@ -637,7 +683,9 @@ class TestSave:
             os.remove(save_raster_path)
         src = Dataset(src)
         src.to_file(save_raster_path)
+        assert src.file_name == save_raster_path
         assert os.path.exists(save_raster_path)
+        src = None
         os.remove(save_raster_path)
 
     def test_save_ascii(
@@ -843,11 +891,11 @@ class TestAlign:
         assert dataset_aligned.rows == resampled_multi_band_dims[0]
         assert dataset_aligned.columns == resampled_multi_band_dims[1]
         # assert dataset_aligned.no_data_value == dataset.no_data_value
-        assert dataset.pivot_point == dataset_aligned.pivot_point
+        assert dataset.top_left_corner == dataset_aligned.top_left_corner
 
 
 class TestCrop:
-    def test_crop_dataset_with_another_dataset_single_band(
+    def test_crop_single_band_dataset_with_single_band_mask(
         self,
         src: gdal.Dataset,
         aligned_raster,
@@ -863,7 +911,7 @@ class TestCrop:
         dst_arr_cropped[~np.isclose(dst_arr_cropped, src_no_data_value, rtol=0.001)] = 5
         assert (dst_arr_cropped == src_arr).all()
 
-    def test_crop_dataset_with_another_dataset_multi_band(
+    def test_crop_multi_band_dataset_with_single_band_mask(
         self,
         sentinel_raster: gdal.Dataset,
         sentinel_crop,
@@ -879,6 +927,20 @@ class TestCrop:
             ~np.isclose(dst_arr_cropped, cropped.no_data_value[0], rtol=0.001)
         ]
         assert np.array_equal(sentinel_crop_arr_without_no_data_value, arr)
+
+    def test_crop_multi_band_dataset_with_multi_band_mask(self):
+        # the dataset has 4 bands
+        arr = np.random.rand(4, 6, 5)
+        geotransform = (0, 0.05, 0, 0, 0, -0.05)
+        dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+        # the mask has 3 bands
+        arr_mask = np.random.rand(3, 2, 2)
+        geotransform = (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+        mask = Dataset.create_from_array(arr_mask, geo=geotransform, epsg=4326)
+        cropped_dataset = dataset.crop(mask=mask)
+
+        assert cropped_dataset.shape == (4, 2, 2)
+        np.testing.assert_array_equal(arr[:, 2:4, 2:4], cropped_dataset.read_array())
 
     def test_crop_dataset_with_array(
         self,
@@ -910,16 +972,6 @@ class TestCrop:
 
 
 class TestCropWithPolygon:
-    def test_by_rasterizing(
-        self,
-        rhine_raster: gdal.Dataset,
-        polygon_mask: GeoDataFrame,
-    ):
-        src_obj = Dataset(rhine_raster)
-        cropped_raster = src_obj._crop_with_polygon_by_rasterizing(polygon_mask)
-        assert isinstance(cropped_raster.raster, gdal.Dataset)
-        assert cropped_raster.geotransform == src_obj.geotransform
-        assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
 
     def test_inplace(
         self,
@@ -936,14 +988,14 @@ class TestCropWithPolygon:
         new_cells = dataset.count_domain_cells()
         assert not cells == new_cells
 
-    def test_by_warp_touch_true(
+    def test_by_warp_touch_true_single_band(
         self,
         rhine_raster: gdal.Dataset,
         polygon_mask: GeoDataFrame,
         crop_by_wrap_touch_true_result: gdal.Dataset,
     ):
         """
-        when the touch option is True in the function the cells that touches the mask polygon but does not lie
+        when the touch option is True in the function, the cells that touches the mask polygon but does not lie
         entirely inside the mask will be included
 
         Check the number of the cropped cells and the no_data_value
@@ -958,6 +1010,19 @@ class TestCropWithPolygon:
         )
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
+
+    def test_by_warp_touch_true_multi_band(self):
+        """Test that the function works with multi-band raster."""
+        arr = np.random.rand(4, 6, 5)
+        geotransform = (0, 0.05, 0, 0, 0, -0.05)
+        dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+        mask = gpd.GeoDataFrame(
+            geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])],
+            crs=4326,
+        )
+        cropped_dataset = dataset.crop(mask=mask, touch=True)
+        arr = cropped_dataset.read_array()
+        assert arr.shape == (4, 2, 2)
 
     def test_by_warp_touch_false(
         self,
@@ -1071,6 +1136,20 @@ class TestCluster2:
 
 class TestToFeatureCollection:
     """Test converting dataset to featurecollection."""
+
+    def test_tiling(self) -> None:
+        """Test converting dataset to featurecollection using tiling."""
+        arr = np.random.rand(2, 2)
+        top_left_corner = (0, 0)
+        cell_size = 0.05
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+        )
+        df = dataset.to_feature_collection(tile=True, tile_size=1, add_geometry="point")
+        # compare extracted data with original data from arr
+        np.testing.assert_array_equal(
+            df.loc[:, "Band_1"].values, arr.reshape(df.shape[0])
+        )
 
     class TestWithoutMask:
         def test_1band(
@@ -1388,7 +1467,7 @@ class TestFootPrint:
         self, modis_surf_temp: gdal.Dataset, replace_values: List
     ):
         dataset = Dataset(modis_surf_temp)
-        # modis nodatavalue is gdal object is different than the array
+        # modis no_data_value in the gdal object is different than the array
         extent = dataset.footprint(exclude_values=replace_values)
         # extent column should have one class only
         assert len(set(extent[dataset.band_names[0]])) == 1
@@ -1407,15 +1486,38 @@ class TestFootPrint:
         assert list(set(extent[dataset.band_names[0]]))[0] == 2
 
 
-def test_cluster(rhine_dem: gdal.Dataset, clusters: np.ndarray):
-    dataset = Dataset(rhine_dem)
-    lower_value = 0.1
-    upper_value = 20
-    cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
-    assert count == 155
-    assert np.array_equal(cluster_array, clusters)
-    assert len(position) == 2364
-    assert len(values) == 2364
+class TestClustering:
+
+    def test_generated_data(self):
+        np.random.seed(42)
+        arr = np.random.randint(1, 5, size=(3, 3))
+        top_left_corner = (0, 0)
+        cell_size = 0.05
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+        )
+
+        lower_value = 2
+        upper_value = 4
+        cluster_array, count, position, values = dataset.cluster(
+            lower_value, upper_value
+        )
+        assert isinstance(cluster_array, np.ndarray)
+        assert isinstance(count, int)
+        assert isinstance(position, list)
+        assert isinstance(values, list)
+
+    def test_cluster(self, rhine_dem: gdal.Dataset, clusters: np.ndarray):
+        dataset = Dataset(rhine_dem)
+        lower_value = 0.1
+        upper_value = 20
+        cluster_array, count, position, values = dataset.cluster(
+            lower_value, upper_value
+        )
+        assert count == 155
+        assert np.array_equal(cluster_array, clusters)
+        assert len(position) == 2364
+        assert len(values) == 2364
 
 
 class TestNCtoGeoTIFF:
@@ -1424,14 +1526,14 @@ class TestNCtoGeoTIFF:
         new_dataset = dataset.convert_longitude()
         lon = new_dataset.lon
         assert lon.max() < 1805
-        assert new_dataset.pivot_point == (-180, 90)
+        assert new_dataset.top_left_corner == (-180, 90)
 
     def test_convert_0_360_to_180_180_longitude_inplace(self, noah: gdal.Dataset):
         dataset = Dataset(noah)
         dataset.convert_longitude(inplace=True)
         lon = dataset.lon
         assert lon.max() < 180
-        assert dataset.pivot_point == (-180, 90)
+        assert dataset.top_left_corner == (-180, 90)
 
 
 class TestTiling:
@@ -1442,13 +1544,13 @@ class TestTiling:
         tiles_details_l = list(tiles_details)
         assert tiles_details_l == [
             (0, 0, 6, 6),
-            (0, 6, 6, 6),
-            (0, 12, 6, 1),
             (6, 0, 6, 6),
-            (6, 6, 6, 6),
-            (6, 12, 6, 1),
             (12, 0, 2, 6),
+            (0, 6, 6, 6),
+            (6, 6, 6, 6),
             (12, 6, 2, 6),
+            (0, 12, 6, 1),
+            (6, 12, 6, 1),
             (12, 12, 2, 1),
         ]
 
@@ -1570,17 +1672,31 @@ class TestWriteArray:
         arr = np.array([[1, 2], [3, 4]])
         xoff = 5  # col
         yoff = 3  # row
-        dataset.write_array(arr, pivot_cell_indexes=[yoff, xoff])
+        dataset.write_array(arr, top_left_corner=[yoff, xoff])
         retrieved_arr = dataset._raster.ReadAsArray(xoff, yoff, 2, 2)
         np.testing.assert_array_equal(arr, retrieved_arr)
 
     def test_multi_band(self):
-        # %% Multi Band
+        # Multi Band
         path = "tests/data/geotiff/empty-to-fill-multi-band.tif"
         dataset = Dataset.read_file(path).copy()
         arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
         xoff = 5
         yoff = 3
-        dataset.write_array(arr, pivot_cell_indexes=[yoff, xoff])
+        dataset.write_array(arr, top_left_corner=[yoff, xoff])
         retrieved_arr = dataset._raster.ReadAsArray(xoff, yoff, 2, 2)
         np.testing.assert_array_equal(arr, retrieved_arr)
+
+
+def test_nearest_neigbors():
+    # TODO: create better test
+    arr = np.random.rand(5, 5)
+    top_left_corner = (0, 0)
+    cell_size = 0.05
+    dataset = Dataset.create_from_array(
+        arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+    )
+    req_rows = [1, 3]
+    req_cols = [2, 4]
+    no_data_value = dataset.no_data_value[0]
+    new_array = Dataset._nearest_neighbour(arr, no_data_value, req_rows, req_cols)

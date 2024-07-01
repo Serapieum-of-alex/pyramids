@@ -7,6 +7,7 @@ ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
 drivers available in geopandas
 gpd.io.file._EXTENSION_TO_DRIVER
 """
+
 import json
 import os
 import shutil
@@ -106,7 +107,7 @@ class FeatureCollection:
         return bounds
 
     @property
-    def pivot_point(self) -> List[Number]:
+    def top_left_corner(self) -> List[Number]:
         """Top left corner coordinates."""
         if isinstance(self.feature, GeoDataFrame):
             bounds = self.feature.total_bounds.tolist()
@@ -184,6 +185,8 @@ class FeatureCollection:
         """
         if isinstance(self.feature, GeoDataFrame):
             dtypes = self.feature.dtypes.to_dict()
+            # convert the dtype to string as it returns a dtype object in linux instead.
+            dtypes = {key: str(value) for key, value in dtypes.items()}
         else:
             dtypes = []
             for i in range(self.layers_count):
@@ -193,7 +196,7 @@ class FeatureCollection:
                     ogr_to_numpy_dtype(layer_dfn.GetFieldDefn(j).GetType()).__name__
                     for j in range(cols)
                 ]
-            # the geometry colmn is not in the returned dictionary if the vector is DataSource
+            # the geometry column is not in the returned dictionary if the vector is DataSource
             dtypes = {col_i: type_i for col_i, type_i in zip(self.column, dtypes)}
 
         return dtypes
@@ -472,7 +475,7 @@ class FeatureCollection:
                 )
             # if the raster is given, the top left corner of the raster will be taken as the top left corner for
             # the rasterized polygon
-            xmin, ymax = dataset.pivot_point
+            xmin, ymax = dataset.top_left_corner
             no_data_value = (
                 dataset.no_data_value[0]
                 if dataset.no_data_value[0] is not None
