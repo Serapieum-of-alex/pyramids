@@ -5098,7 +5098,7 @@ class Dataset(AbstractDataset):
         max_value: float = None,
         include_out_of_range: bool = False,
         approx_ok: bool = False,
-    ) -> Tuple[Any, np.ndarray]:
+    ) -> tuple[list, list[tuple[Any, Any]]]:
         """get_histogram.
 
         Parameters
@@ -5114,7 +5114,7 @@ class Dataset(AbstractDataset):
         include_out_of_range : bool, default=False
             if ``True``, add out-of-range values into the first and last buckets
         approx_ok : bool, default=True
-            if ``True``, compute an approximate histogram by using subsampling or overviews
+            if ``True``, compute an approximate histogram by using subsampling or overviews.
 
         Returns
         -------
@@ -5141,6 +5141,57 @@ class Dataset(AbstractDataset):
             </Histograms>
           </PAMRasterBand>
         </PAMDataset>
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1, 12, size=(10, 10))
+            >>> print(arr)    # doctest: +SKIP
+            [[ 4  1  1  2  6  9  2  5  1  8]
+             [ 1 11  5  6  2  5  4  6  6  7]
+             [ 5  2 10  4  8 11  4 11 11  1]
+             [ 2  3  6  3  1  5 11 10 10  7]
+             [ 8  2 11  3  1  3  5  4 10 10]
+             [ 1  2  1  6 10  3  6  4  2  8]
+             [ 9  5  7  9  7  8  1 11  4  4]
+             [ 7  7  2  2  5  3  7  2  9  9]
+             [ 2 10  3  2  1 11  5  9  8 11]
+             [ 1  5  6 11  3  3  8  1  2  1]]
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's get the histogram of the first band using the `get_histogram` method with the default
+        parameters.
+
+            >>> hist, ranges = dataset.get_histogram(band=0)
+            >>> print(hist)  # doctest: +SKIP
+            [28, 17, 10, 15, 13, 7]
+            >>> print(ranges)   # doctest: +SKIP
+            [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
+
+        - we can also exclude values from the histogram by using the `min_value` and `max_value`
+
+            >>> hist, ranges = dataset.get_histogram(band=0, min_value=5, max_value=10)
+            >>> print(hist)  # doctest: +SKIP
+            [10, 8, 7, 7, 6, 0]
+            >>> print(ranges)   # doctest: +SKIP
+            [(1.0, 1.835), (1.835, 2.67), (2.67, 3.5), (3.5, 4.34), (4.34, 5.167), (5.167, 6.0)]
+
+        - for datasets with big dimensions, computing the histogram can take some time, approximating the coputation
+        of the histogram can same a lot of computation time.
+        - when using the parameter `approx_ok` with a `True` value the histogram will be calcilated from resampling
+        the band or from the overviews if they exist.
+
+            >>> hist, ranges = dataset.get_histogram(band=0, approx_ok=True)
+            >>> print(hist)  # doctest: +SKIP
+            [28, 17, 10, 15, 13, 7]
+            >>> print(ranges)   # doctest: +SKIP
+            [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
+
+        - As you see for small datasets the approximation of the histogram will be the same as without approximation.
         """
         band = self._iloc(band)
         min_val, max_val = band.ComputeRasterMinMax()
