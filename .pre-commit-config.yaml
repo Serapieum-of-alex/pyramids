@@ -115,8 +115,16 @@ repos:
 
   - repo: local
     hooks:
-      - id: nbval
+      - id: examples-notebook-check
         name: nbval
         entry: pytest --nbval
         language: system
         files: \.ipynb$
+
+  - repo: local
+    hooks:
+      - id: doctest
+        name: doctest
+        entry: pytest --doctest-modules #pyramids/dataset.py
+        language: system
+        files: \.py$
