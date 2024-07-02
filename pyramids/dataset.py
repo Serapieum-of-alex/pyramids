@@ -5002,14 +5002,57 @@ class Dataset(AbstractDataset):
         ----------
         df: [DataFrame]
             DataFrame with columns: band, values, color
-            print(df)
-                    band  values    color
-                0    1       1  #709959
-                1    1       2  #F2EEA2
-                2    1       3  #F2CE85
-                3    2       1  #C28C7C
-                4    2       2  #D6C19C
-                5    2       3  #D6C19C
+            i.e.
+                  band  values    color  alpha
+                0    1       1  #709959    255
+                1    1       2  #F2EEA2    255
+                2    1       3  #F2CE85    138
+                3    2       1  #C28C7C    100
+                4    2       2  #D6C19C    100
+                5    2       3  #D6C19C    100
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Set color table for band 1.
+
+            >>> color_table = pd.DataFrame({
+            ...     "band": [1, 1, 1, 2, 2, 2],
+            ...     "values": [1, 2, 3, 1, 2, 3],
+            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"]
+            ... })
+            >>> dataset.color_table = color_table
+            >>> print(dataset.color_table)
+              band values  red green blue alpha
+            0    1      0    0     0    0     0
+            1    1      1  112   153   89   255
+            2    1      2  242   238  162   255
+            3    1      3  242   206  133   255
+            4    2      0    0     0    0     0
+            5    2      1  194   140  124   255
+            6    2      2  214   193  156   255
+            7    2      3  214   193  156   255
+
+        - You can also define the `opasity` of each color by adding a value between 0 (fully transparent) and 255 (
+        fully opaque) to the `DataFrame` for each color, if the `alpha` columns is not in the given dataframe,
+        it will be assumed to be fully opaque (255).
+
+            >>> dataset.color_table.loc[dataset.color_table["band"] == 1, "alpha"] = 255>>> color_table = pd.DataFrame({
+            ...     "band": [1, 1, 1, 2, 2, 2],
+            ...     "values": [1, 2, 3, 1, 2, 3],
+            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"]
+            ...     "alpha": [255, 128 0, 255, 128 0]
+            ... })
+            >>> dataset.color_table = color_table
+            >>> print(dataset.color_table)
         """
         if not isinstance(df, DataFrame):
             raise TypeError(f"df should be a DataFrame not {type(df)}")
