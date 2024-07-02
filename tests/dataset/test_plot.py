@@ -67,6 +67,37 @@ class TestPlotDataCube:
 
 
 class TestColorTable:
+
+    def test_generated_data(self):
+        arr = np.random.randint(1, 3, size=(2, 5, 5))
+        top_left_corner = (0, 0)
+        cell_size = 0.05
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+        )
+
+        # without alpha
+        color_table = pd.DataFrame(
+            {
+                "band": [1, 1, 1, 2, 2, 2],
+                "values": [1, 2, 3, 1, 2, 3],
+                "color": [
+                    "#709959",
+                    "#F2EEA2",
+                    "#F2CE85",
+                    "#C28C7C",
+                    "#D6C19C",
+                    "#D6C19C",
+                ],
+            }
+        )
+        dataset.color_table = color_table
+        retrieved_color_table = dataset.color_table
+        assert all(
+            ["band", "values", "red", "green", "blue", "alpha"]
+            == retrieved_color_table.columns
+        )
+
     @pytest.mark.plot
     def test_get_color_table(self, src_with_color_table: Dataset):
         dataset = Dataset(src_with_color_table)

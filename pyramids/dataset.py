@@ -4990,9 +4990,9 @@ class Dataset(AbstractDataset):
     # and figure out how to take a color ramp and convert it to a color table.
     # use the SetColorInterpretation method to assign the color (R/G/B) to a band.
     @property
-    def color_table(self, band: int = None) -> DataFrame:
+    def color_table(self) -> DataFrame:
         """Color table."""
-        return self._get_color_table(band)
+        return self._get_color_table()
 
     @color_table.setter
     def color_table(self, df: DataFrame):
@@ -5047,10 +5047,14 @@ class Dataset(AbstractDataset):
 
         color = Colors(color_df["color"].tolist())
         color_rgb = color.get_rgb(normalized=False)
+        color_df = color_df.copy(deep=True)
         color_df.loc[:, ["red", "green", "blue"]] = color_rgb
 
-        for band, df_band in color_df.groupby("band"):
-            band = self.raster.GetRasterBand(band)
+        if "alpha" not in color_df.columns:
+            color_df.loc[:, "alpha"] = 255
+
+        for band_i, df_band in color_df.groupby("band"):
+            band = self.raster.GetRasterBand(band_i)
 
             if overwrite:
                 color_table = gdal.ColorTable()
@@ -5059,7 +5063,7 @@ class Dataset(AbstractDataset):
 
             for i, row in df_band.iterrows():
                 color_table.SetColorEntry(
-                    row["values"], (row["red"], row["green"], row["blue"])
+                    row["values"], (row["red"], row["green"], row["blue"], row["alpha"])
                 )
 
             band.SetColorTable(color_table)
@@ -5080,13 +5084,15 @@ class Dataset(AbstractDataset):
         """
         df = pd.DataFrame(columns=["band", "values", "red", "green", "blue", "alpha"])
         bands = range(self.band_count) if band is None else band
+        row = 0
         for band in bands:
             color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
             for i in range(color_table.GetCount()):
-                df.loc[i, ["red", "green", "blue", "alpha"]] = (
+                df.loc[row, ["red", "green", "blue", "alpha"]] = (
                     color_table.GetColorEntry(i)
                 )
-                df.loc[i, ["band", "values"]] = band + 1, i
+                df.loc[row, ["band", "values"]] = band + 1, i
+                row += 1
 
         return df
 
