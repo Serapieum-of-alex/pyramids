@@ -4955,13 +4955,39 @@ class Dataset(AbstractDataset):
 
     @band_color.setter
     def band_color(self, values: Dict[int, str]):
-        """band_color.
+        """Assign color interpretation to dataset bands.
 
         Parameters
         ----------
         values: [Dict[int, str]]
             dictionary with band index as key and color name as value.
-            e.g. {1: 'Red', 2: 'Green', 3: 'Blue'}
+            e.g. {1: 'Red', 2: 'Green', 3: 'Blue'}, possible values are
+            ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue', 'saturation',
+            'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand', 'YCbCr_CrBand']
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To assign a color interpretation to the dataset band (i.e., gray, red, green, or blue), create a dictionary
+        with the band index as a key and the color interpretation as a value
+
+            >>> dataset.band_color = {0: 'gray_index'}
+
+        - You can also assign rgb color interpretation to the dataset bands as follows:
+
+            >>> arr = np.random.randint(1, 3, size=(3, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> dataset.band_color = {0: 'red', 1: 'green', 2: 'blue'}
         """
         for key, val in values.items():
             if key > self.band_count:
@@ -4974,10 +5000,33 @@ class Dataset(AbstractDataset):
     def get_band_by_color(self, color_name: str) -> int:
         """get_band_by_color.
 
+        Parameters
+        ----------
+        color_name: str
+            possible values are ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue',
+            'saturation', 'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand',
+            'YCbCr_CrBand']
+
         Returns
         -------
-        [type]
-            [description]
+        int:
+           band index
+
+        Examples
+        --------
+        - Create `Dataset` consists of 3 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> arr = np.random.randint(1, 3, size=(3, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> dataset.band_color = {0: 'red', 1: 'green', 2: 'blue'}
+
+        - Now you can use the `get_band_by_color` to know which band is the red band for example.
+
+            >>> band_index = dataset.get_band_by_color('red')
+            >>> print(band_index)
+            0
         """
         colors = list(self.band_color.values())
         if color_name not in colors:
