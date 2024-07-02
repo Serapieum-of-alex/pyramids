@@ -68,6 +68,7 @@ class TestPlotDataCube:
 
 class TestColorTable:
 
+    @pytest.mark.plot
     def test_generated_data(self):
         arr = np.random.randint(1, 3, size=(2, 5, 5))
         top_left_corner = (0, 0)
