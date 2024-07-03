@@ -311,11 +311,15 @@ class Dataset(AbstractDataset):
         - This property does not need the Dataset to be opened in a write mode to be set.
         - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
         .aux.xml, the content of the file will be like the following:
+
+        ..code-block:: xml
+
             <PAMDataset>
               <Metadata>
                 <MDI key="key">value</MDI>
               </Metadata>
             </PAMDataset>
+
         """
         for key, value in value.items():
             self._raster.SetMetadataItem(key, value)
@@ -386,6 +390,9 @@ class Dataset(AbstractDataset):
         - This property does not need the Dataset to be opened in a write mode to be set.
         - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
         .aux.xml, the content of the file will be like the following:
+
+        ..code-block:: xml
+
             <PAMDataset>
               <PAMRasterBand band="1">
                 <Description>Band_1</Description>
@@ -409,6 +416,9 @@ class Dataset(AbstractDataset):
         - This property does not need the Dataset to be opened in a write mode to be set.
         - The value of the offset will be stored in xml file by the name of the raster file with the extension of
         .aux.xml, the content of the file will be like the following:
+
+        ..code-block:: xml
+
             <PAMDataset>
               <PAMRasterBand band="1">
                 <Description>Band_1</Description>
@@ -965,52 +975,55 @@ class Dataset(AbstractDataset):
         - The content of the attribute table will be stored in an xml file by the name of the raster file with
         the extension of .aux.xml, the content of the file will be like the following:
 
-        <PAMDataset>
-          <PAMRasterBand band="1">
-            <GDALRasterAttributeTable tableType="thematic">
-              <FieldDefn index="0">
-                <Name>Precipitation Range (mm)</Name>
-                <Type>2</Type>
-                <Usage>0</Usage>
-              </FieldDefn>
-              <FieldDefn index="1">
-                <Name>Category</Name>
-                <Type>2</Type>
-                <Usage>0</Usage>
-              </FieldDefn>
-              <FieldDefn index="2">
-                <Name>Description</Name>
-                <Type>2</Type>
-                <Usage>0</Usage>
-              </FieldDefn>
-              <Row index="0">
-                <F>0-50</F>
-                <F>Low</F>
-                <F>Very low precipitation</F>
-              </Row>
-              <Row index="1">
-                <F>51-100</F>
-                <F>Moderate</F>
-                <F>Moderate precipitation</F>
-              </Row>
-              <Row index="2">
-                <F>101-200</F>
-                <F>High</F>
-                <F>High precipitation</F>
-              </Row>
-              <Row index="3">
-                <F>201-500</F>
-                <F>Very High</F>
-                <F>Very high precipitation</F>
-              </Row>
-              <Row index="4">
-                <F>&gt;500</F>
-                <F>Extreme</F>
-                <F>Extreme precipitation</F>
-              </Row>
-            </GDALRasterAttributeTable>
-          </PAMRasterBand>
-        </PAMDataset>
+        ..code-block:: xml
+
+            <PAMDataset>
+              <PAMRasterBand band="1">
+                <GDALRasterAttributeTable tableType="thematic">
+                  <FieldDefn index="0">
+                    <Name>Precipitation Range (mm)</Name>
+                    <Type>2</Type>
+                    <Usage>0</Usage>
+                  </FieldDefn>
+                  <FieldDefn index="1">
+                    <Name>Category</Name>
+                    <Type>2</Type>
+                    <Usage>0</Usage>
+                  </FieldDefn>
+                  <FieldDefn index="2">
+                    <Name>Description</Name>
+                    <Type>2</Type>
+                    <Usage>0</Usage>
+                  </FieldDefn>
+                  <Row index="0">
+                    <F>0-50</F>
+                    <F>Low</F>
+                    <F>Very low precipitation</F>
+                  </Row>
+                  <Row index="1">
+                    <F>51-100</F>
+                    <F>Moderate</F>
+                    <F>Moderate precipitation</F>
+                  </Row>
+                  <Row index="2">
+                    <F>101-200</F>
+                    <F>High</F>
+                    <F>High precipitation</F>
+                  </Row>
+                  <Row index="3">
+                    <F>201-500</F>
+                    <F>Very High</F>
+                    <F>Very high precipitation</F>
+                  </Row>
+                  <Row index="4">
+                    <F>&gt;500</F>
+                    <F>Extreme</F>
+                    <F>Extreme precipitation</F>
+                  </Row>
+                </GDALRasterAttributeTable>
+              </PAMRasterBand>
+            </PAMDataset>
+
         """
         rat = self._df_to_attribute_table(df)
         band = self._iloc(band)
@@ -5227,21 +5240,23 @@ class Dataset(AbstractDataset):
         - The value of the histogram will be stored in an xml file by the name of the raster file with the extension of
         .aux.xml, the content of the file will be like the following:
 
-        <PAMDataset>
-          <PAMRasterBand band="1">
-            <Description>Band_1</Description>
-            <Histograms>
-              <HistItem>
-                <HistMin>0</HistMin>
-                <HistMax>88</HistMax>
-                <BucketCount>6</BucketCount>
-                <IncludeOutOfRange>0</IncludeOutOfRange>
-                <Approximate>0</Approximate>
-                <HistCounts>75|6|0|4|2|1</HistCounts>
-              </HistItem>
-            </Histograms>
-          </PAMRasterBand>
-        </PAMDataset>
+                    ..code-block:: xml
+
+            <PAMDataset>
+              <PAMRasterBand band="1">
+                <Description>Band_1</Description>
+                <Histograms>
+                  <HistItem>
+                    <HistMin>0</HistMin>
+                    <HistMax>88</HistMax>
+                    <BucketCount>6</BucketCount>
+                    <IncludeOutOfRange>0</IncludeOutOfRange>
+                    <Approximate>0</Approximate>
+                    <HistCounts>75|6|0|4|2|1</HistCounts>
+                  </HistItem>
+                </Histograms>
+              </PAMRasterBand>
+            </PAMDataset>
 
         Examples
         --------
