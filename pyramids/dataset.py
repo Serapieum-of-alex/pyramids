@@ -118,8 +118,15 @@ class Dataset(AbstractDataset):
         return message
 
     @property
-    def access(self):
-        """open_mode."""
+    def access(self) -> str:
+        """
+        Access mode.
+
+        Returns
+        -------
+        str:
+            The access mode of the dataset (read_only/write).
+        """
         return super().access
 
     @property
@@ -848,7 +855,7 @@ class Dataset(AbstractDataset):
     def copy(self) -> "Dataset":
         """Deep copy."""
         src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
-        return Dataset(src)
+        return Dataset(src, access="write")
 
     def _iloc(self, i: int) -> gdal.Band:
         """_iloc.
@@ -1187,9 +1194,9 @@ class Dataset(AbstractDataset):
         band.WriteArray(array)
 
         if inplace:
-            self.__init__(src)
+            self.__init__(src, self.access)
         else:
-            return Dataset(src)
+            return Dataset(src, self.access)
 
     def stats(self, band: int = None, mask: GeoDataFrame = None) -> DataFrame:
         """stats.
@@ -1648,12 +1655,8 @@ class Dataset(AbstractDataset):
         dst.SetGeoTransform(geotransform)
         # Set the projection.
         dst.SetProjection(sr.ExportToWkt())
-        if path is None:
-            access = "write"
-        else:
-            access = "read_only"
 
-        dst = cls(dst, access=access)
+        dst = cls(dst, access="write")
         if no_data_value is not None:
             dst._set_no_data_value(no_data_value=no_data_value)
 

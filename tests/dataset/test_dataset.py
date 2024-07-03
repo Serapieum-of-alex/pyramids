@@ -35,6 +35,7 @@ class TestCreateRasterObject:
             no_data_value=src_no_data_value,
         )
         assert isinstance(src.raster, gdal.Dataset)
+        assert src.access == "write"
         assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
         assert np.isclose(
             src.raster.GetRasterBand(1).GetNoDataValue(),
@@ -50,6 +51,7 @@ class TestCreateRasterObject:
             no_data_value=src_no_data_value,
         )
         assert isinstance(src.raster, gdal.Dataset)
+        assert src.access == "write"
         assert np.isclose(src.raster.ReadAsArray(), src_arr, rtol=0.00001).all()
         assert np.isclose(
             src.raster.GetRasterBand(1).GetNoDataValue(),
@@ -77,6 +79,7 @@ class TestCreateRasterObject:
             ds_epsg,
             no_data_value,
         )
+        assert dataset_n.access == "write"
         assert dataset_n.rows == rows
         assert dataset_n.columns == columns
         assert dataset_n.epsg == ds_epsg
@@ -108,6 +111,7 @@ class TestCreateRasterObject:
         src = Dataset(src)
         dst = src.copy()
         assert isinstance(dst, Dataset)
+        assert dst.access == "write"
         assert id(dst) != id(src)
         assert dst.raster.GetGeoTransform() == src.raster.GetGeoTransform()
         assert dst.raster.GetProjection() == src.raster.GetProjection()
@@ -138,6 +142,7 @@ class TestCreateRasterObject:
             src_obj = Dataset(src)
             dst_obj = Dataset.dataset_like(src_obj, arr2, path=raster_like_path)
             assert os.path.exists(raster_like_path)
+            assert dst_obj.access == "write"
 
             arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
@@ -158,7 +163,7 @@ class TestCreateRasterObject:
 
             src_obj = Dataset(src)
             dst_obj = Dataset.dataset_like(src_obj, arr2)
-
+            assert dst_obj.access == "write"
             arr = dst_obj.raster.ReadAsArray()
             assert arr.shape == src_arr.shape
             assert np.isclose(
