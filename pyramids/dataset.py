@@ -436,6 +436,7 @@ class Dataset(AbstractDataset):
 
     @offset.setter
     def offset(self, value: List[float]):
+        """Offset."""
         for i, val in enumerate(value):
             self._iloc(i).SetOffset(val)
 
@@ -523,9 +524,7 @@ class Dataset(AbstractDataset):
     def read_array(
         self, band: int = None, window: Union[GeoDataFrame, List[int]] = None
     ) -> np.ndarray:
-        """Read Array.
-
-            - read the values stored in a given band.
+        """Read the values stored in a given band.
 
         Data Chuncks/blocks
             When a raster dataset is stored on disk, it might not be stored as one continuous chunk of data. Instead,
@@ -748,9 +747,6 @@ class Dataset(AbstractDataset):
             x_coords = Dataset.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
             )
-            # x_coords = [
-            #     pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-            # ]
         else:
             # in case the lat and lon are read from the netcdf file just read the values from the file
             x_coords = self._lon
@@ -798,7 +794,7 @@ class Dataset(AbstractDataset):
 
     @property
     def dtype(self) -> List[str]:
-        """List of the numpy data Type of each band."""
+        """List of the data Type of each band as strings."""
         return [
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "name"].values[0]
             for i in self.gdal_dtype
@@ -893,7 +889,7 @@ class Dataset(AbstractDataset):
         return band
 
     def get_attribute_table(self, band: int = 0) -> DataFrame:
-        """get_attribute_table.
+        """Get the attribute table for a given band.
 
             - Get the attribute table of a band.
 
@@ -1123,9 +1119,7 @@ class Dataset(AbstractDataset):
         attribute_table: DataFrame = None,
         inplace: bool = False,
     ) -> Union[None, "Dataset"]:
-        """add_band.
-
-            - Add a new band to the dataset.
+        """Add a new band to the dataset.
 
         Parameters
         ----------
@@ -1242,9 +1236,7 @@ class Dataset(AbstractDataset):
             return Dataset(src, self.access)
 
     def stats(self, band: int = None, mask: GeoDataFrame = None) -> DataFrame:
-        """stats.
-
-            - Get statistics of a band [Min, max, mean, std].
+        """Get statistics of a band [Min, max, mean, std].
 
         Parameters
         ----------
@@ -1272,7 +1264,7 @@ class Dataset(AbstractDataset):
         - The value of the stats will be stored in an xml file by the name of the raster file with the extension of
         .aux.xml, the content of the file will be like the following:
 
-        .. code-block:: xml
+        ..code-block:: xml
 
             <PAMDataset>
               <PAMRasterBand band="1">
@@ -1376,9 +1368,7 @@ class Dataset(AbstractDataset):
         overview_index: int = 0,
         **kwargs,
     ):
-        """Plot.
-
-            - plot the values/overviews of a given band.
+        """Plot the values/overviews of a given band.
 
         Parameters
         ----------
@@ -1681,6 +1671,16 @@ class Dataset(AbstractDataset):
                     Data type: float32
                     File: create-new-dataset.tif
         <BLANKLINE>
+
+        - If you check the value stored in the band using the `read_array` method, you will find that the band is full of
+        the `no_data_value` value which we used here as -9999.
+
+            >>> print(dataset.read_array(band=0))
+            [[-9999. -9999. -9999. -9999. -9999.]
+             [-9999. -9999. -9999. -9999. -9999.]
+             [-9999. -9999. -9999. -9999. -9999.]
+             [-9999. -9999. -9999. -9999. -9999.]
+             [-9999. -9999. -9999. -9999. -9999.]]
         """
         # Create the driver.
         dtype = numpy_to_gdal_dtype(dtype)
@@ -1716,9 +1716,7 @@ class Dataset(AbstractDataset):
         driver_type: str = "MEM",
         path: str = None,
     ) -> "Dataset":
-        """create_from_array.
-
-            - Create_from_array method creates a `Dataset` from a given array and geotransform data.
+        """Create a new dataset from an array.
 
         Parameters
         ----------
@@ -1869,7 +1867,7 @@ class Dataset(AbstractDataset):
         array: np.ndarray,
         path: str = None,
     ) -> "Dataset":
-        """dataset_like.
+        """Create a new dataset like another dataset.
 
             dataset_like method creates a Dataset from an array like another source dataset. The new dataset
             will have the same `projection`, `coordinates` or the `top left corner` of the original dataset,
@@ -2138,7 +2136,7 @@ class Dataset(AbstractDataset):
             return dst_obj
 
     def _get_epsg(self) -> int:
-        """GetEPSG.
+        """Get the epsg number.
 
             This function reads the projection of a GEOGCS file or tiff file
 
@@ -2448,7 +2446,7 @@ class Dataset(AbstractDataset):
     def get_cell_coords(
         self, location: str = "center", mask: bool = False
     ) -> np.ndarray:
-        """get_cell_coords.
+        """Get coordinates for the center/corner of cells inside the dataset domain.
 
         Returns the coordinates of the cell centers inside the domain (only the cells that
         do not have nodata value)
@@ -2456,7 +2454,7 @@ class Dataset(AbstractDataset):
         Parameters
         ----------
         location: [str]
-            location of the coordinates "center" for the center of a cell, corner for the corner of the cell.
+            location of the coordinates `center` for the center of a cell, `corner` for the corner of the cell.
             the corner is the top left corner.
         mask: [bool]
             True to exclude the cells out of the domain. Default is False.
@@ -2594,9 +2592,9 @@ class Dataset(AbstractDataset):
         return gdf
 
     def to_file(self, path: str, band: int = 0, tile_length: int = None) -> None:
-        """to_file.
+        """Save dataset to tiff file.
 
-            to_file a raster to a path, the type of the driver (georiff/netcdf/ascii) will be implied from the
+            `to_file` saves a raster to disk, the type of the driver (georiff/netcdf/ascii) will be implied from the
             extension at the end of the given path.
 
         Parameters
@@ -2923,7 +2921,7 @@ class Dataset(AbstractDataset):
         return df
 
     def apply(self, func, band: int = 0) -> "Dataset":
-        """apply.
+        """Apply a function to all domain cells.
 
             - apply method executes a mathematical operation on the raster array.
             - The apply method executes the function only on one cell at a time.
@@ -2996,7 +2994,7 @@ class Dataset(AbstractDataset):
     def fill(
         self, val: Union[float, int], driver: str = "MEM", path: str = None
     ) -> Union["Dataset", None]:
-        """Fill.
+        """Fill the domain cells with a certain value.
 
             Fill takes a raster and fills it with one value
 
@@ -3032,19 +3030,17 @@ class Dataset(AbstractDataset):
     ) -> "Dataset":
         """resample.
 
-        resample method reproject a raster to any projection
-        (default the WGS84 web mercator projection, without resampling)
-        The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
+        resample method reproject a raster to any projection (default the WGS84 web mercator projection,
+        without resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
         Parameters
         ----------
         cell_size : [integer]
-             new cell size to resample the raster.
-            (default empty so raster will not be resampled)
+             new cell size to resample the raster. (default empty so raster will not be resampled)
         method : [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "nearest neighbor" for nearest neighbor,"cubic" for cubic convolution,
+            "nearest neighbor" for the nearest neighbor, "cubic" for cubic convolution,
             "bilinear" for bilinear
 
         Returns
@@ -3091,7 +3087,7 @@ class Dataset(AbstractDataset):
         dst.SetGeoTransform(new_geo)
         # set the projection
         dst.SetProjection(sr_src.ExportToWkt())
-        dst_obj = Dataset(dst)
+        dst_obj = Dataset(dst, "write")
         # set the no data value
         dst_obj._set_no_data_value(self.no_data_value)
         # perform the projection & resampling
@@ -3217,10 +3213,10 @@ class Dataset(AbstractDataset):
         np.ndarray
         """
         # align function only equate the no of rows and columns only
-        # match nodatavalue inserts nodatavalue in src raster to all places like mask
-        # still places that has nodatavalue in the src raster, but it is not nodatavalue in the mask
+        # match no_data_value inserts no_data_value in src raster to all places like mask
+        # still places that has no_data_value in the src raster, but it is not no_data_value in the mask
         # and now has to be filled with values
-        # compare no of element that is not nodatavalue in both rasters to make sure they are matched
+        # compare no of element that is not no_data_value in both rasters to make sure they are matched
         # if both inputs are rasters
         mask_array = mask.read_array()
         row = mask.rows
@@ -3396,9 +3392,9 @@ class Dataset(AbstractDataset):
 
     def align(
         self,
-        alignment_src,
+        alignment_src: "Dataset",
     ) -> "Dataset":
-        """align.
+        """Align the current dataset (number of rows and columns) to follow the alignmen of a given dataset.
 
         align method copies the following data
             - The coordinate system
@@ -3412,9 +3408,8 @@ class Dataset(AbstractDataset):
         Parameters
         ----------
         alignment_src : [Dataset]
-            spatial information source raster to get the spatial information
-            (coordinate system, no of rows & columns)
-            data values source raster to get the data (values of each cell)
+            spatial information source raster to get the spatial information (coordinate system, no of rows &
+            columns) data values source raster to get the data (values of each cell).
 
         Returns
         -------
@@ -3646,7 +3641,7 @@ class Dataset(AbstractDataset):
         touch: bool = True,
         inplace: bool = False,
     ) -> Union["Dataset", None]:
-        """crop.
+        """Crop dataset using dataset/feature collection.
 
             Crop/Clip the Dataset object using a polygon/raster.
 
@@ -3852,7 +3847,7 @@ class Dataset(AbstractDataset):
         self,
         points: Union[GeoDataFrame, FeatureCollection, DataFrame],
     ) -> np.ndarray:
-        """map_to_array_coordinates.
+        """Convert coordinates of points to array indices.
 
             - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by
             finding the cell indices (rows, col) of the nearest cell in the raster.
@@ -3909,7 +3904,7 @@ class Dataset(AbstractDataset):
         rows_index: Union[List[Number], np.ndarray],
         center: bool = False,
     ) -> Tuple[List[Number], List[Number]]:
-        """Array indices to map coordinates.
+        """Convert array indices to map coordinates.
 
             - array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
 
@@ -4062,9 +4057,7 @@ class Dataset(AbstractDataset):
         band: int = 0,
         exclude_values: Optional[List[Any]] = None,
     ) -> Union[GeoDataFrame, None]:
-        """footprint.
-
-            extract the real coverage of the values in a certain band.
+        """Extract the real coverage of the values in a certain band.
 
         Parameters
         ----------
@@ -4171,9 +4164,7 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def normalize(array: np.ndarray) -> np.ndarray:
-        """Normalize.
-
-        Normalizes numpy arrays into scale 0.0-1.0
+        """Normalize numpy arrays into scale 0.0-1.0.
 
         Parameters
         ----------
@@ -4462,9 +4453,7 @@ class Dataset(AbstractDataset):
     def cluster(
         self, lower_bound: Any, upper_bound: Any
     ) -> Tuple[np.ndarray, int, list, list]:
-        """Cluster.
-
-            - group all the connected values between two bounds.
+        """Group all the connected values between two bounds.
 
         Parameters
         ----------
@@ -5043,7 +5032,7 @@ class Dataset(AbstractDataset):
             self._iloc(key).SetColorInterpretation(gdal_const)
 
     def get_band_by_color(self, color_name: str) -> int:
-        """get_band_by_color.
+        """Get the band associated with a given color.
 
         Parameters
         ----------
@@ -5090,7 +5079,7 @@ class Dataset(AbstractDataset):
 
     @color_table.setter
     def color_table(self, df: DataFrame):
-        """color_table.
+        """Get color table.
 
         Parameters
         ----------
@@ -5242,7 +5231,7 @@ class Dataset(AbstractDataset):
         include_out_of_range: bool = False,
         approx_ok: bool = False,
     ) -> tuple[list, list[tuple[Any, Any]]]:
-        """get_histogram.
+        """Get histogram.
 
         Parameters
         ----------
