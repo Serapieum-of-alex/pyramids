@@ -3457,7 +3457,7 @@ class Dataset(AbstractDataset):
                         File:...
             <BLANKLINE>
 
-        .. image:: _images/dataset/align-source-target.png
+        .. image:: /_images/dataset/align-source-target.png
             :alt: Example Image
             :align: center
 
@@ -3474,7 +3474,7 @@ class Dataset(AbstractDataset):
                         File:...
             <BLANKLINE>
 
-        .. image:: ../docs/source/_images/dataset/align-result.png
+        .. image:: /_images/dataset/align-result.png
             :alt: Example Image
             :align: center
         """
@@ -4088,7 +4088,7 @@ class Dataset(AbstractDataset):
             >>> dataset.plot()
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
-              .. image:: ../docs/source/_images/dataset/dataset-footprint-rhine-flood.png
+              .. image:: /_images/dataset/dataset-footprint-rhine-flood.png
                   :alt: footprint
                   :align: center
 
@@ -4106,7 +4106,7 @@ class Dataset(AbstractDataset):
             >>> extent.plot()
             <Axes: >
 
-            .. image:: ../docs/source/_images/dataset/dataset-footprint-rhine-flood-extent.png
+            .. image:: /_images/dataset/dataset-footprint-rhine-flood-extent.png
                   :alt: footprint
                   :align: center
         """
@@ -4259,7 +4259,7 @@ class Dataset(AbstractDataset):
             >>> print(tile_dimensions)
             [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
 
-        .. image:: ../docs/source/_images/dataset/get_tile.png
+        .. image:: /_images/dataset/get_tile.png
                   :alt: footprint
                   :align: center
 
@@ -4494,7 +4494,7 @@ class Dataset(AbstractDataset):
             ...     background_color_threshold=5
             ... )  # doctest: +SKIP
 
-            .. image:: ../docs/source/_images/dataset/cluster.png
+            .. image:: /_images/dataset/cluster.png
                   :alt: footprint
                   :align: center
 
@@ -4682,7 +4682,7 @@ class Dataset(AbstractDataset):
 
             >>> dataset.plot(band=0, overview=True, overview_index=0) # doctest: +SKIP
 
-        .. image:: ../docs/source/_images/dataset/overviews-level-0.png
+        .. image:: /_images/dataset/overviews-level-0.png
           :alt: footprint
           :align: center
 
@@ -4692,13 +4692,13 @@ class Dataset(AbstractDataset):
 
             >>> dataset.plot(band=0, overview=True, overview_index=1)   # doctest: +SKIP
 
-        .. image:: ../docs/source/_images/dataset/overviews-level-1.png
+        .. image:: /_images/dataset/overviews-level-1.png
           :alt: footprint
           :align: center
 
             >>> dataset.plot(band=0, overview=True, overview_index=2)       # doctest: +SKIP
 
-        .. image:: ../docs/source/_images/dataset/overviews-level-2.png
+        .. image:: /_images/dataset/overviews-level-2.png
           :alt: footprint
           :align: center
 
