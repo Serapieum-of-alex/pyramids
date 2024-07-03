@@ -3457,7 +3457,7 @@ class Dataset(AbstractDataset):
                         File:...
             <BLANKLINE>
 
-        .. image:: ../docs/source/_images/dataset/align-source-target.png
+        .. image:: docs/source/_images/dataset/align-source-target.png
             :alt: Example Image
             :align: center
 
