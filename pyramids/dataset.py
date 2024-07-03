@@ -1122,7 +1122,7 @@ class Dataset(AbstractDataset):
         unit: Any = None,
         attribute_table: DataFrame = None,
         inplace: bool = False,
-    ):
+    ) -> Union[None, "Dataset"]:
         """add_band.
 
             - Add a new band to the dataset.
@@ -1153,15 +1153,27 @@ class Dataset(AbstractDataset):
             ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_coords=(0, 0),
             ... epsg=4326, no_data_value=-9999
             ... )
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float32
+                        File:...
+            <BLANKLINE>
 
         - Create a 2D array to add as a new band:
 
+            >>> import numpy as np
             >>> array = np.random.rand(10, 10)
 
-        - Add the new band to the dataset:
+        - Add the new band to the dataset inplace:
 
-            >>> updated_dataset = dataset.add_band(array, unit="m", attribute_table=None)
-            >>> print(updated_dataset)
+            >>> dataset.add_band(array, unit="m", attribute_table=None, inplace=True)
+            >>> print(dataset)
             <BLANKLINE>
                         Cell size: 0.05
                         Dimension: 10 * 10
@@ -1174,6 +1186,24 @@ class Dataset(AbstractDataset):
             <BLANKLINE>
 
         - The new band will be added to the dataset inplace.
+        - You can also add an attribute table to the band when you add a new band to the dataset.
+
+            >>> import pandas as pd
+            >>> data = {
+            ...     "Value": [1, 2, 3],
+            ...     "ClassName": ["Forest", "Water", "Urban"],
+            ...     "Color": ["#008000", "#0000FF", "#808080"],
+            ... }
+            >>> df = pd.DataFrame(data)
+            >>> dataset.add_band(array, unit="m", attribute_table=df, inplace=True)
+
+        See Also
+        --------
+        Dataset.create_from_array : create a new dataset from an array.
+        Dataset.create : create a new dataset with an empty band.
+        Dataset.dataset_like: create a new dataset from another dataset.
+        Dataset.get_attribute_table: get the attribute table for a specific band.
+        Dataset.set_attribute_table: Set the attribute table for a specific band.
         """
         # check the dimensions of the new array
         if array.ndim != 2:
@@ -1627,13 +1657,12 @@ class Dataset(AbstractDataset):
         - The coordinates of the top left corner point should be in the same projection as the epsg.
         - The cell size should be in the same unit as the coordinates.
         - The number of rows and columns should be positive integers.
-        - The dtype should be one of the following code:
 
         Examples
         --------
         >>> cell_size = 10
-        >>> rows = 100
-        >>> columns = 100
+        >>> rows = 5
+        >>> columns = 5
         >>> dtype = "float32"
         >>> bands = 1
         >>> top_left_coords = (0, 0)
@@ -1644,7 +1673,7 @@ class Dataset(AbstractDataset):
         >>> print(dataset)
         <BLANKLINE>
                     Cell size: 10.0
-                    Dimension: 100 * 100
+                    Dimension: 5 * 5
                     EPSG: 32618
                     Number of Bands: 1
                     Band names: ['Band_1']
