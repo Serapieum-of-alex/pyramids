@@ -415,7 +415,9 @@ class Dataset(AbstractDataset):
         ----
         - This property does not need the Dataset to be opened in a write mode to be set.
         - The value of the offset will be stored in xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+            .aux.xml.
+
+        the content of the file will be like the following:
 
         ..code-block:: xml
 
@@ -427,6 +429,7 @@ class Dataset(AbstractDataset):
                 <Scale>2</Scale>
               </PAMRasterBand>
             </PAMDataset>
+
         """
         offset_list = []
         for i in range(self.band_count):
@@ -532,10 +535,10 @@ class Dataset(AbstractDataset):
             which is particularly useful for large datasets:
 
             - Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
-              at once. This is especially beneficial when only a small portion of the data needs to be processed.
+                  at once. This is especially beneficial when only a small portion of the data needs to be processed.
             - Performance: For certain file formats and operations, working with optimal block sizes can significantly
-              improve performance. For example, if the block size matches the reading or processing window,
-              Pyramids can minimize disk access and data transfer.
+                  improve performance. For example, if the block size matches the reading or processing window,
+                Pyramids can minimize disk access and data transfer.
 
         Parameters
         ----------
@@ -972,7 +975,7 @@ class Dataset(AbstractDataset):
 
         - Then the attribute table can be retrieved using the `get_attribute_table` method.
         - The content of the attribute table will be stored in an xml file by the name of the raster file with
-        the extension of .aux.xml, the content of the file will be like the following:
+            the extension of .aux.xml, the content of the file will be like the following:
 
         ..code-block:: xml
 
@@ -1251,7 +1254,7 @@ class Dataset(AbstractDataset):
         Returns
         -------
         DataFrame:
-            DataFrame wit the stats of each band, the dataframe has the following columns:
+            DataFrame wit the stats of each band, the dataframe has the following columns
             [min, max, mean, std], the index of the dataframe is the band names.
 
         .. code-block:: text
@@ -1434,16 +1437,16 @@ class Dataset(AbstractDataset):
                 3- color_scale 3 is the SymLogNorm scale
                 4- color_scale 4 is the PowerNorm scale
                 5- color_scale 5 is the BoundaryNorm scale
-                gamma: [float], optional
-                    value needed for option 2. The default is 1./2.
-                line_threshold: [float], optional
-                    value needed for option 3. The default is 0.0001.
-                line_scale: [float], optional
-                    value needed for option 3. The default is 0.001.
-                bounds: [List]
-                    a list of number to be used as a discrete bounds for the color scale 4.Default is None,
-                midpoint: [float], optional
-                    value needed for option 5. The default is 0.
+            gamma: [float], optional
+                value needed for option 2. The default is 1./2.
+            line_threshold: [float], optional
+                value needed for option 3. The default is 0.0001.
+            line_scale: [float], optional
+                value needed for option 3. The default is 0.001.
+            bounds: [List]
+                a list of number to be used as a discrete bounds for the color scale 4.Default is None,
+            midpoint: [float], optional
+                value needed for option 5. The default is 0.
             cmap: [str], optional
                 color style. The default is 'coolwarm_r'.
             display_cell_value: [bool]
@@ -2751,7 +2754,7 @@ class Dataset(AbstractDataset):
             - Flatten the array in each band in the raster then mask the values if a vector_mask file is given
                 otherwise it will flatten all values.
             - Put the values for each band in a column in a dataframe under the name of the raster band,
-                but if no meta data in the raster band exists, an index number will be used [1, 2, 3, ...]
+                but if no meta-data in the raster band exists, an index number will be used [1, 2, 3, ...]
             - The function has an add_geometry parameter with two possible values ["point", "polygon"], which you can
                 specify the type of shapely geometry you want to create from each cell,
 
@@ -2813,7 +2816,7 @@ class Dataset(AbstractDataset):
             8  0.531710  0.649136
 
         - Convert the dataset into geodataframe, i.e the same dataframe as the previously but with either a polygon
-        or a point geometry that represents each cell.
+            or a point geometry that represents each cell.
         - to specify the geometry type use the parameter `add_geometry`
 
             >>> gdf = dataset.to_feature_collection(add_geometry="point")
@@ -2856,9 +2859,9 @@ class Dataset(AbstractDataset):
             0  0.354482  0.383279
 
         - If you have a big dataset, and you want to convert it to dataframe in tiles (do not read the whole dataset
-        at once but in tiles), you can use the `tile`, and the `tile_size` parameters.
+            at once but in tiles), you can use the `tile`, and the `tile_size` parameters.
         - The values definitely will be the same as the values above, but the different here is how the dataset reads
-        the values in chunks.
+            the values in chunks.
 
             >>> gdf = dataset.to_feature_collection(tile=True, tile_size=1)
             >>> print(gdf) # doctest: +SKIP
@@ -3966,7 +3969,7 @@ class Dataset(AbstractDataset):
 
         - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
         - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
-        values within the feature are extracted.
+            values within the feature are extracted.
 
         Parameters
         ----------
@@ -4098,7 +4101,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - The following raster dataset has flood depth stored in its values, and the non-flooded cells are filled with
-        zero, so to extract the flood extent, we need to exclude the zero flood depth cells.
+            zero, so to extract the flood extent, we need to exclude the zero flood depth cells.
 
             >>> dataset = Dataset.read_file("examples/data/geotiff/rhine-flood.tif")
             >>> dataset.plot()
@@ -4284,22 +4287,22 @@ class Dataset(AbstractDataset):
                   :align: center
 
         - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
-        - The `get_tile' method returns a generator object that can be used to iterate over the smaller chunks of the data
+        - The `get_tile' method returns a generator object that can be used to iterate over the smaller chunks of the data.
 
-        >>> tiles_generator = dataset.get_tile(size=2)
-        >>> print(tiles_generator)  # doctest: +SKIP
-        <generator object Dataset.get_tile at 0x00000145AA39E680>
-        >>> print(list(tiles_generator))  # doctest: +SKIP
-        [
-            array([[0.55332314, 0.48364841],
-                   [0.82518332, 0.75657103]]),
-            array([[0.67794589, 0.6901816 ],
-                   [0.45693945, 0.44331782]]),
-            array([[0.70516817], [0.74677865]]),
-            array([[0.22231314, 0.96283065]]),
-            array([[0.15201337, 0.03522544]]),
-            array([[0.44616888]])
-        ]
+            >>> tiles_generator = dataset.get_tile(size=2)
+            >>> print(tiles_generator)  # doctest: +SKIP
+            <generator object Dataset.get_tile at 0x00000145AA39E680>
+            >>> print(list(tiles_generator))  # doctest: +SKIP
+            [
+                array([[0.55332314, 0.48364841],
+                       [0.82518332, 0.75657103]]),
+                array([[0.67794589, 0.6901816 ],
+                       [0.45693945, 0.44331782]]),
+                array([[0.70516817], [0.74677865]]),
+                array([[0.22231314, 0.96283065]]),
+                array([[0.15201337, 0.03522544]]),
+                array([[0.44616888]])
+            ]
 
         """
         for xoff, yoff, xsize, ysize in self._window(size=size):
@@ -5282,7 +5285,9 @@ class Dataset(AbstractDataset):
         Hint
         ----
         - The value of the histogram will be stored in an xml file by the name of the raster file with the extension of
-            .aux.xml, the content of the file will be like the following:
+            .aux.xml.
+
+        the content of the file will be like the following:
 
         ..code-block:: xml
 
