@@ -1254,13 +1254,13 @@ class Dataset(AbstractDataset):
             DataFrame wit the stats of each band, the dataframe has the following columns:
             [min, max, mean, std], the index of the dataframe is the band names.
 
-            .. code-block:: text
+        .. code-block:: text
 
-                               Min         max        mean       std
-                Band_1  270.369720  270.762299  270.551361  0.154270
-                Band_2  269.611938  269.744751  269.673645  0.043788
-                Band_3  273.641479  274.168823  273.953979  0.198447
-                Band_4  273.991516  274.540344  274.310669  0.205754
+                           Min         max        mean       std
+            Band_1  270.369720  270.762299  270.551361  0.154270
+            Band_2  269.611938  269.744751  269.673645  0.043788
+            Band_3  273.641479  274.168823  273.953979  0.198447
+            Band_4  273.991516  274.540344  274.310669  0.205754
 
         Hint
         ----
@@ -1302,6 +1302,7 @@ class Dataset(AbstractDataset):
             Band_2  0.020377  0.97813  0.477189  0.306864
 
         - Get the statistics of all the bands using a mask polygon.
+
             - Create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
             0.2 -0.1] to cover the 4 cells.
 
@@ -1314,6 +1315,7 @@ class Dataset(AbstractDataset):
             Band_2  0.281281  0.932573  0.665602  0.239410
             Band_3  0.031395  0.982235  0.493086  0.377608
             Band_4  0.079562  0.930965  0.591025  0.341578
+
         """
         if mask is not None:
             dst = self.crop(mask, touch=True)
@@ -2744,28 +2746,30 @@ class Dataset(AbstractDataset):
     ) -> Union[DataFrame, GeoDataFrame]:
         """Convert a dataset to a vector.
 
-        The function does the following
+        The function does the following:
+
             - Flatten the array in each band in the raster then mask the values if a vector_mask
             file is given otherwise it will flatten all values.
             - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
             data in the raster band exists, an index number will be used [1, 2, 3, ...]
             - The function has an add_geometry parameter with two possible values ["point", "polygon"], which you can
             specify the type of shapely geometry you want to create from each cell,
+
                 - If point is chosen, the created point will be at the center of each cell
                 - If a polygon is chosen, a square polygon will be created that covers the entire cell.
 
         Parameters
         ----------
-        vector_mask : Optional[GeoDataFrame]
+        vector_mask : GeoDataFrame, Optional
             GeoDataFrame for the vector_mask. If given, it will be used to clip the raster
-        add_geometry: [str]
+        add_geometry: str
             "Polygon", or "Point" if you want to add a polygon geometry of the cells as column in dataframe.
             Default is None.
-        tile: [bool]
+        tile: bool
             True to use tiles in extracting the values from the raster. Default is False.
-        tile_size: [int]
+        tile_size: int
             tile size. Default is 1500.
-        touch: [bool]
+        touch: bool
             to include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
             Default is True.
 
@@ -2838,6 +2842,7 @@ class Dataset(AbstractDataset):
             8  0.531710  0.649136  POLYGON ((0.10000 -0.10000, 0.15000 -0.10000, ...
 
         - Use a mask to crop part of the dataset, and then convert the cropped part to a dataframe/geodataframe.
+
             - create a mask that covers only the cell in the middle of the dataset.
 
             >>> import geopandas as gpd
@@ -2867,6 +2872,7 @@ class Dataset(AbstractDataset):
             6  0.438871  0.837413
             7  0.681662  0.704464
             8  0.531710  0.649136
+
         """
         # Get raster band names. open the dataset using gdal.Open
         band_names = self.band_names
@@ -3857,9 +3863,9 @@ class Dataset(AbstractDataset):
     ) -> np.ndarray:
         """Convert coordinates of points to array indices.
 
-            - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by
-            finding the cell indices (rows, col) of the nearest cell in the raster.
-            - The point coordinate system of the raster has to be projected to be able to calculate the distance
+        - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by
+        finding the cell indices (rows, col) of the nearest cell in the raster.
+        - The point coordinate system of the raster has to be projected to be able to calculate the distance
 
         Parameters
         ----------
@@ -4097,9 +4103,9 @@ class Dataset(AbstractDataset):
             >>> dataset.plot()
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
-          .. image:: /_images/dataset/dataset-footprint-rhine-flood.png
-              :alt: footprint
-              :align: center
+        .. image:: /_images/dataset/dataset-footprint-rhine-flood.png
+            :alt: footprint
+            :align: center
 
             >>> extent = dataset.footprint(band=0, exclude_values=[0])
             >>> print(extent)
@@ -4290,6 +4296,7 @@ class Dataset(AbstractDataset):
             array([[0.15201337, 0.03522544]]),
             array([[0.44616888]])
         ]
+
         """
         for xoff, yoff, xsize, ysize in self._window(size=size):
             # read the array at a certain indices
@@ -5258,7 +5265,7 @@ class Dataset(AbstractDataset):
             minimum value, Default is None.
         max_value: [float], optional
             maximum value, Default is None.
-        include_out_of_range : bool, default=False
+        include_out_of_range : bool, default is False
             if ``True``, add out-of-range values into the first and last buckets
         approx_ok : bool, default=True
             if ``True``, compute an approximate histogram by using subsampling or overviews.
@@ -5273,7 +5280,7 @@ class Dataset(AbstractDataset):
         - The value of the histogram will be stored in an xml file by the name of the raster file with the extension of
         .aux.xml, the content of the file will be like the following:
 
-                    ..code-block:: xml
+        ..code-block:: xml
 
             <PAMDataset>
               <PAMRasterBand band="1">
@@ -5340,7 +5347,8 @@ class Dataset(AbstractDataset):
             >>> print(ranges)   # doctest: +SKIP
             [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
 
-        - As you see for small datasets the approximation of the histogram will be the same as without approximation.
+        - As you see for small datasets, the approximation of the histogram will be the same as without approximation.
+
         """
         band = self._iloc(band)
         min_val, max_val = band.ComputeRasterMinMax()
