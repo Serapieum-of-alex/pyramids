@@ -2444,7 +2444,9 @@ class Dataset(AbstractDataset):
 
         self._no_data_value[band] = no_data_value
 
-    def change_no_data_value(self, new_value: Any, old_value: Any = None):
+    def change_no_data_value(
+        self, new_value: Any, old_value: Any = None, inplace: bool = False
+    ):
         """Change No Data Value.
 
             - Set the no data value in all raster bands.
@@ -2457,20 +2459,35 @@ class Dataset(AbstractDataset):
             no data value to set in the raster bands.
         old_value: [numeric]
             old no data value that is already in the raster bands.
+        inplace: bool, default is False.
+            True to make the changes inplace
 
         Examples
         --------
         - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
 
-            >>> import numpy as np
-            >>> import pandas as pd
-            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
-            >>> top_left_corner = (0, 0)
             >>> dataset = Dataset.create(
-            ...     cell_size=0.05, rows=10, columns=10, bands=1, top_left_corner=top_left_corner,dtype="float32",
-            ...    epsg=4326
+            ...     cell_size=0.05, rows=3, columns=3, bands=1, top_left_corner=(0, 0),dtype="float32",
+            ...    epsg=4326, no_data_value=-9
             ... )
+            >>> arr = dataset.read_array()
+            >>> print(arr)
+            [[-9. -9. -9.]
+             [-9. -9. -9.]
+             [-9. -9. -9.]]
+            >>> print(dataset.no_data_value) # doctest: +SKIP
+            [-9.0]
 
+        - The dataset is full of the no_data_value. Now to change the the no_data_value call the `change_no_data_value`
+
+            >>> dataset.change_no_data_value(-10, -9, inplace=True)
+            >>> arr = dataset.read_array()
+            >>> print(arr)
+            [[-10. -10. -10.]
+             [-10. -10. -10.]
+             [-10. -10. -10.]]
+            >>> print(dataset.no_data_value) # doctest: +SKIP
+            [-10.0]
         """
         if not isinstance(new_value, list):
             new_value = [new_value] * self.band_count
@@ -2500,8 +2517,10 @@ class Dataset(AbstractDataset):
                     f"band: {gdal_to_numpy_dtype(self.gdal_dtype[band])}"
                 )
             new_dataset.raster.GetRasterBand(band + 1).WriteArray(arr)
-
-        self.__init__(new_dataset.raster)
+        if inplace:
+            self.__init__(new_dataset.raster, "write")
+        else:
+            return new_dataset
 
     def get_cell_coords(
         self, location: str = "center", mask: bool = False

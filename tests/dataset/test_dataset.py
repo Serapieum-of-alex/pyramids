@@ -524,7 +524,7 @@ class TestNoDataValue:
         arr = src.read_array()
         old_value = arr[0, 0]
         new_val = -6666
-        src.change_no_data_value(new_val, old_value)
+        src.change_no_data_value(new_val, old_value, inplace=True)
         # check if the no_data_value in the Datacube object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == new_val
         # check if the no_data_value of the Dataset object is set
