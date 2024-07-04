@@ -1918,6 +1918,7 @@ class Dataset(AbstractDataset):
                         Data type: float64
                         File:...
             <BLANKLINE>
+
         """
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
@@ -3399,9 +3400,10 @@ class Dataset(AbstractDataset):
         Align the current dataset (number of rows and columns) to follow the alignmen of a given dataset.
 
         align method copies the following data:
-        - The coordinate system
-        - The number of rows & columns
-        - cell size
+            - The coordinate system
+            - The number of rows & columns
+            - cell size
+
         from alignment_src to the raster (the source of data values in cells)
 
         the result will be a raster with the same structure as alignment_src but with
@@ -3671,6 +3673,7 @@ class Dataset(AbstractDataset):
         Examples
         --------
         - Crop the raster using a polygon mask:
+
             - the polygon covers 4 cells in the 3rd and 4th rows and 3rd and 4th column `arr[2:4, 2:4]`,
             so the result dataset will have the same number of bands `4`, 2 rows and 2 columns.
             - First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
@@ -3727,6 +3730,7 @@ class Dataset(AbstractDataset):
             >>> print(arr[0, 2:4, 2:4])# doctest: +SKIP
              [[0.00921161 0.90841171]
              [0.355636   0.18650262]]
+
         """
         if isinstance(mask, GeoDataFrame):
             dst = self._crop_with_polygon_warp(mask, touch=touch)
@@ -3914,24 +3918,24 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        top_left_x: [Number]
+        top_left_x: Number
             the x coordinate of the dataset top left corner.
-        top_left_y: [Number]
+        top_left_y: Number
             the y coordinate of the dataset top left corner.
-        cell_size: [Number]
+        cell_size: Number
             the cell size of the raster.
-        column_index: [Union[List[Number], np.ndarray]]
+        column_index: Union[List[Number], np.ndarray]
             the column index of the cells in the raster array.
-        rows_index: [Union[List[Number], np.ndarray]]
+        rows_index: Union[List[Number], np.ndarray]
             the row index of the cells in the raster array.
-        center: [bool]
+        center: bool
             if True, the coordinates will be the center of the cell. Default is False.
 
         Returns
         -------
-        x_coords: [List[Number]]
+        x_coords: List[Number]
             the x coordinates of the cells.
-        y_coords: [List[Number]]
+        y_coords: List[Number]
             the y coordinates of the cells.
         """
         if center:
@@ -3954,15 +3958,15 @@ class Dataset(AbstractDataset):
     ) -> np.ndarray:
         """Extract.
 
-            - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
-            - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
-            values within the feature are extracted.
+        - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
+        - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
+        values within the feature are extracted.
 
         Parameters
         ----------
-        exclude_value: [Numeric]
+        exclude_value: Numeric
             values you want to exclude from extracted values
-        feature: [FeatureCollection/GeoDataFrame]
+        feature: FeatureCollection/GeoDataFrame
             vector file contains geometries you want to extract the values at their location. Default is None.
         """
         # Optimize: make the read_array return only the array for inside the mask feature, and not to read the whole
@@ -4072,13 +4076,14 @@ class Dataset(AbstractDataset):
             list of tuples a [(value_to_be_exclude_valuesd, new_value)]
             >>> exclude_values = [0]
 
-            - This parameter is introduced particularly for the case of rasters that has the no_data_value stored in the
+            - This parameter is introduced particularly in the case of rasters that has the no_data_value stored in the
             `no_data_value` property does not match the value stored in the band, so this option can correct this
             behavior.
 
         Returns
         -------
         GeoDataFrame:
+
             - geodataframe containing the polygon representing the extent of the raster. the extent column should
             contain a value of 2 only.
             - if the dataset had separate polygons, each polygon will be in a separate row.
@@ -4092,9 +4097,9 @@ class Dataset(AbstractDataset):
             >>> dataset.plot()
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
-              .. image:: /_images/dataset/dataset-footprint-rhine-flood.png
-                  :alt: footprint
-                  :align: center
+          .. image:: /_images/dataset/dataset-footprint-rhine-flood.png
+              :alt: footprint
+              :align: center
 
             >>> extent = dataset.footprint(band=0, exclude_values=[0])
             >>> print(extent)
@@ -4110,9 +4115,10 @@ class Dataset(AbstractDataset):
             >>> extent.plot()
             <Axes: >
 
-            .. image:: /_images/dataset/dataset-footprint-rhine-flood-extent.png
-                  :alt: footprint
-                  :align: center
+        .. image:: /_images/dataset/dataset-footprint-rhine-flood-extent.png
+              :alt: footprint
+              :align: center
+
         """
         arr = self.read_array(band=band)
         no_data_val = self.no_data_value[band]
@@ -4532,6 +4538,7 @@ class Dataset(AbstractDataset):
 
             >>> print(values) # doctest: +SKIP
             [3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 4, 4, 2, 4, 3, 2, 3, 3, 2]
+
         """
         data = self.read_array()
         position = []
@@ -4577,7 +4584,8 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        GeoDataFrame
+        GeoDataFrame:
+            GeodataFrame containing polygon geomtries for all connected regions.
 
         Examples
         --------
@@ -4618,6 +4626,7 @@ class Dataset(AbstractDataset):
             9        4  POLYGON ((0 -0.05, 0 -0.15, 0.05 -0.15, 0.05 -...
             10       4  POLYGON ((0.4 -0.05, 0.4 -0.15, 0.45 -0.15, 0....
             11       4  POLYGON ((0.1 -0.1, 0.1 -0.15, 0.15 -0.15, 0.1...
+
         """
         if band is None:
             band = 0
@@ -4645,9 +4654,8 @@ class Dataset(AbstractDataset):
         ----------
         resampling_method: str, optional
             The resampling method used to create the overviews, by default "nearest"
-            possible values are:
-                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
-                "BILINEAR".
+            possible values are: "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE",
+            "AVERAGE_MAGPHASE", "RMS", "BILINEAR".
         overview_levels: list, optional
             The overview levels, overview_levels are restricted to the typical power-of-two reduction factors.
             Default [2, 4, 8, 16, 32]
@@ -4657,12 +4665,14 @@ class Dataset(AbstractDataset):
         internal/external overviews:
             The overview (also known as pyramids) could be internal or external depending on the state you read
             the dataset with.
+
             - External (.ovr file):
                 If the dataset is read with a`read_only=True` then the overviews' file will be created as anexternal
                 file in the same directory of the dataset, with the same name of the dataset and .ovr extension.
             - Internal:
                 If the dataset is read with a`read_only=False` then the overviews will be created internally in the
                 dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
+
         overview_count: [list]
             a list property attribute of the overviews for each band.
 
