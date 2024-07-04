@@ -507,7 +507,7 @@ class FeatureCollection:
 
         # convert the vector to a gdal Dataset (vector but read by gdal.EX)
         vector_gdal_ex = self._gdf_to_ds(gdal_dataset=True)
-        top_left_coords = (xmin, ymax)
+        top_left_corner = (xmin, ymax)
 
         bands_count = 1 if not isinstance(attribute, list) else len(attribute)
         dataset_n = Dataset.create(
@@ -516,7 +516,7 @@ class FeatureCollection:
             columns,
             dtype,
             bands_count,
-            top_left_coords,
+            top_left_corner,
             ds_epsg,
             no_data_value,
         )
@@ -570,6 +570,7 @@ class FeatureCollection:
         prj: [str]
             projection string
             >>> "GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]"
+
         string_type: [str]
             type of the string ["ESRI wkt", "WKT", "PROj4"]
         """
@@ -970,9 +971,9 @@ class FeatureCollection:
         Examples
         --------
         >>> coordinates = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
-        >>> FeatureCollection.create_polygon(coordinates, wkt=True)
-        it will give
-        >>> 'POLYGON ((24.95 60.16 0,24.95 60.16 0,24.95 60.17 0,24.95 60.16 0))'
+        >>> feature_collection = FeatureCollection.create_polygon(coordinates, wkt=True)
+        >>> print(feature_collection)
+        'POLYGON ((-106.64 24, -106.49 24.05, -106.49 24.01, -106.49 23.98, -106.64 24))'
         while
         >>> new_geometry = gpd.GeoDataFrame()
         >>> new_geometry.loc[0,'geometry'] = FeatureCollection.create_polygon(coordinates, wkt=False)

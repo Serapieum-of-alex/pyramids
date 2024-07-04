@@ -66,7 +66,7 @@ class TestCreateRasterObject:
         columns = 14
         dtype = "int32"  # 5
         bands_count = 1
-        top_left_coords = (432968.1206170588, 520007.787999178)
+        top_left_corner = (432968.1206170588, 520007.787999178)
         ds_epsg = 32618
         no_data_value = -3.4028230607370965e38
         dataset_n = Dataset.create(
@@ -75,7 +75,7 @@ class TestCreateRasterObject:
             columns,
             dtype,
             bands_count,
-            top_left_coords,
+            top_left_corner,
             ds_epsg,
             no_data_value,
         )
@@ -84,7 +84,7 @@ class TestCreateRasterObject:
         assert dataset_n.columns == columns
         assert dataset_n.epsg == ds_epsg
         assert dataset_n.cell_size == cell_size
-        assert dataset_n.top_left_corner == top_left_coords
+        assert dataset_n.top_left_corner == top_left_corner
         assert dataset_n.band_count == bands_count
         assert dataset_n.dtype == ["int32"]
         arr = dataset_n.read_array()

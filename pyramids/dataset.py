@@ -994,7 +994,7 @@ class Dataset(AbstractDataset):
         - First create a dataset:
 
             >>> dataset = Dataset.create(
-            ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_coords=(0, 0),
+            ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_corner=(0, 0),
             ... epsg=4326, no_data_value=-9999
             ... )
 
@@ -1187,7 +1187,7 @@ class Dataset(AbstractDataset):
         - First create a dataset:
 
             >>> dataset = Dataset.create(
-            ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_coords=(0, 0),
+            ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_corner=(0, 0),
             ... epsg=4326, no_data_value=-9999
             ... )
             >>> print(dataset)
@@ -1650,7 +1650,7 @@ class Dataset(AbstractDataset):
         columns: int,
         dtype: str,
         bands: int,
-        top_left_coords: Tuple,
+        top_left_corner: Tuple,
         epsg: int,
         no_data_value: Any = None,
         path: str = None,
@@ -1673,7 +1673,7 @@ class Dataset(AbstractDataset):
             "complex-int32", "complex-float32", "complex-float64", "uint64", "int64", "int8", "count"
         bands : int or None
             Number of bands to create in the output raster.
-        top_left_coords: [Tuple]
+        top_left_corner: [Tuple]
             coordinates of the top left corner point.
         epsg: [int]
             epsg number to identify the projection of the coordinates in the created raster.
@@ -1700,11 +1700,11 @@ class Dataset(AbstractDataset):
         >>> columns = 5
         >>> dtype = "float32"
         >>> bands = 1
-        >>> top_left_coords = (0, 0)
+        >>> top_left_corner = (0, 0)
         >>> epsg = 32618
         >>> no_data_value = -9999
         >>> path = "create-new-dataset.tif"
-        >>> dataset = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_coords, epsg, no_data_value, path)
+        >>> dataset = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_corner, epsg, no_data_value, path)
         >>> print(dataset)
         <BLANKLINE>
                     Cell size: 10.0
@@ -1732,10 +1732,10 @@ class Dataset(AbstractDataset):
         dst = Dataset._create_dataset(columns, rows, bands, dtype, path=path)
         sr = Dataset._create_sr_from_epsg(epsg)
         geotransform = (
-            top_left_coords[0],
+            top_left_corner[0],
             cell_size,
             0,
-            top_left_coords[1],
+            top_left_corner[1],
             0,
             -1 * cell_size,
         )
@@ -2457,6 +2457,20 @@ class Dataset(AbstractDataset):
             no data value to set in the raster bands.
         old_value: [numeric]
             old no data value that is already in the raster bands.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> dataset = Dataset.create(
+            ...     cell_size=0.05, rows=10, columns=10, bands=1, top_left_corner=top_left_corner,dtype="float32",
+            ...    epsg=4326
+            ... )
+
         """
         if not isinstance(new_value, list):
             new_value = [new_value] * self.band_count
