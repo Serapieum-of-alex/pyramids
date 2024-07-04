@@ -534,11 +534,11 @@ class Dataset(AbstractDataset):
             it can be divided into smaller rectangular blocks or tiles. These blocks can be individually accessed,
             which is particularly useful for large datasets:
 
-            - Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
-                  at once. This is especially beneficial when only a small portion of the data needs to be processed.
-            - Performance: For certain file formats and operations, working with optimal block sizes can significantly
-                  improve performance. For example, if the block size matches the reading or processing window,
-                Pyramids can minimize disk access and data transfer.
+                - Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
+                      at once. This is especially beneficial when only a small portion of the data needs to be processed.
+                - Performance: For certain file formats and operations, working with optimal block sizes can significantly
+                      improve performance. For example, if the block size matches the reading or processing window,
+                      Pyramids can minimize disk access and data transfer.
 
         Parameters
         ----------
@@ -550,10 +550,11 @@ class Dataset(AbstractDataset):
             - List:
                 window to specify a block of data to read from the dataset. the window should be a list of 4 integers
                 [offset_x, offset_y, window_columns, window_rows].
-                - offset_x/column index: x offset of the block.
-                - offset_y/row index: y offset of the block.
-                - window_columns: number of columns in the block.
-                - window_rows: number of rows in the block.
+
+                    - offset_x/column index: x offset of the block.
+                    - offset_y/row index: y offset of the block.
+                    - window_columns: number of columns in the block.
+                    - window_rows: number of rows in the block.
 
             - GeoDataFrame:
                 GeoDataFrame with a geometry column, the function will get the total_bounds of the geodataframe and
@@ -977,7 +978,7 @@ class Dataset(AbstractDataset):
         - The content of the attribute table will be stored in an xml file by the name of the raster file with
             the extension of .aux.xml, the content of the file will be like the following:
 
-        ..code-block:: xml
+        .. code-block:: xml
 
             <PAMDataset>
               <PAMRasterBand band="1">
@@ -1025,7 +1026,6 @@ class Dataset(AbstractDataset):
                 </GDALRasterAttributeTable>
               </PAMRasterBand>
             </PAMDataset>
-
         """
         rat = self._df_to_attribute_table(df)
         band = self._iloc(band)
@@ -1268,23 +1268,25 @@ class Dataset(AbstractDataset):
         Hint
         ----
         - The value of the stats will be stored in an xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+            .aux.xml,
 
-        ..code-block:: xml
+        the content of the file will be like the following:
 
-            <PAMDataset>
-              <PAMRasterBand band="1">
-                <Description>Band_1</Description>
-                <Metadata>
-                  <MDI key="RepresentationType">ATHEMATIC</MDI>
-                  <MDI key="STATISTICS_MAXIMUM">88</MDI>
-                  <MDI key="STATISTICS_MEAN">7.9662921348315</MDI>
-                  <MDI key="STATISTICS_MINIMUM">0</MDI>
-                  <MDI key="STATISTICS_STDDEV">18.294377743948</MDI>
-                  <MDI key="STATISTICS_VALID_PERCENT">48.9</MDI>
-                </Metadata>
-              </PAMRasterBand>
-            </PAMDataset>
+            ..code-block:: xml
+
+                <PAMDataset>
+                  <PAMRasterBand band="1">
+                    <Description>Band_1</Description>
+                    <Metadata>
+                      <MDI key="RepresentationType">ATHEMATIC</MDI>
+                      <MDI key="STATISTICS_MAXIMUM">88</MDI>
+                      <MDI key="STATISTICS_MEAN">7.9662921348315</MDI>
+                      <MDI key="STATISTICS_MINIMUM">0</MDI>
+                      <MDI key="STATISTICS_STDDEV">18.294377743948</MDI>
+                      <MDI key="STATISTICS_VALID_PERCENT">48.9</MDI>
+                    </Metadata>
+                  </PAMRasterBand>
+                </PAMDataset>
 
         Examples
         --------
@@ -1307,7 +1309,7 @@ class Dataset(AbstractDataset):
         - Get the statistics of all the bands using a mask polygon.
 
             - Create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
-            0.2 -0.1] to cover the 4 cells.
+                0.2 -0.1] to cover the 4 cells.
 
             >>> from shapely.geometry import Polygon
             >>> import geopandas as gpd
