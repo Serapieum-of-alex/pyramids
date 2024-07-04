@@ -2468,7 +2468,7 @@ class Dataset(AbstractDataset):
 
             >>> dataset = Dataset.create(
             ...     cell_size=0.05, rows=3, columns=3, bands=1, top_left_corner=(0, 0),dtype="float32",
-            ...    epsg=4326, no_data_value=-9
+            ...     epsg=4326, no_data_value=-9
             ... )
             >>> arr = dataset.read_array()
             >>> print(arr)
