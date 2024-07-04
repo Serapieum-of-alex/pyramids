@@ -1329,17 +1329,17 @@ class TestExtract:
         assert np.array_equal(arr, values)
 
     def test_array_to_map_coordinates(self):
-        pivot_x = 432968.1206170588
-        pivot_y = 520007.787999178
-        cell_size = 4000.0
+        arr = np.random.randint(1, 5, size=(15, 15))
+        top_left_corner = (432968.1206170588, 520007.787999178)
+        cell_size = 4000
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=32618
+        )
         tile_xoff = [0, 0, 0, 6, 6, 6, 12, 12, 12]
         tile_yoff = [0, 6, 12, 0, 6, 12, 0, 6, 12]
-        x_coords, y_coords = Dataset.array_to_map_coordinates(
-            pivot_x,
-            pivot_y,
-            cell_size,
-            tile_xoff,
+        x_coords, y_coords = dataset.array_to_map_coordinates(
             tile_yoff,
+            tile_xoff,
             center=False,
         )
         assert x_coords == [
@@ -1374,7 +1374,7 @@ class TestExtract:
         dataset = Dataset(src)
         loc = dataset.map_to_array_coordinates(coello_gauges)
         assert isinstance(loc, np.ndarray)
-        assert np.array_equal(points_location_in_array, loc)
+        np.testing.assert_array_equal(points_location_in_array, loc)
 
     def test_map_to_array_coordinates_using_df(
         self,

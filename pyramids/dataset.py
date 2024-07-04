@@ -3948,13 +3948,10 @@ class Dataset(AbstractDataset):
         indices = indices[:, [1, 0]]
         return indices
 
-    @staticmethod
     def array_to_map_coordinates(
-        top_left_x: Union[int, float],
-        top_left_y: Union[int, float],
-        cell_size: Union[int, float],
-        column_index: Union[List[Number], np.ndarray],
+        self,
         rows_index: Union[List[Number], np.ndarray],
+        column_index: Union[List[Number], np.ndarray],
         center: bool = False,
     ) -> Tuple[List[Number], List[Number]]:
         """Convert array indices to map coordinates.
@@ -3963,16 +3960,10 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        top_left_x: int/float
-            the x coordinate of the dataset top left corner.
-        top_left_y: int/float
-            the y coordinate of the dataset top left corner.
-        cell_size: int/float
-            the cell size of the raster.
-        column_index: Union[List[Number], np.ndarray]
-            the column index of the cells in the raster array.
         rows_index: Union[List[Number], np.ndarray]
             the row index of the cells in the raster array.
+        column_index: Union[List[Number], np.ndarray]
+            the column index of the cells in the raster array.
         center: bool
             if True, the coordinates will be the center of the cell. Default is False.
 
@@ -3982,7 +3973,28 @@ class Dataset(AbstractDataset):
             the x coordinates of the cells.
         y_coords: List[Number]
             the y coordinates of the cells.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now let's call the function with two lists of row and column indices.
+
+            >>> rows_index = [1, 3, 5]
+            >>> column_index = [2, 4, 6]
+            >>> coords = dataset.array_to_map_coordinates(rows_index, column_index)
+            >>> print(coords) # doctest: +SKIP
+            ([0.1, 0.2, 0.3], [-0.05, -0.15, -0.25])
         """
+        top_left_x, top_left_y = self.top_left_corner
+        cell_size = self.cell_size
         if center:
             # for the top left corner of the cell
             top_left_x += cell_size / 2
