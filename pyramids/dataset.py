@@ -709,12 +709,49 @@ class Dataset(AbstractDataset):
 
     @property
     def bounds(self) -> GeoDataFrame:
-        """Bounds - the bbox as a geodataframe with a polygon geometry."""
+        """
+        Bounds - the bbox as a geodataframe with a polygon geometry.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the bounds of the dataset.
+            >>> bounds = dataset.bounds
+            >>> print(bounds) # doctest: +SKIP
+                                                    geometry
+            0  POLYGON ((0 0, 0 -0.5, 0.5 -0.5, 0.5 0, 0 0))
+        """
         return self._calculate_bounds()
 
     @property
     def bbox(self) -> List:
-        """Bound box [xmin, ymin, xmax, ymax]."""
+        """
+        Bound box [xmin, ymin, xmax, ymax].
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the bounds of the dataset.
+            >>> bbox = dataset.bbox
+            >>> print(bbox) # doctest: +SKIP
+            [0.0, -0.5, 0.5, 0.0]
+        """
         return self._calculate_bbox()
 
     @property
