@@ -530,25 +530,29 @@ class Dataset(AbstractDataset):
             When a raster dataset is stored on disk, it might not be stored as one continuous chunk of data. Instead,
             it can be divided into smaller rectangular blocks or tiles. These blocks can be individually accessed,
             which is particularly useful for large datasets:
-                Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
-                    at once. This is especially beneficial when only a small portion of the data needs to be processed.
-                Performance: For certain file formats and operations, working with optimal block sizes can significantly
-                    improve performance. For example, if the block size matches the reading or processing window,
-                        Pyramids can minimize disk access and data transfer.
+
+            - Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
+              at once. This is especially beneficial when only a small portion of the data needs to be processed.
+            - Performance: For certain file formats and operations, working with optimal block sizes can significantly
+              improve performance. For example, if the block size matches the reading or processing window,
+              Pyramids can minimize disk access and data transfer.
 
         Parameters
         ----------
-        band : [integer]
+        band : int, optional
             the band you want to get its data, If None, the data of all bands will be read. Default is None
-        window: [List/GeoDataFrame]
-            List:
+        window: List/GeoDataFrame, optional
+            Specify a block of data to read from the dataset. The window can be specified in two ways:
+
+            - List:
                 window to specify a block of data to read from the dataset. the window should be a list of 4 integers
                 [offset_x, offset_y, window_columns, window_rows].
                 - offset_x/column index: x offset of the block.
                 - offset_y/row index: y offset of the block.
                 - window_columns: number of columns in the block.
                 - window_rows: number of rows in the block.
-            GeoDataFrame:
+
+            - GeoDataFrame:
                 GeoDataFrame with a geometry column, the function will get the total_bounds of the geodataframe and
                 use it as a window to read the raster.
 
@@ -927,10 +931,9 @@ class Dataset(AbstractDataset):
     def set_attribute_table(self, df: DataFrame, band: int = None) -> None:
         """Set the attribute table for a band.
 
-            - The attribute table can be used to associate tabular data with the values of a raster band.
-            - This is particularly useful for categorical raster data, such as land cover classifications, where each
-            pixel value corresponds to a category that has additional attributes (e.g., class name, color
-            description).
+        The attribute table can be used to associate tabular data with the values of a raster band.
+        This is particularly useful for categorical raster data, such as land cover classifications, where each pixel
+        value corresponds to a category that has additional attributes (e.g., class name, color description).
 
         Hint
         ----
@@ -940,9 +943,9 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        df: [DataFrame]
+        df: DataFrame
             DataFrame with the attribute table.
-        band: [int]
+        band: int
             band index.
 
         Examples
@@ -1240,9 +1243,9 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        band: [int]
+        band: int, optional
             band index, if None, the statistics of all bands will be returned.
-        mask: [Polygon GeoDataFrame/Dataset object]
+        mask: Polygon GeoDataFrame/Dataset object, optional
             GeodataFrame with a geometry of polygon type
 
         Returns
@@ -1429,7 +1432,6 @@ class Dataset(AbstractDataset):
                 3- color_scale 3 is the SymLogNorm scale
                 4- color_scale 4 is the PowerNorm scale
                 5- color_scale 5 is the BoundaryNorm scale
-                ------------------------------------------------------------------
                 gamma: [float], optional
                     value needed for option 2. The default is 1./2.
                 line_threshold: [float], optional
@@ -1440,7 +1442,6 @@ class Dataset(AbstractDataset):
                     a list of number to be used as a discrete bounds for the color scale 4.Default is None,
                 midpoint: [float], optional
                     value needed for option 5. The default is 0.
-                ------------------------------------------------------------------
             cmap: [str], optional
                 color style. The default is 'coolwarm_r'.
             display_cell_value: [bool]
@@ -3394,26 +3395,27 @@ class Dataset(AbstractDataset):
         self,
         alignment_src: "Dataset",
     ) -> "Dataset":
-        """Align the current dataset (number of rows and columns) to follow the alignmen of a given dataset.
+        """
+        Align the current dataset (number of rows and columns) to follow the alignmen of a given dataset.
 
-        align method copies the following data
-            - The coordinate system
-            - The number of rows & columns
-            - cell size
+        align method copies the following data:
+        - The coordinate system
+        - The number of rows & columns
+        - cell size
         from alignment_src to the raster (the source of data values in cells)
 
         the result will be a raster with the same structure as alignment_src but with
-        values from data_src using the Nearest neighbor interpolation algorithm
+        values from data_src using the Nearest neighbor interpolation algorithm.
 
         Parameters
         ----------
-        alignment_src : [Dataset]
+        alignment_src : Dataset
             spatial information source raster to get the spatial information (coordinate system, no of rows &
             columns) data values source raster to get the data (values of each cell).
 
         Returns
         -------
-        dst: [Dataset]
+        dst: Dataset
             Dataset object
 
         Examples
@@ -3437,7 +3439,7 @@ class Dataset(AbstractDataset):
                         File:...
             <BLANKLINE>
 
-        - The dataset to be aligned has a top_left_corner at ( -0.1, 0.1) (i.e it has two more rows in top of the
+        - The dataset to be aligned has a top_left_corner at (-0.1, 0.1) (i.e., it has two more rows in top of the
         dataset, and two columns in the left of the dataset plus)
 
             >>> arr = np.random.rand(10, 10)
@@ -3460,6 +3462,8 @@ class Dataset(AbstractDataset):
         .. image:: /_images/dataset/align-source-target.png
             :alt: Example Image
             :align: center
+
+        - Now call the `align` method and use the dataset as the alignment source.
 
             >>> aligned_dataset = dataset_target.align(dataset)
             >>> print(aligned_dataset)
@@ -4678,7 +4682,7 @@ class Dataset(AbstractDataset):
             >>> print(dataset.overview_count)  # doctest: +SKIP
             [4, 4, 4, 4]
 
-        - For each band there are 4 overview levels, that you can use to plot the bands.
+        - For each band, there are 4 overview levels, that you can use to plot the bands.
 
             >>> dataset.plot(band=0, overview=True, overview_index=0) # doctest: +SKIP
 
@@ -4686,7 +4690,7 @@ class Dataset(AbstractDataset):
           :alt: footprint
           :align: center
 
-        - As you see, however, the dataset originally is 10*10 but the first overview level (2) displays half of the
+        - As you see, however, the dataset originally is 10*10, but the first overview level (2) displays half of the
         cells by aggregating all the cells using the nearest neighbor. and the second level displays only 3 cells in
         each
 
@@ -4695,6 +4699,8 @@ class Dataset(AbstractDataset):
         .. image:: /_images/dataset/overviews-level-1.png
           :alt: footprint
           :align: center
+
+        - For the third overview level.
 
             >>> dataset.plot(band=0, overview=True, overview_index=2)       # doctest: +SKIP
 
@@ -4739,18 +4745,17 @@ class Dataset(AbstractDataset):
         ----------
         resampling_method : str, optional
             The resampling method used to create the overviews, by default "nearest"
-            possible values are:
-                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
-                "BILINEAR".
+            possible values are "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE",
+            "AVERAGE_MAGPHASE", "RMS", "BILINEAR".
 
         Raises
         ------
-        ValueError
+        ValueError:
             resampling_method should be one of {"NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS",
-            "MODE", "AVERAGE_MAGPHASE", "RMS", "BILINEAR"}
+            "MODE", "AVERAGE_MAGPHASE", "RMS", "BILINEAR"}.
         ReadOnlyError
             If the overviews are internal and the Dataset is opened with a read only. Please read the dataset using
-            read_only=False
+            `read_only=False`.
 
         See Also
         --------
