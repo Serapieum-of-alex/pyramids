@@ -1676,7 +1676,7 @@ class Dataset(AbstractDataset):
         <BLANKLINE>
 
         - If you check the value stored in the band using the `read_array` method, you will find that the band is full of
-        the `no_data_value` value which we used here as -9999.
+                the `no_data_value` value which we used here as -9999.
 
             >>> print(dataset.read_array(band=0))
             [[-9999. -9999. -9999. -9999. -9999.]
@@ -1750,7 +1750,7 @@ class Dataset(AbstractDataset):
         ----
         - The `geo` parameter can replace both the `cell_size` and the `top_left_corner` parameters.
         - the function will check first if the `geo` parameter is defined it will ignore the `cell_size` and the
-        `top_left_corner` parameters if given.`
+            `top_left_corner` parameters if given.`
 
         Examples
         --------
@@ -1895,7 +1895,7 @@ class Dataset(AbstractDataset):
         Hint
         ----
         - If the given array is 3D, the bands have to be the first dimension, the x/lon has to be the second dimension,
-        and the y/lon has to be the third dimension of the array.
+            and the y/lon has to be the third dimension of the array.
 
         Example
         -------
@@ -2670,8 +2670,8 @@ class Dataset(AbstractDataset):
     def convert_longitude(self, inplace: bool = False):
         """Convert Longitude.
 
-            - convert the longitude from 0 - 360 to -180 - 180.
-            - currently the function works correctly if the raster covers the whole world, it means that the columns
+        - convert the longitude from 0-360 to -180 - 180.
+        - currently the function works correctly if the raster covers the whole world, it means that the columns
             in the rasters covers from longitude 0 to 360.
 
         Parameters
@@ -2748,12 +2748,12 @@ class Dataset(AbstractDataset):
 
         The function does the following:
 
-            - Flatten the array in each band in the raster then mask the values if a vector_mask
-            file is given otherwise it will flatten all values.
-            - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
-            data in the raster band exists, an index number will be used [1, 2, 3, ...]
+            - Flatten the array in each band in the raster then mask the values if a vector_mask file is given
+                otherwise it will flatten all values.
+            - Put the values for each band in a column in a dataframe under the name of the raster band,
+                but if no meta data in the raster band exists, an index number will be used [1, 2, 3, ...]
             - The function has an add_geometry parameter with two possible values ["point", "polygon"], which you can
-            specify the type of shapely geometry you want to create from each cell,
+                specify the type of shapely geometry you want to create from each cell,
 
                 - If point is chosen, the created point will be at the center of each cell
                 - If a polygon is chosen, a square polygon will be created that covers the entire cell.
@@ -2855,9 +2855,9 @@ class Dataset(AbstractDataset):
                  Band_1    Band_2
             0  0.354482  0.383279
 
-        - If you have a big dataset and you want to convert it to dataframe in tiles (do not read the whole dataset
+        - If you have a big dataset, and you want to convert it to dataframe in tiles (do not read the whole dataset
         at once but in tiles), you can use the `tile`, and the `tile_size` parameters.
-        - The values definitely will be the same as the values above but the different here is how the dataset reads
+        - The values definitely will be the same as the values above, but the different here is how the dataset reads
         the values in chunks.
 
             >>> gdf = dataset.to_feature_collection(tile=True, tile_size=1)
@@ -3448,7 +3448,7 @@ class Dataset(AbstractDataset):
             <BLANKLINE>
 
         - The dataset to be aligned has a top_left_corner at (-0.1, 0.1) (i.e., it has two more rows in top of the
-        dataset, and two columns in the left of the dataset plus)
+            dataset, and two columns in the left of the dataset plus)
 
             >>> arr = np.random.rand(10, 10)
             >>> top_left_corner = (-0.1, 0.1)
@@ -3681,9 +3681,9 @@ class Dataset(AbstractDataset):
         - Crop the raster using a polygon mask:
 
             - the polygon covers 4 cells in the 3rd and 4th rows and 3rd and 4th column `arr[2:4, 2:4]`,
-            so the result dataset will have the same number of bands `4`, 2 rows and 2 columns.
+                so the result dataset will have the same number of bands `4`, 2 rows and 2 columns.
             - First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
-            degree, the top left corner of the dataset is (0,0)
+                degree, the top left corner of the dataset is (0,0)
 
             >>> import numpy as np
             >>> import geopandas as gpd
@@ -3693,7 +3693,7 @@ class Dataset(AbstractDataset):
             >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
 
             - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
-            0.2 -0.1] to cover the 4 cells.
+                0.2 -0.1] to cover the 4 cells.
 
             >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
 
@@ -3911,9 +3911,9 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def array_to_map_coordinates(
-        top_left_x: Number,
-        top_left_y: Number,
-        cell_size: Number,
+        top_left_x: Union[int, float],
+        top_left_y: Union[int, float],
+        cell_size: Union[int, float],
         column_index: Union[List[Number], np.ndarray],
         rows_index: Union[List[Number], np.ndarray],
         center: bool = False,
@@ -3924,11 +3924,11 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        top_left_x: Number
+        top_left_x: int/float
             the x coordinate of the dataset top left corner.
-        top_left_y: Number
+        top_left_y: int/float
             the y coordinate of the dataset top left corner.
-        cell_size: Number
+        cell_size: int/float
             the cell size of the raster.
         column_index: Union[List[Number], np.ndarray]
             the column index of the cells in the raster array.
@@ -3946,8 +3946,8 @@ class Dataset(AbstractDataset):
         """
         if center:
             # for the top left corner of the cell
-            top_left_x = top_left_x + cell_size / 2
-            top_left_y = top_left_y - cell_size / 2
+            top_left_x += cell_size / 2
+            top_left_y -= cell_size / 2
 
         x_coord_fn = lambda x: top_left_x + x * cell_size
         y_coord_fn = lambda y: top_left_y - y * cell_size
@@ -4080,23 +4080,24 @@ class Dataset(AbstractDataset):
         exclude_values:
             if you want to exclude a certain value in the raster with another value inter the two values as a
             list of tuples a [(value_to_be_exclude_valuesd, new_value)]
+
             >>> exclude_values = [0]
 
             - This parameter is introduced particularly in the case of rasters that has the no_data_value stored in the
-            `no_data_value` property does not match the value stored in the band, so this option can correct this
-            behavior.
+                `no_data_value` property does not match the value stored in the band, so this option can correct this
+                behavior.
 
         Returns
         -------
         GeoDataFrame:
 
             - geodataframe containing the polygon representing the extent of the raster. the extent column should
-            contain a value of 2 only.
+                contain a value of 2 only.
             - if the dataset had separate polygons, each polygon will be in a separate row.
 
         Examples
         --------
-        - The following raster dataset has flood depth stored in its values and the non flooded cells are filled with
+        - The following raster dataset has flood depth stored in its values, and the non-flooded cells are filled with
         zero, so to extract the flood extent, we need to exclude the zero flood depth cells.
 
             >>> dataset = Dataset.read_file("examples/data/geotiff/rhine-flood.tif")
@@ -4106,6 +4107,9 @@ class Dataset(AbstractDataset):
         .. image:: /_images/dataset/dataset-footprint-rhine-flood.png
             :alt: footprint
             :align: center
+
+        - Now, to extract the footprint of the dataset band, we need to specify the `exclude_values` parameter with the
+            value of the non-flooded cells.
 
             >>> extent = dataset.footprint(band=0, exclude_values=[0])
             >>> print(extent)
@@ -4522,7 +4526,7 @@ class Dataset(AbstractDataset):
             >>> cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
 
         - The first returned output is a binary array with 1 indicating that the cell value is inside the cluster,
-        and 0 is outside.
+            and 0 is outside.
 
             >>> print(cluster_array)  # doctest: +SKIP
             [[1. 1. 1. 1. 1.]
@@ -4581,7 +4585,7 @@ class Dataset(AbstractDataset):
     ) -> GeoDataFrame:
         """Cluster the connected equal cells into polygons.
 
-            - Creates vector polygons for all connected regions of pixels in the raster sharing a common
+        - Creates vector polygons for all connected regions of pixels in the raster sharing a common
             pixel value (group neighboring cells with the same value into one polygon).
 
         Parameters
@@ -4708,8 +4712,8 @@ class Dataset(AbstractDataset):
           :align: center
 
         - As you see, however, the dataset originally is 10*10, but the first overview level (2) displays half of the
-        cells by aggregating all the cells using the nearest neighbor. and the second level displays only 3 cells in
-        each
+            cells by aggregating all the cells using the nearest neighbor. and the second level displays only 3 cells in
+            each
 
             >>> dataset.plot(band=0, overview=True, overview_index=1)   # doctest: +SKIP
 
@@ -5278,7 +5282,7 @@ class Dataset(AbstractDataset):
         Hint
         ----
         - The value of the histogram will be stored in an xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+            .aux.xml, the content of the file will be like the following:
 
         ..code-block:: xml
 
@@ -5320,7 +5324,7 @@ class Dataset(AbstractDataset):
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
         - Now, let's get the histogram of the first band using the `get_histogram` method with the default
-        parameters.
+            parameters.
 
             >>> hist, ranges = dataset.get_histogram(band=0)
             >>> print(hist)  # doctest: +SKIP
@@ -5337,9 +5341,9 @@ class Dataset(AbstractDataset):
             [(1.0, 1.835), (1.835, 2.67), (2.67, 3.5), (3.5, 4.34), (4.34, 5.167), (5.167, 6.0)]
 
         - for datasets with big dimensions, computing the histogram can take some time, approximating the coputation
-        of the histogram can same a lot of computation time.
+            of the histogram can same a lot of computation time.
         - when using the parameter `approx_ok` with a `True` value the histogram will be calcilated from resampling
-        the band or from the overviews if they exist.
+            the band or from the overviews if they exist.
 
             >>> hist, ranges = dataset.get_histogram(band=0, approx_ok=True)
             >>> print(hist)  # doctest: +SKIP
