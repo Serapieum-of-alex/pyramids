@@ -3869,7 +3869,7 @@ class Dataset(AbstractDataset):
         """Convert coordinates of points to array indices.
 
         - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by
-        finding the cell indices (rows, col) of the nearest cell in the raster.
+            finding the cell indices (rows, col) of the nearest cell in the raster.
         - The point coordinate system of the raster has to be projected to be able to calculate the distance
 
         Parameters
@@ -3884,9 +3884,43 @@ class Dataset(AbstractDataset):
         -------
         array:
             array with a shape (any, 2), for the row, column indices in the array.
-            array([[ 5,  4],
-                   [ 2,  9],
-                   [ 5,  9]])
+
+        Examples
+        --------
+        - Create `Dataset` consists of 2 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - DataFrame with x, y columns:
+
+            - we can give the function a DataFrame with x, y columns to array the coordinates of the points that
+                 are located withen the dataset domain.
+
+            >>> points = pd.DataFrame({"x": [0.025, 0.175, 0.375], "y": [0.025, 0.225, 0.125]})
+            >>> indices = dataset.map_to_array_coordinates(points)
+            >>> print(indices)
+            [[0 0]
+             [0 3]
+             [0 7]]
+
+        - GeoDataFrame with POINT geometry:
+
+            - we can give the function a GeoDataFrame with POINT geometry to array the coordinates of the points that
+                locates within the dataset domain.
+
+            >>> from shapely.geometry import Point
+            >>> from geopandas import GeoDataFrame
+            >>> points = GeoDataFrame({"geometry": [Point(0.025, 0.025), Point(0.175, 0.225), Point(0.375, 0.125)]})
+            >>> indices = dataset.map_to_array_coordinates(points)
+            >>> print(indices)
+            [[0 0]
+             [0 3]
+             [0 7]]
         """
         if isinstance(points, GeoDataFrame):
             points = FeatureCollection(points)
