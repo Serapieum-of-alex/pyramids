@@ -1367,7 +1367,7 @@ class Dataset(AbstractDataset):
         - The value of the stats will be stored in an xml file by the name of the raster file with the extension of
             .aux.xml,
 
-        the content of the file will be like the following:
+        - The content of the file will be like the following:
 
             ..code-block:: xml
 
@@ -2003,7 +2003,7 @@ class Dataset(AbstractDataset):
         Hint
         ----
         - If the given array is 3D, the bands have to be the first dimension, the x/lon has to be the second
-        dimension, and the y/lon has to be the third dimension of the array.
+            dimension, and the y/lon has to be the third dimension of the array.
 
         Example
         -------
