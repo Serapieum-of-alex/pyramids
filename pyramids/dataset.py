@@ -1657,7 +1657,7 @@ class Dataset(AbstractDataset):
     ) -> "Dataset":
         """Create a new dataset and fill it with the no_data_value.
 
-            - The new dataset will have an array filled with the no_data_value.
+        The new dataset will have an array filled with the no_data_value.
 
         Parameters
         ----------
@@ -1687,8 +1687,8 @@ class Dataset(AbstractDataset):
         Dataset:
             A new dataset
 
-        Hints
-        -----
+        Hint
+        ----
         - The no_data_value will be filled in the array of the output dataset.
         - The coordinates of the top left corner point should be in the same projection as the epsg.
         - The cell size should be in the same unit as the coordinates.
@@ -1696,27 +1696,31 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> cell_size = 10
-        >>> rows = 5
-        >>> columns = 5
-        >>> dtype = "float32"
-        >>> bands = 1
-        >>> top_left_corner = (0, 0)
-        >>> epsg = 32618
-        >>> no_data_value = -9999
-        >>> path = "create-new-dataset.tif"
-        >>> dataset = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_corner, epsg, no_data_value, path)
-        >>> print(dataset)
-        <BLANKLINE>
-                    Cell size: 10.0
-                    Dimension: 5 * 5
-                    EPSG: 32618
-                    Number of Bands: 1
-                    Band names: ['Band_1']
-                    Mask: -9999.0
-                    Data type: float32
-                    File: create-new-dataset.tif
-        <BLANKLINE>
+        - To create a dataset using the `create` method you need to provide all the information needed to locate the
+            dataset in space `top_left_corner` and`epsg`, then the information needed to specify the data to be stored
+            in the dataset like `dtype`, `rows`, `columns`, `cell_size`, `bands` and `no_data_value`.
+
+            >>> cell_size = 10
+            >>> rows = 5
+            >>> columns = 5
+            >>> dtype = "float32"
+            >>> bands = 1
+            >>> top_left_corner = (0, 0)
+            >>> epsg = 32618
+            >>> no_data_value = -9999
+            >>> path = "create-new-dataset.tif"
+            >>> dataset = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_corner, epsg, no_data_value, path)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 10.0
+                        Dimension: 5 * 5
+                        EPSG: 32618
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float32
+                        File: create-new-dataset.tif
+            <BLANKLINE>
 
         - If you check the value stored in the band using the `read_array` method, you will find that the band is full of
             the `no_data_value` value which we used here as -9999.
@@ -1766,22 +1770,22 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        arr: [np.ndarray]
+        arr: np.ndarray
             numpy array.
         top_left_corner: Tuple[float, float], Optional, Default is None.
             the coordinates of the top left corner of the dataset.
-        cell_size: Union[int, float], Optional, Default is None.
+        cell_size: int/float, Optional, Default is None.
             cell size in the same units of the coordinate refernce system defined by the `epsg` parameter.
-        geo: [Tuple]
+        geo: Tuple[float, float, float], Optional, Default is None.
             geotransform tuple (minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size).
-        epsg: [integer]
-            integer reference number to the new projection (https://epsg.io/)
-                (default 3857 the reference no of WGS84 web mercator)
+        epsg: integer
+            integer reference number to the new projection (https://epsg.io/) (default 3857 the reference no of WGS84
+            web mercator).
         no_data_value: Any, optional
             no data value to mask the cells out of the domain. The default is -9999.
         driver_type: [str] optional
             driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM"
-        path: [str]
+        path: str
             path to save the driver.
 
         Returns
@@ -1797,7 +1801,7 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        - Create dataset using the `cell_size` and `top_left_corner` parameters
+        - Create dataset using the `cell_size` and `top_left_corner` parameters.
 
                 >>> import numpy as np
                 >>> arr = np.random.rand(4, 10, 10)
@@ -1816,9 +1820,10 @@ class Dataset(AbstractDataset):
                             File: ...
                 <BLANKLINE>
 
-        - Create dataset using the `geo` parameter
-            - First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
-                degree, the top left corner of the dataset is (0,0)
+        - Create dataset using the `geo` parameter.
+
+            First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
+            degree, the top left corner of the dataset is (0,0)
 
                 >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
                 >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
@@ -1915,18 +1920,18 @@ class Dataset(AbstractDataset):
     ) -> "Dataset":
         """Create a new dataset like another dataset.
 
-            dataset_like method creates a Dataset from an array like another source dataset. The new dataset
-            will have the same `projection`, `coordinates` or the `top left corner` of the original dataset,
-            `cell size`, `no_data_velue`, and number of `rows` and `columns`.
-            the array and the source dataset should have the same number of columns and rows
+        dataset_like method creates a Dataset from an array like another source dataset. The new dataset
+        will have the same `projection`, `coordinates` or the `top left corner` of the original dataset,
+        `cell size`, `no_data_velue`, and number of `rows` and `columns`.
+        the array and the source dataset should have the same number of columns and rows
 
         Parameters
         ----------
-        src: [Dataset]
+        src: Dataset
             source raster to get the spatial information
-        array: [array]
-            to store in the new raster
-        path: [str]
+        array: ndarray
+            data to store in the new dataset.
+        path: str, default is None
             path to save the new geotiff file, if not given, the method will return in-memory dataset.
 
         Returns
@@ -1937,8 +1942,8 @@ class Dataset(AbstractDataset):
 
         Hint
         ----
-        - If the given array is 3D, the bands have to be the first dimension, the x/lon has to be the second dimension,
-            and the y/lon has to be the third dimension of the array.
+        - If the given array is 3D, the bands have to be the first dimension, the x/lon has to be the second
+        dimension, and the y/lon has to be the third dimension of the array.
 
         Example
         -------
@@ -2460,7 +2465,6 @@ class Dataset(AbstractDataset):
             old no data value that is already in the raster bands.
 
         .. warning::
-
                 The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value`
                 in the raster bands.
 
@@ -3017,8 +3021,8 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        Datacube
-            gdal dataset object
+        Dataset:
+            Dataset object
 
         Examples
         --------
@@ -3036,7 +3040,8 @@ class Dataset(AbstractDataset):
              [ 0.63382852 -0.49259597  0.18471423 -0.49308984 -0.52840286]
              [-0.34076174 -0.53073014 -0.18485789 -0.40033474 -0.38962938]]
 
-        - Now, lets apply the absolute function to the dataset
+        - Now, lets apply the absolute function to the dataset.
+
             >>> abs_dataset = dataset.apply(np.abs)
             >>> print(abs_dataset.read_array()) # doctest: +SKIP
             [[0.94997539 0.80083622 0.30948769 0.77439961 0.83836424]
@@ -3497,7 +3502,7 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        dst: Dataset
+        Dataset:
             Dataset object
 
         Examples
@@ -3733,12 +3738,12 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        mask: [Polygon GeoDataFrame/Dataset]
+        mask: Polygon GeoDataFrame/Dataset
             GeodataFrame with a polygon geometry, or a Dataset object.
-        touch: [bool]
+        touch: bool
             To include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
             Default is True.
-        inplace: [bool]
+        inplace: bool
             True to make the changes in place.
 
         Returns
@@ -3752,7 +3757,7 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        - Crop the raster using a polygon mask:
+        - Crop the raster using a polygon mask.
 
             - the polygon covers 4 cells in the 3rd and 4th rows and 3rd and 4th column `arr[2:4, 2:4]`,
                 so the result dataset will have the same number of bands `4`, 2 rows and 2 columns.
@@ -4026,22 +4031,22 @@ class Dataset(AbstractDataset):
     ) -> Tuple[List[Number], List[Number]]:
         """Convert array indices to map coordinates.
 
-            - array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
+            array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
 
         Parameters
         ----------
-        rows_index: Union[List[Number], np.ndarray]
+        rows_index: List[Number]/ np.ndarray
             the row index of the cells in the raster array.
-        column_index: Union[List[Number], np.ndarray]
+        column_index: List[Number]/np.ndarray
             the column index of the cells in the raster array.
         center: bool
             if True, the coordinates will be the center of the cell. Default is False.
 
         Returns
         -------
-        x_coords: List[Number]
+        List[Number]:
             the x coordinates of the cells.
-        y_coords: List[Number]
+        List[Number]:
             the y coordinates of the cells.
 
         Examples
@@ -4832,9 +4837,8 @@ class Dataset(AbstractDataset):
           :alt: footprint
           :align: center
 
-        - However, the dataset originally is 10*10, but the first overview level (2) displays half of the
-            cells by aggregating all the cells using the nearest neighbor. and the second level displays only 3 cells in
-            each
+        - However, the dataset originally is 10*10, but the first overview level (2) displays half of the cells by
+            aggregating all the cells using the nearest neighbor. and the second level displays only 3 cells in each
 
             >>> dataset.plot(band=0, overview=True, overview_index=1)   # doctest: +SKIP
 
