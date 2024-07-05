@@ -2459,6 +2459,7 @@ class Dataset(AbstractDataset):
             old no data value that is already in the raster bands.
 
         .. warning::
+
                 The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value`
                 in the raster bands.
 
