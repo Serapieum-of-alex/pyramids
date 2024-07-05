@@ -2444,9 +2444,7 @@ class Dataset(AbstractDataset):
 
         self._no_data_value[band] = no_data_value
 
-    def change_no_data_value(
-        self, new_value: Any, old_value: Any = None, inplace: bool = False
-    ):
+    def change_no_data_value(self, new_value: Any, old_value: Any = None):
         """Change No Data Value.
 
             - Set the no data value in all raster bands.
@@ -2459,8 +2457,10 @@ class Dataset(AbstractDataset):
             no data value to set in the raster bands.
         old_value: [numeric]
             old no data value that is already in the raster bands.
-        inplace: bool, default is False.
-            True to make the changes inplace
+
+        .. warning::
+                The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value`
+                in the raster bands.
 
         Examples
         --------
@@ -2480,13 +2480,13 @@ class Dataset(AbstractDataset):
 
         - The dataset is full of the no_data_value. Now to change the the no_data_value call the `change_no_data_value`
 
-            >>> dataset.change_no_data_value(-10, -9, inplace=True)
-            >>> arr = dataset.read_array()
+            >>> new_dataset = dataset.change_no_data_value(-10, -9)
+            >>> arr = new_dataset.read_array()
             >>> print(arr)
             [[-10. -10. -10.]
              [-10. -10. -10.]
              [-10. -10. -10.]]
-            >>> print(dataset.no_data_value) # doctest: +SKIP
+            >>> print(new_dataset.no_data_value) # doctest: +SKIP
             [-10.0]
         """
         if not isinstance(new_value, list):
@@ -2497,7 +2497,7 @@ class Dataset(AbstractDataset):
 
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.raster, 0)
         # create a new dataset
-        new_dataset = Dataset(dst)
+        new_dataset = Dataset(dst, "write")
         # the new_value could change inside the _set_no_data_value method before it is used to set the no_data_value
         # attribute in the gdal object/pyramids object and to fill the band.
         new_dataset._set_no_data_value(new_value)
@@ -2517,10 +2517,7 @@ class Dataset(AbstractDataset):
                     f"band: {gdal_to_numpy_dtype(self.gdal_dtype[band])}"
                 )
             new_dataset.raster.GetRasterBand(band + 1).WriteArray(arr)
-        if inplace:
-            self.__init__(new_dataset.raster, "write")
-        else:
-            return new_dataset
+        return new_dataset
 
     def get_cell_coords(
         self, location: str = "center", mask: bool = False
