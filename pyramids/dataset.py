@@ -724,6 +724,7 @@ class Dataset(AbstractDataset):
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
         - Get the bounds of the dataset.
+
             >>> bounds = dataset.bounds
             >>> print(bounds) # doctest: +SKIP
                                                     geometry
@@ -2464,9 +2465,8 @@ class Dataset(AbstractDataset):
         old_value: [numeric]
             old no data value that is already in the raster bands.
 
-        .. warning::
-                The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value`
-                in the raster bands.
+        .. warning:: The `change_no_data_value` method creates a new dataset in memory in order to change the
+        `no_data_value` in the raster bands.
 
         Examples
         --------
@@ -3009,8 +3009,8 @@ class Dataset(AbstractDataset):
     def apply(self, func, band: int = 0) -> "Dataset":
         """Apply a function to all domain cells.
 
-            - apply method executes a mathematical operation on the raster array.
-            - The apply method executes the function only on one cell at a time.
+        - apply method executes a mathematical operation on the raster array.
+        - The apply method executes the function only on one cell at a time.
 
         Parameters
         ----------
@@ -3527,7 +3527,7 @@ class Dataset(AbstractDataset):
             <BLANKLINE>
 
         - The dataset to be aligned has a top_left_corner at (-0.1, 0.1) (i.e., it has two more rows in top of the
-        dataset, and two columns in the left of the dataset plus).
+            dataset, and two columns in the left of the dataset plus).
 
             >>> arr = np.random.rand(10, 10)
             >>> top_left_corner = (-0.1, 0.1)
@@ -4031,7 +4031,7 @@ class Dataset(AbstractDataset):
     ) -> Tuple[List[Number], List[Number]]:
         """Convert array indices to map coordinates.
 
-            array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
+        array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
 
         Parameters
         ----------
@@ -4051,7 +4051,7 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        - Create `Dataset` consists of 1 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
 
             >>> import numpy as np
             >>> import pandas as pd
