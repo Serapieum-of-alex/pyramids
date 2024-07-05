@@ -49,18 +49,9 @@ html_theme_options = {
     "navigation_depth": 4,
     "show_prev_next": False,
     "show_toc_level": 2,
-    # Add any other theme options here
-    "canonical_url": "",
-    "logo_only": False,
-    "display_version": True,
-    "prev_next_buttons_location": "bottom",
-    "style_external_links": False,
-    "style_nav_header_background": "#2980B9",
     # Toc options
     "collapse_navigation": True,
     "sticky_navigation": True,
-    "includehidden": True,
-    "titles_only": False,
 }
 
 html_static_path = ["_static"]

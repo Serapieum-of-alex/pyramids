@@ -4634,9 +4634,9 @@ class Dataset(AbstractDataset):
             ...     background_color_threshold=5
             ... )  # doctest: +SKIP
 
-            .. image:: /_images/dataset/cluster.png
-                  :alt: footprint
-                  :align: center
+        .. image:: /_images/dataset/cluster.png
+              :alt: footprint
+              :align: center
 
         - Now let's cluster the values in the dataset that are between 2, and 4.
 
@@ -4830,7 +4830,7 @@ class Dataset(AbstractDataset):
           :alt: footprint
           :align: center
 
-        - As you see, however, the dataset originally is 10*10, but the first overview level (2) displays half of the
+        - However, the dataset originally is 10*10, but the first overview level (2) displays half of the
             cells by aggregating all the cells using the nearest neighbor. and the second level displays only 3 cells in
             each
 
