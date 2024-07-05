@@ -1684,7 +1684,8 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        Dataset
+        Dataset:
+            A new dataset
 
         Hints
         -----
@@ -1718,7 +1719,7 @@ class Dataset(AbstractDataset):
         <BLANKLINE>
 
         - If you check the value stored in the band using the `read_array` method, you will find that the band is full of
-                the `no_data_value` value which we used here as -9999.
+            the `no_data_value` value which we used here as -9999.
 
             >>> print(dataset.read_array(band=0))
             [[-9999. -9999. -9999. -9999. -9999.]
@@ -1785,7 +1786,7 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        dst: [DataSet].
+        Dataset:
             Dataset object will be returned.
 
         Hint
@@ -3788,6 +3789,7 @@ class Dataset(AbstractDataset):
              [0.355636   0.18650262]]
 
         - Crop a raster using another raster mask:
+
             - create a mask dataset with the same extent of the polygon we use in the previous example.
 
             >>> geotransform = (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
