@@ -16,5 +16,8 @@ build:
 conda:
   environment: docs/environment.yml
 
+system_packages:
+  - graphviz
+
 # Optionally build your docs in additional formats such as PDF and ePub
 formats: all
