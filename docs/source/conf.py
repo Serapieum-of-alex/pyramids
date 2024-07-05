@@ -46,12 +46,26 @@ html_theme = "pydata_sphinx_theme"
 # Set the theme name
 # Optionally, you can customize the theme's configuration
 html_theme_options = {
+    "logo_link": "index",
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/Serapieum-of-alex/pyramids",
+            "icon": "fab fa-github-square",
+        },
+    ],
+    "navbar_end": ["search-field.html", "navbar-icon-links"],
+    "search_bar_text": "Search this site...",
+    "navbar_align": "content",
     "navigation_depth": 4,
     "show_prev_next": False,
     "show_toc_level": 2,
     # Toc options
     "collapse_navigation": True,
-    "sticky_navigation": True,
+    # "external_links": [
+    #     {"name": "External Link", "url": "https://example.com"},
+    # ],
+    "header_links_before_dropdown": 4,
 }
 
 html_static_path = ["_static"]
@@ -68,3 +82,6 @@ html_sidebars = {
 # -- Options for autodoc -----------------------------------------------------
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True
+
+# Ensure that the path to the Graphviz `dot` command is correct
+graphviz_dot = "dot"
