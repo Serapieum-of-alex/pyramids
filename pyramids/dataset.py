@@ -2,7 +2,7 @@
 Dataset module.
 
 raster contains python functions to handle raster data align them together based on a source raster, perform any
-algebraic operation on cell's values. gdal class: https://gdal.org/api/index.html#python-api.
+algebraic operation on cell's values.
 """
 
 import os
@@ -3527,7 +3527,7 @@ class Dataset(AbstractDataset):
             <BLANKLINE>
 
         - The dataset to be aligned has a top_left_corner at (-0.1, 0.1) (i.e., it has two more rows in top of the
-            dataset, and two columns in the left of the dataset plus)
+        dataset, and two columns in the left of the dataset plus).
 
             >>> arr = np.random.rand(10, 10)
             >>> top_left_corner = (-0.1, 0.1)
