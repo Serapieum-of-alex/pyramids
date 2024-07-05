@@ -10,4 +10,5 @@ dependencies:
     - pydata_sphinx_theme>=0.15.2
     - sphinxcontrib-napoleon
     - nbsphinx
+    - graphviz
     - ../.
