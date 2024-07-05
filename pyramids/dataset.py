@@ -161,12 +161,12 @@ class Dataset(AbstractDataset):
         return self._columns
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, int, int]:
         """Shape (bands, rows, columns)."""
         return self.band_count, self.rows, self.columns
 
     @property
-    def geotransform(self):
+    def geotransform(self) -> Tuple[float, float, float]:
         """WKT projection.
 
         (top left corner X/lon coordinate, cell_size, 0, top left corner y/lat coordinate, 0, -cell_size).
@@ -247,12 +247,12 @@ class Dataset(AbstractDataset):
         return self._cell_size
 
     @property
-    def band_count(self):
+    def band_count(self) -> int:
         """Number of bands in the raster."""
         return self._band_count
 
     @property
-    def band_names(self):
+    def band_names(self) -> List[str]:
         """Band names."""
         return self._get_band_names()
 
