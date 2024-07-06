@@ -557,8 +557,8 @@ class Dataset(AbstractDataset):
                     - window_rows: number of rows in the block.
 
             - GeoDataFrame:
-                GeoDataFrame with a geometry column, the function will get the total_bounds of the geodataframe and
-                use it as a window to read the raster.
+                GeoDataFrame with a geometry column filled with a polygon geometries, the function will get the
+                total_bounds of the geodataframe and use it as a window to read the raster.
 
         Returns
         -------
@@ -592,8 +592,9 @@ class Dataset(AbstractDataset):
             array([[0.14617829, 0.05045189],
                    [0.37358843, 0.32233918]])
 
-            - if you check the values of 2*2 block you will find them the same as the values in the entire array of band 0,
-            starting at the 2st row and 2nd column.
+            - if you check the values of 2*2 blocks, you will find them the same as the values in the entire array of band 0,
+            starting at the 2nd row and 2nd column.
+
         - Read block of data from the first band, the block is a `geodataframe` with a polygon geometry that covers
         the same area covered by the window above.
 
