@@ -4258,8 +4258,7 @@ class Dataset(AbstractDataset):
     ) -> Dict[List[float], List[float]]:
         """Overlay.
 
-            overlay extracts all the values in raster file if you have two maps one with classes, and the other map
-            contains any type of values, and you want to know the values in each class.
+        overlay method extracts all the values in the dataset for each class in the given class map
 
         Parameters
         ----------
@@ -4275,6 +4274,34 @@ class Dataset(AbstractDataset):
         Dictionary:
             dictionary with a list of values in the basemap as keys and for each key a list of all the intersected
             values in the maps from the path.
+
+        Examples
+        --------
+        - Read the dataset
+
+            >>> dataset = Dataset.read_file("examples/data/geotiff/raster-folder/MSWEP_1979.01.01.tif")
+            >>> dataset.plot(figsize=(6, 8)) # doctest: +SKIP
+
+            .. image:: /_images/dataset/rhine-rainfall.png
+                :alt: Example Image
+                :align: center
+
+        - read the classes dataset.
+
+            >>> classes = Dataset.read_file("examples/data/geotiff/rhine-classes.tif")
+            >>> classes.plot(figsize=(6, 8), color_scale=4, bounds=[1,2,3,4,5,6]) # doctest: +SKIP
+
+            .. image:: /_images/dataset/rhine-classes.png
+                :alt: Example Image
+                :align: center
+
+        - overlay the dataset with the classes dataset.
+
+            >>> classes_dict = dataset.overlay(classes)
+            >>> print(classes_dict.keys()) # doctest: +SKIP
+            dict_keys([1, 2, 3, 4, 5])
+
+        - you can use the key `1` to get the values that overlays the class 1.
         """
         if not self._check_alignment(classes_map):
             raise AlignmentError(
