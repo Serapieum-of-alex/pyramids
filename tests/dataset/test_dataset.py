@@ -124,6 +124,12 @@ class TestCreateRasterObject:
         np.testing.assert_array_equal(
             src_arr, dst_arr, err_msg="arrays are not equal", strict=True
         )
+        # copy the dataset to disk
+        path = "tests/data/geotiff/test-copy-dataset-to-disk-delete.tif"
+        src.copy(path=path)
+        src.close()
+        assert os.path.exists(path)
+        os.remove(path)
 
     class TestRasterLike:
         def test_to_disk(
