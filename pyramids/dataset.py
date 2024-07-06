@@ -4347,7 +4347,6 @@ class Dataset(AbstractDataset):
         Returns
         -------
         GeoDataFrame:
-
             - geodataframe containing the polygon representing the extent of the raster. the extent column should
                 contain a value of 2 only.
             - if the dataset had separate polygons, each polygon will be in a separate row.
