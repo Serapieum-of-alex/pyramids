@@ -4145,6 +4145,7 @@ class Dataset(AbstractDataset):
 
     def extract(
         self,
+        band: int = None,
         exclude_value: Any = None,
         feature: Union[FeatureCollection, GeoDataFrame] = None,
     ) -> np.ndarray:
@@ -4156,10 +4157,76 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
+        band: int, default is None.
+            band index.
         exclude_value: Numeric
-            values you want to exclude from extracted values
-        feature: FeatureCollection/GeoDataFrame
-            vector file contains geometries you want to extract the values at their location. Default is None.
+            values you want to exclude from extracted values, if the dataset is multi-bands the values in the
+            `exclude_value` will be filtered out from the first band only.
+        feature: FeatureCollection/GeoDataFrame, default is None
+            vector file contains point geometries you want to extract the values at their location.
+
+        Returns
+        -------
+        np.ndarray:
+            The extracted values from each band in the dataset will be in one row in the returned array.
+
+        Examples
+        --------
+        - Extract all values from the dataset.
+
+            - First, we will create a dataset with 1 band, 3 rows and 5 columns.
+
+                >>> import numpy as np
+                >>> arr = np.random.randint(1, 5, size=(2, 4, 4))
+                >>> top_left_corner = (0, 0)
+                >>> cell_size = 0.05
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Cell size: 0.05
+                            Dimension: 4 * 4
+                            EPSG: 4326
+                            Number of Bands: 2
+                            Band names: ['Band_1', 'Band_2']
+                            Mask: -9999.0
+                            Data type: int32
+                            File:...
+                <BLANKLINE>
+                >>> print(dataset.read_array()) # doctest: +SKIP
+                [[[1 3 3 4]
+                  [1 4 2 4]
+                  [2 4 2 1]
+                  [1 3 2 3]]
+                 [[3 2 1 3]
+                  [4 3 2 2]
+                  [2 2 3 4]
+                  [1 4 1 4]]]
+
+            - Now, lets, extract the values in the dataset
+
+                >>> values = dataset.extract()
+                >>> print(values) # doctest: +SKIP
+                [[1 3 3 4 1 4 2 4 2 4 2 1 1 3 2 3]
+                 [3 2 1 3 4 3 2 2 2 2 3 4 1 4 1 4]]
+
+            - lets, extract all the values except 2.
+
+                >>> values = dataset.extract(exclude_value=2)
+                >>> print(values) # doctest: +SKIP
+
+        - Extract values at the location of the given point geometries.
+
+            >>> import geopandas as gpd
+            >>> from shapely.geometry import Point
+
+            - Create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
+            0.2 -0.1] to cover the 4 cells.
+
+            >>> points = gpd.GeoDataFrame(geometry=[Point(0.1, -0.1), Point(0.1, -0.2), Point(0.2, -0.2), Point(0.2, -0.1)],crs=4326)
+            >>> values = dataset.extract(feature=points)
+            >>> print(values) # doctest: +SKIP
+            [[4 3 3 4]
+             [3 4 4 2]]
         """
         # Optimize: make the read_array return only the array for inside the mask feature, and not to read the whole
         #  raster
@@ -4176,7 +4243,11 @@ class Dataset(AbstractDataset):
             values = get_pixels2(arr, mask)
         else:
             indices = self.map_to_array_coordinates(feature)
-            values = arr[indices[:, 0], indices[:, 1]]
+            if arr.ndim > 2:
+                values = arr[:, indices[:, 0], indices[:, 1]]
+            else:
+                values = arr[indices[:, 0], indices[:, 1]]
+
         return values
 
     def overlay(

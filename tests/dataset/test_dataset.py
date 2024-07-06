@@ -1316,6 +1316,55 @@ class TestExtract:
     ):
         src = Dataset(src)
         values = src.extract(exclude_value=0)
+        extracted_values = [
+            1.0,
+            2.0,
+            2.0,
+            4.0,
+            4.0,
+            4.0,
+            5.0,
+            2.0,
+            11.0,
+            10.0,
+            1.0,
+            15.0,
+            13.0,
+            1.0,
+            1.0,
+            15.0,
+            23.0,
+            45.0,
+            1.0,
+            15.0,
+            1.0,
+            11.0,
+            6.0,
+            2.0,
+            49.0,
+            54.0,
+            16.0,
+            17.0,
+            6.0,
+            4.0,
+            1.0,
+            1.0,
+            55.0,
+            1.0,
+            2.0,
+            86.0,
+            4.0,
+            2.0,
+            1.0,
+            2.0,
+            59.0,
+            63.0,
+            88.0,
+            1.0,
+            1.0,
+            1.0,
+        ]
+        np.testing.assert_array_equal(values, extracted_values)
         assert len(values) == 46
 
     def test_multi_band(
@@ -1328,6 +1377,32 @@ class TestExtract:
         arr = sentinel_raster.ReadAsArray()
         arr = arr.reshape((arr.shape[0], arr.shape[1] * arr.shape[2]))
         assert np.array_equal(arr, values)
+
+    def test_multi_band_with_mask(self):
+        import numpy as np
+        from shapely.geometry import Point
+
+        arr = np.random.randint(1, 5, size=(2, 4, 4))
+        top_left_corner = (0, 0)
+        cell_size = 0.05
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+        )
+        points = gpd.GeoDataFrame(
+            geometry=[
+                Point(0.1, -0.1),
+                Point(0.1, -0.2),
+                Point(0.2, -0.2),
+                Point(0.2, -0.1),
+            ],
+            crs=4326,
+        )
+
+        indices = np.array([[1, 1], [3, 1], [3, 3], [1, 3]])
+        arr_extracted_values = arr[:, indices[:, 0], indices[:, 1]]
+
+        values = dataset.extract(feature=points)
+        np.testing.assert_array_equal(values, arr_extracted_values)
 
     def test_array_to_map_coordinates(self):
         arr = np.random.randint(1, 5, size=(15, 15))
