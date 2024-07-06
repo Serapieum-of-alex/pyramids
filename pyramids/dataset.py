@@ -4230,7 +4230,7 @@ class Dataset(AbstractDataset):
         """
         # Optimize: make the read_array return only the array for inside the mask feature, and not to read the whole
         #  raster
-        arr = self.read_array()
+        arr = self.read_array(band=band)
         no_data_value = (
             self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
         )
