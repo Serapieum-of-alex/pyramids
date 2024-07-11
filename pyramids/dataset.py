@@ -4909,7 +4909,8 @@ class Dataset(AbstractDataset):
                   :align: center
 
         - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
-        - The `get_tile' method returns a generator object that can be used to iterate over the smaller chunks of the data.
+        - The `get_tile` method returns a generator object that can be used to iterate over the smaller chunks of the
+            data.
 
             >>> tiles_generator = dataset.get_tile(size=2)
             >>> print(tiles_generator)  # doctest: +SKIP
@@ -5761,8 +5762,8 @@ class Dataset(AbstractDataset):
             7    2      3  214   193  156   255
 
         - You can also define the `opasity` of each color by adding a value between 0 (fully transparent) and 255 (
-        fully opaque) to the `DataFrame` for each color, if the `alpha` columns is not in the given dataframe,
-        it will be assumed to be fully opaque (255).
+            fully opaque) to the `DataFrame` for each color, if the `alpha` columns is not in the given dataframe,
+            it will be assumed to be fully opaque (255).
 
             >>> color_table = pd.DataFrame({
             ...     "band": [1, 1, 1, 2, 2, 2],
