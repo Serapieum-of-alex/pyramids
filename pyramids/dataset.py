@@ -314,7 +314,7 @@ class Dataset(AbstractDataset):
 
     @property
     def meta_data(self):
-        """Meta data.
+        """Meta-data.
 
         Hint
         ----
@@ -324,7 +324,7 @@ class Dataset(AbstractDataset):
 
         the content of the file will be like the following:
 
-        ..code-block:: xml
+        .. code-block:: xml
 
             <PAMDataset>
               <Metadata>
@@ -396,18 +396,6 @@ class Dataset(AbstractDataset):
         """Scale.
 
         The value of the scale is used to convert the pixel values to the real-world values.
-        """
-        scale_list = []
-        for i in range(self.band_count):
-            band_scale = self._iloc(i).GetScale()
-            scale_list.append(band_scale if band_scale is not None else 1.0)
-        return scale_list
-
-    @scale.setter
-    def scale(self, value: List[float]):
-        """Scale.
-
-        The value of the scale is used to convert the pixel values to the real-world values.
 
         Hint
         ----
@@ -415,7 +403,7 @@ class Dataset(AbstractDataset):
         - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
         .aux.xml, the content of the file will be like the following:
 
-        ..code-block:: xml
+        .. code-block:: xml
 
             <PAMDataset>
               <PAMRasterBand band="1">
@@ -426,6 +414,15 @@ class Dataset(AbstractDataset):
               </PAMRasterBand>
             </PAMDataset>
         """
+        scale_list = []
+        for i in range(self.band_count):
+            band_scale = self._iloc(i).GetScale()
+            scale_list.append(band_scale if band_scale is not None else 1.0)
+        return scale_list
+
+    @scale.setter
+    def scale(self, value: List[float]):
+        """Scale."""
         for i, val in enumerate(value):
             self._iloc(i).SetScale(val)
 
@@ -443,7 +440,7 @@ class Dataset(AbstractDataset):
 
         the content of the file will be like the following:
 
-        ..code-block:: xml
+        .. code-block:: xml
 
             <PAMDataset>
               <PAMRasterBand band="1">
@@ -453,7 +450,6 @@ class Dataset(AbstractDataset):
                 <Scale>2</Scale>
               </PAMRasterBand>
             </PAMDataset>
-
         """
         offset_list = []
         for i in range(self.band_count):
@@ -1511,7 +1507,7 @@ class Dataset(AbstractDataset):
 
         - The content of the file will be like the following:
 
-            ..code-block:: xml
+            .. code-block:: xml
 
                 <PAMDataset>
                   <PAMRasterBand band="1">
@@ -2024,8 +2020,8 @@ class Dataset(AbstractDataset):
 
         - Create dataset using the `geo` parameter.
 
-            First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
-            degree, the top left corner of the dataset is (0,0)
+            - To create the same dataset using the `geotransform` parameter, we will use the dataset `top_left_corner`
+                coordinates and the `cell_size` to create it.
 
                 >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
                 >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
@@ -5979,7 +5975,7 @@ class Dataset(AbstractDataset):
 
         the content of the file will be like the following:
 
-        ..code-block:: xml
+        .. code-block:: xml
 
             <PAMDataset>
               <PAMRasterBand band="1">
