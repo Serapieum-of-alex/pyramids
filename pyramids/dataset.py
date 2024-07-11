@@ -3435,13 +3435,13 @@ class Dataset(AbstractDataset):
              [2 2 3 1 3]
              [3 4 3 3 4]
              [4 4 2 1 1]]
-             >>> new_dataset = dataset.fill(10)
-             >>> print(new_dataset.read_array())
-             [[10 10 10 10 10]
-              [10 10 10 10 10]
-              [10 10 10 10 10]
-              [10 10 10 10 10]
-              [10 10 10 10 10]]
+            >>> new_dataset = dataset.fill(10)
+            >>> print(new_dataset.read_array())
+            [[10 10 10 10 10]
+             [10 10 10 10 10]
+             [10 10 10 10 10]
+             [10 10 10 10 10]
+             [10 10 10 10 10]]
         """
         no_data_value = self.no_data_value[0]
         src_array = self.raster.ReadAsArray()
