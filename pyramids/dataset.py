@@ -760,7 +760,25 @@ class Dataset(AbstractDataset):
 
     @property
     def lon(self):
-        """Longitude coordinates."""
+        """Longitude coordinates.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,2, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To get the longitude/x coordinates of the center of all cells in the dataset.
+
+            >>> print(dataset.lon)
+            [0.025 0.075 0.125 0.175 0.225]
+            >>> print(dataset.x)
+            [0.025 0.075 0.125 0.175 0.225]
+        """
         if not hasattr(self, "_lon"):
             pivot_x = self.top_left_corner[0]
             cell_size = self.cell_size
@@ -774,7 +792,25 @@ class Dataset(AbstractDataset):
 
     @property
     def lat(self):
-        """Latitude-coordinate."""
+        """Latitude-coordinate.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,2, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To get the longitude/x coordinates of the center of all cells in the dataset.
+
+            >>> print(dataset.lat)
+            [-0.025 -0.075 -0.125 -0.175 -0.225]
+            >>> print(dataset.y)
+            [-0.025 -0.075 -0.125 -0.175 -0.225]
+        """
         if not hasattr(self, "_lat"):
             pivot_y = self.top_left_corner[1]
             cell_size = self.cell_size
@@ -788,7 +824,25 @@ class Dataset(AbstractDataset):
 
     @property
     def x(self):
-        """X-coordinate/Longitude."""
+        """X-coordinate/Longitude.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,2, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To get the longitude/x coordinates of the center of all cells in the dataset.
+
+            >>> print(dataset.lon)
+            [0.025 0.075 0.125 0.175 0.225]
+            >>> print(dataset.x)
+            [0.025 0.075 0.125 0.175 0.225]
+        """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lon"):
             pivot_x = self.top_left_corner[0]
@@ -809,7 +863,25 @@ class Dataset(AbstractDataset):
 
     @property
     def y(self):
-        """Y-coordinate/Latitude."""
+        """Y-coordinate/Latitude.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,2, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - to get the longitude/x coordinates of the center of all cells in the dataset.
+
+            >>> print(dataset.lat)
+            [-0.025 -0.075 -0.125 -0.175 -0.225]
+            >>> print(dataset.y)
+            [-0.025 -0.075 -0.125 -0.175 -0.225]
+        """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
             pivot_y = self.top_left_corner[1]
