@@ -401,7 +401,9 @@ class Dataset(AbstractDataset):
         ----
         - This property does not need the Dataset to be opened in a write mode to be set.
         - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+            .aux.xml.
+
+        the content of the file will be like the following:
 
         .. code-block:: xml
 
@@ -608,7 +610,7 @@ class Dataset(AbstractDataset):
                    [0.47740168, 0.76490779, 0.07679277, 0.16142599, 0.73630836]])
 
         - Read block of data from the first band, the block starts at the 2nd column (index 1) and 2st row (index 1),
-        the block size is 2*2 cells. (the first index is the column index)
+            the block size is 2*2 cells. (the first index is the column index).
 
             >>> arr = dataset.read_array(band=0, window=[1, 1, 2, 2])
             >>> print(arr) # doctest: +SKIP
@@ -616,16 +618,16 @@ class Dataset(AbstractDataset):
                    [0.37358843, 0.32233918]])
 
             - if you check the values of 2*2 blocks, you will find them the same as the values in the entire array of band 0,
-            starting at the 2nd row and 2nd column.
+                starting at the 2nd row and 2nd column.
 
         - Read block of data from the first band, the block is a `geodataframe` with a polygon geometry that covers
-        the same area covered by the window above.
+            the same area covered by the window above.
 
             >>> import geopandas as gpd
             >>> from shapely.geometry import Polygon
 
             - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
-            0.2 -0.1] to cover the 4 cells.
+                0.2 -0.1] to cover the 4 cells.
             - The polygon covers the same cells that we extracted in the previous setp using the window=[1, 1, 2, 2].
 
             >>> poly = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
@@ -4542,7 +4544,7 @@ class Dataset(AbstractDataset):
                   [2 2 3 4]
                   [1 4 1 4]]]
 
-            - Now, lets, extract the values in the dataset
+            - Now, lets, extract the values in the dataset.
 
                 >>> values = dataset.extract()
                 >>> print(values) # doctest: +SKIP
@@ -4560,7 +4562,7 @@ class Dataset(AbstractDataset):
             >>> from shapely.geometry import Point
 
             - Create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
-            0.2 -0.1] to cover the 4 cells.
+                0.2 -0.1] to cover the 4 cells.
 
             >>> points = gpd.GeoDataFrame(geometry=[Point(0.1, -0.1), Point(0.1, -0.2), Point(0.2, -0.2), Point(0.2, -0.1)],crs=4326)
             >>> values = dataset.extract(feature=points)
@@ -4896,7 +4898,7 @@ class Dataset(AbstractDataset):
              [0.82518332 0.75657103 0.45693945 0.44331782 0.74677865]
              [0.22231314 0.96283065 0.15201337 0.03522544 0.44616888]]
 
-        - the `get_tile` method splits the domain into tiles of the specified `size` using the `_window` function
+        - The `get_tile` method splits the domain into tiles of the specified `size` using the `_window` function.
 
             >>> tile_dimensions = list(dataset._window(2))
             >>> print(tile_dimensions)
@@ -4923,7 +4925,6 @@ class Dataset(AbstractDataset):
                 array([[0.15201337, 0.03522544]]),
                 array([[0.44616888]])
             ]
-
         """
         for xoff, yoff, xsize, ysize in self._window(size=size):
             # read the array at a certain indices
@@ -5790,7 +5791,7 @@ class Dataset(AbstractDataset):
         Parameters
         ----------
         df: [DataFrame]
-            DataFrame with columns: band, values, color
+            DataFrame with columns: band, values, color.
             i.e.
                   band  values    color  alpha
                 0    1       1  #709959    255
@@ -5831,8 +5832,8 @@ class Dataset(AbstractDataset):
             7    2      3  214   193  156   255
 
         - You can also define the opasity of each color by adding a value between 0 (fully transparent) and 255 (
-        fully opaque) to the `DataFrame` for each color, if the `alpha` columns is not in the given dataframe,
-        it will be assumed to be fully opaque (255).
+            fully opaque) to the `DataFrame` for each color, if the `alpha` columns is not in the given dataframe,
+            it will be assumed to be fully opaque (255).
 
             >>> color_table = pd.DataFrame({
             ...     "band": [1, 1, 1, 2, 2, 2],
