@@ -734,10 +734,10 @@ class TestFillRaster:
         self, src: gdal.Dataset, fill_raster_path: str, fill_raster_value: int
     ):
         src = Dataset(src)
-        dst = src.fill(fill_raster_value, driver="MEM")
+        dst = src.fill(fill_raster_value)
         arr = dst.raster.ReadAsArray()
-        nodataval = dst.raster.GetRasterBand(1).GetNoDataValue()
-        vals = arr[~np.isclose(arr, nodataval, rtol=0.00000000000001)]
+        no_data_val = dst.raster.GetRasterBand(1).GetNoDataValue()
+        vals = arr[~np.isclose(arr, no_data_val, rtol=0.00000000000001)]
         vals = list(set(vals))
         assert vals[0] == fill_raster_value
 
@@ -747,12 +747,12 @@ class TestFillRaster:
         if os.path.exists(fill_raster_path):
             os.remove(fill_raster_path)
         src = Dataset(src)
-        src.fill(fill_raster_value, driver="GTiff", path=fill_raster_path)
+        src.fill(fill_raster_value, path=fill_raster_path)
         "now the resulted raster is saved to disk"
         dst = gdal.Open(fill_raster_path)
         arr = dst.ReadAsArray()
-        nodataval = dst.GetRasterBand(1).GetNoDataValue()
-        vals = arr[~np.isclose(arr, nodataval, rtol=0.00000000000001)]
+        no_data_val = dst.GetRasterBand(1).GetNoDataValue()
+        vals = arr[~np.isclose(arr, no_data_val, rtol=0.00000000000001)]
         vals = list(set(vals))
         assert vals[0] == fill_raster_value
 

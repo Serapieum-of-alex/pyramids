@@ -3138,9 +3138,7 @@ class Dataset(AbstractDataset):
 
         return dst_obj
 
-    def fill(
-        self, val: Union[float, int], driver: str = "MEM", path: str = None
-    ) -> Union["Dataset", None]:
+    def fill(self, val: Union[float, int], path: str = None) -> Union["Dataset", None]:
         """Fill the domain cells with a certain value.
 
             Fill takes a raster and fills it with one value
@@ -3149,8 +3147,6 @@ class Dataset(AbstractDataset):
         ----------
         val: [numeric]
             numeric value
-        driver: [str]
-            driver type ["GTiff", "MEM"]
         path : [str]
             path including the extension (.tif)
 
