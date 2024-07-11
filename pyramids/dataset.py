@@ -2609,6 +2609,44 @@ class Dataset(AbstractDataset):
             Array with a list of the coordinates to be interpolated, without the Nan
         mat_range : [np.ndarray]
             Array with all the centers of cells in the domain of the DEM
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 bands, 3 rows, 3 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,3, size=(3, 3))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the coordinates of the center of cells inside the domain.
+
+            >>> coords = dataset.get_cell_coords()
+            >>> print(coords)
+            [[ 0.025 -0.025]
+             [ 0.075 -0.025]
+             [ 0.125 -0.025]
+             [ 0.025 -0.075]
+             [ 0.075 -0.075]
+             [ 0.125 -0.075]
+             [ 0.025 -0.125]
+             [ 0.075 -0.125]
+             [ 0.125 -0.125]]
+
+        - Get the coordinates of the top left corner of cells inside the domain.
+
+            >>> coords = dataset.get_cell_coords(location="corner")
+            >>> print(coords)
+            [[ 0.    0.  ]
+             [ 0.05  0.  ]
+             [ 0.1   0.  ]
+             [ 0.   -0.05]
+             [ 0.05 -0.05]
+             [ 0.1  -0.05]
+             [ 0.   -0.1 ]
+             [ 0.05 -0.1 ]
+             [ 0.1  -0.1 ]]
         """
         # check the location parameter
         location = location.lower()
@@ -2662,7 +2700,7 @@ class Dataset(AbstractDataset):
 
         return coords
 
-    def get_cell_polygons(self, mask=False) -> GeoDataFrame:
+    def get_cell_polygons(self, mask: bool = False) -> GeoDataFrame:
         """Get a polygon shapely geometry for the raster cells.
 
         Parameters
@@ -2674,6 +2712,38 @@ class Dataset(AbstractDataset):
         -------
         GeoDataFrame:
             with two columns, geometry, and id
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 3 rows, 3 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,3, size=(3, 3))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the coordinates of the center of cells inside the domain.
+
+            >>> gdf = dataset.get_cell_polygons()
+            >>> print(gdf)
+                                                        geometry  id
+            0  POLYGON ((0 0, 0.05 0, 0.05 -0.05, 0 -0.05, 0 0))   0
+            1  POLYGON ((0.05 0, 0.1 0, 0.1 -0.05, 0.05 -0.05...   1
+            2  POLYGON ((0.1 0, 0.15 0, 0.15 -0.05, 0.1 -0.05...   2
+            3  POLYGON ((0 -0.05, 0.05 -0.05, 0.05 -0.1, 0 -0...   3
+            4  POLYGON ((0.05 -0.05, 0.1 -0.05, 0.1 -0.1, 0.0...   4
+            5  POLYGON ((0.1 -0.05, 0.15 -0.05, 0.15 -0.1, 0....   5
+            6  POLYGON ((0 -0.1, 0.05 -0.1, 0.05 -0.15, 0 -0....   6
+            7  POLYGON ((0.05 -0.1, 0.1 -0.1, 0.1 -0.15, 0.05...   7
+            8  POLYGON ((0.1 -0.1, 0.15 -0.1, 0.15 -0.15, 0.1...   8
+            >>> fig, ax = dataset.plot()
+            >>> gdf.plot(ax=ax, facecolor='none', edgecolor="gray", linewidth=2)
+            <Axes: >
+
+        .. image:: /_images/dataset/get_cell_polygons.png
+            :alt: Example Image
+            :align: center
         """
         coords = self.get_cell_coords(location="corner", mask=mask)
         cell_size = self.geotransform[1]
@@ -2724,6 +2794,60 @@ class Dataset(AbstractDataset):
         -------
         GeoDataFrame:
             with two columns, geometry, and id
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 3 rows, 3 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,3, size=(3, 3))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the coordinates of the center of cells inside the domain.
+
+            >>> gdf = dataset.get_cell_points()
+            >>> print(gdf)
+                           geometry  id
+            0  POINT (0.025 -0.025)   0
+            1  POINT (0.075 -0.025)   1
+            2  POINT (0.125 -0.025)   2
+            3  POINT (0.025 -0.075)   3
+            4  POINT (0.075 -0.075)   4
+            5  POINT (0.125 -0.075)   5
+            6  POINT (0.025 -0.125)   6
+            7  POINT (0.075 -0.125)   7
+            8  POINT (0.125 -0.125)   8
+            >>> fig, ax = dataset.plot()
+            >>> gdf.plot(ax=ax, facecolor='black', linewidth=2)
+            <Axes: >
+
+        .. image:: /_images/dataset/get_cell_points.png
+            :alt: Example Image
+            :align: center
+
+        - Get the coordinates of the top left corner of cells inside the domain.
+
+            >>> gdf = dataset.get_cell_points(location="corner")
+            >>> print(gdf)
+                         geometry  id
+            0         POINT (0 0)   0
+            1      POINT (0.05 0)   1
+            2       POINT (0.1 0)   2
+            3     POINT (0 -0.05)   3
+            4  POINT (0.05 -0.05)   4
+            5   POINT (0.1 -0.05)   5
+            6      POINT (0 -0.1)   6
+            7   POINT (0.05 -0.1)   7
+            8    POINT (0.1 -0.1)   8
+            >>> fig, ax = dataset.plot()
+            >>> gdf.plot(ax=ax, facecolor='black', linewidth=4)
+            <Axes: >
+
+        .. image:: /_images/dataset/get_cell_points-corner.png
+            :alt: Example Image
+            :align: center
         """
         coords = self.get_cell_coords(location=location, mask=mask)
         epsg = self._get_epsg()
