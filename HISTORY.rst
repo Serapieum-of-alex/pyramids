@@ -206,6 +206,8 @@ dataset.
 [xoff, yoff, x-window, y-window], the `window` can also be a geodataframe.
 * add `get_block_arrangement` method divide the raster into tiles based on the block size.
 * add tiff file writing options (compression/tile/tile_length)
+* add `close` method to flush to desk and close a dataset.
+* rename `pivot_point` to `top_left_corner` in the `create` method.
 
 Datacube
 """"""""
