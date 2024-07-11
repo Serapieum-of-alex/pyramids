@@ -741,6 +741,12 @@ class TestFillRaster:
         vals = list(set(vals))
         assert vals[0] == fill_raster_value
 
+        # test inplace
+        src.fill(fill_raster_value, inplace=True)
+        arr = src.raster.ReadAsArray()
+        vals = arr[~np.isclose(arr, no_data_val, rtol=0.00000000000001)]
+        assert vals[0] == fill_raster_value
+
     def test_disk_raster(
         self, src: gdal.Dataset, fill_raster_path: str, fill_raster_value: int
     ):

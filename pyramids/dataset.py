@@ -1995,7 +1995,7 @@ class Dataset(AbstractDataset):
         array: ndarray
             data to store in the new dataset.
         path: str, default is None
-            path to save the new geotiff file, if not given, the method will return in-memory dataset.
+            path to save the new dataset, if not given, the method will return in-memory dataset.
 
         Returns
         -------
@@ -3140,15 +3140,19 @@ class Dataset(AbstractDataset):
 
         return dst_obj
 
-    def fill(self, val: Union[float, int], path: str = None) -> Union["Dataset", None]:
+    def fill(
+        self, value: Union[float, int], inplace: bool = False, path: str = None
+    ) -> Union["Dataset", None]:
         """Fill the domain cells with a certain value.
 
             Fill takes a raster and fills it with one value
 
         Parameters
         ----------
-        val: [numeric]
+        value: [numeric]
             numeric value
+        inplace: bool, default is False
+            if True, the original dataset will be modified. If False, a new dataset will be created.
         path : [str]
             path including the extension (.tif)
 
@@ -3156,6 +3160,29 @@ class Dataset(AbstractDataset):
         -------
         Dataset:
             the returned value will be a Dataset.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1, 5, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset.read_array()) # doctest: +SKIP
+            [[1 1 3 1 2]
+             [2 2 2 1 2]
+             [2 2 3 1 3]
+             [3 4 3 3 4]
+             [4 4 2 1 1]]
+             >>> new_dataset = dataset.fill(10)
+             >>> print(new_dataset.read_array())
+             [[10 10 10 10 10]
+              [10 10 10 10 10]
+              [10 10 10 10 10]
+              [10 10 10 10 10]
+              [10 10 10 10 10]]
         """
         no_data_value = self.no_data_value[0]
         src_array = self.raster.ReadAsArray()
@@ -3164,11 +3191,15 @@ class Dataset(AbstractDataset):
             no_data_value = np.nan
 
         if not np.isnan(no_data_value):
-            src_array[~np.isclose(src_array, no_data_value, rtol=0.000001)] = val
+            src_array[~np.isclose(src_array, no_data_value, rtol=0.000001)] = value
         else:
-            src_array[~np.isnan(src_array)] = val
+            src_array[~np.isnan(src_array)] = value
+
         dst = Dataset.dataset_like(self, src_array, path=path)
-        return dst
+        if inplace:
+            self.__init__(dst.raster)
+        else:
+            return dst
 
     def resample(
         self, cell_size: Union[int, float], method: str = "nearest neighbor"
@@ -3180,12 +3211,10 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        cell_size : [integer]
+        cell_size : int
              new cell size to resample the raster. (default empty so raster will not be resampled)
-        method : [String]
-            resampling technique default is "Nearest"
-            https://gisgeography.com/raster-resampling/
-            "nearest neighbor" for the nearest neighbor, "cubic" for cubic convolution,
+        method : str, default is "Nearest"
+            resampling method , "nearest neighbor" for the nearest neighbor, "cubic" for cubic convolution,
             "bilinear" for bilinear
 
         Returns
