@@ -299,18 +299,15 @@ class Dataset(AbstractDataset):
 
     @property
     def meta_data(self):
-        """Meta data."""
-        return super().meta_data
-
-    @meta_data.setter
-    def meta_data(self, value: Dict[str, str]):
-        """Meta-data.
+        """Meta data.
 
         Hint
         ----
         - This property does not need the Dataset to be opened in a write mode to be set.
         - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+            .aux.xml,
+
+        the content of the file will be like the following:
 
         ..code-block:: xml
 
@@ -321,6 +318,11 @@ class Dataset(AbstractDataset):
             </PAMDataset>
 
         """
+        return super().meta_data
+
+    @meta_data.setter
+    def meta_data(self, value: Dict[str, str]):
+        """Meta-data."""
         for key, value in value.items():
             self._raster.SetMetadataItem(key, value)
 
@@ -3875,8 +3877,11 @@ class Dataset(AbstractDataset):
             >>> import geopandas as gpd
             >>> from shapely.geometry import Polygon
             >>> arr = np.random.rand(4, 10, 10)
-            >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
-            >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+            >>> cell_size = 0.05
+            >>> top_left_corner = (0, 0)
+            >>> dataset = Dataset.create_from_array(
+            ...         arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+            ... )
 
             - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
                 0.2 -0.1] to cover the 4 cells.
@@ -5435,14 +5440,6 @@ class Dataset(AbstractDataset):
         -------
         df: DataFrame
             DataFrame with columns: band, values, color
-            i.e.
-                  band  values    color  alpha
-                0    1       1  #709959    255
-                1    1       2  #F2EEA2    255
-                2    1       3  #F2CE85    138
-                3    2       1  #C28C7C    100
-                4    2       2  #D6C19C    100
-                5    2       3  #D6C19C    100
 
         Examples
         --------
