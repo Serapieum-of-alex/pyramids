@@ -185,6 +185,11 @@ class Dataset(AbstractDataset):
 
             >>> print(dataset.geotransform)
             (0.0, 0.05, 0.0, 0.0, 0.0, -0.05)
+
+        See Also
+        --------
+        Dataset.top_left_corner : coordinate of the top left corner of the dataset.
+        Dataset.epsg : epsg number of the dataset coordinate reference system.
         """
         return super().geotransform
 
@@ -238,6 +243,12 @@ class Dataset(AbstractDataset):
             i.e. 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],
             AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",
             0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
+
+        See Also
+        --------
+        Dataset.set_crs : Set the Coordinate Reference System (CRS).
+        Dataset.to_crs : Reproject the dataset to any projection.
+        Dataset.epsg : epsg number of the dataset coordinate reference system.
         """
         self.set_crs(value)
 
@@ -290,6 +301,10 @@ class Dataset(AbstractDataset):
             `no_data_value` attribute.
             - Use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
             - To change the values of the cells, to the new no_data_value, use the `change_no_data_value` method.
+
+        See Also
+        --------
+        Dataset.change_no_data_value : Change the No Data Value.
         """
         if isinstance(value, list):
             for i, val in enumerate(value):
@@ -342,6 +357,12 @@ class Dataset(AbstractDataset):
         >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
         >>> print(dataset.block_size)
         [[5, 1]]
+
+        See Also
+        --------
+        Dataset.get_block_arrangement : get block arrangement to read the dataset in chuncks.
+        Dataset.get_tile : get tile
+        Dataset.read_array : to read the data stored in the dataset bands.
         """
         return self._block_size
 
@@ -353,6 +374,7 @@ class Dataset(AbstractDataset):
         ----------
         value : List[Tuple[int, int]]
             block size for each band in the raster(512, 512).
+
         """
         if len(value[0]) != 2:
             raise ValueError("block size should be a tuple of 2 integers")
@@ -522,6 +544,9 @@ class Dataset(AbstractDataset):
                             File: /vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/2.asc
                 <BLANKLINE>
 
+        See also
+        --------
+        Dataset.read_array : Read the values stored in a dataset band
         """
         src = _io.read_file(path, read_only=read_only, file_i=file_i)
         return cls(src, access="read_only" if read_only else "write")
@@ -612,6 +637,11 @@ class Dataset(AbstractDataset):
             >>> print(arr) # doctest: +SKIP
             array([[0.14617829, 0.05045189],
                    [0.37358843, 0.32233918]])
+
+        See also
+        --------
+        Dataset.get_tile : read the dataset in chuncks
+        Dataset.get_block_arrangement : get block arrangement to read the dataset in chuncks.
         """
         if band is None and self.band_count > 1:
             rows = self.rows if window is None else window[3]
@@ -707,7 +737,12 @@ class Dataset(AbstractDataset):
 
     @property
     def top_left_corner(self):
-        """Top left corner coordinates."""
+        """Top left corner coordinates.
+
+        See also
+        --------
+        Dataset.geotransform : dataset geotransform
+        """
         return super().top_left_corner
 
     @property
@@ -732,6 +767,10 @@ class Dataset(AbstractDataset):
             >>> print(bounds) # doctest: +SKIP
                                                     geometry
             0  POLYGON ((0 0, 0 -0.5, 0.5 -0.5, 0.5 0, 0 0))
+
+        See also
+        --------
+        Dataset.bbox : dataset bound box
         """
         return self._calculate_bounds()
 
@@ -755,6 +794,10 @@ class Dataset(AbstractDataset):
             >>> bbox = dataset.bbox
             >>> print(bbox) # doctest: +SKIP
             [0.0, -0.5, 0.5, 0.0]
+
+        See also
+        --------
+        Dataset.bounds : dataset bounding polygon.
         """
         return self._calculate_bbox()
 
@@ -778,6 +821,12 @@ class Dataset(AbstractDataset):
             [0.025 0.075 0.125 0.175 0.225]
             >>> print(dataset.x)
             [0.025 0.075 0.125 0.175 0.225]
+
+        See also
+        --------
+        Dataset.x : dataset x coordinates
+        Dataset.lat : dataset latitude
+        Dataset.lon : dataset longitude
         """
         if not hasattr(self, "_lon"):
             pivot_x = self.top_left_corner[0]
@@ -810,6 +859,12 @@ class Dataset(AbstractDataset):
             [-0.025 -0.075 -0.125 -0.175 -0.225]
             >>> print(dataset.y)
             [-0.025 -0.075 -0.125 -0.175 -0.225]
+
+        See also
+        --------
+        Dataset.x : dataset x coordinates
+        Dataset.y : dataset y coordinates
+        Dataset.lon : dataset longitude
         """
         if not hasattr(self, "_lat"):
             pivot_y = self.top_left_corner[1]
@@ -842,6 +897,12 @@ class Dataset(AbstractDataset):
             [0.025 0.075 0.125 0.175 0.225]
             >>> print(dataset.x)
             [0.025 0.075 0.125 0.175 0.225]
+
+        See also
+        --------
+        Dataset.lat : dataset latitude
+        Dataset.y : dataset y coordinates
+        Dataset.lon : dataset longitude
         """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lon"):
@@ -881,6 +942,12 @@ class Dataset(AbstractDataset):
             [-0.025 -0.075 -0.125 -0.175 -0.225]
             >>> print(dataset.y)
             [-0.025 -0.075 -0.125 -0.175 -0.225]
+
+        See also
+        --------
+        Dataset.x : dataset y coordinates
+        Dataset.lat : dataset latitude
+        Dataset.lon : dataset longitude
         """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
