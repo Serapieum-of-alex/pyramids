@@ -3190,6 +3190,57 @@ class Dataset(AbstractDataset):
         -------
         Dataset:
              Dataset object.
+
+        Example
+        -------
+        - Create `Dataset` consists of 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 4
+                        Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                        Mask: -9999.0
+                        Data type: float64
+                        File: ...
+            <BLANKLINE>
+            >>> dataset.plot(band=0)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        .. image:: /_images/dataset/resample-source.png
+            :alt: Example Image
+            :align: center
+
+        - Resample the raster to a new cell size of 0.1.
+
+            >>> new_dataset = dataset.resample(cell_size=0.1)
+            >>> print(new_dataset)
+            <BLANKLINE>
+                        Cell size: 0.1
+                        Dimension: 5 * 5
+                        EPSG: 4326
+                        Number of Bands: 4
+                        Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+            >>> new_dataset.plot(band=0)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        .. image:: /_images/dataset/resample-new.png
+            :alt: Example Image
+            :align: center
+
+        - Resamplign the dataset from cell_size 0.05 to 0.1 degrees reduced the number of cells in the dataset 5
+            cells in each dimension instead of 10 cells.
         """
         if not isinstance(method, str):
             raise TypeError(
