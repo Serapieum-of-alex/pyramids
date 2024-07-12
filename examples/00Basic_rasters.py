@@ -13,12 +13,12 @@ gdal.UseExceptions()
 from pyramids.dem import DEM as GC
 from pyramids.dataset import Dataset
 
-#%%
+# %%
 
-#%% vsimem
+# %% vsimem
 from osgeo.gdal import VSIFReadL
 
-#%% Paths
+# %% Paths
 datapath = "examples/data"
 raster_a_path = f"{datapath}/acc4000.tif"
 raster_b_path = f"{datapath}/dem_100_f.tif"
@@ -27,7 +27,7 @@ aligned_raster_folder = f"{datapath}/aligned_rasters/"
 aligned_raster = f"{datapath}/Evaporation_ECMWF_ERA-Interim_mm_daily_2009.01.01.tif"
 soilmappath = f"{datapath}/soil_raster.tif"
 Basinshp = f"{datapath}/basin.geojson"
-#%%
+# %%
 """
 you need to define the TEMP path in your environment variable as some of the metods in the raster
 module do some preprocessing in the TEMP path
@@ -50,8 +50,10 @@ new_val = src.no_data_value[0]
 src.change_no_data_value(new_val, old_value)
 # src.change_no_data_value_attr(0, new_value)
 # src.to_geotiff(raster_a_path)
-#%%
+# %%
 arr1 = arr.flatten()
+
+
 # arr2 = np.full_like(arr, np.nan).flatten()
 #
 def fn(val):
@@ -61,11 +63,11 @@ def fn(val):
         pass
 
 
-#%%
+# %%
 val = src.raster.ReadAsArray()[0, 0]
 print(src.no_data_value)
 src._set_no_data_value(val)
-#%%
+# %%
 fig, ax = Map.plot(src, title="Flow Accumulation")
 # %% GetRasterData
 """
@@ -320,7 +322,7 @@ inputs:
     4- method : [String]
         resampling technique default is "Nearest"
         https://gisgeography.com/raster-resampling/
-        "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+        "Nearest" for nearest neighbor,"cubic" for cubic convolution,
         "bilinear" for bilinear
 
 Outputs:
@@ -353,7 +355,7 @@ inputs:
     3- method: [String]
         resampling technique default is "Nearest"
         https://gisgeography.com/raster-resampling/
-        "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+        "Nearest" for nearest neighbor,"cubic" for cubic convolution,
         "bilinear" for bilinear
     4- Option : [1 or 2]
 
@@ -399,7 +401,7 @@ inputs:
     4- method:
         [String] resampling technique default is "Nearest"
         https://gisgeography.com/raster-resampling/
-        "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+        "Nearest" for nearest neighbor,"cubic" for cubic convolution,
         "bilinear" for bilinear
 
 Outputs:
@@ -524,7 +526,7 @@ between two rasters
 alignment_src is the source of the coordinate system, number of rows, number of columns & cell size
 RasterB is the source of data values in cells
 the result will be a raster with the same structure like alignment_src but with
-values from RasterB using Nearest Neighbour interpolation algorithm
+values from RasterB using Nearest neighbor interpolation algorithm
 
 Inputs:
 ----------

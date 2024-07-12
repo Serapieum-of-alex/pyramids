@@ -7,6 +7,7 @@ ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
 drivers available in geopandas
 gpd.io.file._EXTENSION_TO_DRIVER
 """
+
 import json
 import os
 import shutil
@@ -106,7 +107,7 @@ class FeatureCollection:
         return bounds
 
     @property
-    def pivot_point(self) -> List[Number]:
+    def top_left_corner(self) -> List[Number]:
         """Top left corner coordinates."""
         if isinstance(self.feature, GeoDataFrame):
             bounds = self.feature.total_bounds.tolist()
@@ -184,6 +185,8 @@ class FeatureCollection:
         """
         if isinstance(self.feature, GeoDataFrame):
             dtypes = self.feature.dtypes.to_dict()
+            # convert the dtype to string as it returns a dtype object in linux instead.
+            dtypes = {key: str(value) for key, value in dtypes.items()}
         else:
             dtypes = []
             for i in range(self.layers_count):
@@ -193,7 +196,7 @@ class FeatureCollection:
                     ogr_to_numpy_dtype(layer_dfn.GetFieldDefn(j).GetType()).__name__
                     for j in range(cols)
                 ]
-            # the geometry colmn is not in the returned dictionary if the vector is DataSource
+            # the geometry column is not in the returned dictionary if the vector is DataSource
             dtypes = {col_i: type_i for col_i, type_i in zip(self.column, dtypes)}
 
         return dtypes
@@ -472,7 +475,7 @@ class FeatureCollection:
                 )
             # if the raster is given, the top left corner of the raster will be taken as the top left corner for
             # the rasterized polygon
-            xmin, ymax = dataset.pivot_point
+            xmin, ymax = dataset.top_left_corner
             no_data_value = (
                 dataset.no_data_value[0]
                 if dataset.no_data_value[0] is not None
@@ -504,7 +507,7 @@ class FeatureCollection:
 
         # convert the vector to a gdal Dataset (vector but read by gdal.EX)
         vector_gdal_ex = self._gdf_to_ds(gdal_dataset=True)
-        top_left_coords = (xmin, ymax)
+        top_left_corner = (xmin, ymax)
 
         bands_count = 1 if not isinstance(attribute, list) else len(attribute)
         dataset_n = Dataset.create(
@@ -513,7 +516,7 @@ class FeatureCollection:
             columns,
             dtype,
             bands_count,
-            top_left_coords,
+            top_left_corner,
             ds_epsg,
             no_data_value,
         )
@@ -567,6 +570,7 @@ class FeatureCollection:
         prj: [str]
             projection string
             >>> "GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]"
+
         string_type: [str]
             type of the string ["ESRI wkt", "WKT", "PROj4"]
         """
@@ -967,9 +971,9 @@ class FeatureCollection:
         Examples
         --------
         >>> coordinates = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
-        >>> FeatureCollection.create_polygon(coordinates, wkt=True)
-        it will give
-        >>> 'POLYGON ((24.95 60.16 0,24.95 60.16 0,24.95 60.17 0,24.95 60.16 0))'
+        >>> feature_collection = FeatureCollection.create_polygon(coordinates, wkt=True)
+        >>> print(feature_collection)
+        'POLYGON ((-106.64 24, -106.49 24.05, -106.49 24.01, -106.49 23.98, -106.64 24))'
         while
         >>> new_geometry = gpd.GeoDataFrame()
         >>> new_geometry.loc[0,'geometry'] = FeatureCollection.create_polygon(coordinates, wkt=False)

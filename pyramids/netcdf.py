@@ -3,6 +3,7 @@ netcdf module.
 
 netcdf contains python functions to handle netcdf data. gdal class: https://gdal.org/api/index.html#python-api.
 """
+
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union
 
@@ -24,7 +25,7 @@ class NetCDF(Dataset):
     The NetCDF class contains methods to deal with netcdf files.
     """
 
-    def __init__(self, src: gdal.Dataset):
+    def __init__(self, src: gdal.Dataset, access: str = "read_only"):
         """__init__."""
         super().__init__(src)
         # set the is_subset to false before retrieving the variables
@@ -75,7 +76,7 @@ class NetCDF(Dataset):
     def lon(self):
         """Longitude coordinates."""
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
+            pivot_x = self.top_left_corner[0]
             cell_size = self.cell_size
             x_coords = NetCDF.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
@@ -89,7 +90,7 @@ class NetCDF(Dataset):
     def lat(self):
         """Latitude-coordinate."""
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
+            pivot_y = self.top_left_corner[1]
             cell_size = self.cell_size
             y_coords = NetCDF.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
@@ -102,7 +103,7 @@ class NetCDF(Dataset):
         """x-coordinate/longitude."""
         # X_coordinate = upperleft corner x + index * cell size + celsize/2
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
+            pivot_x = self.top_left_corner[0]
             cell_size = self.cell_size
             x_coords = NetCDF.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
@@ -117,7 +118,7 @@ class NetCDF(Dataset):
         """y-coordinate/latitude."""
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
+            pivot_y = self.top_left_corner[1]
             cell_size = self.cell_size
             y_coords = NetCDF.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:

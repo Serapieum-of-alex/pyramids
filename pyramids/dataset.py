@@ -2,8 +2,9 @@
 Dataset module.
 
 raster contains python functions to handle raster data align them together based on a source raster, perform any
-algebraic operation on cell's values. gdal class: https://gdal.org/api/index.html#python-api.
+algebraic operation on cell's values.
 """
+
 import os
 import warnings
 import logging
@@ -51,7 +52,7 @@ from pyramids.abstract_dataset import (
 class Dataset(AbstractDataset):
     """Dataset.
 
-    The Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate
+    The Dataset class contains methods to deal with raster and netcdf files, change projection and coordinate
     systems.
     """
 
@@ -104,9 +105,11 @@ class Dataset(AbstractDataset):
             self.epsg,
             self.band_count,
             self.band_names,
-            self._no_data_value
-            if self._no_data_value == []
-            else self._no_data_value[0],
+            (
+                self._no_data_value
+                if self._no_data_value == []
+                else self._no_data_value[0]
+            ),
             self.dtype if self.dtype == [] else self.dtype[0],
             self.crs,
             self.meta_data,
@@ -115,22 +118,36 @@ class Dataset(AbstractDataset):
         return message
 
     @property
-    def access(self):
-        """open_mode."""
+    def access(self) -> str:
+        """
+        Access mode.
+
+        Returns
+        -------
+        str:
+            The access mode of the dataset (read_only/write).
+        """
         return super().access
 
     @property
     def raster(self) -> gdal.Dataset:
-        """GDAL Dataset."""
+        """Base GDAL Dataset."""
         return super().raster
 
     @raster.setter
     def raster(self, value: gdal.Dataset):
+        """Contains GDAL Dataset."""
         self._raster = value
 
     @property
     def values(self) -> np.ndarray:
-        """Values of all the bands."""
+        """Values of all the bands.
+
+        Return
+        -------
+        np.ndarray:
+            the values of all the bands in the raster as a 3D numpy array (bands, rows, columns).
+        """
         return self.read_array()
 
     @property
@@ -144,28 +161,95 @@ class Dataset(AbstractDataset):
         return self._columns
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, int, int]:
         """Shape (bands, rows, columns)."""
         return self.band_count, self.rows, self.columns
 
     @property
-    def geotransform(self):
-        """WKT projection.(x, cell_size, 0, y, 0, -cell_size)."""
+    def geotransform(self) -> Tuple[float, float, float]:
+        """WKT projection.
+
+        (top left corner X/lon coordinate, cell_size, 0, top left corner y/lat coordinate, 0, -cell_size).
+
+        Examples
+        --------
+        - Create a dataset
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To check the geotransform of the dataset, call the `geotransform` property
+
+            >>> print(dataset.geotransform)
+            (0.0, 0.05, 0.0, 0.0, 0.0, -0.05)
+
+        See Also
+        --------
+        Dataset.top_left_corner : coordinate of the top left corner of the dataset.
+        Dataset.epsg : epsg number of the dataset coordinate reference system.
+        """
         return super().geotransform
 
     @property
-    def epsg(self):
+    def epsg(self) -> int:
         """EPSG number."""
-        return self._epsg
+        crs = self.raster.GetProjection()
+        return FeatureCollection.get_epsg_from_prj(crs)
+
+    @epsg.setter
+    def epsg(self, value: int):
+        """EPSG number."""
+        sr = Dataset._create_sr_from_epsg(value)
+        self.raster.SetProjection(sr.ExportToWkt())
+        self.__init__(self._raster)
 
     @property
     def crs(self) -> str:
-        """Coordinate reference system."""
+        """Coordinate reference system.
+
+        Returns
+        -------
+        str:
+            the coordinate reference system of the dataset.
+
+        Examples
+        --------
+        - Create a dataset
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, to check the coordinate reference system, call the `crs` property
+
+            >>> print(dataset.crs)
+            GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
+        """
         return self._get_crs()
 
     @crs.setter
     def crs(self, value: str):
-        """Coordinate reference system."""
+        """Coordinate reference system.
+
+        Parameters
+        ----------
+        value: [str]
+            WellKnownText (WKT) string.
+            i.e. 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],
+            AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",
+            0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
+
+        See Also
+        --------
+        Dataset.set_crs : Set the Coordinate Reference System (CRS).
+        Dataset.to_crs : Reproject the dataset to any projection.
+        Dataset.epsg : epsg number of the dataset coordinate reference system.
+        """
         self.set_crs(value)
 
     @property
@@ -174,12 +258,12 @@ class Dataset(AbstractDataset):
         return self._cell_size
 
     @property
-    def band_count(self):
+    def band_count(self) -> int:
         """Number of bands in the raster."""
         return self._band_count
 
     @property
-    def band_names(self):
+    def band_names(self) -> List[str]:
         """Band names."""
         return self._get_band_names()
 
@@ -213,10 +297,14 @@ class Dataset(AbstractDataset):
 
         Notes
         -----
-            - the setter does not change the values of the cells to the new no_data_value, it only changes the
+            - The setter does not change the values of the cells to the new no_data_value, it only changes the
             `no_data_value` attribute.
-            - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
-            - to change the values of the cells to the new no_data_value, use the `change_no_data_value` method.
+            - Use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
+            - To change the values of the cells, to the new no_data_value, use the `change_no_data_value` method.
+
+        See Also
+        --------
+        Dataset.change_no_data_value : Change the No Data Value.
         """
         if isinstance(value, list):
             for i, val in enumerate(value):
@@ -226,24 +314,30 @@ class Dataset(AbstractDataset):
 
     @property
     def meta_data(self):
-        """Meta data."""
-        return super().meta_data
-
-    @meta_data.setter
-    def meta_data(self, value: Dict[str, str]):
-        """Meta data.
+        """Meta-data.
 
         Hint
         ----
         - This property does not need the Dataset to be opened in a write mode to be set.
         - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+            .aux.xml,
+
+        the content of the file will be like the following:
+
+        .. code-block:: xml
+
             <PAMDataset>
               <Metadata>
                 <MDI key="key">value</MDI>
               </Metadata>
             </PAMDataset>
+
         """
+        return super().meta_data
+
+    @meta_data.setter
+    def meta_data(self, value: Dict[str, str]):
+        """Meta-data."""
         for key, value in value.items():
             self._raster.SetMetadataItem(key, value)
 
@@ -256,10 +350,19 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
-        >>> size = dataset.block_size
-        >>> print(size)
-        >>> [(128, 128)]
+        >>> import numpy as np
+        >>> arr = np.random.rand(5, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+        >>> print(dataset.block_size)
+        [[5, 1]]
+
+        See Also
+        --------
+        Dataset.get_block_arrangement : get block arrangement to read the dataset in chuncks.
+        Dataset.get_tile : get tile
+        Dataset.read_array : to read the data stored in the dataset bands.
         """
         return self._block_size
 
@@ -271,6 +374,7 @@ class Dataset(AbstractDataset):
         ----------
         value : List[Tuple[int, int]]
             block size for each band in the raster(512, 512).
+
         """
         if len(value[0]) != 2:
             raise ValueError("block size should be a tuple of 2 integers")
@@ -288,19 +392,7 @@ class Dataset(AbstractDataset):
         return super().driver_type
 
     @property
-    def scale(self):
-        """Scale.
-
-        The value of the scale is used to convert the pixel values to the real-world values.
-        """
-        scale_list = []
-        for i in range(self.band_count):
-            band_scale = self._iloc(i).GetScale()
-            scale_list.append(band_scale if band_scale is not None else 1.0)
-        return scale_list
-
-    @scale.setter
-    def scale(self, value: List[float]):
+    def scale(self) -> List[float]:
         """Scale.
 
         The value of the scale is used to convert the pixel values to the real-world values.
@@ -309,7 +401,12 @@ class Dataset(AbstractDataset):
         ----
         - This property does not need the Dataset to be opened in a write mode to be set.
         - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+            .aux.xml.
+
+        the content of the file will be like the following:
+
+        .. code-block:: xml
+
             <PAMDataset>
               <PAMRasterBand band="1">
                 <Description>Band_1</Description>
@@ -319,6 +416,15 @@ class Dataset(AbstractDataset):
               </PAMRasterBand>
             </PAMDataset>
         """
+        scale_list = []
+        for i in range(self.band_count):
+            band_scale = self._iloc(i).GetScale()
+            scale_list.append(band_scale if band_scale is not None else 1.0)
+        return scale_list
+
+    @scale.setter
+    def scale(self, value: List[float]):
+        """Scale."""
         for i, val in enumerate(value):
             self._iloc(i).SetScale(val)
 
@@ -331,8 +437,13 @@ class Dataset(AbstractDataset):
         Hint
         ----
         - This property does not need the Dataset to be opened in a write mode to be set.
-        - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+        - The value of the offset will be stored in xml file by the name of the raster file with the extension of
+            .aux.xml.
+
+        the content of the file will be like the following:
+
+        .. code-block:: xml
+
             <PAMDataset>
               <PAMRasterBand band="1">
                 <Description>Band_1</Description>
@@ -350,6 +461,7 @@ class Dataset(AbstractDataset):
 
     @offset.setter
     def offset(self, value: List[float]):
+        """Offset."""
         for i, val in enumerate(value):
             self._iloc(i).SetOffset(val)
 
@@ -382,7 +494,6 @@ class Dataset(AbstractDataset):
                 if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains
                     the internal path inside the zip file, so just ad
 
-                >>> from pyramids.dataset import Dataset
                 >>> rdir = "tests/data/virtual-file-system"
                 >>> dataset = Dataset.read_file(f"{rdir}/multiple_compressed_files.zip/1.asc")
                 >>> print(dataset)
@@ -431,6 +542,9 @@ class Dataset(AbstractDataset):
                             File: /vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/2.asc
                 <BLANKLINE>
 
+        See also
+        --------
+        Dataset.read_array : Read the values stored in a dataset band
         """
         src = _io.read_file(path, read_only=read_only, file_i=file_i)
         return cls(src, access="read_only" if read_only else "write")
@@ -438,35 +552,38 @@ class Dataset(AbstractDataset):
     def read_array(
         self, band: int = None, window: Union[GeoDataFrame, List[int]] = None
     ) -> np.ndarray:
-        """Read Array.
-
-            - read the values stored in a given band.
+        """Read the values stored in a given band.
 
         Data Chuncks/blocks
             When a raster dataset is stored on disk, it might not be stored as one continuous chunk of data. Instead,
             it can be divided into smaller rectangular blocks or tiles. These blocks can be individually accessed,
             which is particularly useful for large datasets:
-                Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
-                    at once. This is especially beneficial when only a small portion of the data needs to be processed.
-                Performance: For certain file formats and operations, working with optimal block sizes can significantly
-                    improve performance. For example, if the block size matches the reading or processing window,
-                        Pyramids can minimize disk access and data transfer.
+
+                - Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
+                      at once. This is especially beneficial when only a small portion of the data needs to be processed.
+                - Performance: For certain file formats and operations, working with optimal block sizes can significantly
+                      improve performance. For example, if the block size matches the reading or processing window,
+                      Pyramids can minimize disk access and data transfer.
 
         Parameters
         ----------
-        band : [integer]
-            the band you want to get its data, If None the data of all bands will be read. Default is None
-        window: [List/GeoDataFrame]
-            List:
+        band : int, optional
+            the band you want to get its data, If None, the data of all bands will be read. Default is None
+        window: List/GeoDataFrame, optional
+            Specify a block of data to read from the dataset. The window can be specified in two ways:
+
+            - List:
                 window to specify a block of data to read from the dataset. the window should be a list of 4 integers
                 [offset_x, offset_y, window_columns, window_rows].
-                - offset_x: x offset of the block.
-                - offset_y: y offset of the block.
-                - window_columns: number of columns in the block.
-                - window_rows: number of rows in the block.
-            GeoDataFrame:
-                GeoDataFrame with a geometry column, the function will get the total_bounds of the geodataframe and
-                use it as a window to read the raster.
+
+                    - offset_x/column index: x offset of the block.
+                    - offset_y/row index: y offset of the block.
+                    - window_columns: number of columns in the block.
+                    - window_rows: number of rows in the block.
+
+            - GeoDataFrame:
+                GeoDataFrame with a geometry column filled with a polygon geometries, the function will get the
+                total_bounds of the geodataframe and use it as a window to read the raster.
 
         Returns
         -------
@@ -475,10 +592,54 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> dataset = Dataset.read_file("tests/data/geotiff/era5_land_monthly_averaged.tif")
-        >>> arr = dataset.read_array(window=[0, 0, 5, 5])
-        >>> print(arr.shape)
-        >>> (5, 5)
+        - Create `Dataset` consists of 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Read all the values stored in a given band.
+
+            >>> arr = dataset.read_array(band=0) # doctest: +SKIP
+            array([[0.50482225, 0.45678043, 0.53294294, 0.28862223, 0.66753579],
+                   [0.38471912, 0.14617829, 0.05045189, 0.00761358, 0.25501918],
+                   [0.32689036, 0.37358843, 0.32233918, 0.75450564, 0.45197608],
+                   [0.22944676, 0.2780928 , 0.71605189, 0.71859309, 0.61896933],
+                   [0.47740168, 0.76490779, 0.07679277, 0.16142599, 0.73630836]])
+
+        - Read block of data from the first band, the block starts at the 2nd column (index 1) and 2st row (index 1),
+            the block size is 2*2 cells. (the first index is the column index).
+
+            >>> arr = dataset.read_array(band=0, window=[1, 1, 2, 2])
+            >>> print(arr) # doctest: +SKIP
+            array([[0.14617829, 0.05045189],
+                   [0.37358843, 0.32233918]])
+
+            - if you check the values of 2*2 blocks, you will find them the same as the values in the entire array of band 0,
+                starting at the 2nd row and 2nd column.
+
+        - Read block of data from the first band, the block is a `geodataframe` with a polygon geometry that covers
+            the same area covered by the window above.
+
+            >>> import geopandas as gpd
+            >>> from shapely.geometry import Polygon
+
+            - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
+                0.2 -0.1] to cover the 4 cells.
+            - The polygon covers the same cells that we extracted in the previous setp using the window=[1, 1, 2, 2].
+
+            >>> poly = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
+            >>> arr = dataset.read_array(band=0, window=poly)
+            >>> print(arr) # doctest: +SKIP
+            array([[0.14617829, 0.05045189],
+                   [0.37358843, 0.32233918]])
+
+        See also
+        --------
+        Dataset.get_tile : read the dataset in chuncks
+        Dataset.get_block_arrangement : get block arrangement to read the dataset in chuncks.
         """
         if band is None and self.band_count > 1:
             rows = self.rows if window is None else window[3]
@@ -573,25 +734,100 @@ class Dataset(AbstractDataset):
         return [xoff, yoff, x_size, y_size]
 
     @property
-    def pivot_point(self):
-        """Top left corner coordinates."""
-        return super().pivot_point
+    def top_left_corner(self):
+        """Top left corner coordinates.
+
+        See also
+        --------
+        Dataset.geotransform : dataset geotransform
+        """
+        return super().top_left_corner
 
     @property
     def bounds(self) -> GeoDataFrame:
-        """Bounds - the bbox as a geodataframe with a polygon geometry."""
+        """
+        Bounds - the bbox as a geodataframe with a polygon geometry.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the bounds of the dataset.
+
+            >>> bounds = dataset.bounds
+            >>> print(bounds) # doctest: +SKIP
+                                                    geometry
+            0  POLYGON ((0 0, 0 -0.5, 0.5 -0.5, 0.5 0, 0 0))
+
+        See also
+        --------
+        Dataset.bbox : dataset bound box
+        """
         return self._calculate_bounds()
 
     @property
     def bbox(self) -> List:
-        """Bound box [xmin, ymin, xmax, ymax]."""
+        """
+        Bound box [xmin, ymin, xmax, ymax].
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the bounds of the dataset.
+            >>> bbox = dataset.bbox
+            >>> print(bbox) # doctest: +SKIP
+            [0.0, -0.5, 0.5, 0.0]
+
+        See also
+        --------
+        Dataset.bounds : dataset bounding polygon.
+        """
         return self._calculate_bbox()
 
     @property
     def lon(self):
-        """Longitude coordinates."""
+        """Longitude coordinates.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,2, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To get the longitude/x coordinates of the center of all cells in the dataset.
+
+            >>> print(dataset.lon)
+            [0.025 0.075 0.125 0.175 0.225]
+            >>> print(dataset.x)
+            [0.025 0.075 0.125 0.175 0.225]
+
+        See also
+        --------
+        Dataset.x : dataset x coordinates
+        Dataset.lat : dataset latitude
+        Dataset.lon : dataset longitude
+        """
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
+            pivot_x = self.top_left_corner[0]
             cell_size = self.cell_size
             x_coords = [
                 pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
@@ -603,9 +839,33 @@ class Dataset(AbstractDataset):
 
     @property
     def lat(self):
-        """Latitude-coordinate."""
+        """Latitude-coordinate.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,2, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To get the longitude/x coordinates of the center of all cells in the dataset.
+
+            >>> print(dataset.lat)
+            [-0.025 -0.075 -0.125 -0.175 -0.225]
+            >>> print(dataset.y)
+            [-0.025 -0.075 -0.125 -0.175 -0.225]
+
+        See also
+        --------
+        Dataset.x : dataset x coordinates
+        Dataset.y : dataset y coordinates
+        Dataset.lon : dataset longitude
+        """
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
+            pivot_y = self.top_left_corner[1]
             cell_size = self.cell_size
             y_coords = [
                 pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
@@ -617,17 +877,38 @@ class Dataset(AbstractDataset):
 
     @property
     def x(self):
-        """X-coordinate/Longitude."""
+        """X-coordinate/Longitude.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,2, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To get the longitude/x coordinates of the center of all cells in the dataset.
+
+            >>> print(dataset.lon)
+            [0.025 0.075 0.125 0.175 0.225]
+            >>> print(dataset.x)
+            [0.025 0.075 0.125 0.175 0.225]
+
+        See also
+        --------
+        Dataset.lat : dataset latitude
+        Dataset.y : dataset y coordinates
+        Dataset.lon : dataset longitude
+        """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
+            pivot_x = self.top_left_corner[0]
             cell_size = self.cell_size
             x_coords = Dataset.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
             )
-            # x_coords = [
-            #     pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-            # ]
         else:
             # in case the lat and lon are read from the netcdf file just read the values from the file
             x_coords = self._lon
@@ -641,14 +922,35 @@ class Dataset(AbstractDataset):
 
     @property
     def y(self):
-        """Y-coordinate/Latitude."""
+        """Y-coordinate/Latitude.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,2, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - to get the longitude/x coordinates of the center of all cells in the dataset.
+
+            >>> print(dataset.lat)
+            [-0.025 -0.075 -0.125 -0.175 -0.225]
+            >>> print(dataset.y)
+            [-0.025 -0.075 -0.125 -0.175 -0.225]
+
+        See also
+        --------
+        Dataset.x : dataset y coordinates
+        Dataset.lat : dataset latitude
+        Dataset.lon : dataset longitude
+        """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
+            pivot_y = self.top_left_corner[1]
             cell_size = self.cell_size
-            # y_coords = [
-            #     pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
-            # ]
             y_coords = Dataset.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
             # in case the lat and lon are read from the netcdf file, just read the values from the file
@@ -678,7 +980,7 @@ class Dataset(AbstractDataset):
 
     @property
     def dtype(self) -> List[str]:
-        """List of the numpy data Type of each band."""
+        """List of the data Type of each band as strings."""
         return [
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "name"].values[0]
             for i in self.gdal_dtype
@@ -694,21 +996,25 @@ class Dataset(AbstractDataset):
         band : int, optional
             band index, by default 0
         x_block_size : int, optional
-            x block size, by default None
+            x block size/number of columns, by default None
         y_block_size : int, optional
-            y block size, by default None
+            y block size/number of rows, by default None
 
         Returns
         -------
-        DataFrame
-            DataFrame with the following columns: [x_offset, y_offset, window_xsize, window_ysize]
+        DataFrame:
+            with the following columns: [x_offset, y_offset, window_xsize, window_ysize]
 
         Examples
         --------
-        >>> dataset = Dataset.read_file("tests/data/acc4000.tif")
+        >>> import numpy as np
+        >>> arr = np.random.rand(13, 14)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
         >>> df = dataset.get_block_arrangement(x_block_size=5, y_block_size=5)
         >>> print(df)
-        >>>    x_offset  y_offset  window_xsize  window_ysize
+           x_offset  y_offset  window_xsize  window_ysize
         0         0         0             5             5
         1         5         0             5             5
         2        10         0             4             5
@@ -718,7 +1024,6 @@ class Dataset(AbstractDataset):
         6         0        10             5             3
         7         5        10             5             3
         8        10        10             4             3
-
         """
         block_sizes = self.block_size[band]
         x_block_size = block_sizes[0] if x_block_size is None else x_block_size
@@ -739,10 +1044,69 @@ class Dataset(AbstractDataset):
         )
         return df
 
-    def copy(self):
-        """Deep copy."""
-        src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
-        return Dataset(src)
+    def copy(self, path: str = None) -> "Dataset":
+        """Deep copy.
+
+        Parameters
+        ----------
+        path: str, optional
+            destination path to save the copied dataset, if None is passed, the copy dataset will be created in memory
+
+        Examples
+        --------
+        - First, we will create a dataset with 1 band, 3 rows and 5 columns.
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(3, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 3 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+        - Now, we will create a copy of the dataset.
+
+            >>> copied_dataset = dataset.copy(path="copy-dataset.tif")
+            >>> print(copied_dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 3 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File: copy-dataset.tif
+            <BLANKLINE>
+
+        - Now close the dataset.
+
+            >>> copied_dataset.close()
+
+        """
+        if path is None:
+            path = ""
+            driver = "MEM"
+        else:
+            driver = "GTiff"
+
+        src = gdal.GetDriverByName(driver).CreateCopy(path, self._raster)
+
+        return Dataset(src, access="write")
+
+    def close(self):
+        """Close the dataset."""
+        self._raster.FlushCache()
+        self._raster = None
 
     def _iloc(self, i: int) -> gdal.Band:
         """_iloc.
@@ -770,7 +1134,7 @@ class Dataset(AbstractDataset):
         return band
 
     def get_attribute_table(self, band: int = 0) -> DataFrame:
-        """get_attribute_table.
+        """Get the attribute table for a given band.
 
             - Get the attribute table of a band.
 
@@ -783,6 +1147,18 @@ class Dataset(AbstractDataset):
         -------
         DataFrame:
             DataFrame with the attribute table.
+
+        Examples
+        --------
+        >>> dataset = Dataset.read_file("examples/data/geotiff/south-america-mswep_1979010100.tif")
+        >>> df = dataset.get_attribute_table()
+        >>> print(df)
+          Precipitation Range (mm)   Category              Description
+        0                     0-50        Low   Very low precipitation
+        1                   51-100   Moderate   Moderate precipitation
+        2                  101-200       High       High precipitation
+        3                  201-500  Very High  Very high precipitation
+        4                     >500    Extreme    Extreme precipitation
         """
         band = self._iloc(band)
         rat = band.GetDefaultRAT()
@@ -794,16 +1170,99 @@ class Dataset(AbstractDataset):
         return df
 
     def set_attribute_table(self, df: DataFrame, band: int = None) -> None:
-        """set_attribute_table.
+        """Set the attribute table for a band.
 
-            - Set the attribute table for a band.
+        The attribute table can be used to associate tabular data with the values of a raster band.
+        This is particularly useful for categorical raster data, such as land cover classifications, where each pixel
+        value corresponds to a category that has additional attributes (e.g., class name, color description).
+
+        Hint
+        ----
+        - The attribute table is stored in an xml file by the name of the raster file with the extension of .aux.xml,
+        - Setting an attribute table to a band will overwrite the existing attribute table if it exists.
+        - Setting an attribute table to a band does not neet the dataset to be opened in a write mode.
 
         Parameters
         ----------
-        df: [DataFrame]
+        df: DataFrame
             DataFrame with the attribute table.
-        band: [int]
+        band: int
             band index.
+
+        Examples
+        --------
+        - First create a dataset:
+
+            >>> dataset = Dataset.create(
+            ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_corner=(0, 0),
+            ... epsg=4326, no_data_value=-9999
+            ... )
+
+        - Create a DataFrame with the attribute table:
+
+            >>> data = {
+            ...     "Value": [1, 2, 3],
+            ...     "ClassName": ["Forest", "Water", "Urban"],
+            ...     "Color": ["#008000", "#0000FF", "#808080"],
+            ... }
+            >>> df = pd.DataFrame(data)
+
+        - Set the attribute table to the dataset:
+
+            >>> dataset.set_attribute_table(df, band=0)
+
+        - Then the attribute table can be retrieved using the `get_attribute_table` method.
+        - The content of the attribute table will be stored in an xml file by the name of the raster file with
+            the extension of .aux.xml, the content of the file will be like the following:
+
+        .. code-block:: xml
+
+            <PAMDataset>
+              <PAMRasterBand band="1">
+                <GDALRasterAttributeTable tableType="thematic">
+                  <FieldDefn index="0">
+                    <Name>Precipitation Range (mm)</Name>
+                    <Type>2</Type>
+                    <Usage>0</Usage>
+                  </FieldDefn>
+                  <FieldDefn index="1">
+                    <Name>Category</Name>
+                    <Type>2</Type>
+                    <Usage>0</Usage>
+                  </FieldDefn>
+                  <FieldDefn index="2">
+                    <Name>Description</Name>
+                    <Type>2</Type>
+                    <Usage>0</Usage>
+                  </FieldDefn>
+                  <Row index="0">
+                    <F>0-50</F>
+                    <F>Low</F>
+                    <F>Very low precipitation</F>
+                  </Row>
+                  <Row index="1">
+                    <F>51-100</F>
+                    <F>Moderate</F>
+                    <F>Moderate precipitation</F>
+                  </Row>
+                  <Row index="2">
+                    <F>101-200</F>
+                    <F>High</F>
+                    <F>High precipitation</F>
+                  </Row>
+                  <Row index="3">
+                    <F>201-500</F>
+                    <F>Very High</F>
+                    <F>Very high precipitation</F>
+                  </Row>
+                  <Row index="4">
+                    <F>&gt;500</F>
+                    <F>Extreme</F>
+                    <F>Extreme precipitation</F>
+                  </Row>
+                </GDALRasterAttributeTable>
+              </PAMRasterBand>
+            </PAMDataset>
         """
         rat = self._df_to_attribute_table(df)
         band = self._iloc(band)
@@ -902,10 +1361,8 @@ class Dataset(AbstractDataset):
         unit: Any = None,
         attribute_table: DataFrame = None,
         inplace: bool = False,
-    ):
-        """add_band.
-
-            - Add a new band to the dataset.
+    ) -> Union[None, "Dataset"]:
+        """Add a new band to the dataset.
 
         Parameters
         ----------
@@ -917,7 +1374,7 @@ class Dataset(AbstractDataset):
             attribute_table provides a way to associate tabular data with the values of a raster band.
             This is particularly useful for categorical raster data, such as land cover classifications, where each
             pixel value corresponds to a category that has additional attributes (e.g., class name, color, description).
-        inplace: [bool] optional
+        inplace: [bool] optional, Default is False
             if True the new band will be added to the current dataset, if False the new band will be added to a new
             dataset.
 
@@ -927,13 +1384,63 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        - Example of the attribute_table:
-        >>> data = {
-        ...     "Value": [1, 2, 3],
-        ...     "ClassName": ["Forest", "Water", "Urban"],
-        ...     "Color": ["#008000", "#0000FF", "#808080"],
-        ... }
-        >>> df = pd.DataFrame(data)
+        - First create a dataset:
+
+            >>> dataset = Dataset.create(
+            ... cell_size=0.05, rows=10, columns=10, dtype="float32", bands=1, top_left_corner=(0, 0),
+            ... epsg=4326, no_data_value=-9999
+            ... )
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float32
+                        File:...
+            <BLANKLINE>
+
+        - Create a 2D array to add as a new band:
+
+            >>> import numpy as np
+            >>> array = np.random.rand(10, 10)
+
+        - Add the new band to the dataset inplace:
+
+            >>> dataset.add_band(array, unit="m", attribute_table=None, inplace=True)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 2
+                        Band names: ['Band_1', 'Band_2']
+                        Mask: -9999.0
+                        Data type: float32
+                        File:...
+            <BLANKLINE>
+
+        - The new band will be added to the dataset inplace.
+        - You can also add an attribute table to the band when you add a new band to the dataset.
+
+            >>> import pandas as pd
+            >>> data = {
+            ...     "Value": [1, 2, 3],
+            ...     "ClassName": ["Forest", "Water", "Urban"],
+            ...     "Color": ["#008000", "#0000FF", "#808080"],
+            ... }
+            >>> df = pd.DataFrame(data)
+            >>> dataset.add_band(array, unit="m", attribute_table=df, inplace=True)
+
+        See Also
+        --------
+        Dataset.create_from_array : create a new dataset from an array.
+        Dataset.create : create a new dataset with an empty band.
+        Dataset.dataset_like: create a new dataset from another dataset.
+        Dataset.get_attribute_table: get the attribute table for a specific band.
+        Dataset.set_attribute_table: Set the attribute table for a specific band.
         """
         # check the dimensions of the new array
         if array.ndim != 2:
@@ -942,11 +1449,12 @@ class Dataset(AbstractDataset):
             raise ValueError(
                 f"The array must have the same dimensions as the raster.{self.rows} {self.columns}"
             )
-        # check if the dataset is opened in write mode
+        # check if the dataset is opened in a write mode
         if inplace:
-            src = self._raster
-            if src.GetRootGroup() is None:
-                raise ValueError("The dataset is not opened in write mode.")
+            if self.access == "read_only":
+                raise ValueError("The dataset is not opened in a write mode.")
+            else:
+                src = self._raster
         else:
             src = gdal.GetDriverByName("MEM").CreateCopy("", self._raster)
 
@@ -966,53 +1474,90 @@ class Dataset(AbstractDataset):
         band.WriteArray(array)
 
         if inplace:
-            self.__init__(src)
+            self.__init__(src, self.access)
         else:
-            return Dataset(src)
+            return Dataset(src, self.access)
 
     def stats(self, band: int = None, mask: GeoDataFrame = None) -> DataFrame:
-        """stats.
-
-            - Get statistics of a band [Min, max, mean, std].
+        """Get statistics of a band [Min, max, mean, std].
 
         Parameters
         ----------
-        band: [int]
+        band: int, optional
             band index, if None, the statistics of all bands will be returned.
-        mask: [Polygon GeoDataFrame/Dataset object]
+        mask: Polygon GeoDataFrame/Dataset object, optional
             GeodataFrame with a geometry of polygon type
 
         Returns
         -------
         DataFrame:
-            DataFrame of statistics values of each band, the dataframe has the following columns:
+            DataFrame wit the stats of each band, the dataframe has the following columns
             [min, max, mean, std], the index of the dataframe is the band names.
-            >>>                Min         max        mean       std
-            >>> Band_1  270.369720  270.762299  270.551361  0.154270
-            >>> Band_2  269.611938  269.744751  269.673645  0.043788
-            >>> Band_3  273.641479  274.168823  273.953979  0.198447
-            >>> Band_4  273.991516  274.540344  274.310669  0.205754
 
-        Hint
-        ----
+        .. code-block:: text
+
+                           Min         max        mean       std
+            Band_1  270.369720  270.762299  270.551361  0.154270
+            Band_2  269.611938  269.744751  269.673645  0.043788
+            Band_3  273.641479  274.168823  273.953979  0.198447
+            Band_4  273.991516  274.540344  274.310669  0.205754
+
         Hint
         ----
         - The value of the stats will be stored in an xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+            .aux.xml,
 
-        <PAMDataset>
-          <PAMRasterBand band="1">
-            <Description>Band_1</Description>
-            <Metadata>
-              <MDI key="RepresentationType">ATHEMATIC</MDI>
-              <MDI key="STATISTICS_MAXIMUM">88</MDI>
-              <MDI key="STATISTICS_MEAN">7.9662921348315</MDI>
-              <MDI key="STATISTICS_MINIMUM">0</MDI>
-              <MDI key="STATISTICS_STDDEV">18.294377743948</MDI>
-              <MDI key="STATISTICS_VALID_PERCENT">48.9</MDI>
-            </Metadata>
-          </PAMRasterBand>
-        </PAMDataset>
+        - The content of the file will be like the following:
+
+            .. code-block:: xml
+
+                <PAMDataset>
+                  <PAMRasterBand band="1">
+                    <Description>Band_1</Description>
+                    <Metadata>
+                      <MDI key="RepresentationType">ATHEMATIC</MDI>
+                      <MDI key="STATISTICS_MAXIMUM">88</MDI>
+                      <MDI key="STATISTICS_MEAN">7.9662921348315</MDI>
+                      <MDI key="STATISTICS_MINIMUM">0</MDI>
+                      <MDI key="STATISTICS_STDDEV">18.294377743948</MDI>
+                      <MDI key="STATISTICS_VALID_PERCENT">48.9</MDI>
+                    </Metadata>
+                  </PAMRasterBand>
+                </PAMDataset>
+
+        Examples
+        --------
+        - Get the statistics of all bands in the dataset:
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
+            >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+            >>> print(dataset.stats()) # doctest: +SKIP
+                         min       max      mean       std
+            Band_1  0.006443  0.942943  0.468935  0.266634
+            Band_2  0.020377  0.978130  0.477189  0.306864
+            Band_3  0.019652  0.992184  0.537215  0.286502
+            Band_4  0.011955  0.984313  0.503616  0.295852
+            >>> print(dataset.stats(band=1))  # doctest: +SKIP
+                         min      max      mean       std
+            Band_2  0.020377  0.97813  0.477189  0.306864
+
+        - Get the statistics of all the bands using a mask polygon.
+
+            - Create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
+                0.2 -0.1] to cover the 4 cells.
+
+            >>> from shapely.geometry import Polygon
+            >>> import geopandas as gpd
+            >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])],crs=4326)
+            >>> print(dataset.stats(mask=mask))  # doctest: +SKIP
+                         min       max      mean       std
+            Band_1  0.193441  0.702108  0.541478  0.202932
+            Band_2  0.281281  0.932573  0.665602  0.239410
+            Band_3  0.031395  0.982235  0.493086  0.377608
+            Band_4  0.079562  0.930965  0.591025  0.341578
+
         """
         if mask is not None:
             dst = self.crop(mask, touch=True)
@@ -1070,9 +1615,7 @@ class Dataset(AbstractDataset):
         overview_index: int = 0,
         **kwargs,
     ):
-        """Plot.
-
-            - plot the values/overviews of a given band.
+        """Plot the values/overviews of a given band.
 
         Parameters
         ----------
@@ -1133,18 +1676,16 @@ class Dataset(AbstractDataset):
                 3- color_scale 3 is the SymLogNorm scale
                 4- color_scale 4 is the PowerNorm scale
                 5- color_scale 5 is the BoundaryNorm scale
-                ------------------------------------------------------------------
-                gamma: [float], optional
-                    value needed for option 2. The default is 1./2.
-                line_threshold: [float], optional
-                    value needed for option 3. The default is 0.0001.
-                line_scale: [float], optional
-                    value needed for option 3. The default is 0.001.
-                bounds: [List]
-                    a list of number to be used as a discrete bounds for the color scale 4.Default is None,
-                midpoint: [float], optional
-                    value needed for option 5. The default is 0.
-                ------------------------------------------------------------------
+            gamma: [float], optional
+                value needed for option 2. The default is 1./2.
+            line_threshold: [float], optional
+                value needed for option 3. The default is 0.0001.
+            line_scale: [float], optional
+                value needed for option 3. The default is 0.001.
+            bounds: [List]
+                a list of number to be used as a discrete bounds for the color scale 4.Default is None,
+            midpoint: [float], optional
+                value needed for option 5. The default is 0.
             cmap: [str], optional
                 color style. The default is 'coolwarm_r'.
             display_cell_value: [bool]
@@ -1162,6 +1703,38 @@ class Dataset(AbstractDataset):
             the axes of the matplotlib figure
         fig: [matplotlib figure object]
             the figure object
+
+        Examples
+        --------
+        - Plot a certain band
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+            >>> dataset.plot(band=0)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        - plot using power scale.
+
+            >>> dataset.plot(band=0, color_scale=2)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        - plot using SymLogNorm scale.
+
+            >>> dataset.plot(band=0, color_scale=3)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        - plot using PowerNorm scale.
+
+            >>> dataset.plot(band=0, color_scale=4, bounds=[0, 0.2, 0.4, 0.6, 0.8, 1])
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        - plot using BoundaryNorm scale.
+
+            >>> dataset.plot(band=0, color_scale=5)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
         """
         import_cleopatra(
             "The current function uses cleopatra package to for plotting, please install it manually, for more info "
@@ -1272,19 +1845,19 @@ class Dataset(AbstractDataset):
     @classmethod
     def create(
         cls,
-        cell_size: int,
+        cell_size: Union[int, float],
         rows: int,
         columns: int,
         dtype: str,
         bands: int,
-        top_left_coords: Tuple,
+        top_left_corner: Tuple,
         epsg: int,
         no_data_value: Any = None,
         path: str = None,
     ) -> "Dataset":
         """Create a new dataset and fill it with the no_data_value.
 
-            - The new dataset will have an array filled with the no_data_value.
+        The new dataset will have an array filled with the no_data_value.
 
         Parameters
         ----------
@@ -1300,61 +1873,82 @@ class Dataset(AbstractDataset):
             "complex-int32", "complex-float32", "complex-float64", "uint64", "int64", "int8", "count"
         bands : int or None
             Number of bands to create in the output raster.
-        top_left_coords: [Tuple]
+        top_left_corner: [Tuple]
             coordinates of the top left corner point.
         epsg: [int]
             epsg number to identify the projection of the coordinates in the created raster.
         no_data_value : float or None
             No data value.
         path: [str] Optional, Default is None
-            path on disk, if None the dataset will be created in memory.
+            path on disk, if None, the dataset is created in memory.
 
         Returns
         -------
-        Dataset
+        Dataset:
+            A new dataset
 
-        Hints
-        -----
+        Hint
+        ----
         - The no_data_value will be filled in the array of the output dataset.
         - The coordinates of the top left corner point should be in the same projection as the epsg.
         - The cell size should be in the same unit as the coordinates.
         - The number of rows and columns should be positive integers.
-        - The dtype should be one of the following code:
 
         Examples
         --------
-        >>> cell_size = 10
-        >>> rows = 100
-        >>> columns = 100
-        >>> dtype = 1
-        >>> bands = 1
-        >>> top_left_coords = (0, 0)
-        >>> epsg = 32618
-        >>> no_data_value = -9999
-        >>> path = "test.tif"
-        >>> dst = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_coords, epsg, no_data_value, path)
+        - To create a dataset using the `create` method you need to provide all the information needed to locate the
+            dataset in space `top_left_corner` and`epsg`, then the information needed to specify the data to be stored
+            in the dataset like `dtype`, `rows`, `columns`, `cell_size`, `bands` and `no_data_value`.
+
+            >>> cell_size = 10
+            >>> rows = 5
+            >>> columns = 5
+            >>> dtype = "float32"
+            >>> bands = 1
+            >>> top_left_corner = (0, 0)
+            >>> epsg = 32618
+            >>> no_data_value = -9999
+            >>> path = "create-new-dataset.tif"
+            >>> dataset = Dataset.create(cell_size, rows, columns, dtype, bands, top_left_corner, epsg, no_data_value, path)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 10.0
+                        Dimension: 5 * 5
+                        EPSG: 32618
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float32
+                        File: create-new-dataset.tif
+            <BLANKLINE>
+
+        - If you check the value stored in the band using the `read_array` method, you will find that the band is full of
+            the `no_data_value` value which we used here as -9999.
+
+            >>> print(dataset.read_array(band=0))
+            [[-9999. -9999. -9999. -9999. -9999.]
+             [-9999. -9999. -9999. -9999. -9999.]
+             [-9999. -9999. -9999. -9999. -9999.]
+             [-9999. -9999. -9999. -9999. -9999.]
+             [-9999. -9999. -9999. -9999. -9999.]]
         """
         # Create the driver.
         dtype = numpy_to_gdal_dtype(dtype)
         dst = Dataset._create_dataset(columns, rows, bands, dtype, path=path)
         sr = Dataset._create_sr_from_epsg(epsg)
         geotransform = (
-            top_left_coords[0],
+            top_left_corner[0],
             cell_size,
             0,
-            top_left_coords[1],
+            top_left_corner[1],
             0,
             -1 * cell_size,
         )
         dst.SetGeoTransform(geotransform)
         # Set the projection.
         dst.SetProjection(sr.ExportToWkt())
-        if path is None:
-            access = "write"
-        else:
-            access = "read_only"
 
-        dst = cls(dst, access=access)
+        dst = cls(dst, access="write")
         if no_data_value is not None:
             dst._set_no_data_value(no_data_value=no_data_value)
 
@@ -1364,37 +1958,101 @@ class Dataset(AbstractDataset):
     def create_from_array(
         cls,
         arr: np.ndarray,
-        geo: Tuple[float, float, float, float, float, float],
+        top_left_corner: Tuple[float, float] = None,
+        cell_size: Union[int, float] = None,
+        geo: Tuple[float, float, float, float, float, float] = None,
         epsg: Union[str, int] = 4326,
         no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
     ) -> "Dataset":
-        """create_from_array.
-
-            - Create_from_array method creates a `Dataset` from a given array and geotransform data.
+        """Create a new dataset from an array.
 
         Parameters
         ----------
-        arr: [np.ndarray]
+        arr: np.ndarray
             numpy array.
-        geo : [Tuple]
-            geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
-        epsg: [integer]
-            integer reference number to the new projection (https://epsg.io/)
-                (default 3857 the reference no of WGS84 web mercator)
-        no_data_value : Any, optional
+        top_left_corner: Tuple[float, float], Optional, Default is None.
+            the coordinates of the top left corner of the dataset.
+        cell_size: int/float, Optional, Default is None.
+            cell size in the same units of the coordinate refernce system defined by the `epsg` parameter.
+        geo: Tuple[float, float, float], Optional, Default is None.
+            geotransform tuple (minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size).
+        epsg: integer
+            integer reference number to the new projection (https://epsg.io/) (default 3857 the reference no of WGS84
+            web mercator).
+        no_data_value: Any, optional
             no data value to mask the cells out of the domain. The default is -9999.
         driver_type: [str] optional
             driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM"
-        path : [str]
+        path: str
             path to save the driver.
 
         Returns
         -------
-        dst: [DataSet].
+        Dataset:
             Dataset object will be returned.
+
+        Hint
+        ----
+        - The `geo` parameter can replace both the `cell_size` and the `top_left_corner` parameters.
+        - the function will check first if the `geo` parameter is defined it will ignore the `cell_size` and the
+            `top_left_corner` parameters if given.`
+
+        Examples
+        --------
+        - Create dataset using the `cell_size` and `top_left_corner` parameters.
+
+                >>> import numpy as np
+                >>> arr = np.random.rand(4, 10, 10)
+                >>> top_left_corner = (0, 0)
+                >>> cell_size = 0.05
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Cell size: 0.05
+                            Dimension: 10 * 10
+                            EPSG: 4326
+                            Number of Bands: 4
+                            Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                            Mask: -9999.0
+                            Data type: float64
+                            File: ...
+                <BLANKLINE>
+
+        - Create dataset using the `geo` parameter.
+
+            - To create the same dataset using the `geotransform` parameter, we will use the dataset `top_left_corner`
+                coordinates and the `cell_size` to create it.
+
+                >>> geotransform = (0, 0.05, 0, 0, 0, -0.05)
+                >>> dataset = Dataset.create_from_array(arr, geo=geotransform, epsg=4326)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Cell size: 0.05
+                            Dimension: 10 * 10
+                            EPSG: 4326
+                            Number of Bands: 4
+                            Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                            Mask: -9999.0
+                            Data type: float64
+                            File: ...
+                <BLANKLINE>
         """
+        if geo is None:
+            if top_left_corner is None or cell_size is None:
+                raise ValueError(
+                    "Either top_left_corner and cell_size or geo should be provided."
+                )
+            geo = (
+                top_left_corner[0],
+                cell_size,
+                0,
+                top_left_corner[1],
+                0,
+                -1 * cell_size,
+            )
+
         if arr.ndim == 2:
             bands = 1
             rows = int(arr.shape[0])
@@ -1438,11 +2096,8 @@ class Dataset(AbstractDataset):
         srse = Dataset._create_sr_from_epsg(epsg=epsg)
         dst_ds.SetProjection(srse.ExportToWkt())
         dst_ds.SetGeoTransform(geo)
-        if path is None:
-            access = "write"
-        else:
-            access = "read_only"
-        dst_obj = Dataset(dst_ds, access=access)
+
+        dst_obj = Dataset(dst_ds, access="write")
         dst_obj._set_no_data_value(no_data_value=no_data_value)
 
         if bands == 1:
@@ -1451,88 +2106,108 @@ class Dataset(AbstractDataset):
             for i in range(bands):
                 dst_obj.raster.GetRasterBand(i + 1).WriteArray(arr[i, :, :])
 
+        # flush data to disk
+        if path is not None:
+            dst_obj._raster.FlushCache()
         return dst_obj
 
     @classmethod
     def dataset_like(
         cls,
-        src,
+        src: "Dataset",
         array: np.ndarray,
-        driver: str = "MEM",
         path: str = None,
-    ) -> Union["Dataset", None]:
-        """dataset_like.
+    ) -> "Dataset":
+        """Create a new dataset like another dataset.
 
-            dataset_like method creates a Dataset from an array like another source dataset. The new dataset
-            will have the same `projection`, `coordinates` or the `top left corner` of the original dataset,
-            `cell size`, `no_data_velue`, and number of `rows` and `columns`.
-            the array and the source dataset should have the same number of columns and rows
+        dataset_like method creates a Dataset from an array like another source dataset. The new dataset
+        will have the same `projection`, `coordinates` or the `top left corner` of the original dataset,
+        `cell size`, `no_data_velue`, and number of `rows` and `columns`.
+        the array and the source dataset should have the same number of columns and rows
 
         Parameters
         ----------
-        src: [gdal.dataset]
+        src: Dataset
             source raster to get the spatial information
-        array: [numpy array]
-            to store in the new raster
-        driver:[str]
-            gdal driver type. Default is "GTiff"
-        path : [String]
-            path to save the new raster including new raster name and extension (.tif)
+        array: ndarray
+            data to store in the new dataset.
+        path: str, default is None
+            path to save the new dataset, if not given, the method will return in-memory dataset.
 
         Returns
         -------
-        None:
-            if the driver is "GTiff" the function will save the new raster to the given path.
-        Datacube:
-            if the driver is "MEM" the function will return the created raster in memory.
+        Dataset:
+            if the `path` is given, the method will save the new raster to the given path, else the method will return
+            an in-memory dataset.
+
+        Hint
+        ----
+        - If the given array is 3D, the bands have to be the first dimension, the x/lon has to be the second
+            dimension, and the y/lon has to be the third dimension of the array.
 
         Example
         -------
-        >>> src_array = np.load("RAIN_5k.npy")
-        >>> src_dataset = Dataset.read_file("DEM.tif")
-        >>> name = "rain.tif"
-        >>> new_dataset = src_dataset.dataset_like(src, src_array, driver="GTiff")
+        >>> import numpy as np
+        >>> arr = np.random.rand(5, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - now let's create another `dataset` from the previous dataset using the `dataset_like`
+
+            >>> new_arr = np.random.rand(5, 5)
+            >>> dataset_new = Dataset.dataset_like(dataset, new_arr)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 5 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
         """
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
 
-        if len(array.shape) == 2:
+        if array.ndim == 2:
             bands = 1
         else:
             bands = array.shape[0]
 
         dtype = numpy_to_gdal_dtype(array)
 
-        dst = Dataset._create_dataset(
-            src.columns, src.rows, bands, dtype, driver=driver, path=path
-        )
+        dst = Dataset._create_dataset(src.columns, src.rows, bands, dtype, path=path)
 
         dst.SetGeoTransform(src.geotransform)
         dst.SetProjection(src.crs)
         # setting the NoDataValue does not accept double precision numbers
-        if path is None:
-            access = "write"
-        else:
-            access = "read_only"
-        dst_obj = cls(dst, access=access)
+        dst_obj = cls(dst, access="write")
         dst_obj._set_no_data_value(no_data_value=src.no_data_value[0])
 
-        dst_obj.raster.GetRasterBand(1).WriteArray(array)
+        if bands == 1:
+            dst_obj.raster.GetRasterBand(1).WriteArray(array)
+        else:
+            for band_i in range(bands):
+                dst_obj.raster.GetRasterBand(band_i + 1).WriteArray(array[band_i, :, :])
+
         if path is not None:
             dst_obj.raster.FlushCache()
-            dst_obj = None
 
         return dst_obj
 
-    def write_array(self, array: np.array, pivot_cell_indexes: List[Any] = None):
+    def write_array(self, array: np.array, top_left_corner: List[Any] = None):
         """Write an array to the dataset at the given xoff, yoff position.
 
         Parameters
         ----------
         array : np.ndarray
             The array to write
-        pivot_cell_indexes : List[float, float]
-            indexes [row, column]/[y_offset, x_offset] of the cell to write the array to. If None, the array will be
+        top_left_corner : List[float, float]
+            indices [row, column]/[y_offset, x_offset] of the cell to write the array to. If None, the array will be
             written to the top left corner of the dataset.
 
         Raises
@@ -1550,16 +2225,34 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> import numpy as np
-        >>> from pyramids.dataset import Dataset
-        >>> path = "tests.tif"
-        >>> dataset = Dataset.read_file(path, read_only=False)
-        >>> arr = np.array([[1, 2], [3, 4]])
-        >>> dataset.write_array(arr, xoff=5, yoff=3)
+        - First, create a dataset on disk.
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> path = 'write_array.tif'
+            >>> dataset = Dataset.create_from_array(
+            ...     arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326, path=path
+            ... )
+            >>> dataset = None
+
+        - In a later session you can read the dataset in a `write` mode and update it.
+
+            >>> dataset = Dataset.read_file(path, read_only=False)
+            >>> arr = np.array([[1, 2], [3, 4]])
+            >>> dataset.write_array(arr, top_left_corner=[1, 1])
+            >>> dataset.read_array()    # doctest: +SKIP
+            array([[0.77359738, 0.64789596, 0.37912658, 0.03673771, 0.69571106],
+                   [0.60804387, 1.        , 2.        , 0.501909  , 0.99597122],
+                   [0.83879291, 3.        , 4.        , 0.33058081, 0.59824467],
+                   [0.774213  , 0.94338147, 0.16443719, 0.28041457, 0.61914179],
+                   [0.97201104, 0.81364799, 0.35157525, 0.65554998, 0.8589739 ]])
         """
-        yoff, xoff = pivot_cell_indexes
+        yoff, xoff = top_left_corner
         try:
             self._raster.WriteArray(array, xoff=xoff, yoff=yoff)
+            self._raster.FlushCache()
         except Exception as e:
             raise e
 
@@ -1568,7 +2261,7 @@ class Dataset(AbstractDataset):
         return self.raster.GetProjection()
 
     def set_crs(self, crs: Optional = None, epsg: int = None):
-        """set_crs.
+        """Set the Coordinate Reference System (CRS).
 
             Set the Coordinate Reference System (CRS) of a
 
@@ -1602,14 +2295,13 @@ class Dataset(AbstractDataset):
     def to_crs(
         self,
         to_epsg: int,
-        method: str = "nearest neighbour",
+        method: str = "nearest neighbor",
         maintain_alignment: int = False,
         inplace: bool = False,
     ) -> Union["Dataset", None]:
-        """to_epsg.
+        """Reproject the dataset to any projection.
 
-        to_epsg reprojects a raster to any projection
-        (default the WGS84 web mercator projection, without resampling)
+            (default the WGS84 web mercator projection, without resampling)
 
         Parameters
         ----------
@@ -1617,10 +2309,8 @@ class Dataset(AbstractDataset):
             reference number to the new projection (https://epsg.io/)
             (default 3857 the reference no of WGS84 web mercator )
         method: [String]
-            resampling technique default is "Nearest"
-            https://gisgeography.com/raster-resampling/
-            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
-            "bilinear" for bilinear
+            resampling method default is "Nearest" https://gisgeography.com/raster-resampling/
+            "nearest neighbor" for nearest neighbor,"cubic" for cubic convolution, "bilinear" for bilinear
         maintain_alignment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
         inplace: [bool]
@@ -1633,9 +2323,42 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> from pyramids.dataset import Dataset
-        >>> dataset = Dataset.read_file("path/raster_name.tif")
+        >>> import numpy as np
+        >>> arr = np.random.rand(4, 5, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+        >>> print(dataset)
+        <BLANKLINE>
+                    Cell size: 0.05
+                    Dimension: 5 * 5
+                    EPSG: 4326
+                    Number of Bands: 4
+                    Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                    Mask: -9999.0
+                    Data type: float64
+                    File:...
+        <BLANKLINE>
+        >>> print(dataset.crs)
+        GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
+        >>> print(dataset.epsg)
+        4326
         >>> reprojected_dataset = dataset.to_crs(to_epsg=3857)
+        >>> print(reprojected_dataset)
+        <BLANKLINE>
+                    Cell size: 5565.983370404396
+                    Dimension: 5 * 5
+                    EPSG: 3857
+                    Number of Bands: 4
+                    Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                    Mask: -9999.0
+                    Data type: float64
+                    File:...
+        <BLANKLINE>
+        >>> print(reprojected_dataset.crs)
+        PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Mercator_1SP"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],EXTENSION["PROJ4","+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs"],AUTHORITY["EPSG","3857"]]
+        >>> print(reprojected_dataset.epsg)
+        3857
         """
         if not isinstance(to_epsg, int):
             raise TypeError(
@@ -1665,7 +2388,7 @@ class Dataset(AbstractDataset):
             return dst_obj
 
     def _get_epsg(self) -> int:
-        """GetEPSG.
+        """Get the epsg number.
 
             This function reads the projection of a GEOGCS file or tiff file
 
@@ -1852,7 +2575,7 @@ class Dataset(AbstractDataset):
 
     def _calculate_bbox(self) -> List:
         """Calculate bounding box."""
-        xmin, ymax = self.pivot_point
+        xmin, ymax = self.top_left_corner
         ymin = ymax - self.rows * self.cell_size
         xmax = xmin + self.columns * self.cell_size
         return [xmin, ymin, xmax, ymax]
@@ -1938,9 +2661,38 @@ class Dataset(AbstractDataset):
         ----------
         new_value: [numeric]
             no data value to set in the raster bands.
-
         old_value: [numeric]
             old no data value that is already in the raster bands.
+
+        ..  warning::
+            The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value` in the raster bands.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> dataset = Dataset.create(
+            ...     cell_size=0.05, rows=3, columns=3, bands=1, top_left_corner=(0, 0),dtype="float32",
+            ...     epsg=4326, no_data_value=-9
+            ... )
+            >>> arr = dataset.read_array()
+            >>> print(arr)
+            [[-9. -9. -9.]
+             [-9. -9. -9.]
+             [-9. -9. -9.]]
+            >>> print(dataset.no_data_value) # doctest: +SKIP
+            [-9.0]
+
+        - The dataset is full of the no_data_value. Now to change the the no_data_value call the `change_no_data_value`
+
+            >>> new_dataset = dataset.change_no_data_value(-10, -9)
+            >>> arr = new_dataset.read_array()
+            >>> print(arr)
+            [[-10. -10. -10.]
+             [-10. -10. -10.]
+             [-10. -10. -10.]]
+            >>> print(new_dataset.no_data_value) # doctest: +SKIP
+            [-10.0]
         """
         if not isinstance(new_value, list):
             new_value = [new_value] * self.band_count
@@ -1950,7 +2702,7 @@ class Dataset(AbstractDataset):
 
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.raster, 0)
         # create a new dataset
-        new_dataset = Dataset(dst)
+        new_dataset = Dataset(dst, "write")
         # the new_value could change inside the _set_no_data_value method before it is used to set the no_data_value
         # attribute in the gdal object/pyramids object and to fill the band.
         new_dataset._set_no_data_value(new_value)
@@ -1970,13 +2722,12 @@ class Dataset(AbstractDataset):
                     f"band: {gdal_to_numpy_dtype(self.gdal_dtype[band])}"
                 )
             new_dataset.raster.GetRasterBand(band + 1).WriteArray(arr)
-
-        self.__init__(new_dataset.raster)
+        return new_dataset
 
     def get_cell_coords(
         self, location: str = "center", mask: bool = False
     ) -> np.ndarray:
-        """get_cell_coords.
+        """Get coordinates for the center/corner of cells inside the dataset domain.
 
         Returns the coordinates of the cell centers inside the domain (only the cells that
         do not have nodata value)
@@ -1984,7 +2735,7 @@ class Dataset(AbstractDataset):
         Parameters
         ----------
         location: [str]
-            location of the coordinates "center" for the center of a cell, corner for the corner of the cell.
+            location of the coordinates `center` for the center of a cell, `corner` for the corner of the cell.
             the corner is the top left corner.
         mask: [bool]
             True to exclude the cells out of the domain. Default is False.
@@ -1995,6 +2746,44 @@ class Dataset(AbstractDataset):
             Array with a list of the coordinates to be interpolated, without the Nan
         mat_range : [np.ndarray]
             Array with all the centers of cells in the domain of the DEM
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 bands, 3 rows, 3 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,3, size=(3, 3))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the coordinates of the center of cells inside the domain.
+
+            >>> coords = dataset.get_cell_coords()
+            >>> print(coords)
+            [[ 0.025 -0.025]
+             [ 0.075 -0.025]
+             [ 0.125 -0.025]
+             [ 0.025 -0.075]
+             [ 0.075 -0.075]
+             [ 0.125 -0.075]
+             [ 0.025 -0.125]
+             [ 0.075 -0.125]
+             [ 0.125 -0.125]]
+
+        - Get the coordinates of the top left corner of cells inside the domain.
+
+            >>> coords = dataset.get_cell_coords(location="corner")
+            >>> print(coords)
+            [[ 0.    0.  ]
+             [ 0.05  0.  ]
+             [ 0.1   0.  ]
+             [ 0.   -0.05]
+             [ 0.05 -0.05]
+             [ 0.1  -0.05]
+             [ 0.   -0.1 ]
+             [ 0.05 -0.1 ]
+             [ 0.1  -0.1 ]]
         """
         # check the location parameter
         location = location.lower()
@@ -2048,7 +2837,7 @@ class Dataset(AbstractDataset):
 
         return coords
 
-    def get_cell_polygons(self, mask=False) -> GeoDataFrame:
+    def get_cell_polygons(self, mask: bool = False) -> GeoDataFrame:
         """Get a polygon shapely geometry for the raster cells.
 
         Parameters
@@ -2060,6 +2849,38 @@ class Dataset(AbstractDataset):
         -------
         GeoDataFrame:
             with two columns, geometry, and id
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 3 rows, 3 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,3, size=(3, 3))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the coordinates of the center of cells inside the domain.
+
+            >>> gdf = dataset.get_cell_polygons()
+            >>> print(gdf)
+                                                        geometry  id
+            0  POLYGON ((0 0, 0.05 0, 0.05 -0.05, 0 -0.05, 0 0))   0
+            1  POLYGON ((0.05 0, 0.1 0, 0.1 -0.05, 0.05 -0.05...   1
+            2  POLYGON ((0.1 0, 0.15 0, 0.15 -0.05, 0.1 -0.05...   2
+            3  POLYGON ((0 -0.05, 0.05 -0.05, 0.05 -0.1, 0 -0...   3
+            4  POLYGON ((0.05 -0.05, 0.1 -0.05, 0.1 -0.1, 0.0...   4
+            5  POLYGON ((0.1 -0.05, 0.15 -0.05, 0.15 -0.1, 0....   5
+            6  POLYGON ((0 -0.1, 0.05 -0.1, 0.05 -0.15, 0 -0....   6
+            7  POLYGON ((0.05 -0.1, 0.1 -0.1, 0.1 -0.15, 0.05...   7
+            8  POLYGON ((0.1 -0.1, 0.15 -0.1, 0.15 -0.15, 0.1...   8
+            >>> fig, ax = dataset.plot()
+            >>> gdf.plot(ax=ax, facecolor='none', edgecolor="gray", linewidth=2)
+            <Axes: >
+
+        .. image:: /_images/dataset/get_cell_polygons.png
+            :alt: Example Image
+            :align: center
         """
         coords = self.get_cell_coords(location="corner", mask=mask)
         cell_size = self.geotransform[1]
@@ -2110,6 +2931,60 @@ class Dataset(AbstractDataset):
         -------
         GeoDataFrame:
             with two columns, geometry, and id
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 3 rows, 3 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1,3, size=(3, 3))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Get the coordinates of the center of cells inside the domain.
+
+            >>> gdf = dataset.get_cell_points()
+            >>> print(gdf)
+                           geometry  id
+            0  POINT (0.025 -0.025)   0
+            1  POINT (0.075 -0.025)   1
+            2  POINT (0.125 -0.025)   2
+            3  POINT (0.025 -0.075)   3
+            4  POINT (0.075 -0.075)   4
+            5  POINT (0.125 -0.075)   5
+            6  POINT (0.025 -0.125)   6
+            7  POINT (0.075 -0.125)   7
+            8  POINT (0.125 -0.125)   8
+            >>> fig, ax = dataset.plot()
+            >>> gdf.plot(ax=ax, facecolor='black', linewidth=2)
+            <Axes: >
+
+        .. image:: /_images/dataset/get_cell_points.png
+            :alt: Example Image
+            :align: center
+
+        - Get the coordinates of the top left corner of cells inside the domain.
+
+            >>> gdf = dataset.get_cell_points(location="corner")
+            >>> print(gdf)
+                         geometry  id
+            0         POINT (0 0)   0
+            1      POINT (0.05 0)   1
+            2       POINT (0.1 0)   2
+            3     POINT (0 -0.05)   3
+            4  POINT (0.05 -0.05)   4
+            5   POINT (0.1 -0.05)   5
+            6      POINT (0 -0.1)   6
+            7   POINT (0.05 -0.1)   7
+            8    POINT (0.1 -0.1)   8
+            >>> fig, ax = dataset.plot()
+            >>> gdf.plot(ax=ax, facecolor='black', linewidth=4)
+            <Axes: >
+
+        .. image:: /_images/dataset/get_cell_points-corner.png
+            :alt: Example Image
+            :align: center
         """
         coords = self.get_cell_coords(location=location, mask=mask)
         epsg = self._get_epsg()
@@ -2122,15 +2997,15 @@ class Dataset(AbstractDataset):
         return gdf
 
     def to_file(self, path: str, band: int = 0, tile_length: int = None) -> None:
-        """to_file.
+        """Save dataset to tiff file.
 
-            to_file a raster to a path, the type of the driver (georiff/netcdf/ascii) will be implied from the
+            `to_file` saves a raster to disk, the type of the driver (georiff/netcdf/ascii) will be implied from the
             extension at the end of the given path.
 
         Parameters
         ----------
         path: [string]
-            a path including the name of the dataset whti the extention at the end (i.e. "data/cropped.tif").
+            a path including the name of the dataset.
         band: [int]
             band index, needed only in case of ascii drivers. Default is 0.
         tile_length: int, Optional, Default 256.
@@ -2138,13 +3013,21 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        >>> dataset = Dataset.read_file("path/to/file/***.tif")
-        >>> dataset.to_file("save_raster_test.tif")
+        - Create `Dataset` consists of 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
 
-        Notes
-        -----
-        The object will still refer to the dataset before saving. if you want to use the new saved dataset you have
-        to read the file again.
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset.file_name)
+            <BLANKLINE>
+
+        - Now to save the dataset as a geotiff file.
+
+            >>> dataset.to_file("my-dataset.tif")
+            >>> print(dataset.file_name)
+            my-dataset.tif
         """
         if not isinstance(path, str):
             raise TypeError("path input should be string type")
@@ -2176,20 +3059,20 @@ class Dataset(AbstractDataset):
                 dst = gdal.GetDriverByName(driver_name).CreateCopy(
                     path, self.raster, 0, options=options
                 )
+                self.__init__(dst, "write")
+                # flush the data to the dataset on disk.
+                dst.FlushCache()
             except RuntimeError:
                 if not os.path.exists(path):
                     raise FailedToSaveError(
                         f"Failed to save the {driver_name} raster to the path: {path}"
                     )
-            dst = None  # Flush the dataset to disk
-            # print to go around the assigned but never used pre-commit issue
-            print(dst)
 
     def convert_longitude(self, inplace: bool = False):
         """Convert Longitude.
 
-            - convert the longitude from 0 - 360 to -180 - 180.
-            - currently the function works correctly if the raster covers the whole world, it means that the columns
+        - convert the longitude from 0-360 to -180 - 180.
+        - currently the function works correctly if the raster covers the whole world, it means that the columns
             in the rasters covers from longitude 0 to 360.
 
         Parameters
@@ -2227,10 +3110,10 @@ class Dataset(AbstractDataset):
             dst.GetRasterBand(band + 1).WriteArray(arr_rearranged)
 
         # correct the geotransform
-        pivot_point = self.pivot_point
+        top_left_corner = self.top_left_corner
         gt = list(self.geotransform)
         if lon[-1] > 180:
-            new_gt = pivot_point[0] - 180
+            new_gt = top_left_corner[0] - 180
             gt[0] = new_gt
 
         dst.SetGeoTransform(gt)
@@ -2259,45 +3142,138 @@ class Dataset(AbstractDataset):
         vector_mask: GeoDataFrame = None,
         add_geometry: str = None,
         tile: bool = False,
-        tile_size: int = 1500,
+        tile_size: int = 256,
         touch: bool = True,
     ) -> Union[DataFrame, GeoDataFrame]:
-        """Convert a raster to a vector.
+        """Convert a dataset to a vector.
 
-        The function does the following
-            - Flatten the array in each band in the raster then mask the values if a vector_mask
-            file is given otherwise it will flatten all values.
-            - Put the values for each band in a column in a dataframe under the name of the raster band, but if no meta
-            data in the raster band exists, an index number will be used [1, 2, 3, ...]
+        The function does the following:
+
+            - Flatten the array in each band in the raster then mask the values if a vector_mask file is given
+                otherwise it will flatten all values.
+            - Put the values for each band in a column in a dataframe under the name of the raster band,
+                but if no meta-data in the raster band exists, an index number will be used [1, 2, 3, ...]
             - The function has an add_geometry parameter with two possible values ["point", "polygon"], which you can
-            specify the type of shapely geometry you want to create from each cell,
+                specify the type of shapely geometry you want to create from each cell,
+
                 - If point is chosen, the created point will be at the center of each cell
                 - If a polygon is chosen, a square polygon will be created that covers the entire cell.
 
         Parameters
         ----------
-        vector_mask : Optional[GeoDataFrame]
+        vector_mask : GeoDataFrame, Optional
             GeoDataFrame for the vector_mask. If given, it will be used to clip the raster
-        add_geometry: [str]
-            "Polygon", or "Point" if you want to add a polygon geometry of the cells as  column in dataframe.
+        add_geometry: str
+            "Polygon", or "Point" if you want to add a polygon geometry of the cells as column in dataframe.
             Default is None.
-        tile: [bool]
+        tile: bool
             True to use tiles in extracting the values from the raster. Default is False.
-        tile_size: [int]
+        tile_size: int
             tile size. Default is 1500.
-        touch: [bool]
+        touch: bool
             to include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
             Default is True.
 
         Returns
         -------
-        DataFrame/GeoDataFrame
-            columndL:
-                >>> print(gdf.columns)
-                >>> Index(['Band_1', 'geometry'], dtype='object')
+        DataFrame/GeoDataFrame:
+            the resulted geodataframe will have the band value under the name of the band (if the raster file has a
+            metadata, if not, the bands will be indexed from 1 to the number of bands)
 
-        the resulted geodataframe will have the band value under the name of the band (if the raster file has a
-        metadata, if not, the bands will be indexed from 1 to the number of bands)
+        Examples
+        --------
+        - Create a dataset from array with 2 bands and 3*3 array each.
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(2, 3, 3)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset.read_array(band=0)) # doctest: +SKIP
+            [[0.88625832 0.81804328 0.99372706]
+             [0.85333054 0.35448201 0.78079262]
+             [0.43887136 0.68166208 0.53170966]]
+            >>> print(dataset.read_array(band=1)) # doctest: +SKIP
+            [[0.07051872 0.67650833 0.17625027]
+             [0.41258071 0.38327938 0.18783139]
+             [0.83741314 0.70446373 0.64913575]]
+
+        - Convert the dataset to dataframe by calling the `to_feature_collection` method.
+
+            >>> df = dataset.to_feature_collection()
+            >>> print(df) # doctest: +SKIP
+                 Band_1    Band_2
+            0  0.886258  0.070519
+            1  0.818043  0.676508
+            2  0.993727  0.176250
+            3  0.853331  0.412581
+            4  0.354482  0.383279
+            5  0.780793  0.187831
+            6  0.438871  0.837413
+            7  0.681662  0.704464
+            8  0.531710  0.649136
+
+        - Convert the dataset into geodataframe, i.e the same dataframe as the previously but with either a polygon
+            or a point geometry that represents each cell.
+        - to specify the geometry type use the parameter `add_geometry`
+
+            >>> gdf = dataset.to_feature_collection(add_geometry="point")
+            >>> print(gdf) # doctest: +SKIP
+                 Band_1    Band_2                  geometry
+            0  0.886258  0.070519  POINT (0.02500 -0.02500)
+            1  0.818043  0.676508  POINT (0.07500 -0.02500)
+            2  0.993727  0.176250  POINT (0.12500 -0.02500)
+            3  0.853331  0.412581  POINT (0.02500 -0.07500)
+            4  0.354482  0.383279  POINT (0.07500 -0.07500)
+            5  0.780793  0.187831  POINT (0.12500 -0.07500)
+            6  0.438871  0.837413  POINT (0.02500 -0.12500)
+            7  0.681662  0.704464  POINT (0.07500 -0.12500)
+            8  0.531710  0.649136  POINT (0.12500 -0.12500)
+            >>> gdf = dataset.to_feature_collection(add_geometry="polygon")
+            >>> print(gdf) # doctest: +SKIP
+                 Band_1    Band_2                                           geometry
+            0  0.886258  0.070519  POLYGON ((0.00000 0.00000, 0.05000 0.00000, 0....
+            1  0.818043  0.676508  POLYGON ((0.05000 0.00000, 0.10000 0.00000, 0....
+            2  0.993727  0.176250  POLYGON ((0.10000 0.00000, 0.15000 0.00000, 0....
+            3  0.853331  0.412581  POLYGON ((0.00000 -0.05000, 0.05000 -0.05000, ...
+            4  0.354482  0.383279  POLYGON ((0.05000 -0.05000, 0.10000 -0.05000, ...
+            5  0.780793  0.187831  POLYGON ((0.10000 -0.05000, 0.15000 -0.05000, ...
+            6  0.438871  0.837413  POLYGON ((0.00000 -0.10000, 0.05000 -0.10000, ...
+            7  0.681662  0.704464  POLYGON ((0.05000 -0.10000, 0.10000 -0.10000, ...
+            8  0.531710  0.649136  POLYGON ((0.10000 -0.10000, 0.15000 -0.10000, ...
+
+        - Use a mask to crop part of the dataset, and then convert the cropped part to a dataframe/geodataframe.
+
+            - create a mask that covers only the cell in the middle of the dataset.
+
+            >>> import geopandas as gpd
+            >>> from shapely.geometry import Polygon
+            >>> poly = gpd.GeoDataFrame(
+            ...             geometry=[Polygon([(0.05, -0.05), (0.05, -0.1), (0.1, -0.1), (0.1, -0.05)])], crs=4326
+            ... )
+            >>> df = dataset.to_feature_collection(vector_mask=poly)
+            >>> print(df) # doctest: +SKIP
+                 Band_1    Band_2
+            0  0.354482  0.383279
+
+        - If you have a big dataset, and you want to convert it to dataframe in tiles (do not read the whole dataset
+            at once but in tiles), you can use the `tile`, and the `tile_size` parameters.
+        - The values definitely will be the same as the values above, but the different here is how the dataset reads
+            the values in chunks.
+
+            >>> gdf = dataset.to_feature_collection(tile=True, tile_size=1)
+            >>> print(gdf) # doctest: +SKIP
+                 Band_1    Band_2
+            0  0.886258  0.070519
+            1  0.818043  0.676508
+            2  0.993727  0.176250
+            3  0.853331  0.412581
+            4  0.354482  0.383279
+            5  0.780793  0.187831
+            6  0.438871  0.837413
+            7  0.681662  0.704464
+            8  0.531710  0.649136
+
         """
         # Get raster band names. open the dataset using gdal.Open
         band_names = self.band_names
@@ -2310,7 +3286,7 @@ class Dataset(AbstractDataset):
 
         if tile:
             df_list = []  # DataFrames of each tile.
-            for arr in Dataset.get_tile(src.raster):
+            for arr in self.get_tile(tile_size):
                 # Assume multi-band
                 idx = (1, 2)
                 if arr.ndim == 2:
@@ -2346,38 +3322,58 @@ class Dataset(AbstractDataset):
             else:
                 coords = src.get_cell_polygons(mask=True)
 
-        df = df.drop(columns=["burn_value", "geometry"], errors="ignore")
+        df.drop(columns=["burn_value", "geometry"], errors="ignore", inplace=True)
         if add_geometry:
-            df = gpd.GeoDataFrame(df, geometry=coords["geometry"])
+            df = gpd.GeoDataFrame(df.loc[:], geometry=coords["geometry"].to_list())
+            df.set_crs(coords.crs.to_epsg())
 
         return df
 
-    def apply(self, fun, band: int = 0) -> "Dataset":
-        """apply.
+    def apply(self, func, band: int = 0) -> "Dataset":
+        """Apply a function to all domain cells.
 
-            - apply method executes a mathematical operation on raster array and returns
-            the result
-            - The apply method executes the function only on one cell at a time.
+        - apply method executes a mathematical operation on the raster array.
+        - The apply method executes the function only on one cell at a time.
 
         Parameters
         ----------
-        fun: [function]
+        func: [function]
             defined function that takes one input which is the cell value.
         band: [int]
             band number.
 
         Returns
         -------
-        Datacube
-            gdal dataset object
+        Dataset:
+            Dataset object
 
         Examples
         --------
-        >>> src_raster = gdal.Open("evap.tif")
-        >>> func = np.abs
-        >>> new_raster = Dataset.apply(src_raster, func)
+        - Create a dataset from an array filled with values between -1 and 1
+
+            >>> import numpy as np
+            >>> arr = np.random.uniform(-1, 1, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset.read_array()) # doctest: +SKIP
+            [[ 0.94997539 -0.80083622 -0.30948769 -0.77439961 -0.83836424]
+             [-0.36810158 -0.23979251  0.88051216 -0.46882913  0.64511056]
+             [ 0.50585374 -0.46905902  0.67856589  0.2779605   0.05589759]
+             [ 0.63382852 -0.49259597  0.18471423 -0.49308984 -0.52840286]
+             [-0.34076174 -0.53073014 -0.18485789 -0.40033474 -0.38962938]]
+
+        - Now, lets apply the absolute function to the dataset.
+
+            >>> abs_dataset = dataset.apply(np.abs)
+            >>> print(abs_dataset.read_array()) # doctest: +SKIP
+            [[0.94997539 0.80083622 0.30948769 0.77439961 0.83836424]
+             [0.36810158 0.23979251 0.88051216 0.46882913 0.64511056]
+             [0.50585374 0.46905902 0.67856589 0.2779605  0.05589759]
+             [0.63382852 0.49259597 0.18471423 0.49308984 0.52840286]
+             [0.34076174 0.53073014 0.18485789 0.40033474 0.38962938]]
         """
-        if not callable(fun):
+        if not callable(func):
             raise TypeError("The second argument should be a function")
 
         no_data_value = self.no_data_value[band]
@@ -2391,7 +3387,7 @@ class Dataset(AbstractDataset):
         for i in range(self.rows):
             for j in range(self.columns):
                 if not np.isclose(src_array[i, j], no_data_value, rtol=0.001):
-                    new_array[i, j] = fun(src_array[i, j])
+                    new_array[i, j] = func(src_array[i, j])
 
         # create the output raster
         dst = Dataset._create_dataset(self.columns, self.rows, 1, dtype, driver="MEM")
@@ -2406,18 +3402,18 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def fill(
-        self, val: Union[float, int], driver: str = "MEM", path: str = None
+        self, value: Union[float, int], inplace: bool = False, path: str = None
     ) -> Union["Dataset", None]:
-        """Fill.
+        """Fill the domain cells with a certain value.
 
             Fill takes a raster and fills it with one value
 
         Parameters
         ----------
-        val: [numeric]
+        value: [numeric]
             numeric value
-        driver: [str]
-            driver type ["GTiff", "MEM"]
+        inplace: bool, default is False
+            if True, the original dataset will be modified. If False, a new dataset will be created.
         path : [str]
             path including the extension (.tif)
 
@@ -2425,6 +3421,29 @@ class Dataset(AbstractDataset):
         -------
         Dataset:
             the returned value will be a Dataset.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1, 5, size=(5, 5))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset.read_array()) # doctest: +SKIP
+            [[1 1 3 1 2]
+             [2 2 2 1 2]
+             [2 2 3 1 3]
+             [3 4 3 3 4]
+             [4 4 2 1 1]]
+            >>> new_dataset = dataset.fill(10)
+            >>> print(new_dataset.read_array())
+            [[10 10 10 10 10]
+             [10 10 10 10 10]
+             [10 10 10 10 10]
+             [10 10 10 10 10]
+             [10 10 10 10 10]]
         """
         no_data_value = self.no_data_value[0]
         src_array = self.raster.ReadAsArray()
@@ -2433,40 +3452,91 @@ class Dataset(AbstractDataset):
             no_data_value = np.nan
 
         if not np.isnan(no_data_value):
-            src_array[~np.isclose(src_array, no_data_value, rtol=0.000001)] = val
+            src_array[~np.isclose(src_array, no_data_value, rtol=0.000001)] = value
         else:
-            src_array[~np.isnan(src_array)] = val
-        dst = Dataset.dataset_like(self, src_array, driver=driver, path=path)
-        return dst
+            src_array[~np.isnan(src_array)] = value
+
+        dst = Dataset.dataset_like(self, src_array, path=path)
+        if inplace:
+            self.__init__(dst.raster)
+        else:
+            return dst
 
     def resample(
-        self, cell_size: Union[int, float], method: str = "nearest neighbour"
+        self, cell_size: Union[int, float], method: str = "nearest neighbor"
     ) -> "Dataset":
         """resample.
 
-        resample method reproject a raster to any projection
-        (default the WGS84 web mercator projection, without resampling)
-        The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
+        resample method reproject a raster to any projection (default the WGS84 web mercator projection,
+        without resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
         Parameters
         ----------
-        cell_size : [integer]
-             new cell size to resample the raster.
-            (default empty so raster will not be resampled)
-        method : [String]
-            resampling technique default is "Nearest"
-            https://gisgeography.com/raster-resampling/
-            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
+        cell_size : int
+             new cell size to resample the raster. (default empty so raster will not be resampled)
+        method : str, default is "Nearest"
+            resampling method , "nearest neighbor" for the nearest neighbor, "cubic" for cubic convolution,
             "bilinear" for bilinear
 
         Returns
         -------
         Dataset:
              Dataset object.
+
+        Example
+        -------
+        - Create `Dataset` consists of 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 4
+                        Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                        Mask: -9999.0
+                        Data type: float64
+                        File: ...
+            <BLANKLINE>
+            >>> dataset.plot(band=0)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        .. image:: /_images/dataset/resample-source.png
+            :alt: Example Image
+            :align: center
+
+        - Resample the raster to a new cell size of 0.1.
+
+            >>> new_dataset = dataset.resample(cell_size=0.1)
+            >>> print(new_dataset)
+            <BLANKLINE>
+                        Cell size: 0.1
+                        Dimension: 5 * 5
+                        EPSG: 4326
+                        Number of Bands: 4
+                        Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+            >>> new_dataset.plot(band=0)
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        .. image:: /_images/dataset/resample-new.png
+            :alt: Example Image
+            :align: center
+
+        - Resamplign the dataset from cell_size 0.05 to 0.1 degrees reduced the number of cells in the dataset 5
+            cells in each dimension instead of 10 cells.
         """
         if not isinstance(method, str):
             raise TypeError(
-                "Please enter correct method, for more information, see documentation"
+                "Please enter a correct method, for more information, see documentation"
             )
         if method not in INTERPOLATION_METHODS.keys():
             raise ValueError(
@@ -2503,7 +3573,7 @@ class Dataset(AbstractDataset):
         dst.SetGeoTransform(new_geo)
         # set the projection
         dst.SetProjection(sr_src.ExportToWkt())
-        dst_obj = Dataset(dst)
+        dst_obj = Dataset(dst, "write")
         # set the no data value
         dst_obj._set_no_data_value(self.no_data_value)
         # perform the projection & resampling
@@ -2518,7 +3588,7 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def _reproject_with_ReprojectImage(
-        self, to_epsg: int, method: str = "nearest neighbour"
+        self, to_epsg: int, method: str = "nearest neighbor"
     ) -> "Dataset":
         src_gt = self.geotransform
         src_x = self.columns
@@ -2629,10 +3699,10 @@ class Dataset(AbstractDataset):
         np.ndarray
         """
         # align function only equate the no of rows and columns only
-        # match nodatavalue inserts nodatavalue in src raster to all places like mask
-        # still places that has nodatavalue in the src raster, but it is not nodatavalue in the mask
+        # match no_data_value inserts no_data_value in src raster to all places like mask
+        # still places that has no_data_value in the src raster, but it is not no_data_value in the mask
         # and now has to be filled with values
-        # compare no of element that is not nodatavalue in both rasters to make sure they are matched
+        # compare no of element that is not no_data_value in both rasters to make sure they are matched
         # if both inputs are rasters
         mask_array = mask.read_array()
         row = mask.rows
@@ -2668,7 +3738,7 @@ class Dataset(AbstractDataset):
                     if np.isclose(src_array[i, j], self.no_data_value[0], rtol=0.001)
                     and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
                 ]
-            # interpolate those missing cells by the nearest neighbour
+            # interpolate those missing cells by the nearest neighbor
             if elem_mask > elem_src:
                 src_array = Dataset._nearest_neighbour(
                     src_array, self.no_data_value[0], rows, cols
@@ -2711,7 +3781,7 @@ class Dataset(AbstractDataset):
             row = mask.rows
             col = mask.columns
             mask_noval = mask.no_data_value[0]
-            mask_array = mask.read_array()
+            mask_array = mask.read_array(band=0)
         elif isinstance(mask, np.ndarray):
             if mask_noval is None:
                 raise ValueError(
@@ -2736,7 +3806,7 @@ class Dataset(AbstractDataset):
 
         if isinstance(mask, Dataset):
             if (
-                not self.pivot_point == mask.pivot_point
+                not self.top_left_corner == mask.top_left_corner
                 or not self.cell_size == mask.cell_size
             ):
                 raise ValueError(
@@ -2760,16 +3830,16 @@ class Dataset(AbstractDataset):
                 if mask_noval is None:
                     src_array[band, np.isnan(mask_array)] = self.no_data_value[band]
                 else:
-                    src_array[
-                        band, np.isclose(mask_array, mask_noval, rtol=0.001)
-                    ] = no_data_value[band]
+                    src_array[band, np.isclose(mask_array, mask_noval, rtol=0.001)] = (
+                        no_data_value[band]
+                    )
         else:
             if mask_noval is None:
                 src_array[np.isnan(mask_array)] = self.no_data_value[0]
             else:
-                src_array[
-                    np.isclose(mask_array, mask_noval, rtol=0.001)
-                ] = self.no_data_value[0]
+                src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = (
+                    self.no_data_value[0]
+                )
 
         if fill_gaps:
             src_array = self.fill_gaps(mask, src_array)
@@ -2808,36 +3878,95 @@ class Dataset(AbstractDataset):
 
     def align(
         self,
-        alignment_src,
+        alignment_src: "Dataset",
     ) -> "Dataset":
-        """align.
+        """
+        Align the current dataset (number of rows and columns) to follow the alignmen of a given dataset.
 
-        align method copies the following data
+        align method copies the following data:
             - The coordinate system
             - The number of rows & columns
             - cell size
+
         from alignment_src to the raster (the source of data values in cells)
 
         the result will be a raster with the same structure as alignment_src but with
-        values from data_src using the Nearest Neighbour interpolation algorithm
+        values from data_src using the Nearest neighbor interpolation algorithm.
 
         Parameters
         ----------
-        alignment_src : [Dataset]
-            spatial information source raster to get the spatial information
-            (coordinate system, no of rows & columns)
-            data values source raster to get the data (values of each cell)
+        alignment_src : Dataset
+            spatial information source raster to get the spatial information (coordinate system, no of rows &
+            columns) data values source raster to get the data (values of each cell).
 
         Returns
         -------
-        dst : [Dataset]
+        Dataset:
             Dataset object
 
         Examples
         --------
-        >>> A = gdal.Open("examples/GIS/data/acc4000.tif")
-        >>> B = gdal.Open("examples/GIS/data/soil_raster.tif")
-        >>> RasterBMatched = Dataset.align(A,B)
+        - The source dataset has a `top_left_corner` at (0, 0) with a 5*5 alignment, and an 0.05 degree cell size.
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(5, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 5 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+        - The dataset to be aligned has a top_left_corner at (-0.1, 0.1) (i.e., it has two more rows in top of the
+            dataset, and two columns in the left of the dataset plus).
+
+            >>> arr = np.random.rand(10, 10)
+            >>> top_left_corner = (-0.1, 0.1)
+            >>> cell_size = 0.07
+            >>> dataset_target = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,
+            ... epsg=4326)
+            >>> print(dataset_target)
+            <BLANKLINE>
+                        Cell size: 0.07
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+        .. image:: /_images/dataset/align-source-target.png
+            :alt: Example Image
+            :align: center
+
+        - Now call the `align` method and use the dataset as the alignment source.
+
+            >>> aligned_dataset = dataset_target.align(dataset)
+            >>> print(aligned_dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 5 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+        .. image:: /_images/dataset/align-result.png
+            :alt: Example Image
+            :align: center
         """
         if isinstance(alignment_src, Dataset):
             src = alignment_src
@@ -2910,39 +4039,8 @@ class Dataset(AbstractDataset):
         # crop the src raster with the aligned mask
         dst_obj = self._crop_aligned(mask)
 
+        dst_obj = Dataset.correct_wrap_cutline_error(dst_obj)
         return dst_obj
-
-    def _crop_with_polygon_by_rasterizing(self, poly: GeoDataFrame) -> "Dataset":
-        """cropWithPolygon.
-
-            Clip the Raster object using a polygon vector.
-
-        Parameters
-        ----------
-        poly: [Polygon GeoDataFrame]
-            GeodataFrame with a geometry of polygon type.
-
-        Returns
-        -------
-        Dataset
-        """
-        if not isinstance(poly, GeoDataFrame):
-            raise TypeError(
-                "The second parameter: poly should be of type GeoDataFrame "
-            )
-
-        poly_epsg = poly.crs.to_epsg()
-        src_epsg = self.epsg
-        if poly_epsg != src_epsg:
-            raise ValueError(
-                "Projection Error: the raster and vector polygon have different projection please "
-                "unify projection"
-            )
-        vector = FeatureCollection(poly)
-        mask = vector.to_dataset(dataset=self)
-        cropped_obj = self._crop_with_raster(mask)
-
-        return cropped_obj
 
     def _crop_with_polygon_warp(
         self, feature: Union[FeatureCollection, GeoDataFrame], touch: bool = True
@@ -3008,7 +4106,9 @@ class Dataset(AbstractDataset):
             rows_to_remove = np.all(big_array == value_to_remove, axis=(0, 2))
             cols_to_remove = np.all(big_array == value_to_remove, axis=(0, 1))
             # Use boolean indexing to remove rows and columns
-            small_array = big_array[:, ~rows_to_remove, ~cols_to_remove]
+            # first remove the rows then the columns
+            small_array = big_array[:, ~rows_to_remove, :]
+            small_array = small_array[:, :, ~cols_to_remove]
             n_rows = np.count_nonzero(~rows_to_remove)
             n_cols = np.count_nonzero(~cols_to_remove)
             small_array = small_array.reshape((src.band_count, n_rows, n_cols))
@@ -3021,7 +4121,7 @@ class Dataset(AbstractDataset):
         new_y = src.y[x_ind] + src.cell_size / 2
         new_gt = (new_x, src.cell_size, 0, new_y, 0, -src.cell_size)
         new_src = src.create_from_array(
-            small_array, new_gt, epsg=src.epsg, no_data_value=src.no_data_value
+            small_array, geo=new_gt, epsg=src.epsg, no_data_value=src.no_data_value
         )
         return new_src
 
@@ -3031,26 +4131,96 @@ class Dataset(AbstractDataset):
         touch: bool = True,
         inplace: bool = False,
     ) -> Union["Dataset", None]:
-        """crop.
+        """Crop dataset using dataset/feature collection.
 
             Crop/Clip the Dataset object using a polygon/raster.
 
         Parameters
         ----------
-        mask: [Polygon GeoDataFrame/Dataset]
+        mask: Polygon GeoDataFrame/Dataset
             GeodataFrame with a polygon geometry, or a Dataset object.
-        touch: [bool]
+        touch: bool
             To include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
             Default is True.
-        inplace: [bool]
+        inplace: bool
             True to make the changes in place.
 
         Returns
         -------
-        Dataset Object
+        Dataset:
+            The cropped raster. If inplace is True, the method will change the raster in place.
+
+        Hint
+        ----
+        - If the mask is a dataset with multi-bands, the `crop`` method will use the first band as the mask.
+
+        Examples
+        --------
+        - Crop the raster using a polygon mask.
+
+            - the polygon covers 4 cells in the 3rd and 4th rows and 3rd and 4th column `arr[2:4, 2:4]`,
+                so the result dataset will have the same number of bands `4`, 2 rows and 2 columns.
+            - First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
+                degree, the top left corner of the dataset is (0,0)
+
+            >>> import numpy as np
+            >>> import geopandas as gpd
+            >>> from shapely.geometry import Polygon
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> cell_size = 0.05
+            >>> top_left_corner = (0, 0)
+            >>> dataset = Dataset.create_from_array(
+            ...         arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+            ... )
+
+            - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
+                0.2 -0.1] to cover the 4 cells.
+
+            >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
+
+            - Pass the `geodataframe` to the crop method using the `mask` parameter.
+
+            >>> cropped_dataset = dataset.crop(mask=mask)
+
+            - Check the cropped dataset:
+
+            >>> print(cropped_dataset.shape)
+            (4, 2, 2)
+            >>> print(cropped_dataset.geotransform)
+            (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+            >>> print(cropped_dataset.read_array(band=0))# doctest: +SKIP
+            [[0.00921161 0.90841171]
+             [0.355636   0.18650262]]
+            >>> print(arr[0, 2:4, 2:4])# doctest: +SKIP
+            [[0.00921161 0.90841171]
+             [0.355636   0.18650262]]
+
+        - Crop a raster using another raster mask:
+
+            - create a mask dataset with the same extent of the polygon we use in the previous example.
+
+            >>> geotransform = (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+            >>> mask_dataset = Dataset.create_from_array(np.random.rand(2, 2), geo=geotransform, epsg=4326)
+
+            - then use the mask dataset to crop the dataset.
+
+            >>> cropped_dataset_2 = dataset.crop(mask=mask_dataset)
+            >>> print(cropped_dataset_2.shape)
+            (4, 2, 2)
+
+            - Check the cropped dataset:
+
+            >>> print(cropped_dataset_2.geotransform)
+            (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+            >>> print(cropped_dataset_2.read_array(band=0))# doctest: +SKIP
+            [[0.00921161 0.90841171]
+             [0.355636   0.18650262]]
+            >>> print(arr[0, 2:4, 2:4])# doctest: +SKIP
+             [[0.00921161 0.90841171]
+             [0.355636   0.18650262]]
+
         """
         if isinstance(mask, GeoDataFrame):
-            # dst = self._crop_with_polygon_by_rasterizing(mask)
             dst = self._crop_with_polygon_warp(mask, touch=touch)
         elif isinstance(mask, Dataset):
             dst = self._crop_with_raster(mask)
@@ -3066,13 +4236,13 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def _nearest_neighbour(
-        array: np.ndarray, nodatavalue: Union[float, int], rows: list, cols: list
+        array: np.ndarray, no_data_value: Union[float, int], rows: list, cols: list
     ) -> np.ndarray:
         """_nearest_neighbour.
 
             - The _nearest_neighbour method fills the cells with a given indices in rows and cols with the value of the
-            nearest neighbour.
-            - Ss the raster grid is square, so the 4 perpendicular directions are of the same proximity, so the function
+            nearest neighbor.
+            - The raster grid is square, so the 4 perpendicular directions are of the same proximity, so the function
             gives priority to the right, left, bottom, and then top and the same for 45 degree inclined direction
             right bottom then left bottom then left Top then right Top.
 
@@ -3080,56 +4250,62 @@ class Dataset(AbstractDataset):
         ----------
         array: [numpy.array]
             Array to fill some of its cells with the Nearest value.
-        nodatavalue: [float32]
+        no_data_value: [float32]
             value stored in cells that is out of the domain
         rows: [List]
-            list of the rows' index of the cells you want to fill it with the nearest neighbour.
+            list of the rows' index of the cells you want to fill it with the nearest neighbor.
         cols: [List]
-            list of the column index of the cells you want to fill it with the nearest neighbour.
+            list of the column index of the cells you want to fill it with the nearest neighbor.
 
         Returns
         -------
-        array: [numpy array]
-            Cells of given indices will be filled with the value of the Nearest neighbour
+        array:
+            Cells of given indices will be filled with the value of the Nearest neighbor
 
         Examples
         --------
-        >>> raster = gdal.Open("dem.tif")
-        >>> req_rows = [3,12]
-        >>> req_cols = [9,2]
-        >>> new_array = Dataset._nearest_neighbour(raster, req_rows, req_cols)
+        >>> import numpy as np
+        >>> arr = np.random.rand(5, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+        >>> req_rows = [1,3]
+        >>> req_cols = [2,4]
+        >>> no_data_value = dataset.no_data_value[0]
+        >>> new_array = Dataset._nearest_neighbour(arr, no_data_value, req_rows, req_cols)
         """
         if not isinstance(array, np.ndarray):
             raise TypeError(
                 "src should be read using gdal (gdal dataset please read it using gdal library) "
             )
         if not isinstance(rows, list):
-            raise TypeError("rows input has to be of type list")
+            raise TypeError("The `rows` input has to be of type list")
         if not isinstance(cols, list):
-            raise TypeError("cols input has to be of type list")
+            raise TypeError("The `cols` input has to be of type list")
 
         no_rows = np.shape(array)[0]
         no_cols = np.shape(array)[1]
 
         for i in range(len(rows)):
             # give the cell the value of the cell that is at the right
-            if array[rows[i], cols[i] + 1] != nodatavalue and cols[i] + 1 <= no_cols:
-                array[rows[i], cols[i]] = array[rows[i], cols[i] + 1]
+            if cols[i] + 1 < no_cols:
+                if array[rows[i], cols[i] + 1] != no_data_value:
+                    array[rows[i], cols[i]] = array[rows[i], cols[i] + 1]
 
-            elif array[rows[i], cols[i] - 1] != nodatavalue and cols[i] - 1 > 0:
+            elif array[rows[i], cols[i] - 1] != no_data_value and cols[i] - 1 > 0:
                 # give the cell the value of the cell that is at the left
                 array[rows[i], cols[i]] = array[rows[i], cols[i] - 1]
 
-            elif array[rows[i] - 1, cols[i]] != nodatavalue and rows[i] - 1 > 0:
+            elif array[rows[i] - 1, cols[i]] != no_data_value and rows[i] - 1 > 0:
                 # give the cell the value of the cell that is at the bottom
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i]]
 
-            elif array[rows[i] + 1, cols[i]] != nodatavalue and rows[i] + 1 <= no_rows:
+            elif array[rows[i] + 1, cols[i]] != no_data_value and rows[i] + 1 < no_rows:
                 # give the cell the value of the cell that is at the Top
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i]]
 
             elif (
-                array[rows[i] - 1, cols[i] + 1] != nodatavalue
+                array[rows[i] - 1, cols[i] + 1] != no_data_value
                 and rows[i] - 1 > 0
                 and cols[i] + 1 <= no_cols
             ):
@@ -3137,7 +4313,7 @@ class Dataset(AbstractDataset):
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i] + 1]
 
             elif (
-                array[rows[i] - 1, cols[i] - 1] != nodatavalue
+                array[rows[i] - 1, cols[i] - 1] != no_data_value
                 and rows[i] - 1 > 0
                 and cols[i] - 1 > 0
             ):
@@ -3145,7 +4321,7 @@ class Dataset(AbstractDataset):
                 array[rows[i], cols[i]] = array[rows[i] - 1, cols[i] - 1]
 
             elif (
-                array[rows[i] + 1, cols[i] - 1] != nodatavalue
+                array[rows[i] + 1, cols[i] - 1] != no_data_value
                 and rows[i] + 1 <= no_rows
                 and cols[i] - 1 > 0
             ):
@@ -3153,7 +4329,7 @@ class Dataset(AbstractDataset):
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i] - 1]
 
             elif (
-                array[rows[i] + 1, cols[i] + 1] != nodatavalue
+                array[rows[i] + 1, cols[i] + 1] != no_data_value
                 and rows[i] + 1 <= no_rows
                 and cols[i] + 1 <= no_cols
             ):
@@ -3167,11 +4343,11 @@ class Dataset(AbstractDataset):
         self,
         points: Union[GeoDataFrame, FeatureCollection, DataFrame],
     ) -> np.ndarray:
-        """map_to_array_coordinates.
+        """Convert coordinates of points to array indices.
 
-            - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by
+        - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by
             finding the cell indices (rows, col) of the nearest cell in the raster.
-            - The point coordinate system of the raster has to be projected to be able to calculate the distance
+        - The point coordinate system of the raster has to be projected to be able to calculate the distance
 
         Parameters
         ----------
@@ -3185,9 +4361,43 @@ class Dataset(AbstractDataset):
         -------
         array:
             array with a shape (any, 2), for the row, column indices in the array.
-            array([[ 5,  4],
-                   [ 2,  9],
-                   [ 5,  9]])
+
+        Examples
+        --------
+        - Create `Dataset` consists of 2 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - DataFrame with x, y columns:
+
+            - we can give the function a DataFrame with x, y columns to array the coordinates of the points that
+                 are located withen the dataset domain.
+
+            >>> points = pd.DataFrame({"x": [0.025, 0.175, 0.375], "y": [0.025, 0.225, 0.125]})
+            >>> indices = dataset.map_to_array_coordinates(points)
+            >>> print(indices)
+            [[0 0]
+             [0 3]
+             [0 7]]
+
+        - GeoDataFrame with POINT geometry:
+
+            - we can give the function a GeoDataFrame with POINT geometry to array the coordinates of the points that
+                locates within the dataset domain.
+
+            >>> from shapely.geometry import Point
+            >>> from geopandas import GeoDataFrame
+            >>> points = GeoDataFrame({"geometry": [Point(0.025, 0.025), Point(0.175, 0.225), Point(0.375, 0.125)]})
+            >>> indices = dataset.map_to_array_coordinates(points)
+            >>> print(indices)
+            [[0 0]
+             [0 3]
+             [0 7]]
         """
         if isinstance(points, GeoDataFrame):
             points = FeatureCollection(points)
@@ -3215,45 +4425,57 @@ class Dataset(AbstractDataset):
         indices = indices[:, [1, 0]]
         return indices
 
-    @staticmethod
     def array_to_map_coordinates(
-        top_left_x: Number,
-        top_left_y: Number,
-        cell_size: Number,
-        column_index: Union[List[Number], np.ndarray],
+        self,
         rows_index: Union[List[Number], np.ndarray],
+        column_index: Union[List[Number], np.ndarray],
         center: bool = False,
     ) -> Tuple[List[Number], List[Number]]:
-        """Array indexes to map coordinates.
+        """Convert array indices to map coordinates.
 
-            - array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
+        array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
 
         Parameters
         ----------
-        top_left_x: [Number]
-            the x coordinate of the top left corner of the raster.
-        top_left_y: [Number]
-            the y coordinate of the top left corner of the raster.
-        cell_size: [Number]
-            the cell size of the raster.
-        column_index: [Union[List[Number], np.ndarray]]
-            the column index of the cells in the raster array.
-        rows_index: [Union[List[Number], np.ndarray]]
+        rows_index: List[Number]/ np.ndarray
             the row index of the cells in the raster array.
-        center: [bool]
+        column_index: List[Number]/np.ndarray
+            the column index of the cells in the raster array.
+        center: bool
             if True, the coordinates will be the center of the cell. Default is False.
 
         Returns
         -------
-        x_coords: [List[Number]]
+        List[Number]:
             the x coordinates of the cells.
-        y_coords: [List[Number]]
+        List[Number]:
             the y coordinates of the cells.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now let's call the function with two lists of row and column indices.
+
+            >>> rows_index = [1, 3, 5]
+            >>> column_index = [2, 4, 6]
+            >>> coords = dataset.array_to_map_coordinates(rows_index, column_index)
+            >>> print(coords) # doctest: +SKIP
+            ([0.1, 0.2, 0.3], [-0.05, -0.15, -0.25])
         """
+        top_left_x, top_left_y = self.top_left_corner
+        cell_size = self.cell_size
         if center:
             # for the top left corner of the cell
-            top_left_x = top_left_x + cell_size / 2
-            top_left_y = top_left_y - cell_size / 2
+            top_left_x += cell_size / 2
+            top_left_y -= cell_size / 2
 
         x_coord_fn = lambda x: top_left_x + x * cell_size
         y_coord_fn = lambda y: top_left_y - y * cell_size
@@ -3265,25 +4487,92 @@ class Dataset(AbstractDataset):
 
     def extract(
         self,
+        band: int = None,
         exclude_value: Any = None,
         feature: Union[FeatureCollection, GeoDataFrame] = None,
     ) -> np.ndarray:
         """Extract.
 
-            - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
-            - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
+        - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
+        - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
             values within the feature are extracted.
 
         Parameters
         ----------
-        exclude_value: [Numeric]
-            values you want to exclude from extracted values
-        feature: [FeatureCollection/GeoDataFrame]
-            vector file contains geometries you want to extract the values at their location. Default is None.
+        band: int, default is None.
+            band index.
+        exclude_value: Numeric
+            values you want to exclude from extracted values, if the dataset is multi-bands the values in the
+            `exclude_value` will be filtered out from the first band only.
+        feature: FeatureCollection/GeoDataFrame, default is None
+            vector file contains point geometries you want to extract the values at their location.
+
+        Returns
+        -------
+        np.ndarray:
+            The extracted values from each band in the dataset will be in one row in the returned array.
+
+        Examples
+        --------
+        - Extract all values from the dataset.
+
+            - First, we will create a dataset with 1 band, 3 rows and 5 columns.
+
+                >>> import numpy as np
+                >>> arr = np.random.randint(1, 5, size=(2, 4, 4))
+                >>> top_left_corner = (0, 0)
+                >>> cell_size = 0.05
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Cell size: 0.05
+                            Dimension: 4 * 4
+                            EPSG: 4326
+                            Number of Bands: 2
+                            Band names: ['Band_1', 'Band_2']
+                            Mask: -9999.0
+                            Data type: int32
+                            File:...
+                <BLANKLINE>
+                >>> print(dataset.read_array()) # doctest: +SKIP
+                [[[1 3 3 4]
+                  [1 4 2 4]
+                  [2 4 2 1]
+                  [1 3 2 3]]
+                 [[3 2 1 3]
+                  [4 3 2 2]
+                  [2 2 3 4]
+                  [1 4 1 4]]]
+
+            - Now, lets, extract the values in the dataset.
+
+                >>> values = dataset.extract()
+                >>> print(values) # doctest: +SKIP
+                [[1 3 3 4 1 4 2 4 2 4 2 1 1 3 2 3]
+                 [3 2 1 3 4 3 2 2 2 2 3 4 1 4 1 4]]
+
+            - lets, extract all the values except 2.
+
+                >>> values = dataset.extract(exclude_value=2)
+                >>> print(values) # doctest: +SKIP
+
+        - Extract values at the location of the given point geometries.
+
+            >>> import geopandas as gpd
+            >>> from shapely.geometry import Point
+
+            - Create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
+                0.2 -0.1] to cover the 4 cells.
+
+            >>> points = gpd.GeoDataFrame(geometry=[Point(0.1, -0.1), Point(0.1, -0.2), Point(0.2, -0.2), Point(0.2, -0.1)],crs=4326)
+            >>> values = dataset.extract(feature=points)
+            >>> print(values) # doctest: +SKIP
+            [[4 3 3 4]
+             [3 4 4 2]]
         """
         # Optimize: make the read_array return only the array for inside the mask feature, and not to read the whole
         #  raster
-        arr = self.read_array()
+        arr = self.read_array(band=band)
         no_data_value = (
             self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
         )
@@ -3296,7 +4585,11 @@ class Dataset(AbstractDataset):
             values = get_pixels2(arr, mask)
         else:
             indices = self.map_to_array_coordinates(feature)
-            values = arr[indices[:, 0], indices[:, 1]]
+            if arr.ndim > 2:
+                values = arr[:, indices[:, 0], indices[:, 1]]
+            else:
+                values = arr[indices[:, 0], indices[:, 1]]
+
         return values
 
     def overlay(
@@ -3307,8 +4600,7 @@ class Dataset(AbstractDataset):
     ) -> Dict[List[float], List[float]]:
         """Overlay.
 
-            overlay extracts all the values in raster file if you have two maps one with classes, and the other map
-            contains any type of values, and you want to know the values in each class.
+        overlay method extracts all the values in the dataset for each class in the given class map
 
         Parameters
         ----------
@@ -3324,6 +4616,34 @@ class Dataset(AbstractDataset):
         Dictionary:
             dictionary with a list of values in the basemap as keys and for each key a list of all the intersected
             values in the maps from the path.
+
+        Examples
+        --------
+        - Read the dataset
+
+            >>> dataset = Dataset.read_file("examples/data/geotiff/raster-folder/MSWEP_1979.01.01.tif")
+            >>> dataset.plot(figsize=(6, 8)) # doctest: +SKIP
+
+            .. image:: /_images/dataset/rhine-rainfall.png
+                :alt: Example Image
+                :align: center
+
+        - read the classes dataset.
+
+            >>> classes = Dataset.read_file("examples/data/geotiff/rhine-classes.tif")
+            >>> classes.plot(figsize=(6, 8), color_scale=4, bounds=[1,2,3,4,5,6]) # doctest: +SKIP
+
+            .. image:: /_images/dataset/rhine-classes.png
+                :alt: Example Image
+                :align: center
+
+        - overlay the dataset with the classes dataset.
+
+            >>> classes_dict = dataset.overlay(classes)
+            >>> print(classes_dict.keys()) # doctest: +SKIP
+            dict_keys([1, 2, 3, 4, 5])
+
+        - you can use the key `1` to get the values that overlays the class 1.
         """
         if not self._check_alignment(classes_map):
             raise AlignmentError(
@@ -3377,27 +4697,63 @@ class Dataset(AbstractDataset):
         band: int = 0,
         exclude_values: Optional[List[Any]] = None,
     ) -> Union[GeoDataFrame, None]:
-        """footprint.
-
-            extract_extent takes a gdal raster object and returns
+        """Extract the real coverage of the values in a certain band.
 
         Parameters
         ----------
-        band: [int]
-            band index. Default is 0.
+        band: [int], Default is 0.
+            band index.
         exclude_values:
-            if you want to exclude_values a certain value in the raster with another value inter the two values as a
+            if you want to exclude a certain value in the raster with another value inter the two values as a
             list of tuples a [(value_to_be_exclude_valuesd, new_value)]
+
             >>> exclude_values = [0]
-            - This parameter is introduced particularly for the case of rasters that has the nodatavalue stored in the
-            array does not match the value stored in array, so this option can correct this behavior.
+
+            - This parameter is introduced particularly in the case of rasters that has the no_data_value stored in the
+                `no_data_value` property does not match the value stored in the band, so this option can correct this
+                behavior.
 
         Returns
         -------
         GeoDataFrame:
             - geodataframe containing the polygon representing the extent of the raster. the extent column should
-            contain a value of 2 only.
+                contain a value of 2 only.
             - if the dataset had separate polygons, each polygon will be in a separate row.
+
+        Examples
+        --------
+        - The following raster dataset has flood depth stored in its values, and the non-flooded cells are filled with
+            zero, so to extract the flood extent, we need to exclude the zero flood depth cells.
+
+            >>> dataset = Dataset.read_file("examples/data/geotiff/rhine-flood.tif")
+            >>> dataset.plot()
+            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+
+        .. image:: /_images/dataset/dataset-footprint-rhine-flood.png
+            :alt: footprint
+            :align: center
+
+        - Now, to extract the footprint of the dataset band, we need to specify the `exclude_values` parameter with the
+            value of the non-flooded cells.
+
+            >>> extent = dataset.footprint(band=0, exclude_values=[0])
+            >>> print(extent)
+               Band_1                                           geometry
+            0     2.0  POLYGON ((4070974.182 3181069.473, 4070974.182...
+            1     2.0  POLYGON ((4077674.182 3181169.473, 4077674.182...
+            2     2.0  POLYGON ((4091174.182 3169169.473, 4091174.182...
+            3     2.0  POLYGON ((4088574.182 3176269.473, 4088574.182...
+            4     2.0  POLYGON ((4082974.182 3167869.473, 4082974.182...
+            5     2.0  POLYGON ((4092274.182 3168269.473, 4092274.182...
+            6     2.0  POLYGON ((4072474.182 3181169.473, 4072474.182...
+
+            >>> extent.plot()
+            <Axes: >
+
+        .. image:: /_images/dataset/dataset-footprint-rhine-flood-extent.png
+              :alt: footprint
+              :align: center
+
         """
         arr = self.read_array(band=band)
         no_data_val = self.no_data_value[band]
@@ -3406,14 +4762,14 @@ class Dataset(AbstractDataset):
             if not (np.isnan(arr)).any():
                 logger.warning(
                     "The nodata value stored in the raster does not exist in the raster "
-                    "so either the raster extent is all full of data, or the nodatavalue stored in the raster is"
+                    "so either the raster extent is all full of data, or the no_data_value stored in the raster is"
                     " not correct"
                 )
         else:
             if not (np.isclose(arr, no_data_val, rtol=0.00001)).any():
                 logger.warning(
                     "the nodata value stored in the raster does not exist in the raster "
-                    "so either the raster extent is all full of data, or the nodatavalue stored in the raster is"
+                    "so either the raster extent is all full of data, or the no_data_value stored in the raster is"
                     " not correct"
                 )
         # if you want to exclude_values any value in the raster
@@ -3436,14 +4792,14 @@ class Dataset(AbstractDataset):
 
             arr[~np.isnan(arr)] = 2
         else:
-            # check if the whole raster is full of nodatavalue
+            # check if the whole raster is full of no_data_value
             if (np.isclose(arr, no_data_val, rtol=0.00001)).all():
                 logger.warning("the raster is full of no_data_value")
                 return None
 
             arr[~np.isclose(arr, no_data_val, rtol=0.00001)] = 2
         new_dataset = self.create_from_array(
-            arr, self.geotransform, epsg=self.epsg, no_data_value=self.no_data_value
+            arr, geo=self.geotransform, epsg=self.epsg, no_data_value=self.no_data_value
         )
         # then convert the raster into polygon
         gdf = new_dataset.cluster2(band=band)
@@ -3453,9 +4809,7 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def normalize(array: np.ndarray) -> np.ndarray:
-        """Normalize.
-
-        Normalizes numpy arrays into scale 0.0 - 1.0
+        """Normalize numpy arrays into scale 0.0-1.0.
 
         Parameters
         ----------
@@ -3477,28 +4831,31 @@ class Dataset(AbstractDataset):
         Parameters
         ----------
         size : [int]
-            Size of window in pixels. One value required which is used for both the
+            Size of the window in pixels. One value required which is used for both the
             x and y size. e.g 256 means a 256x256 window.
 
         Yields
         ------
         tuple[int]
-            4 element tuple containing the x offset, y offset, x size and y size  of the window.
-            >>> dataset = Dataset.read_file("examples/GIS/data/acc4000.tif")
-            >>> tile_dimensions = list(dataset._window(6))
-            >>> print(tile_dimensions)
-            >>> [
-            >>>     (0, 0, 6, 6), (0, 6, 6, 6), (0, 12, 6, 1),
-            >>>     (6, 0, 6, 6), (6, 6, 6, 6), (6, 12, 6, 1),
-            >>>     (12, 0, 2, 6), (12, 6, 2, 6), (12, 12, 2, 1)
-            >>> ]
+            (x-offset/column-index, y-offset/row-index, x-size, y-size).
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> arr = np.random.rand(3, 5)
+        >>> top_left_corner = (0, 0)
+        >>> cell_size = 0.05
+        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+        >>> tile_dimensions = list(dataset._window(2))
+        >>> print(tile_dimensions)
+        [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
         """
         cols = self.columns
         rows = self.rows
-        for xoff in range(0, cols, size):
-            xsize = size if size + xoff <= cols else cols - xoff
-            for yoff in range(0, rows, size):
-                ysize = size if size + yoff <= rows else rows - yoff
+        for yoff in range(0, rows, size):
+            ysize = size if size + yoff <= rows else rows - yoff
+            for xoff in range(0, cols, size):
+                xsize = size if size + xoff <= cols else cols - xoff
                 yield xoff, yoff, xsize, ysize
 
     def get_tile(self, size=256) -> Generator[np.ndarray, None, None]:
@@ -3514,6 +4871,61 @@ class Dataset(AbstractDataset):
         ------
         np.ndarray
             Dataset array in form [band][y][x].
+
+        Examples
+        --------
+        - First, we will create a dataset with 3 rows and 5 columns.
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(3, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 3 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+            >>> print(dataset.read_array())   # doctest: +SKIP
+            [[0.55332314 0.48364841 0.67794589 0.6901816  0.70516817]
+             [0.82518332 0.75657103 0.45693945 0.44331782 0.74677865]
+             [0.22231314 0.96283065 0.15201337 0.03522544 0.44616888]]
+
+        - The `get_tile` method splits the domain into tiles of the specified `size` using the `_window` function.
+
+            >>> tile_dimensions = list(dataset._window(2))
+            >>> print(tile_dimensions)
+            [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
+
+        .. image:: /_images/dataset/get_tile.png
+                  :alt: footprint
+                  :align: center
+
+        - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
+        - The `get_tile` method returns a generator object that can be used to iterate over the smaller chunks of the
+            data.
+
+            >>> tiles_generator = dataset.get_tile(size=2)
+            >>> print(tiles_generator)  # doctest: +SKIP
+            <generator object Dataset.get_tile at 0x00000145AA39E680>
+            >>> print(list(tiles_generator))  # doctest: +SKIP
+            [
+                array([[0.55332314, 0.48364841],
+                       [0.82518332, 0.75657103]]),
+                array([[0.67794589, 0.6901816 ],
+                       [0.45693945, 0.44331782]]),
+                array([[0.70516817], [0.74677865]]),
+                array([[0.22231314, 0.96283065]]),
+                array([[0.15201337, 0.03522544]]),
+                array([[0.44616888]])
+            ]
         """
         for xoff, yoff, xsize, ysize in self._window(size=size):
             # read the array at a certain indices
@@ -3523,198 +4935,246 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def _group_neighbours(
-        array, i, j, lowervalue, uppervalue, position, values, count, cluster
+        array, i, j, lower_bound, upper_bound, position, values, count, cluster
     ):
-        """Group neighbouring cells with the same values."""
+        """Group neighboring cells with the same values."""
         # bottom cell
-        if (
-            lowervalue <= array[i + 1, j] <= uppervalue
-            and cluster[i + 1, j] == 0
-            and i + 1 < array.shape[0]
-        ):
-            position.append([i + 1, j])
-            values.append(array[i + 1, j])
-            cluster[i + 1, j] = count
-            Dataset._group_neighbours(
-                array,
-                i + 1,
-                j,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if i + 1 < array.shape[0]:
+            if lower_bound <= array[i + 1, j] <= upper_bound and cluster[i + 1, j] == 0:
+                position.append([i + 1, j])
+                values.append(array[i + 1, j])
+                cluster[i + 1, j] = count
+                Dataset._group_neighbours(
+                    array,
+                    i + 1,
+                    j,
+                    lower_bound,
+                    upper_bound,
+                    position,
+                    values,
+                    count,
+                    cluster,
+                )
+
         # bottom right
-        if (
-            j + 1 < array.shape[1]
-            and i + 1 < array.shape[0]
-            and lowervalue <= array[i + 1, j + 1] <= uppervalue
-            and cluster[i + 1, j + 1] == 0
-        ):
-            position.append([i + 1, j + 1])
-            values.append(array[i + 1, j + 1])
-            cluster[i + 1, j + 1] = count
-            Dataset._group_neighbours(
-                array,
-                i + 1,
-                j + 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j + 1 < array.shape[1]:
+            if i + 1 < array.shape[0]:
+                if (
+                    lower_bound <= array[i + 1, j + 1] <= upper_bound
+                    and cluster[i + 1, j + 1] == 0
+                ):
+                    position.append([i + 1, j + 1])
+                    values.append(array[i + 1, j + 1])
+                    cluster[i + 1, j + 1] = count
+                    Dataset._group_neighbours(
+                        array,
+                        i + 1,
+                        j + 1,
+                        lower_bound,
+                        upper_bound,
+                        position,
+                        values,
+                        count,
+                        cluster,
+                    )
+
         # right
-        if (
-            j + 1 < array.shape[1]
-            and lowervalue <= array[i, j + 1] <= uppervalue
-            and cluster[i, j + 1] == 0
-        ):
-            position.append([i, j + 1])
-            values.append(array[i, j + 1])
-            cluster[i, j + 1] = count
-            Dataset._group_neighbours(
-                array,
-                i,
-                j + 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j + 1 < array.shape[1]:
+            if lower_bound <= array[i, j + 1] <= upper_bound and cluster[i, j + 1] == 0:
+                position.append([i, j + 1])
+                values.append(array[i, j + 1])
+                cluster[i, j + 1] = count
+                Dataset._group_neighbours(
+                    array,
+                    i,
+                    j + 1,
+                    lower_bound,
+                    upper_bound,
+                    position,
+                    values,
+                    count,
+                    cluster,
+                )
+
         # upper right
-        if (
-            j + 1 < array.shape[1]
-            and i - 1 >= 0
-            and lowervalue <= array[i - 1, j + 1] <= uppervalue
-            and cluster[i - 1, j + 1] == 0
-        ):
-            position.append([i - 1, j + 1])
-            values.append(array[i - 1, j + 1])
-            cluster[i - 1, j + 1] = count
-            Dataset._group_neighbours(
-                array,
-                i - 1,
-                j + 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j + 1 < array.shape[1]:
+            if i - 1 >= 0:
+                if (
+                    lower_bound <= array[i - 1, j + 1] <= upper_bound
+                    and cluster[i - 1, j + 1] == 0
+                ):
+                    position.append([i - 1, j + 1])
+                    values.append(array[i - 1, j + 1])
+                    cluster[i - 1, j + 1] = count
+                    Dataset._group_neighbours(
+                        array,
+                        i - 1,
+                        j + 1,
+                        lower_bound,
+                        upper_bound,
+                        position,
+                        values,
+                        count,
+                        cluster,
+                    )
         # top
-        if (
-            i - 1 >= 0
-            and lowervalue <= array[i - 1, j] <= uppervalue
-            and cluster[i - 1, j] == 0
-        ):
-            position.append([i - 1, j])
-            values.append(array[i - 1, j])
-            cluster[i - 1, j] = count
-            Dataset._group_neighbours(
-                array,
-                i - 1,
-                j,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if i - 1 >= 0:
+            if lower_bound <= array[i - 1, j] <= upper_bound and cluster[i - 1, j] == 0:
+                position.append([i - 1, j])
+                values.append(array[i - 1, j])
+                cluster[i - 1, j] = count
+                Dataset._group_neighbours(
+                    array,
+                    i - 1,
+                    j,
+                    lower_bound,
+                    upper_bound,
+                    position,
+                    values,
+                    count,
+                    cluster,
+                )
+
         # top left
-        if (
-            i - 1 >= 0
-            and j - 1 >= 0
-            and lowervalue <= array[i - 1, j - 1] <= uppervalue
-            and cluster[i - 1, j - 1] == 0
-        ):
-            position.append([i - 1, j - 1])
-            values.append(array[i - 1, j - 1])
-            cluster[i - 1, j - 1] = count
-            Dataset._group_neighbours(
-                array,
-                i - 1,
-                j - 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if i - 1 >= 0:
+            if j - 1 >= 0:
+                if (
+                    lower_bound <= array[i - 1, j - 1] <= upper_bound
+                    and cluster[i - 1, j - 1] == 0
+                ):
+                    position.append([i - 1, j - 1])
+                    values.append(array[i - 1, j - 1])
+                    cluster[i - 1, j - 1] = count
+                    Dataset._group_neighbours(
+                        array,
+                        i - 1,
+                        j - 1,
+                        lower_bound,
+                        upper_bound,
+                        position,
+                        values,
+                        count,
+                        cluster,
+                    )
         # left
-        if (
-            j - 1 >= 0
-            and lowervalue <= array[i, j - 1] <= uppervalue
-            and cluster[i, j - 1] == 0
-        ):
-            position.append([i, j - 1])
-            values.append(array[i, j - 1])
-            cluster[i, j - 1] = count
-            Dataset._group_neighbours(
-                array,
-                i,
-                j - 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j - 1 >= 0:
+            if lower_bound <= array[i, j - 1] <= upper_bound and cluster[i, j - 1] == 0:
+                position.append([i, j - 1])
+                values.append(array[i, j - 1])
+                cluster[i, j - 1] = count
+                Dataset._group_neighbours(
+                    array,
+                    i,
+                    j - 1,
+                    lower_bound,
+                    upper_bound,
+                    position,
+                    values,
+                    count,
+                    cluster,
+                )
+
         # bottom left
-        if (
-            j - 1 >= 0
-            and i + 1 < array.shape[0]
-            and lowervalue <= array[i + 1, j - 1] <= uppervalue
-            and cluster[i + 1, j - 1] == 0
-        ):
-            position.append([i + 1, j - 1])
-            values.append(array[i + 1, j - 1])
-            cluster[i + 1, j - 1] = count
-            Dataset._group_neighbours(
-                array,
-                i + 1,
-                j - 1,
-                lowervalue,
-                uppervalue,
-                position,
-                values,
-                count,
-                cluster,
-            )
+        if j - 1 >= 0:
+            if i + 1 < array.shape[0]:
+                if (
+                    lower_bound <= array[i + 1, j - 1] <= upper_bound
+                    and cluster[i + 1, j - 1] == 0
+                ):
+                    position.append([i + 1, j - 1])
+                    values.append(array[i + 1, j - 1])
+                    cluster[i + 1, j - 1] = count
+                    Dataset._group_neighbours(
+                        array,
+                        i + 1,
+                        j - 1,
+                        lower_bound,
+                        upper_bound,
+                        position,
+                        values,
+                        count,
+                        cluster,
+                    )
 
     def cluster(
         self, lower_bound: Any, upper_bound: Any
     ) -> Tuple[np.ndarray, int, list, list]:
-        """Cluster.
-
-            - group all the connected values between two numbers in a raster in clusters.
+        """Group all the connected values between two bounds.
 
         Parameters
         ----------
-        lower_bound : [numeric]
+        lower_bound: [numeric]
             lower bound of the cluster.
-        upper_bound : [numeric]
+        upper_bound: [numeric]
             upper bound of the cluster.
 
         Returns
         -------
-        cluster : [array]
+        cluster: [array]
             array contains integer numbers representing the number of the cluster.
-        count : [integer]
+        count: [integer]
             number of the clusters in the array.
-        position : [list]
+        position: [list]
             list contains two indices [x,y] for the position of each value.
-        values : [numeric]
+        values: [numeric]
             the values stored in each cell in the cluster.
+
+        Examples
+        --------
+        - First, we will create a dataset with 10 rows and 10 columns.
+
+            >>> import numpy as np
+            >>> np.random.seed(10)
+            >>> arr = np.random.randint(1, 5, size=(5, 5))
+            >>> print(arr) # doctest: +SKIP
+            [[2 3 3 2 3]
+             [3 4 1 1 1]
+             [1 3 3 2 2]
+             [4 1 1 3 2]
+             [2 4 2 3 2]]
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> dataset.plot(
+            ...     color_scale=4, bounds=[1, 1.9, 4.1, 5], display_cell_value=True, num_size=12,
+            ...     background_color_threshold=5
+            ... )  # doctest: +SKIP
+
+        .. image:: /_images/dataset/cluster.png
+              :alt: footprint
+              :align: center
+
+        - Now let's cluster the values in the dataset that are between 2, and 4.
+
+            >>> lower_value = 2
+            >>> upper_value = 4
+            >>> cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
+
+        - The first returned output is a binary array with 1 indicating that the cell value is inside the cluster,
+            and 0 is outside.
+
+            >>> print(cluster_array)  # doctest: +SKIP
+            [[1. 1. 1. 1. 1.]
+             [1. 1. 0. 0. 0.]
+             [0. 1. 1. 1. 1.]
+             [1. 0. 0. 1. 1.]
+             [1. 1. 1. 1. 1.]]
+
+        - The second returned value is the number of connected clusters.
+
+            >>> print(count) # doctest: +SKIP
+            2
+
+        - The third returned value is the indices of the cells that belongs to the cluster.
+
+            >>> print(position) # doctest: +SKIP
+            [[1, 0], [2, 1], [2, 2], [3, 3], [4, 3], [4, 4], [3, 4], [2, 4], [2, 3], [4, 2], [4, 1], [3, 0], [4, 0], [1, 1], [0, 2], [0, 3], [0, 4], [0, 1], [0, 0]]
+
+        - The fourth returned value is a list of the values that are in the cluster (extracted from these cells).
+
+            >>> print(values) # doctest: +SKIP
+            [3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 4, 4, 2, 4, 3, 2, 3, 3, 2]
+
         """
         data = self.read_array()
         position = []
@@ -3740,7 +5200,7 @@ class Dataset(AbstractDataset):
                         position.append([i, j])
                         values.append(data[i, j])
                         cluster[i, j] = count
-                    count = count + 1
+                    count += 1
 
         return cluster, count, position, values
 
@@ -3748,19 +5208,61 @@ class Dataset(AbstractDataset):
         self,
         band: Union[int, List[int]] = None,
     ) -> GeoDataFrame:
-        """to_polygon.
+        """Cluster the connected equal cells into polygons.
 
-            - to_polygon creates vector polygons for all connected regions of pixels in the raster sharing a common
+        - Creates vector polygons for all connected regions of pixels in the raster sharing a common
             pixel value (group neighboring cells with the same value into one polygon).
 
         Parameters
         ----------
         band: [int]
-            raster band index 0, 1, 2, 3,…
+            band index 0, 1, 2, 3,…
 
         Returns
         -------
-        GeoDataFrame
+        GeoDataFrame:
+            GeodataFrame containing polygon geomtries for all connected regions.
+
+        Examples
+        --------
+        - First, we will create a 10*10 dataset full of random integer between 1, and 5.
+
+            >>> import numpy as np
+            >>> np.random.seed(200)
+            >>> arr = np.random.randint(1, 5, size=(10, 10))
+            >>> print(arr)  # doctest: +SKIP
+            [[3 2 1 1 3 4 1 4 2 3]
+             [4 2 2 4 3 3 1 2 4 4]
+             [4 2 4 2 3 4 2 1 4 3]
+             [3 2 1 4 3 3 4 1 1 4]
+             [1 2 4 2 2 1 3 2 3 1]
+             [1 4 4 4 1 1 4 2 1 1]
+             [1 3 2 3 3 4 1 3 1 3]
+             [4 1 3 3 3 4 1 4 1 1]
+             [2 1 3 3 4 2 2 1 3 4]
+             [2 3 2 2 4 2 1 3 2 2]]
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's cluster the connected equal cells into polygons.
+
+            >>> gdf = dataset.cluster2()
+            >>> print(gdf)  # doctest: +SKIP
+                Band_1                                           geometry
+            0        3  POLYGON ((0 0, 0 -0.05, 0.05 -0.05, 0.05 0, 0 0))
+            1        1  POLYGON ((0.1 0, 0.1 -0.05, 0.2 -0.05, 0.2 0, ...
+            2        4  POLYGON ((0.25 0, 0.25 -0.05, 0.3 -0.05, 0.3 0...
+            3        4  POLYGON ((0.35 0, 0.35 -0.05, 0.4 -0.05, 0.4 0...
+            4        2  POLYGON ((0.4 0, 0.4 -0.05, 0.45 -0.05, 0.45 0...
+            5        3  POLYGON ((0.45 0, 0.45 -0.05, 0.5 -0.05, 0.5 0...
+            6        1  POLYGON ((0.3 0, 0.3 -0.1, 0.35 -0.1, 0.35 0, ...
+            7        4  POLYGON ((0.15 -0.05, 0.15 -0.1, 0.2 -0.1, 0.2...
+            8        2  POLYGON ((0.35 -0.05, 0.35 -0.1, 0.4 -0.1, 0.4...
+            9        4  POLYGON ((0 -0.05, 0 -0.15, 0.05 -0.15, 0.05 -...
+            10       4  POLYGON ((0.4 -0.05, 0.4 -0.15, 0.45 -0.15, 0....
+            11       4  POLYGON ((0.1 -0.1, 0.1 -0.15, 0.15 -0.15, 0.1...
+
         """
         if band is None:
             band = 0
@@ -3786,12 +5288,11 @@ class Dataset(AbstractDataset):
 
         Parameters
         ----------
-        resampling_method : str, optional
+        resampling_method: str, optional
             The resampling method used to create the overviews, by default "nearest"
-            possible values are:
-                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
-                "BILINEAR".
-        overview_levels : list, optional
+            possible values are: "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE",
+            "AVERAGE_MAGPHASE", "RMS", "BILINEAR".
+        overview_levels: list, optional
             The overview levels, overview_levels are restricted to the typical power-of-two reduction factors.
             Default [2, 4, 8, 16, 32]
 
@@ -3800,14 +5301,65 @@ class Dataset(AbstractDataset):
         internal/external overviews:
             The overview (also known as pyramids) could be internal or external depending on the state you read
             the dataset with.
+
             - External (.ovr file):
-                If the dataset is read with a`read_only=True` then the overviews' file will be created as an
-                in the same directory of the dataset, with the same name of the dataset and .ovr extension.
+                If the dataset is read with a`read_only=True` then the overviews' file will be created as anexternal
+                file in the same directory of the dataset, with the same name of the dataset and .ovr extension.
             - Internal:
                 If the dataset is read with a`read_only=False` then the overviews will be created internally in the
                 dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
+
         overview_count: [list]
             a list property attribute of the overviews for each band.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(4, 10, 10)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's create overviews using the `create_overviews` method with the default parameters.
+
+            >>> dataset.create_overviews()
+            >>> print(dataset.overview_count)  # doctest: +SKIP
+            [4, 4, 4, 4]
+
+        - For each band, there are 4 overview levels, that you can use to plot the bands.
+
+            >>> dataset.plot(band=0, overview=True, overview_index=0) # doctest: +SKIP
+
+        .. image:: /_images/dataset/overviews-level-0.png
+          :alt: footprint
+          :align: center
+
+        - However, the dataset originally is 10*10, but the first overview level (2) displays half of the cells by
+            aggregating all the cells using the nearest neighbor. and the second level displays only 3 cells in each
+
+            >>> dataset.plot(band=0, overview=True, overview_index=1)   # doctest: +SKIP
+
+        .. image:: /_images/dataset/overviews-level-1.png
+          :alt: footprint
+          :align: center
+
+        - For the third overview level.
+
+            >>> dataset.plot(band=0, overview=True, overview_index=2)       # doctest: +SKIP
+
+        .. image:: /_images/dataset/overviews-level-2.png
+          :alt: footprint
+          :align: center
+
+        See Also
+        --------
+        Dataset.recreate_overviews : recreate the dataset overviews if they exist
+        Dataset.get_overview : get an overview of a band
+        Dataset.overview_count : number of overviews
+        Dataset.read_overview_array : read overview values
+        Dataset.plot : plot a band
         """
         if overview_levels is None:
             overview_levels = OVERVIEW_LEVELS
@@ -3838,18 +5390,25 @@ class Dataset(AbstractDataset):
         ----------
         resampling_method : str, optional
             The resampling method used to create the overviews, by default "nearest"
-            possible values are:
-                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE", "AVERAGE_MAGPHASE", "RMS",
-                "BILINEAR".
+            possible values are "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE",
+            "AVERAGE_MAGPHASE", "RMS", "BILINEAR".
 
         Raises
         ------
-        ValueError
+        ValueError:
             resampling_method should be one of {"NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS",
-            "MODE", "AVERAGE_MAGPHASE", "RMS", "BILINEAR"}
+            "MODE", "AVERAGE_MAGPHASE", "RMS", "BILINEAR"}.
         ReadOnlyError
             If the overviews are internal and the Dataset is opened with a read only. Please read the dataset using
-            read_only=False
+            `read_only=False`.
+
+        See Also
+        --------
+        Dataset.create_overviews : recreate the dataset overviews if they exist
+        Dataset.get_overview : get an overview of a band
+        Dataset.overview_count : number of overviews
+        Dataset.read_overview_array : read overview values
+        Dataset.plot : plot a band
         """
         if resampling_method.upper() not in RESAMPLING_METHODS:
             raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
@@ -3885,6 +5444,65 @@ class Dataset(AbstractDataset):
         -------
         gdal.Band
             gdal band object
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1, 10, size=(4, 10, 10))
+            >>> print(arr[0, :, :]) # doctest: +SKIP
+            array([[6, 3, 3, 7, 4, 8, 4, 3, 8, 7],
+                   [6, 7, 3, 7, 8, 6, 3, 4, 3, 8],
+                   [5, 8, 9, 6, 7, 7, 5, 4, 6, 4],
+                   [2, 9, 9, 5, 8, 4, 9, 6, 8, 7],
+                   [5, 8, 3, 9, 1, 5, 7, 9, 5, 9],
+                   [8, 3, 7, 2, 2, 5, 2, 8, 7, 7],
+                   [1, 1, 4, 2, 2, 2, 6, 5, 9, 2],
+                   [6, 3, 2, 9, 8, 8, 1, 9, 7, 7],
+                   [4, 1, 3, 1, 6, 7, 5, 4, 8, 7],
+                   [9, 7, 2, 1, 4, 6, 1, 2, 3, 3]], dtype=int32)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's create overviews using the `create_overviews` method with the default parameters.
+
+            >>> dataset.create_overviews()
+            >>> print(dataset.overview_count)  # doctest: +SKIP
+            [4, 4, 4, 4]
+
+        - The overview is a raster band
+
+            >>> ovr = dataset.get_overview(band=0, overview_index=0)
+            >>> print(ovr)  # doctest: +SKIP
+            <osgeo.gdal.Band; proxy of <Swig Object of type 'GDALRasterBandShadow *' at 0x0000017E2B5AF1B0> >
+            >>> ovr.ReadAsArray()  # doctest: +SKIP
+            array([[6, 3, 4, 4, 8],
+                   [5, 9, 7, 5, 6],
+                   [5, 3, 1, 7, 5],
+                   [1, 4, 2, 6, 9],
+                   [4, 3, 6, 5, 8]], dtype=int32)
+            >>> ovr = dataset.get_overview(band=0, overview_index=1)
+            >>> ovr.ReadAsArray()  # doctest: +SKIP
+            array([[6, 7, 3],
+                   [2, 5, 6],
+                   [6, 9, 9]], dtype=int32)
+            >>> ovr = dataset.get_overview(band=0, overview_index=2)
+            >>> ovr.ReadAsArray()  # doctest: +SKIP
+            array([[6, 8],
+                   [8, 5]], dtype=int32)
+            >>> ovr = dataset.get_overview(band=0, overview_index=3)
+            >>> ovr.ReadAsArray()  # doctest: +SKIP
+            array([[6]], dtype=int32)
+
+        See Also
+        --------
+        Dataset.create_overviews : create the dataset overviews if they exist
+        Dataset.create_overviews : recreate the dataset overviews if they exist
+        Dataset.overview_count : number of overviews
+        Dataset.read_overview_array : read overview values
+        Dataset.plot : plot a band
         """
         band = self._iloc(band)
         n_views = band.GetOverviewCount()
@@ -3903,7 +5521,7 @@ class Dataset(AbstractDataset):
     def read_overview_array(
         self, band: int = None, overview_index: int = 0
     ) -> np.ndarray:
-        """Read Array.
+        """Read overview values.
 
             - read the values stored in a given band.
 
@@ -3918,6 +5536,63 @@ class Dataset(AbstractDataset):
         -------
         array : [array]
             array with all the values in the raster.
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1, 10, size=(4, 10, 10))
+            >>> print(arr[0, :, :])     # doctest: +SKIP
+            array([[6, 3, 3, 7, 4, 8, 4, 3, 8, 7],
+                   [6, 7, 3, 7, 8, 6, 3, 4, 3, 8],
+                   [5, 8, 9, 6, 7, 7, 5, 4, 6, 4],
+                   [2, 9, 9, 5, 8, 4, 9, 6, 8, 7],
+                   [5, 8, 3, 9, 1, 5, 7, 9, 5, 9],
+                   [8, 3, 7, 2, 2, 5, 2, 8, 7, 7],
+                   [1, 1, 4, 2, 2, 2, 6, 5, 9, 2],
+                   [6, 3, 2, 9, 8, 8, 1, 9, 7, 7],
+                   [4, 1, 3, 1, 6, 7, 5, 4, 8, 7],
+                   [9, 7, 2, 1, 4, 6, 1, 2, 3, 3]], dtype=int32)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's create overviews using the `create_overviews` method with the default parameters.
+
+            >>> dataset.create_overviews()
+            >>> print(dataset.overview_count)  # doctest: +SKIP
+            [4, 4, 4, 4]
+
+        - The overview is a raster band
+
+            >>> arr = dataset.read_overview_array(band=0, overview_index=0)
+            >>> print(arr)  # doctest: +SKIP
+            array([[6, 3, 4, 4, 8],
+                   [5, 9, 7, 5, 6],
+                   [5, 3, 1, 7, 5],
+                   [1, 4, 2, 6, 9],
+                   [4, 3, 6, 5, 8]], dtype=int32)
+            >>> arr = dataset.read_overview_array(band=0, overview_index=1)
+            >>> print(arr)  # doctest: +SKIP
+            array([[6, 7, 3],
+                   [2, 5, 6],
+                   [6, 9, 9]], dtype=int32)
+            >>> arr = dataset.read_overview_array(band=0, overview_index=2)
+            >>> print(arr)  # doctest: +SKIP
+            array([[6, 8],
+                   [8, 5]], dtype=int32)
+            >>> arr = dataset.read_overview_array(band=0, overview_index=3)
+            >>> print(arr)  # doctest: +SKIP
+            array([[6]], dtype=int32)
+
+        See Also
+        --------
+        Dataset.create_overviews : create the dataset overviews.
+        Dataset.create_overviews : recreate the dataset overviews if they exist
+        Dataset.get_overview : get an overview of a band
+        Dataset.overview_count : number of overviews
+        Dataset.plot : plot a band
         """
         if band is None and self.band_count > 1:
             if any(elem == 0 for elem in self.overview_count):
@@ -3964,13 +5639,39 @@ class Dataset(AbstractDataset):
 
     @band_color.setter
     def band_color(self, values: Dict[int, str]):
-        """band_color.
+        """Assign color interpretation to dataset bands.
 
         Parameters
         ----------
         values: [Dict[int, str]]
             dictionary with band index as key and color name as value.
-            e.g. {1: 'Red', 2: 'Green', 3: 'Blue'}
+            e.g. {1: 'Red', 2: 'Green', 3: 'Blue'}, possible values are
+            ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue', 'saturation',
+            'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand', 'YCbCr_CrBand']
+
+        Examples
+        --------
+        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - To assign a color interpretation to the dataset band (i.e., gray, red, green, or blue), create a dictionary
+        with the band index as a key and the color interpretation as a value
+
+            >>> dataset.band_color = {0: 'gray_index'}
+
+        - You can also assign rgb color interpretation to the dataset bands as follows:
+
+            >>> arr = np.random.randint(1, 3, size=(3, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> dataset.band_color = {0: 'red', 1: 'green', 2: 'blue'}
         """
         for key, val in values.items():
             if key > self.band_count:
@@ -3981,12 +5682,35 @@ class Dataset(AbstractDataset):
             self._iloc(key).SetColorInterpretation(gdal_const)
 
     def get_band_by_color(self, color_name: str) -> int:
-        """get_band_by_color.
+        """Get the band associated with a given color.
+
+        Parameters
+        ----------
+        color_name: str
+            possible values are ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue',
+            'saturation', 'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand',
+            'YCbCr_CrBand']
 
         Returns
         -------
-        [type]
-            [description]
+        int:
+           band index
+
+        Examples
+        --------
+        - Create `Dataset` consists of 3 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> arr = np.random.randint(1, 3, size=(3, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> dataset.band_color = {0: 'red', 1: 'green', 2: 'blue'}
+
+        - Now you can use the `get_band_by_color` to know which band is the red band for example.
+
+            >>> band_index = dataset.get_band_by_color('red')
+            >>> print(band_index)
+            0
         """
         colors = list(self.band_color.values())
         if color_name not in colors:
@@ -3999,26 +5723,136 @@ class Dataset(AbstractDataset):
     # and figure out how to take a color ramp and convert it to a color table.
     # use the SetColorInterpretation method to assign the color (R/G/B) to a band.
     @property
-    def color_table(self, band: int = None) -> DataFrame:
-        """Color table."""
-        return self._get_color_table(band)
+    def color_table(self) -> DataFrame:
+        """Color table.
+
+        Returns
+        -------
+        df: DataFrame
+            DataFrame with columns: band, values, color
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Set color table for band 1.
+
+            >>> color_table = pd.DataFrame({
+            ...     "band": [1, 1, 1, 2, 2, 2],
+            ...     "values": [1, 2, 3, 1, 2, 3],
+            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"]
+            ... })
+            >>> dataset.color_table = color_table
+            >>> print(dataset.color_table)
+              band values  red green blue alpha
+            0    1      0    0     0    0     0
+            1    1      1  112   153   89   255
+            2    1      2  242   238  162   255
+            3    1      3  242   206  133   255
+            4    2      0    0     0    0     0
+            5    2      1  194   140  124   255
+            6    2      2  214   193  156   255
+            7    2      3  214   193  156   255
+
+        - You can also define the `opasity` of each color by adding a value between 0 (fully transparent) and 255 (
+            fully opaque) to the `DataFrame` for each color, if the `alpha` columns is not in the given dataframe,
+            it will be assumed to be fully opaque (255).
+
+            >>> color_table = pd.DataFrame({
+            ...     "band": [1, 1, 1, 2, 2, 2],
+            ...     "values": [1, 2, 3, 1, 2, 3],
+            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"],
+            ...     "alpha": [255, 128, 0, 255, 128, 0]
+            ... })
+            >>> dataset.color_table = color_table
+            >>> print(dataset.color_table)
+              band values  red green blue alpha
+            0    1      0    0     0    0     0
+            1    1      1  112   153   89   255
+            2    1      2  242   238  162   128
+            3    1      3  242   206  133     0
+            4    2      0    0     0    0     0
+            5    2      1  194   140  124   255
+            6    2      2  214   193  156   128
+            7    2      3  214   193  156     0
+        """
+        return self._get_color_table()
 
     @color_table.setter
     def color_table(self, df: DataFrame):
-        """color_table.
+        """Get color table.
 
         Parameters
         ----------
         df: [DataFrame]
-            DataFrame with columns: band, values, color
-            print(df)
-                    band  values    color
-                0    1       1  #709959
-                1    1       2  #F2EEA2
-                2    1       3  #F2CE85
-                3    2       1  #C28C7C
-                4    2       2  #D6C19C
-                5    2       3  #D6C19C
+            DataFrame with columns: band, values, color.
+            i.e.
+                  band  values    color  alpha
+                0    1       1  #709959    255
+                1    1       2  #F2EEA2    255
+                2    1       3  #F2CE85    138
+                3    2       1  #C28C7C    100
+                4    2       2  #D6C19C    100
+                5    2       3  #D6C19C    100
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Set color table for band 1.
+
+            >>> color_table = pd.DataFrame({
+            ...     "band": [1, 1, 1, 2, 2, 2],
+            ...     "values": [1, 2, 3, 1, 2, 3],
+            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"]
+            ... })
+            >>> dataset.color_table = color_table
+            >>> print(dataset.color_table)
+              band values  red green blue alpha
+            0    1      0    0     0    0     0
+            1    1      1  112   153   89   255
+            2    1      2  242   238  162   255
+            3    1      3  242   206  133   255
+            4    2      0    0     0    0     0
+            5    2      1  194   140  124   255
+            6    2      2  214   193  156   255
+            7    2      3  214   193  156   255
+
+        - You can also define the opasity of each color by adding a value between 0 (fully transparent) and 255 (
+            fully opaque) to the `DataFrame` for each color, if the `alpha` columns is not in the given dataframe,
+            it will be assumed to be fully opaque (255).
+
+            >>> color_table = pd.DataFrame({
+            ...     "band": [1, 1, 1, 2, 2, 2],
+            ...     "values": [1, 2, 3, 1, 2, 3],
+            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"],
+            ...     "alpha": [255, 128 0, 255, 128 0]
+            ... })
+            >>> dataset.color_table = color_table
+            >>> print(dataset.color_table)
+              band values  red green blue alpha
+            0    1      0    0     0    0     0
+            1    1      1  112   153   89   255
+            2    1      2  242   238  162   128
+            3    1      3  242   206  133     0
+            4    2      0    0     0    0     0
+            5    2      1  194   140  124   255
+            6    2      2  214   193  156   128
+            7    2      3  214   193  156     0
         """
         if not isinstance(df, DataFrame):
             raise TypeError(f"df should be a DataFrame not {type(df)}")
@@ -4056,10 +5890,14 @@ class Dataset(AbstractDataset):
 
         color = Colors(color_df["color"].tolist())
         color_rgb = color.get_rgb(normalized=False)
+        color_df = color_df.copy(deep=True)
         color_df.loc[:, ["red", "green", "blue"]] = color_rgb
 
-        for band, df_band in color_df.groupby("band"):
-            band = self.raster.GetRasterBand(band)
+        if "alpha" not in color_df.columns:
+            color_df.loc[:, "alpha"] = 255
+
+        for band_i, df_band in color_df.groupby("band"):
+            band = self.raster.GetRasterBand(band_i)
 
             if overwrite:
                 color_table = gdal.ColorTable()
@@ -4068,7 +5906,7 @@ class Dataset(AbstractDataset):
 
             for i, row in df_band.iterrows():
                 color_table.SetColorEntry(
-                    row["values"], (row["red"], row["green"], row["blue"])
+                    row["values"], (row["red"], row["green"], row["blue"], row["alpha"])
                 )
 
             band.SetColorTable(color_table)
@@ -4089,13 +5927,15 @@ class Dataset(AbstractDataset):
         """
         df = pd.DataFrame(columns=["band", "values", "red", "green", "blue", "alpha"])
         bands = range(self.band_count) if band is None else band
+        row = 0
         for band in bands:
             color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
             for i in range(color_table.GetCount()):
-                df.loc[
-                    i, ["red", "green", "blue", "alpha"]
-                ] = color_table.GetColorEntry(i)
-                df.loc[i, ["band", "values"]] = band + 1, i
+                df.loc[row, ["red", "green", "blue", "alpha"]] = (
+                    color_table.GetColorEntry(i)
+                )
+                df.loc[row, ["band", "values"]] = band + 1, i
+                row += 1
 
         return df
 
@@ -4107,8 +5947,8 @@ class Dataset(AbstractDataset):
         max_value: float = None,
         include_out_of_range: bool = False,
         approx_ok: bool = False,
-    ) -> Tuple[Any, np.ndarray]:
-        """get_histogram.
+    ) -> tuple[list, list[tuple[Any, Any]]]:
+        """Get histogram.
 
         Parameters
         ----------
@@ -4120,10 +5960,10 @@ class Dataset(AbstractDataset):
             minimum value, Default is None.
         max_value: [float], optional
             maximum value, Default is None.
-        include_out_of_range : bool, default=False
+        include_out_of_range : bool, default is False
             if ``True``, add out-of-range values into the first and last buckets
         approx_ok : bool, default=True
-            if ``True``, compute an approximate histogram by using subsampling or overviews
+            if ``True``, compute an approximate histogram by using subsampling or overviews.
 
         Returns
         -------
@@ -4133,23 +5973,79 @@ class Dataset(AbstractDataset):
         Hint
         ----
         - The value of the histogram will be stored in an xml file by the name of the raster file with the extension of
-        .aux.xml, the content of the file will be like the following:
+            .aux.xml.
 
-        <PAMDataset>
-          <PAMRasterBand band="1">
-            <Description>Band_1</Description>
-            <Histograms>
-              <HistItem>
-                <HistMin>0</HistMin>
-                <HistMax>88</HistMax>
-                <BucketCount>6</BucketCount>
-                <IncludeOutOfRange>0</IncludeOutOfRange>
-                <Approximate>0</Approximate>
-                <HistCounts>75|6|0|4|2|1</HistCounts>
-              </HistItem>
-            </Histograms>
-          </PAMRasterBand>
-        </PAMDataset>
+        the content of the file will be like the following:
+
+        .. code-block:: xml
+
+            <PAMDataset>
+              <PAMRasterBand band="1">
+                <Description>Band_1</Description>
+                <Histograms>
+                  <HistItem>
+                    <HistMin>0</HistMin>
+                    <HistMax>88</HistMax>
+                    <BucketCount>6</BucketCount>
+                    <IncludeOutOfRange>0</IncludeOutOfRange>
+                    <Approximate>0</Approximate>
+                    <HistCounts>75|6|0|4|2|1</HistCounts>
+                  </HistItem>
+                </Histograms>
+              </PAMRasterBand>
+            </PAMDataset>
+
+        Examples
+        --------
+        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1, 12, size=(10, 10))
+            >>> print(arr)    # doctest: +SKIP
+            [[ 4  1  1  2  6  9  2  5  1  8]
+             [ 1 11  5  6  2  5  4  6  6  7]
+             [ 5  2 10  4  8 11  4 11 11  1]
+             [ 2  3  6  3  1  5 11 10 10  7]
+             [ 8  2 11  3  1  3  5  4 10 10]
+             [ 1  2  1  6 10  3  6  4  2  8]
+             [ 9  5  7  9  7  8  1 11  4  4]
+             [ 7  7  2  2  5  3  7  2  9  9]
+             [ 2 10  3  2  1 11  5  9  8 11]
+             [ 1  5  6 11  3  3  8  1  2  1]]
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+
+        - Now, let's get the histogram of the first band using the `get_histogram` method with the default
+            parameters.
+
+            >>> hist, ranges = dataset.get_histogram(band=0)
+            >>> print(hist)  # doctest: +SKIP
+            [28, 17, 10, 15, 13, 7]
+            >>> print(ranges)   # doctest: +SKIP
+            [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
+
+        - we can also exclude values from the histogram by using the `min_value` and `max_value`
+
+            >>> hist, ranges = dataset.get_histogram(band=0, min_value=5, max_value=10)
+            >>> print(hist)  # doctest: +SKIP
+            [10, 8, 7, 7, 6, 0]
+            >>> print(ranges)   # doctest: +SKIP
+            [(1.0, 1.835), (1.835, 2.67), (2.67, 3.5), (3.5, 4.34), (4.34, 5.167), (5.167, 6.0)]
+
+        - for datasets with big dimensions, computing the histogram can take some time, approximating the coputation
+            of the histogram can same a lot of computation time.
+        - when using the parameter `approx_ok` with a `True` value the histogram will be calcilated from resampling
+            the band or from the overviews if they exist.
+
+            >>> hist, ranges = dataset.get_histogram(band=0, approx_ok=True)
+            >>> print(hist)  # doctest: +SKIP
+            [28, 17, 10, 15, 13, 7]
+            >>> print(ranges)   # doctest: +SKIP
+            [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
+
+        - As you see for small datasets, the approximation of the histogram will be the same as without approximation.
+
         """
         band = self._iloc(band)
         min_val, max_val = band.ComputeRasterMinMax()

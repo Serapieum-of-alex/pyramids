@@ -206,6 +206,11 @@ dataset.
 [xoff, yoff, x-window, y-window], the `window` can also be a geodataframe.
 * add `get_block_arrangement` method divide the raster into tiles based on the block size.
 * add tiff file writing options (compression/tile/tile_length)
+* add `close` method to flush to desk and close a dataset.
+* add `add_band` method to add an array as a band to an existing dataset.
+* rename `pivot_point` to `top_left_corner` in the `create` method.
+* the `to_file` method return a `Dataset` object pointing to the saved dataset rather than the need to re-read the
+saved dataset after you save it.
 
 Datacube
 """"""""
@@ -214,3 +219,13 @@ Datacube
 NetCDF
 """""""
 * move all the netcdf related functions to a separate module `netcdf`.
+
+FeatureCollection
+"""""""""""""""""
+* rename the `pivot_point` to `top_left_corner`
+
+Deprecated
+""""""""""
+*Cropping a raster using a polygon is done now directly using gdal.wrap nand the the `_crop_with_polygon_by_rasterizing`
+is deprecated.
+* rename the interpolation method `nearest neighbour` to `nearest neighbor`.

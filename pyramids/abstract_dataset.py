@@ -4,13 +4,14 @@ Abstract Dataset.
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
+
 from abc import ABC, abstractmethod
 from numbers import Number
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, osr  # gdalconst,
+from osgeo import gdal, osr
 from osgeo.osr import SpatialReference
 
 from pyramids._utils import (
@@ -34,20 +35,10 @@ RESAMPLING_METHODS = [
     "RMS",
     "BILINEAR",
 ]
-# By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return an error
-# value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
-# this behavior in GDAL and OGR by calling the UseExceptions()
-gdal.UseExceptions()
-
-# gdal.ErrorReset()
 
 
 class AbstractDataset(ABC):
-    """AbstractDataset.
-
-    The Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate
-    systems.
-    """
+    """AbstractDataset."""
 
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
@@ -90,18 +81,19 @@ class AbstractDataset(ABC):
     @property
     @abstractmethod
     def access(self):
-        """Access mode."""
+        """Access mode (read_only/write)."""
         return self._access
 
     @property
     @abstractmethod
     def raster(self) -> gdal.Dataset:
-        """GDAL Dataset."""
+        """The ase GDAL Dataset."""
         return self._raster
 
     @raster.setter
     @abstractmethod
     def raster(self, value: gdal.Dataset):
+        """Contains GDAL Dataset."""
         self._raster = value
 
     @property
@@ -133,7 +125,7 @@ class AbstractDataset(ABC):
 
     @property
     @abstractmethod
-    def pivot_point(self):
+    def top_left_corner(self):
         """Top left corner coordinates."""
         xmin, _, _, ymax, _, _ = self._geotransform
         return xmin, ymax
@@ -431,7 +423,7 @@ class AbstractDataset(ABC):
         driver_type: str = "MEM",
         path: str = None,
         variable_name: str = None,
-    ) -> "AbstractDataset":
+    ):
         """Create dataset from array.
 
             - Create_from_array method creates a `Dataset` from a given array and geotransform data.
@@ -505,7 +497,7 @@ class AbstractDataset(ABC):
     def to_crs(
         self,
         to_epsg: int,
-        method: str = "nearest neighbour",
+        method: str = "nearest neighbor",
         maintain_alignment: int = False,
         inplace: bool = False,
     ) -> Union["AbstractDataset", None]:
@@ -522,7 +514,7 @@ class AbstractDataset(ABC):
         method: [String]
             resampling technique default is "Nearest"
             https://gisgeography.com/raster-resampling/
-            "nearest neighbour" for nearest neighbour,"cubic" for cubic convolution,
+            "nearest neighbor" for nearest neighbor,"cubic" for cubic convolution,
             "bilinear" for bilinear
         maintain_alignment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.

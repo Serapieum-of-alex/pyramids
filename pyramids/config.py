@@ -1,4 +1,5 @@
 """Configuration module for the pyramids package."""
+
 import yaml
 import logging
 from osgeo import gdal, ogr
@@ -22,9 +23,9 @@ class Config:
 
     def initialize_gdal(self):
         """Initialize the GDAL and OGR configuration."""
-        # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return an error
-        # value such as None and write an error message to sys.stdout, to report errors by raising exceptions. You can enable
-        # this behavior in GDAL and OGR by calling the UseExceptions()
+        # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return
+        # an error value such as None and write an error message to sys.stdout, to report errors by raising
+        # exceptions. You can enable this behavior in GDAL and OGR by calling the UseExceptions().
         gdal.UseExceptions()
         ogr.UseExceptions()
         # gdal.ErrorReset()
