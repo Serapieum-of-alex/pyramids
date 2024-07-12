@@ -58,7 +58,7 @@ repos:
         files: ^pyramids/
 
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+    rev: 7.1.0
     hooks:
       - id: flake8
         name: "[py   - check] flake8"
@@ -112,3 +112,19 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+  - repo: local
+    hooks:
+      - id: examples-notebook-check
+        name: nbval
+        entry: pytest --nbval
+        language: system
+        files: \.ipynb$
+
+  - repo: local
+    hooks:
+      - id: doctest
+        name: doctest
+        entry: pytest --doctest-modules #pyramids/dataset.py
+        language: system
+        files: \.py$

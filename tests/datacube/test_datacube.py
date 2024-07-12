@@ -56,8 +56,10 @@ def test_netcdf_create_from_array(
     # np.testing.assert_allclose(var.geotransform, src_geotransform)
     path = "save_created_netcdf_file.nc"
     assert cube.to_file(path) is None
+    new_cube = cube.copy()
+    cube.close()
     os.remove(path)
-    return cube
+    return new_cube
 
 
 class TestReadNetCDF:

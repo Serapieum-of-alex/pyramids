@@ -22,14 +22,14 @@ class TestAttributes:
         feature = FeatureCollection(data_source)
         assert all(np.isclose(feature.total_bounds, gdf_bound, rtol=0.0001))
 
-    def test_pivot_point_gdf(self, gdf: GeoDataFrame, gdf_bound: List):
+    def test_top_left_corner_gdf(self, gdf: GeoDataFrame, gdf_bound: List):
         feature = FeatureCollection(gdf)
-        point = feature.pivot_point
+        point = feature.top_left_corner
         assert point == [gdf_bound[0], gdf_bound[-1]]
 
-    def test_pivot_point_ds(self, data_source: DataSource, gdf_bound: List):
+    def test_top_left_corner_ds(self, data_source: DataSource, gdf_bound: List):
         feature = FeatureCollection(data_source)
-        point = feature.pivot_point
+        point = feature.top_left_corner
         assert point == [gdf_bound[0], gdf_bound[-1]]
 
     def test_layer_count_gdf(self, gdf: GeoDataFrame):
@@ -61,8 +61,10 @@ class TestAttributes:
         feature = FeatureCollection(coello_gauges_gdf)
         dtypes = feature.dtypes
         assert isinstance(dtypes, dict)
+        dtypes.pop("id", None)
+        # remove the id as it differs in linux
         assert dtypes == {
-            "id": "int64",
+            # "id": "int64",
             "x": "float64",
             "y": "float64",
             "geometry": "geometry",
@@ -445,7 +447,7 @@ class TestToDataset:
             src = vector.to_dataset(cell_size=required_cell_size, column_name=None)
             assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
 
-            xmin, ymax = vector.pivot_point
+            xmin, ymax = vector.top_left_corner
             assert src.geotransform[0] == xmin
             assert src.geotransform[3] == ymax
             assert src.cell_size == required_cell_size
@@ -517,7 +519,7 @@ class TestToDataset:
             src = vector.to_dataset(cell_size=required_cell_size, column_name=None)
             assert src.epsg == polygons_coello_gdf.crs.to_epsg()
 
-            xmin, ymax = vector.pivot_point
+            xmin, ymax = vector.top_left_corner
             assert src.geotransform[0] == xmin
             assert src.geotransform[3] == ymax
             assert src.cell_size == required_cell_size

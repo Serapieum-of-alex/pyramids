@@ -168,3 +168,5 @@ tests/data/not-used/*
 /tests/data/delete/delta1.gpkg
 /tests/data/delete/era5-mask.qmd
 /tests/data/delete/mask.gpkg
+/write_array.tif
+/my-dataset.tif

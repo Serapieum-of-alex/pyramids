@@ -380,6 +380,65 @@ class DataCube(Dataset):
         """
         return self._is_md_array
 
+    def copy(self, path: str = None) -> "Dataset":
+        """Deep copy.
+
+        Parameters
+        ----------
+        path: str, optional
+            destination path to save the copied dataset, if None is passed, the copy dataset will be created in memory
+
+        Examples
+        --------
+        - First, we will create a dataset with 1 band, 3 rows and 5 columns.
+
+            >>> import numpy as np
+            >>> arr = np.random.rand(3, 5)
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 3 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File:...
+            <BLANKLINE>
+
+        - Now, we will create a copy of the dataset.
+
+            >>> copied_dataset = dataset.copy(path="copy-dataset.tif")
+            >>> print(copied_dataset)
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 3 * 5
+                        EPSG: 4326
+                        Number of Bands: 1
+                        Band names: ['Band_1']
+                        Mask: -9999.0
+                        Data type: float64
+                        File: copy-dataset.tif
+            <BLANKLINE>
+
+        - Now close the dataset.
+
+            >>> copied_dataset.close()
+
+        """
+        if path is None:
+            path = ""
+            driver = "MEM"
+        else:
+            driver = "netCDF"
+
+        src = gdal.GetDriverByName(driver).CreateCopy(path, self._raster)
+
+        return DataCube(src, access="write")
+
     @staticmethod
     def create_main_dimension(
         group: gdal.Group, dim_name: str, dtype: int, values: np.ndarray

@@ -539,7 +539,7 @@ class MultiDataset:
     def to_crs(
         self,
         to_epsg: int = 3857,
-        method: str = "nearest neighbour",
+        method: str = "nearest neighbor",
         maintain_alignment: int = False,
     ):
         """to_epsg.
@@ -553,9 +553,7 @@ class MultiDataset:
             reference number to the new projection (https://epsg.io/)
             (default 3857 the reference no of WGS84 web mercator )
         method: [String]
-            resampling technique default is "Nearest"
-            https://gisgeography.com/raster-resampling/
-            "Nearest" for nearest neighbour,"cubic" for cubic convolution,
+            resampling method. default is "Nearest" for nearest neighbour,"cubic" for cubic convolution,
             "bilinear" for bilinear
         maintain_alignment : [bool]
             True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
