@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath("../../pyramids"))
 project = "pyramids"
 copyright = "2024, Mostafa Farrag"
 author = "Mostafa Farrag"
-release = "0.1.0"
+release = "0.7.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
