@@ -220,6 +220,10 @@ NetCDF
 """""""
 * move all the netcdf related functions to a separate module `netcdf`.
 
+FeatureCollection
+"""""""""""""""""
+* rename the `pivot_point` to `top_left_corner`
+
 Deprecated
 """"""""""
 *Cropping a raster using a polygon is done now directly using gdal.wrap nand the the `_crop_with_polygon_by_rasterizing`
