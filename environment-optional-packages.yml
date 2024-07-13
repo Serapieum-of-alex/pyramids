@@ -9,7 +9,7 @@ dependencies:
   - geopandas >=0.14.1
   - Shapely >=2.0.2
   - pyproj >=3.6.1
-  - cleopatra >=0.4.2
+  - cleopatra >=0.4.3
   - PyYAML >=6.0.1
   - loguru >=0.7.2
   - pytest >=8.2.2
