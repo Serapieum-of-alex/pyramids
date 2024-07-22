@@ -1718,29 +1718,29 @@ class Dataset(AbstractDataset):
 
         - plot using power scale.
 
-            >>> dataset.plot(band=0, color_scale=2)
+            >>> dataset.plot(band=0, color_scale="power")
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using SymLogNorm scale.
 
-            >>> dataset.plot(band=0, color_scale=3)
+            >>> dataset.plot(band=0, color_scale="sym-lognorm")
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using PowerNorm scale.
 
-            >>> dataset.plot(band=0, color_scale=4, bounds=[0, 0.2, 0.4, 0.6, 0.8, 1])
+            >>> dataset.plot(band=0, color_scale="boundary-norm", bounds=[0, 0.2, 0.4, 0.6, 0.8, 1])
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using BoundaryNorm scale.
 
-            >>> dataset.plot(band=0, color_scale=5)
+            >>> dataset.plot(band=0, color_scale="midpoint")
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
         """
         import_cleopatra(
             "The current function uses cleopatra package to for plotting, please install it manually, for more info "
             "check https://github.com/Serapieum-of-alex/cleopatra"
         )
-        from cleopatra.array import Array
+        from cleopatra.array_glyph import ArrayGlyph
 
         no_data_value = [np.nan if i is None else i for i in self.no_data_value]
         if overview:
@@ -1772,7 +1772,7 @@ class Dataset(AbstractDataset):
             else [no_data_value[band]]
         )
 
-        cleo = Array(
+        cleo = ArrayGlyph(
             arr,
             exclude_value=exclude_value,
             extent=self.bbox,
@@ -2669,7 +2669,7 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        - Create `Dataset` consists of 1 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
 
             >>> dataset = Dataset.create(
             ...     cell_size=0.05, rows=3, columns=3, bands=1, top_left_corner=(0, 0),dtype="float32",
@@ -2996,7 +2996,13 @@ class Dataset(AbstractDataset):
         gdf["id"] = gdf.index
         return gdf
 
-    def to_file(self, path: str, band: int = 0, tile_length: int = None) -> None:
+    def to_file(
+        self,
+        path: str,
+        band: int = 0,
+        tile_length: int = None,
+        creation_options: List[str] = None,
+    ) -> None:
         """Save dataset to tiff file.
 
             `to_file` saves a raster to disk, the type of the driver (georiff/netcdf/ascii) will be implied from the
@@ -3010,6 +3016,9 @@ class Dataset(AbstractDataset):
             band index, needed only in case of ascii drivers. Default is 0.
         tile_length: int, Optional, Default 256.
             length of the tiles in the driver.
+        creation_options: List[str], Default is None
+            List of strings that will be passed to the GDAL driver during the creation of the dataset.
+            i.e., ['PREDICTOR=2']
 
         Examples
         --------
@@ -3054,6 +3063,8 @@ class Dataset(AbstractDataset):
                     "BLOCKXSIZE={}".format(self._block_size[0][0]),
                     "BLOCKYSIZE={}".format(self._block_size[0][1]),
                 ]
+            if creation_options is not None:
+                options += creation_options
 
             try:
                 dst = gdal.GetDriverByName(driver_name).CreateCopy(
@@ -5889,7 +5900,7 @@ class Dataset(AbstractDataset):
         from cleopatra.colors import Colors
 
         color = Colors(color_df["color"].tolist())
-        color_rgb = color.get_rgb(normalized=False)
+        color_rgb = color.to_rgb(normalized=False)
         color_df = color_df.copy(deep=True)
         color_df.loc[:, ["red", "green", "blue"]] = color_rgb
 

@@ -133,10 +133,10 @@ class Datacube:
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
     ):
-        r"""read_multiple_files.
+        r"""Read multiple files.
 
-            - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
-            the folder and length as the number of files.
+        reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in the
+        folder and length as the number of files.
 
         inside the folder.
         - All rasters should have the same dimensions
@@ -145,32 +145,39 @@ class Datacube:
 
         Parameters
         ----------
-        path:[str/list]
+        path: str/list
             path of the folder that contains all the rasters, ora list contains the paths of the rasters to read.
-        with_order: [bool]
-            True if the rasters names' follows a certain order, then the rasters' names should have a date that follows
+        with_order: bool
+            True if the raster names' follows a certain order, then the rasters' names should have a date that follows
             the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD).
-            >>> "MSWEP_1979.01.01.tif"
-            >>> "MSWEP_1979.01.02.tif"
-            >>> ...
-            >>> "MSWEP_1979.01.20.tif"
-        regex_string: [str]
-            a regex string that we can use to locate the date in the file names.Default is r"\d{4}.\d{
-            2}.\d{2}".
+            .. code-block:: py
+
+                "MSWEP_1979.01.01.tif"
+                "MSWEP_1979.01.02.tif"
+                ...
+                "MSWEP_1979.01.20.tif"
+
+        regex_string: str, default is r"\d{4}.\d{2}.\d{2}".
+            a regex string that we can use to locate the date in the file names.
+
             >>> fname = "MSWEP_YYYY.MM.DD.tif"
             >>> regex_string = r"\d{4}.\d{2}.\d{2}"
+
             - or
-            >>> fname = "MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d{4}_\d{1}_\d{1}"
+                >>> fname = "MSWEP_YYYY_M_D.tif"
+                >>> regex_string = r"\d{4}_\d{1}_\d{1}"
+
             - if there is a number at the beginning of the name
-            >>> fname = "1_MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d+"
+
+                >>> fname = "1_MSWEP_YYYY_M_D.tif"
+                >>> regex_string = r"\d+"
+
         date: [bool]
             True if the number in the file name is a date. Default is True.
-        file_name_data_fmt : [str]
-            if the files names' have a date and you want to read them ordered .Default is None
-            >>> "MSWEP_YYYY.MM.DD.tif"
+        file_name_data_fmt: str, default is None
+            if the files' names have a date(`MSWEP_YYYY.MM.DD.tif`), and you want to read them ordered.
             >>> file_name_data_fmt = "%Y.%m.%d"
+
         start: [str]
             start date if you want to read the input raster for a specific period only and not all rasters,
             if not given all rasters in the given path will be read.
@@ -190,7 +197,7 @@ class Datacube:
         Example
         -------
         >>> from pyramids.datacube import Datacube
-        >>> raster_folder = "examples/GIS/data/raster-folder"
+        >>> raster_folder = "examples/data/geotiff/raster-folder"
         >>> prec = Datacube.read_multiple_files(raster_folder)
 
         >>> import glob
@@ -480,7 +487,7 @@ class Datacube:
             "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
             "check https://github.com/Serapieum-of-alex/cleopatra"
         )
-        from cleopatra.array import Array
+        from cleopatra.array_glyph import ArrayGlyph
 
         data = self.values
 
@@ -490,7 +497,7 @@ class Datacube:
             else [self.base.no_data_value[band]]
         )
 
-        cleo = Array(data, exclude_value=exclude_value)
+        cleo = ArrayGlyph(data, exclude_value=exclude_value)
         time = list(range(self.time_length))
         cleo.animate(time, **kwargs)
         return cleo
@@ -507,6 +514,7 @@ class Datacube:
         path: [str/list]
             a path includng the name of the raster and extention.
             >>> path = "data/cropped.tif"
+
         driver: [str]
             driver = "geotiff".
         band: [int]
@@ -514,9 +522,9 @@ class Datacube:
 
         Examples
         --------
-        >>> raster_obj = Dataset.read_file("path/to/file/***.tif")
-        >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_file(output_path)
+        raster_obj = Dataset.read_file("path/to/file/***.tif")
+        output_path = "examples/GIS/data/save_raster_test.tif"
+        raster_obj.to_file(output_path)
         """
         ext = CATALOG.get_extension(driver)
 
@@ -567,9 +575,9 @@ class Datacube:
 
         Examples
         --------
-        >>> from pyramids.dataset import Dataset
-        >>> src = Dataset.read_file("path/raster_name.tif")
-        >>> projected_raster = src.to_crs(to_epsg=3857)
+        from pyramids.dataset import Dataset
+        src = Dataset.read_file("path/raster_name.tif")
+        projected_raster = src.to_crs(to_epsg=3857)
         """
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -598,7 +606,7 @@ class Datacube:
     def crop(
         self, mask: Union[Dataset, str], inplace: bool = False, touch: bool = True
     ) -> Union[None, Dataset]:
-        """cropAlignedFolder.
+        """Crop.
 
             cropAlignedFolder matches the location of nodata value from src raster to dst
             raster, Mask is where the NoDatavalue will be taken and the location of
@@ -607,7 +615,7 @@ class Datacube:
 
         Parameters
         ----------
-        mask : [Dataset]
+        mask: Dataset
             Dataset object of the mask raster to crop the rasters (to get the NoData value
             and it location in the array) Mask should include the name of the raster and the
             extension like "data/dem.tif", or you can read the mask raster using gdal and use
@@ -625,10 +633,10 @@ class Datacube:
 
         Examples
         --------
-        >>> dem_path = "examples/GIS/data/acc4000.tif"
-        >>> src_path = "examples/GIS/data/aligned_rasters/"
-        >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-        >>> Datacube.crop(dem_path, src_path, out_path)
+        dem_path = "examples/data/geotiff/acc4000.tif"
+        src_path = "examples/data/geotiff/aligned_rasters/"
+        out_path = "examples/data/geotiff/crop_aligned_folder/"
+        Datacube.crop(dem_path, src_path, out_path)
         """
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -790,7 +798,7 @@ class Datacube:
     #     return dst
 
     def align(self, alignment_src: Dataset):
-        """matchDataAlignment.
+        """Align.
 
         this function matches the coordinate system and the number of rows & columns
         between two rasters
@@ -802,7 +810,7 @@ class Datacube:
 
         Parameters
         ----------
-        alignment_src: [String]
+        alignment_src: str
             path to the spatial information source raster to get the spatial information
             (coordinate system, no of rows & columns) alignment_src should include the name of the raster
             and the extension like "data/dem.tif"
@@ -812,13 +820,6 @@ class Datacube:
         new rasters:
             ٌRasters have the values from rasters in rasters_dir with the same
             cell size, no of rows & columns, coordinate system and alignment like raster A
-
-        Examples
-        --------
-        >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
-        >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
-        >>> prec_out_path = "02Precipitation/4km/"
-        >>> Dataset.align(dem_path,prec_in_path,prec_out_path)
         """
         if not isinstance(alignment_src, Dataset):
             raise TypeError("alignment_src input should be a Dataset object")
@@ -913,10 +914,10 @@ class Datacube:
 
         Examples
         --------
-        >>> def func(val):
-        >>>    return val%2
-        >>> ufunc = np.frompyfunc(func, 1, 1)
-        >>> dataset.apply(ufunc)
+        def func(val):
+           return val%2
+        ufunc = np.frompyfunc(func, 1, 1)
+        dataset.apply(ufunc)
         """
         if not callable(ufunc):
             raise TypeError("The Second argument should be a function")
