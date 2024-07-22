@@ -162,6 +162,7 @@ class TestColorRelief:
         assert isinstance(color_table, DataFrame)
         assert all(color_table.columns == ["values", "red", "green", "blue", "alpha"])
 
+    @pytest.mark.plot
     def test_create_color_relief(self):
         arr = np.random.randint(0, 15, size=(10, 10))
         dataset = Dataset.create_from_array(
