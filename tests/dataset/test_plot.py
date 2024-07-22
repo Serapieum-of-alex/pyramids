@@ -146,3 +146,30 @@ class TestColorTable:
         ]
         # test the color_table property
         dataset.color_table = df
+
+
+class TestColorRelief:
+    color_hex = ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C"]
+    values = [1, 3, 5, 7, 9]
+    df = pd.DataFrame(columns=["values", "color"])
+    df.loc[:, "values"] = values
+    df.loc[:, "color"] = color_hex
+
+    @pytest.mark.plot
+    def test_process_color_table(self):
+
+        color_table = Dataset._process_color_table(self.df)
+        assert isinstance(color_table, DataFrame)
+        assert all(color_table.columns == ["values", "red", "green", "blue", "alpha"])
+
+    def test_create_color_relief(self):
+        arr = np.random.randint(0, 15, size=(10, 10))
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
+        )
+        color_relief = dataset.create_color_relief(band=0, color_table=self.df)
+        assert color_relief.band_count == 4
+        assert color_relief.band_color == {0: "red", 1: "green", 2: "blue", 3: "alpha"}
+        df = color_relief.stats()
+        assert all((0 < df["min"]) & (df["min"] <= 255))
+        assert all((0 < df["max"]) & (df["max"] <= 255))

@@ -8,6 +8,8 @@ algebraic operation on cell's values.
 import os
 import warnings
 import logging
+import tempfile
+import uuid
 from numbers import Number
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -1627,9 +1629,11 @@ class Dataset(AbstractDataset):
         exclude_value: [Any]
             value to exclude from the plot. Default is None.
         rgb: [List]
-            The `plot` method will check it the rgb bands are defined in the raster file, if all the three bands (
+            The indices of the red, green, and blue bands in the `Dataset`. the `rgb` parameter can be a list of
+            three values, or a list of four values if the alpha band is also included.
+            The `plot` method will check if the rgb bands are defined in the `Dataset`, if all the three bands (
             red, green, blue)) are defined, the method will use them to plot the real image, if not the rgb bands
-            will be considered as [2,1,0].
+            will be considered as [2,1,0] as the default order for sentinel tif files.
         surface_reflectance: [int]
             Default is 10,000.
         cutoff: [List]
@@ -1794,6 +1798,140 @@ class Dataset(AbstractDataset):
         )
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
+
+    def create_color_relief(
+        self, band: int = 0, path: str = None, color_table: DataFrame = None
+    ) -> "Dataset":
+        """Create a color relief for a band in the Dataset.
+
+        A color relief raster is a raster image where each pixel's value is mapped to a specific color based on a
+        predefined color palette or color table.
+
+        Parameters
+        ----------
+        band: int, default is 0.
+            band index.
+        path: str, default is None.
+            path to save the color relief raster.
+        color_table: DataFrame, default is None.
+            DataFrame with columns: band, values, color
+                  values    color
+                0      1  #709959
+                1      2  #F2EEA2
+                2      3  #F2CE85
+                3      1  #C28C7C
+                4      2  #D6C19C
+                5      3  #D6C19C
+            or DataFrame with columns: values, red, green, blue, alpha, (the alpha column is optional)
+                  values    red  green   blue  alpha
+                0      1    112    153     89    255
+                1      2    242    238    162    255
+                2      3    242    206    133    255
+                3      1    194    140    124    255
+                4      2    214    193    156    255
+                5      3    214    193    156    255
+
+        Returns
+        -------
+        Dataset:
+            Dataset with the color relief with four bands read, green, blue, and alpha.
+
+        Examples
+        --------
+        - First create a one band dataset, consisting of 10 columns and 10 rows, with random values between 0 and 15.
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(0, 15, size=(10, 10))
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
+
+        - Now let's create the color table using hex colors.
+        color.
+
+            >>> color_hex = ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C"]
+            >>> values = [1, 3, 5, 7, 9]
+            >>> df = pd.DataFrame(columns=["values", "color"])
+            >>> df.loc[:, "values"] = values
+            >>> df.loc[:, "color"] = color_hex
+
+        - Now let's create the color relief for the dataset using the color table `DataFrame`.
+
+            >>> color_relief = dataset.create_color_relief(band=0, color_table=df)
+            >>> print(color_relief) # doctest: +SKIP
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 4
+                        Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                        Mask: None
+                        Data type: byte
+                        projection: GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
+                        Metadata: {}
+                        File: ...
+            <BLANKLINE>
+            >>> print(color_relief.band_color)
+            {0: 'red', 1: 'green', 2: 'blue', 3: 'alpha'}
+
+        - The result color relief dataset will have 4 bands red, green, blue, and alpha. with values from 0 to 255.
+        - To plot the color relief dataset, you can use the `plot` method. but you need to provide the the rgb indices
+            with the alpha index as the fourth index, otherwise the alpha band will be missing.
+
+            >>> fig, ax = color_relief.plot(rgb=[0, 1, 2, 3])
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+        # get the array of the band and convert it to a dataset.
+        arr = self.read_array(band=band)
+        band_dataset = Dataset.dataset_like(self, arr)
+        color_df = self._process_color_table(color_table)
+
+        temp_dir = tempfile.mkdtemp()
+        color_table_path = os.path.join(temp_dir, f"{uuid.uuid1()}.txt")
+        color_df.to_csv(color_table_path, index=False, header=False)
+        dst = gdal.DEMProcessing(
+            path,
+            band_dataset.raster,
+            "color-relief",
+            format=driver,
+            addAlpha=True,
+            colorFilename=color_table_path,
+        )
+        color_relief = Dataset(dst, access="write")
+        color_relief.band_color = {0: "red", 1: "green", 2: "blue", 3: "alpha"}
+        return color_relief
+
+    @staticmethod
+    def _process_color_table(color_table: DataFrame) -> DataFrame:
+        import_cleopatra(
+            "The current function uses cleopatra package to for plotting, please install it manually, for more info"
+            " check https://github.com/Serapieum-of-alex/cleopatra"
+        )
+        from cleopatra.colors import Colors
+
+        # if the color_table does not contain the red, green, and blue columns, assume it has one column with
+        # the color as hex and then, convert the color to rgb.
+        if all(elem in color_table.columns for elem in ["red", "green", "blue"]):
+            color_df = color_table.loc[:, ["values", "red", "green", "blue"]]
+        elif "color" in color_table.columns:
+            color = Colors(color_table["color"].tolist())
+            color_rgb = color.to_rgb(normalized=False)
+            color_df = DataFrame(columns=["values"])
+            color_df["values"] = color_table["values"].to_list()
+            color_df.loc[:, ["red", "green", "blue"]] = color_rgb
+        else:
+            raise ValueError(
+                "color_table must contain either red, green, blue, or color columns."
+            )
+
+        if "alpha" not in color_table.columns:
+            color_df.loc[:, "alpha"] = 255
+        else:
+            color_df.loc[:, "alpha"] = color_table["alpha"]
+
+        return color_df
 
     @staticmethod
     def _create_dataset(
@@ -5667,7 +5805,7 @@ class Dataset(AbstractDataset):
         ----------
         values: [Dict[int, str]]
             dictionary with band index as key and color name as value.
-            e.g. {1: 'Red', 2: 'Green', 3: 'Blue'}, possible values are
+            e.g. {0: 'Red', 1: 'Green', 2: 'Blue'}, possible values are
             ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue', 'saturation',
             'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand', 'YCbCr_CrBand']
 
