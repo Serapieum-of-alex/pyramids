@@ -7,6 +7,7 @@ from pyramids.dataset import Dataset
 from pyramids.datacube import Datacube
 
 
+@pytest.mark.plot
 class TestPlotDataSet:
     import matplotlib
 
