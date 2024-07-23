@@ -1611,10 +1611,11 @@ class Dataset(AbstractDataset):
         band: int = None,
         exclude_value: Any = None,
         rgb: List[int] = None,
-        surface_reflectance: int = 10000,
+        surface_reflectance: int = None,
         cutoff: List = None,
         overview: bool = False,
         overview_index: int = 0,
+        percentile: int = None,
         **kwargs,
     ):
         """Plot the values/overviews of a given band.
@@ -1643,6 +1644,8 @@ class Dataset(AbstractDataset):
             True if you want to plot the overview. Default is False.
         overview_index: [int]
             index of the overview. Default is 0.
+        percentile: int
+            The percentile value to be used for scaling.
         **kwargs
             points : [array]
                 3 column array with the first column as the value you want to display for the point, the second is the rows
@@ -1794,6 +1797,7 @@ class Dataset(AbstractDataset):
             rgb=rgb,
             surface_reflectance=surface_reflectance,
             cutoff=cutoff,
+            percentile=percentile,
             **kwargs,
         )
         fig, ax = cleo.plot(**kwargs)
@@ -1877,6 +1881,10 @@ class Dataset(AbstractDataset):
             with the alpha index as the fourth index, otherwise the alpha band will be missing.
 
             >>> fig, ax = color_relief.plot(rgb=[0, 1, 2, 3])
+
+        .. image:: /_images/dataset/color-relief.png
+            :alt: Example Image
+            :align: center
         """
         if path is None:
             driver = "MEM"
