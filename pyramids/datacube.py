@@ -415,66 +415,72 @@ class Datacube:
             value to exclude from the plot. Default is None.
         **kwargs
             points : [array]
-                3 column array with the first column as the value you want to display for the point, the second is the
-                rows index of the point in the array, and the third column as the column index in the array.
-                the second and third column tells the location of the point in the array.
+                3 column array with the first column as the value you want to display for the point, the second is the rows
+                index of the point in the array, and the third column as the column index in the array.
+                - the second and third column tells the location of the point in the array.
             point_color: [str]
                 color.
             point_size: [Any]
                 size of the point.
             pid_color: [str]
-                the color of the annotation of the point. Default is blue.
+                the annotation color of the point. Default is blue.
             pid_size: [Any]
                 size of the point annotation.
             figsize: [tuple], optional
                 figure size. The default is (8,8).
             title: [str], optional
                 title of the plot. The default is 'Total Discharge'.
-            title_size: [integer], optional
-                title size. The default is 15.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            rotation: [number], optional
-                rotation of the color bar label. The default is -90.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            cbar_length: [float], optional
+            title_size: [integer], optional, default is 15.
+                title size.
+            cbar_orientation: [string], optional, default is 'vertical'
+                orientation of the color bar horizontal/vertical.
+            cbar_label_rotation: [number], optional, default is -90.
+                rotation of the color bar label.
+            cbar_label_location: str, optional, default is 'bottom'.
+                location of the color bar title 'top', 'bottom', 'center', 'baseline', 'center_baseline'.
+            cbar_length: float, optional
                 ratio to control the height of the color bar. The default is 0.75.
-            ticks_spacing: [integer], optional
+            ticks_spacing: int, optional
                 Spacing in the color bar ticks. The default is 2.
             cbar_label_size: integer, optional
                 size of the color bar label. The default is 12.
             cbar_label: str, optional
                 label of the color bar. The default is 'Discharge m3/s'.
-            color_scale: integer, optional
-                there are 5 options to change the scale of the colors. The default is 1.
-                1- color_scale 1 is the normal scale
-                2- color_scale 2 is the power scale
-                3- color_scale 3 is the SymLogNorm scale
-                4- color_scale 4 is the PowerNorm scale
-                5- color_scale 5 is the BoundaryNorm scale
-                ------------------------------------------------------------------
-                gamma : [float], optional
-                    value needed for option 2 . The default is 1./2..
-                line_threshold : [float], optional
-                    value needed for option 3. The default is 0.0001.
-                line_scale : [float], optional
-                    value needed for option 3. The default is 0.001.
-                bounds: [List]
-                    a list of number to be used as a discrete bounds for the color scale 4.Default is None,
-                midpoint : [float], optional
-                    value needed for option 5. The default is 0.
-                ------------------------------------------------------------------
-            cmap : [str], optional
-                color style. The default is 'coolwarm_r'.
-            display_cell_value : [bool]
+            color_scale : integer, optional, default is 1.
+                there are 5 options to change the scale of the colors.
+
+                1- `linear`:
+                    linear scale.
+                2- `power`:
+                    for the power scale. Linearly map a given value to the 0-1 range and then apply a power-law
+                    normalization over that range.
+                3- `sym-lognorm`:
+                    the symmetrical logarithmic scale `SymLogNorm` is logarithmic in both the positive and
+                    negative directions from the origin.
+                4- `boundary-norm`:
+                    the BoundaryNorm scale generates a colormap index based on discrete intervals.
+                5- `midpoint`:
+                    the midpoint scale splits the scale into 2 halfs, be the given value.
+            gamma: [float], optional, default is 0.5.
+                value needed for the color_scale `power`.
+            line_threshold: float, optional, default is 0.0001.
+                value needed for the color_scale `sym-lognorm`.
+            line_scale: float, optional, default is 0.001.
+                value needed for the color_scale `sym-lognorm`.
+            bounds: List, default is None,
+                a list of number to be used as a discrete bounds for the color scale `boundary-norm`.
+            midpoint: float, optional, default is 0.
+                value needed for the color_scale `midpoint`.
+            cmap: str, optional, default is 'coolwarm_r'.
+                color style.
+            display_cell_value: bool
                 True if you want to display the values of the cells as a text
-            num_size : integer, optional
-                size of the numbers plotted in top of each cells. The default is 8.
-            background_color_threshold : [float/integer], optional
+            num_size: integer, optional, default is 8.
+                size of the numbers plotted on top of each cell.
+            background_color_threshold: [float/integer], optional, default is None.
                 threshold value if the value of the cell is greater, the plotted
-                numbers will be black and if smaller the plotted number will be white
-                if None given the maxvalue/2 will be considered. The default is None.
+                numbers will be black, and if smaller the plotted number will be white
+                if None given the max value/2 is considered.
 
         Returns
         -------
@@ -484,7 +490,7 @@ class Datacube:
             the figure object
         """
         import_cleopatra(
-            "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
+            "The current function uses cleopatra package to for plotting, please install it manually, for more info "
             "check https://github.com/Serapieum-of-alex/cleopatra"
         )
         from cleopatra.array_glyph import ArrayGlyph
