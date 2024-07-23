@@ -33,8 +33,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-            pip install -r requirements.txt -r requirements-dev.txt
-            python setup.py install
+            pip install .[dev]
 
       - name: Run tests
         run: |
@@ -73,8 +72,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-            pip install -r requirements-optional-packages.txt -r requirements-dev.txt
-            python setup.py install
+            pip install .[dev, viz]
 
       - name: Run tests and generate coverage report
         run: |
