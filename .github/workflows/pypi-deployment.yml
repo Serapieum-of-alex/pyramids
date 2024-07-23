@@ -36,9 +36,9 @@ jobs:
             pip install -r requirements.txt -r requirements-dev.txt
             python setup.py install
 
-      - name: Generate coverage report
+      - name: Run tests
         run: |
-          python -m pytest -sv -m "not plot"
+          python -m pytest -sv -m "not plot" --ignore=tests/dataset/test_plot.py
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3
@@ -76,7 +76,7 @@ jobs:
             pip install -r requirements-optional-packages.txt -r requirements-dev.txt
             python setup.py install
 
-      - name: Generate coverage report
+      - name: Run tests and generate coverage report
         run: |
           python -m pytest -v --cov=pyramids --cov-report=xml
 
