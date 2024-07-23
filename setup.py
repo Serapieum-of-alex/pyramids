@@ -8,9 +8,6 @@ with open("HISTORY.rst") as history_file:
 
 requirements = [line.strip() for line in open("requirements.txt").readlines()]
 requirements_dev = [line.strip() for line in open("requirements-dev.txt").readlines()]
-requirements_all = [
-    line.strip() for line in open("requirements-optional-packages.txt").readlines()
-]
 
 setup(
     name="pyramids-gis",
@@ -30,8 +27,7 @@ setup(
     install_requires=requirements,
     extras_require={
         "dev": requirements_dev,
-        "viz": ["cleopatra>=0.4.0"],
-        "all": requirements_all,
+        "viz": ["cleopatra>=0.5.0"],
     },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
