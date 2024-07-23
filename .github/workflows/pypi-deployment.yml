@@ -72,7 +72,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-            pip install .[dev, viz]
+            pip install .[dev,viz]
 
       - name: Run tests and generate coverage report
         run: |
