@@ -27,7 +27,7 @@ setup(
     install_requires=requirements,
     extras_require={
         "dev": requirements_dev,
-        "viz": ["cleopatra>=0.5.0"],
+        "viz": ["cleopatra>=0.5.1"],
     },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
