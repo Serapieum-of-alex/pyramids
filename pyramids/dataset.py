@@ -1796,7 +1796,7 @@ class Dataset(AbstractDataset):
         return fig, ax
 
     def color_relief(
-        self, band: int = 0, path: str = None, color_table: DataFrame = None
+        self, band: int = 0, path: str = None, color_table: DataFrame = None, **kwargs
     ) -> "Dataset":
         """Create a color relief for a band in the Dataset.
 
@@ -1896,6 +1896,7 @@ class Dataset(AbstractDataset):
             format=driver,
             addAlpha=True,
             colorFilename=color_table_path,
+            **kwargs,
         )
         color_relief = Dataset(dst, access="write")
         color_relief.band_color = {0: "red", 1: "green", 2: "blue", 3: "alpha"}
@@ -1909,6 +1910,7 @@ class Dataset(AbstractDataset):
         vertical_exaggeration: Union[int, float] = 1,
         scale: Union[int, float] = 0,
         path: str = None,
+        **kwargs,
     ) -> "Dataset":
         """Create hill-shade.
 
@@ -1990,6 +1992,7 @@ class Dataset(AbstractDataset):
             zFactor=vertical_exaggeration,
             scale=scale,
             creationOptions=["COMPRESS=LZW"],
+            **kwargs,
         )
 
         dst = gdal.DEMProcessing(path, self.raster, "hillshade", options=options)
