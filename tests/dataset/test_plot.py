@@ -168,7 +168,7 @@ class TestColorRelief:
         dataset = Dataset.create_from_array(
             arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
         )
-        color_relief = dataset.create_color_relief(band=0, color_table=self.df)
+        color_relief = dataset.color_relief(band=0, color_table=self.df)
         assert color_relief.band_count == 4
         assert color_relief.band_color == {0: "red", 1: "green", 2: "blue", 3: "alpha"}
         df = color_relief.stats()

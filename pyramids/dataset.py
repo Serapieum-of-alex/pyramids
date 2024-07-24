@@ -1795,7 +1795,7 @@ class Dataset(AbstractDataset):
         fig, ax = cleo.plot(**kwargs)
         return fig, ax
 
-    def create_color_relief(
+    def color_relief(
         self, band: int = 0, path: str = None, color_table: DataFrame = None
     ) -> "Dataset":
         """Create a color relief for a band in the Dataset.
@@ -1851,7 +1851,7 @@ class Dataset(AbstractDataset):
 
         - Now let's create the color relief for the dataset using the color table `DataFrame`.
 
-            >>> color_relief = dataset.create_color_relief(band=0, color_table=df)
+            >>> color_relief = dataset.color_relief(band=0, color_table=df)
             >>> print(color_relief) # doctest: +SKIP
             <BLANKLINE>
                         Cell size: 0.05
@@ -1883,9 +1883,6 @@ class Dataset(AbstractDataset):
             path = ""
         else:
             driver = "GTiff"
-        # get the array of the band and convert it to a dataset.
-        arr = self.read_array(band=band)
-        band_dataset = Dataset.dataset_like(self, arr)
         color_df = self._process_color_table(color_table)
 
         temp_dir = tempfile.mkdtemp()
@@ -1893,8 +1890,9 @@ class Dataset(AbstractDataset):
         color_df.to_csv(color_table_path, index=False, header=False)
         dst = gdal.DEMProcessing(
             path,
-            band_dataset.raster,
+            self.raster,
             "color-relief",
+            band=band + 1,
             format=driver,
             addAlpha=True,
             colorFilename=color_table_path,
