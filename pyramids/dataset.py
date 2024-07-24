@@ -76,11 +76,16 @@ class Dataset(AbstractDataset):
     def __str__(self):
         """__str__."""
         message = f"""
+            Top Left Corner: {self.top_left_corner}
             Cell size: {self.cell_size}
             Dimension: {self.rows} * {self.columns}
             EPSG: {self.epsg}
             Number of Bands: {self.band_count}
             Band names: {self.band_names}
+            Band colors: {self.band_color}
+            Band units: {self.band_units}
+            Scale: {self.scale}
+            Offset: {self.offset}
             Mask: {self._no_data_value[0]}
             Data type: {self.dtype[0]}
             File: {self.file_name}
@@ -89,34 +94,21 @@ class Dataset(AbstractDataset):
 
     def __repr__(self):
         """__repr__."""
-        message = """
-            Cell size: {0}
-            Dimension: {1} * {2}
-            EPSG: {3}
-            Number of Bands: {4}
-            Band names: {5}
-            Mask: {6}
-            Data type: {7}
-            projection: {8}
-            Metadata: {9}
-            File: {10}
-        """.format(
-            self.cell_size,
-            self.rows,
-            self.columns,
-            self.epsg,
-            self.band_count,
-            self.band_names,
-            (
-                self._no_data_value
-                if self._no_data_value == []
-                else self._no_data_value[0]
-            ),
-            self.dtype if self.dtype == [] else self.dtype[0],
-            self.crs,
-            self.meta_data,
-            self.file_name,
-        )
+        message = f"""
+            Top Left Corner: {self.top_left_corner}
+            Cell size: {self.cell_size}
+            Dimension: {self.rows} * {self.columns}
+            EPSG: {self.epsg}
+            Number of Bands: {self.band_count}
+            Band names: {self.band_names}
+            Band colors: {self.band_color}
+            Band units: {self.band_units}
+            Scale: {self.scale}
+            Offset: {self.offset}
+            Mask: {self._no_data_value[0]}
+            Data type: {self.dtype[0]}
+            File: {self.file_name}
+        """
         return message
 
     @property
@@ -5813,7 +5805,7 @@ class Dataset(AbstractDataset):
         ----------
         values: [Dict[int, str]]
             dictionary with band index as key and color name as value.
-            e.g. {0: 'Red', 1: 'Green', 2: 'Blue'}, possible values are
+            e.g. {0: 'red', 1: 'green', 2: 'blue'}, possible values are
             ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue', 'saturation',
             'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand', 'YCbCr_CrBand']
 
