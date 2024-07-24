@@ -483,7 +483,7 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        Zip files:
+        Compressed files:
             - Internal Zip file path (one/multiple files inside the compressed file):
                 if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains
                     the internal path inside the zip file, so just ad
@@ -534,6 +534,28 @@ class Dataset(AbstractDataset):
                             Mask: -3.4028230607370965e+38
                             Data type: float32
                             File: /vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/2.asc
+                <BLANKLINE>
+
+        Virtual files:
+            - You can open files stored online simply by using the full url to the file with the `read_file` method.
+
+                >>> url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/31/U/FU/2020/3/S2A_31UFU_20200328_0_L2A/B01.tif"
+                >>> dataset = Dataset.read_file(url)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Top Left Corner: (600000.0, 5900040.0)
+                            Cell size: 60.0
+                            Dimension: 1830 * 1830
+                            EPSG: 32631
+                            Number of Bands: 1
+                            Band names: ['Band_1']
+                            Band colors: {0: 'gray_index'}
+                            Band units: ['']
+                            Scale: [1.0]
+                            Offset: [0]
+                            Mask: 0.0
+                            Data type: uint16
+                            File: https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/31/U/FU/2020/3/S2A_31UFU_20200328_0_L2A/B01.tif
                 <BLANKLINE>
 
         See also
