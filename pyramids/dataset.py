@@ -1888,16 +1888,16 @@ class Dataset(AbstractDataset):
         temp_dir = tempfile.mkdtemp()
         color_table_path = os.path.join(temp_dir, f"{uuid.uuid1()}.txt")
         color_df.to_csv(color_table_path, index=False, header=False)
-        dst = gdal.DEMProcessing(
-            path,
-            self.raster,
-            "color-relief",
+
+        options = gdal.DEMProcessingOptions(
             band=band + 1,
             format=driver,
-            addAlpha=True,
             colorFilename=color_table_path,
+            addAlpha=True,
+            creationOptions=["COMPRESS={}".format("DEFLATE"), "PREDICTOR={}".format(2)],
             **kwargs,
         )
+        dst = gdal.DEMProcessing(path, self.raster, "color-relief", options=options)
         color_relief = Dataset(dst, access="write")
         color_relief.band_color = {0: "red", 1: "green", 2: "blue", 3: "alpha"}
         return color_relief
