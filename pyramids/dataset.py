@@ -1903,6 +1903,102 @@ class Dataset(AbstractDataset):
         color_relief.band_color = {0: "red", 1: "green", 2: "blue", 3: "alpha"}
         return color_relief
 
+    def hill_shade(
+        self,
+        band: int,
+        light_source_angle: Union[int, float] = 0,
+        light_source_elevation: Union[int, float] = 0,
+        vertical_exaggeration: Union[int, float] = 1,
+        scale: Union[int, float] = 0,
+        path: str = None,
+    ) -> "Dataset":
+        """Create hill-shade.
+
+        Hillshade is a technique used in digital elevation modeling (DEM) to create a grayscale representation of a
+        terrain's surface that simulates the effect of sunlight falling across the landscape.
+        This technique helps to visualize the shape and features of the terrain by highlighting the variations in
+        elevation and the slope of the surface.
+
+        Hillshade calculates the illumination of each pixel based on the slope (gradient) and aspect (direction) of the
+        terrain surface relative to a specified light source.
+
+        The main parameters influencing the hillshade effect are:
+        - Light source direction (Azimuth): the azimuth angle of the light source, which is the angle between the light
+            source
+        - Light source elevation (altitude): the source of light elevation, it is measured in degrees from the horizon.
+        - Vertical exaggeration (Z-factor): the vertical exaggeration is used to emphasize the vertical features of the
+            terrain.
+
+        Parameters
+        ----------
+        band: int
+            band index.
+        light_source_angle: Union[int, float]
+            The source of light direction, it is measured clockwise from the north. zero means from north to south.
+            45 degrees means from the northeast to the southwest.
+        light_source_elevation: Union[int, float]
+            The source of light elevation, it is measured in degrees from the horizon. zero means from the horizon.
+            90 degrees means from the zenith.
+            the overall image gets brighter as the light source gets closer to the zenith. The brightest slopes/DEM
+            features will be perpendicular to the light source, and the darkest will be angled 90˚ or more away.
+        vertical_exaggeration: Union[int, float]
+            Vertical exaggeration, the vertical exaggeration It is used to emphasize the
+            vertical features of the terrain.
+        scale: Union[int, float]
+            the scale is the ratio of the vertical scale to the horizontal scale.
+        path: str, optional, default is None
+            path to save the hill-shade raster.
+
+        Returns
+        -------
+        Dataset:
+            Dataset with the hill-shade created.
+
+        Examples
+        --------
+        - First create a one band dataset, consisting of 10 columns and 10 rows, with random values between 0 and 15.
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(0, 15, size=(100, 100))
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
+
+            >>> hill_shade = dataset.hill_shade(
+            ... band=0, light_source_elevation=45, light_source_angle=315, vertical_exaggeration=1, scale=1
+            ...)
+
+            >>> print(hill_shade.dtype) # doctest: +SKIP
+            ['byte']
+            >>> hill_shade.plot() # doctest: +SKIP
+
+            .. image:: /_images/dataset/hill-shade.png
+                :alt: Example Image
+                :align: center
+
+            >>> hill_shade.stats() # doctest: +SKIP
+                    min    max       mean        std
+            Band_1  1.0  223.0  58.880951  71.079056
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+
+        options = gdal.DEMProcessingOptions(
+            band=band + 1,
+            format=driver,
+            azimuth=light_source_angle,
+            altitude=light_source_elevation,
+            zFactor=vertical_exaggeration,
+            scale=scale,
+            creationOptions=["COMPRESS=LZW"],
+        )
+
+        dst = gdal.DEMProcessing(path, self.raster, "hillshade", options=options)
+        hill_shade = Dataset(dst)
+        hill_shade.band_color = {0: "gray_index"}
+        return hill_shade
+
     @staticmethod
     def _process_color_table(color_table: DataFrame) -> DataFrame:
         import_cleopatra(

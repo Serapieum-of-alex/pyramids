@@ -1793,3 +1793,24 @@ def test_nearest_neigbors():
     req_cols = [2, 4]
     no_data_value = dataset.no_data_value[0]
     new_array = Dataset._nearest_neighbour(arr, no_data_value, req_rows, req_cols)
+
+
+class TestHillShade:
+
+    def test_hillshade(self, src: Dataset):
+        arr = np.random.randint(0, 15, size=(100, 100))
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
+        )
+
+        hill_shade = dataset.hill_shade(
+            band=0,
+            light_source_elevation=45,
+            light_source_angle=315,
+            vertical_exaggeration=1,
+            scale=1,
+        )
+        assert hill_shade.shape == dataset.shape
+        assert hill_shade.dtype == ["byte"]
+        arr2 = hill_shade.read_array()
+        assert arr2.dtype == np.uint8
