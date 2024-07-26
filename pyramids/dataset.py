@@ -6647,12 +6647,7 @@ class Dataset(AbstractDataset):
             assign a scale of 0.1 to the dataset.
 
             >>> import numpy as np
-            >>> arr = np.random.randint(1, 10, size=(2, 2, 2))
-            >>> print(arr)
-            [[[6 4]
-              [5 6]]
-             [[1 3]
-              [6 1]]]
+            >>> arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
             >>> top_left_corner = (0, 0)
             >>> cell_size = 0.05
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
@@ -6669,16 +6664,16 @@ class Dataset(AbstractDataset):
                         Scale: [1.0, 1.0]
                         Offset: [0, 0]
                         Mask: -9999.0
-                        Data type: int32
+                        Data type: int64
                         File: ...
             <BLANKLINE>
             >>> df = dataset.to_xyz()
             >>> print(df)
                  lon    lat  Band_1  Band_2
-            0  0.025 -0.025       6       4
-            1  0.075 -0.025       5       6
-            2  0.025 -0.075       1       3
-            3  0.075 -0.075       6       1
+            0  0.025 -0.025       1       5
+            1  0.075 -0.025       2       6
+            2  0.025 -0.075       3       7
+            3  0.075 -0.075       4       8
         """
         try:
             from osgeo_utils import gdal2xyz
