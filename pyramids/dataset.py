@@ -2050,8 +2050,14 @@ class Dataset(AbstractDataset):
         path: str, optional, default is None.
             path to save the output, if None, the output will be saved in memory.
         kwargs:
+            unscale:
+                unscale values with scale and offset metadata.
+            scaleParams:
+                list of scale parameters, each of the form [src_min,src_max] or [src_min,src_max,dst_min,dst_max]
             outputType:
                 output type (gdalconst.GDT_Byte, etc...)
+            exponents:
+                list of exponentiation parameters
             bandList:
                 array of band numbers (index start at 1)
             maskBand:
@@ -2064,12 +2070,6 @@ class Dataset(AbstractDataset):
                 subwindow in projected coordinates to extract: [ulx, uly, lrx, lry]
             projWinSRS:
                 SRS in which projWin is expressed
-            unscale:
-                unscale values with scale and offset metadata
-            scaleParams:
-                list of scale parameters, each of the form [src_min,src_max] or [src_min,src_max,dst_min,dst_max]
-            exponents:
-                list of exponentiation parameters
             outputBounds:
                 assigned output bounds: [ulx, uly, lrx, lry]
             outputGeotransform:
@@ -2103,7 +2103,7 @@ class Dataset(AbstractDataset):
 
             Scale:
                 - First we will create a dataset from a float32 array with values between 1 and 10, and then we will
-                assign a scale of 0.1 to the dataset.
+                    assign a scale of 0.1 to the dataset.
 
                     >>> import numpy as np
                     >>> arr = np.random.randint(1, 10, size=(5, 5)).astype(np.float32)
@@ -2162,9 +2162,9 @@ class Dataset(AbstractDataset):
 
             offset:
                 - You can also unshift the values of the dataset if the dataset has an offset. To remove the offset from
-                all values in the dataset, you can read the values using the `read_array` and then add the offset value
-                to the array. we will create a dataset from the same array we created above (values are between 1, and 10)
-                with an offset of 100.
+                    all values in the dataset, you can read the values using the `read_array` and then add the offset value
+                    to the array. we will create a dataset from the same array we created above (values are between 1, and 10)
+                    with an offset of 100.
 
                     >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
                     >>> print(dataset)
@@ -2208,7 +2208,7 @@ class Dataset(AbstractDataset):
                     >>> print(unscaled_dataset.offset)
                     [0]
 
-            offset and scale together:
+            Offset and Scale together:
                 - we can unscale and get rid of the offset at the same time.
 
                     >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
@@ -2235,13 +2235,31 @@ class Dataset(AbstractDataset):
                      [100.6 100.8 100.1 100.5 100.8]
                      [100.2 100.5 100.2 100.2 100.9]]
 
-                - Now you can see that the values were multiplied first by the scale, then the offset value was added.
+                - Now you can see that the values were multiplied first by the scale; then the offset value was added.
                     `value * scale + offset`
 
                     >>> print(unscaled_dataset.offset)
                     [0]
                     >>> print(unscaled_dataset.scale)
                     [1.0]
+
+        Scale between two values:
+            - you can scale the values of the dataset between two values, for example, you can scale the values between
+                two values 0 and 1.
+
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                >>> print(dataset.stats()) # doctest: +SKIP
+                        min  max  mean      std
+                Band_1  1.0  9.0   4.0  2.19089
+                >>> scaled_dataset = dataset.translate(scaleParams=[[1, 9, 0, 255]], outputType=gdal.GDT_Byte)
+                >>> print(scaled_dataset.read_array()) # doctest: +SKIP
+                [[128 128  64  96  32]
+                 [ 32 128 128 223 128]
+                 [191 128 159   0  32]
+                 [159 223   0 128 223]
+                 [ 32 128  32  32 255]]
+
+
         """
         if path is None:
             driver = "MEM"
