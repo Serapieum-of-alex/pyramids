@@ -390,6 +390,7 @@ class Dataset(AbstractDataset):
         """Scale.
 
         The value of the scale is used to convert the pixel values to the real-world values.
+        it means you have to multiply the pixel values by the scale to get the real-world values.
 
         Hint
         ----
@@ -1899,6 +1900,10 @@ class Dataset(AbstractDataset):
         .. image:: /_images/dataset/color-relief.png
             :alt: Example Image
             :align: center
+
+        See Also
+        --------
+        Dataset.hill_shade: create a hill-shade for a band in the Dataset.
         """
         if path is None:
             driver = "MEM"
@@ -1973,7 +1978,7 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        Dataset:
+        Dataset: 8 bit dataset
             Dataset with the hill-shade created.
 
         Examples
@@ -1999,6 +2004,10 @@ class Dataset(AbstractDataset):
             >>> hill_shade.stats() # doctest: +SKIP
                     min    max       mean        std
             Band_1  1.0  223.0  58.880951  71.079056
+
+        See Also
+        --------
+        Dataset.color_relief: create a color relief for a band in the Dataset.
         """
         if path is None:
             driver = "MEM"
@@ -2018,7 +2027,7 @@ class Dataset(AbstractDataset):
         )
 
         dst = gdal.DEMProcessing(path, self.raster, "hillshade", options=options)
-        hill_shade = Dataset(dst)
+        hill_shade = Dataset(dst, access="write")
         hill_shade.band_color = {0: "gray_index"}
         return hill_shade
 
