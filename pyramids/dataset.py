@@ -2273,7 +2273,8 @@ class Dataset(AbstractDataset):
             color_df.loc[:, ["red", "green", "blue"]] = color_rgb
         else:
             raise ValueError(
-                "color_table must contain either red, green, blue, or color columns."
+                f"color_table must contain either red, green, blue, or color columns. given columns are: "
+                f"{color_table.columns}"
             )
 
         if "alpha" not in color_table.columns:
