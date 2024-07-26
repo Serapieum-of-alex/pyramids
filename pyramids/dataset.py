@@ -6622,3 +6622,98 @@ class Dataset(AbstractDataset):
     #     x_off, y_off =  # the top left corner point of the polygon.
     #     flags, percent = band.GetDataCoverageStatus(x_off, y_off, x_size, y_size, sampling)
     #     return percent
+
+    def to_xyz(
+        self, bands: List[int] = None, path: str = None
+    ) -> Union[DataFrame, None]:
+        """Convert to XYZ.
+
+        Parameters
+        ----------
+        path: str, optional, default is None
+            path to the file where the data will be saved. If None, the data will be returned as a DataFrame.
+        bands: List[int], optional, default is None
+            indices of the bands. If None, all bands will be used.
+
+        Returns
+        -------
+        DataFrame/File:
+            DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to
+            disk as a .xyz file
+
+        Examples
+        --------
+        - First we will create a dataset from a float32 array with values between 1 and 10, and then we will
+            assign a scale of 0.1 to the dataset.
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(1, 10, size=(2, 2, 2))
+            >>> print(arr)
+            [[[6 4]
+              [5 6]]
+             [[1 3]
+              [6 1]]]
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Top Left Corner: (0.0, 0.0)
+                        Cell size: 0.05
+                        Dimension: 2 * 2
+                        EPSG: 4326
+                        Number of Bands: 2
+                        Band names: ['Band_1', 'Band_2']
+                        Band colors: {0: 'undefined', 1: 'undefined'}
+                        Band units: ['', '']
+                        Scale: [1.0, 1.0]
+                        Offset: [0, 0]
+                        Mask: -9999.0
+                        Data type: int32
+                        File: ...
+            <BLANKLINE>
+            >>> df = dataset.to_xyz()
+            >>> print(df)
+                 lon    lat  Band_1  Band_2
+            0  0.025 -0.025       6       4
+            1  0.075 -0.025       5       6
+            2  0.025 -0.075       1       3
+            3  0.075 -0.075       6       1
+        """
+        try:
+            from osgeo_utils import gdal2xyz
+        except ImportError:
+            raise ImportError(
+                "osgeo_utils is not installed. Install it using pip: pip install osgeo-utils"
+            )
+
+        if bands is None:
+            bands = range(1, self.band_count + 1)
+        elif isinstance(bands, int):
+            bands = [bands + 1]
+        elif isinstance(bands, list):
+            bands = [band + 1 for band in bands]
+        else:
+            raise ValueError("bands must be an integer or a list of integers.")
+
+        band_nums = bands
+        arr = gdal2xyz.gdal2xyz(
+            self.raster,
+            path,
+            skip_nodata=True,
+            return_np_arrays=True,
+            band_nums=band_nums,
+        )
+        if path is None:
+            band_names = []
+            if bands is not None:
+                for band in bands:
+                    band_names.append(self.band_names[band - 1])
+            else:
+                band_names = self.band_names
+
+            df = pd.DataFrame(columns=["lon", "lat"] + band_names)
+            df["lon"] = arr[0]
+            df["lat"] = arr[1]
+            df[band_names] = arr[2].transpose()
+            return df

@@ -1814,3 +1814,33 @@ class TestHillShade:
         assert hill_shade.dtype == ["byte"]
         arr2 = hill_shade.read_array()
         assert arr2.dtype == np.uint8
+
+
+def test_to_xyz():
+    arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    top_left_corner = (0, 0)
+    cell_size = 0.05
+    dataset = Dataset.create_from_array(
+        arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+    )
+    # test with default parameters
+    df = dataset.to_xyz()
+    check_df = DataFrame(
+        {
+            "lon": [0.025, 0.075, 0.025, 0.075],
+            "lat": [-0.025, -0.025, -0.075, -0.075],
+            "Band_1": [1, 2, 3, 4],
+            "Band_2": [5, 6, 7, 8],
+        }
+    )
+
+    pd.testing.assert_frame_equal(df, check_df)
+    # test with one bands as integer
+    df = dataset.to_xyz(bands=0)
+    pd.testing.assert_frame_equal(df, check_df.loc[:, ["lon", "lat", "Band_1"]])
+
+    # test with one bands as integer
+    df = dataset.to_xyz(bands=[1])
+    pd.testing.assert_frame_equal(df, check_df.loc[:, ["lon", "lat", "Band_2"]])
+    with pytest.raises(ValueError):
+        dataset.to_xyz(bands="1")
