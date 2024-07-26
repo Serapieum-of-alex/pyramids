@@ -2031,6 +2031,228 @@ class Dataset(AbstractDataset):
         hill_shade.band_color = {0: "gray_index"}
         return hill_shade
 
+    def translate(self, path: str = None, **kwargs):
+        """Translate.
+
+        The translate function can be used to
+        - Convert Between Formats: Convert a raster from one format to another (e.g., from GeoTIFF to JPEG).
+        - Subset: Extract a subregion of a raster.
+        - Resample: Change the resolution of a raster.
+        - Reproject: Change the coordinate reference system of a raster.
+        - Scale Values: Scale pixel values to a new range.
+        - Change Data Type: Convert the data type of the raster.
+        - Apply Compression: Apply compression to the output raster.
+        - Apply No-Data Values: Define no-data values for the output raster.
+
+
+        Parameters
+        ----------
+        path: str, optional, default is None.
+            path to save the output, if None, the output will be saved in memory.
+        kwargs:
+            outputType:
+                output type (gdalconst.GDT_Byte, etc...)
+            bandList:
+                array of band numbers (index start at 1)
+            maskBand:
+                mask band to generate or not ("none", "auto", "mask", 1, ...)
+            creationOptions:
+                list or dict of creation options
+            srcWin:
+                subwindow in pixels to extract: [left_x, top_y, width, height]
+            projWin:
+                subwindow in projected coordinates to extract: [ulx, uly, lrx, lry]
+            projWinSRS:
+                SRS in which projWin is expressed
+            unscale:
+                unscale values with scale and offset metadata
+            scaleParams:
+                list of scale parameters, each of the form [src_min,src_max] or [src_min,src_max,dst_min,dst_max]
+            exponents:
+                list of exponentiation parameters
+            outputBounds:
+                assigned output bounds: [ulx, uly, lrx, lry]
+            outputGeotransform:
+                assigned geotransform matrix (array of 6 values) (mutually exclusive with outputBounds)
+            metadataOptions:
+                list or dict of metadata options
+            outputSRS:
+                assigned output SRS
+            noData:
+                nodata value (or "none" to unset it)
+            rgbExpand:
+                Color palette expansion mode: "gray", "rgb", "rgba"
+            xmp:
+                whether to copy XMP metadata
+            resampleAlg:
+                resampling mode
+            overviewLevel:
+                To specify which overview level of source files must be used
+            domainMetadataOptions:
+                list or dict of domain-specific metadata options
+
+        Returns
+        -------
+        Dataset
+
+        Examples
+        --------
+        Scale & offset:
+            - the translate function can be used to get rid of the scale and offset that are used to manipulate the
+            dataset, to get the real values of the dataset.
+
+            Scale:
+                - First we will create a dataset from a float32 array with values between 1 and 10, and then we will
+                assign a scale of 0.1 to the dataset.
+
+                    >>> import numpy as np
+                    >>> arr = np.random.randint(1, 10, size=(5, 5)).astype(np.float32)
+                    >>> print(arr) # doctest: +SKIP
+                    [[5. 5. 3. 4. 2.]
+                     [2. 5. 5. 8. 5.]
+                     [7. 5. 6. 1. 2.]
+                     [6. 8. 1. 5. 8.]
+                     [2. 5. 2. 2. 9.]]
+                    >>> top_left_corner = (0, 0)
+                    >>> cell_size = 0.05
+                    >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                    >>> print(dataset)
+                    <BLANKLINE>
+                                Top Left Corner: (0.0, 0.0)
+                                Cell size: 0.05
+                                Dimension: 5 * 5
+                                EPSG: 4326
+                                Number of Bands: 1
+                                Band names: ['Band_1']
+                                Band colors: {0: 'undefined'}
+                                Band units: ['']
+                                Scale: [1.0]
+                                Offset: [0]
+                                Mask: -9999.0
+                                Data type: float32
+                                File: ...
+                    <BLANKLINE>
+                    >>> dataset.scale = [0.1]
+
+                - now lets uscale the dataset values.
+
+                    >>> unscaled_dataset = dataset.translate(unscale=True)
+                    >>> print(unscaled_dataset) # doctest: +SKIP
+                    <BLANKLINE>
+                                Top Left Corner: (0.0, 0.0)
+                                Cell size: 0.05
+                                Dimension: 5 * 5
+                                EPSG: 4326
+                                Number of Bands: 1
+                                Band names: ['Band_1']
+                                Band colors: {0: 'undefined'}
+                                Band units: ['']
+                                Scale: [1.0]
+                                Offset: [0]
+                                Mask: -9999.0
+                                Data type: float32
+                                File:
+                    <BLANKLINE>
+                    >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
+                    [[0.5 0.5 0.3 0.4 0.2]
+                     [0.2 0.5 0.5 0.8 0.5]
+                     [0.7 0.5 0.6 0.1 0.2]
+                     [0.6 0.8 0.1 0.5 0.8]
+                     [0.2 0.5 0.2 0.2 0.9]]
+
+            offset:
+                - You can also unshift the values of the dataset if the dataset has an offset. To remove the offset from
+                all values in the dataset, you can read the values using the `read_array` and then add the offset value
+                to the array. we will create a dataset from the same array we created above (values are between 1, and 10)
+                with an offset of 100.
+
+                    >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                    >>> print(dataset)
+                    <BLANKLINE>
+                                Top Left Corner: (0.0, 0.0)
+                                Cell size: 0.05
+                                Dimension: 5 * 5
+                                EPSG: 4326
+                                Number of Bands: 1
+                                Band names: ['Band_1']
+                                Band colors: {0: 'undefined'}
+                                Band units: ['']
+                                Scale: [1.0]
+                                Offset: [0]
+                                Mask: -9999.0
+                                Data type: float32
+                                File: ...
+                    <BLANKLINE>
+
+                - set the offset to 100.
+
+                    >>> dataset.offset = [100]
+
+                - check if the offset has been set.
+
+                    >>> print(dataset.offset)
+                    [100.0]
+
+                - now lets uscale the dataset values.
+
+                    >>> unscaled_dataset = dataset.translate(unscale=True)
+                    >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
+                    [[105. 105. 103. 104. 102.]
+                     [102. 105. 105. 108. 105.]
+                     [107. 105. 106. 101. 102.]
+                     [106. 108. 101. 105. 108.]
+                     [102. 105. 102. 102. 109.]]
+
+                - as you see, all the values have been shifted by 100. now if you check the offset of the dataset
+
+                    >>> print(unscaled_dataset.offset)
+                    [0]
+
+            offset and scale together:
+                - we can unscale and get rid of the offset at the same time.
+
+                    >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+
+                - set the offset to 100, and a scale of 0.1.
+
+                    >>> dataset.offset = [100]
+                    >>> dataset.scale = [0.1]
+
+                - check if the offset has been set.
+
+                    >>> print(dataset.offset)
+                    [100.0]
+                    >>> print(dataset.scale)
+                    [0.1]
+
+                - now lets uscale the dataset values.
+
+                    >>> unscaled_dataset = dataset.translate(unscale=True)
+                    >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
+                    [[100.5 100.5 100.3 100.4 100.2]
+                     [100.2 100.5 100.5 100.8 100.5]
+                     [100.7 100.5 100.6 100.1 100.2]
+                     [100.6 100.8 100.1 100.5 100.8]
+                     [100.2 100.5 100.2 100.2 100.9]]
+
+                - Now you can see that the values were multiplied first by the scale, then the offset value was added.
+                    `value * scale + offset`
+
+                    >>> print(unscaled_dataset.offset)
+                    [0]
+                    >>> print(unscaled_dataset.scale)
+                    [1.0]
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+
+        options = gdal.TranslateOptions(format=driver, **kwargs)
+        dst = gdal.Translate(path, self.raster, options=options)
+        return Dataset(dst, access="write")
+
     @staticmethod
     def _process_color_table(color_table: DataFrame) -> DataFrame:
         import_cleopatra(
