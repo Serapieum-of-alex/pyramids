@@ -1931,11 +1931,11 @@ class Dataset(AbstractDataset):
 
     def hill_shade(
         self,
-        band: int,
-        light_source_angle: Union[int, float] = 0,
-        light_source_elevation: Union[int, float] = 0,
+        band: int = 0,
+        light_source_angle: Union[int, float] = 315,
+        light_source_elevation: Union[int, float] = 45,
         vertical_exaggeration: Union[int, float] = 1,
-        scale: Union[int, float] = 0,
+        scale: Union[int, float] = 1,
         path: str = None,
         **kwargs,
     ) -> "Dataset":
