@@ -1844,3 +1844,17 @@ def test_to_xyz():
     pd.testing.assert_frame_equal(df, check_df.loc[:, ["lon", "lat", "Band_2"]])
     with pytest.raises(ValueError):
         dataset.to_xyz(bands="1")
+
+
+class TestTranslate:
+    def test_scale(self):
+        arr = np.random.randint(1, 10, size=(5, 5)).astype(np.float32)
+        top_left_corner = (0, 0)
+        cell_size = 0.05
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+        )
+        dataset.scale = [0.1]
+        unscaled_dataset = dataset.translate(unscale=True)
+        unscalled_arr = unscaled_dataset.read_array()
+        np.testing.assert_almost_equal(unscalled_arr, arr * 0.1)
