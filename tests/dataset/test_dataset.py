@@ -1797,7 +1797,7 @@ def test_nearest_neigbors():
 
 class TestHillShade:
 
-    def test_hillshade(self, src: Dataset):
+    def test_int_parameters(self):
         arr = np.random.randint(0, 15, size=(100, 100))
         dataset = Dataset.create_from_array(
             arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
@@ -1805,10 +1805,28 @@ class TestHillShade:
 
         hill_shade = dataset.hill_shade(
             band=0,
-            light_source_elevation=45,
-            light_source_angle=315,
+            azimuth=315,
+            altitude=45,
             vertical_exaggeration=1,
             scale=1,
+        )
+        assert hill_shade.shape == dataset.shape
+        assert hill_shade.dtype == ["byte"]
+        arr2 = hill_shade.read_array()
+        assert arr2.dtype == np.uint8
+
+    def test_list_parameters(self):
+        arr = np.random.randint(0, 15, size=(100, 100))
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
+        )
+
+        hill_shade = dataset.hill_shade(
+            band=0,
+            azimuth=[315, 45],
+            altitude=[45, 45],
+            vertical_exaggeration=[1, 1],
+            scale=[1, 1],
         )
         assert hill_shade.shape == dataset.shape
         assert hill_shade.dtype == ["byte"]

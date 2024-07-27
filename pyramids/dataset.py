@@ -1932,11 +1932,12 @@ class Dataset(AbstractDataset):
     def hill_shade(
         self,
         band: int = 0,
-        light_source_angle: Union[int, float] = 315,
-        light_source_elevation: Union[int, float] = 45,
-        vertical_exaggeration: Union[int, float] = 1,
-        scale: Union[int, float] = 1,
+        azimuth: Union[int, float, List[int]] = 315,
+        altitude: Union[int, float, List[int]] = 45,
+        vertical_exaggeration: Union[int, float, List[int]] = 1,
+        scale: Union[int, float, List[int]] = 1,
         path: str = None,
+        weights: List[int] = None,
         **kwargs,
     ) -> "Dataset":
         """Create hill-shade.
@@ -1956,25 +1957,33 @@ class Dataset(AbstractDataset):
         - Vertical exaggeration (Z-factor): the vertical exaggeration is used to emphasize the vertical features of the
             terrain.
 
+        .. note::
+
+            if the `hill_shade` parameters are given as lists then the hill shade will be calculated for each set
+            of parameter and then the average will be returned.
+
         Parameters
         ----------
         band: int
             band index.
-        light_source_angle: Union[int, float]
-            The source of light direction (azimuth), it is measured clockwise from the north. zero means from north to south.
+        azimuth: Union[List, int, float]
+            The source of light direction, it is measured clockwise from the north. zero means from north to south.
             45 degrees means from the northeast to the southwest.
-        light_source_elevation: Union[int, float]
-            The source of light elevation (altitude), it is measured in degrees from the horizon. zero means from the horizon.
+        altitude: Union[List, int, float]
+            The source of light elevation, it is measured in degrees from the horizon. zero means from the horizon.
             90 degrees means from the zenith.
             the overall image gets brighter as the light source gets closer to the zenith. The brightest slopes/DEM
             features will be perpendicular to the light source, and the darkest will be angled 90˚ or more away.
-        vertical_exaggeration: Union[int, float]
+        vertical_exaggeration: Union[List, int, float]
             Vertical exaggeration, the vertical exaggeration It is used to emphasize the
             vertical features of the terrain.
-        scale: Union[int, float]
+        scale: Union[List, int, float]
             the scale is the ratio of the vertical scale to the horizontal scale.
         path: str, optional, default is None
             path to save the hill-shade raster.
+        weights: List[int], default is None.
+            list of weights to combine the hill-shades if the other parameters are given as lists, an average hill
+            shade will be calculated based on the weights. if None the weights will be equal.
 
         Returns
         -------
@@ -1990,7 +1999,7 @@ class Dataset(AbstractDataset):
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
 
             >>> hill_shade = dataset.hill_shade(
-            ... band=0, light_source_elevation=45, light_source_angle=315, vertical_exaggeration=1, scale=1
+            ... band=0, altitude=45, azimuth=315, vertical_exaggeration=1, scale=1
             ...)
 
             >>> print(hill_shade.dtype) # doctest: +SKIP
@@ -2005,6 +2014,19 @@ class Dataset(AbstractDataset):
                     min    max       mean        std
             Band_1  1.0  223.0  58.880951  71.079056
 
+        - You can also provide the function with a list os values for each parameter, then the functions will
+            calculate the hill shade for each set of parameters and then the average will be returned.
+
+            >>> hill_shade = dataset.hill_shade(
+            ... band=0, azimuth=[315, 45], altitude=[45, 45], vertical_exaggeration=[1, 1], scale=[1, 1]
+            ...)
+
+            >>> hill_shade.plot() # doctest: +SKIP
+
+            .. image:: /_images/dataset/hill-shade-multi.png
+                :alt: Example Image
+                :align: center
+
         See Also
         --------
         Dataset.color_relief: create a color relief for a band in the Dataset.
@@ -2014,17 +2036,66 @@ class Dataset(AbstractDataset):
             path = ""
         else:
             driver = "GTiff"
-        dst = self._create_hill_shade(
-            band,
-            driver,
-            light_source_angle,
-            light_source_elevation,
-            vertical_exaggeration,
-            scale,
-            path,
-            **kwargs,
-        )
-        hill_shade = Dataset(dst, access="write")
+
+        if not (
+            type(azimuth)
+            is type(altitude)
+            is type(vertical_exaggeration)
+            is type(scale)
+        ):
+            raise ValueError(
+                f"The azimuth, altitude, vertical_exaggeration, and scale parameter must be of the same type. Given"
+                f" azimuth: {type(azimuth)}, altitude: {type(altitude)}, vertical_exaggeration: {type(vertical_exaggeration)}, "
+                f"scale: {type()}"
+            )
+
+        # if parameters are lists
+        if isinstance(azimuth, list):
+            if (
+                len(azimuth)
+                != len(altitude)
+                != len(vertical_exaggeration)
+                != len(scale)
+            ):
+                raise ValueError(
+                    "The length of the light source angle and elevation must be the same."
+                )
+        else:
+            azimuth = [azimuth]
+            altitude = [altitude]
+            vertical_exaggeration = [vertical_exaggeration]
+            scale = [scale]
+
+        # get the hill shade for all the parameters
+        hill_shades: List[gdal.Dataset] = []
+        for az, alt, ver_ex, scale_1 in zip(
+            azimuth, altitude, vertical_exaggeration, scale
+        ):
+            dst = self._create_hill_shade(
+                band,
+                driver,
+                az,
+                alt,
+                ver_ex,
+                scale_1,
+                path,
+                **kwargs,
+            )
+            hill_shades.append(dst)
+
+        if len(hill_shades) > 1:
+            if weights is None:
+                weights = np.ones(len(azimuth))
+            weights = np.array(weights) / np.sum(weights)
+            hill_shades_arr: List[np.ndarray] = [
+                hill_shade.ReadAsArray() for hill_shade in hill_shades
+            ]
+            combined_hillshade = np.average(hill_shades_arr, axis=0, weights=weights)
+            combined_hillshade = np.clip(combined_hillshade, 0, 255).astype(np.uint8)
+            hill_shade = Dataset.dataset_like(self, combined_hillshade)
+        else:
+            hill_shade = Dataset(hill_shades[0], access="write")
+
         hill_shade.band_color = {0: "gray_index"}
 
         return hill_shade
@@ -2033,8 +2104,8 @@ class Dataset(AbstractDataset):
         self,
         band: int,
         driver: str,
-        light_source_angle: Union[int, float] = 315,
-        light_source_elevation: Union[int, float] = 45,
+        azimuth: Union[int, float] = 315,
+        altitude: Union[int, float] = 45,
         vertical_exaggeration: Union[int, float] = 1,
         scale: Union[int, float] = 1,
         path: str = None,
@@ -2044,8 +2115,8 @@ class Dataset(AbstractDataset):
         options = gdal.DEMProcessingOptions(
             band=band + 1,
             format=driver,
-            azimuth=light_source_angle,
-            altitude=light_source_elevation,
+            azimuth=azimuth,
+            altitude=altitude,
             zFactor=vertical_exaggeration,
             scale=scale,
             creationOptions=["COMPRESS=LZW"],
