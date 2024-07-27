@@ -2046,7 +2046,7 @@ class Dataset(AbstractDataset):
             raise ValueError(
                 f"The azimuth, altitude, vertical_exaggeration, and scale parameter must be of the same type. Given"
                 f" azimuth: {type(azimuth)}, altitude: {type(altitude)}, vertical_exaggeration: {type(vertical_exaggeration)}, "
-                f"scale: {type()}"
+                f"scale: {type(scale)}"
             )
 
         # if parameters are lists
