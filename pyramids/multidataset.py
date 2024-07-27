@@ -480,7 +480,7 @@ class MultiDataset:
             "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
             "check https://github.com/Serapieum-of-alex/cleopatra"
         )
-        from cleopatra.array import Array
+        from cleopatra.array_glyph import ArrayGlyph
 
         data = self.values
 
@@ -490,7 +490,7 @@ class MultiDataset:
             else [self.base.no_data_value[band]]
         )
 
-        cleo = Array(data, exclude_value=exclude_value)
+        cleo = ArrayGlyph(data, exclude_value=exclude_value)
         time = list(range(self.time_length))
         cleo.animate(time, **kwargs)
         return cleo
