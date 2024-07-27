@@ -1961,10 +1961,10 @@ class Dataset(AbstractDataset):
         band: int
             band index.
         light_source_angle: Union[int, float]
-            The source of light direction, it is measured clockwise from the north. zero means from north to south.
+            The source of light direction (azimuth), it is measured clockwise from the north. zero means from north to south.
             45 degrees means from the northeast to the southwest.
         light_source_elevation: Union[int, float]
-            The source of light elevation, it is measured in degrees from the horizon. zero means from the horizon.
+            The source of light elevation (altitude), it is measured in degrees from the horizon. zero means from the horizon.
             90 degrees means from the zenith.
             the overall image gets brighter as the light source gets closer to the zenith. The brightest slopes/DEM
             features will be perpendicular to the light source, and the darkest will be angled 90˚ or more away.
@@ -1978,7 +1978,7 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        Dataset: 8 bit dataset
+        Dataset: 8-bit dataset
             Dataset with the hill-shade created.
 
         Examples
@@ -2014,6 +2014,32 @@ class Dataset(AbstractDataset):
             path = ""
         else:
             driver = "GTiff"
+        dst = self._create_hill_shade(
+            band,
+            driver,
+            light_source_angle,
+            light_source_elevation,
+            vertical_exaggeration,
+            scale,
+            path,
+            **kwargs,
+        )
+        hill_shade = Dataset(dst, access="write")
+        hill_shade.band_color = {0: "gray_index"}
+
+        return hill_shade
+
+    def _create_hill_shade(
+        self,
+        band: int,
+        driver: str,
+        light_source_angle: Union[int, float] = 315,
+        light_source_elevation: Union[int, float] = 45,
+        vertical_exaggeration: Union[int, float] = 1,
+        scale: Union[int, float] = 1,
+        path: str = None,
+        **kwargs,
+    ) -> gdal.Dataset:
 
         options = gdal.DEMProcessingOptions(
             band=band + 1,
@@ -2025,11 +2051,9 @@ class Dataset(AbstractDataset):
             creationOptions=["COMPRESS=LZW"],
             **kwargs,
         )
-
         dst = gdal.DEMProcessing(path, self.raster, "hillshade", options=options)
-        hill_shade = Dataset(dst, access="write")
-        hill_shade.band_color = {0: "gray_index"}
-        return hill_shade
+
+        return dst
 
     def translate(self, path: str = None, **kwargs):
         """Translate.
