@@ -73,7 +73,7 @@ class Dataset(AbstractDataset):
             src.GetRasterBand(i).GetUnitType() for i in range(1, self.band_count + 1)
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """__str__."""
         message = f"""
             Top Left Corner: {self.top_left_corner}
@@ -92,24 +92,9 @@ class Dataset(AbstractDataset):
         """
         return message
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """__repr__."""
-        message = f"""
-            Top Left Corner: {self.top_left_corner}
-            Cell size: {self.cell_size}
-            Dimension: {self.rows} * {self.columns}
-            EPSG: {self.epsg}
-            Number of Bands: {self.band_count}
-            Band names: {self.band_names}
-            Band colors: {self.band_color}
-            Band units: {self.band_units}
-            Scale: {self.scale}
-            Offset: {self.offset}
-            Mask: {self._no_data_value[0]}
-            Data type: {self.dtype[0]}
-            File: {self.file_name}
-        """
-        return message
+        return gdal.Info(self.raster)
 
     @property
     def access(self) -> str:
