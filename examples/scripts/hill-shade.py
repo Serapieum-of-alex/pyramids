@@ -15,8 +15,8 @@ src = dataset.raster
 # Define input and output file paths
 hill_shade = dataset.hill_shade(
     band=0,
-    light_source_elevation=45,
-    light_source_angle=315,
+    altitude=45,
+    azimuth=315,
     vertical_exaggeration=1,
     scale=1,
 )
@@ -25,8 +25,8 @@ hill_shade.plot(cmap="gray")
 # %%
 hill_shade = dataset.hill_shade(
     band=0,
-    light_source_elevation=45,
-    light_source_angle=None,
+    altitude=45,
+    azimuth=None,
     vertical_exaggeration=1,
     scale=1,
     multiDirectional=True,

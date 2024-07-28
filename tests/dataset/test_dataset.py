@@ -1833,6 +1833,63 @@ class TestHillShade:
         arr2 = hill_shade.read_array()
         assert arr2.dtype == np.uint8
 
+    def test_multi_directional(self):
+        arr = np.random.randint(0, 15, size=(100, 100))
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
+        )
+
+        hill_shade = dataset.hill_shade(
+            band=0,
+            azimuth=None,
+            altitude=45,
+            vertical_exaggeration=1,
+            scale=1,
+            multi_directional=True,
+        )
+        assert hill_shade.shape == dataset.shape
+        assert hill_shade.dtype == ["byte"]
+        arr2 = hill_shade.read_array()
+        assert arr2.dtype == np.uint8
+
+    def test_combined(self):
+        arr = np.random.randint(0, 15, size=(100, 100))
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
+        )
+
+        hill_shade = dataset.hill_shade(
+            band=0,
+            azimuth=315,
+            altitude=45,
+            vertical_exaggeration=1,
+            scale=1,
+            combined=True,
+        )
+        assert hill_shade.shape == dataset.shape
+        assert hill_shade.dtype == ["byte"]
+        arr2 = hill_shade.read_array()
+        assert arr2.dtype == np.uint8
+
+    def test_igor(self):
+        arr = np.random.randint(0, 15, size=(100, 100))
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
+        )
+
+        hill_shade = dataset.hill_shade(
+            band=0,
+            azimuth=315,
+            altitude=None,
+            vertical_exaggeration=1,
+            scale=1,
+            igor=True,
+        )
+        assert hill_shade.shape == dataset.shape
+        assert hill_shade.dtype == ["byte"]
+        arr2 = hill_shade.read_array()
+        assert arr2.dtype == np.uint8
+
 
 def test_to_xyz():
     arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])

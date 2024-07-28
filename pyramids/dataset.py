@@ -1968,7 +1968,19 @@ class Dataset(AbstractDataset):
             path to save the hill-shade raster.
         weights: List[int], default is None.
             list of weights to combine the hill-shades if the other parameters are given as lists, an average hill
-            shade will be calculated based on the weights. if None the weights will be equal.
+            shade will be calculated based on the weights. if None, the weights will be equal.
+        **kwargs:
+            multi_directional: bool
+                if True, the hill shade will be calculated for multiple azimuth values [225, 270, 315, 360] each with a
+                altitude of 30 degrees, and then the average will be returned. with multi_directional = True any given
+                azimuth will be ignored.
+                more details visit: http://pubs.usgs.gov/of/1992/of92-422/of92-422.pdf
+            combined: bool
+                combined shading, a combination of slope and oblique shading.
+            igor: bool
+                shading which tries to minimize effects on other map features beneath. with igor=True the altitude will
+                be calculated ignored.
+                more details visit: http://maperitive.net/docs/Commands/GenerateReliefImageIgor.html
 
         Returns
         -------
@@ -2003,7 +2015,7 @@ class Dataset(AbstractDataset):
             calculate the hill shade for each set of parameters and then the average will be returned.
 
             >>> hill_shade = dataset.hill_shade(
-            ... band=0, azimuth=[315, 45], altitude=[45, 45], vertical_exaggeration=[1, 1], scale=[1, 1]
+            ...     band=0, azimuth=[315, 45], altitude=[45, 45], vertical_exaggeration=[1, 1], scale=[1, 1]
             ...)
 
             >>> hill_shade.plot() # doctest: +SKIP
@@ -2016,23 +2028,42 @@ class Dataset(AbstractDataset):
         --------
         Dataset.color_relief: create a color relief for a band in the Dataset.
         """
+        if "multi_directional" in kwargs:
+            if not isinstance(kwargs["multi_directional"], bool):
+                raise ValueError("The multi_directional parameter must be a boolean.")
+            if kwargs["multi_directional"]:
+                multi_directional = True
+                azimuth = (
+                    None  # altitude, vertical_exaggeration, scale = None, None, None,
+                )
+            else:
+                multi_directional = False
+
+            kwargs.pop("multi_directional")
+            kwargs["multiDirectional"] = multi_directional
+        if "igor" in kwargs:
+            if not isinstance(kwargs["igor"], bool):
+                raise ValueError("The igor parameter must be a boolean.")
+            if kwargs["igor"]:
+                altitude = None
+
+        # if not (
+        #     type(azimuth)
+        #     is type(altitude)
+        #     is type(vertical_exaggeration)
+        #     is type(scale)
+        # ):
+        #     raise ValueError(
+        #         f"The azimuth, altitude, vertical_exaggeration, and scale parameter must be of the same type. Given"
+        #         f" azimuth: {type(azimuth)}, altitude: {type(altitude)}, vertical_exaggeration: {type(vertical_exaggeration)},"
+        #         f"scale: {type(scale)}"
+        #     )
+
         if path is None:
             driver = "MEM"
             path = ""
         else:
             driver = "GTiff"
-
-        if not (
-            type(azimuth)
-            is type(altitude)
-            is type(vertical_exaggeration)
-            is type(scale)
-        ):
-            raise ValueError(
-                f"The azimuth, altitude, vertical_exaggeration, and scale parameter must be of the same type. Given"
-                f" azimuth: {type(azimuth)}, altitude: {type(altitude)}, vertical_exaggeration: {type(vertical_exaggeration)}, "
-                f"scale: {type(scale)}"
-            )
 
         # if parameters are lists
         if isinstance(azimuth, list):
@@ -2057,14 +2088,7 @@ class Dataset(AbstractDataset):
             azimuth, altitude, vertical_exaggeration, scale
         ):
             dst = self._create_hill_shade(
-                band,
-                driver,
-                az,
-                alt,
-                ver_ex,
-                scale_1,
-                path,
-                **kwargs,
+                band, driver, az, alt, ver_ex, scale_1, path, **kwargs
             )
             hill_shades.append(dst)
 
@@ -5429,8 +5453,8 @@ class Dataset(AbstractDataset):
         -------
         array
         """
-        array_min = array.min()
-        array_max = array.max()
+        array_min = np.nanmin(array)
+        array_max = np.nanmax(array)
         val = (array - array_min) / (array_max - array_min)
         return val
 
