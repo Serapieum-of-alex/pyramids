@@ -36,6 +36,8 @@ RESAMPLING_METHODS = [
     "BILINEAR",
 ]
 
+CREATION_OPTIONS = ["COMPRESS={}".format("DEFLATE"), "PREDICTOR={}".format(2)]
+
 
 class AbstractDataset(ABC):
     """AbstractDataset."""

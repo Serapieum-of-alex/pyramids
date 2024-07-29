@@ -48,6 +48,7 @@ from pyramids.abstract_dataset import (
     CATALOG,
     OVERVIEW_LEVELS,
     RESAMPLING_METHODS,
+    CREATION_OPTIONS,
 )
 
 
@@ -2141,6 +2142,95 @@ class Dataset(AbstractDataset):
         dst = gdal.DEMProcessing(path, self.raster, "hillshade", options=options)
 
         return dst
+
+    def slope(
+        self,
+        band: int = 0,
+        scale: Union[int, float, List[int]] = 1,
+        slope_format: str = "degree",
+        zero_flat_surface: bool = True,
+        path: str = None,
+        algorithm: str = None,
+        creation_options: List[str] = None,
+        **kwargs,
+    ) -> "Dataset":
+        """Slope.
+
+        Parameters
+        ----------
+        band: int, default is 0.
+            band index.
+        scale: Union[List, int, float]
+            the scale is the ratio of vertical units to horizontal. If the horizontal unit of the source DEM is
+            degrees (e.g., Lat/Long WGS84 projection), you can use scale=111120 if the vertical units are meters
+            (or scale=370400 if they are in feet).
+        slope_format: str, default is 'degree'.
+            The output slope format. It can be 'degree' or 'percent'.
+        zero_flat_surface: bool, default is False.
+            If True, the slope of a flat surface will be zero. If False, the slope of a flat surface will be
+            no_data_value.
+        algorithm: str, default is "Wilson".
+            The algorithm to calculate the slope. It can be one of 'Horn', 'ZevenbergenThorne' for hill_shade,
+            slope or aspect. 'Wilson'. The literature suggests Zevenbergen & Thorne to be more suited to smooth
+            landscapes, whereas Horn's formula.
+            to perform better on rougher terrain.
+        path: str, optional, default is None
+            path to save the hill-shade raster.
+        creation_options: List[str], default is None.
+            Additional creation options for the output raster. if None, the default creation options
+            (['COMPRESS=DEFLATE', 'PREDICTOR=2']) will be used.
+
+
+        Returns
+        -------
+        Dataset:
+            Dataset with the calculated slope, and the no_data_value is -9999.0.
+
+        Examples
+        --------
+        - First create a one band dataset, consisting of 10 columns and 10 rows, with random values between 0 and 15.
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(0, 15, size=(10, 10))
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
+
+        - Now let's create the slope for the dataset.
+
+            >>> slope = dataset.slope()
+            >>> fig, ax = slope.plot()
+
+        .. image:: /_images/dataset/slope.png
+            :alt: Example Image
+            :align: center
+
+        See Also
+        --------
+        Dataset.hill_shade: create a hill-shade for a band in the Dataset.
+        Dataset.color_relief: create a color relief for a band in the Dataset.
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+
+        if creation_options is None:
+            creation_options = CREATION_OPTIONS.copy()
+
+        options = gdal.DEMProcessingOptions(
+            band=band + 1,
+            format=driver,
+            alg=algorithm,
+            slopeFormat=slope_format,
+            scale=scale,
+            zeroForFlat=zero_flat_surface,
+            creationOptions=creation_options,
+            **kwargs,
+        )
+        dst = gdal.DEMProcessing(path, self.raster, "slope", options=options)
+        src = Dataset(dst, access="write")
+
+        return src
 
     def translate(self, path: str = None, **kwargs):
         """Translate.
@@ -5463,6 +5553,11 @@ class Dataset(AbstractDataset):
         array_min = np.nanmin(array)
         array_max = np.nanmax(array)
         val = (array - array_min) / (array_max - array_min)
+        return val
+
+    @staticmethod
+    def _rescale(array: np.ndarray, min_value: float, max_value: float) -> np.ndarray:
+        val = (array - min_value) / (max_value - min_value)
         return val
 
     def _window(self, size: int = 256):

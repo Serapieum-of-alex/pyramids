@@ -1841,7 +1841,7 @@ class TestHillShade:
 
         hill_shade = dataset.hill_shade(
             band=0,
-            azimuth=None,
+            azimuth=315,
             altitude=45,
             vertical_exaggeration=1,
             scale=1,
@@ -1889,6 +1889,24 @@ class TestHillShade:
         assert hill_shade.dtype == ["byte"]
         arr2 = hill_shade.read_array()
         assert arr2.dtype == np.uint8
+
+
+class TestSlope:
+
+    def test_default_parameters(self):
+        arr = np.random.randint(0, 50, size=(100, 100)).astype(np.float32)
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
+        )
+        slope = dataset.slope()
+        assert slope.shape == dataset.shape
+        assert slope.dtype == ["float32"]
+        assert slope.no_data_value == [-9999.0]
+        # check if the values are from 0 to 90
+        arr2 = slope.read_array()
+        vals = arr2[~np.isclose(arr2, -9999.0)]
+        assert vals.max() <= 90
+        assert vals.min() >= 0
 
 
 def test_to_xyz():
