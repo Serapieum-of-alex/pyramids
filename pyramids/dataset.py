@@ -208,6 +208,12 @@ class Dataset(AbstractDataset):
 
             >>> print(dataset.crs)
             GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
+
+        See Also
+        --------
+        Dataset.set_crs : Set the Coordinate Reference System (CRS).
+        Dataset.to_crs : Reproject the dataset to any projection.
+        Dataset.epsg : epsg number of the dataset coordinate reference system.
         """
         return self._get_crs()
 
@@ -1963,7 +1969,9 @@ class Dataset(AbstractDataset):
             Vertical exaggeration, the vertical exaggeration It is used to emphasize the
             vertical features of the terrain.
         scale: Union[List, int, float]
-            the scale is the ratio of the vertical scale to the horizontal scale.
+            the scale is the ratio of vertical units to horizontal. If the horizontal unit of the source DEM is
+            degrees (e.g Lat/Long WGS84 projection), you can use scale=111120 if the vertical units are meters
+            (or scale=370400 if they are in feet).
         path: str, optional, default is None
             path to save the hill-shade raster.
         weights: List[int], default is None.
@@ -1974,17 +1982,17 @@ class Dataset(AbstractDataset):
                 if True, the hill shade will be calculated for multiple azimuth values [225, 270, 315, 360] each with a
                 altitude of 30 degrees, and then the average will be returned. with multi_directional = True any given
                 azimuth will be ignored.
-                more details visit: http://pubs.usgs.gov/of/1992/of92-422/of92-422.pdf
+                For more details visit: https://pubs.usgs.gov/of/1992/of92-422/of92-422.pdf
             combined: bool
                 combined shading, a combination of slope and oblique shading.
             igor: bool
-                shading which tries to minimize effects on other map features beneath. with igor=True the altitude will
-                be calculated ignored.
-                more details visit: http://maperitive.net/docs/Commands/GenerateReliefImageIgor.html
+                shading which tries to minimize effects on other map features beneath. with `igor=True` the altitude
+                will be calculated ignored.
+                For more details visit: https://maperitive.net/docs/Commands/GenerateReliefImageIgor.html
 
         Returns
         -------
-        Dataset: 8-bit dataset
+        Dataset: 8-bit
             Dataset with the hill-shade created.
 
         Examples
@@ -2033,9 +2041,8 @@ class Dataset(AbstractDataset):
                 raise ValueError("The multi_directional parameter must be a boolean.")
             if kwargs["multi_directional"]:
                 multi_directional = True
-                azimuth = (
-                    None  # altitude, vertical_exaggeration, scale = None, None, None,
-                )
+                azimuth = None
+                # altitude, vertical_exaggeration, scale = None, None, None,
             else:
                 multi_directional = False
 
