@@ -5,6 +5,7 @@ from pandas import DataFrame
 from osgeo import gdal
 from pyramids.dataset import Dataset
 from pyramids.datacube import Datacube
+from cleopatra.array_glyph import ArrayGlyph
 
 
 class TestPlotDataSet:
@@ -19,11 +20,9 @@ class TestPlotDataSet:
         src_shape: tuple,
         src_arr: np.ndarray,
     ):
-        from matplotlib.figure import Figure
-
         dataset = Dataset(src)
-        fig, ax = dataset.plot(band=0)
-        assert isinstance(fig, Figure)
+        array_glyph = dataset.plot(band=0)
+        assert isinstance(array_glyph, ArrayGlyph)
 
     @pytest.mark.plot
     def test_multi_band(
@@ -32,11 +31,9 @@ class TestPlotDataSet:
         src_shape: tuple,
         src_arr: np.ndarray,
     ):
-        from matplotlib.figure import Figure
-
         dataset = Dataset(sentinel_raster)
-        fig, ax = dataset.plot(rgb=[3, 2, 1])
-        assert isinstance(fig, Figure)
+        array_glyph = dataset.plot(rgb=[3, 2, 1])
+        assert isinstance(array_glyph, ArrayGlyph)
 
     @pytest.mark.plot
     def test_multi_band_overviews(
@@ -45,12 +42,10 @@ class TestPlotDataSet:
         src_shape: tuple,
         src_arr: np.ndarray,
     ):
-        from matplotlib.figure import Figure
-
         dataset = Dataset(era5_image_internal_overviews_read_only_true)
-        fig, ax = dataset.plot(band=0, overview=True, overview_index=0)
+        array_glyph = dataset.plot(band=0, overview=True, overview_index=0)
 
-        assert isinstance(fig, Figure)
+        assert isinstance(array_glyph, ArrayGlyph)
 
 
 class TestPlotDataCube:

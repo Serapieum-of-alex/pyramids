@@ -1724,10 +1724,9 @@ class Dataset(AbstractDataset):
 
         Returns
         -------
-        axes: [figure axes].
-            the axes of the matplotlib figure
-        fig: [matplotlib figure object]
-            the figure object
+        ArrayGlyph:
+            ArrayGlyph object. For more details of the ArrayGlyph object check the [ArrayGlyph](
+            https://cleopatra.readthedocs.io/en/latest/arrayglyph-class.html).
 
         Examples
         --------
@@ -1807,8 +1806,8 @@ class Dataset(AbstractDataset):
             percentile=percentile,
             **kwargs,
         )
-        fig, ax = cleo.plot(**kwargs)
-        return fig, ax
+        cleo.plot(**kwargs)
+        return cleo
 
     def color_relief(
         self, band: int = 0, path: str = None, color_table: DataFrame = None, **kwargs

@@ -484,10 +484,9 @@ class Datacube:
 
         Returns
         -------
-        axes: [figure axes].
-            the axes of the matplotlib figure
-        fig: [matplotlib figure object]
-            the figure object
+        ArrayGlyph:
+            ArrayGlyph object. For more details of the ArrayGlyph object check the [ArrayGlyph](
+            https://cleopatra.readthedocs.io/en/latest/arrayglyph-class.html).
         """
         import_cleopatra(
             "The current function uses cleopatra package to for plotting, please install it manually, for more info "
