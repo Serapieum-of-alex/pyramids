@@ -2147,7 +2147,6 @@ class Dataset(AbstractDataset):
         band: int = 0,
         scale: Union[int, float, List[int]] = 1,
         slope_format: str = "degree",
-        zero_flat_surface: bool = True,
         path: str = None,
         algorithm: str = None,
         creation_options: List[str] = None,
@@ -2165,9 +2164,6 @@ class Dataset(AbstractDataset):
             (or scale=370400 if they are in feet).
         slope_format: str, default is 'degree'.
             The output slope format. It can be 'degree' or 'percent'.
-        zero_flat_surface: bool, default is False.
-            If True, the slope of a flat surface will be zero. If False, the slope of a flat surface will be
-            no_data_value.
         algorithm: str, default is "Wilson".
             The algorithm to calculate the slope. It can be one of 'Horn', 'ZevenbergenThorne' for hill_shade,
             slope or aspect. 'Wilson'. The literature suggests Zevenbergen & Thorne to be more suited to smooth
@@ -2222,7 +2218,6 @@ class Dataset(AbstractDataset):
             alg=algorithm,
             slopeFormat=slope_format,
             scale=scale,
-            zeroForFlat=zero_flat_surface,
             creationOptions=creation_options,
             **kwargs,
         )
