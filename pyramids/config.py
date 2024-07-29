@@ -9,7 +9,7 @@ from . import __path__
 class Config:
     """Configuration class for the pyramids package."""
 
-    def __init__(self, config_file="config.yaml"):
+    def __init__(self, config_file: str = "config.yaml"):
         """Initialize the configuration."""
         self.config_file = config_file
         self.config = self.load_config()
