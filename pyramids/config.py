@@ -16,12 +16,12 @@ class Config:
         self.initialize_gdal()
         self.setup_logging()
 
-    def load_config(self):
+    def load_config(self) -> dict:
         """Load the configuration from the config file."""
         with open(f"{__path__[0]}/{self.config_file}", "r") as file:
             return yaml.safe_load(file)
 
-    def initialize_gdal(self):
+    def initialize_gdal(self) -> None:
         """Initialize the GDAL and OGR configuration."""
         # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return
         # an error value such as None and write an error message to sys.stdout, to report errors by raising
@@ -34,7 +34,7 @@ class Config:
         for key, value in self.config.get("ogr", {}).items():
             gdal.SetConfigOption(key, value)
 
-    def setup_logging(self):
+    def setup_logging(self) -> None:
         """Set up the logging configuration."""
         log_config = self.config.get("logging", {})
         logging.basicConfig(
@@ -51,7 +51,7 @@ class Config:
     def set_error_handler():
         """Set the error handler for GDAL."""
 
-        def gdal_error_handler(err_class, err_num, err_msg):
+        def gdal_error_handler(err_class: int, err_num: int, err_msg: str) -> None:
             """Error handler for GDAL."""
             if err_class >= gdal.CE_Warning:
                 pass  # Ignore warnings and higher level messages (errors, fatal errors)
