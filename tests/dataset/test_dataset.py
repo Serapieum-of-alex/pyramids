@@ -1909,6 +1909,24 @@ class TestSlope:
         assert vals.min() >= 0
 
 
+class TestAspect:
+
+    def test_default_parameters(self):
+        arr = np.random.randint(0, 50, size=(100, 100)).astype(np.float32)
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326
+        )
+        aspect = dataset.aspect()
+        assert aspect.shape == dataset.shape
+        assert aspect.dtype == ["float32"]
+        assert aspect.no_data_value == [-9999.0]
+        # check if the values are from 0 to 90
+        arr2 = aspect.read_array()
+        vals = arr2[~np.isclose(arr2, -9999.0)]
+        assert vals.max() <= 360
+        assert vals.min() >= 0
+
+
 def test_to_xyz():
     arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
     top_left_corner = (0, 0)

@@ -2035,6 +2035,7 @@ class Dataset(AbstractDataset):
         See Also
         --------
         Dataset.color_relief: create a color relief for a band in the Dataset.
+        Dataset.slope: create a slope for a band in the Dataset.
         """
         if "multi_directional" in kwargs:
             if not isinstance(kwargs["multi_directional"], bool):
@@ -2222,6 +2223,96 @@ class Dataset(AbstractDataset):
             **kwargs,
         )
         dst = gdal.DEMProcessing(path, self.raster, "slope", options=options)
+        src = Dataset(dst, access="write")
+
+        return src
+
+    def aspect(
+        self,
+        band: int = 0,
+        scale: Union[int, float, List[int]] = 1,
+        vertical_exaggeration: Union[int, float, List[int]] = 1,
+        zero_flat_surface: bool = False,
+        algorithm: str = None,
+        path: str = None,
+        creation_options: List[str] = None,
+        **kwargs,
+    ) -> "Dataset":
+        """Aspect.
+
+        Parameters
+        ----------
+        band: int, default is 0.
+            band index.
+        scale: Union[List, int, float]
+            the scale is the ratio of vertical units to horizontal. If the horizontal unit of the source DEM is
+            degrees (e.g., Lat/Long WGS84 projection), you can use scale=111120 if the vertical units are meters
+            (or scale=370400 if they are in feet).
+        zero_flat_surface: bool, default is False.
+            If True, the slope of a flat surface will be zero. If False, the slope of a flat surface will be
+            no_data_value.
+        algorithm: str, default is "Wilson".
+            The algorithm to calculate the slope. It can be one of 'Horn', 'ZevenbergenThorne' for hill_shade,
+            slope or aspect. 'Wilson'. The literature suggests Zevenbergen & Thorne to be more suited to smooth
+            landscapes, whereas Horn's formula.
+            to perform better on rougher terrain.
+        vertical_exaggeration: Union[List, int, float]
+            Vertical exaggeration, the vertical exaggeration It is used to emphasize the
+            vertical features of the terrain.
+        path: str, optional, default is None
+            path to save the hill-shade raster.
+        creation_options: List[str], default is None.
+            Additional creation options for the output raster. if None, the default creation options
+            (['COMPRESS=DEFLATE', 'PREDICTOR=2']) will be used.
+
+
+        Returns
+        -------
+        Dataset:
+            Dataset with the calculated slope, and the no_data_value is -9999.0.
+
+        Examples
+        --------
+        - First create a one band dataset, consisting of 10 columns and 10 rows, with random values between 0 and 15.
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(0, 15, size=(10, 10))
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
+
+        - Now let's create the slope for the dataset.
+
+            >>> aspect = dataset.aspect()
+            >>> cleo = slope.plot()
+
+        .. image:: /_images/dataset/slope.png
+            :alt: Example Image
+            :align: center
+
+        See Also
+        --------
+        Dataset.hill_shade: create a hill-shade for a band in the Dataset.
+        Dataset.color_relief: create a color relief for a band in the Dataset.
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+
+        if creation_options is None:
+            creation_options = CREATION_OPTIONS.copy()
+
+        options = gdal.DEMProcessingOptions(
+            band=band + 1,
+            format=driver,
+            alg=algorithm,
+            scale=scale,
+            zFactor=vertical_exaggeration,
+            zeroForFlat=zero_flat_surface,
+            creationOptions=creation_options,
+            **kwargs,
+        )
+        dst = gdal.DEMProcessing(path, self.raster, "aspect", options=options)
         src = Dataset(dst, access="write")
 
         return src
