@@ -133,10 +133,10 @@ class Datacube:
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
     ):
-        r"""read_multiple_files.
+        r"""Read multiple files.
 
-            - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
-            the folder and length as the number of files.
+        reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in the
+        folder and length as the number of files.
 
         inside the folder.
         - All rasters should have the same dimensions
@@ -145,32 +145,39 @@ class Datacube:
 
         Parameters
         ----------
-        path:[str/list]
+        path: str/list
             path of the folder that contains all the rasters, ora list contains the paths of the rasters to read.
-        with_order: [bool]
-            True if the rasters names' follows a certain order, then the rasters' names should have a date that follows
+        with_order: bool
+            True if the raster names' follows a certain order, then the rasters' names should have a date that follows
             the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD).
-            >>> "MSWEP_1979.01.01.tif"
-            >>> "MSWEP_1979.01.02.tif"
-            >>> ...
-            >>> "MSWEP_1979.01.20.tif"
-        regex_string: [str]
-            a regex string that we can use to locate the date in the file names.Default is r"\d{4}.\d{
-            2}.\d{2}".
+            .. code-block:: py
+
+                "MSWEP_1979.01.01.tif"
+                "MSWEP_1979.01.02.tif"
+                ...
+                "MSWEP_1979.01.20.tif"
+
+        regex_string: str, default is r"\d{4}.\d{2}.\d{2}".
+            a regex string that we can use to locate the date in the file names.
+
             >>> fname = "MSWEP_YYYY.MM.DD.tif"
             >>> regex_string = r"\d{4}.\d{2}.\d{2}"
+
             - or
-            >>> fname = "MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d{4}_\d{1}_\d{1}"
+                >>> fname = "MSWEP_YYYY_M_D.tif"
+                >>> regex_string = r"\d{4}_\d{1}_\d{1}"
+
             - if there is a number at the beginning of the name
-            >>> fname = "1_MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d+"
+
+                >>> fname = "1_MSWEP_YYYY_M_D.tif"
+                >>> regex_string = r"\d+"
+
         date: [bool]
             True if the number in the file name is a date. Default is True.
-        file_name_data_fmt : [str]
-            if the files names' have a date and you want to read them ordered .Default is None
-            >>> "MSWEP_YYYY.MM.DD.tif"
+        file_name_data_fmt: str, default is None
+            if the files' names have a date(`MSWEP_YYYY.MM.DD.tif`), and you want to read them ordered.
             >>> file_name_data_fmt = "%Y.%m.%d"
+
         start: [str]
             start date if you want to read the input raster for a specific period only and not all rasters,
             if not given all rasters in the given path will be read.
@@ -190,7 +197,7 @@ class Datacube:
         Example
         -------
         >>> from pyramids.datacube import Datacube
-        >>> raster_folder = "examples/GIS/data/raster-folder"
+        >>> raster_folder = "examples/data/geotiff/raster-folder"
         >>> prec = Datacube.read_multiple_files(raster_folder)
 
         >>> import glob
@@ -408,79 +415,84 @@ class Datacube:
             value to exclude from the plot. Default is None.
         **kwargs
             points : [array]
-                3 column array with the first column as the value you want to display for the point, the second is the
-                rows index of the point in the array, and the third column as the column index in the array.
-                the second and third column tells the location of the point in the array.
+                3 column array with the first column as the value you want to display for the point, the second is the rows
+                index of the point in the array, and the third column as the column index in the array.
+                - the second and third column tells the location of the point in the array.
             point_color: [str]
                 color.
             point_size: [Any]
                 size of the point.
             pid_color: [str]
-                the color of the annotation of the point. Default is blue.
+                the annotation color of the point. Default is blue.
             pid_size: [Any]
                 size of the point annotation.
             figsize: [tuple], optional
                 figure size. The default is (8,8).
             title: [str], optional
                 title of the plot. The default is 'Total Discharge'.
-            title_size: [integer], optional
-                title size. The default is 15.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            rotation: [number], optional
-                rotation of the color bar label. The default is -90.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            cbar_length: [float], optional
+            title_size: [integer], optional, default is 15.
+                title size.
+            cbar_orientation: [string], optional, default is 'vertical'
+                orientation of the color bar horizontal/vertical.
+            cbar_label_rotation: [number], optional, default is -90.
+                rotation of the color bar label.
+            cbar_label_location: str, optional, default is 'bottom'.
+                location of the color bar title 'top', 'bottom', 'center', 'baseline', 'center_baseline'.
+            cbar_length: float, optional
                 ratio to control the height of the color bar. The default is 0.75.
-            ticks_spacing: [integer], optional
+            ticks_spacing: int, optional
                 Spacing in the color bar ticks. The default is 2.
             cbar_label_size: integer, optional
                 size of the color bar label. The default is 12.
             cbar_label: str, optional
                 label of the color bar. The default is 'Discharge m3/s'.
-            color_scale: integer, optional
-                there are 5 options to change the scale of the colors. The default is 1.
-                1- color_scale 1 is the normal scale
-                2- color_scale 2 is the power scale
-                3- color_scale 3 is the SymLogNorm scale
-                4- color_scale 4 is the PowerNorm scale
-                5- color_scale 5 is the BoundaryNorm scale
-                ------------------------------------------------------------------
-                gamma : [float], optional
-                    value needed for option 2 . The default is 1./2..
-                line_threshold : [float], optional
-                    value needed for option 3. The default is 0.0001.
-                line_scale : [float], optional
-                    value needed for option 3. The default is 0.001.
-                bounds: [List]
-                    a list of number to be used as a discrete bounds for the color scale 4.Default is None,
-                midpoint : [float], optional
-                    value needed for option 5. The default is 0.
-                ------------------------------------------------------------------
-            cmap : [str], optional
-                color style. The default is 'coolwarm_r'.
-            display_cell_value : [bool]
+            color_scale : integer, optional, default is 1.
+                there are 5 options to change the scale of the colors.
+
+                1- `linear`:
+                    linear scale.
+                2- `power`:
+                    for the power scale. Linearly map a given value to the 0-1 range and then apply a power-law
+                    normalization over that range.
+                3- `sym-lognorm`:
+                    the symmetrical logarithmic scale `SymLogNorm` is logarithmic in both the positive and
+                    negative directions from the origin.
+                4- `boundary-norm`:
+                    the BoundaryNorm scale generates a colormap index based on discrete intervals.
+                5- `midpoint`:
+                    the midpoint scale splits the scale into 2 halfs, be the given value.
+            gamma: [float], optional, default is 0.5.
+                value needed for the color_scale `power`.
+            line_threshold: float, optional, default is 0.0001.
+                value needed for the color_scale `sym-lognorm`.
+            line_scale: float, optional, default is 0.001.
+                value needed for the color_scale `sym-lognorm`.
+            bounds: List, default is None,
+                a list of number to be used as a discrete bounds for the color scale `boundary-norm`.
+            midpoint: float, optional, default is 0.
+                value needed for the color_scale `midpoint`.
+            cmap: str, optional, default is 'coolwarm_r'.
+                color style.
+            display_cell_value: bool
                 True if you want to display the values of the cells as a text
-            num_size : integer, optional
-                size of the numbers plotted in top of each cells. The default is 8.
-            background_color_threshold : [float/integer], optional
+            num_size: integer, optional, default is 8.
+                size of the numbers plotted on top of each cell.
+            background_color_threshold: [float/integer], optional, default is None.
                 threshold value if the value of the cell is greater, the plotted
-                numbers will be black and if smaller the plotted number will be white
-                if None given the maxvalue/2 will be considered. The default is None.
+                numbers will be black, and if smaller the plotted number will be white
+                if None given the max value/2 is considered.
 
         Returns
         -------
-        axes: [figure axes].
-            the axes of the matplotlib figure
-        fig: [matplotlib figure object]
-            the figure object
+        ArrayGlyph:
+            ArrayGlyph object. For more details of the ArrayGlyph object check the [ArrayGlyph](
+            https://cleopatra.readthedocs.io/en/latest/arrayglyph-class.html).
         """
         import_cleopatra(
-            "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
+            "The current function uses cleopatra package to for plotting, please install it manually, for more info "
             "check https://github.com/Serapieum-of-alex/cleopatra"
         )
-        from cleopatra.array import Array
+        from cleopatra.array_glyph import ArrayGlyph
 
         data = self.values
 
@@ -490,7 +502,7 @@ class Datacube:
             else [self.base.no_data_value[band]]
         )
 
-        cleo = Array(data, exclude_value=exclude_value)
+        cleo = ArrayGlyph(data, exclude_value=exclude_value)
         time = list(range(self.time_length))
         cleo.animate(time, **kwargs)
         return cleo
@@ -507,6 +519,7 @@ class Datacube:
         path: [str/list]
             a path includng the name of the raster and extention.
             >>> path = "data/cropped.tif"
+
         driver: [str]
             driver = "geotiff".
         band: [int]
@@ -514,9 +527,9 @@ class Datacube:
 
         Examples
         --------
-        >>> raster_obj = Dataset.read_file("path/to/file/***.tif")
-        >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_file(output_path)
+        raster_obj = Dataset.read_file("path/to/file/***.tif")
+        output_path = "examples/GIS/data/save_raster_test.tif"
+        raster_obj.to_file(output_path)
         """
         ext = CATALOG.get_extension(driver)
 
@@ -567,9 +580,9 @@ class Datacube:
 
         Examples
         --------
-        >>> from pyramids.dataset import Dataset
-        >>> src = Dataset.read_file("path/raster_name.tif")
-        >>> projected_raster = src.to_crs(to_epsg=3857)
+        from pyramids.dataset import Dataset
+        src = Dataset.read_file("path/raster_name.tif")
+        projected_raster = src.to_crs(to_epsg=3857)
         """
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -598,7 +611,7 @@ class Datacube:
     def crop(
         self, mask: Union[Dataset, str], inplace: bool = False, touch: bool = True
     ) -> Union[None, Dataset]:
-        """cropAlignedFolder.
+        """Crop.
 
             cropAlignedFolder matches the location of nodata value from src raster to dst
             raster, Mask is where the NoDatavalue will be taken and the location of
@@ -607,7 +620,7 @@ class Datacube:
 
         Parameters
         ----------
-        mask : [Dataset]
+        mask: Dataset
             Dataset object of the mask raster to crop the rasters (to get the NoData value
             and it location in the array) Mask should include the name of the raster and the
             extension like "data/dem.tif", or you can read the mask raster using gdal and use
@@ -625,10 +638,10 @@ class Datacube:
 
         Examples
         --------
-        >>> dem_path = "examples/GIS/data/acc4000.tif"
-        >>> src_path = "examples/GIS/data/aligned_rasters/"
-        >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-        >>> Datacube.crop(dem_path, src_path, out_path)
+        dem_path = "examples/data/geotiff/acc4000.tif"
+        src_path = "examples/data/geotiff/aligned_rasters/"
+        out_path = "examples/data/geotiff/crop_aligned_folder/"
+        Datacube.crop(dem_path, src_path, out_path)
         """
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -790,7 +803,7 @@ class Datacube:
     #     return dst
 
     def align(self, alignment_src: Dataset):
-        """matchDataAlignment.
+        """Align.
 
         this function matches the coordinate system and the number of rows & columns
         between two rasters
@@ -802,7 +815,7 @@ class Datacube:
 
         Parameters
         ----------
-        alignment_src: [String]
+        alignment_src: str
             path to the spatial information source raster to get the spatial information
             (coordinate system, no of rows & columns) alignment_src should include the name of the raster
             and the extension like "data/dem.tif"
@@ -812,13 +825,6 @@ class Datacube:
         new rasters:
             ٌRasters have the values from rasters in rasters_dir with the same
             cell size, no of rows & columns, coordinate system and alignment like raster A
-
-        Examples
-        --------
-        >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
-        >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
-        >>> prec_out_path = "02Precipitation/4km/"
-        >>> Dataset.align(dem_path,prec_in_path,prec_out_path)
         """
         if not isinstance(alignment_src, Dataset):
             raise TypeError("alignment_src input should be a Dataset object")
@@ -913,10 +919,10 @@ class Datacube:
 
         Examples
         --------
-        >>> def func(val):
-        >>>    return val%2
-        >>> ufunc = np.frompyfunc(func, 1, 1)
-        >>> dataset.apply(ufunc)
+        def func(val):
+           return val%2
+        ufunc = np.frompyfunc(func, 1, 1)
+        dataset.apply(ufunc)
         """
         if not callable(ufunc):
             raise TypeError("The Second argument should be a function")

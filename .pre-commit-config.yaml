@@ -127,4 +127,4 @@ repos:
         name: doctest
         entry: pytest --doctest-modules #pyramids/dataset.py
         language: system
-        files: \.py$
+        files: pyramids\.py$

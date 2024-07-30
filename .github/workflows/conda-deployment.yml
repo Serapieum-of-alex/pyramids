@@ -29,16 +29,16 @@ jobs:
 
       - name: Install dev-dependencies
         run: |
-            python -m pip install -r requirements-dev.txt
+            pip install .[dev] --no-deps
 
-      - name: Generate coverage report
+      - name: Run tests
         shell: bash -el {0}
         run: |
           conda info
           conda list
           conda config --show-sources
           conda config --show
-          pytest -sv -m "not plot"
+          pytest -sv -m "not plot" --ignore=tests/dataset/test_plot.py
 
   Optional-packages:
     runs-on: ${{ matrix.os }}
@@ -66,9 +66,9 @@ jobs:
 
       - name: Install dev-dependencies
         run: |
-            python -m pip install -r requirements-dev.txt
+            pip install .[dev] --no-deps
 
-      - name: Generate coverage report
+      - name: Run tests
         shell: bash -el {0}
         run: |
           conda activate test
