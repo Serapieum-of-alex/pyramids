@@ -1,5 +1,5 @@
 cleopatra >=0.4.2
-gdal ==3.9.0
+gdal ==3.9.2
 geopandas >=0.14.1
 hpc-utils >=0.1.4
 loguru >=0.7.2
