@@ -10,7 +10,7 @@ dependencies:
   - Shapely >=2.0.6
   - pyproj >=3.7.0
   - PyYAML >=6.0.2
-  - loguru >=0.7.3
+  - loguru >=0.7.2
   - pytest >=8.3.4
   - pytest-cov >=6.0.0
   - nbval >=0.11.0
