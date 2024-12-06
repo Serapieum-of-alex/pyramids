@@ -1,0 +1,93 @@
+[project]
+name = "pyramids-gis"
+version = "0.7.0"
+description = "GIS utility package"
+readme = {file = "README.md", content-type = "text/markdown"}
+authors = [
+    { name = "Mostafa Farrag", email = "moah.farag@gmail.com" }
+]
+license = {text = "GNU General Public License v3"}
+keywords = ["GIS", "gdal"]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+]
+
+requires-python = ">=3.0"
+
+dependencies = [
+#    "gdal >= 3.9.0",
+    "geopandas >=0.14.1",
+    "hpc-utils >=0.1.4",
+    "loguru >=0.7.2",
+    "numpy >=2.0.0",
+    "pandas >=2.1.0",
+    "pip >=24.0.0",
+    "pyproj >=3.6.1",
+    "PyYAML >=6.0.1",
+    "Shapely >=2.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black >=24.4.2",
+    "darglint >=1.8.1",
+    "flake8-bandit >=4.1.1",
+    "flake8-bugbear >=24.4.26",
+    "flake8-docstrings >=1.7.0",
+    "flake8-rst-docstrings >=0.3.0",
+    "nbval >=0.11.0",
+    "pep8-naming >=0.14.1",
+    "pre-commit >=3.7.1",
+    "pre-commit-hooks >=4.6.0",
+    "pytest >=8.2.2",
+    "pytest-cov >=5.0.0",
+    "reorder-python-imports >=3.13.0"
+]
+viz = ["cleopatra>=0.5.1"]
+
+test = [
+    "pytest >= 8.2.2",
+    "pytest-cov >= 5.0.0",
+    "nbval >= 0.11.0",
+    "coverage"
+]
+
+
+[tool.setuptools]
+
+[tool.setuptools.packages.find]
+where = ["pyramids", "pyramids.*"]
+
+[tool.setuptools.package-data]
+pyramids = ["*.yaml", "include/gdal/*.h"]
+
+
+[tool.pip.index-url]
+url = "https://girder.github.io/large_image_wheels"
+
+[project.urls]
+homepage = "https://github.com/Serapieum-of-alex/pyramids"
+repository = "https://github.com/Serapieum-of-alex/pyramids"
+documentation = "https://pyramids-gis.readthedocs.io/"
+Changelog = "https://github.com/Serapieum-of-alex/pyramids/HISTORY.rst"
+
+[build-system]
+requires = [
+    "setuptools>=61",
+    "wheel",
+#    "setuptools_scm[toml]>=3.5.0",
+    "tomli>=1.1.0",
+#    "setuptools_scm[toml]>=3.5.0",
+#    "setuptools_scm[toml]>=3.5.0"
+]
+build-backend = "setuptools.build_meta"

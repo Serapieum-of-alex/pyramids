@@ -1,0 +1,66 @@
+[tool.poetry]
+name = "pyramids-gis"
+version = "0.7.0"
+description = "GIS utility package"
+authors = ["Mostafa Farrag <moah.farag@gmail.com>"]
+license = "GNU General Public License v3"
+keywords = ["GIS", "gdal"]
+homepage = "https://github.com/Serapieum-of-alex/pyramids"
+repository = "https://github.com/MAfarrag/pyramids"
+documentation = "https://pyramids-gis.readthedocs.io/"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers"
+]
+
+packages = [
+    { include = "pyramids"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+gdal = "^3.9.0"
+#gdal = { version = "3.9.0", source = "https://girder.github.io/large_image_wheels" }
+geopandas = "^0.14.1"
+hpc-utils = "^0.1.4"
+loguru = "^0.7.2"
+numpy = "^2.0.0"
+pandas = "^2.1.0"
+pyproj = "^3.6.1"
+PyYAML = "^6.0.1"
+Shapely = "^2.0.2"
+
+[tool.poetry.dev-dependencies]
+black = ">=24.4.2"
+darglint = ">=1.8.1"
+flake8-bandit = ">=4.1.1"
+flake8-bugbear = ">=24.4.26"
+flake8-docstrings = ">=1.7.0"
+flake8-rst-docstrings = ">=0.3.0"
+nbval = ">=0.11.0"
+pep8-naming = ">=0.14.1"
+pre-commit = ">=3.7.1"
+pre-commit-hooks = ">=4.6.0"
+pytest = ">=8.2.2"
+pytest-cov = ">=5.0.0"
+reorder-python-imports = "^3.13.0"
+
+[tool.poetry.group.viz.dependencies]
+cleopatra = "^0.5.1"
+
+#[[tool.poetry.source]]
+#name = "large_image_wheels"
+#url = "https://girder.github.io/large_image_wheels"
+#priority = "supplemental"
+
+[build-system]
+requires = ["poetry-core>=1.4.0"]
+build-backend = "poetry.core.masonry.api"
