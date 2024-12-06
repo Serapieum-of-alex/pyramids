@@ -5,6 +5,8 @@ dependencies:
   - hpc >=0.1.4
   - pip >=24.3.1
   - gdal ==3.10.0
+  - libgdal-netcdf ==3.10.0
+  - libgdal-hdf4  ==3.10.0
   - pandas >=2.2.3
   - geopandas >=1.0.1
   - Shapely >=2.0.6
