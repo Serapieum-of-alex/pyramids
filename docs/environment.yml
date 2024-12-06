@@ -5,7 +5,7 @@ dependencies:
   - numpy >=2.0.0
   - numpydoc==1.1.0
   - typing-extensions==3.10.*
-  - gdal==3.9.0
+  - gdal==3.10.0
   - pip:
     - pydata_sphinx_theme>=0.15.2
     - sphinxcontrib-napoleon
