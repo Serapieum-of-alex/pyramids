@@ -82,7 +82,8 @@ jobs:
         uses: codecov/codecov-action@v3
 
 
-Trigger-Test-Notebook:
+
+  Trigger-Test-Notebook:
     needs: optional-packages
     uses: ./.github/workflows/jupyter-notebooks-examples.yml
     with:
