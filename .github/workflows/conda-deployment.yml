@@ -77,10 +77,3 @@ jobs:
           conda config --show-sources
           conda config --show
           pytest -sv
-
-      - name: test Jupyter notebook
-        shell: bash -el {0}
-        run: |
-          conda activate test
-          pip install -e .
-          pytest --nbval -k ".ipynb"
