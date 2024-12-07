@@ -74,7 +74,16 @@ jobs:
         run: |
             pip install .[dev,viz]
 
-      - name: Generate coverage report
+
+      - name: Cache Python Environment
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-cache-${{ matrix.python-version }}
+          restore-keys: |
+            ${{ runner.os }}-pip-cache-
+
+      - name: Run Tests
         run: |
           python -m pytest -v --cov=pyramids --cov-report=xml
 

@@ -3,7 +3,7 @@ name: test-jupyter-notebooks
 on:
   workflow_call:
     inputs:
-      environment-path:
+      python-version:
         description: 'Path to the Conda environment'
         required: true
         type: string
@@ -13,17 +13,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Activate Conda Environment or Python Version
-        shell: bash
-        run: |
-          eval "$(command conda 'shell.bash' 'hook')" || true  # Initialize Conda if applicable
-          if conda info --envs | grep -q "^${{ inputs.environment-path }} "; then
-            conda activate ${{ inputs.environment-path }}
-          else
-            python --version  # Fallback to the default Python version
-          fi
-          conda info || true
-          python --version
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Restore Cached Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-cache-${{ inputs.python-version }}
+          restore-keys: |
+            ${{ runner.os }}-pip-cache-
 
       - name: Test Jupyter Notebook
         shell: bash
