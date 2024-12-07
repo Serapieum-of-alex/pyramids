@@ -6,7 +6,7 @@ on:
       environment-path:
         description: 'Path to the Conda environment'
         required: true
-    secrets: inherit  # Inherit secrets from the calling workflow
+        type: string
 
 jobs:
   Test-Jupyter-Notebooks:
