@@ -14,15 +14,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Activate Conda Environment
+      - name: Initialize Conda
+        shell: bash
         run: |
+          eval "$(command conda 'shell.bash' 'hook')"
+          conda init bash
+
+      - name: Activate Conda Environment
+        shell: bash
+        run: |
+          eval "$(command conda 'shell.bash' 'hook')"  # Load Conda for the current shell
           conda activate ${{ inputs.environment-path }}
           conda info
           conda list
 
       - name: Test Jupyter Notebook
-        shell: bash -el {0}
+        shell: bash
         run: |
-          conda activate test
+          eval "$(command conda 'shell.bash' 'hook')"
+          conda activate ${{ inputs.environment-path }}
           pip install -e .
           pytest --nbval -k ".ipynb"
