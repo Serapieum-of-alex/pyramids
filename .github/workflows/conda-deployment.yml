@@ -80,9 +80,6 @@ jobs:
 
   Trigger-Test-Notebook:
     needs: Optional-packages
-    runs-on: ubuntu-latest
-    steps:
-      - name: Call test-jupyter-notebooks workflow
-        uses: ./.github/workflows/jupyter-notebooks-examples.yml
-        with:
-          environment-path: test
+    uses: ./.github/workflows/jupyter-notebooks-examples.yml
+    with:
+      environment-path: test
