@@ -1,11 +1,11 @@
 name: test-jupyter-notebooks
 
-on: [push]
-# workflow_run:
-# workflows:
-#   - conda-deployment
-# types:
-#   - completed
+on:
+  workflow_run:
+    workflows:
+      - conda-deployment
+    types:
+      - completed
 
 jobs:
   Test-Jupyter-Notebooks:
