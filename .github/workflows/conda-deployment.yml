@@ -78,9 +78,21 @@ jobs:
           conda config --show
           pytest -sv
 
+      - name: Install and link Jupyter kernel
+        run: |
+          conda activate test
+          pip install ipykernel
+          python -m ipykernel install --user --name=test --display-name "Python (test)"
+
+      - name: Check Python Path
+        run: |
+          conda activate test
+          python -c "import sys; print(sys.path)"
+
       - name: test Jupyter notebook
         shell: bash -el {0}
         run: |
           conda activate test
+          conda list
           pip install -e .
           python -m pytest --nbval -k ".ipynb"
