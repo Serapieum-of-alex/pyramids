@@ -1,36 +1,24 @@
 name: test-jupyter-notebooks
 
 on:
-  workflow_run:
-    workflows:
-      - conda-deployment
-    types:
-      - completed
-    branches:
-      - '**'
+  workflow_call:
+    inputs:
+      environment-path:
+        description: 'Path to the Conda environment'
+        required: true
+    secrets: inherit  # Inherit secrets from the calling workflow
 
 jobs:
   Test-Jupyter-Notebooks:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: conda-incubator/setup-miniconda@v3
-        with:
-          mamba-version: "*"
-          use-mamba: true
-          auto-update-conda: false
-          auto-activate-base: false
-          environment-file: environment-optional-packages.yml
-          activate-environment: test
-          python-version: 3.12
-          channels: conda-forge,defaults
-          channel-priority: true
-          show-channel-urls: true
 
-      - name: Install dev-dependencies
+      - name: Activate Conda Environment
         run: |
-          pip install .[dev] --no-deps
+          conda activate ${{ inputs.environment-path }}
+          conda info
+          conda list
 
       - name: Test Jupyter Notebook
         shell: bash -el {0}

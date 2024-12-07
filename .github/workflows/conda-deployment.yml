@@ -77,3 +77,12 @@ jobs:
           conda config --show-sources
           conda config --show
           pytest -sv
+
+  Trigger-Test-Notebook:
+    needs: Optional-packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call test-jupyter-notebooks workflow
+        uses: ./.github/workflows/test-jupyter-notebooks.yml
+        with:
+          environment-path: test
