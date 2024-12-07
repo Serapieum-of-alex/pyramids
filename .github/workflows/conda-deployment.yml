@@ -79,12 +79,14 @@ jobs:
           pytest -sv
 
       - name: Install and link Jupyter kernel
+        shell: bash -el {0}
         run: |
           conda activate test
           pip install ipykernel
           python -m ipykernel install --user --name=test --display-name "Python (test)"
 
       - name: Check Python Path
+        shell: bash -el {0}
         run: |
           conda activate test
           python -c "import sys; print(sys.path)"
