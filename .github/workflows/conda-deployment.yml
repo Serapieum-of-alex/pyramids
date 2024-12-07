@@ -13,14 +13,14 @@ jobs:
       OS: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           mamba-version: "*"
-          #use-mamba: true
+          use-mamba: true
           auto-update-conda: false
-          environment-file: environment.yml
           auto-activate-base: false
+          environment-file: environment.yml
           activate-environment: test
           python-version: ${{ matrix.python-version }}
           channels: conda-forge,defaults
@@ -50,14 +50,14 @@ jobs:
       OS: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           mamba-version: "*"
-          #use-mamba: true
+          use-mamba: true
           auto-update-conda: false
-          environment-file: environment-optional-packages.yml
           auto-activate-base: false
+          environment-file: environment-optional-packages.yml
           activate-environment: test
           python-version: ${{ matrix.python-version }}
           channels: conda-forge,defaults

@@ -229,3 +229,10 @@ Deprecated
 *Cropping a raster using a polygon is done now directly using gdal.wrap nand the the `_crop_with_polygon_by_rasterizing`
 is deprecated.
 * rename the interpolation method `nearest neighbour` to `nearest neighbor`.
+
+0.7.1 (2024-12-07)
+------------------
+* update `cleopatra` package version to 0.5.1 and update the api to use the new version.
+* update the miniconda workflow in ci.
+* update gdal to 3.10 and update the DataSource to Dataset in the `FeatureCollection.file_name`.
+* add `libgdal-netcdf` and `libgdal-hdf4` to the conda dependencies.

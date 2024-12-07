@@ -163,9 +163,9 @@ class FeatureCollection:
     @property
     def file_name(self) -> str:
         """Get file name in case of the base object is an ogr.Datasource or gdal.Dataset."""
-        if isinstance(self.feature, DataSource):
-            file_name = self.feature.name
-        elif isinstance(self.feature, gdal.Dataset):
+        if isinstance(self.feature, gdal.Dataset) or isinstance(
+            self.feature, DataSource
+        ):
             file_name = self.feature.GetFileList()[0]
         else:
             file_name = ""
