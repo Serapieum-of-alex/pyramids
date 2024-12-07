@@ -154,6 +154,7 @@ class Datacube:
             >>> "MSWEP_1979.01.02.tif"
             >>> ...
             >>> "MSWEP_1979.01.20.tif"
+
         regex_string: [str]
             a regex string that we can use to locate the date in the file names.Default is r"\d{4}.\d{
             2}.\d{2}".
@@ -165,12 +166,14 @@ class Datacube:
             - if there is a number at the beginning of the name
             >>> fname = "1_MSWEP_YYYY_M_D.tif"
             >>> regex_string = r"\d+"
+
         date: [bool]
             True if the number in the file name is a date. Default is True.
         file_name_data_fmt : [str]
             if the files names' have a date and you want to read them ordered .Default is None
             >>> "MSWEP_YYYY.MM.DD.tif"
             >>> file_name_data_fmt = "%Y.%m.%d"
+
         start: [str]
             start date if you want to read the input raster for a specific period only and not all rasters,
             if not given all rasters in the given path will be read.
@@ -480,7 +483,7 @@ class Datacube:
             "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
             "check https://github.com/Serapieum-of-alex/cleopatra"
         )
-        from cleopatra.array import Array
+        from cleopatra.array_glyph import ArrayGlyph
 
         data = self.values
 
@@ -490,7 +493,7 @@ class Datacube:
             else [self.base.no_data_value[band]]
         )
 
-        cleo = Array(data, exclude_value=exclude_value)
+        cleo = ArrayGlyph(data, exclude_value=exclude_value)
         time = list(range(self.time_length))
         cleo.animate(time, **kwargs)
         return cleo
@@ -507,6 +510,7 @@ class Datacube:
         path: [str/list]
             a path includng the name of the raster and extention.
             >>> path = "data/cropped.tif"
+
         driver: [str]
             driver = "geotiff".
         band: [int]
@@ -818,7 +822,7 @@ class Datacube:
         >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
         >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
         >>> prec_out_path = "02Precipitation/4km/"
-        >>> Dataset.align(dem_path,prec_in_path,prec_out_path)
+        >>> Dataset.align(dem_path, prec_in_path, prec_out_path)
         """
         if not isinstance(alignment_src, Dataset):
             raise TypeError("alignment_src input should be a Dataset object")

@@ -6,7 +6,7 @@ import pytest
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr
 from shapely import wkt
-from osgeo.ogr import DataSource
+from osgeo.gdal import Dataset
 
 
 @pytest.fixture(scope="module")
@@ -30,12 +30,12 @@ def test_vector_path() -> str:
 
 
 @pytest.fixture(scope="module")
-def data_source(test_vector_path: str) -> DataSource:
+def data_source(test_vector_path: str) -> Dataset:
     return ogr.Open(test_vector_path)
 
 
 @pytest.fixture(scope="module")
-def coello_gauges_ds() -> DataSource:
+def coello_gauges_ds() -> Dataset:
     return ogr.Open("tests/data/coello-gauges.geojson")
 
 

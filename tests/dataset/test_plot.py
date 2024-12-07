@@ -57,13 +57,13 @@ class TestPlotDataCube:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        from cleopatra.array import Array
+        from cleopatra.array_glyph import ArrayGlyph
         from matplotlib.animation import FuncAnimation
 
         cube = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         cube.open_datacube()
         cleo = cube.plot()
-        assert isinstance(cleo, Array)
+        assert isinstance(cleo, ArrayGlyph)
 
 
 class TestColorTable:

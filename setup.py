@@ -14,7 +14,7 @@ requirements_all = [
 
 setup(
     name="pyramids-gis",
-    version="0.7.0",
+    version="0.7.1",
     description="GIS utility package",
     author="Mostafa Farrag",
     author_email="moah.farag@gmail.com",
