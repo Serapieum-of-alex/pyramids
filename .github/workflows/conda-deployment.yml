@@ -83,4 +83,4 @@ jobs:
         run: |
           conda activate test
           pip install -e .
-          pytest --nbval -k ".ipynb"
+          python -m pytest --nbval -k ".ipynb"
