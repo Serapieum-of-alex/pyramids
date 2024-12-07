@@ -83,6 +83,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call test-jupyter-notebooks workflow
-        uses: Serapieum-of-alex/pyramids/.github/workflows/test-jupyter-notebooks.yml
+        uses: ./.github/workflows/jupyter-notebooks-examples.yml
         with:
           environment-path: test
