@@ -13,25 +13,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Initialize Conda
+      - name: Activate Conda Environment or Python Version
         shell: bash
         run: |
-          eval "$(command conda 'shell.bash' 'hook')"
-          conda init bash
-
-      - name: Activate Conda Environment
-        shell: bash
-        run: |
-          eval "$(command conda 'shell.bash' 'hook')"  # Load Conda for the current shell
-          conda activate ${{ inputs.environment-path }}
-          conda info
-          conda list
+          eval "$(command conda 'shell.bash' 'hook')" || true  # Initialize Conda if applicable
+          if conda info --envs | grep -q "^${{ inputs.environment-path }} "; then
+            conda activate ${{ inputs.environment-path }}
+          else
+            python --version  # Fallback to the default Python version
+          fi
+          conda info || true
+          python --version
 
       - name: Test Jupyter Notebook
         shell: bash
         run: |
-          eval "$(command conda 'shell.bash' 'hook')"
-          conda activate ${{ inputs.environment-path }}
           pip install -e .
           pytest --nbval -k ".ipynb"
