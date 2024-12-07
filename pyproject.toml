@@ -51,7 +51,8 @@ dev = [
     "pre-commit-hooks >=4.6.0",
     "pytest >=8.2.2",
     "pytest-cov >=5.0.0",
-    "reorder-python-imports >=3.13.0"
+    "reorder-python-imports >=3.13.0",
+    "flake8-pyproject >=1.2.3"
 ]
 viz = ["cleopatra>=0.5.1"]
 
@@ -80,6 +81,13 @@ homepage = "https://github.com/Serapieum-of-alex/pyramids"
 repository = "https://github.com/Serapieum-of-alex/pyramids"
 documentation = "https://pyramids-gis.readthedocs.io/"
 Changelog = "https://github.com/Serapieum-of-alex/pyramids/HISTORY.rst"
+
+[tool.flake8]
+ignore = "E203, E266, E501, W503, E722, C901, E741, E731"
+max-line-length = 88
+max-complexity = 18
+select = "B,C,E,F,W,T4"
+
 
 [build-system]
 requires = [

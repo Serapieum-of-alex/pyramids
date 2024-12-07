@@ -61,8 +61,8 @@ repos:
     rev: 7.1.0
     hooks:
       - id: flake8
+        additional_dependencies: [Flake8-pyproject]
         name: "[py   - check] flake8"
-#        language_version: python3.9
         exclude: ^(examples/|tests/)
 
   #- repo: https://github.com/psf/black
