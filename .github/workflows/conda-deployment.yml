@@ -1,6 +1,9 @@
 name: conda-deployment
 
-on: [push]
+on:
+  push:
+    branches:
+      - "**"
 
 jobs:
   Main-package:
@@ -83,6 +86,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call test-jupyter-notebooks workflow
-        uses: pyramids.github/workflows/test-jupyter-notebooks.yml
+        uses: ./.github/workflows/test-jupyter-notebooks.yml
         with:
           environment-path: test
