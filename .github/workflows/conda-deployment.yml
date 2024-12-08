@@ -39,7 +39,7 @@ jobs:
           conda config --show-sources
           conda config --show
           pip install .
-          pytest -sv -m "not plot"
+          pytest -sv -m "not plot"  --ignore-glob="*plot*.py"
 
   Optional-packages:
     runs-on: ${{ matrix.os }}
