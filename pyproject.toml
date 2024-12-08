@@ -67,8 +67,9 @@ test = [
 [tool.setuptools]
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["pyramids"]
+where = ["src/pyramids"]
+include = ["pyramids", "pyramids.*"]
+#namespaces = false
 
 [tool.setuptools.package-data]
 pyramids = ["*.yaml", "include/gdal/*.h"]
