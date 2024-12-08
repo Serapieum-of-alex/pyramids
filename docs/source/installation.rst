@@ -8,9 +8,9 @@ dependencies
 Required dependencies
 =====================
 
-- Python (3.9 or later)
+- Python (3.11 or later)
 - `numpy <https://www.numpy.org/>`__ (1.21 or later)
-- `GDAL <https://gdal.org/>`__ (3.6.2 or later)
+- `GDAL <https://gdal.org/>`__ (3.9.0 or later)
 - `pandas <https://pandas.pydata.org/>`__ (2 or later)
 - `geopandas <https://geopandas.org/>`__  (0.12.2 or later)
 - `Shapely <https://shapely.readthedocs.io/>`__ (1.8.4 or later)
@@ -103,7 +103,7 @@ Once you have a copy of the source, you can install it with:
 
 .. code-block:: console
 
-    $ python setup.py install
+    $ python -m pip install .
 
 
 .. _Github repo: https://github.com/MAfarrag/pyramids

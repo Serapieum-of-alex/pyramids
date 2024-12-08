@@ -1,10 +1,13 @@
 """
+FeatureCollection.
+
 ogr classes: https://gdal.org/java/org/gdal/ogr/package-summary.html
 ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
 
 drivers available in geopandas
 gpd.io.file._EXTENSION_TO_DRIVER
 """
+
 import json
 import os
 import shutil
@@ -29,7 +32,6 @@ from shapely.geometry.multipolygon import MultiPolygon
 from pyramids._errors import DriverNotExistError
 from pyramids._utils import (
     Catalog,
-    numpy_to_gdal_dtype,
     ogr_ds_togdal_dataset,
     ogr_to_numpy_dtype,
 )
@@ -66,10 +68,12 @@ class FeatureCollection:
     """
 
     def __init__(self, gdf: Union[GeoDataFrame, DataSource]):
+        """Create a FeatureCollection object."""
         # read the drivers catalog
         self._feature = gdf
 
     def __str__(self):
+        """__str__."""
         message = f"""
             Feature: {self.feature}
         """
@@ -83,18 +87,18 @@ class FeatureCollection:
         return message
 
     @property
-    def feature(self):
-        """GeoDataFrame or DataSource"""
+    def feature(self) -> Union[GeoDataFrame, DataSource]:
+        """Geodataframe or DataSource."""
         return self._feature
 
     @property
     def epsg(self) -> int:
-        """EPSG number"""
+        """EPSG number."""
         return self._get_epsg()
 
     @property
     def total_bounds(self) -> List[Number]:
-        """bounding coordinates"""
+        """Bounding coordinates `min-x`, `min-y`, `max-x`, `maxy`."""
         if isinstance(self.feature, GeoDataFrame):
             bounds = self.feature.total_bounds.tolist()
         else:
@@ -103,7 +107,7 @@ class FeatureCollection:
         return bounds
 
     @property
-    def pivot_point(self) -> List[Number]:
+    def top_left_corner(self) -> List[Number]:
         """Top left corner coordinates."""
         if isinstance(self.feature, GeoDataFrame):
             bounds = self.feature.total_bounds.tolist()
@@ -140,7 +144,7 @@ class FeatureCollection:
 
     @property
     def column(self) -> List:
-        """Column Names"""
+        """Column Names."""
         names = []
         if isinstance(self.feature, DataSource) or isinstance(
             self.feature, gdal.Dataset
@@ -157,11 +161,11 @@ class FeatureCollection:
         return names
 
     @property
-    def file_name(self):
-        """Get file name in case of the base object is an ogr.Datasource or gdal.Dataset"""
-        if isinstance(self.feature, DataSource):
-            file_name = self.feature.name
-        elif isinstance(self.feature, gdal.Dataset):
+    def file_name(self) -> str:
+        """Get file name in case of the base object is an ogr.Datasource or gdal.Dataset."""
+        if isinstance(self.feature, gdal.Dataset) or isinstance(
+            self.feature, DataSource
+        ):
             file_name = self.feature.GetFileList()[0]
         else:
             file_name = ""
@@ -170,7 +174,8 @@ class FeatureCollection:
 
     @property
     def dtypes(self) -> Dict[str, str]:
-        """dtypes.
+        """Data Type.
+
             - Get the data types of the columns in the vector file.
 
         Returns
@@ -180,6 +185,8 @@ class FeatureCollection:
         """
         if isinstance(self.feature, GeoDataFrame):
             dtypes = self.feature.dtypes.to_dict()
+            # convert the dtype to string as it returns a dtype object in linux instead.
+            dtypes = {key: str(value) for key, value in dtypes.items()}
         else:
             dtypes = []
             for i in range(self.layers_count):
@@ -189,7 +196,7 @@ class FeatureCollection:
                     ogr_to_numpy_dtype(layer_dfn.GetFieldDefn(j).GetType()).__name__
                     for j in range(cols)
                 ]
-            # the geometry colmn is not in the returned dictionary if the vector is DataSource
+            # the geometry column is not in the returned dictionary if the vector is DataSource
             dtypes = {col_i: type_i for col_i, type_i in zip(self.column, dtypes)}
 
         return dtypes
@@ -243,7 +250,7 @@ class FeatureCollection:
 
     @staticmethod
     def _create_driver(driver: str, path: str):
-        """Create Driver"""
+        """Create Driver."""
         return ogr.GetDriverByName(driver).CreateDataSource(path)
 
     @staticmethod
@@ -290,14 +297,14 @@ class FeatureCollection:
     def _gdf_to_ds(
         self, inplace: bool = False, gdal_dataset=False
     ) -> Union[DataSource, None]:
-        """convert a geopandas geodataframe into ogr DataSource.
+        """Convert a geopandas geodataframe into ogr DataSource.
 
         Parameters
         ----------
         inplace: [bool]
             convert the geodataframe to datasource inplace. Default is False.
         gdal_dataset: [bool]
-            True if you want to convert the geodataframe into a gdal Dataset (the onject created by reading the
+            True if you want to convert the geodataframe into a gdal Dataset (the object created by reading the
             vector with gdal.EX). Default is False
 
         Returns
@@ -468,7 +475,7 @@ class FeatureCollection:
                 )
             # if the raster is given, the top left corner of the raster will be taken as the top left corner for
             # the rasterized polygon
-            xmin, ymax = dataset.pivot_point
+            xmin, ymax = dataset.top_left_corner
             no_data_value = (
                 dataset.no_data_value[0]
                 if dataset.no_data_value[0] is not None
@@ -495,21 +502,21 @@ class FeatureCollection:
         else:
             numpy_dtype = self.dtypes[column_name]
 
-        dtype = numpy_to_gdal_dtype(numpy_dtype)
+        dtype = str(numpy_dtype)
         attribute = column_name
 
         # convert the vector to a gdal Dataset (vector but read by gdal.EX)
         vector_gdal_ex = self._gdf_to_ds(gdal_dataset=True)
-        top_left_coords = (xmin, ymax)
+        top_left_corner = (xmin, ymax)
 
         bands_count = 1 if not isinstance(attribute, list) else len(attribute)
-        dataset_n = Dataset.create_driver_from_scratch(
+        dataset_n = Dataset.create(
             cell_size,
             rows,
             columns,
             dtype,
             bands_count,
-            top_left_coords,
+            top_left_corner,
             ds_epsg,
             no_data_value,
         )
@@ -556,18 +563,16 @@ class FeatureCollection:
 
     @staticmethod
     def _create_sr_from_proj(prj: str, string_type: str = None):
-        """Create spatial reference object from projection.
+        """Create a spatial reference object from projection.
 
         Parameters
         ----------
         prj: [str]
             projection string
             >>> "GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]"
+
         string_type: [str]
             type of the string ["ESRI wkt", "WKT", "PROj4"]
-
-        Returns
-        -------
         """
         srs = osr.SpatialReference()
 
@@ -583,8 +588,8 @@ class FeatureCollection:
         return srs
 
     @staticmethod
-    def get_epsg_from_Prj(prj: str) -> int:
-        """create spatial reference from the projection then auto identify the epsg using the osr object.
+    def get_epsg_from_prj(prj: str) -> int:
+        """Create spatial reference from the projection then auto identify the epsg using the osr object.
 
         Parameters
         ----------
@@ -600,7 +605,7 @@ class FeatureCollection:
         >>> from pyramids.dataset import Dataset
         >>> src = Dataset.read_file("path/to/raster.tif")
         >>> prj = src.GetProjection()
-        >>> epsg = FeatureCollection.get_epsg_from_Prj(prj)
+        >>> epsg = FeatureCollection.get_epsg_from_prj(prj)
         """
         if prj != "":
             srs = FeatureCollection._create_sr_from_proj(prj)
@@ -942,7 +947,9 @@ class FeatureCollection:
         self._feature.reset_index(drop=True, inplace=True)
 
     @staticmethod
-    def create_polygon(coords: List[Tuple[float, float]], wkt: bool = False):
+    def create_polygon(
+        coords: List[Tuple[float, float]], wkt: bool = False
+    ) -> Union[str, Polygon]:
         """Create a polygon Geometry.
 
         Create a polygon from coordinates
@@ -964,9 +971,9 @@ class FeatureCollection:
         Examples
         --------
         >>> coordinates = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
-        >>> FeatureCollection.create_polygon(coordinates, wkt=True)
-        it will give
-        >>> 'POLYGON ((24.95 60.16 0,24.95 60.16 0,24.95 60.17 0,24.95 60.16 0))'
+        >>> feature_collection = FeatureCollection.create_polygon(coordinates, wkt=True)
+        >>> print(feature_collection)
+        'POLYGON ((-106.64 24, -106.49 24.05, -106.49 24.01, -106.49 23.98, -106.64 24))'
         while
         >>> new_geometry = gpd.GeoDataFrame()
         >>> new_geometry.loc[0,'geometry'] = FeatureCollection.create_polygon(coordinates, wkt=False)

@@ -1,12 +1,14 @@
 """
-raster contains python functions to handle raster data align them together based on a source raster, perform any
-algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
+netcdf module.
+
+netcdf contains python functions to handle netcdf data. gdal class: https://gdal.org/api/index.html#python-api.
 """
+
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
-from osgeo import gdal  # gdalconst
+from osgeo import gdal
 from pyramids._utils import (
     create_time_conversion_func,
     numpy_to_gdal_dtype,
@@ -18,13 +20,13 @@ from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 
 
 class NetCDF(Dataset):
-    """AbstractDataset.
+    """NetCDF.
 
-    The Dataset class contains methods to deal with rasters and netcdf files, change projection and coordinate
-    systems.
+    The NetCDF class contains methods to deal with netcdf files.
     """
 
-    def __init__(self, src: gdal.Dataset):
+    def __init__(self, src: gdal.Dataset, access: str = "read_only"):
+        """__init__."""
         super().__init__(src)
         # set the is_subset to false before retrieving the variables
         self._is_subset = False
@@ -38,6 +40,7 @@ class NetCDF(Dataset):
             self._lat, self._lon = self._get_lat_lon()
 
     def __str__(self):
+        """__str__."""
         message = f"""
             Cell size: {self.cell_size}
             Dimension: {self.rows} * {self.columns}
@@ -48,6 +51,7 @@ class NetCDF(Dataset):
         return message
 
     def __repr__(self):
+        """__repr__."""
         message = """
             Cell size: {0}
             Dimension: {1} * {2}
@@ -70,9 +74,9 @@ class NetCDF(Dataset):
 
     @property
     def lon(self):
-        """Longitude coordinates"""
+        """Longitude coordinates."""
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
+            pivot_x = self.top_left_corner[0]
             cell_size = self.cell_size
             x_coords = NetCDF.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
@@ -84,9 +88,9 @@ class NetCDF(Dataset):
 
     @property
     def lat(self):
-        """Latitude-coordinate"""
+        """Latitude-coordinate."""
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
+            pivot_y = self.top_left_corner[1]
             cell_size = self.cell_size
             y_coords = NetCDF.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
@@ -96,10 +100,10 @@ class NetCDF(Dataset):
 
     @property
     def x(self):
-        """x-coordinate/longitude"""
+        """x-coordinate/longitude."""
         # X_coordinate = upperleft corner x + index * cell size + celsize/2
         if not hasattr(self, "_lon"):
-            pivot_x = self.pivot_point[0]
+            pivot_x = self.top_left_corner[0]
             cell_size = self.cell_size
             x_coords = NetCDF.get_x_lon_dimension_array(
                 pivot_x, cell_size, self.columns
@@ -111,10 +115,10 @@ class NetCDF(Dataset):
 
     @property
     def y(self):
-        """y-coordinate/latitude"""
-        # X_coordinate = upperleft corner x + index * cell size + celsize/2
+        """y-coordinate/latitude."""
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
-            pivot_y = self.pivot_point[1]
+            pivot_y = self.top_left_corner[1]
             cell_size = self.cell_size
             y_coords = NetCDF.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
         else:
@@ -140,17 +144,18 @@ class NetCDF(Dataset):
 
     @property
     def variables(self) -> Dict[str, "NetCDF"]:
-        """Variables in the dataset (resembles the variables in netcdf files.)"""
+        """Variables in the dataset (resembles the variables in netcdf files.)."""
         return self._variables
 
     @property
     def no_data_value(self):
-        """No data value that marks the cells out of the domain"""
+        """No data value that marks the cells out of the domain."""
         return self._no_data_value
 
     @no_data_value.setter
     def no_data_value(self, value: Union[List, Number]):
-        """
+        """no_data_value.
+
         No data value that marks the cells out of the domain
 
         Notes
@@ -158,7 +163,7 @@ class NetCDF(Dataset):
             - the setter does not change the values of the cells to the new no_data_value, it only changes the
             `no_data_value` attribute.
             - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
-            - to change the values of the cells to the new no_data_value, use the `change_no_data_value` method.
+            - to change the values of the cells, to the new no_data_value, use the `change_no_data_value` method.
         """
         if isinstance(value, list):
             for i, val in enumerate(value):
@@ -168,7 +173,7 @@ class NetCDF(Dataset):
 
     @property
     def file_name(self):
-        """file name"""
+        """File name."""
         if self._file_name.startswith("NETCDF"):
             name = self._file_name.split(":")[1][1:-1]
         else:
@@ -177,7 +182,7 @@ class NetCDF(Dataset):
 
     @property
     def time_stamp(self):
-        """Time stamp"""
+        """Time stamp."""
         if hasattr(self, "_time_stamp"):
             val = self._time_stamp
         else:
@@ -208,12 +213,7 @@ class NetCDF(Dataset):
         return cls(src)
 
     def _get_time_variable(self):
-        """
-
-        Returns
-        -------
-
-        """
+        """_get_time_variable."""
         # time_vars = [(i, self.meta_data.get(i)) for i in self.meta_data.keys() if i.startswith("time")]
         # time_var_name = time_vars[0][0].split("#")[0]
         extra_dim = self.meta_data.get("NETCDF_DIM_EXTRA")
@@ -342,7 +342,7 @@ class NetCDF(Dataset):
     def create_main_dimension(
         group: gdal.Group, dim_name: str, dtype: int, values: np.ndarray
     ) -> gdal.Dimension:
-        """Create NetCDF dimension
+        """Create NetCDF dimension.
 
         if the dimension name is y, lat, latitude, the dimension type will be horizontal y,
         if the dimension name is x, lon, longitude, the dimension type will be horizontal x,
@@ -583,7 +583,7 @@ class NetCDF(Dataset):
 
         Notes
         -----
-        The method will not remove the variable from the disk if the dataset is saved on disk. Rather the method will
+        The method will not remove the variable from the disk if the dataset is saved on disk. Rather, the method will
         make a Memory driver and copy the original dataset to the memory driver. and then remove the variable from the
         memory dataset.
         """

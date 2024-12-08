@@ -1,4 +1,5 @@
 """ Tests for the Datacube class. """
+
 import os
 import shutil
 from typing import List
@@ -7,7 +8,8 @@ import geopandas as gpd
 import numpy as np
 from osgeo import gdal
 
-from pyramids.dataset import Datacube, Dataset
+from pyramids.dataset import Dataset
+from pyramids.datacube import Datacube
 
 
 class TestCreateDataCube:

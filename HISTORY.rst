@@ -173,6 +173,73 @@ of the real values in the bands.
 
 0.7.0 (2024-06-01)
 ------------------
+* install viz, dev, all packages through pip.
 * create a separate module for the netcdf files.
 * add configuration file and module for setting gdal configurations.
-* install viz, dev, all packages through pip.
+
+AbstractDataset
+"""""""
+* add `meta_data` property to return the metadata of the dataset.
+* add `access` property to indicate the access mode of the dataset.
+
+
+Dataset
+"""""""
+* add extra parameter `file_i` to the `read_file` method to read a specific file in a compressed file.
+* initialize the `GDAL_TIFF_INTERNAL_MASK` configuration to `No`
+* the add the `access` parameter to the constructor to set the access mode of the dataset.
+* add the `band_units` property to return the units of the bands.
+* the `__str__` and the `__repr__` methods return string numpy like data type (instead of the gdal constant) of the
+dataset.
+* add `meta_data` property setter to set any key:value as a metadata of the dataset.
+* add `scale` and `offset` properties to set the scale and offset of the bands.
+* add `copy` method to copy the dataset to memory.
+* add `get_attribute_table`set_attribute_table` method to get/set the attribute table of a specific band.
+* the `plot` method uses the rgb bands defined in the dataset plotting (if exist).
+* add `create` method to create a new dataset from scratch.
+* add `write_array` method to write an array to an existing dataset.
+* add `get_mask` method to get the mask of a dataset band.
+* add `band_color` method to get the color assigned to a specific band (RGB).
+* add `get_band_by_color` method to get the band index by its color.
+* add `get_histogram` method to get/calculate  the histogram of a specific band.
+* the `read_array` method takes and extra parameter `window` to lazily read a `window` of the raster, the window is
+[xoff, yoff, x-window, y-window], the `window` can also be a geodataframe.
+* add `get_block_arrangement` method divide the raster into tiles based on the block size.
+* add tiff file writing options (compression/tile/tile_length)
+* add `close` method to flush to desk and close a dataset.
+* add `add_band` method to add an array as a band to an existing dataset.
+* rename `pivot_point` to `top_left_corner` in the `create` method.
+* the `to_file` method return a `Dataset` object pointing to the saved dataset rather than the need to re-read the
+saved dataset after you save it.
+
+Datacube
+""""""""
+* the `Datacube` is moved to a separate module `datacube`.
+
+NetCDF
+"""""""
+* move all the netcdf related functions to a separate module `netcdf`.
+
+FeatureCollection
+"""""""""""""""""
+* rename the `pivot_point` to `top_left_corner`
+
+Deprecated
+""""""""""
+*Cropping a raster using a polygon is done now directly using gdal.wrap nand the the `_crop_with_polygon_by_rasterizing`
+is deprecated.
+* rename the interpolation method `nearest neighbour` to `nearest neighbor`.
+
+0.7.1 (2024-12-07)
+------------------
+* update `cleopatra` package version to 0.5.1 and update the api to use the new version.
+* update the miniconda workflow in ci.
+* update gdal to 3.10 and update the DataSource to Dataset in the `FeatureCollection.file_name`.
+* add `libgdal-netcdf` and `libgdal-hdf4` to the conda dependencies.
+
+0.7.2 (2024-12-**)
+------------------
+
+Dev
+"""
+* replace the setup.py with pyproject.toml

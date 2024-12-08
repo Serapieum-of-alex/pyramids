@@ -1,4 +1,5 @@
-"""Utility module"""
+"""Utility module."""
+
 from typing import Union
 import yaml
 import datetime as dt
@@ -6,7 +7,7 @@ import numpy as np
 from pandas import DataFrame
 from osgeo import gdal, ogr, gdalconst  # gdal_array,
 from osgeo.gdal import Dataset
-from pyramids._errors import OptionalPackageDoesNontExist, DriverNotExistError
+from pyramids._errors import OptionalPackageDoesNotExist, DriverNotExistError
 from pyramids import __path__
 
 # from urllib.parse import urlparse as parse_url
@@ -120,8 +121,52 @@ DTYPE_CONVERSION_DF = DataFrame(
     data=list(zip(GDAL_DTYPE_CODE, DTYPE_NAMES, NUMPY_DTYPE, GDAL_DTYPE, OGR_DTYPE)),
 )
 
+COLOR_INTERPRETATIONS = [
+    gdal.GCI_Undefined,  # 0
+    gdal.GCI_GrayIndex,  # 1
+    gdal.GCI_PaletteIndex,  # 2
+    gdal.GCI_RedBand,  # 3
+    gdal.GCI_GreenBand,  # 4
+    gdal.GCI_BlueBand,  # 5
+    gdal.GCI_AlphaBand,  # 6
+    gdal.GCI_HueBand,  # 7
+    gdal.GCI_SaturationBand,  # 8
+    gdal.GCI_LightnessBand,  # 9
+    gdal.GCI_CyanBand,  # 10
+    gdal.GCI_MagentaBand,  # 11
+    gdal.GCI_YellowBand,  # 12
+    gdal.GCI_BlackBand,  # 13
+    gdal.GCI_YCbCr_YBand,  # 14
+    gdal.GCI_YCbCr_CbBand,  # 15
+    gdal.GCI_YCbCr_CrBand,  # 16
+]
+
+COLOR_NAMES = [
+    "undefined",
+    "gray_index",
+    "palette_index",
+    "red",
+    "green",
+    "blue",
+    "alpha",
+    "hue",
+    "saturation",
+    "lightness",
+    "cyan",
+    "magenta",
+    "yellow",
+    "black",
+    "YCbCr_YBand",
+    "YCbCr_CbBand",
+    "YCbCr_CrBand",
+]
+
+COLOR_TABLE = DataFrame(
+    columns=["id", "gdal_constant", "name"],
+    data=list(zip(range(len(COLOR_NAMES)), COLOR_INTERPRETATIONS, COLOR_NAMES)),
+)
 INTERPOLATION_METHODS = {
-    "nearest neighbour": gdal.GRA_NearestNeighbour,
+    "nearest neighbor": gdal.GRA_NearestNeighbour,
     "cubic": gdal.GRA_Cubic,
     "bilinear": gdal.GRA_Bilinear,
 }
@@ -130,8 +175,53 @@ INTERPOLATION_METHODS = {
 # TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
 
 
-def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype]) -> int:
-    """mapping functiuon between numpy and gdal data types.
+def color_name_to_gdal_constant(color_name: str) -> int:
+    """Convert color name to GDAL constant.
+
+    Parameters
+    ----------
+    color_name: [str]
+        Color name
+
+    Returns
+    -------
+    int
+    """
+    if color_name not in COLOR_NAMES:
+        raise ValueError(
+            f"{color_name} is not a valid color name, possible names are: {COLOR_NAMES}"
+        )
+
+    gdal_constant = int(
+        COLOR_TABLE.loc[COLOR_TABLE["name"] == color_name, "gdal_constant"].values[0]
+    )
+    return gdal_constant
+
+
+def gdal_constant_to_color_name(gdal_constant: int) -> str:
+    """Convert GDAL constant to color name.
+
+    Parameters
+    ----------
+    gdal_constant: [int]
+        GDAL constant
+
+    Returns
+    -------
+    str
+    """
+    if gdal_constant not in COLOR_INTERPRETATIONS:
+        raise ValueError(
+            f"{gdal_constant} is not a valid gdal constant, possible constants are: {COLOR_INTERPRETATIONS}"
+        )
+    color_name = COLOR_TABLE.loc[
+        COLOR_TABLE["gdal_constant"] == gdal_constant, "name"
+    ].values[0]
+    return color_name
+
+
+def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype, str]) -> int:
+    """Map function between numpy and gdal data types.
 
     Parameters
     ----------
@@ -144,8 +234,14 @@ def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype]) -> int:
     """
     if isinstance(arr, np.ndarray):
         np_dtype = arr.dtype
-    else:
+    elif isinstance(arr, np.dtype):
         np_dtype = arr
+    elif isinstance(arr, str):
+        np_dtype = np.dtype(arr)
+    else:
+        raise ValueError(
+            "The given input is not a numpy array or a numpy data type, please provide a valid input"
+        )
     # integer as gdal does not accept the dtype if it is int64
     gdal_type = int(
         DTYPE_CONVERSION_DF.loc[
@@ -156,7 +252,7 @@ def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype]) -> int:
 
 
 def ogr_to_numpy_dtype(dtype_code: int):
-    """converts OGR dtype into numpy dtype
+    """Convert OGR dtype into numpy dtype.
 
     Parameters
     ----------
@@ -206,7 +302,7 @@ def ogr_to_numpy_dtype(dtype_code: int):
 
 
 def gdal_to_numpy_dtype(dtype: int) -> str:
-    """converts gdal dtype into numpy dtype
+    """Convert gdal dtype into numpy dtype.
 
     Parameters
     ----------
@@ -229,7 +325,7 @@ def gdal_to_numpy_dtype(dtype: int) -> str:
 
 
 def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
-    """return the coresponding data type grom ogr to each gdal data type.
+    """Get The corresponding data type from ogr to each gdal data type.
 
     Parameters
     ----------
@@ -252,7 +348,7 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
 
 
 def create_time_conversion_func(time: str) -> callable:
-    """Create a function to convert the ordinal time to gregorian date
+    """Create a function to convert the ordinal time to gregorian date.
 
     Parameters
     ----------
@@ -293,6 +389,7 @@ class Catalog:
     """Data Catalog."""
 
     def __init__(self, raster_driver=True):
+        """Initialize the catalog."""
         if raster_driver:
             path = "gdal_drivers.yaml"
         else:
@@ -307,11 +404,11 @@ class Catalog:
         return gdal_catalog
 
     def get_driver(self, driver: str):
-        """get Driver data from the catalog"""
+        """Get Driver data from the catalog."""
         return self.catalog.get(driver)
 
     def get_gdal_name(self, driver: str):
-        """Get GDAL name"""
+        """Get GDAL name."""
         driver = self.get_driver(driver)
         return driver.get("GDAL Name")
 
@@ -362,7 +459,7 @@ class Catalog:
         return self.get_driver(driver_name)
 
     def exists(self, driver: str):
-        """check if the driver exist in the catalog"""
+        """Check if the driver exist in the catalog."""
         return driver in self.catalog.keys()
 
     def get_extension(self, driver: str):
@@ -371,7 +468,7 @@ class Catalog:
         return driver.get("extension")
 
     def get_driver_name(self, gdal_name) -> str:
-        """Get drivern name"""
+        """Get drivern name."""
         for key, value in self.catalog.items():
             name = value.get("GDAL Name")
             if gdal_name == name:
@@ -380,23 +477,23 @@ class Catalog:
 
 
 def import_geopy(message: str):
-    """try to import geopy."""
+    """Import geopy."""
     try:
         import geopy  # noqa
     except ImportError:
-        raise OptionalPackageDoesNontExist(message)
+        raise OptionalPackageDoesNotExist(message)
 
 
 def import_cleopatra(message: str):
-    """try to import cleopatra."""
+    """Import cleopatra."""
     try:
         import cleopatra  # noqa
     except ImportError:
-        raise OptionalPackageDoesNontExist(message)
+        raise OptionalPackageDoesNotExist(message)
 
 
 def ogr_ds_togdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
-    """Convert ogr.Datasource object to a gdal.Dataset
+    """Convert ogr.Datasource object to a gdal.Dataset.
 
     Parameters
     ----------

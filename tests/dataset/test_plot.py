@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from osgeo import gdal
-from pyramids.dataset import Dataset, Datacube
+from pyramids.dataset import Dataset
+from pyramids.datacube import Datacube
 
 
 class TestPlotDataSet:
@@ -56,16 +57,48 @@ class TestPlotDataCube:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        from cleopatra.array import Array
+        from cleopatra.array_glyph import ArrayGlyph
         from matplotlib.animation import FuncAnimation
 
         cube = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         cube.open_datacube()
         cleo = cube.plot()
-        assert isinstance(cleo, Array)
+        assert isinstance(cleo, ArrayGlyph)
 
 
 class TestColorTable:
+
+    @pytest.mark.plot
+    def test_generated_data(self):
+        arr = np.random.randint(1, 3, size=(2, 5, 5))
+        top_left_corner = (0, 0)
+        cell_size = 0.05
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+        )
+
+        # without alpha
+        color_table = pd.DataFrame(
+            {
+                "band": [1, 1, 1, 2, 2, 2],
+                "values": [1, 2, 3, 1, 2, 3],
+                "color": [
+                    "#709959",
+                    "#F2EEA2",
+                    "#F2CE85",
+                    "#C28C7C",
+                    "#D6C19C",
+                    "#D6C19C",
+                ],
+            }
+        )
+        dataset.color_table = color_table
+        retrieved_color_table = dataset.color_table
+        assert all(
+            ["band", "values", "red", "green", "blue", "alpha"]
+            == retrieved_color_table.columns
+        )
+
     @pytest.mark.plot
     def test_get_color_table(self, src_with_color_table: Dataset):
         dataset = Dataset(src_with_color_table)

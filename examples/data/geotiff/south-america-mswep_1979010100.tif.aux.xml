@@ -1,0 +1,54 @@
+<PAMDataset>
+  <PAMRasterBand band="1">
+    <GDALRasterAttributeTable tableType="thematic">
+      <FieldDefn index="0">
+        <Name>Precipitation Range (mm)</Name>
+        <Type>2</Type>
+        <Usage>0</Usage>
+      </FieldDefn>
+      <FieldDefn index="1">
+        <Name>Category</Name>
+        <Type>2</Type>
+        <Usage>0</Usage>
+      </FieldDefn>
+      <FieldDefn index="2">
+        <Name>Description</Name>
+        <Type>2</Type>
+        <Usage>0</Usage>
+      </FieldDefn>
+      <Row index="0">
+        <F>0-50</F>
+        <F>Low</F>
+        <F>Very low precipitation</F>
+      </Row>
+      <Row index="1">
+        <F>51-100</F>
+        <F>Moderate</F>
+        <F>Moderate precipitation</F>
+      </Row>
+      <Row index="2">
+        <F>101-200</F>
+        <F>High</F>
+        <F>High precipitation</F>
+      </Row>
+      <Row index="3">
+        <F>201-500</F>
+        <F>Very High</F>
+        <F>Very high precipitation</F>
+      </Row>
+      <Row index="4">
+        <F>&gt;500</F>
+        <F>Extreme</F>
+        <F>Extreme precipitation</F>
+      </Row>
+    </GDALRasterAttributeTable>
+    <Metadata>
+      <MDI key="STATISTICS_APPROXIMATE">YES</MDI>
+      <MDI key="STATISTICS_MAXIMUM">65.326110839844</MDI>
+      <MDI key="STATISTICS_MEAN">-1949.0501233743</MDI>
+      <MDI key="STATISTICS_MINIMUM">-9998.9921875</MDI>
+      <MDI key="STATISTICS_STDDEV">3413.1217240451</MDI>
+      <MDI key="STATISTICS_VALID_PERCENT">32.35</MDI>
+    </Metadata>
+  </PAMRasterBand>
+</PAMDataset>

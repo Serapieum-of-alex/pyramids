@@ -3,6 +3,7 @@ gdal:
   GDAL_PAM_ENABLED: "YES"  # Enable Persistent Auxiliary Metadata
   GDAL_VRT_ENABLE_PYTHON: "YES"  # Enable Python in VRT (Virtual Dataset) functions
   #   GDAL_DATA: "/usr/share/gdal"
+  GDAL_TIFF_INTERNAL_MASK: "NO"  # Use internal mask for TIFF files
 ogr:
   OGR_SRS_PARSER: "strict"
 

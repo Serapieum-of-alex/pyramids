@@ -46,7 +46,7 @@ Installing pyramids
 Installing `pyramids` from the `conda-forge` channel can be achieved by:
 
 ```
-conda install -c conda-forge pyramids=0.6.0
+conda install -c conda-forge pyramids=0.7.1
 ```
 
 It is possible to list all the versions of `pyramids` available on your platform with:
@@ -68,7 +68,7 @@ pip install git+https://github.com/Serapieum-of-alex/pyramids
 to install the last release, you can easily use pip
 
 ```
-pip install pyramids-gis==0.6.0
+pip install pyramids-gis==0.7.1
 ```
 
 Quick start
