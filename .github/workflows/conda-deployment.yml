@@ -23,13 +23,13 @@ jobs:
           environment-file: environment.yml
           activate-environment: test
           python-version: ${{ matrix.python-version }}
-          channels: conda-forge,defaults
+          channels: conda-forge
           channel-priority: true
           show-channel-urls: true
 
       - name: Install dev-dependencies
         run: |
-            pip install .[dev] --no-deps
+            pip install .[dev]
 
       - name: Generate coverage report
         shell: bash -el {0}
@@ -60,7 +60,7 @@ jobs:
           environment-file: environment-optional-packages.yml
           activate-environment: test
           python-version: ${{ matrix.python-version }}
-          channels: conda-forge,defaults
+          channels: conda-forge
           channel-priority: true
           show-channel-urls: true
 
