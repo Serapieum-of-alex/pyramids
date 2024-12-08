@@ -24,7 +24,7 @@ jobs:
         run: |
             python -m pip install --upgrade pip
             pip install --no-cache-dir Cython
-            pip install --find-links=https://girder.github.io/large_image_wheels --no-cache GDAL==3.9.0
+            pip install --find-links=https://girder.github.io/large_image_wheels --no-cache GDAL==3.10.0
 
       - name: Test GDAL installation
         run: |
@@ -35,9 +35,9 @@ jobs:
         run: |
             pip install .[dev]
 
-      - name: Run tests
+      - name: Generate coverage report
         run: |
-          pytest -sv -m "not plot" --ignore=tests/dataset/test_plot.py
+          python -m pytest -sv -m "not plot"
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3
@@ -61,9 +61,9 @@ jobs:
 
       - name: Install GDAL
         run: |
-            pip install --upgrade pip
+            python -m pip install --upgrade pip
             pip install --no-cache-dir Cython
-            pip install --find-links=https://girder.github.io/large_image_wheels --no-cache GDAL==3.9.0
+            pip install --find-links=https://girder.github.io/large_image_wheels --no-cache GDAL==3.10.0
 
       - name: Test GDAL installation
         run: |
@@ -74,9 +74,10 @@ jobs:
         run: |
             pip install .[dev,viz]
 
-      - name: Run tests and generate coverage report
+      - name: Run Tests
         run: |
-          pytest -v --cov=pyramids --cov-report=xml
+          python -m pytest -v --cov=pyramids --cov-report=xml
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3
+

@@ -13,32 +13,33 @@ jobs:
       OS: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           mamba-version: "*"
-          #use-mamba: true
+          use-mamba: true
           auto-update-conda: false
-          environment-file: environment.yml
           auto-activate-base: false
+          environment-file: environment.yml
           activate-environment: test
           python-version: ${{ matrix.python-version }}
-          channels: conda-forge,defaults
+          channels: conda-forge
           channel-priority: true
           show-channel-urls: true
 
       - name: Install dev-dependencies
         run: |
-            pip install .[dev] --no-deps
+            pip install .[dev]
 
-      - name: Run tests
+      - name: Generate coverage report
         shell: bash -el {0}
         run: |
           conda info
           conda list
           conda config --show-sources
           conda config --show
-          pytest -sv -m "not plot" --ignore=tests/dataset/test_plot.py
+          pip install .
+          pytest -sv -m "not plot"
 
   Optional-packages:
     runs-on: ${{ matrix.os }}
@@ -50,25 +51,25 @@ jobs:
       OS: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           mamba-version: "*"
-          #use-mamba: true
+          use-mamba: true
           auto-update-conda: false
-          environment-file: environment-optional-packages.yml
           auto-activate-base: false
+          environment-file: environment-optional-packages.yml
           activate-environment: test
           python-version: ${{ matrix.python-version }}
-          channels: conda-forge,defaults
+          channels: conda-forge
           channel-priority: true
           show-channel-urls: true
 
       - name: Install dev-dependencies
         run: |
-            pip install .[dev] --no-deps
+            pip install .[dev]
 
-      - name: Run tests
+      - name: Generate coverage report
         shell: bash -el {0}
         run: |
           conda activate test
@@ -76,11 +77,12 @@ jobs:
           conda list
           conda config --show-sources
           conda config --show
+          pip install .
           pytest -sv
 
       - name: test Jupyter notebook
         shell: bash -el {0}
         run: |
           conda activate test
-          pip install -e .
+          pip install .
           pytest --nbval -k ".ipynb"
