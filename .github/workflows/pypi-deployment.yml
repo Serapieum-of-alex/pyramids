@@ -74,15 +74,6 @@ jobs:
         run: |
             pip install .[dev,viz]
 
-
-      - name: Cache Python Environment
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-cache-${{ matrix.python-version }}
-          restore-keys: |
-            ${{ runner.os }}-pip-cache-
-
       - name: Run Tests
         run: |
           python -m pytest -v --cov=pyramids --cov-report=xml
@@ -90,10 +81,3 @@ jobs:
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3
 
-
-
-  Trigger-Test-Notebook:
-    needs: optional-packages
-    uses: ./.github/workflows/jupyter-notebooks-examples.yml
-    with:
-      environment-path: ${{ matrix.python-version }}

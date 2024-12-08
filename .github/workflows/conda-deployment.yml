@@ -78,8 +78,9 @@ jobs:
           conda config --show
           pytest -sv
 
-  Trigger-Test-Notebook:
-    needs: Optional-packages
-    uses: ./.github/workflows/jupyter-notebooks-examples.yml
-    with:
-      environment-path: test
+      - name: test Jupyter notebook
+        shell: bash -el {0}
+        run: |
+          conda activate test
+          pip install -e .
+          pytest --nbval -k ".ipynb"
