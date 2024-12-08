@@ -63,3 +63,4 @@ class Config:
                 )
 
         gdal.PushErrorHandler(gdal_error_handler)
+
