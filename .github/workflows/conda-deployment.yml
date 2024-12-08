@@ -66,7 +66,7 @@ jobs:
 
       - name: Install dev-dependencies
         run: |
-            pip install .[dev] --no-deps
+            pip install .[dev]
 
       - name: Generate coverage report
         shell: bash -el {0}
