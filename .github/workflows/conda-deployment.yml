@@ -82,5 +82,5 @@ jobs:
         shell: bash -el {0}
         run: |
           conda activate test
-          pip install -e .
+          pip install .
           pytest --nbval -k ".ipynb"
