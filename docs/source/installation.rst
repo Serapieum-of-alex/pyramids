@@ -103,7 +103,7 @@ Once you have a copy of the source, you can install it with:
 
 .. code-block:: console
 
-    $ python setup.py install
+    $ python -m pip install .
 
 
 .. _Github repo: https://github.com/MAfarrag/pyramids
