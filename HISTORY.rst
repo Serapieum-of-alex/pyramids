@@ -236,3 +236,10 @@ is deprecated.
 * update the miniconda workflow in ci.
 * update gdal to 3.10 and update the DataSource to Dataset in the `FeatureCollection.file_name`.
 * add `libgdal-netcdf` and `libgdal-hdf4` to the conda dependencies.
+
+0.7.2 (2024-12-**)
+------------------
+
+Dev
+"""
+* replace the setup.py with pyproject.toml

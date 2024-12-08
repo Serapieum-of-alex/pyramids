@@ -33,8 +33,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-            pip install -r requirements.txt -r requirements-dev.txt
-            python setup.py install
+            pip install .[dev]
 
       - name: Generate coverage report
         run: |
@@ -73,12 +72,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-            pip install -r requirements-optional-packages.txt -r requirements-dev.txt
-            python setup.py install
+            pip install .[dev,viz]
 
-      - name: Generate coverage report
+      - name: Run Tests
         run: |
           python -m pytest -v --cov=pyramids --cov-report=xml
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v3
+

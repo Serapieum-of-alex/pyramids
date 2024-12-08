@@ -23,13 +23,13 @@ jobs:
           environment-file: environment.yml
           activate-environment: test
           python-version: ${{ matrix.python-version }}
-          channels: conda-forge,defaults
+          channels: conda-forge
           channel-priority: true
           show-channel-urls: true
 
       - name: Install dev-dependencies
         run: |
-            python -m pip install -r requirements-dev.txt
+            pip install .[dev]
 
       - name: Generate coverage report
         shell: bash -el {0}
@@ -38,6 +38,7 @@ jobs:
           conda list
           conda config --show-sources
           conda config --show
+          pip install .
           pytest -sv -m "not plot"
 
   Optional-packages:
@@ -60,13 +61,13 @@ jobs:
           environment-file: environment-optional-packages.yml
           activate-environment: test
           python-version: ${{ matrix.python-version }}
-          channels: conda-forge,defaults
+          channels: conda-forge
           channel-priority: true
           show-channel-urls: true
 
       - name: Install dev-dependencies
         run: |
-            python -m pip install -r requirements-dev.txt
+            pip install .[dev]
 
       - name: Generate coverage report
         shell: bash -el {0}
@@ -76,4 +77,12 @@ jobs:
           conda list
           conda config --show-sources
           conda config --show
+          pip install .
           pytest -sv
+
+      - name: test Jupyter notebook
+        shell: bash -el {0}
+        run: |
+          conda activate test
+          pip install .
+          pytest --nbval -k ".ipynb"
