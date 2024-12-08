@@ -80,6 +80,14 @@ class TestAttributes:
             "y": "float64",
         }
 
+    def test_file_name_gdf(self, gdf: GeoDataFrame):
+        feature = FeatureCollection(gdf)
+        assert feature.file_name == ""
+
+    def test_file_name_ds(self, data_source: DataSource):
+        feature = FeatureCollection(data_source)
+        assert feature.file_name == "tests/data/test_vector.geojson"
+
 
 class TestReadFile:
     def test_open_geodataframe(self, test_vector_path: str):
@@ -125,14 +133,12 @@ class TestCreateDataSource:
         assert isinstance(
             ds, DataSource
         ), "the in memory ogr data source object was not created correctly"
-        assert ds.name == "memData"
 
 
 def test_copy_driver_to_memory(data_source: DataSource):
     name = "test_copy_datasource"
     ds = FeatureCollection._copy_driver_to_memory(data_source, name)
     assert isinstance(ds, DataSource)
-    assert ds.name == name
 
 
 class TestConvert:

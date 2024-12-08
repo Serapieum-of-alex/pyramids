@@ -1740,7 +1740,7 @@ class Dataset(AbstractDataset):
             "The current function uses cleopatra package to for plotting, please install it manually, for more info "
             "check https://github.com/Serapieum-of-alex/cleopatra"
         )
-        from cleopatra.array import Array
+        from cleopatra.array_glyph import ArrayGlyph
 
         no_data_value = [np.nan if i is None else i for i in self.no_data_value]
         if overview:
@@ -1772,7 +1772,7 @@ class Dataset(AbstractDataset):
             else [no_data_value[band]]
         )
 
-        cleo = Array(
+        cleo = ArrayGlyph(
             arr,
             exclude_value=exclude_value,
             extent=self.bbox,
@@ -5889,7 +5889,7 @@ class Dataset(AbstractDataset):
         from cleopatra.colors import Colors
 
         color = Colors(color_df["color"].tolist())
-        color_rgb = color.get_rgb(normalized=False)
+        color_rgb = color.to_rgb(normalized=False)
         color_df = color_df.copy(deep=True)
         color_df.loc[:, ["red", "green", "blue"]] = color_rgb
 

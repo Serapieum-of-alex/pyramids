@@ -10,8 +10,6 @@ class ReadOnlyError(Exception):
         """__init__."""
         logger.error(error_message)
 
-    pass
-
 
 class DatasetNoFoundError(Exception):
     """DatasetNoFoundError."""
@@ -19,8 +17,6 @@ class DatasetNoFoundError(Exception):
     def __init__(self, error_message: str):
         """__init__."""
         logger.error(error_message)
-
-    pass
 
 
 class NoDataValueError(Exception):
@@ -30,8 +26,6 @@ class NoDataValueError(Exception):
         """__init__."""
         logger.error(error_message)
 
-    pass
-
 
 class AlignmentError(Exception):
     """Alignment Error."""
@@ -39,8 +33,6 @@ class AlignmentError(Exception):
     def __init__(self, error_message: str):
         """__init__."""
         logger.error(error_message)
-
-    pass
 
 
 class DriverNotExistError(Exception):
@@ -50,8 +42,6 @@ class DriverNotExistError(Exception):
         """__init__."""
         logger.error(error_message)
 
-    pass
-
 
 class FileFormatNotSupported(Exception):
     """File Format Not Supported."""
@@ -59,8 +49,6 @@ class FileFormatNotSupported(Exception):
     def __init__(self, error_message: str):
         """__init__."""
         logger.error(error_message)
-
-    pass
 
 
 class OptionalPackageDoesNotExist(Exception):
@@ -70,8 +58,6 @@ class OptionalPackageDoesNotExist(Exception):
         """__init__."""
         logger.error(error_message)
 
-    pass
-
 
 class FailedToSaveError(Exception):
     """Failed to save error."""
@@ -80,8 +66,6 @@ class FailedToSaveError(Exception):
         """__init__."""
         logger.error(error_message)
 
-    pass
-
 
 class OutOfBoundsError(Exception):
     """Out-of-bounds error."""
@@ -89,5 +73,3 @@ class OutOfBoundsError(Exception):
     def __init__(self, error_message: str):
         """__init__."""
         logger.error(error_message)
-
-    pass
