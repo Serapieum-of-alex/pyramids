@@ -3,14 +3,19 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      - id: check-toml
+        name: "[py -  check] check toml"
       - id: end-of-file-fixer
         name: "[py -  check] validate yaml"
+      - id: no-commit-to-branch
+        name: "[git -  check] no commit to branch"
+        args: [ --branch=main ]
       - id: trailing-whitespace
         name: "[file - format] trim trailing whitespace"
         args: [ --markdown-linebreak-ext=md ]
       - id: check-added-large-files
         name: "[file -  check] large file"
-        args: [ --maxkb=5000 ]
+        args: [ --maxkb=2000 ]
       - id: check-docstring-first
         name: "[py   -  check] docstring first"
         files: /examples
@@ -38,25 +43,6 @@ repos:
         name: "[reqs - format] fix requirements.txt"
       - id: check-yaml
         name: "[yaml -  check] validate yaml"
-#  - repo: https://github.com/pre-commit/mirrors-isort
-#    rev: v5.10.1
-#    hooks:
-#      - id: isort
-#        name: "[py   - format] isort"
-#  - repo: https://github.com/PyCQA/docformatter
-#    rev: v1.4
-#    hooks:
-#      - id: docformatter
-#        name: "[py   - format] docformatter"
-#        args: [ -i, --wrap-summaries, "0" ]
-
-  - repo: https://github.com/PyCQA/pydocstyle
-    rev: 6.3.0
-    hooks:
-      - id: pydocstyle
-        name: "[py   - check] pydocstyle"
-        files: ^pyramids/
-
   - repo: https://github.com/pycqa/flake8
     rev: 7.1.1
     hooks:
@@ -64,24 +50,38 @@ repos:
         additional_dependencies: [Flake8-pyproject]
         name: "[py   - check] flake8"
         exclude: ^(examples/|tests/)
+#   - repo: https://github.com/pycqa/docformatter
+#     rev: v1.4
+#     hooks:
+#      - id: docformatter
+#        name: "[py   - format] docformatter"
+#        description: 'Formats docstrings to follow PEP 257.'
+#        entry: docformatter
+#        args: [-i]
+#        language: python
+#        types: [python]
+#   - repo: https://github.com/pycqa/pydocstyle
+#     rev: 6.3.0
+#     hooks:
+#       - id: pydocstyle
+#         name: "[py   - check] pydocstyle"
+#         files: ^hydrolib/.*\.py$
 
-  #- repo: https://github.com/psf/black
-  #  rev: 22.8.0
-  #  hooks:
-  #    - id: black
-  - repo: https://github.com/ambv/black
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: "[py   - format] isort"
+  - repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:
       - id: black
-        name: "[py   - format] black"
-#        language_version: python3.9
   - repo: https://github.com/lovesegfault/beautysh
     rev: v6.2.1
     hooks:
       - id: beautysh
         name: "[bash - format] beautysh"
 
-  # pre-commit-shell: Checks shell scripts against shellcheck.
   - repo: https://github.com/detailyang/pre-commit-shell
     rev: 1.0.5
     hooks:
@@ -103,6 +103,39 @@ repos:
         name: "[bash -   format] check-summary-max-length"
       - id: check-summary-punctuation
         name: "[bash -   format] check-summary-punctuation"
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.17.0
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 2.1.63
+    hooks:
+      - id: checkov
+
+  - repo: https://github.com/trufflesecurity/truffleHog
+    rev: v3.88.2
+    hooks:
+      - id: trufflehog
+
+  - repo: local
+    hooks:
+      - id: safety
+        name: Safety Check
+        entry: safety check --full-report
+        language: system
+        types: [python]
+        pass_filenames: false
 
   - repo: local
     hooks:
