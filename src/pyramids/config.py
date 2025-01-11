@@ -1,9 +1,13 @@
 """Configuration module for the pyramids package."""
 
+import os
 import yaml
 import logging
+import sys
+from typing import Union
+from pathlib import Path
 from osgeo import gdal, ogr
-from . import __path__
+from pyramids import __path__ as root_path
 
 
 class Config:
@@ -11,14 +15,14 @@ class Config:
 
     def __init__(self, config_file="config.yaml"):
         """Initialize the configuration."""
+        self.setup_logging()
         self.config_file = config_file
         self.config = self.load_config()
         self.initialize_gdal()
-        self.setup_logging()
 
     def load_config(self):
         """Load the configuration from the config file."""
-        with open(f"{__path__[0]}/{self.config_file}", "r") as file:
+        with open(f"{root_path[0]}/{self.config_file}", "r") as file:
             return yaml.safe_load(file)
 
     def initialize_gdal(self):
@@ -34,9 +38,79 @@ class Config:
         for key, value in self.config.get("ogr", {}).items():
             gdal.SetConfigOption(key, value)
 
+        gdal_plugins_path = self.dynamic_env_variables()
+
+        if gdal_plugins_path:
+            gdal.SetConfigOption("GDAL_DRIVER_PATH", str(gdal_plugins_path))
+
+    def set_env_conda(self) -> Union[Path, None]:
+        """Set the environment variables for Conda.
+
+        Returns
+        -------
+        Path:
+            The GDAL plugins path.
+        """
+        conda_prefix = Path(os.getenv("CONDA_PREFIX"))
+
+        if not conda_prefix:
+            self.logger.info("CONDA_PREFIX is not set. Ensure Conda is activated.")
+            return None
+
+        gdal_plugins_path = conda_prefix / "Library/lib/gdalplugins"
+
+        if gdal_plugins_path.exists():
+            os.environ["GDAL_DRIVER_PATH"] = str(gdal_plugins_path)
+            self.logger.info(f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}")
+        else:
+            self.logger.info(
+                f"GDAL plugins path not found at: {gdal_plugins_path}. Please check your GDAL installation."
+            )
+            gdal_plugins_path = None
+
+        return gdal_plugins_path
+
+    def dynamic_env_variables(self) -> Path:
+        """
+        Dynamically locate the GDAL plugin path in a Conda or custom environment and set the GDAL_DRIVER_PATH environment variable.
+        """
+        # Check if we're in a Conda environment
+        gdal_plugins_path = self.set_env_conda()
+
+        if gdal_plugins_path is None:
+
+            # For Windows, check Python site-packages
+            if sys.platform == "win32":
+                import site
+
+                for site_path in site.getsitepackages():
+                    gdal_plugins_path = Path(site_path) / "Library/Lib/gdalplugins"
+                    if os.path.exists(gdal_plugins_path):
+                        os.environ["GDAL_DRIVER_PATH"] = str(gdal_plugins_path)
+                        self.logger.info(
+                            f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}"
+                        )
+            else:
+
+                # Check typical system locations (Linux/MacOS)
+                system_paths = [
+                    "/usr/lib/gdalplugins",
+                    "/usr/local/lib/gdalplugins",
+                ]
+                for path in system_paths:
+                    path = Path(path)
+                    if path.exists():
+                        os.environ["GDAL_DRIVER_PATH"] = str(path)
+                        gdal_plugins_path = path
+                        self.logger.info(f"GDAL_DRIVER_PATH set to: {path}")
+
+                # If the path is not found
+                # print("GDAL plugins path could not be found. Please check your GDAL installation.")
+        return gdal_plugins_path
+
     def setup_logging(self):
         """Set up the logging configuration."""
-        log_config = self.config.get("logging", {})
+        log_config = {}  # self.config.get("logging", {})
         logging.basicConfig(
             level=log_config.get("level", "INFO"),
             format=log_config.get(
