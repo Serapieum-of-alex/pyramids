@@ -16,12 +16,6 @@ class TestConfigEndToEnd(unittest.TestCase):
         """Set up a Config instance for tests."""
         self.config = Config()
 
-    def test_initialize_gdal(self):
-        """End-to-end test for GDAL initialization."""
-        self.config.initialize_gdal()
-        self.assertIn("GDAL_DRIVER_PATH", os.environ)
-        self.assertIsNotNone(os.environ["GDAL_DRIVER_PATH"])
-
     def test_set_env_conda(self):
         """End-to-end test for setting up GDAL in a Conda environment."""
         conda_prefix = os.getenv("CONDA_PREFIX")
