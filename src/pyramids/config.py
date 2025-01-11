@@ -155,6 +155,7 @@ class Config:
 
         if gdal_plugins_path:
             gdal.SetConfigOption("GDAL_DRIVER_PATH", str(gdal_plugins_path))
+        gdal.AllRegister()
 
     def set_env_conda(self) -> Union[Path, None]:
         """
