@@ -35,18 +35,13 @@ Main Features
   needed to build the model (align rasters with the DEM), in addition to various methods to manipulate and
   convert different forms of distributed data (rasters, NetCDF, shapefiles)
 
-Future work
--------------
-
-- Developing a DEM processing module for generating the river network at different DEM spatial resolutions.
-
 Installing pyramids
 ===============
 
 Installing `pyramids` from the `conda-forge` channel can be achieved by:
 
 ```
-conda install -c conda-forge pyramids=0.7.1
+conda install -c conda-forge pyramids=0.7.2
 ```
 
 It is possible to list all the versions of `pyramids` available on your platform with:
@@ -68,7 +63,7 @@ pip install git+https://github.com/Serapieum-of-alex/pyramids
 to install the last release, you can easily use pip
 
 ```
-pip install pyramids-gis==0.7.1
+pip install pyramids-gis==0.7.2
 ```
 
 Quick start
