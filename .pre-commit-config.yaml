@@ -108,7 +108,7 @@ repos:
     hooks:
       - id: pytest-check
         name: pytest-check
-        entry: pytest -v --cov=pyramids --cov-report=xml:term-missing
+        entry: pytest -v --cov=pyramids --cov-report=term-missing
         language: system
         pass_filenames: false
         always_run: true
