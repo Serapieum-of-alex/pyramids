@@ -72,11 +72,7 @@ include = ["pyramids", "pyramids.*"]
 
 
 [tool.setuptools.package-data]
-pyramids = ["*.yaml", "include/gdal/*.h"]
-
-
-[tool.pip.index-url]
-url = "https://girder.github.io/large_image_wheels"
+pyramids = ["*.yaml"]
 
 [project.urls]
 homepage = "https://github.com/Serapieum-of-alex/pyramids"

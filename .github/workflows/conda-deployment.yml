@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.12"]
+        python-version: ["3.12", "3.13"]
     env:
       OS: ${{ matrix.os }}
 
@@ -29,7 +29,7 @@ jobs:
 
       - name: Install dev-dependencies
         run: |
-            pip install .[dev]
+            pip install .[dev] --no-deps
 
       - name: Generate coverage report
         shell: bash -el {0}
@@ -46,7 +46,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.12"]
+        python-version: ["3.12", "3.13"]
     env:
       OS: ${{ matrix.os }}
 
@@ -67,7 +67,7 @@ jobs:
 
       - name: Install dev-dependencies
         run: |
-            pip install .[dev]
+            pip install .[dev] --no-deps
 
       - name: Generate coverage report
         shell: bash -el {0}

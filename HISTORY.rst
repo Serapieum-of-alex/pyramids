@@ -237,9 +237,12 @@ is deprecated.
 * update gdal to 3.10 and update the DataSource to Dataset in the `FeatureCollection.file_name`.
 * add `libgdal-netcdf` and `libgdal-hdf4` to the conda dependencies.
 
-0.7.2 (2024-12-**)
+0.7.2 (2025-01-12)
 ------------------
 
 Dev
 """
 * replace the setup.py with pyproject.toml
+* automatic search for the gdal_plugins_path in the conda environment, and setting the `GDAL_DRIVER_PATH` environment
+variable.
+* add python 3.12 to CI.
