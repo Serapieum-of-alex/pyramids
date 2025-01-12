@@ -243,3 +243,6 @@ is deprecated.
 Dev
 """
 * replace the setup.py with pyproject.toml
+* automatic search for the gdal_plugins_path in the conda environment, and setting the `GDAL_DRIVER_PATH` environment
+variable.
+* add python 3.12 to CI.
