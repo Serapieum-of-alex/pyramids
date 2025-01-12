@@ -227,7 +227,7 @@ class Config:
 
                 for site_path in site.getsitepackages():
                     gdal_plugins_path = Path(site_path) / "Library/Lib/gdalplugins"
-                    if os.path.exists(gdal_plugins_path):
+                    if gdal_plugins_path.exists():
                         os.environ["GDAL_DRIVER_PATH"] = str(gdal_plugins_path)
                         self.logger.info(
                             f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}"

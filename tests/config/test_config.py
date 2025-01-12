@@ -1,6 +1,9 @@
 import os
+import pytest
 import unittest
+from unittest.mock import patch
 from pathlib import Path
+from osgeo import gdal
 from pyramids.config import Config
 
 
@@ -47,4 +50,71 @@ class TestConfigEndToEnd(unittest.TestCase):
     def test_set_error_handler(self):
         """End-to-end test for setting the GDAL error handler."""
         self.config.set_error_handler()
-        # No explicit assertion needed; ensure no exceptions occur.
+
+
+class TestConfigMock(unittest.TestCase):
+    def setUp(self):
+        self.config = Config()
+
+    @patch("os.environ", new_callable=dict)
+    @patch("pyramids.config.Config.set_env_conda")
+    @patch("pyramids.config.Config.dynamic_env_variables")
+    @patch("osgeo.gdal.AllRegister")
+    def test_initialize_gdal(self, mock_register, mock_dynamic, mock_conda, mock_env):
+        mock_dynamic.return_value = Path("/usr/lib/gdalplugins")
+        mock_conda.return_value = Path("/usr/lib/gdalplugins")
+        self.config.initialize_gdal()
+
+        # self.assertIn("GDAL_DRIVER_PATH", os.environ)
+        # self.assertEqual(os.environ["GDAL_DRIVER_PATH"], "/usr/lib/gdalplugins")
+        mock_register.assert_called_once()
+
+    @patch("os.getenv", return_value=None)
+    @patch("pathlib.Path.exists", return_value=False)
+    def test_set_env_conda_no_conda(self, mock_exists, mock_getenv):
+        result = self.config.set_env_conda()
+        self.assertIsNone(result)
+
+    @patch("os.getenv", return_value="/fake/conda/prefix")
+    @patch("pathlib.Path.exists", return_value=True)
+    def test_set_env_conda_success(self, mock_exists, mock_getenv):
+        result = self.config.set_env_conda()
+        self.assertEqual(result, Path("/fake/conda/prefix/Library/lib/gdalplugins"))
+        path = Path(os.environ["GDAL_DRIVER_PATH"])
+        self.assertEqual(path, Path("/fake/conda/prefix/Library/lib/gdalplugins"))
+
+    @patch("os.getenv", return_value="fake/conda/prefix")
+    @patch("pathlib.Path.exists", return_value=False)
+    def test_set_env_conda_plugins_path_not_exist(self, mock_exists, mock_getenv):
+        result = self.config.set_env_conda()
+        self.assertIsNone(result)
+
+    @patch("site.getsitepackages", return_value=["C:/Python/site-packages"])
+    @patch("pathlib.Path.exists", return_value=True)
+    def test_dynamic_env_variables_windows(self, mock_exists, mock_site):
+        with (
+            patch("pyramids.config.Config.set_env_conda", return_value=None),
+            patch("sys.platform", new="win32"),
+        ):
+            result = self.config.dynamic_env_variables()
+        self.assertEqual(
+            result, Path("C:/Python/site-packages/Library/Lib/gdalplugins")
+        )
+        path = Path(os.environ["GDAL_DRIVER_PATH"])
+        self.assertEqual(path, Path("C:/Python/site-packages/Library/Lib/gdalplugins"))
+
+    @patch("pathlib.Path.exists", return_value=True)
+    def test_dynamic_env_variables_linux(self, mock_exists):
+        with (
+            patch("pyramids.config.Config.set_env_conda", return_value=None),
+            patch("sys.platform", new="linux"),
+        ):
+            result = self.config.dynamic_env_variables()
+        self.assertEqual(result, Path("/usr/local/lib/gdalplugins"))
+        path = Path(os.environ["GDAL_DRIVER_PATH"])
+        self.assertEqual(path, Path("/usr/local/lib/gdalplugins"))
+
+    @patch("osgeo.gdal.SetConfigOption")
+    def test_set_error_handler(self, mock_set_config):
+        self.config.set_error_handler()
+        mock_set_config.assert_not_called()
