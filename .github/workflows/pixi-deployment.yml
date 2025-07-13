@@ -1,0 +1,39 @@
+name: pixi-deployment
+
+on: [push]
+
+jobs:
+  main-package:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.12", "3.13"]
+    env:
+      OS: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+
+      - name: Install Pixi
+        uses: prefix-dev/setup-pixi@v0.7.0
+
+      - name: Install dependencies with Pixi
+        run: pixi install
+
+      - name: Run main tests
+        run: |
+          python -m pytest -sv -m "not plot"
+
+      - name: Run viz tests
+        run: |
+          pixi run --environment viz pytest -sv --cov=pyramids --cov-report=xml
+          python -m pytest -v --cov=pyramids --cov-report=xml
+
+      - name: Upload coverage reports to Codecov with GitHub Action
+        uses: codecov/codecov-action@v3
