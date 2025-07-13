@@ -2,6 +2,9 @@ name: pixi-deployment
 
 on: [push]
 
+permissions:
+  contents: read
+
 jobs:
   main-package:
     runs-on: ${{ matrix.os }}
