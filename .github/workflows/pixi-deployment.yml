@@ -42,4 +42,4 @@ jobs:
 
       - name: test Jupyter notebook
         run: |
-          pixi run --environment viz pytest --nbval --nbval-lax --verbose -k ".ipynb"
+          pixi run --environment viz,dev pytest --nbval --nbval-lax --verbose -k ".ipynb"
