@@ -114,7 +114,6 @@ pyramids-gis = { path = ".", editable = true }
 default = { solve-group = "default" }
 dev = { features = ["dev"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "default" }
-test = { features = ["test"], solve-group = "default" }
 viz = { features = ["viz"], solve-group = "default" }
 
 [tool.pixi.tasks]
