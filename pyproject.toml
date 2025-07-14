@@ -105,7 +105,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64"]
+platforms = ["win-64", "linux-64"]
 
 [tool.pixi.pypi-dependencies]
 pyramids-gis = { path = ".", editable = true }
