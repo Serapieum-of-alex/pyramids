@@ -5,7 +5,9 @@
 - List any dependencies that are required for this change.
 
 
+# Issues
 - Fixes # (issue)
+
 ## Type of change
 
 Check relevant points.
@@ -26,8 +28,7 @@ Check relevant points.
 
 # Checklist:
 
-- [ ] updated version number in setup.py/pyproject.toml.
-- [ ] updated environment.yml and the lock file.
+- [ ] updated version number in pyproject.toml.
 - [ ] added changes to History.rst.
 - [ ] updated the latest version in README file.
 - [ ] I have added tests that prove my fix is effective or that my feature works.
