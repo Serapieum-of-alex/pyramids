@@ -39,4 +39,4 @@ jobs:
 
       - name: test Jupyter notebooks
         run: |
-          pixi run -e ${{ matrix.environment }} notebook
+          pixi run -e ${{ matrix.environment }} notebooks
