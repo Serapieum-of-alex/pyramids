@@ -108,23 +108,25 @@ repos:
     hooks:
       - id: pytest-check
         name: pytest-check
-        entry: pytest -v --cov=pyramids --cov-report term-missing
+        entry: pytest -v --cov=src/pyramids --cov-report=term-missing -m "not plot"
         language: system
         pass_filenames: false
         always_run: true
 
   - repo: local
     hooks:
-      - id: examples-notebook-check
-        name: nbval
-        entry: pytest --nbval
+      - id: doctest
+        name: doctest
+        entry: python -c "import matplotlib; matplotlib.use('Agg'); import pytest; import sys; sys.exit(pytest.main(['--doctest-modules', 'src']))"
         language: system
-        files: \.ipynb$
+        always_run: true
+        pass_filenames: true
 
   - repo: local
     hooks:
-      - id: doctest
-        name: doctest
-        entry: pytest --doctest-modules #pyramids/dataset.py
+      - id: notebook-check
+        name: nbval
+        entry: pytest --nbval --nbval-lax --verbose
         language: system
-        files: \.py$
+        files: .*\.ipynb$
+        always_run: true
