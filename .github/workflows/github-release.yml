@@ -1,5 +1,8 @@
 name: gitHub-release
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -13,7 +16,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup GitHub CLI
         run: |

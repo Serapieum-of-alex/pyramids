@@ -1,0 +1,42 @@
+name: tests
+
+on: [push]
+
+permissions:
+  contents: read
+
+jobs:
+  main-package:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        environment: [py311, py312, py313]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Environment ${{ matrix.environment }} ${{ matrix.os }}
+        uses: prefix-dev/setup-pixi@v0.8.14
+        with:
+          environments: ${{ matrix.environment }}
+          activate-environment: ${{ matrix.environment }}
+          pixi-version: v0.49.0
+          cache: true
+          cache-key: pixi-${{ hashFiles('pixi.lock') }}
+          # only write caches on main to save space
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+
+      - name: Run main tests
+        run: |
+          pixi run -e ${{ matrix.environment }} main
+
+      - name: Run viz tests
+        run: |
+          pixi run -e ${{ matrix.environment }} plot
+
+      - name: Upload coverage reports to Codecov with GitHub Action
+        uses: codecov/codecov-action@v5
+
+      - name: test Jupyter notebooks
+        run: |
+          pixi run -e ${{ matrix.environment }} notebooks
