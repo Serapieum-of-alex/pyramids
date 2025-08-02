@@ -23,10 +23,10 @@ classifiers = [
     "Intended Audience :: Developers",
 ]
 
-requires-python = ">= 3.11"
+requires-python = ">= 3.11,<4"
 
 dependencies = [
-    "geopandas >=1.0.1",
+    "geopandas >=1.0.0",
     "hpc-utils >=0.1.5",
     "loguru >=0.7.2",
     "numpy >=2.0.0",
@@ -141,5 +141,5 @@ python = "3.12.*"
 python = "3.13.*"
 
 [tool.pixi.dependencies]
-gdal = "3.10.*"
-libgdal-netcdf = ">=3.10.3,<4"
+gdal = ">=3.10.0,<4"
+libgdal-netcdf = ">=3.10.0,<4"
