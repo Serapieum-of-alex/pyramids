@@ -8,6 +8,8 @@ algebraic operation on cell's values.
 import os
 import warnings
 import logging
+import tempfile
+import uuid
 from numbers import Number
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -46,6 +48,7 @@ from pyramids.abstract_dataset import (
     CATALOG,
     OVERVIEW_LEVELS,
     RESAMPLING_METHODS,
+    CREATION_OPTIONS,
 )
 
 
@@ -71,51 +74,28 @@ class Dataset(AbstractDataset):
             src.GetRasterBand(i).GetUnitType() for i in range(1, self.band_count + 1)
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """__str__."""
         message = f"""
+            Top Left Corner: {self.top_left_corner}
             Cell size: {self.cell_size}
             Dimension: {self.rows} * {self.columns}
             EPSG: {self.epsg}
             Number of Bands: {self.band_count}
             Band names: {self.band_names}
+            Band colors: {self.band_color}
+            Band units: {self.band_units}
+            Scale: {self.scale}
+            Offset: {self.offset}
             Mask: {self._no_data_value[0]}
             Data type: {self.dtype[0]}
             File: {self.file_name}
         """
         return message
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """__repr__."""
-        message = """
-            Cell size: {0}
-            Dimension: {1} * {2}
-            EPSG: {3}
-            Number of Bands: {4}
-            Band names: {5}
-            Mask: {6}
-            Data type: {7}
-            projection: {8}
-            Metadata: {9}
-            File: {10}
-        """.format(
-            self.cell_size,
-            self.rows,
-            self.columns,
-            self.epsg,
-            self.band_count,
-            self.band_names,
-            (
-                self._no_data_value
-                if self._no_data_value == []
-                else self._no_data_value[0]
-            ),
-            self.dtype if self.dtype == [] else self.dtype[0],
-            self.crs,
-            self.meta_data,
-            self.file_name,
-        )
-        return message
+        return gdal.Info(self.raster)
 
     @property
     def access(self) -> str:
@@ -229,6 +209,12 @@ class Dataset(AbstractDataset):
 
             >>> print(dataset.crs)
             GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
+
+        See Also
+        --------
+        Dataset.set_crs : Set the Coordinate Reference System (CRS).
+        Dataset.to_crs : Reproject the dataset to any projection.
+        Dataset.epsg : epsg number of the dataset coordinate reference system.
         """
         return self._get_crs()
 
@@ -396,6 +382,7 @@ class Dataset(AbstractDataset):
         """Scale.
 
         The value of the scale is used to convert the pixel values to the real-world values.
+        it means you have to multiply the pixel values by the scale to get the real-world values.
 
         Hint
         ----
@@ -489,7 +476,7 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        Zip files:
+        Compressed files:
             - Internal Zip file path (one/multiple files inside the compressed file):
                 if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains
                     the internal path inside the zip file, so just ad
@@ -540,6 +527,28 @@ class Dataset(AbstractDataset):
                             Mask: -3.4028230607370965e+38
                             Data type: float32
                             File: /vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/2.asc
+                <BLANKLINE>
+
+        Virtual files:
+            - You can open files stored online simply by using the full url to the file with the `read_file` method.
+
+                >>> url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/31/U/FU/2020/3/S2A_31UFU_20200328_0_L2A/B01.tif"
+                >>> dataset = Dataset.read_file(url)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Top Left Corner: (600000.0, 5900040.0)
+                            Cell size: 60.0
+                            Dimension: 1830 * 1830
+                            EPSG: 32631
+                            Number of Bands: 1
+                            Band names: ['Band_1']
+                            Band colors: {0: 'gray_index'}
+                            Band units: ['']
+                            Scale: [1.0]
+                            Offset: [0]
+                            Mask: 0.0
+                            Data type: uint16
+                            File: https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/31/U/FU/2020/3/S2A_31UFU_20200328_0_L2A/B01.tif
                 <BLANKLINE>
 
         See also
@@ -1609,13 +1618,17 @@ class Dataset(AbstractDataset):
         band: int = None,
         exclude_value: Any = None,
         rgb: List[int] = None,
-        surface_reflectance: int = 10000,
+        surface_reflectance: int = None,
         cutoff: List = None,
         overview: bool = False,
         overview_index: int = 0,
+        percentile: int = None,
         **kwargs,
     ):
         """Plot the values/overviews of a given band.
+
+        The plot function uses the `cleopatra` as a backend to plot the raster data, for more information check
+        [Cleopatra](https://cleopatra.readthedocs.io/en/latest/arrayglyph-class.html#array_glyph.ArrayGlyph.plot).
 
         Parameters
         ----------
@@ -1624,9 +1637,11 @@ class Dataset(AbstractDataset):
         exclude_value: [Any]
             value to exclude from the plot. Default is None.
         rgb: [List]
-            The `plot` method will check it the rgb bands are defined in the raster file, if all the three bands (
+            The indices of the red, green, and blue bands in the `Dataset`. the `rgb` parameter can be a list of
+            three values, or a list of four values if the alpha band is also included.
+            The `plot` method will check if the rgb bands are defined in the `Dataset`, if all the three bands (
             red, green, blue)) are defined, the method will use them to plot the real image, if not the rgb bands
-            will be considered as [2,1,0].
+            will be considered as [2,1,0] as the default order for sentinel tif files.
         surface_reflectance: [int]
             Default is 10,000.
         cutoff: [List]
@@ -1636,6 +1651,8 @@ class Dataset(AbstractDataset):
             True if you want to plot the overview. Default is False.
         overview_index: [int]
             index of the overview. Default is 0.
+        percentile: int
+            The percentile value to be used for scaling.
         **kwargs
             points : [array]
                 3 column array with the first column as the value you want to display for the point, the second is the rows
@@ -1646,63 +1663,70 @@ class Dataset(AbstractDataset):
             point_size: [Any]
                 size of the point.
             pid_color: [str]
-                the color of the annotation of the point. Default is blue.
+                the annotation color of the point. Default is blue.
             pid_size: [Any]
                 size of the point annotation.
             figsize: [tuple], optional
                 figure size. The default is (8,8).
             title: [str], optional
                 title of the plot. The default is 'Total Discharge'.
-            title_size: [integer], optional
-                title size. The default is 15.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            rotation: [number], optional
-                rotation of the color bar label. The default is -90.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            cbar_length: [float], optional
+            title_size: [integer], optional, default is 15.
+                title size.
+            cbar_orientation: [string], optional, default is 'vertical'
+                orientation of the color bar horizontal/vertical.
+            cbar_label_rotation: [number], optional, default is -90.
+                rotation of the color bar label.
+            cbar_label_location: str, optional, default is 'bottom'.
+                location of the color bar title 'top', 'bottom', 'center', 'baseline', 'center_baseline'.
+            cbar_length: float, optional
                 ratio to control the height of the color bar. The default is 0.75.
-            ticks_spacing: [integer], optional
+            ticks_spacing: int, optional
                 Spacing in the color bar ticks. The default is 2.
             cbar_label_size: integer, optional
                 size of the color bar label. The default is 12.
             cbar_label: str, optional
                 label of the color bar. The default is 'Discharge m3/s'.
-            color_scale: integer, optional
-                there are 5 options to change the scale of the colors. The default is 1.
-                1- color_scale 1 is the normal scale
-                2- color_scale 2 is the power scale
-                3- color_scale 3 is the SymLogNorm scale
-                4- color_scale 4 is the PowerNorm scale
-                5- color_scale 5 is the BoundaryNorm scale
-            gamma: [float], optional
-                value needed for option 2. The default is 1./2.
-            line_threshold: [float], optional
-                value needed for option 3. The default is 0.0001.
-            line_scale: [float], optional
-                value needed for option 3. The default is 0.001.
-            bounds: [List]
-                a list of number to be used as a discrete bounds for the color scale 4.Default is None,
-            midpoint: [float], optional
-                value needed for option 5. The default is 0.
-            cmap: [str], optional
-                color style. The default is 'coolwarm_r'.
-            display_cell_value: [bool]
+            color_scale : integer, optional, default is 1.
+                there are 5 options to change the scale of the colors.
+
+                1- `linear`:
+                    linear scale.
+                2- `power`:
+                    for the power scale. Linearly map a given value to the 0-1 range and then apply a power-law
+                    normalization over that range.
+                3- `sym-lognorm`:
+                    the symmetrical logarithmic scale `SymLogNorm` is logarithmic in both the positive and
+                    negative directions from the origin.
+                4- `boundary-norm`:
+                    the BoundaryNorm scale generates a colormap index based on discrete intervals.
+                5- `midpoint`:
+                    the midpoint scale splits the scale into 2 halfs, be the given value.
+            gamma: [float], optional, default is 0.5.
+                value needed for the color_scale `power`.
+            line_threshold: float, optional, default is 0.0001.
+                value needed for the color_scale `sym-lognorm`.
+            line_scale: float, optional, default is 0.001.
+                value needed for the color_scale `sym-lognorm`.
+            bounds: List, default is None,
+                a list of number to be used as a discrete bounds for the color scale `boundary-norm`.
+            midpoint: float, optional, default is 0.
+                value needed for the color_scale `midpoint`.
+            cmap: str, optional, default is 'coolwarm_r'.
+                color style.
+            display_cell_value: bool
                 True if you want to display the values of the cells as a text
-            num_size: integer, optional
-                size of the numbers plotted on top of each cell. The default is 8.
-            background_color_threshold: [float/integer], optional
+            num_size: integer, optional, default is 8.
+                size of the numbers plotted on top of each cell.
+            background_color_threshold: [float/integer], optional, default is None.
                 threshold value if the value of the cell is greater, the plotted
                 numbers will be black, and if smaller the plotted number will be white
-                if None given the maxvalue/2 will be considered. The default is None.
+                if None given the max value/2 is considered.
 
         Returns
         -------
-        axes: [figure axes].
-            the axes of the matplotlib figure
-        fig: [matplotlib figure object]
-            the figure object
+        ArrayGlyph:
+            ArrayGlyph object. For more details of the ArrayGlyph object check the [ArrayGlyph](
+            https://cleopatra.readthedocs.io/en/latest/arrayglyph-class.html).
 
         Examples
         --------
@@ -1718,22 +1742,22 @@ class Dataset(AbstractDataset):
 
         - plot using power scale.
 
-            >>> dataset.plot(band=0, color_scale=2)
+            >>> dataset.plot(band=0, color_scale="power")
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using SymLogNorm scale.
 
-            >>> dataset.plot(band=0, color_scale=3)
+            >>> dataset.plot(band=0, color_scale="sym-lognorm")
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using PowerNorm scale.
 
-            >>> dataset.plot(band=0, color_scale=4, bounds=[0, 0.2, 0.4, 0.6, 0.8, 1])
+            >>> dataset.plot(band=0, color_scale="boundary-norm", bounds=[0, 0.2, 0.4, 0.6, 0.8, 1])
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
         - plot using BoundaryNorm scale.
 
-            >>> dataset.plot(band=0, color_scale=5)
+            >>> dataset.plot(band=0, color_scale="midpoint")
             (<Figure size 800x800 with 2 Axes>, <Axes: >)
         """
         import_cleopatra(
@@ -1779,10 +1803,790 @@ class Dataset(AbstractDataset):
             rgb=rgb,
             surface_reflectance=surface_reflectance,
             cutoff=cutoff,
+            percentile=percentile,
             **kwargs,
         )
-        fig, ax = cleo.plot(**kwargs)
-        return fig, ax
+        cleo.plot(**kwargs)
+        return cleo
+
+    def color_relief(
+        self, band: int = 0, path: str = None, color_table: DataFrame = None, **kwargs
+    ) -> "Dataset":
+        """Create a color relief for a band in the Dataset.
+
+        A color relief raster is a raster image where each pixel's value is mapped to a specific color based on a
+        predefined color palette or color table.
+
+        Parameters
+        ----------
+        band: int, default is 0.
+            band index.
+        path: str, default is None.
+            path to save the color relief raster.
+        color_table: DataFrame, default is None.
+            DataFrame with columns: band, values, color
+                  values    color
+                0      1  #709959
+                1      2  #F2EEA2
+                2      3  #F2CE85
+                3      1  #C28C7C
+                4      2  #D6C19C
+                5      3  #D6C19C
+            or DataFrame with columns: values, red, green, blue, alpha, (the alpha column is optional)
+                  values    red  green   blue  alpha
+                0      1    112    153     89    255
+                1      2    242    238    162    255
+                2      3    242    206    133    255
+                3      1    194    140    124    255
+                4      2    214    193    156    255
+                5      3    214    193    156    255
+
+        Returns
+        -------
+        Dataset:
+            Dataset with the color relief with four bands read, green, blue, and alpha.
+
+        Examples
+        --------
+        - First create a one band dataset, consisting of 10 columns and 10 rows, with random values between 0 and 15.
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(0, 15, size=(10, 10))
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
+
+        - Now let's create the color table using hex colors.
+        color.
+
+            >>> color_hex = ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C"]
+            >>> values = [1, 3, 5, 7, 9]
+            >>> df = pd.DataFrame(columns=["values", "color"])
+            >>> df.loc[:, "values"] = values
+            >>> df.loc[:, "color"] = color_hex
+
+        - Now let's create the color relief for the dataset using the color table `DataFrame`.
+
+            >>> color_relief = dataset.color_relief(band=0, color_table=df)
+            >>> print(color_relief) # doctest: +SKIP
+            <BLANKLINE>
+                        Cell size: 0.05
+                        Dimension: 10 * 10
+                        EPSG: 4326
+                        Number of Bands: 4
+                        Band names: ['Band_1', 'Band_2', 'Band_3', 'Band_4']
+                        Mask: None
+                        Data type: byte
+                        projection: GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
+                        Metadata: {}
+                        File: ...
+            <BLANKLINE>
+            >>> print(color_relief.band_color)
+            {0: 'red', 1: 'green', 2: 'blue', 3: 'alpha'}
+
+        - The result color relief dataset will have 4 bands red, green, blue, and alpha. with values from 0 to 255.
+        - To plot the color relief dataset, you can use the `plot` method. but you need to provide the the rgb indices
+            with the alpha index as the fourth index, otherwise the alpha band will be missing.
+
+            >>> fig, ax = color_relief.plot(rgb=[0, 1, 2, 3])
+
+        .. image:: /_images/dataset/color-relief.png
+            :alt: Example Image
+            :align: center
+
+        See Also
+        --------
+        Dataset.hill_shade: create a hill-shade for a band in the Dataset.
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+        color_df = self._process_color_table(color_table)
+
+        temp_dir = tempfile.mkdtemp()
+        color_table_path = os.path.join(temp_dir, f"{uuid.uuid1()}.txt")
+        color_df.to_csv(color_table_path, index=False, header=False)
+
+        options = gdal.DEMProcessingOptions(
+            band=band + 1,
+            format=driver,
+            colorFilename=color_table_path,
+            addAlpha=True,
+            creationOptions=["COMPRESS={}".format("DEFLATE"), "PREDICTOR={}".format(2)],
+            **kwargs,
+        )
+        dst = gdal.DEMProcessing(path, self.raster, "color-relief", options=options)
+        color_relief = Dataset(dst, access="write")
+        color_relief.band_color = {0: "red", 1: "green", 2: "blue", 3: "alpha"}
+        return color_relief
+
+    def hill_shade(
+        self,
+        band: int = 0,
+        azimuth: Union[int, float, List[int]] = 315,
+        altitude: Union[int, float, List[int]] = 45,
+        vertical_exaggeration: Union[int, float, List[int]] = 1,
+        scale: Union[int, float, List[int]] = 1,
+        path: str = None,
+        weights: List[int] = None,
+        **kwargs,
+    ) -> "Dataset":
+        """Create hill-shade.
+
+        Hillshade is a technique used in digital elevation modeling (DEM) to create a grayscale representation of a
+        terrain's surface that simulates the effect of sunlight falling across the landscape.
+        This technique helps to visualize the shape and features of the terrain by highlighting the variations in
+        elevation and the slope of the surface.
+
+        Hillshade calculates the illumination of each pixel based on the slope (gradient) and aspect (direction) of the
+        terrain surface relative to a specified light source.
+
+        The main parameters influencing the hillshade effect are:
+        - Light source direction (Azimuth): the azimuth angle of the light source, which is the angle between the light
+            source
+        - Light source elevation (altitude): the source of light elevation, it is measured in degrees from the horizon.
+        - Vertical exaggeration (Z-factor): the vertical exaggeration is used to emphasize the vertical features of the
+            terrain.
+
+        .. note::
+
+            if the `hill_shade` parameters are given as lists then the hill shade will be calculated for each set
+            of parameter and then the average will be returned.
+
+        Parameters
+        ----------
+        band: int
+            band index.
+        azimuth: Union[List, int, float]
+            The source of light direction, it is measured clockwise from the north. zero means from north to south.
+            45 degrees means from the northeast to the southwest.
+        altitude: Union[List, int, float]
+            The source of light elevation, it is measured in degrees from the horizon. zero means from the horizon.
+            90 degrees means from the zenith.
+            the overall image gets brighter as the light source gets closer to the zenith. The brightest slopes/DEM
+            features will be perpendicular to the light source, and the darkest will be angled 90˚ or more away.
+        vertical_exaggeration: Union[List, int, float]
+            Vertical exaggeration, the vertical exaggeration It is used to emphasize the
+            vertical features of the terrain.
+        scale: Union[List, int, float]
+            the scale is the ratio of vertical units to horizontal. If the horizontal unit of the source DEM is
+            degrees (e.g Lat/Long WGS84 projection), you can use scale=111120 if the vertical units are meters
+            (or scale=370400 if they are in feet).
+        path: str, optional, default is None
+            path to save the hill-shade raster.
+        weights: List[int], default is None.
+            list of weights to combine the hill-shades if the other parameters are given as lists, an average hill
+            shade will be calculated based on the weights. if None, the weights will be equal.
+        **kwargs:
+            multi_directional: bool
+                if True, the hill shade will be calculated for multiple azimuth values [225, 270, 315, 360] each with a
+                altitude of 30 degrees, and then the average will be returned. with multi_directional = True any given
+                azimuth will be ignored.
+                For more details visit: https://pubs.usgs.gov/of/1992/of92-422/of92-422.pdf
+            combined: bool
+                combined shading, a combination of slope and oblique shading.
+            igor: bool
+                shading which tries to minimize effects on other map features beneath. with `igor=True` the altitude
+                will be calculated ignored.
+                For more details visit: https://maperitive.net/docs/Commands/GenerateReliefImageIgor.html
+
+        Returns
+        -------
+        Dataset: 8-bit
+            Dataset with the hill-shade created.
+
+        Examples
+        --------
+        - First create a one band dataset, consisting of 10 columns and 10 rows, with random values between 0 and 15.
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(0, 15, size=(100, 100))
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
+
+            >>> hill_shade = dataset.hill_shade(
+            ... band=0, altitude=45, azimuth=315, vertical_exaggeration=1, scale=1
+            ...)
+
+            >>> print(hill_shade.dtype) # doctest: +SKIP
+            ['byte']
+            >>> hill_shade.plot() # doctest: +SKIP
+
+            .. image:: /_images/dataset/hill-shade.png
+                :alt: Example Image
+                :align: center
+
+            >>> hill_shade.stats() # doctest: +SKIP
+                    min    max       mean        std
+            Band_1  1.0  223.0  58.880951  71.079056
+
+        - You can also provide the function with a list os values for each parameter, then the functions will
+            calculate the hill shade for each set of parameters and then the average will be returned.
+
+            >>> hill_shade = dataset.hill_shade(
+            ...     band=0, azimuth=[315, 45], altitude=[45, 45], vertical_exaggeration=[1, 1], scale=[1, 1]
+            ...)
+
+            >>> hill_shade.plot() # doctest: +SKIP
+
+            .. image:: /_images/dataset/hill-shade-multi.png
+                :alt: Example Image
+                :align: center
+
+        See Also
+        --------
+        Dataset.color_relief: create a color relief for a band in the Dataset.
+        Dataset.slope: create a slope for a band in the Dataset.
+        """
+        if "multi_directional" in kwargs:
+            if not isinstance(kwargs["multi_directional"], bool):
+                raise ValueError("The multi_directional parameter must be a boolean.")
+            if kwargs["multi_directional"]:
+                multi_directional = True
+                azimuth = None
+                # altitude, vertical_exaggeration, scale = None, None, None,
+            else:
+                multi_directional = False
+
+            kwargs.pop("multi_directional")
+            kwargs["multiDirectional"] = multi_directional
+        if "igor" in kwargs:
+            if not isinstance(kwargs["igor"], bool):
+                raise ValueError("The igor parameter must be a boolean.")
+            if kwargs["igor"]:
+                altitude = None
+
+        # if not (
+        #     type(azimuth)
+        #     is type(altitude)
+        #     is type(vertical_exaggeration)
+        #     is type(scale)
+        # ):
+        #     raise ValueError(
+        #         f"The azimuth, altitude, vertical_exaggeration, and scale parameter must be of the same type. Given"
+        #         f" azimuth: {type(azimuth)}, altitude: {type(altitude)}, vertical_exaggeration: {type(vertical_exaggeration)},"
+        #         f"scale: {type(scale)}"
+        #     )
+
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+
+        # if parameters are lists
+        if isinstance(azimuth, list):
+            if (
+                len(azimuth)
+                != len(altitude)
+                != len(vertical_exaggeration)
+                != len(scale)
+            ):
+                raise ValueError(
+                    "The length of the light source angle and elevation must be the same."
+                )
+        else:
+            azimuth = [azimuth]
+            altitude = [altitude]
+            vertical_exaggeration = [vertical_exaggeration]
+            scale = [scale]
+
+        # get the hill shade for all the parameters
+        hill_shades: List[gdal.Dataset] = []
+        for az, alt, ver_ex, scale_1 in zip(
+            azimuth, altitude, vertical_exaggeration, scale
+        ):
+            dst = self._create_hill_shade(
+                band, driver, az, alt, ver_ex, scale_1, path, **kwargs
+            )
+            hill_shades.append(dst)
+
+        if len(hill_shades) > 1:
+            if weights is None:
+                weights = np.ones(len(azimuth))
+            weights = np.array(weights) / np.sum(weights)
+            hill_shades_arr: List[np.ndarray] = [
+                hill_shade.ReadAsArray() for hill_shade in hill_shades
+            ]
+            combined_hillshade = np.average(hill_shades_arr, axis=0, weights=weights)
+            combined_hillshade = np.clip(combined_hillshade, 0, 255).astype(np.uint8)
+            hill_shade = Dataset.dataset_like(self, combined_hillshade)
+        else:
+            hill_shade = Dataset(hill_shades[0], access="write")
+
+        hill_shade.band_color = {0: "gray_index"}
+
+        return hill_shade
+
+    def _create_hill_shade(
+        self,
+        band: int,
+        driver: str,
+        azimuth: Union[int, float] = 315,
+        altitude: Union[int, float] = 45,
+        vertical_exaggeration: Union[int, float] = 1,
+        scale: Union[int, float] = 1,
+        path: str = None,
+        **kwargs,
+    ) -> gdal.Dataset:
+
+        options = gdal.DEMProcessingOptions(
+            band=band + 1,
+            format=driver,
+            azimuth=azimuth,
+            altitude=altitude,
+            zFactor=vertical_exaggeration,
+            scale=scale,
+            creationOptions=["COMPRESS=LZW"],
+            **kwargs,
+        )
+        dst = gdal.DEMProcessing(path, self.raster, "hillshade", options=options)
+
+        return dst
+
+    def slope(
+        self,
+        band: int = 0,
+        scale: Union[int, float, List[int]] = 1,
+        slope_format: str = "degree",
+        path: str = None,
+        algorithm: str = None,
+        creation_options: List[str] = None,
+        **kwargs,
+    ) -> "Dataset":
+        """Slope.
+
+        Parameters
+        ----------
+        band: int, default is 0.
+            band index.
+        scale: Union[List, int, float]
+            the scale is the ratio of vertical units to horizontal. If the horizontal unit of the source DEM is
+            degrees (e.g., Lat/Long WGS84 projection), you can use scale=111120 if the vertical units are meters
+            (or scale=370400 if they are in feet).
+        slope_format: str, default is 'degree'.
+            The output slope format. It can be 'degree' or 'percent'.
+        algorithm: str, default is "Wilson".
+            The algorithm to calculate the slope. It can be one of 'Horn', 'ZevenbergenThorne' for hill_shade,
+            slope or aspect. 'Wilson'. The literature suggests Zevenbergen & Thorne to be more suited to smooth
+            landscapes, whereas Horn's formula.
+            to perform better on rougher terrain.
+        path: str, optional, default is None
+            path to save the hill-shade raster.
+        creation_options: List[str], default is None.
+            Additional creation options for the output raster. if None, the default creation options
+            (['COMPRESS=DEFLATE', 'PREDICTOR=2']) will be used.
+
+
+        Returns
+        -------
+        Dataset:
+            Dataset with the calculated slope, and the no_data_value is -9999.0.
+
+        Examples
+        --------
+        - First create a one band dataset, consisting of 10 columns and 10 rows, with random values between 0 and 15.
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(0, 15, size=(10, 10))
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
+
+        - Now let's create the slope for the dataset.
+
+            >>> slope = dataset.slope()
+            >>> fig, ax = slope.plot()
+
+        .. image:: /_images/dataset/slope.png
+            :alt: Example Image
+            :align: center
+
+        See Also
+        --------
+        Dataset.hill_shade: create a hill-shade for a band in the Dataset.
+        Dataset.color_relief: create a color relief for a band in the Dataset.
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+
+        if creation_options is None:
+            creation_options = CREATION_OPTIONS.copy()
+
+        options = gdal.DEMProcessingOptions(
+            band=band + 1,
+            format=driver,
+            alg=algorithm,
+            slopeFormat=slope_format,
+            scale=scale,
+            creationOptions=creation_options,
+            **kwargs,
+        )
+        dst = gdal.DEMProcessing(path, self.raster, "slope", options=options)
+        src = Dataset(dst, access="write")
+
+        return src
+
+    def aspect(
+        self,
+        band: int = 0,
+        scale: Union[int, float, List[int]] = 1,
+        vertical_exaggeration: Union[int, float, List[int]] = 1,
+        zero_flat_surface: bool = False,
+        algorithm: str = None,
+        path: str = None,
+        creation_options: List[str] = None,
+        **kwargs,
+    ) -> "Dataset":
+        """Aspect.
+
+        Parameters
+        ----------
+        band: int, default is 0.
+            band index.
+        scale: Union[List, int, float]
+            the scale is the ratio of vertical units to horizontal. If the horizontal unit of the source DEM is
+            degrees (e.g., Lat/Long WGS84 projection), you can use scale=111120 if the vertical units are meters
+            (or scale=370400 if they are in feet).
+        zero_flat_surface: bool, default is False.
+            If True, the slope of a flat surface will be zero. If False, the slope of a flat surface will be
+            no_data_value.
+        algorithm: str, default is "Wilson".
+            The algorithm to calculate the slope. It can be one of 'Horn', 'ZevenbergenThorne' for hill_shade,
+            slope or aspect. 'Wilson'. The literature suggests Zevenbergen & Thorne to be more suited to smooth
+            landscapes, whereas Horn's formula.
+            to perform better on rougher terrain.
+        vertical_exaggeration: Union[List, int, float]
+            Vertical exaggeration, the vertical exaggeration It is used to emphasize the
+            vertical features of the terrain.
+        path: str, optional, default is None
+            path to save the hill-shade raster.
+        creation_options: List[str], default is None.
+            Additional creation options for the output raster. if None, the default creation options
+            (['COMPRESS=DEFLATE', 'PREDICTOR=2']) will be used.
+
+
+        Returns
+        -------
+        Dataset:
+            Dataset with the calculated slope, and the no_data_value is -9999.0.
+
+        Examples
+        --------
+        - First create a one band dataset, consisting of 10 columns and 10 rows, with random values between 0 and 15.
+
+            >>> import numpy as np
+            >>> arr = np.random.randint(0, 15, size=(10, 10))
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
+
+        - Now let's create the slope for the dataset.
+
+            >>> aspect = dataset.aspect()
+            >>> cleo = slope.plot()
+
+        .. image:: /_images/dataset/slope.png
+            :alt: Example Image
+            :align: center
+
+        See Also
+        --------
+        Dataset.hill_shade: create a hill-shade for a band in the Dataset.
+        Dataset.color_relief: create a color relief for a band in the Dataset.
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+
+        if creation_options is None:
+            creation_options = CREATION_OPTIONS.copy()
+
+        options = gdal.DEMProcessingOptions(
+            band=band + 1,
+            format=driver,
+            alg=algorithm,
+            scale=scale,
+            zFactor=vertical_exaggeration,
+            zeroForFlat=zero_flat_surface,
+            creationOptions=creation_options,
+            **kwargs,
+        )
+        dst = gdal.DEMProcessing(path, self.raster, "aspect", options=options)
+        src = Dataset(dst, access="write")
+
+        return src
+
+    def translate(self, path: str = None, **kwargs):
+        """Translate.
+
+        The translate function can be used to
+        - Convert Between Formats: Convert a raster from one format to another (e.g., from GeoTIFF to JPEG).
+        - Subset: Extract a subregion of a raster.
+        - Resample: Change the resolution of a raster.
+        - Reproject: Change the coordinate reference system of a raster.
+        - Scale Values: Scale pixel values to a new range.
+        - Change Data Type: Convert the data type of the raster.
+        - Apply Compression: Apply compression to the output raster.
+        - Apply No-Data Values: Define no-data values for the output raster.
+
+
+        Parameters
+        ----------
+        path: str, optional, default is None.
+            path to save the output, if None, the output will be saved in memory.
+        kwargs:
+            unscale:
+                unscale values with scale and offset metadata.
+            scaleParams:
+                list of scale parameters, each of the form [src_min,src_max] or [src_min,src_max,dst_min,dst_max]
+            outputType:
+                output type (gdalconst.GDT_Byte, etc...)
+            exponents:
+                list of exponentiation parameters
+            bandList:
+                array of band numbers (index start at 1)
+            maskBand:
+                mask band to generate or not ("none", "auto", "mask", 1, ...)
+            creationOptions:
+                list or dict of creation options
+            srcWin:
+                subwindow in pixels to extract: [left_x, top_y, width, height]
+            projWin:
+                subwindow in projected coordinates to extract: [ulx, uly, lrx, lry]
+            projWinSRS:
+                SRS in which projWin is expressed
+            outputBounds:
+                assigned output bounds: [ulx, uly, lrx, lry]
+            outputGeotransform:
+                assigned geotransform matrix (array of 6 values) (mutually exclusive with outputBounds)
+            metadataOptions:
+                list or dict of metadata options
+            outputSRS:
+                assigned output SRS
+            noData:
+                nodata value (or "none" to unset it)
+            rgbExpand:
+                Color palette expansion mode: "gray", "rgb", "rgba"
+            xmp:
+                whether to copy XMP metadata
+            resampleAlg:
+                resampling mode
+            overviewLevel:
+                To specify which overview level of source files must be used
+            domainMetadataOptions:
+                list or dict of domain-specific metadata options
+
+        Returns
+        -------
+        Dataset
+
+        Examples
+        --------
+        Scale & offset:
+            - the translate function can be used to get rid of the scale and offset that are used to manipulate the
+            dataset, to get the real values of the dataset.
+
+            Scale:
+                - First we will create a dataset from a float32 array with values between 1 and 10, and then we will
+                    assign a scale of 0.1 to the dataset.
+
+                    >>> import numpy as np
+                    >>> arr = np.random.randint(1, 10, size=(5, 5)).astype(np.float32)
+                    >>> print(arr) # doctest: +SKIP
+                    [[5. 5. 3. 4. 2.]
+                     [2. 5. 5. 8. 5.]
+                     [7. 5. 6. 1. 2.]
+                     [6. 8. 1. 5. 8.]
+                     [2. 5. 2. 2. 9.]]
+                    >>> top_left_corner = (0, 0)
+                    >>> cell_size = 0.05
+                    >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                    >>> print(dataset)
+                    <BLANKLINE>
+                                Top Left Corner: (0.0, 0.0)
+                                Cell size: 0.05
+                                Dimension: 5 * 5
+                                EPSG: 4326
+                                Number of Bands: 1
+                                Band names: ['Band_1']
+                                Band colors: {0: 'undefined'}
+                                Band units: ['']
+                                Scale: [1.0]
+                                Offset: [0]
+                                Mask: -9999.0
+                                Data type: float32
+                                File: ...
+                    <BLANKLINE>
+                    >>> dataset.scale = [0.1]
+
+                - now lets uscale the dataset values.
+
+                    >>> unscaled_dataset = dataset.translate(unscale=True)
+                    >>> print(unscaled_dataset) # doctest: +SKIP
+                    <BLANKLINE>
+                                Top Left Corner: (0.0, 0.0)
+                                Cell size: 0.05
+                                Dimension: 5 * 5
+                                EPSG: 4326
+                                Number of Bands: 1
+                                Band names: ['Band_1']
+                                Band colors: {0: 'undefined'}
+                                Band units: ['']
+                                Scale: [1.0]
+                                Offset: [0]
+                                Mask: -9999.0
+                                Data type: float32
+                                File:
+                    <BLANKLINE>
+                    >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
+                    [[0.5 0.5 0.3 0.4 0.2]
+                     [0.2 0.5 0.5 0.8 0.5]
+                     [0.7 0.5 0.6 0.1 0.2]
+                     [0.6 0.8 0.1 0.5 0.8]
+                     [0.2 0.5 0.2 0.2 0.9]]
+
+            offset:
+                - You can also unshift the values of the dataset if the dataset has an offset. To remove the offset from
+                    all values in the dataset, you can read the values using the `read_array` and then add the offset value
+                    to the array. we will create a dataset from the same array we created above (values are between 1, and 10)
+                    with an offset of 100.
+
+                    >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                    >>> print(dataset)
+                    <BLANKLINE>
+                                Top Left Corner: (0.0, 0.0)
+                                Cell size: 0.05
+                                Dimension: 5 * 5
+                                EPSG: 4326
+                                Number of Bands: 1
+                                Band names: ['Band_1']
+                                Band colors: {0: 'undefined'}
+                                Band units: ['']
+                                Scale: [1.0]
+                                Offset: [0]
+                                Mask: -9999.0
+                                Data type: float32
+                                File: ...
+                    <BLANKLINE>
+
+                - set the offset to 100.
+
+                    >>> dataset.offset = [100]
+
+                - check if the offset has been set.
+
+                    >>> print(dataset.offset)
+                    [100.0]
+
+                - now lets uscale the dataset values.
+
+                    >>> unscaled_dataset = dataset.translate(unscale=True)
+                    >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
+                    [[105. 105. 103. 104. 102.]
+                     [102. 105. 105. 108. 105.]
+                     [107. 105. 106. 101. 102.]
+                     [106. 108. 101. 105. 108.]
+                     [102. 105. 102. 102. 109.]]
+
+                - as you see, all the values have been shifted by 100. now if you check the offset of the dataset
+
+                    >>> print(unscaled_dataset.offset)
+                    [0]
+
+            Offset and Scale together:
+                - we can unscale and get rid of the offset at the same time.
+
+                    >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+
+                - set the offset to 100, and a scale of 0.1.
+
+                    >>> dataset.offset = [100]
+                    >>> dataset.scale = [0.1]
+
+                - check if the offset has been set.
+
+                    >>> print(dataset.offset)
+                    [100.0]
+                    >>> print(dataset.scale)
+                    [0.1]
+
+                - now lets uscale the dataset values.
+
+                    >>> unscaled_dataset = dataset.translate(unscale=True)
+                    >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
+                    [[100.5 100.5 100.3 100.4 100.2]
+                     [100.2 100.5 100.5 100.8 100.5]
+                     [100.7 100.5 100.6 100.1 100.2]
+                     [100.6 100.8 100.1 100.5 100.8]
+                     [100.2 100.5 100.2 100.2 100.9]]
+
+                - Now you can see that the values were multiplied first by the scale; then the offset value was added.
+                    `value * scale + offset`
+
+                    >>> print(unscaled_dataset.offset)
+                    [0]
+                    >>> print(unscaled_dataset.scale)
+                    [1.0]
+
+        Scale between two values:
+            - you can scale the values of the dataset between two values, for example, you can scale the values between
+                two values 0 and 1.
+
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                >>> print(dataset.stats()) # doctest: +SKIP
+                        min  max  mean      std
+                Band_1  1.0  9.0   4.0  2.19089
+                >>> scaled_dataset = dataset.translate(scaleParams=[[1, 9, 0, 255]], outputType=gdal.GDT_Byte)
+                >>> print(scaled_dataset.read_array()) # doctest: +SKIP
+                [[128 128  64  96  32]
+                 [ 32 128 128 223 128]
+                 [191 128 159   0  32]
+                 [159 223   0 128 223]
+                 [ 32 128  32  32 255]]
+
+
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+
+        options = gdal.TranslateOptions(format=driver, **kwargs)
+        dst = gdal.Translate(path, self.raster, options=options)
+        return Dataset(dst, access="write")
+
+    @staticmethod
+    def _process_color_table(color_table: DataFrame) -> DataFrame:
+        import_cleopatra(
+            "The current function uses cleopatra package to for plotting, please install it manually, for more info"
+            " check https://github.com/Serapieum-of-alex/cleopatra"
+        )
+        from cleopatra.colors import Colors
+
+        # if the color_table does not contain the red, green, and blue columns, assume it has one column with
+        # the color as hex and then, convert the color to rgb.
+        if all(elem in color_table.columns for elem in ["red", "green", "blue"]):
+            color_df = color_table.loc[:, ["values", "red", "green", "blue"]]
+        elif "color" in color_table.columns:
+            color = Colors(color_table["color"].tolist())
+            color_rgb = color.to_rgb(normalized=False)
+            color_df = DataFrame(columns=["values"])
+            color_df["values"] = color_table["values"].to_list()
+            color_df.loc[:, ["red", "green", "blue"]] = color_rgb
+        else:
+            raise ValueError(
+                f"color_table must contain either red, green, blue, or color columns. given columns are: "
+                f"{color_table.columns}"
+            )
+
+        if "alpha" not in color_table.columns:
+            color_df.loc[:, "alpha"] = 255
+        else:
+            color_df.loc[:, "alpha"] = color_table["alpha"]
+
+        return color_df
 
     @staticmethod
     def _create_dataset(
@@ -2674,7 +3478,7 @@ class Dataset(AbstractDataset):
 
         Examples
         --------
-        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        - Create `Dataset` consists of 1 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
 
             >>> dataset = Dataset.create(
             ...     cell_size=0.05, rows=3, columns=3, bands=1, top_left_corner=(0, 0),dtype="float32",
@@ -3001,7 +3805,13 @@ class Dataset(AbstractDataset):
         gdf["id"] = gdf.index
         return gdf
 
-    def to_file(self, path: str, band: int = 0, tile_length: int = None) -> None:
+    def to_file(
+        self,
+        path: str,
+        band: int = 0,
+        tile_length: int = None,
+        creation_options: List[str] = None,
+    ) -> None:
         """Save dataset to tiff file.
 
             `to_file` saves a raster to disk, the type of the driver (georiff/netcdf/ascii) will be implied from the
@@ -3015,6 +3825,9 @@ class Dataset(AbstractDataset):
             band index, needed only in case of ascii drivers. Default is 0.
         tile_length: int, Optional, Default 256.
             length of the tiles in the driver.
+        creation_options: List[str], Default is None
+            List of strings that will be passed to the GDAL driver during the creation of the dataset.
+            i.e., ['PREDICTOR=2']
 
         Examples
         --------
@@ -3059,6 +3872,8 @@ class Dataset(AbstractDataset):
                     "BLOCKXSIZE={}".format(self._block_size[0][0]),
                     "BLOCKYSIZE={}".format(self._block_size[0][1]),
                 ]
+            if creation_options is not None:
+                options += creation_options
 
             try:
                 dst = gdal.GetDriverByName(driver_name).CreateCopy(
@@ -4825,9 +5640,14 @@ class Dataset(AbstractDataset):
         -------
         array
         """
-        array_min = array.min()
-        array_max = array.max()
+        array_min = np.nanmin(array)
+        array_max = np.nanmax(array)
         val = (array - array_min) / (array_max - array_min)
+        return val
+
+    @staticmethod
+    def _rescale(array: np.ndarray, min_value: float, max_value: float) -> np.ndarray:
+        val = (array - min_value) / (max_value - min_value)
         return val
 
     def _window(self, size: int = 256):
@@ -5650,7 +6470,7 @@ class Dataset(AbstractDataset):
         ----------
         values: [Dict[int, str]]
             dictionary with band index as key and color name as value.
-            e.g. {1: 'Red', 2: 'Green', 3: 'Blue'}, possible values are
+            e.g. {0: 'red', 1: 'green', 2: 'blue'}, possible values are
             ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue', 'saturation',
             'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand', 'YCbCr_CrBand']
 
@@ -6098,3 +6918,93 @@ class Dataset(AbstractDataset):
     #     x_off, y_off =  # the top left corner point of the polygon.
     #     flags, percent = band.GetDataCoverageStatus(x_off, y_off, x_size, y_size, sampling)
     #     return percent
+
+    def to_xyz(
+        self, bands: List[int] = None, path: str = None
+    ) -> Union[DataFrame, None]:
+        """Convert to XYZ.
+
+        Parameters
+        ----------
+        path: str, optional, default is None
+            path to the file where the data will be saved. If None, the data will be returned as a DataFrame.
+        bands: List[int], optional, default is None
+            indices of the bands. If None, all bands will be used.
+
+        Returns
+        -------
+        DataFrame/File:
+            DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to
+            disk as a .xyz file
+
+        Examples
+        --------
+        - First we will create a dataset from a float32 array with values between 1 and 10, and then we will
+            assign a scale of 0.1 to the dataset.
+
+            >>> import numpy as np
+            >>> arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+            >>> top_left_corner = (0, 0)
+            >>> cell_size = 0.05
+            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+            >>> print(dataset)
+            <BLANKLINE>
+                        Top Left Corner: (0.0, 0.0)
+                        Cell size: 0.05
+                        Dimension: 2 * 2
+                        EPSG: 4326
+                        Number of Bands: 2
+                        Band names: ['Band_1', 'Band_2']
+                        Band colors: {0: 'undefined', 1: 'undefined'}
+                        Band units: ['', '']
+                        Scale: [1.0, 1.0]
+                        Offset: [0, 0]
+                        Mask: -9999.0
+                        Data type: int64
+                        File: ...
+            <BLANKLINE>
+            >>> df = dataset.to_xyz()
+            >>> print(df)
+                 lon    lat  Band_1  Band_2
+            0  0.025 -0.025       1       5
+            1  0.075 -0.025       2       6
+            2  0.025 -0.075       3       7
+            3  0.075 -0.075       4       8
+        """
+        try:
+            from osgeo_utils import gdal2xyz
+        except ImportError:
+            raise ImportError(
+                "osgeo_utils is not installed. Install it using pip: pip install osgeo-utils"
+            )
+
+        if bands is None:
+            bands = range(1, self.band_count + 1)
+        elif isinstance(bands, int):
+            bands = [bands + 1]
+        elif isinstance(bands, list):
+            bands = [band + 1 for band in bands]
+        else:
+            raise ValueError("bands must be an integer or a list of integers.")
+
+        band_nums = bands
+        arr = gdal2xyz.gdal2xyz(
+            self.raster,
+            path,
+            skip_nodata=True,
+            return_np_arrays=True,
+            band_nums=band_nums,
+        )
+        if path is None:
+            band_names = []
+            if bands is not None:
+                for band in bands:
+                    band_names.append(self.band_names[band - 1])
+            else:
+                band_names = self.band_names
+
+            df = pd.DataFrame(columns=["lon", "lat"] + band_names)
+            df["lon"] = arr[0]
+            df["lat"] = arr[1]
+            df[band_names] = arr[2].transpose()
+            return df
