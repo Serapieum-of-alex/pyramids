@@ -3,23 +3,26 @@
 
 name: pypi-release
 
+permissions:
+  contents: read
+
 on:
-    workflow_dispatch:
-    release:
-        types: [created]
+  workflow_dispatch:
+  release:
+    types: [created]
 
 jobs:
-    publish:
-        runs-on: ubuntu-latest
+  publish:
+    runs-on: ubuntu-latest
 
-        steps:
-            - uses: actions/checkout@v4
-            - name: Install Pixi
-                uses: prefix-dev/setup-pixi@v0.8.14
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Install Pixi
+        uses: prefix-dev/setup-pixi@v0.8.14
 
-            - name: Build and publish
-                run: pixi run publish-pypi
-                env:
-                  TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-                  TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      - name: Build and publish          # 12-space indent
+        run: pixi run publish-pypi       # 14-space indent
+        env:                             # 14-space indent
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
