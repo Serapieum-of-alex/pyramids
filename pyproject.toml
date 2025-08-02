@@ -1,6 +1,6 @@
 [project]
 name = "pyramids-gis"
-version = "0.7.2"
+version = "0.7.3"
 description = "GIS utility package"
 readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
@@ -23,14 +23,14 @@ classifiers = [
     "Intended Audience :: Developers",
 ]
 
-requires-python = ">= 3.11"
+requires-python = ">= 3.11, <4"
 
 dependencies = [
-    "geopandas >=1.0.1",
+    "geopandas >=1.0.0",
     "hpc-utils >=0.1.5",
     "loguru >=0.7.2",
     "numpy >=2.0.0",
-    "pandas >=2.2.3",
+    "pandas >=2.0.0",
     "pyproj >=3.7.0",
     "PyYAML >=6.0.0",
     "Shapely >=2.0.0",
@@ -104,9 +104,9 @@ multi_line_output = 3
 pythonpath = ["src"]
 testpaths = ["tests"]
 markers = [
-    "vfs: mark a test as a virtual file system.",
-    "slow: mark test as slow.",
-    "fast: mark test as fast.",
+    "vfs: mark a test as a virtual file system (deselect with '-m \"not vfs\"')",
+    "slow: mark test as slow (deselect with '-m \"not slow\"')",
+    "fast: mark test as fast (deselect with '-m \"not fast\"')",
     "plot: test plotting function optional package (deselect with '-m \"not plot\"')"
 ]
 
@@ -141,5 +141,6 @@ python = "3.12.*"
 python = "3.13.*"
 
 [tool.pixi.dependencies]
-gdal = "3.10.*"
-libgdal-netcdf = ">=3.10.3,<4"
+gdal = ">=3.10.0,<4"
+libgdal-netcdf = ">=3.10.0,<4"
+libgdal-hdf4 = ">=3.10.0,<4"

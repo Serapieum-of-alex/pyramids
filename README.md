@@ -4,14 +4,13 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/MAfarrag/Hapi.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/MAfarrag/Hapi/context:python)
 
-![GitHub last commit](https://img.shields.io/github/last-commit/MAfarrag/pyramids)
-![GitHub forks](https://img.shields.io/github/forks/MAfarrag/pyramids?style=social)
-![GitHub Repo stars](https://img.shields.io/github/stars/MAfarrag/pyramids?style=social)
-[![codecov](https://codecov.io/gh/Serapieum-of-alex/pyramids/branch/main/graph/badge.svg?token=g0DV4dCa8N)](https://codecov.io/gh/Serapieum-of-alex/pyramids)
+![GitHub last commit](https://img.shields.io/github/last-commit/Serapieum-of-alex/pyramids)
+![GitHub forks](https://img.shields.io/github/forks/Serapieum-of-alex/pyramids?style=social)
+![GitHub Repo stars](https://img.shields.io/github/stars/Serapieum-of-alex/pyramids?style=social)
+[![codecov](https://codecov.io/gh/Serapieum-of-alex/pyramids/graph/badge.svg?token=g0DV4dCa8N)](https://codecov.io/gh/Serapieum-of-alex/pyramids)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/5e3aa4d0acc843d1a91caf33545ecf03)](https://www.codacy.com/gh/Serapieum-of-alex/pyramids/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Serapieum-of-alex/pyramids&amp;utm_campaign=Badge_Grade)
 
-![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.io/github/commits-since/mafarrag/pyramids/0.5.0?include_prereleases&style=plastic)
-![GitHub last commit](https://img.shields.io/github/last-commit/mafarrag/pyramids)
+![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.io/github/commits-since/Serapieum-of-alex/pyramids/0.5.0?include_prereleases&style=plastic)
 
 Current release info
 ====================
@@ -46,7 +45,7 @@ Installing pyramids
 Installing `pyramids` from the `conda-forge` channel can be achieved by:
 
 ```
-conda install -c conda-forge pyramids=0.7.2
+conda install -c conda-forge pyramids=0.7.3
 ```
 
 It is possible to list all the versions of `pyramids` available on your platform with:
@@ -68,7 +67,7 @@ pip install git+https://github.com/Serapieum-of-alex/pyramids
 to install the last release, you can easily use pip
 
 ```
-pip install pyramids-gis==0.7.2
+pip install pyramids-gis==0.7.3
 ```
 
 Quick start
