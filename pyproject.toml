@@ -1,6 +1,6 @@
 [project]
 name = "pyramids-gis"
-version = "0.7.2"
+version = "0.7.3"
 description = "GIS utility package"
 readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
@@ -30,7 +30,7 @@ dependencies = [
     "hpc-utils >=0.1.5",
     "loguru >=0.7.2",
     "numpy >=2.0.0",
-    "pandas >=2.2.3",
+    "pandas >=2.0.0",
     "pyproj >=3.7.0",
     "PyYAML >=6.0.0",
     "Shapely >=2.0.0",
@@ -143,3 +143,4 @@ python = "3.13.*"
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"
 libgdal-netcdf = ">=3.10.0,<4"
+libgdal-hdf4 = ">=3.10.0,<4"

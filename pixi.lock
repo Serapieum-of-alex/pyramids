@@ -7193,14 +7193,14 @@ packages:
   requires_python: '>=3.10'
 - pypi: ./
   name: pyramids-gis
-  version: 0.7.2
-  sha256: 21839ac818eadf9c2d4915ecaa69f84d997377d76877b698ae888add8293d119
+  version: 0.7.3
+  sha256: c0ec306b7c4193169abf827eef4b29c54a238f4b51eb42c925aa0138d7a5fcdf
   requires_dist:
   - geopandas>=1.0.0
   - hpc-utils>=0.1.5
   - loguru>=0.7.2
   - numpy>=2.0.0
-  - pandas>=2.2.3
+  - pandas>=2.0.0
   - pyproj>=3.7.0
   - pyyaml>=6.0.0
   - shapely>=2.0.0
