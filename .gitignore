@@ -170,3 +170,5 @@ tests/data/not-used/*
 /tests/data/delete/mask.gpkg
 /write_array.tif
 /my-dataset.tif
+# pixi environments
+.pixi

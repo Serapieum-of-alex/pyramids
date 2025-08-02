@@ -2530,8 +2530,7 @@ class Dataset(AbstractDataset):
                     "Attempt to write to read only dataset in GDALRasterBand::Fill()."
                 ):
                     raise ReadOnlyError(
-                        "The Dataset is open with a read only, please read the raster using update "
-                        "access mode"
+                        "The Dataset is open with a read only, please read the raster using update access mode"
                     )
                 elif str(e).__contains__(
                     "in method 'Band_SetNoDataValue', argument 2 of type 'double'"
@@ -2573,7 +2572,7 @@ class Dataset(AbstractDataset):
         no_data_value:
             Numerical value.
         """
-        # check if the dtype of the no_data_value comply with the dtype of the raster itself.
+        # check if the dtype of the no_data_value complies with the dtype of the raster itself.
         self._change_no_data_value_attr(band_i, no_data_value)
         # initialize the band with the nodata value instead of 0
         # the no_data_value may have changed inside the _change_no_data_value_attr method to float64, so redefine it.
@@ -2583,6 +2582,12 @@ class Dataset(AbstractDataset):
         except Exception as e:
             if str(e).__contains__(" argument 2 of type 'double'"):
                 self.raster.GetRasterBand(band_i + 1).Fill(np.float64(no_data_value))
+            elif str(e).__contains__(
+                    "Attempt to write to read only dataset in GDALRasterBand::Fill()."
+            ) or str(e).__contains__("attempt to write to dataset opened in read-only mode."):
+                raise ReadOnlyError(
+                    "The Dataset is open with a read only, please read the raster using update access mode"
+                )
             else:
                 raise ValueError(
                     f"Failed to fill the band {band_i} with value: {no_data_value}, because of {e}"
