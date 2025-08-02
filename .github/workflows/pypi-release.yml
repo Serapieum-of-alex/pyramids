@@ -3,6 +3,9 @@
 
 name: pypi-release
 
+permissions:
+  contents: read
+
 on:
     workflow_dispatch:
     release:
