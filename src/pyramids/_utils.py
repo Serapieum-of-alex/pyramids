@@ -330,7 +330,7 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
     Parameters
     ----------
     src: [DataSet]
-        gdal Datacube
+        gdal Dataset
     band: [gda Band]
         gdal band
 

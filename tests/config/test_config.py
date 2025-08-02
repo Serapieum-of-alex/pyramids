@@ -1,9 +1,7 @@
 import os
-import pytest
 import unittest
 from unittest.mock import patch
 from pathlib import Path
-from osgeo import gdal
 from pyramids.config import Config
 
 
