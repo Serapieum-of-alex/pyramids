@@ -3653,16 +3653,14 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def fill_gaps(self, mask, src_array: np.ndarray) -> np.ndarray:
-        """fill_gaps.
+        """Fill gaps in src_array using nearest neighbors where mask indicates valid cells.
 
-        Parameters
-        ----------
-        mask: [np.ndarray]
-        src_array: [np.ndarray]
+        Args:
+            mask (Dataset | np.ndarray): Mask dataset or array used to determine valid cells.
+            src_array (np.ndarray): Source array whose gaps will be filled.
 
-        Returns
-        -------
-        np.ndarray
+        Returns:
+            np.ndarray: The source array with gaps filled where applicable.
         """
         # align function only equate the no of rows and columns only
         # match no_data_value inserts no_data_value in src raster to all places like mask
@@ -3717,29 +3715,18 @@ class Dataset(AbstractDataset):
         mask_noval: Union[int, float] = None,
         fill_gaps: bool = False,
     ) -> "Dataset":
-        """_crop_aligned.
+        """Clip/crop by matching the nodata layout from mask to the source raster.
 
-        _crop_aligned clip/crop (matches the location of nodata value from mask to src
-        raster),
-            - Both rasters have to have the same dimensions (no of rows & columns)
-            so MatchRasterAlignment should be used prior to this function to align both
-            rasters
+        Both rasters must have the same dimensions (rows and columns). Use MatchRasterAlignment prior to this
+        method to align both rasters.
 
-        Parameters
-        ----------
-        mask: [Dataset/np.ndarray]
-            mask raster to get the location of the NoDataValue and
-            where it is in the array
-        mask_noval: [numeric]
-            in case the mask is np.ndarray, the mask_noval have to be given.
-        fill_gaps: [bool]
-            Default is False.
+        Args:
+            mask (Dataset | np.ndarray): Mask raster to get the location of the NoDataValue and where it is in the array.
+            mask_noval (int | float, optional): In case the mask is a numpy array, the mask_noval has to be given.
+            fill_gaps (bool): Whether to fill gaps after cropping. Default is False.
 
-        Returns
-        -------
-        dst: [gdal.dataset]
-            the second raster with NoDataValue stored in its cells
-            exactly the same like src raster
+        Returns:
+            Dataset: The raster with NoDataValue stored in its cells exactly the same as the source raster.
         """
         if isinstance(mask, Dataset):
             mask_gt = mask.geotransform
@@ -3846,93 +3833,91 @@ class Dataset(AbstractDataset):
         self,
         alignment_src: "Dataset",
     ) -> "Dataset":
-        """
-        Align the current dataset (number of rows and columns) to follow the alignmen of a given dataset.
+        """Align the current dataset (rows and columns) to match a given dataset.
 
-        align method copies the following data:
+        Copies spatial properties from alignment_src to the current raster:
             - The coordinate system
-            - The number of rows & columns
-            - cell size
+            - The number of rows and columns
+            - Cell size
+        Then resamples values from the current dataset using the nearest neighbor interpolation.
 
-        from alignment_src to the raster (the source of data values in cells)
+        Args:
+            alignment_src (Dataset): Spatial information source raster to get the spatial information (coordinate system, number of rows and columns). The data values of the current dataset are resampled to this alignment.
 
-        the result will be a raster with the same structure as alignment_src but with
-        values from data_src using the Nearest neighbor interpolation algorithm.
+        Returns:
+            Dataset: The aligned dataset.
 
-        Parameters
-        ----------
-        alignment_src : Dataset
-            spatial information source raster to get the spatial information (coordinate system, no of rows &
-            columns) data values source raster to get the data (values of each cell).
+        Examples:
+            - The source dataset has a `top_left_corner` at (0, 0) with a 5*5 alignment, and a 0.05 degree cell size.
 
-        Returns
-        -------
-        Dataset:
-            Dataset object
+              ```python
+              >>> import numpy as np
+              >>> arr = np.random.rand(5, 5)
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              >>> print(dataset)
+              <BLANKLINE>
+                          Cell size: 0.05
+                          Dimension: 5 * 5
+                          EPSG: 4326
+                          Number of Bands: 1
+                          Band names: ['Band_1']
+                          Mask: -9999.0
+                          Data type: float64
+                          File:...
+              <BLANKLINE>
 
-        Examples
-        --------
-        - The source dataset has a `top_left_corner` at (0, 0) with a 5*5 alignment, and an 0.05 degree cell size.
+              ```
 
-            >>> import numpy as np
-            >>> arr = np.random.rand(5, 5)
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-            >>> print(dataset)
-            <BLANKLINE>
-                        Cell size: 0.05
-                        Dimension: 5 * 5
-                        EPSG: 4326
-                        Number of Bands: 1
-                        Band names: ['Band_1']
-                        Mask: -9999.0
-                        Data type: float64
-                        File:...
-            <BLANKLINE>
+            - The dataset to be aligned has a top_left_corner at (-0.1, 0.1) (i.e., it has two more rows on top of the
+              dataset, and two columns on the left of the dataset).
 
-        - The dataset to be aligned has a top_left_corner at (-0.1, 0.1) (i.e., it has two more rows in top of the
-            dataset, and two columns in the left of the dataset plus).
+              ```python
+              >>> arr = np.random.rand(10, 10)
+              >>> top_left_corner = (-0.1, 0.1)
+              >>> cell_size = 0.07
+              >>> dataset_target = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,
+              ... epsg=4326)
+              >>> print(dataset_target)
+              <BLANKLINE>
+                          Cell size: 0.07
+                          Dimension: 10 * 10
+                          EPSG: 4326
+                          Number of Bands: 1
+                          Band names: ['Band_1']
+                          Mask: -9999.0
+                          Data type: float64
+                          File:...
+              <BLANKLINE>
 
-            >>> arr = np.random.rand(10, 10)
-            >>> top_left_corner = (-0.1, 0.1)
-            >>> cell_size = 0.07
-            >>> dataset_target = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,
-            ... epsg=4326)
-            >>> print(dataset_target)
-            <BLANKLINE>
-                        Cell size: 0.07
-                        Dimension: 10 * 10
-                        EPSG: 4326
-                        Number of Bands: 1
-                        Band names: ['Band_1']
-                        Mask: -9999.0
-                        Data type: float64
-                        File:...
-            <BLANKLINE>
+              ```
 
-        .. image:: /_images/dataset/align-source-target.png
-            :alt: Example Image
-            :align: center
+            .. image:: /_images/dataset/align-source-target.png
+                :alt: Example Image
+                :align: center
 
-        - Now call the `align` method and use the dataset as the alignment source.
+            - Now call the `align` method and use the dataset as the alignment source.
 
-            >>> aligned_dataset = dataset_target.align(dataset)
-            >>> print(aligned_dataset)
-            <BLANKLINE>
-                        Cell size: 0.05
-                        Dimension: 5 * 5
-                        EPSG: 4326
-                        Number of Bands: 1
-                        Band names: ['Band_1']
-                        Mask: -9999.0
-                        Data type: float64
-                        File:...
-            <BLANKLINE>
+              ```python
+              >>> aligned_dataset = dataset_target.align(dataset)
+              >>> print(aligned_dataset)
+              <BLANKLINE>
+                          Cell size: 0.05
+                          Dimension: 5 * 5
+                          EPSG: 4326
+                          Number of Bands: 1
+                          Band names: ['Band_1']
+                          Mask: -9999.0
+                          Data type: float64
+                          File:...
+              <BLANKLINE>
 
-        .. image:: /_images/dataset/align-result.png
-            :alt: Example Image
-            :align: center
+              ```
+
+            .. image:: /_images/dataset/align-result.png
+                :alt: Example Image
+                :align: center
         """
         if isinstance(alignment_src, Dataset):
             src = alignment_src
@@ -3975,20 +3960,13 @@ class Dataset(AbstractDataset):
         self,
         mask: Union[gdal.Dataset, str],
     ) -> "Dataset":
-        """crop.
+        """Crop this raster using another raster as a mask.
 
-            crop method crops a raster using another raster.
+        Args:
+            mask (Dataset | str): The raster you want to use as a mask to crop this raster; it can be a path or a GDAL Dataset.
 
-        Parameters
-        -----------
-        string/Dataset:
-            The raster you want to use as a mask to crop another raster,
-            the mask can be also a path or a gdal object.
-
-        Returns
-        -------
-        Dataset:
-            The cropped raster.
+        Returns:
+            Dataset: The cropped raster.
         """
         # get information from the mask raster
         if isinstance(mask, str):
@@ -4641,17 +4619,13 @@ class Dataset(AbstractDataset):
         return values
 
     def get_mask(self, band: int = 0) -> np.ndarray:
-        """get_mask.
+        """Get the mask array.
 
-        Parameters
-        ----------
-        band: [int]
-            band index. Default is 0.
+        Args:
+            band (int): Band index. Default is 0.
 
-        Returns
-        -------
-        np.ndarray:
-            array of the mask. 0 value for cells out of the domain, and 255 for cells in the domain.
+        Returns:
+            np.ndarray: Array of the mask. 0 value for cells out of the domain, and 255 for cells in the domain.
         """
         # TODO: there is a CreateMaskBand method in the gdal.Dataset class, it creates a mask band for the dataset
         #   either internally or externally.
@@ -4665,60 +4639,66 @@ class Dataset(AbstractDataset):
     ) -> Union[GeoDataFrame, None]:
         """Extract the real coverage of the values in a certain band.
 
-        Parameters
-        ----------
-        band: [int], Default is 0.
-            band index.
-        exclude_values:
-            if you want to exclude a certain value in the raster with another value inter the two values as a
-            list of tuples a [(value_to_be_exclude_valuesd, new_value)]
+        Args:
+            band (int): Band index. Default is 0.
+            exclude_values (Optional[List[Any]]): If you want to exclude a certain value in the raster with another
+                value inter the two values as a list of tuples a [(value_to_be_exclude_valuesd, new_value)].
 
-            >>> exclude_values = [0]
+                - Example of exclude_values usage:
 
-            - This parameter is introduced particularly in the case of rasters that has the no_data_value stored in the
-                `no_data_value` property does not match the value stored in the band, so this option can correct this
-                behavior.
+                  ```python
+                  >>> exclude_values = [0]
+                  
+                  ```
 
-        Returns
-        -------
-        GeoDataFrame:
-            - geodataframe containing the polygon representing the extent of the raster. the extent column should
-                contain a value of 2 only.
-            - if the dataset had separate polygons, each polygon will be in a separate row.
+                - This parameter is introduced particularly in the case of rasters that has the no_data_value stored in
+                  the `no_data_value` property does not match the value stored in the band, so this option can correct
+                  this behavior.
 
-        Examples
-        --------
-        - The following raster dataset has flood depth stored in its values, and the non-flooded cells are filled with
-            zero, so to extract the flood extent, we need to exclude the zero flood depth cells.
+        Returns:
+            GeoDataFrame: 
+                - geodataframe containing the polygon representing the extent of the raster. the extent column should
+                  contain a value of 2 only.
+                - if the dataset had separate polygons, each polygon will be in a separate row.
 
-            >>> dataset = Dataset.read_file("examples/data/geotiff/rhine-flood.tif")
-            >>> dataset.plot()
-            (<Figure size 800x800 with 2 Axes>, <Axes: >)
+        Examples:
+            - The following raster dataset has flood depth stored in its values, and the non-flooded cells are filled with
+              zero, so to extract the flood extent, we need to exclude the zero flood depth cells.
 
-        .. image:: /_images/dataset/dataset-footprint-rhine-flood.png
-            :alt: footprint
-            :align: center
+              ```python
+              >>> dataset = Dataset.read_file("examples/data/geotiff/rhine-flood.tif")
+              >>> dataset.plot()
+              (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
-        - Now, to extract the footprint of the dataset band, we need to specify the `exclude_values` parameter with the
-            value of the non-flooded cells.
+              ```
 
-            >>> extent = dataset.footprint(band=0, exclude_values=[0])
-            >>> print(extent)
-               Band_1                                           geometry
-            0     2.0  POLYGON ((4070974.182 3181069.473, 4070974.182...
-            1     2.0  POLYGON ((4077674.182 3181169.473, 4077674.182...
-            2     2.0  POLYGON ((4091174.182 3169169.473, 4091174.182...
-            3     2.0  POLYGON ((4088574.182 3176269.473, 4088574.182...
-            4     2.0  POLYGON ((4082974.182 3167869.473, 4082974.182...
-            5     2.0  POLYGON ((4092274.182 3168269.473, 4092274.182...
-            6     2.0  POLYGON ((4072474.182 3181169.473, 4072474.182...
+            .. image:: /_images/dataset/dataset-footprint-rhine-flood.png
+                :alt: footprint
+                :align: center
 
-            >>> extent.plot()
-            <Axes: >
+            - Now, to extract the footprint of the dataset band, we need to specify the `exclude_values` parameter with the
+              value of the non-flooded cells.
 
-        .. image:: /_images/dataset/dataset-footprint-rhine-flood-extent.png
-              :alt: footprint
-              :align: center
+              ```python
+              >>> extent = dataset.footprint(band=0, exclude_values=[0])
+              >>> print(extent)
+                 Band_1                                           geometry
+              0     2.0  POLYGON ((4070974.182 3181069.473, 4070974.182...
+              1     2.0  POLYGON ((4077674.182 3181169.473, 4077674.182...
+              2     2.0  POLYGON ((4091174.182 3169169.473, 4091174.182...
+              3     2.0  POLYGON ((4088574.182 3176269.473, 4088574.182...
+              4     2.0  POLYGON ((4082974.182 3167869.473, 4082974.182...
+              5     2.0  POLYGON ((4092274.182 3168269.473, 4092274.182...
+              6     2.0  POLYGON ((4072474.182 3181169.473, 4072474.182...
+
+              >>> extent.plot()
+              <Axes: >
+
+              ```
+
+            .. image:: /_images/dataset/dataset-footprint-rhine-flood-extent.png
+                  :alt: footprint
+                  :align: center
 
         """
         arr = self.read_array(band=band)

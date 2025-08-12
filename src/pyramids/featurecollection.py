@@ -677,21 +677,16 @@ class FeatureCollection:
 
     @staticmethod
     def _get_point_coords(geometry: Point, coord_type: str) -> Union[float, int]:
-        """GetPointCoords.
+        """Get point coordinates for a Point geometry.
 
-        Returns Coordinates of Point object.
+        Returns coordinates of a Point object.
 
-        parameters
-        ----------
-        geometry: [Shapely Point object]
-            the geometry of a shpefile
-        coord_type: [string]
-            either "x" or "y"
+        Args:
+            geometry (Point): The geometry of a shapefile.
+            coord_type (str): Either "x" or "y".
 
-        Returns
-        -------
-        array:
-            contains x coordinates or y coordinates of all edges of the shapefile
+        Returns:
+            float | int: The x or y coordinate of the Point according to coord_type.
         """
         if coord_type == "x":
             coord = geometry.x
