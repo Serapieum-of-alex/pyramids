@@ -205,14 +205,11 @@ class FeatureCollection:
     def read_file(cls, path: str):
         """Open a vector dataset using OGR or GeoPandas.
 
-        Parameters
-        ----------
-        path : str
-            Path to vector file.
+        Args:
+            path (str): Path to vector file.
 
-        Returns
-        -------
-        GeoDataFrame if ``with_geopandas`` else OGR datsource.
+        Returns:
+            FeatureCollection: A FeatureCollection wrapping the GeoDataFrame.
         """
         gdf = gpd.read_file(path)
 
@@ -223,18 +220,14 @@ class FeatureCollection:
 
     @staticmethod
     def create_ds(driver: str = "geojson", path: str = None) -> Union[DataSource, None]:
-        """Create ogr DataSource.
+        """Create OGR DataSource.
 
-        Parameters
-        ----------
-        driver: [str]
-            driver type ["GeoJSON", "memory"]
-        path: [str]
-            path to save the vector driver.
+        Args:
+            driver (str): Driver type ["GeoJSON", "memory"].
+            path (str): Path to save the vector data.
 
-        Returns
-        -------
-        ogr DataSource
+        Returns:
+            DataSource | None: Created OGR DataSource or None if inplace behavior applies elsewhere.
         """
         driver = driver.lower()
         gdal_name = CATALOG.get_gdal_name(driver)
@@ -255,38 +248,28 @@ class FeatureCollection:
 
     @staticmethod
     def _copy_driver_to_memory(ds: DataSource, name: str = "memory") -> DataSource:
-        """copyDriverToMemory.
+        """Copy driver to a memory driver.
 
-            copy driver to a memory driver
+        Args:
+            ds (DataSource): OGR datasource.
+            name (str): Datasource name.
 
-        Parameters
-        ----------
-        ds: [ogr.DataSource]
-            ogr datasource
-        name: [str]
-            datasource name
-
-        Returns
-        -------
-        ogr.DataSource
+        Returns:
+            DataSource: The copied in-memory OGR DataSource.
         """
         return ogr.GetDriverByName("Memory").CopyDataSource(ds, name)
 
     def to_file(self, path: str, driver: str = "geojson"):
         """Save FeatureCollection to disk.
 
-            Currently saves ogr DataSource to disk
+        Currently saves OGR DataSource to disk.
 
-        Parameters
-        ----------
-        path: [path]
-            path to save the vector
-        driver: [str]
-            driver type
+        Args:
+            path (str): Path to save the vector.
+            driver (str): Driver type.
 
-        Returns
-        -------
-        None
+        Returns:
+            None
         """
         driver_gdal_name = CATALOG.get_gdal_name(driver)
         if isinstance(self.feature, DataSource):
@@ -297,19 +280,14 @@ class FeatureCollection:
     def _gdf_to_ds(
         self, inplace: bool = False, gdal_dataset=False
     ) -> Union[DataSource, None]:
-        """Convert a geopandas geodataframe into ogr DataSource.
+        """Convert a GeoPandas GeoDataFrame into an OGR DataSource.
 
-        Parameters
-        ----------
-        inplace: [bool]
-            convert the geodataframe to datasource inplace. Default is False.
-        gdal_dataset: [bool]
-            True if you want to convert the geodataframe into a gdal Dataset (the object created by reading the
-            vector with gdal.EX). Default is False
+        Args:
+            inplace (bool): Convert the GeoDataFrame to DataSource in place. Default is False.
+            gdal_dataset (bool): True to convert the GeoDataFrame into a GDAL Dataset (the object created by reading the vector with gdal.OpenEx). Default is False.
 
-        Returns
-        -------
-        ogr.DataSource
+        Returns:
+            DataSource | FeatureCollection | None: OGR DataSource, or a FeatureCollection wrapper if not inplace.
         """
         if isinstance(self.feature, GeoDataFrame):
             gdf_json = json.loads(self.feature.to_json())
@@ -435,23 +413,13 @@ class FeatureCollection:
             - all the new raster geotransform data will be copied from the given raster.
             - raster and vector should have the same projection
 
-        Parameters
-        ----------
-        cell_size: [int/Optional]
-            cell size you want the new ceated raster to have. the cell_size parameter is optional, if you use the
-            dataset parameter you don't need to provide it. Default is None.
-        dataset : [Dataset/Optional]
-            Raster object, the raster will only be used as a source for the geotransform (
-            projection, rows, columns, location) data to be copied to the rasterized vector. the dataset parameter
-            is optional, if you use the cell_size parameter you don't need to provide it. Default is None.
-        column_name : [str/List[str]/Optional]
-            Name of a column in the vector to burn values from. If None, all the columns will be considered as bands.
-            Default is None.
+        Args:
+            cell_size (int | None): Cell size for the new raster. Optional if dataset is provided. Default is None.
+            dataset (Dataset | None): Raster object to copy geotransform (projection, rows, columns, location) from. Optional if cell_size is provided. Default is None.
+            column_name (str | List[str] | None): Column name(s) in the vector to burn values from. If None, all columns are considered as bands. Default is None.
 
-        Returns
-        -------
-        Dataset
-            Single band raster with vector geometries burned.
+        Returns:
+            Dataset: Single-band raster with vector geometries burned.
         """
         from pyramids.dataset import Dataset
 
@@ -543,17 +511,13 @@ class FeatureCollection:
 
     @staticmethod
     def _get_ds_epsg(ds: DataSource):
-        """Get epsg for a given ogr Datasource.
+        """Get EPSG for a given OGR DataSource.
 
-        Parameters
-        ----------
-        ds: [DataSource]
-            ogr datasource (vector file read by ogr)
+        Args:
+            ds (DataSource): OGR datasource (vector file read by OGR).
 
-        Returns
-        -------
-        int:
-            epsg number
+        Returns:
+            int: EPSG number.
         """
         layer = ds.GetLayer(0)
         spatial_ref = layer.GetSpatialRef()
@@ -699,41 +663,27 @@ class FeatureCollection:
 
     @staticmethod
     def _get_line_coords(geometry: LineString, coord_type: str):
-        """getLineCoords.
+        """Get coordinates of a LineString object.
 
-        Returns Coordinates of Linestring object.
+        Args:
+            geometry (LineString): The geometry of a shapefile.
+            coord_type (str): Either "x" or "y".
 
-        parameters
-        ----------
-        geometry: [Shapely Linestring object]
-             the geometry of a shpefile
-        coord_type: [string]
-            either "x" or "y"
-
-        Returns
-        -------
-        array:
-            contains x coordinates or y coordinates of all edges of the shapefile
+        Returns:
+            list: Contains x or y coordinates of all edges of the shapefile.
         """
         return FeatureCollection._get_xy_coords(geometry, coord_type)
 
     @staticmethod
     def _get_poly_coords(geometry: Polygon, coord_type: str) -> List:
-        """getPolyCoords.
+        """Get coordinates of a Polygon's exterior.
 
-            Returns Coordinates of Polygon using the Exterior of the Polygon.
+        Args:
+            geometry (Polygon): The geometry of a shapefile.
+            coord_type (str): Either "x" or "y".
 
-        parameters
-        ----------
-        geometry: [Shapely polygon object]
-            the geometry of a shpefile
-        coord_type: [string]
-             either "x" or "y"
-
-        Returns
-        -------
-        array:
-            contains x coordinates or y coordinates of all edges of the shapefile
+        Returns:
+            list: Contains x or y coordinates of all edges of the shapefile.
         """
         # convert the polygon into lines
         ext = geometry.exterior  # type = LinearRing
@@ -742,19 +692,13 @@ class FeatureCollection:
 
     @staticmethod
     def _explode_multi_geometry(multi_polygon: MultiPolygon):
-        """Explode.
+        """Explode a MultiPolygon into its Polygon parts.
 
-        explode function converts the multipolygon into a polygons
+        Args:
+            multi_polygon (MultiPolygon): A MultiPolygon geometry.
 
-        Parameters
-        ----------
-        multi_polygon: [data frame series]
-            the dataframe rows that its geometry type is Multipolygon
-
-        Returns
-        -------
-        outdf: [dataframe]
-            the dataframe of the created polygons
+        Returns:
+            list: List of Polygon geometries.
         """
         # outdf = gpd.GeoDataFrame()
         # multdf = gpd.GeoDataFrame()
@@ -767,21 +711,16 @@ class FeatureCollection:
 
     @staticmethod
     def _explode_gdf(gdf: GeoDataFrame, geometry: str = "multipolygon"):
-        """Explode.
+        """Explode Multi geometries into single geometries.
 
-        explode function converts the multipolygon into a polygons
+        Explodes MultiPolygon (or specified multi-geometry) into separate geometries per row.
 
-        Parameters
-        ----------
-        gdf: [GeoDataFrame]
-            geodataframe
-        geometry: [str]
-            The multi-geometry you want to make is single for each row. Default is "multipolygon".
+        Args:
+            gdf (GeoDataFrame): GeoDataFrame to explode.
+            geometry (str): The multi-geometry type to explode. Default is "multipolygon".
 
-        Returns
-        -------
-        outdf: [dataframe]
-            the dataframe of the created polygons
+        Returns:
+            GeoDataFrame: A new GeoDataFrame with exploded geometries.
         """
         # explode the multi_polygon into polygon
         new_gdf = gpd.GeoDataFrame()
@@ -813,26 +752,18 @@ class FeatureCollection:
         coord_type: str,
         geom_type: str,
     ):
-        """multiGeomHandler.
+        """Handle multi-geometries by merging coordinates.
 
-        Function for handling multi-geometries. Can be MultiPoint, MultiLineString or MultiPolygon.
-        Returns a list of coordinates where all parts of Multi-geometries are merged into a single list.
-        Individual geometries are separated with np.nan which is how Bokeh wants them.
-        # Bokeh documentation regarding the Multi-geometry issues can be found here (it is an open issue)
-        # https://github.com/bokeh/bokeh/issues/2321
+        Function for handling multi-geometries (MultiPoint, MultiLineString, MultiPolygon).
+        Returns a list of coordinates where all parts are merged into a single list; individual geometries are separated with np.nan.
 
-        parameters
-        ----------
-        multi_geometry :[geometry]
-            the geometry of a shpefile
-        coord_type : [string]
-            "string" either "x" or "y"
-        geom_type : [string]
-            "MultiPoint" or "MultiLineString" or "MultiPolygon"
-        Returns
-        -------
-        array: [ndarray]
-            contains x coordinates or y coordinates of all edges of the shapefile
+        Args:
+            multi_geometry (MultiPolygon | MultiPoint | MultiLineString): The geometry of a shapefile.
+            coord_type (str): Either "x" or "y".
+            geom_type (str): "MultiPoint" or "MultiLineString" or "MultiPolygon".
+
+        Returns:
+            list: Contains x or y coordinates of all edges of the shapefile.
         """
         coord_arrays = []
         geom_type = geom_type.lower()
@@ -854,26 +785,17 @@ class FeatureCollection:
 
     @staticmethod
     def _get_coords(row, geom_col: str, coord_type: str):
-        """getCoords.
+        """Get coordinates ('x' or 'y') of a geometry row.
 
-        Returns coordinates ('x' or 'y') of a geometry (Point, LineString or Polygon)
-        as a list (if geometry is Points, LineString or Polygon). Can handle also
-        MultiGeometries but not MultiPolygon.
+        Returns coordinates for Point, LineString, or Polygon as a list. Can also handle Multi geometries (not MultiPolygon) appropriately.
 
-        parameters
-        ----------
-        row: [dataframe]
-            a whole rwo of the dataframe
-        geom_col: [string]
-            name of the column where the geometry is stored in the dataframe
-        coord_type: [string]
-            "X" or "Y" choose which coordinate toy want to get from
-            the function
+        Args:
+            row (pd.Series): A whole row of the GeoDataFrame.
+            geom_col (str): Name of the column where the geometry is stored in the dataframe.
+            coord_type (str): "x" or "y" to choose which coordinate to get.
 
-        Returns
-        -------
-        array:
-             contains x coordinates or y coordinates of all edges of the shapefile
+        Returns:
+            list | int: Coordinates or -9999 for multipolygon to mark for removal.
         """
         # get geometry object
         geom = row[geom_col]
@@ -896,19 +818,12 @@ class FeatureCollection:
             return FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
 
     def xy(self) -> None:
-        """XY.
+        """Compute x and y coordinates of all vertices.
 
-            XY function takes a geodataframe and processes the geometry column and returns
-            the x and y coordinates of all the vortices
+        Processes the geometry column of the GeoDataFrame and returns the x and y coordinates of all the vertices.
 
-        Returns
-        -------
-        x:[dataframe column]
-            column contains the x coordinates of all the vortices of the geometry
-            object in each row.
-        y:[dataframe column]
-            column contains the y coordinates of all the vortices of the geometry
-            object in each row.
+        Returns:
+            None
         """
         # explode the gdf if the Geometry of type MultiPolygon
         gdf = self._explode_gdf(self._feature, geometry="multipolygon")
@@ -931,33 +846,33 @@ class FeatureCollection:
     def create_polygon(
         coords: List[Tuple[float, float]], wkt: bool = False
     ) -> Union[str, Polygon]:
-        """Create a polygon Geometry.
+        """Create a polygon geometry from coordinates.
 
-        Create a polygon from coordinates
+        Args:
+            coords (List[Tuple[float, float]]): List of (x, y) tuples.
+            wkt (bool): True to return Well-Known Text (WKT) string; False to return a Shapely Polygon object.
 
-        parameters
-        ----------
-        coords: [List]
-            list of tuples [(x1,y1),(x2,y2)]
-        wkt: [bool]
-            True if you want to create the WellKnownText only not the shapely polygon object
+        Returns:
+            str | Polygon: WKT string if wkt is True; otherwise a Shapely Polygon object.
 
-        Returns
-        -------
-        - if wkt is True the function returns a string of the polygon and its coordinates as
-        a WellKnownText,
-        - if wkt is False the function returns Shapely Polygon object you can assign it
-        to a GeoPandas GeoDataFrame directly
+        Examples:
+            - Create a WKT polygon from coordinates and print it:
 
-        Examples
-        --------
-        >>> coordinates = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
-        >>> feature_collection = FeatureCollection.create_polygon(coordinates, wkt=True)
-        >>> print(feature_collection)
-        'POLYGON ((-106.64 24, -106.49 24.05, -106.49 24.01, -106.49 23.98, -106.64 24))'
-        while
-        >>> new_geometry = gpd.GeoDataFrame()
-        >>> new_geometry.loc[0,'geometry'] = FeatureCollection.create_polygon(coordinates, wkt=False)
+              ```python
+              >>> coordinates = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
+              >>> feature_collection = FeatureCollection.create_polygon(coordinates, wkt=True)
+              >>> print(feature_collection)
+              'POLYGON ((-106.64 24, -106.49 24.05, -106.49 24.01, -106.49 23.98, -106.64 24))'
+
+              ```
+
+            - Create a Shapely Polygon and assign it to a GeoDataFrame:
+
+              ```python
+              >>> new_geometry = gpd.GeoDataFrame()
+              >>> new_geometry.loc[0,'geometry'] = FeatureCollection.create_polygon(coordinates, wkt=False)
+
+              ```
         """
         poly = Polygon(coords)
         if wkt:
@@ -969,31 +884,25 @@ class FeatureCollection:
     def create_point(
         coords: Iterable[Tuple[float]], epsg: int = None
     ) -> Union[List[Point], GeoDataFrame]:
-        """create_point.
+        """Create Shapely Point objects from coordinate tuples.
 
-        create_point takes a list of tuples of coordinates and convert it into
-        a list of Shapely point object
+        Args:
+            coords (Iterable[Tuple[float]]): List of tuples [(x1, y1), (x2, y2)] or [(lon1, lat1), (lon2, lat1)].
+            epsg (int): EPSG number for coordinates. If provided, returns a GeoDataFrame wrapped as FeatureCollection.
 
-        parameters
-        ----------
-        coords : [List]
-            list of tuples [(x1,y1),(x2,y2)] or [(long1,lat1),(long2,lat1)]
-        epsg: [int]
-            epsg number of the coordinates. If given the method will create a GeoDataFrame and use it to create a
-            FeatureCollection object.
+        Returns:
+            list | FeatureCollection: List of Shapely Point objects, or FeatureCollection if epsg is provided.
 
-        Returns
-        -------
-        points: [List]
-            list of Shaply point objects [Point, Point]
+        Examples:
+            - Create points and assign to a GeoDataFrame:
 
-        Examples
-        --------
-        >>> coordinates = [(24.95, 60.16), (24.95, 60.16), (24.95, 60.17), (24.95, 60.16)]
-        >>> point_list = FeatureCollection.create_point(coordinates)
-        # to assign these objects to a geopandas dataframe
-        >>> new_geometry = gpd.GeoDataFrame()
-        >>> new_geometry.loc[:, 'geometry'] = point_list
+              ```python
+              >>> coordinates = [(24.95, 60.16), (24.95, 60.16), (24.95, 60.17), (24.95, 60.16)]
+              >>> point_list = FeatureCollection.create_point(coordinates)
+              >>> new_geometry = gpd.GeoDataFrame()
+              >>> new_geometry.loc[:, 'geometry'] = point_list
+
+              ```
         """
         points = list(map(Point, coords))
 
@@ -1004,26 +913,24 @@ class FeatureCollection:
         return points
 
     def concate(self, gdf: GeoDataFrame, inplace: bool = False):
-        """concate.
+        """Concatenate two shapefiles into one object.
 
-        concate reads two shapefiles and combine them into one object
+        Args:
+            gdf (GeoDataFrame): GeoDataFrame containing the geometries to combine.
+            inplace (bool): If True, modifies the current object in place. Default is False.
 
-        Parameters
-        ----------
-        gdf: [GeoDataFrame]
-            GeoDataFrame containing the geometries you want to combine.
-        inplace: [bool]
-            Default is False.
+        Returns:
+            GeoDataFrame | None: New combined GeoDataFrame, or None if inplace is True.
 
-        Returns
-        -------
-        GeoDataFrame
+        Examples:
+            - Concatenate two GeoDataFrames:
 
-        Examples
-        --------
-        >>> subbasins = FeatureCollection.read_file("sub-basins.shp")
-        >>> new_sub = gpd.read_file("new-sub-basins.shp")
-        >>> all_subs = subbasins.concate(new_sub, new_sub, inplace=False)
+              ```python
+              >>> subbasins = FeatureCollection.read_file("sub-basins.shp")
+              >>> new_sub = gpd.read_file("new-sub-basins.shp")
+              >>> all_subs = subbasins.concate(new_sub, new_sub, inplace=False)
+
+              ```
         """
         # concatenate the second shapefile into the first shapefile
         new_gdf = gpd.GeoDataFrame(pd.concat([self.feature, gdf]))
