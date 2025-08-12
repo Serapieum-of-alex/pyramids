@@ -985,35 +985,27 @@ class FeatureCollection:
     ):
         """reproject_points.
 
-        this function change the projection of the coordinates from a coordinate system
-        to another (default from GCS to web mercator used by google maps)
+        This function changes the projection of coordinates from one coordinate system to another (default: from GCS to Web Mercator as used by Google Maps).
 
-        Parameters
-        ----------
-        lat: [list]
-            list of latitudes of the points
-        lon: [list]
-            list of longitude of the points
-        from_epsg: [integer]
-            reference number to the projection of the points (https://epsg.io/)
-        to_epsg: [integer]
-            reference number to the new projection of the points (https://epsg.io/)
-        precision: [integer]
-            number of decimal places
+        Args:
+            lat (list): List of latitudes of the points.
+            lon (list): List of longitudes of the points.
+            from_epsg (int): Reference number of the source projection (https://epsg.io/).
+            to_epsg (int): Reference number of the target projection (https://epsg.io/).
+            precision (int): Number of decimal places.
 
-        Returns
-        -------
-        y: [list]
-            list of y coordinates of the points
-        x: [list]
-            list of x coordinates of the points
+        Returns:
+            tuple[list, list]: y coordinates list, x coordinates list of the points.
 
-        Examples
-        --------
-        # from web mercator to GCS WGS64:
-        >>> x_coords = [-8418583.96378159, -8404716.499972705]
-        >>> y_coords = [529374.3212213353, 529374.3212213353]
-        >>>  longs, lats = FeatureCollection.reproject_points(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
+        Examples:
+            - From Web Mercator to GCS WGS84:
+
+              ```python
+              >>> x_coords = [-8418583.96378159, -8404716.499972705]
+              >>> y_coords = [529374.3212213353, 529374.3212213353]
+              >>>  longs, lats = FeatureCollection.reproject_points(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
+
+              ```
         """
         # Proj gives a future warning however the from_epsg argument to the functiuon
         # is correct the following couple of code lines are to disable the warning
@@ -1041,33 +1033,26 @@ class FeatureCollection:
     ):
         """reproject_points.
 
-        this function change the projection of the coordinates from a coordinate system
-        to another (default from GCS to web mercator used by google maps)
+        This function changes the projection of the coordinates from one coordinate system to another (default: from GCS to Web Mercator used by Google Maps).
 
-        PArameters
-        ----------
-        lat: [list]
-            list of latitudes of the points
-        lng: [list]
-            list of longitude of the points
-        from_epsg: [int]
-            integer reference number to the projection of the points (https://epsg.io/)
-        to_epsg: [int]
-            integer reference number to the new projection of the points (https://epsg.io/)
+        Args:
+            lat (list): List of latitudes of the points.
+            lng (list): List of longitudes of the points.
+            from_epsg (int): EPSG code of the source projection (https://epsg.io/).
+            to_epsg (int): EPSG code of the target projection (https://epsg.io/).
 
-        Returns
-        -------
-        x: [list]
-            list of x coordinates of the points
-        y: [list]
-            list of y coordinates of the points
+        Returns:
+            tuple[list, list]: x coordinates list, y coordinates list of the points.
 
-        Examples
-        --------
-        # from web mercator to GCS WGS64:
-        >>> x_coords = [-8418583.96378159, -8404716.499972705]
-        >>> y_coords = [529374.3212213353, 529374.3212213353]
-        >>> longs, lats = FeatureCollection.reproject_points2(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
+        Examples:
+            - From Web Mercator to GCS WGS84:
+
+              ```python
+              >>> x_coords = [-8418583.96378159, -8404716.499972705]
+              >>> y_coords = [529374.3212213353, 529374.3212213353]
+              >>> longs, lats = FeatureCollection.reproject_points2(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
+
+              ```
         """
         source = osr.SpatialReference()
         source.ImportFromEPSG(from_epsg)

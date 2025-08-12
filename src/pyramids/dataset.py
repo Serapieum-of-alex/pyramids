@@ -5161,55 +5161,56 @@ class Dataset(AbstractDataset):
         - Creates vector polygons for all connected regions of pixels in the raster sharing a common
             pixel value (group neighboring cells with the same value into one polygon).
 
-        Parameters
-        ----------
-        band: [int]
-            band index 0, 1, 2, 3,…
+        Args:
+            band (int | List[int] | None): Band index 0, 1, 2, 3, …
 
-        Returns
-        -------
-        GeoDataFrame:
-            GeodataFrame containing polygon geomtries for all connected regions.
+        Returns:
+            GeoDataFrame: GeodataFrame containing polygon geomtries for all connected regions.
 
-        Examples
-        --------
-        - First, we will create a 10*10 dataset full of random integer between 1, and 5.
+        Examples:
+            - First, we will create a 10*10 dataset full of random integer between 1, and 5.
 
-            >>> import numpy as np
-            >>> np.random.seed(200)
-            >>> arr = np.random.randint(1, 5, size=(10, 10))
-            >>> print(arr)  # doctest: +SKIP
-            [[3 2 1 1 3 4 1 4 2 3]
-             [4 2 2 4 3 3 1 2 4 4]
-             [4 2 4 2 3 4 2 1 4 3]
-             [3 2 1 4 3 3 4 1 1 4]
-             [1 2 4 2 2 1 3 2 3 1]
-             [1 4 4 4 1 1 4 2 1 1]
-             [1 3 2 3 3 4 1 3 1 3]
-             [4 1 3 3 3 4 1 4 1 1]
-             [2 1 3 3 4 2 2 1 3 4]
-             [2 3 2 2 4 2 1 3 2 2]]
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```python
+              >>> import numpy as np
+              >>> np.random.seed(200)
+              >>> arr = np.random.randint(1, 5, size=(10, 10))
+              >>> print(arr)  # doctest: +SKIP
+              [[3 2 1 1 3 4 1 4 2 3]
+               [4 2 2 4 3 3 1 2 4 4]
+               [4 2 4 2 3 4 2 1 4 3]
+               [3 2 1 4 3 3 4 1 1 4]
+               [1 2 4 2 2 1 3 2 3 1]
+               [1 4 4 4 1 1 4 2 1 1]
+               [1 3 2 3 3 4 1 3 1 3]
+               [4 1 3 3 3 4 1 4 1 1]
+               [2 1 3 3 4 2 2 1 3 4]
+               [2 3 2 2 4 2 1 3 2 2]]
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - Now, let's cluster the connected equal cells into polygons.
+              ```
 
-            >>> gdf = dataset.cluster2()
-            >>> print(gdf)  # doctest: +SKIP
-                Band_1                                           geometry
-            0        3  POLYGON ((0 0, 0 -0.05, 0.05 -0.05, 0.05 0, 0 0))
-            1        1  POLYGON ((0.1 0, 0.1 -0.05, 0.2 -0.05, 0.2 0, ...
-            2        4  POLYGON ((0.25 0, 0.25 -0.05, 0.3 -0.05, 0.3 0...
-            3        4  POLYGON ((0.35 0, 0.35 -0.05, 0.4 -0.05, 0.4 0...
-            4        2  POLYGON ((0.4 0, 0.4 -0.05, 0.45 -0.05, 0.45 0...
-            5        3  POLYGON ((0.45 0, 0.45 -0.05, 0.5 -0.05, 0.5 0...
-            6        1  POLYGON ((0.3 0, 0.3 -0.1, 0.35 -0.1, 0.35 0, ...
-            7        4  POLYGON ((0.15 -0.05, 0.15 -0.1, 0.2 -0.1, 0.2...
-            8        2  POLYGON ((0.35 -0.05, 0.35 -0.1, 0.4 -0.1, 0.4...
-            9        4  POLYGON ((0 -0.05, 0 -0.15, 0.05 -0.15, 0.05 -...
-            10       4  POLYGON ((0.4 -0.05, 0.4 -0.15, 0.45 -0.15, 0....
-            11       4  POLYGON ((0.1 -0.1, 0.1 -0.15, 0.15 -0.15, 0.1...
+            - Now, let's cluster the connected equal cells into polygons.
+
+              ```python
+              >>> gdf = dataset.cluster2()
+              >>> print(gdf)  # doctest: +SKIP
+                  Band_1                                           geometry
+              0        3  POLYGON ((0 0, 0 -0.05, 0.05 -0.05, 0.05 0, 0 0))
+              1        1  POLYGON ((0.1 0, 0.1 -0.05, 0.2 -0.05, 0.2 0, ...
+              2        4  POLYGON ((0.25 0, 0.25 -0.05, 0.3 -0.05, 0.3 0...
+              3        4  POLYGON ((0.35 0, 0.35 -0.05, 0.4 -0.05, 0.4 0...
+              4        2  POLYGON ((0.4 0, 0.4 -0.05, 0.45 -0.05, 0.45 0...
+              5        3  POLYGON ((0.45 0, 0.45 -0.05, 0.5 -0.05, 0.5 0...
+              6        1  POLYGON ((0.3 0, 0.3 -0.1, 0.35 -0.1, 0.35 0, ...
+              7        4  POLYGON ((0.15 -0.05, 0.15 -0.1, 0.2 -0.1, 0.2...
+              8        2  POLYGON ((0.35 -0.05, 0.35 -0.1, 0.4 -0.1, 0.4...
+              9        4  POLYGON ((0 -0.05, 0 -0.15, 0.05 -0.15, 0.05 -...
+              10       4  POLYGON ((0.4 -0.05, 0.4 -0.15, 0.45 -0.15, 0....
+              11       4  POLYGON ((0.1 -0.1, 0.1 -0.15, 0.15 -0.15, 0.1...
+
+              ```
 
         """
         if band is None:
@@ -5242,13 +5243,19 @@ class Dataset(AbstractDataset):
                 factors. Defaults to [2, 4, 8, 16, 32].
 
         Returns:
-            None
+            internal/external overviews:
+                The overview (also known as pyramids) could be internal or external depending on the state you read
+                the dataset with.
 
-        Notes:
-            - The overview (also known as pyramids) could be internal or external depending on the state you read the dataset with.
-            - External (.ovr file): If the dataset is read with read_only=True, an external .ovr file will be created in the same directory.
-            - Internal: If the dataset is read with read_only=False, the overviews will be created internally in the dataset and saved on flush.
-            - The overview_count property is a list of the number of overviews for each band.
+                - External (.ovr file):
+                    If the dataset is read with a`read_only=True` then the overviews' file will be created as anexternal
+                    file in the same directory of the dataset, with the same name of the dataset and .ovr extension.
+                - Internal:
+                    If the dataset is read with a`read_only=False` then the overviews will be created internally in the
+                    dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
+
+            overview_count: [list]
+                a list property attribute of the overviews for each band.
 
         Examples:
             - Create a Dataset with 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0):
@@ -5321,29 +5328,21 @@ class Dataset(AbstractDataset):
     def recreate_overviews(self, resampling_method: str = "nearest"):
         """Recreate overviews for the dataset.
 
-        Parameters
-        ----------
-        resampling_method : str, optional
-            The resampling method used to create the overviews, by default "nearest"
-            possible values are "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE",
-            "AVERAGE_MAGPHASE", "RMS", "BILINEAR".
+        Args:
+            resampling_method (str): Resampling method used to recreate overviews. Possible values are
+                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE",
+                "AVERAGE_MAGPHASE", "RMS", "BILINEAR". Defaults to "nearest".
 
-        Raises
-        ------
-        ValueError:
-            resampling_method should be one of {"NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS",
-            "MODE", "AVERAGE_MAGPHASE", "RMS", "BILINEAR"}.
-        ReadOnlyError
-            If the overviews are internal and the Dataset is opened with a read only. Please read the dataset using
-            `read_only=False`.
+        Raises:
+            ValueError: If resampling_method is not one of the allowed values above.
+            ReadOnlyError: If overviews are internal and the dataset is opened read-only. Read with read_only=False.
 
-        See Also
-        --------
-        Dataset.create_overviews : recreate the dataset overviews if they exist
-        Dataset.get_overview : get an overview of a band
-        Dataset.overview_count : number of overviews
-        Dataset.read_overview_array : read overview values
-        Dataset.plot : plot a band
+        See Also:
+            - Dataset.create_overviews: Recreate the dataset overviews if they exist.
+            - Dataset.get_overview: Get an overview of a band.
+            - Dataset.overview_count: Number of overviews.
+            - Dataset.read_overview_array: Read overview values.
+            - Dataset.plot: Plot a band.
         """
         if resampling_method.upper() not in RESAMPLING_METHODS:
             raise ValueError(f"resampling_method should be one of {RESAMPLING_METHODS}")
@@ -5368,76 +5367,73 @@ class Dataset(AbstractDataset):
     def get_overview(self, band: int = 0, overview_index: int = 0) -> gdal.Band:
         """Get an overview of a band.
 
-        Parameters
-        ----------
-        band : int, optional
-            The band index, by default 0
-        overview_index: [int]
-            index of the overview. Default is 0.
+        Args:
+            band (int): The band index. Defaults to 0.
+            overview_index (int): Index of the overview. Defaults to 0.
 
-        Returns
-        -------
-        gdal.Band
-            gdal band object
+        Returns:
+            gdal.Band: GDAL band object.
 
-        Examples
-        --------
-        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        Examples:
+            - Create `Dataset` consisting of 4 bands, 10 rows, 10 columns, at lon/lat (0, 0):
 
-            >>> import numpy as np
-            >>> arr = np.random.randint(1, 10, size=(4, 10, 10))
-            >>> print(arr[0, :, :]) # doctest: +SKIP
-            array([[6, 3, 3, 7, 4, 8, 4, 3, 8, 7],
-                   [6, 7, 3, 7, 8, 6, 3, 4, 3, 8],
-                   [5, 8, 9, 6, 7, 7, 5, 4, 6, 4],
-                   [2, 9, 9, 5, 8, 4, 9, 6, 8, 7],
-                   [5, 8, 3, 9, 1, 5, 7, 9, 5, 9],
-                   [8, 3, 7, 2, 2, 5, 2, 8, 7, 7],
-                   [1, 1, 4, 2, 2, 2, 6, 5, 9, 2],
-                   [6, 3, 2, 9, 8, 8, 1, 9, 7, 7],
-                   [4, 1, 3, 1, 6, 7, 5, 4, 8, 7],
-                   [9, 7, 2, 1, 4, 6, 1, 2, 3, 3]], dtype=int32)
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```python
+              >>> import numpy as np
+              >>> arr = np.random.randint(1, 10, size=(4, 10, 10))
+              >>> print(arr[0, :, :]) # doctest: +SKIP
+              array([[6, 3, 3, 7, 4, 8, 4, 3, 8, 7],
+                     [6, 7, 3, 7, 8, 6, 3, 4, 3, 8],
+                     [5, 8, 9, 6, 7, 7, 5, 4, 6, 4],
+                     [2, 9, 9, 5, 8, 4, 9, 6, 8, 7],
+                     [5, 8, 3, 9, 1, 5, 7, 9, 5, 9],
+                     [8, 3, 7, 2, 2, 5, 2, 8, 7, 7],
+                     [1, 1, 4, 2, 2, 2, 6, 5, 9, 2],
+                     [6, 3, 2, 9, 8, 8, 1, 9, 7, 7],
+                     [4, 1, 3, 1, 6, 7, 5, 4, 8, 7],
+                     [9, 7, 2, 1, 4, 6, 1, 2, 3, 3]], dtype=int32)
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - Now, let's create overviews using the `create_overviews` method with the default parameters.
+              ```
 
-            >>> dataset.create_overviews()
-            >>> print(dataset.overview_count)  # doctest: +SKIP
-            [4, 4, 4, 4]
+            - Now, create overviews using the default parameters and inspect them:
 
-        - The overview is a raster band
+              ```python
+              >>> dataset.create_overviews()
+              >>> print(dataset.overview_count)  # doctest: +SKIP
+              [4, 4, 4, 4]
 
-            >>> ovr = dataset.get_overview(band=0, overview_index=0)
-            >>> print(ovr)  # doctest: +SKIP
-            <osgeo.gdal.Band; proxy of <Swig Object of type 'GDALRasterBandShadow *' at 0x0000017E2B5AF1B0> >
-            >>> ovr.ReadAsArray()  # doctest: +SKIP
-            array([[6, 3, 4, 4, 8],
-                   [5, 9, 7, 5, 6],
-                   [5, 3, 1, 7, 5],
-                   [1, 4, 2, 6, 9],
-                   [4, 3, 6, 5, 8]], dtype=int32)
-            >>> ovr = dataset.get_overview(band=0, overview_index=1)
-            >>> ovr.ReadAsArray()  # doctest: +SKIP
-            array([[6, 7, 3],
-                   [2, 5, 6],
-                   [6, 9, 9]], dtype=int32)
-            >>> ovr = dataset.get_overview(band=0, overview_index=2)
-            >>> ovr.ReadAsArray()  # doctest: +SKIP
-            array([[6, 8],
-                   [8, 5]], dtype=int32)
-            >>> ovr = dataset.get_overview(band=0, overview_index=3)
-            >>> ovr.ReadAsArray()  # doctest: +SKIP
-            array([[6]], dtype=int32)
+              >>> ovr = dataset.get_overview(band=0, overview_index=0)
+              >>> print(ovr)  # doctest: +SKIP
+              <osgeo.gdal.Band; proxy of <Swig Object of type 'GDALRasterBandShadow *' at 0x0000017E2B5AF1B0> >
+              >>> ovr.ReadAsArray()  # doctest: +SKIP
+              array([[6, 3, 4, 4, 8],
+                     [5, 9, 7, 5, 6],
+                     [5, 3, 1, 7, 5],
+                     [1, 4, 2, 6, 9],
+                     [4, 3, 6, 5, 8]], dtype=int32)
+              >>> ovr = dataset.get_overview(band=0, overview_index=1)
+              >>> ovr.ReadAsArray()  # doctest: +SKIP
+              array([[6, 7, 3],
+                     [2, 5, 6],
+                     [6, 9, 9]], dtype=int32)
+              >>> ovr = dataset.get_overview(band=0, overview_index=2)
+              >>> ovr.ReadAsArray()  # doctest: +SKIP
+              array([[6, 8],
+                     [8, 5]], dtype=int32)
+              >>> ovr = dataset.get_overview(band=0, overview_index=3)
+              >>> ovr.ReadAsArray()  # doctest: +SKIP
+              array([[6]], dtype=int32)
 
-        See Also
-        --------
-        Dataset.create_overviews : create the dataset overviews if they exist
-        Dataset.create_overviews : recreate the dataset overviews if they exist
-        Dataset.overview_count : number of overviews
-        Dataset.read_overview_array : read overview values
-        Dataset.plot : plot a band
+              ```
+
+        See Also:
+            - Dataset.create_overviews: Create the dataset overviews if they exist.
+            - Dataset.create_overviews: Recreate the dataset overviews if they exist.
+            - Dataset.overview_count: Number of overviews.
+            - Dataset.read_overview_array: Read overview values.
+            - Dataset.plot: Plot a band.
         """
         band = self._iloc(band)
         n_views = band.GetOverviewCount()
@@ -5458,76 +5454,73 @@ class Dataset(AbstractDataset):
     ) -> np.ndarray:
         """Read overview values.
 
-            - read the values stored in a given band.
+            - Read the values stored in a given band or overview.
 
-        Parameters
-        ----------
-        band : [integer]
-            the band you want to get its data, If None, the data of all bands will be read. Default is None
-        overview_index: [int]
-            index of the overview. Default is 0.
+        Args:
+            band (int | None): The band to read. If None and multiple bands exist, reads all bands at the given overview.
+            overview_index (int): Index of the overview. Defaults to 0.
 
-        Returns
-        -------
-        array : [array]
-            array with all the values in the raster.
+        Returns:
+            np.ndarray: Array with the values in the raster.
 
-        Examples
-        --------
-        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        Examples:
+            - Create `Dataset` consisting of 4 bands, 10 rows, 10 columns, at lon/lat (0, 0):
 
-            >>> import numpy as np
-            >>> arr = np.random.randint(1, 10, size=(4, 10, 10))
-            >>> print(arr[0, :, :])     # doctest: +SKIP
-            array([[6, 3, 3, 7, 4, 8, 4, 3, 8, 7],
-                   [6, 7, 3, 7, 8, 6, 3, 4, 3, 8],
-                   [5, 8, 9, 6, 7, 7, 5, 4, 6, 4],
-                   [2, 9, 9, 5, 8, 4, 9, 6, 8, 7],
-                   [5, 8, 3, 9, 1, 5, 7, 9, 5, 9],
-                   [8, 3, 7, 2, 2, 5, 2, 8, 7, 7],
-                   [1, 1, 4, 2, 2, 2, 6, 5, 9, 2],
-                   [6, 3, 2, 9, 8, 8, 1, 9, 7, 7],
-                   [4, 1, 3, 1, 6, 7, 5, 4, 8, 7],
-                   [9, 7, 2, 1, 4, 6, 1, 2, 3, 3]], dtype=int32)
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```python
+              >>> import numpy as np
+              >>> arr = np.random.randint(1, 10, size=(4, 10, 10))
+              >>> print(arr[0, :, :])     # doctest: +SKIP
+              array([[6, 3, 3, 7, 4, 8, 4, 3, 8, 7],
+                     [6, 7, 3, 7, 8, 6, 3, 4, 3, 8],
+                     [5, 8, 9, 6, 7, 7, 5, 4, 6, 4],
+                     [2, 9, 9, 5, 8, 4, 9, 6, 8, 7],
+                     [5, 8, 3, 9, 1, 5, 7, 9, 5, 9],
+                     [8, 3, 7, 2, 2, 5, 2, 8, 7, 7],
+                     [1, 1, 4, 2, 2, 2, 6, 5, 9, 2],
+                     [6, 3, 2, 9, 8, 8, 1, 9, 7, 7],
+                     [4, 1, 3, 1, 6, 7, 5, 4, 8, 7],
+                     [9, 7, 2, 1, 4, 6, 1, 2, 3, 3]], dtype=int32)
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - Now, let's create overviews using the `create_overviews` method with the default parameters.
+              ```
 
-            >>> dataset.create_overviews()
-            >>> print(dataset.overview_count)  # doctest: +SKIP
-            [4, 4, 4, 4]
+            - Create overviews using the default parameters and read overview arrays:
 
-        - The overview is a raster band
+              ```python
+              >>> dataset.create_overviews()
+              >>> print(dataset.overview_count)  # doctest: +SKIP
+              [4, 4, 4, 4]
 
-            >>> arr = dataset.read_overview_array(band=0, overview_index=0)
-            >>> print(arr)  # doctest: +SKIP
-            array([[6, 3, 4, 4, 8],
-                   [5, 9, 7, 5, 6],
-                   [5, 3, 1, 7, 5],
-                   [1, 4, 2, 6, 9],
-                   [4, 3, 6, 5, 8]], dtype=int32)
-            >>> arr = dataset.read_overview_array(band=0, overview_index=1)
-            >>> print(arr)  # doctest: +SKIP
-            array([[6, 7, 3],
-                   [2, 5, 6],
-                   [6, 9, 9]], dtype=int32)
-            >>> arr = dataset.read_overview_array(band=0, overview_index=2)
-            >>> print(arr)  # doctest: +SKIP
-            array([[6, 8],
-                   [8, 5]], dtype=int32)
-            >>> arr = dataset.read_overview_array(band=0, overview_index=3)
-            >>> print(arr)  # doctest: +SKIP
-            array([[6]], dtype=int32)
+              >>> arr = dataset.read_overview_array(band=0, overview_index=0)
+              >>> print(arr)  # doctest: +SKIP
+              array([[6, 3, 4, 4, 8],
+                     [5, 9, 7, 5, 6],
+                     [5, 3, 1, 7, 5],
+                     [1, 4, 2, 6, 9],
+                     [4, 3, 6, 5, 8]], dtype=int32)
+              >>> arr = dataset.read_overview_array(band=0, overview_index=1)
+              >>> print(arr)  # doctest: +SKIP
+              array([[6, 7, 3],
+                     [2, 5, 6],
+                     [6, 9, 9]], dtype=int32)
+              >>> arr = dataset.read_overview_array(band=0, overview_index=2)
+              >>> print(arr)  # doctest: +SKIP
+              array([[6, 8],
+                     [8, 5]], dtype=int32)
+              >>> arr = dataset.read_overview_array(band=0, overview_index=3)
+              >>> print(arr)  # doctest: +SKIP
+              array([[6]], dtype=int32)
 
-        See Also
-        --------
-        Dataset.create_overviews : create the dataset overviews.
-        Dataset.create_overviews : recreate the dataset overviews if they exist
-        Dataset.get_overview : get an overview of a band
-        Dataset.overview_count : number of overviews
-        Dataset.plot : plot a band
+              ```
+
+        See Also:
+            - Dataset.create_overviews: Create the dataset overviews.
+            - Dataset.create_overviews: Recreate the dataset overviews if they exist.
+            - Dataset.get_overview: Get an overview of a band.
+            - Dataset.overview_count: Number of overviews.
+            - Dataset.plot: Plot a band.
         """
         if band is None and self.band_count > 1:
             if any(elem == 0 for elem in self.overview_count):
@@ -5576,37 +5569,43 @@ class Dataset(AbstractDataset):
     def band_color(self, values: Dict[int, str]):
         """Assign color interpretation to dataset bands.
 
-        Parameters
-        ----------
-        values: [Dict[int, str]]
-            dictionary with band index as key and color name as value.
-            e.g. {1: 'Red', 2: 'Green', 3: 'Blue'}, possible values are
-            ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue', 'saturation',
-            'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand', 'YCbCr_CrBand']
+        Args:
+            values (Dict[int, str]): Dictionary with band index as key and color name as value.
+                e.g. {1: 'Red', 2: 'Green', 3: 'Blue'}. Possible values are
+                ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue', 'saturation',
+                'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand', 'YCbCr_CrBand']
 
-        Examples
-        --------
-        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        Examples:
+            - Create `Dataset` consisting of 1 band, 10 rows, 10 columns, at lon/lat (0, 0):
 
-            >>> import numpy as np
-            >>> import pandas as pd
-            >>> arr = np.random.randint(1, 3, size=(10, 10))
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```python
+              >>> import numpy as np
+              >>> import pandas as pd
+              >>> arr = np.random.randint(1, 3, size=(10, 10))
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - To assign a color interpretation to the dataset band (i.e., gray, red, green, or blue), create a dictionary
-        with the band index as a key and the color interpretation as a value
+              ```
 
-            >>> dataset.band_color = {0: 'gray_index'}
+            - Assign a color interpretation to the dataset band (i.e., gray, red, green, or blue) using a dictionary
+              with the band index as the key and the color interpretation as the value:
 
-        - You can also assign rgb color interpretation to the dataset bands as follows:
+              ```python
+              >>> dataset.band_color = {0: 'gray_index'}
 
-            >>> arr = np.random.randint(1, 3, size=(3, 10, 10))
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-            >>> dataset.band_color = {0: 'red', 1: 'green', 2: 'blue'}
+              ```
+
+            - Assign RGB color interpretation to dataset bands:
+
+              ```python
+              >>> arr = np.random.randint(1, 3, size=(3, 10, 10))
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              >>> dataset.band_color = {0: 'red', 1: 'green', 2: 'blue'}
+
+              ```
         """
         for key, val in values.items():
             if key > self.band_count:
@@ -5619,33 +5618,34 @@ class Dataset(AbstractDataset):
     def get_band_by_color(self, color_name: str) -> int:
         """Get the band associated with a given color.
 
-        Parameters
-        ----------
-        color_name: str
-            possible values are ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue',
-            'saturation', 'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand',
-            'YCbCr_CrBand']
+        Args:
+            color_name (str): One of ['undefined', 'gray_index', 'palette_index', 'red', 'green', 'blue', 'alpha', 'hue',
+                'saturation', 'lightness', 'cyan', 'magenta', 'yellow', 'black', 'YCbCr_YBand', 'YCbCr_CbBand',
+                'YCbCr_CrBand'].
 
-        Returns
-        -------
-        int:
-           band index
+        Returns:
+            int: Band index.
 
-        Examples
-        --------
-        - Create `Dataset` consists of 3 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        Examples:
+            - Create `Dataset` consisting of 3 bands and assign RGB colors:
 
-            >>> arr = np.random.randint(1, 3, size=(3, 10, 10))
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-            >>> dataset.band_color = {0: 'red', 1: 'green', 2: 'blue'}
+              ```python
+              >>> arr = np.random.randint(1, 3, size=(3, 10, 10))
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              >>> dataset.band_color = {0: 'red', 1: 'green', 2: 'blue'}
 
-        - Now you can use the `get_band_by_color` to know which band is the red band for example.
+              ```
 
-            >>> band_index = dataset.get_band_by_color('red')
-            >>> print(band_index)
-            0
+            - Now use `get_band_by_color` to know which band is the red band, for example:
+
+              ```python
+              >>> band_index = dataset.get_band_by_color('red')
+              >>> print(band_index)
+              0
+
+              ```
         """
         colors = list(self.band_color.values())
         if color_name not in colors:
@@ -5661,62 +5661,67 @@ class Dataset(AbstractDataset):
     def color_table(self) -> DataFrame:
         """Color table.
 
-        Returns
-        -------
-        df: DataFrame
-            DataFrame with columns: band, values, color
+        Returns:
+            DataFrame: A DataFrame with columns: band, values, color.
 
-        Examples
-        --------
-        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        Examples:
+            - Create `Dataset` consisting of 4 bands, 10 rows, 10 columns, at lon/lat (0, 0):
 
-            >>> import numpy as np
-            >>> import pandas as pd
-            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```python
+              >>> import numpy as np
+              >>> import pandas as pd
+              >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - Set color table for band 1.
+              ```
 
-            >>> color_table = pd.DataFrame({
-            ...     "band": [1, 1, 1, 2, 2, 2],
-            ...     "values": [1, 2, 3, 1, 2, 3],
-            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"]
-            ... })
-            >>> dataset.color_table = color_table
-            >>> print(dataset.color_table)
-              band values  red green blue alpha
-            0    1      0    0     0    0     0
-            1    1      1  112   153   89   255
-            2    1      2  242   238  162   255
-            3    1      3  242   206  133   255
-            4    2      0    0     0    0     0
-            5    2      1  194   140  124   255
-            6    2      2  214   193  156   255
-            7    2      3  214   193  156   255
+            - Set color table for band 1:
 
-        - You can also define the `opasity` of each color by adding a value between 0 (fully transparent) and 255 (
-            fully opaque) to the `DataFrame` for each color, if the `alpha` columns is not in the given dataframe,
-            it will be assumed to be fully opaque (255).
+              ```python
+              >>> color_table = pd.DataFrame({
+              ...     "band": [1, 1, 1, 2, 2, 2],
+              ...     "values": [1, 2, 3, 1, 2, 3],
+              ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"]
+              ... })
+              >>> dataset.color_table = color_table
+              >>> print(dataset.color_table)
+                band values  red green blue alpha
+              0    1      0    0     0    0     0
+              1    1      1  112   153   89   255
+              2    1      2  242   238  162   255
+              3    1      3  242   206  133   255
+              4    2      0    0     0    0     0
+              5    2      1  194   140  124   255
+              6    2      2  214   193  156   255
+              7    2      3  214   193  156   255
 
-            >>> color_table = pd.DataFrame({
-            ...     "band": [1, 1, 1, 2, 2, 2],
-            ...     "values": [1, 2, 3, 1, 2, 3],
-            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"],
-            ...     "alpha": [255, 128, 0, 255, 128, 0]
-            ... })
-            >>> dataset.color_table = color_table
-            >>> print(dataset.color_table)
-              band values  red green blue alpha
-            0    1      0    0     0    0     0
-            1    1      1  112   153   89   255
-            2    1      2  242   238  162   128
-            3    1      3  242   206  133     0
-            4    2      0    0     0    0     0
-            5    2      1  194   140  124   255
-            6    2      2  214   193  156   128
-            7    2      3  214   193  156     0
+              ```
+
+            - Define opacity per color by adding an 'alpha' column (0 transparent to 255 opaque). If 'alpha' is missing,
+              it will be assumed fully opaque (255):
+
+              ```python
+              >>> color_table = pd.DataFrame({
+              ...     "band": [1, 1, 1, 2, 2, 2],
+              ...     "values": [1, 2, 3, 1, 2, 3],
+              ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"],
+              ...     "alpha": [255, 128, 0, 255, 128, 0]
+              ... })
+              >>> dataset.color_table = color_table
+              >>> print(dataset.color_table)
+                band values  red green blue alpha
+              0    1      0    0     0    0     0
+              1    1      1  112   153   89   255
+              2    1      2  242   238  162   128
+              3    1      3  242   206  133     0
+              4    2      0    0     0    0     0
+              5    2      1  194   140  124   255
+              6    2      2  214   193  156   128
+              7    2      3  214   193  156     0
+
+              ```
         """
         return self._get_color_table()
 
@@ -5724,12 +5729,9 @@ class Dataset(AbstractDataset):
     def color_table(self, df: DataFrame):
         """Get color table.
 
-        Parameters
-        ----------
-        df: [DataFrame]
-            DataFrame with columns: band, values, color.
-            i.e.
-                  band  values    color  alpha
+        Args:
+            df (DataFrame): DataFrame with columns: band, values, color. Example layout:
+                band  values    color  alpha
                 0    1       1  #709959    255
                 1    1       2  #F2EEA2    255
                 2    1       3  #F2CE85    138
@@ -5737,57 +5739,64 @@ class Dataset(AbstractDataset):
                 4    2       2  #D6C19C    100
                 5    2       3  #D6C19C    100
 
-        Examples
-        --------
-        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        Examples:
+            - Create `Dataset` consisting of 4 bands, 10 rows, 10 columns, at lon/lat (0, 0):
 
-            >>> import numpy as np
-            >>> import pandas as pd
-            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```python
+              >>> import numpy as np
+              >>> import pandas as pd
+              >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - Set color table for band 1.
+              ```
 
-            >>> color_table = pd.DataFrame({
-            ...     "band": [1, 1, 1, 2, 2, 2],
-            ...     "values": [1, 2, 3, 1, 2, 3],
-            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"]
-            ... })
-            >>> dataset.color_table = color_table
-            >>> print(dataset.color_table)
-              band values  red green blue alpha
-            0    1      0    0     0    0     0
-            1    1      1  112   153   89   255
-            2    1      2  242   238  162   255
-            3    1      3  242   206  133   255
-            4    2      0    0     0    0     0
-            5    2      1  194   140  124   255
-            6    2      2  214   193  156   255
-            7    2      3  214   193  156   255
+            - Set color table for band 1:
 
-        - You can also define the opasity of each color by adding a value between 0 (fully transparent) and 255 (
-            fully opaque) to the `DataFrame` for each color, if the `alpha` columns is not in the given dataframe,
-            it will be assumed to be fully opaque (255).
+              ```python
+              >>> color_table = pd.DataFrame({
+              ...     "band": [1, 1, 1, 2, 2, 2],
+              ...     "values": [1, 2, 3, 1, 2, 3],
+              ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"]
+              ... })
+              >>> dataset.color_table = color_table
+              >>> print(dataset.color_table)
+                band values  red green blue alpha
+              0    1      0    0     0    0     0
+              1    1      1  112   153   89   255
+              2    1      2  242   238  162   255
+              3    1      3  242   206  133   255
+              4    2      0    0     0    0     0
+              5    2      1  194   140  124   255
+              6    2      2  214   193  156   255
+              7    2      3  214   193  156   255
 
-            >>> color_table = pd.DataFrame({
-            ...     "band": [1, 1, 1, 2, 2, 2],
-            ...     "values": [1, 2, 3, 1, 2, 3],
-            ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"],
-            ...     "alpha": [255, 128 0, 255, 128 0]
-            ... })
-            >>> dataset.color_table = color_table
-            >>> print(dataset.color_table)
-              band values  red green blue alpha
-            0    1      0    0     0    0     0
-            1    1      1  112   153   89   255
-            2    1      2  242   238  162   128
-            3    1      3  242   206  133     0
-            4    2      0    0     0    0     0
-            5    2      1  194   140  124   255
-            6    2      2  214   193  156   128
-            7    2      3  214   193  156     0
+              ```
+
+            - You can also define the opacity of each color by adding a value between 0 (fully transparent) and 255 (fully opaque)
+              to the DataFrame for each color. If the 'alpha' column is not present, it will be assumed to be fully opaque (255):
+
+              ```python
+              >>> color_table = pd.DataFrame({
+              ...     "band": [1, 1, 1, 2, 2, 2],
+              ...     "values": [1, 2, 3, 1, 2, 3],
+              ...     "color": ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C", "#D6C19C"],
+              ...     "alpha": [255, 128 0, 255, 128 0]
+              ... })
+              >>> dataset.color_table = color_table
+              >>> print(dataset.color_table)
+                band values  red green blue alpha
+              0    1      0    0     0    0     0
+              1    1      1  112   153   89   255
+              2    1      2  242   238  162   128
+              3    1      3  242   206  133     0
+              4    2      0    0     0    0     0
+              5    2      1  194   140  124   255
+              6    2      2  214   193  156   128
+              7    2      3  214   193  156     0
+
+              ```
         """
         if not isinstance(df, DataFrame):
             raise TypeError(f"df should be a DataFrame not {type(df)}")
@@ -5802,20 +5811,16 @@ class Dataset(AbstractDataset):
     def _set_color_table(self, color_df: DataFrame, overwrite: bool = False):
         """_set_color_table.
 
-        Parameters
-        ----------
-        color_df: [DataFrame]
-            DataFrame with columns: band, values, color
-            print(df)
-                    band  values    color
+        Args:
+            color_df (DataFrame): DataFrame with columns: band, values, color. Example:
+                band  values    color
                 0    1       1  #709959
                 1    1       2  #F2EEA2
                 2    1       3  #F2CE85
                 3    2       1  #C28C7C
                 4    2       2  #D6C19C
                 5    2       3  #D6C19C
-        overwrite: [bool]
-            True if you want to overwrite the existing color table. Default is False.
+            overwrite (bool): True to overwrite the existing color table. Default is False.
         """
         import_cleopatra(
             "The current function uses cleopatra package to for plotting, please install it manually, for more info"
