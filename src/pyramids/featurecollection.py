@@ -178,8 +178,7 @@ class FeatureCollection:
 
             - Get the data types of the columns in the vector file.
 
-        Returns
-        -------
+        Returns:
             list of the data types (strings/numpy datatypes) of the columns in the vector file, except the geometry
             column.
         """
@@ -314,9 +313,8 @@ class FeatureCollection:
     # def _gdf_to_ds_copy(self, inplace=False) -> DataSource:
     #     """Convert ogr DataSource object to a GeoDataFrame.
     #
-    #     Returns
-    #     -------
-    #     ogr.DataSource
+    #     Returns:
+    #         ogr.DataSource
     #     """
     #     # Create a temporary directory for files.
     #     temp_dir = tempfile.mkdtemp()
@@ -338,9 +336,8 @@ class FeatureCollection:
     def _ds_to_gdf_with_io(self, inplace: bool = False) -> GeoDataFrame:
         """Convert ogr DataSource object to a GeoDataFrame.
 
-        Returns
-        -------
-        GeoDataFrame
+        Returns:
+            GeoDataFrame
         """
         # Create a temporary directory for files.
         temp_dir = tempfile.mkdtemp()
@@ -358,9 +355,8 @@ class FeatureCollection:
     def _ds_to_gdf_in_memory(self, inplace: bool = False) -> GeoDataFrame:
         """Convert ogr DataSource object to a GeoDataFrame.
 
-        Returns
-        -------
-        GeoDataFrame
+        Returns:
+            GeoDataFrame
         """
         gdal_ds = ogr_ds_togdal_dataset(self.feature)
         layer_name = gdal_ds.GetLayer().GetName()  # self.layer_names[0]
@@ -388,9 +384,8 @@ class FeatureCollection:
     def _ds_to_gdf(self, inplace: bool = False) -> GeoDataFrame:
         """Convert ogr DataSource object to a GeoDataFrame.
 
-        Returns
-        -------
-        GeoDataFrame
+        Returns:
+            GeoDataFrame
         """
         try:
             gdf = self._ds_to_gdf_in_memory(inplace=inplace)
@@ -951,22 +946,22 @@ class FeatureCollection:
     #     this function calculates the distance between two points that have
     #     geographic coordinate system
     #
-    #     parameters
-    #     ----------
-    #     coords_1: [Tuple]
-    #         tuple of (long, lat) of the first point
-    #     coords_2: [Tuple]
-    #         tuple of (long, lat) of the second point
+    #     parameters:
+    #         coords_1: [Tuple]
+    #             tuple of (long, lat) of the first point
+    #         coords_2: [Tuple]
+    #             tuple of (long, lat) of the second point
     #
-    #     Returns
-    #     -------
-    #     distance between the two points
+    #     Returns:
+    #         distance between the two points
     #
-    #     Examples
-    #     --------
+    #     Examples:
+    #     ```python
     #     >>> point_1 = (52.22, 21.01)
     #     >>> point_2 = (52.40, 16.92)
     #     >>> distance = FeatureCollection.gcs_distance(point_1, point_2)
+    #
+    #     ```
     #     """
     #     import_error_msg = f"The triggered function requires geopy package to be install, please install is manually"
     #     import_geopy(import_error_msg)
@@ -1080,25 +1075,27 @@ class FeatureCollection:
         PolygonCenterPoint function takes the a geodata frame of polygons and and
         returns the center of each polygon
 
-        Returns
-        -------
-        saveIng the shapefile or CenterPointDataFrame :
-            If you choose True in the "save" input the function will save the
-            shapefile in the given "savePath"
-            If you choose False in the "save" input the function will return a
-            [geodataframe] dataframe containing CenterPoint DataFrame
-            you can save it as a shapefile using
-            CenterPointDataFrame.to_file("Anyname.shp")
+        Returns:
+            saveIng the shapefile or CenterPointDataFrame :
+                If you choose True in the "save" input the function will save the shapefile in the given "savePath"
+                If you choose False in the "save" input the function will return a [geodataframe] dataframe
+                containing CenterPoint DataFrame you can save it as a shapefile using
+                CenterPointDataFrame.to_file("Anyname.shp")
 
 
-        Examples
-        --------
-        Return a geodata frame
-        >>> sub_basins = gpd.read_file("inputs/sub_basins.shp")
-        >>> CenterPointDataFrame = FeatureCollection.polygon_center_point(sub_basins, save=False)
-        save a shapefile
-        >>> sub_basins = gpd.read_file("Inputs/sub_basins.shp")
-        >>> FeatureCollection.center_point(sub_basins, save=True, save_path="centerpoint.shp")
+        Examples:
+            - Return a geodata frame
+            ```python
+            >>> sub_basins = gpd.read_file("inputs/sub_basins.shp")
+            >>> CenterPointDataFrame = FeatureCollection.polygon_center_point(sub_basins, save=False)
+
+            ```
+            - save a shapefile
+            ```python
+            >>> sub_basins = gpd.read_file("Inputs/sub_basins.shp")
+            >>> FeatureCollection.center_point(sub_basins, save=True, save_path="centerpoint.shp")
+
+            ```
         """
         # get the X, Y coordinates of the points of the polygons and the multipolygons
         self.xy()
