@@ -4079,89 +4079,92 @@ class Dataset(AbstractDataset):
 
             Crop/Clip the Dataset object using a polygon/raster.
 
-        Parameters
-        ----------
-        mask: Polygon GeoDataFrame/Dataset
-            GeodataFrame with a polygon geometry, or a Dataset object.
-        touch: bool
-            To include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
-            Default is True.
-        inplace: bool
-            True to make the changes in place.
+        Args:
+            mask (GeoDataFrame | Dataset): GeoDataFrame with a polygon geometry, or a Dataset object.
+            touch (bool): Include the cells that touch the polygon, not only those that lie entirely inside the polygon mask. Default is True.
+            inplace (bool): If True, apply changes in place. Default is False.
 
-        Returns
-        -------
-        Dataset:
-            The cropped raster. If inplace is True, the method will change the raster in place.
+        Returns:
+            Dataset | None: The cropped raster. If inplace is True, the method will change the raster in place and return None.
 
-        Hint
-        ----
-        - If the mask is a dataset with multi-bands, the `crop`` method will use the first band as the mask.
+        Hint:
+            - If the mask is a dataset with multi-bands, the `crop` method will use the first band as the mask.
 
-        Examples
-        --------
-        - Crop the raster using a polygon mask.
+        Examples:
+            - Crop the raster using a polygon mask.
 
-            - the polygon covers 4 cells in the 3rd and 4th rows and 3rd and 4th column `arr[2:4, 2:4]`,
-                so the result dataset will have the same number of bands `4`, 2 rows and 2 columns.
-            - First, create the dataset to have 4 bands, 10 rows and 10 columns, the dataset has a cell size of 0.05
-                degree, the top left corner of the dataset is (0,0)
+              - The polygon covers 4 cells in the 3rd and 4th rows and 3rd and 4th column `arr[2:4, 2:4]`, so the result dataset will have the same number of bands `4`, 2 rows and 2 columns.
+              - First, create the dataset to have 4 bands, 10 rows and 10 columns; the dataset has a cell size of 0.05 degree, the top left corner of the dataset is (0, 0).
 
-            >>> import numpy as np
-            >>> import geopandas as gpd
-            >>> from shapely.geometry import Polygon
-            >>> arr = np.random.rand(4, 10, 10)
-            >>> cell_size = 0.05
-            >>> top_left_corner = (0, 0)
-            >>> dataset = Dataset.create_from_array(
-            ...         arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
-            ... )
+              ```python
+              >>> import numpy as np
+              >>> import geopandas as gpd
+              >>> from shapely.geometry import Polygon
+              >>> arr = np.random.rand(4, 10, 10)
+              >>> cell_size = 0.05
+              >>> top_left_corner = (0, 0)
+              >>> dataset = Dataset.create_from_array(
+              ...         arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+              ... )
 
-            - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
-                0.2 -0.1] to cover the 4 cells.
+              ```
+            - Second, create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2, 0.2 -0.1] to cover the 4 cells.
 
-            >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
+              ```python
+              >>> mask = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
 
+              ```
             - Pass the `geodataframe` to the crop method using the `mask` parameter.
 
-            >>> cropped_dataset = dataset.crop(mask=mask)
+              ```python
+              >>> cropped_dataset = dataset.crop(mask=mask)
 
+              ```
             - Check the cropped dataset:
 
-            >>> print(cropped_dataset.shape)
-            (4, 2, 2)
-            >>> print(cropped_dataset.geotransform)
-            (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
-            >>> print(cropped_dataset.read_array(band=0))# doctest: +SKIP
-            [[0.00921161 0.90841171]
-             [0.355636   0.18650262]]
-            >>> print(arr[0, 2:4, 2:4])# doctest: +SKIP
-            [[0.00921161 0.90841171]
-             [0.355636   0.18650262]]
+              ```python
+              >>> print(cropped_dataset.shape)
+              (4, 2, 2)
+              >>> print(cropped_dataset.geotransform)
+              (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+              >>> print(cropped_dataset.read_array(band=0))# doctest: +SKIP
+              [[0.00921161 0.90841171]
+               [0.355636   0.18650262]]
+              >>> print(arr[0, 2:4, 2:4])# doctest: +SKIP
+              [[0.00921161 0.90841171]
+               [0.355636   0.18650262]]
 
-        - Crop a raster using another raster mask:
+              ```
+            - Crop a raster using another raster mask:
 
-            - create a mask dataset with the same extent of the polygon we use in the previous example.
+              - Create a mask dataset with the same extent of the polygon we used in the previous example.
 
-            >>> geotransform = (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
-            >>> mask_dataset = Dataset.create_from_array(np.random.rand(2, 2), geo=geotransform, epsg=4326)
+              ```python
+              >>> geotransform = (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+              >>> mask_dataset = Dataset.create_from_array(np.random.rand(2, 2), geo=geotransform, epsg=4326)
 
-            - then use the mask dataset to crop the dataset.
+              ```
+            - Then use the mask dataset to crop the dataset.
 
-            >>> cropped_dataset_2 = dataset.crop(mask=mask_dataset)
-            >>> print(cropped_dataset_2.shape)
-            (4, 2, 2)
+              ```python
+              >>> cropped_dataset_2 = dataset.crop(mask=mask_dataset)
+              >>> print(cropped_dataset_2.shape)
+              (4, 2, 2)
 
+              ```
             - Check the cropped dataset:
 
-            >>> print(cropped_dataset_2.geotransform)
-            (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
-            >>> print(cropped_dataset_2.read_array(band=0))# doctest: +SKIP
-            [[0.00921161 0.90841171]
-             [0.355636   0.18650262]]
-            >>> print(arr[0, 2:4, 2:4])# doctest: +SKIP
-             [[0.00921161 0.90841171]
-             [0.355636   0.18650262]]
+              ```python
+              >>> print(cropped_dataset_2.geotransform)
+              (0.1, 0.05, 0.0, -0.1, 0.0, -0.05)
+              >>> print(cropped_dataset_2.read_array(band=0))# doctest: +SKIP
+              [[0.00921161 0.90841171]
+               [0.355636   0.18650262]]
+              >>> print(arr[0, 2:4, 2:4])# doctest: +SKIP
+               [[0.00921161 0.90841171]
+               [0.355636   0.18650262]]
+
+              ```
 
         """
         if isinstance(mask, GeoDataFrame):
@@ -4182,41 +4185,35 @@ class Dataset(AbstractDataset):
     def _nearest_neighbour(
         array: np.ndarray, no_data_value: Union[float, int], rows: list, cols: list
     ) -> np.ndarray:
-        """_nearest_neighbour.
+        """Fill specified cells with the value of the nearest neighbor.
 
-            - The _nearest_neighbour method fills the cells with a given indices in rows and cols with the value of the
-            nearest neighbor.
-            - The raster grid is square, so the 4 perpendicular directions are of the same proximity, so the function
-            gives priority to the right, left, bottom, and then top and the same for 45 degree inclined direction
-            right bottom then left bottom then left Top then right Top.
+            - The _nearest_neighbour method fills the cells with the given indices in rows and cols with the value of the nearest neighbor.
+            - The raster grid is square, so the 4 perpendicular directions are of the same proximity; the function gives priority to the right, left, bottom, and then top, and similarly for 45-degree directions: right-bottom, left-bottom, left-top, right-top.
 
-        Parameters
-        ----------
-        array: [numpy.array]
-            Array to fill some of its cells with the Nearest value.
-        no_data_value: [float32]
-            value stored in cells that is out of the domain
-        rows: [List]
-            list of the rows' index of the cells you want to fill it with the nearest neighbor.
-        cols: [List]
-            list of the column index of the cells you want to fill it with the nearest neighbor.
+        Args:
+            array (np.ndarray): Array to fill some of its cells with the nearest value.
+            no_data_value (float | int): Value stored in cells that are out of the domain.
+            rows (list[int]): Row indices of the cells you want to fill with the nearest neighbor.
+            cols (list[int]): Column indices of the cells you want to fill with the nearest neighbor.
 
-        Returns
-        -------
-        array:
-            Cells of given indices will be filled with the value of the Nearest neighbor
+        Returns:
+            np.ndarray: Cells of given indices filled with the value of the nearest neighbor.
 
-        Examples
-        --------
-        >>> import numpy as np
-        >>> arr = np.random.rand(5, 5)
-        >>> top_left_corner = (0, 0)
-        >>> cell_size = 0.05
-        >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-        >>> req_rows = [1,3]
-        >>> req_cols = [2,4]
-        >>> no_data_value = dataset.no_data_value[0]
-        >>> new_array = Dataset._nearest_neighbour(arr, no_data_value, req_rows, req_cols)
+        Examples:
+            - Basic usage:
+
+              ```python
+              >>> import numpy as np
+              >>> arr = np.random.rand(5, 5)
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              >>> req_rows = [1,3]
+              >>> req_cols = [2,4]
+              >>> no_data_value = dataset.no_data_value[0]
+              >>> new_array = Dataset._nearest_neighbour(arr, no_data_value, req_rows, req_cols)
+
+              ```
         """
         if not isinstance(array, np.ndarray):
             raise TypeError(
@@ -4289,59 +4286,57 @@ class Dataset(AbstractDataset):
     ) -> np.ndarray:
         """Convert coordinates of points to array indices.
 
-        - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by
-            finding the cell indices (rows, col) of the nearest cell in the raster.
-        - The point coordinate system of the raster has to be projected to be able to calculate the distance
+        - map_to_array_coordinates locates a point with real coordinates (x, y) or (lon, lat) on the array by finding the cell indices (row, column) of the nearest cell in the raster.
+        - The point coordinate system of the raster has to be projected to be able to calculate the distance.
 
-        Parameters
-        ----------
-        points: [GeoDataFrame/Dataframe/FeatureCollection]
-            - GeoDataFrame:
-                GeoDataFrame with POINT geometry.
-            - DataFrame:
-                DataFrame with x, y columns.
+        Args:
+            points (GeoDataFrame | pandas.DataFrame | FeatureCollection):
+                - GeoDataFrame: GeoDataFrame with POINT geometry.
+                - DataFrame: DataFrame with x, y columns.
 
-        Returns
-        -------
-        array:
-            array with a shape (any, 2), for the row, column indices in the array.
+        Returns:
+            np.ndarray: Array with shape (N, 2) containing the row and column indices in the array.
 
-        Examples
-        --------
-        - Create `Dataset` consists of 2 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        Examples:
+            - Create `Dataset` consisting of 2 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
 
-            >>> import numpy as np
-            >>> import pandas as pd
-            >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```python
+              >>> import numpy as np
+              >>> import pandas as pd
+              >>> arr = np.random.randint(1, 3, size=(2, 10, 10))
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - DataFrame with x, y columns:
+              ```
+            - DataFrame with x, y columns:
 
-            - we can give the function a DataFrame with x, y columns to array the coordinates of the points that
-                 are located withen the dataset domain.
+              - We can give the function a DataFrame with x, y columns to array the coordinates of the points that are located within the dataset domain.
 
-            >>> points = pd.DataFrame({"x": [0.025, 0.175, 0.375], "y": [0.025, 0.225, 0.125]})
-            >>> indices = dataset.map_to_array_coordinates(points)
-            >>> print(indices)
-            [[0 0]
-             [0 3]
-             [0 7]]
+              ```python
+              >>> points = pd.DataFrame({"x": [0.025, 0.175, 0.375], "y": [0.025, 0.225, 0.125]})
+              >>> indices = dataset.map_to_array_coordinates(points)
+              >>> print(indices)
+              [[0 0]
+               [0 3]
+               [0 7]]
 
-        - GeoDataFrame with POINT geometry:
+              ```
+            - GeoDataFrame with POINT geometry:
 
-            - we can give the function a GeoDataFrame with POINT geometry to array the coordinates of the points that
-                locates within the dataset domain.
+              - We can give the function a GeoDataFrame with POINT geometry to array the coordinates of the points that locate within the dataset domain.
 
-            >>> from shapely.geometry import Point
-            >>> from geopandas import GeoDataFrame
-            >>> points = GeoDataFrame({"geometry": [Point(0.025, 0.025), Point(0.175, 0.225), Point(0.375, 0.125)]})
-            >>> indices = dataset.map_to_array_coordinates(points)
-            >>> print(indices)
-            [[0 0]
-             [0 3]
-             [0 7]]
+              ```python
+              >>> from shapely.geometry import Point
+              >>> from geopandas import GeoDataFrame
+              >>> points = GeoDataFrame({"geometry": [Point(0.025, 0.025), Point(0.175, 0.225), Point(0.375, 0.125)]})
+              >>> indices = dataset.map_to_array_coordinates(points)
+              >>> print(indices)
+              [[0 0]
+               [0 3]
+               [0 7]]
+
+              ```
         """
         if isinstance(points, GeoDataFrame):
             points = FeatureCollection(points)
@@ -4772,16 +4767,13 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def normalize(array: np.ndarray) -> np.ndarray:
-        """Normalize numpy arrays into scale 0.0-1.0.
+        """Normalize numpy arrays into scale 0.0–1.0.
 
-        Parameters
-        ----------
-        array : [array]
-            numpy array
+        Args:
+            array (np.ndarray): Numpy array to normalize.
 
-        Returns
-        -------
-        array
+        Returns:
+            np.ndarray: Normalized array.
         """
         array_min = array.min()
         array_max = array.max()
@@ -4791,16 +4783,11 @@ class Dataset(AbstractDataset):
     def _window(self, size: int = 256):
         """Dataset square window size/offsets.
 
-        Parameters
-        ----------
-        size : [int]
-            Size of the window in pixels. One value required which is used for both the
-            x and y size. e.g 256 means a 256x256 window.
+        Args:
+            size (int): Size of the window in pixels. One value required which is used for both the x and y size. e.g., 256 means a 256x256 window. Default is 256.
 
-        Yields
-        ------
-        tuple[int]
-            (x-offset/column-index, y-offset/row-index, x-size, y-size).
+        Yields:
+            tuple[int, int, int, int]: (x-offset/column-index, y-offset/row-index, x-size, y-size).
 
         Examples:
             - Generate 2x2 windows over a 3x5 dataset:
@@ -4828,71 +4815,68 @@ class Dataset(AbstractDataset):
     def get_tile(self, size=256) -> Generator[np.ndarray, None, None]:
         """Get tile.
 
-        Parameters
-        ----------
-        size : int
-            Size of the window in pixels. One value required which is used for both the
-            x and y size. e.g., 256 means a 256x256 window.
+        Args:
+            size (int): Size of the window in pixels. One value required which is used for both the x and y size. e.g., 256 means a 256x256 window. Default is 256.
 
-        Yields
-        ------
-        np.ndarray
-            Dataset array in form [band][y][x].
+        Yields:
+            np.ndarray: Dataset array in form [band][y][x].
 
-        Examples
-        --------
-        - First, we will create a dataset with 3 rows and 5 columns.
+        Examples:
+            - First, we will create a dataset with 3 rows and 5 columns.
 
-            >>> import numpy as np
-            >>> arr = np.random.rand(3, 5)
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-            >>> print(dataset)
-            <BLANKLINE>
-                        Cell size: 0.05
-                        Dimension: 3 * 5
-                        EPSG: 4326
-                        Number of Bands: 1
-                        Band names: ['Band_1']
-                        Mask: -9999.0
-                        Data type: float64
-                        File:...
-            <BLANKLINE>
+              ```python
+              >>> import numpy as np
+              >>> arr = np.random.rand(3, 5)
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              >>> print(dataset)
+              <BLANKLINE>
+                          Cell size: 0.05
+                          Dimension: 3 * 5
+                          EPSG: 4326
+                          Number of Bands: 1
+                          Band names: ['Band_1']
+                          Mask: -9999.0
+                          Data type: float64
+                          File:...
+              <BLANKLINE>
 
-            >>> print(dataset.read_array())   # doctest: +SKIP
-            [[0.55332314 0.48364841 0.67794589 0.6901816  0.70516817]
-             [0.82518332 0.75657103 0.45693945 0.44331782 0.74677865]
-             [0.22231314 0.96283065 0.15201337 0.03522544 0.44616888]]
+              >>> print(dataset.read_array())   # doctest: +SKIP
+              [[0.55332314 0.48364841 0.67794589 0.6901816  0.70516817]
+               [0.82518332 0.75657103 0.45693945 0.44331782 0.74677865]
+               [0.22231314 0.96283065 0.15201337 0.03522544 0.44616888]]
 
-        - The `get_tile` method splits the domain into tiles of the specified `size` using the `_window` function.
+              ```
+            - The `get_tile` method splits the domain into tiles of the specified `size` using the `_window` function.
 
-            >>> tile_dimensions = list(dataset._window(2))
-            >>> print(tile_dimensions)
-            [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
+              ```python
+              >>> tile_dimensions = list(dataset._window(2))
+              >>> print(tile_dimensions)
+              [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
 
-        .. image:: /_images/dataset/get_tile.png
-                  :alt: footprint
-                  :align: center
+              ```
 
-        - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
-        - The `get_tile` method returns a generator object that can be used to iterate over the smaller chunks of the
-            data.
+            - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
+            - The `get_tile` method returns a generator object that can be used to iterate over the smaller chunks of the data.
 
-            >>> tiles_generator = dataset.get_tile(size=2)
-            >>> print(tiles_generator)  # doctest: +SKIP
-            <generator object Dataset.get_tile at 0x00000145AA39E680>
-            >>> print(list(tiles_generator))  # doctest: +SKIP
-            [
-                array([[0.55332314, 0.48364841],
-                       [0.82518332, 0.75657103]]),
-                array([[0.67794589, 0.6901816 ],
-                       [0.45693945, 0.44331782]]),
-                array([[0.70516817], [0.74677865]]),
-                array([[0.22231314, 0.96283065]]),
-                array([[0.15201337, 0.03522544]]),
-                array([[0.44616888]])
-            ]
+              ```python
+              >>> tiles_generator = dataset.get_tile(size=2)
+              >>> print(tiles_generator)  # doctest: +SKIP
+              <generator object Dataset.get_tile at 0x00000145AA39E680>
+              >>> print(list(tiles_generator))  # doctest: +SKIP
+              [
+                  array([[0.55332314, 0.48364841],
+                         [0.82518332, 0.75657103]]),
+                  array([[0.67794589, 0.6901816 ],
+                         [0.45693945, 0.44331782]]),
+                  array([[0.70516817], [0.74677865]]),
+                  array([[0.22231314, 0.96283065]]),
+                  array([[0.15201337, 0.03522544]]),
+                  array([[0.44616888]])
+              ]
+
+              ```
         """
         for xoff, yoff, xsize, ysize in self._window(size=size):
             # read the array at a certain indices
@@ -5068,79 +5052,80 @@ class Dataset(AbstractDataset):
     ) -> Tuple[np.ndarray, int, list, list]:
         """Group all the connected values between two bounds.
 
-        Parameters
-        ----------
-        lower_bound: [numeric]
-            lower bound of the cluster.
-        upper_bound: [numeric]
-            upper bound of the cluster.
+        Args:
+            lower_bound (Number): Lower bound of the cluster.
+            upper_bound (Number): Upper bound of the cluster.
 
-        Returns
-        -------
-        cluster: [array]
-            array contains integer numbers representing the number of the cluster.
-        count: [integer]
-            number of the clusters in the array.
-        position: [list]
-            list contains two indices [x,y] for the position of each value.
-        values: [numeric]
-            the values stored in each cell in the cluster.
+        Returns:
+            tuple[np.ndarray, int, list, list]:
+                - cluster (np.ndarray): Array with integers representing the cluster number per cell.
+                - count (int): Number of clusters in the array.
+                - position (list[list[int, int]]): List of [row, col] indices for the position of each value.
+                - values (list[Number]): Values stored in each cell in the cluster.
 
-        Examples
-        --------
-        - First, we will create a dataset with 10 rows and 10 columns.
+        Examples:
+            - First, we will create a dataset with 10 rows and 10 columns.
 
-            >>> import numpy as np
-            >>> np.random.seed(10)
-            >>> arr = np.random.randint(1, 5, size=(5, 5))
-            >>> print(arr) # doctest: +SKIP
-            [[2 3 3 2 3]
-             [3 4 1 1 1]
-             [1 3 3 2 2]
-             [4 1 1 3 2]
-             [2 4 2 3 2]]
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-            >>> dataset.plot(
-            ...     color_scale=4, bounds=[1, 1.9, 4.1, 5], display_cell_value=True, num_size=12,
-            ...     background_color_threshold=5
-            ... )  # doctest: +SKIP
+              ```python
+              >>> import numpy as np
+              >>> np.random.seed(10)
+              >>> arr = np.random.randint(1, 5, size=(5, 5))
+              >>> print(arr) # doctest: +SKIP
+              [[2 3 3 2 3]
+               [3 4 1 1 1]
+               [1 3 3 2 2]
+               [4 1 1 3 2]
+               [2 4 2 3 2]]
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              >>> dataset.plot(
+              ...     color_scale=4, bounds=[1, 1.9, 4.1, 5], display_cell_value=True, num_size=12,
+              ...     background_color_threshold=5
+              ... )  # doctest: +SKIP
 
-        .. image:: /_images/dataset/cluster.png
-              :alt: footprint
-              :align: center
+              ```
 
-        - Now let's cluster the values in the dataset that are between 2, and 4.
+            - Now let's cluster the values in the dataset that are between 2 and 4.
 
-            >>> lower_value = 2
-            >>> upper_value = 4
-            >>> cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
+              ```python
+              >>> lower_value = 2
+              >>> upper_value = 4
+              >>> cluster_array, count, position, values = dataset.cluster(lower_value, upper_value)
 
-        - The first returned output is a binary array with 1 indicating that the cell value is inside the cluster,
-            and 0 is outside.
+              ```
+            - The first returned output is a binary array with 1 indicating that the cell value is inside the cluster, and 0 is outside.
 
-            >>> print(cluster_array)  # doctest: +SKIP
-            [[1. 1. 1. 1. 1.]
-             [1. 1. 0. 0. 0.]
-             [0. 1. 1. 1. 1.]
-             [1. 0. 0. 1. 1.]
-             [1. 1. 1. 1. 1.]]
+              ```python
+              >>> print(cluster_array)  # doctest: +SKIP
+              [[1. 1. 1. 1. 1.]
+               [1. 1. 0. 0. 0.]
+               [0. 1. 1. 1. 1.]
+               [1. 0. 0. 1. 1.]
+               [1. 1. 1. 1. 1.]]
 
-        - The second returned value is the number of connected clusters.
+              ```
+            - The second returned value is the number of connected clusters.
 
-            >>> print(count) # doctest: +SKIP
-            2
+              ```python
+              >>> print(count) # doctest: +SKIP
+              2
 
-        - The third returned value is the indices of the cells that belongs to the cluster.
+              ```
+            - The third returned value is the indices of the cells that belong to the cluster.
 
-            >>> print(position) # doctest: +SKIP
-            [[1, 0], [2, 1], [2, 2], [3, 3], [4, 3], [4, 4], [3, 4], [2, 4], [2, 3], [4, 2], [4, 1], [3, 0], [4, 0], [1, 1], [0, 2], [0, 3], [0, 4], [0, 1], [0, 0]]
+              ```python
+              >>> print(position) # doctest: +SKIP
+              [[1, 0], [2, 1], [2, 2], [3, 3], [4, 3], [4, 4], [3, 4], [2, 4], [2, 3], [4, 2], [4, 1], [3, 0], [4, 0], [1, 1], [0, 2], [0, 3], [0, 4], [0, 1], [0, 0]]
 
-        - The fourth returned value is a list of the values that are in the cluster (extracted from these cells).
+              ```
+            - The fourth returned value is a list of the values that are in the cluster (extracted from these cells).
 
-            >>> print(values) # doctest: +SKIP
-            [3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 4, 4, 2, 4, 3, 2, 3, 3, 2]
+              ```python
+              >>> print(values) # doctest: +SKIP
+              [3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 4, 4, 2, 4, 3, 2, 3, 3, 2]
+
+              ```
 
         """
         data = self.read_array()
@@ -5880,17 +5865,13 @@ class Dataset(AbstractDataset):
             # band.SetRasterColorInterpretation(gdal.GCI_PaletteIndex)
 
     def _get_color_table(self, band: int = None) -> DataFrame:
-        """get_color_table.
+        """Get color table.
 
-        Parameters
-        ----------
-        band: [int], optional
-            band index, Default is None.
+        Args:
+            band (int, optional): Band index. Default is None.
 
-        Returns
-        -------
-        [type]
-            [description]
+        Returns:
+            pandas.DataFrame: A DataFrame with columns ["band", "values", "red", "green", "blue", "alpha"] describing the color table.
         """
         df = pd.DataFrame(columns=["band", "values", "red", "green", "blue", "alpha"])
         bands = range(self.band_count) if band is None else band
@@ -5917,101 +5898,93 @@ class Dataset(AbstractDataset):
     ) -> tuple[list, list[tuple[Any, Any]]]:
         """Get histogram.
 
-        Parameters
-        ----------
-        band: [int], optional
-            band index, Default is 1.
-        bins: [int], optional
-            number of bins, Default is 6.
-        min_value: [float], optional
-            minimum value, Default is None.
-        max_value: [float], optional
-            maximum value, Default is None.
-        include_out_of_range : bool, default is False
-            if ``True``, add out-of-range values into the first and last buckets
-        approx_ok : bool, default=True
-            if ``True``, compute an approximate histogram by using subsampling or overviews.
+        Args:
+            band (int, optional): Band index. Default is 1.
+            bins (int, optional): Number of bins. Default is 6.
+            min_value (float, optional): Minimum value. Default is None.
+            max_value (float, optional): Maximum value. Default is None.
+            include_out_of_range (bool, optional): If True, add out-of-range values into the first and last buckets. Default is False.
+            approx_ok (bool, optional): If True, compute an approximate histogram by using subsampling or overviews. Default is False.
 
-        Returns
-        -------
-        Tuple[np.ndarray, np.ndarray]
-            histogram values and bin edges.
+        Returns:
+            tuple[list, list[tuple[Any, Any]]]: Histogram values and bin edges.
 
-        Hint
-        ----
-        - The value of the histogram will be stored in an xml file by the name of the raster file with the extension of
-            .aux.xml.
+        Hint:
+            - The value of the histogram will be stored in an xml file by the name of the raster file with the extension of .aux.xml.
 
-        the content of the file will be like the following:
+            - The content of the file will be like the following:
 
-        .. code-block:: xml
+              .. code-block:: xml
 
-            <PAMDataset>
-              <PAMRasterBand band="1">
-                <Description>Band_1</Description>
-                <Histograms>
-                  <HistItem>
-                    <HistMin>0</HistMin>
-                    <HistMax>88</HistMax>
-                    <BucketCount>6</BucketCount>
-                    <IncludeOutOfRange>0</IncludeOutOfRange>
-                    <Approximate>0</Approximate>
-                    <HistCounts>75|6|0|4|2|1</HistCounts>
-                  </HistItem>
-                </Histograms>
-              </PAMRasterBand>
-            </PAMDataset>
+                  <PAMDataset>
+                    <PAMRasterBand band="1">
+                      <Description>Band_1</Description>
+                      <Histograms>
+                        <HistItem>
+                          <HistMin>0</HistMin>
+                          <HistMax>88</HistMax>
+                          <BucketCount>6</BucketCount>
+                          <IncludeOutOfRange>0</IncludeOutOfRange>
+                          <Approximate>0</Approximate>
+                          <HistCounts>75|6|0|4|2|1</HistCounts>
+                        </HistItem>
+                      </Histograms>
+                    </PAMRasterBand>
+                  </PAMDataset>
 
-        Examples
-        --------
-        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        Examples:
+            - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
 
-            >>> import numpy as np
-            >>> arr = np.random.randint(1, 12, size=(10, 10))
-            >>> print(arr)    # doctest: +SKIP
-            [[ 4  1  1  2  6  9  2  5  1  8]
-             [ 1 11  5  6  2  5  4  6  6  7]
-             [ 5  2 10  4  8 11  4 11 11  1]
-             [ 2  3  6  3  1  5 11 10 10  7]
-             [ 8  2 11  3  1  3  5  4 10 10]
-             [ 1  2  1  6 10  3  6  4  2  8]
-             [ 9  5  7  9  7  8  1 11  4  4]
-             [ 7  7  2  2  5  3  7  2  9  9]
-             [ 2 10  3  2  1 11  5  9  8 11]
-             [ 1  5  6 11  3  3  8  1  2  1]]
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```python
+              >>> import numpy as np
+              >>> arr = np.random.randint(1, 12, size=(10, 10))
+              >>> print(arr)    # doctest: +SKIP
+              [[ 4  1  1  2  6  9  2  5  1  8]
+               [ 1 11  5  6  2  5  4  6  6  7]
+               [ 5  2 10  4  8 11  4 11 11  1]
+               [ 2  3  6  3  1  5 11 10 10  7]
+               [ 8  2 11  3  1  3  5  4 10 10]
+               [ 1  2  1  6 10  3  6  4  2  8]
+               [ 9  5  7  9  7  8  1 11  4  4]
+               [ 7  7  2  2  5  3  7  2  9  9]
+               [ 2 10  3  2  1 11  5  9  8 11]
+               [ 1  5  6 11  3  3  8  1  2  1]]
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - Now, let's get the histogram of the first band using the `get_histogram` method with the default
-            parameters.
+              ```
+            - Now, let's get the histogram of the first band using the `get_histogram` method with the default parameters.
 
-            >>> hist, ranges = dataset.get_histogram(band=0)
-            >>> print(hist)  # doctest: +SKIP
-            [28, 17, 10, 15, 13, 7]
-            >>> print(ranges)   # doctest: +SKIP
-            [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
+              ```python
+              >>> hist, ranges = dataset.get_histogram(band=0)
+              >>> print(hist)  # doctest: +SKIP
+              [28, 17, 10, 15, 13, 7]
+              >>> print(ranges)   # doctest: +SKIP
+              [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
 
-        - we can also exclude values from the histogram by using the `min_value` and `max_value`
+              ```
+            - we can also exclude values from the histogram by using the `min_value` and `max_value`.
 
-            >>> hist, ranges = dataset.get_histogram(band=0, min_value=5, max_value=10)
-            >>> print(hist)  # doctest: +SKIP
-            [10, 8, 7, 7, 6, 0]
-            >>> print(ranges)   # doctest: +SKIP
-            [(1.0, 1.835), (1.835, 2.67), (2.67, 3.5), (3.5, 4.34), (4.34, 5.167), (5.167, 6.0)]
+              ```python
+              >>> hist, ranges = dataset.get_histogram(band=0, min_value=5, max_value=10)
+              >>> print(hist)  # doctest: +SKIP
+              [10, 8, 7, 7, 6, 0]
+              >>> print(ranges)   # doctest: +SKIP
+              [(1.0, 1.835), (1.835, 2.67), (2.67, 3.5), (3.5, 4.34), (4.34, 5.167), (5.167, 6.0)]
 
-        - for datasets with big dimensions, computing the histogram can take some time, approximating the coputation
-            of the histogram can same a lot of computation time.
-        - when using the parameter `approx_ok` with a `True` value the histogram will be calcilated from resampling
-            the band or from the overviews if they exist.
+              ```
+            - For datasets with big dimensions, computing the histogram can take some time; approximating the computation of the histogram can save a lot of computation time. When using the parameter `approx_ok` with a `True` value the histogram will be calculated from resampling the band or from the overviews if they exist.
 
-            >>> hist, ranges = dataset.get_histogram(band=0, approx_ok=True)
-            >>> print(hist)  # doctest: +SKIP
-            [28, 17, 10, 15, 13, 7]
-            >>> print(ranges)   # doctest: +SKIP
-            [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
+              ```python
+              >>> hist, ranges = dataset.get_histogram(band=0, approx_ok=True)
+              >>> print(hist)  # doctest: +SKIP
+              [28, 17, 10, 15, 13, 7]
+              >>> print(ranges)   # doctest: +SKIP
+              [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
 
-        - As you see for small datasets, the approximation of the histogram will be the same as without approximation.
+              ```
+            - As you see for small datasets, the approximation of the histogram will be the same as without approximation.
 
         """
         band = self._iloc(band)

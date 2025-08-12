@@ -292,18 +292,15 @@ class Datacube:
         return cls(sample, len(files), files)
 
     def open_datacube(self, band: int = 0):
-        """open_datacube.
+        """Open the datacube.
 
-            Read values form the given bands as Arrays for all files
+        Read values from the given band as arrays for all files.
 
-        Parameters
-        ----------
-        band: [int]
-            index of the band you want to read default is 0.
+        Args:
+            band (int): Index of the band you want to read. Default is 0.
 
-        Returns
-        -------
-        Array
+        Returns:
+            np.ndarray: The loaded values into the internal 3D array [time, rows, cols].
         """
         # check the given band number
         if not hasattr(self, "base"):
