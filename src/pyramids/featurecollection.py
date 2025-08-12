@@ -565,14 +565,10 @@ class FeatureCollection:
     def _create_sr_from_proj(prj: str, string_type: str = None):
         """Create a spatial reference object from projection.
 
-        Parameters
-        ----------
-        prj: [str]
-            projection string
-            >>> "GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]"
-
-        string_type: [str]
-            type of the string ["ESRI wkt", "WKT", "PROj4"]
+        Args:
+            prj (str): Projection string, e.g.,
+                >>> "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]"
+            string_type (str): Type of the string ["ESRI wkt", "WKT", "PROj4"].
         """
         srs = osr.SpatialReference()
 
@@ -591,21 +587,22 @@ class FeatureCollection:
     def get_epsg_from_prj(prj: str) -> int:
         """Create spatial reference from the projection then auto identify the epsg using the osr object.
 
-        Parameters
-        ----------
-        prj: [str]
+        Args:
+            prj (str): Projection string.
 
-        Returns
-        -------
-        int
-            epsg number
+        Returns:
+            int: epsg number
 
-        Examples
-        --------
-        >>> from pyramids.dataset import Dataset
-        >>> src = Dataset.read_file("path/to/raster.tif")
-        >>> prj = src.GetProjection()
-        >>> epsg = FeatureCollection.get_epsg_from_prj(prj)
+        Examples:
+            - Get EPSG from a dataset projection:
+
+              ```python
+              >>> from pyramids.dataset import Dataset
+              >>> src = Dataset.read_file("path/to/raster.tif")
+              >>> prj = src.GetProjection()
+              >>> epsg = FeatureCollection.get_epsg_from_prj(prj)
+
+              ```
         """
         if prj != "":
             srs = FeatureCollection._create_sr_from_proj(prj)
@@ -629,25 +626,19 @@ class FeatureCollection:
     def _get_gdf_epsg(gdf: GeoDataFrame):
         """Get epsg for a given geodataframe.
 
-        Parameters
-        ----------
-        gdf: [GeoDataFrame]
-            vector file read by geopandas
+        Args:
+            gdf (GeoDataFrame): Vector file read by geopandas.
 
-        Returns
-        -------
-        int:
-            epsg number
+        Returns:
+            int: epsg number
         """
         return gdf.crs.to_epsg()
 
     def _get_epsg(self) -> int:
         """getEPSG.
 
-        Returns
-        -------
-        int:
-            epsg number
+        Returns:
+            int: epsg number
         """
         vector_obj = self.feature
         if isinstance(vector_obj, ogr.DataSource):
@@ -665,20 +656,15 @@ class FeatureCollection:
     def _get_xy_coords(geometry, coord_type: str) -> List:
         """getXYCoords.
 
-           Returns either x or y coordinates from  geometry coordinate sequence.
+           Returns either x or y coordinates from geometry coordinate sequence.
            Used with LineString and Polygon geometries.
 
-        Parameters
-        ----------
-        geometry: [LineString Geometry]
-             the geometry of a shpefile
-        coord_type: [string]
-            either "x" or "y"
+        Args:
+            geometry (LineString): The geometry of a shapefile.
+            coord_type (str): Either "x" or "y".
 
-        Returns
-        -------
-        array:
-            contains x coordinates or y coordinates of all edges of the shapefile
+        Returns:
+            array: Contains x coordinates or y coordinates of all edges of the shapefile
         """
         if coord_type == "x":
             coords = geometry.coords.xy[0].tolist()

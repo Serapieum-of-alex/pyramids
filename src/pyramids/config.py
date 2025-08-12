@@ -5,27 +5,33 @@ This module provides a Config class to manage configuration settings, initialize
 adjust environment variables based on the system's setup.
 
 Features:
----------
 - Load configurations from YAML files.
 - Initialize GDAL and OGR settings.
 - Dynamically set up environment variables for GDAL plugins.
 - Handle error logging and error handlers.
 
-Examples
---------
->>> from pyramids.config import Config
->>> config = Config()
->>> config.initialize_gdal()
->>> print(os.environ.get("GDAL_DRIVER_PATH"))  # doctest: +SKIP
+Examples:
+- Initialize and access the GDAL driver path:
 
->>> config_file = "path/to/config.yaml"
->>> config = Config(config_file=config_file) # doctest: +SKIP
->>> config.load_config() # doctest: +SKIP
+  ```python
+  >>> from pyramids.config import Config
+  >>> config = Config()
+  >>> config.initialize_gdal()
+  >>> print(os.environ.get("GDAL_DRIVER_PATH"))  # doctest: +SKIP
 
-Classes
--------
-Config
-    The main configuration class for managing GDAL, OGR, and environment settings.
+  ```
+
+- Load configuration from a specific file:
+
+  ```python
+  >>> config_file = "path/to/config.yaml"
+  >>> config = Config(config_file=config_file) # doctest: +SKIP
+  >>> config.load_config() # doctest: +SKIP
+
+  ```
+
+Classes:
+- Config: The main configuration class for managing GDAL, OGR, and environment settings.
 
 """
 
@@ -48,39 +54,35 @@ class Config:
     - Initializing GDAL and OGR configurations.
     - Dynamically setting environment variables for GDAL plugins based on the operating system and environment (e.g., Conda).
 
-    Parameters
-    ----------
-    config_file : str, optional
-        Path to the configuration YAML file. Default is "config.yaml" in the module's directory.
+    Args:
+        config_file (str, optional): Path to the configuration YAML file. Default is "config.yaml" in the module's directory.
 
-    Attributes
-    ----------
-    config : dict
-        Loaded configuration settings.
-    logger : logging.Logger
-        Logger for logging messages.
+    Attributes:
+        config (dict): Loaded configuration settings.
+        logger (logging.Logger): Logger for logging messages.
 
-    Examples
-    --------
-    - Initialize the configuration and load settings from the default config file:
-        >>> from pyramids.config import Config
-        >>> config = Config() # doctest: +SKIP
-        2025-01-11 23:13:48,889 - pyramids.config - INFO - Logging is configured.
-        2025-01-11 23:13:48,891 - pyramids.config - INFO - GDAL_DRIVER_PATH set to: your\conda\env\Library\lib\gdalplugins
-        >>> config.initialize_gdal() # doctest: +SKIP
-        2025-01-11 23:13:48,891 - pyramids.config - INFO - GDAL_DRIVER_PATH set to: your\conda\env\Library\lib\gdalplugins
-        >>> print(os.environ.get("GDAL_DRIVER_PATH")) # doctest: +SKIP
-        C:\Miniconda3\envs\pyramids\Library\lib\gdalplugins
+    Examples:
+        - Initialize the configuration and load settings from the default config file:
 
-    Notes
-    -----
-    - The GDAL and OGR Python bindings use exceptions for error reporting when `UseExceptions` is enabled.
-    - Environment variable settings depend on the presence of Conda and platform-specific paths.
+          ```python
+          >>> from pyramids.config import Config
+          >>> config = Config() # doctest: +SKIP
+          2025-01-11 23:13:48,889 - pyramids.config - INFO - Logging is configured.
+          2025-01-11 23:13:48,891 - pyramids.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
+          >>> config.initialize_gdal() # doctest: +SKIP
+          2025-01-11 23:13:48,891 - pyramids.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
+          >>> print(os.environ.get("GDAL_DRIVER_PATH")) # doctest: +SKIP
+          C:\\Miniconda3\\envs\\pyramids\\Library\\lib\\gdalplugins
 
-    See Also
-    --------
-    gdal.UseExceptions : Documentation on enabling GDAL exceptions.
-    ogr.UseExceptions : Documentation on enabling OGR exceptions.
+          ```
+
+    Notes:
+        - The GDAL and OGR Python bindings use exceptions for error reporting when `UseExceptions` is enabled.
+        - Environment variable settings depend on the presence of Conda and platform-specific paths.
+
+    See Also:
+        - gdal.UseExceptions: Documentation on enabling GDAL exceptions.
+        - ogr.UseExceptions: Documentation on enabling OGR exceptions.
     """
 
     def __init__(self, config_file="config.yaml"):
@@ -94,31 +96,30 @@ class Config:
         """
         Load the configuration from the specified YAML file.
 
-        Returns
-        -------
-        dict:
-            A dictionary containing the configuration settings.
+        Returns:
+            dict: A dictionary containing the configuration settings.
 
-        Raises
-        ------
-        FileNotFoundError
-            If the configuration file is not found.
-        yaml.YAMLError
-            If there is an error parsing the YAML file.
+        Raises:
+            FileNotFoundError: If the configuration file is not found.
+            yaml.YAMLError: If there is an error parsing the YAML file.
 
-        Examples
-        --------
-        >>> config = Config(config_file="config.yaml")
-        >>> settings = config.load_config()
-        >>> print(settings) # doctest: +NORMALIZE_WHITESPACE
-        {'gdal': {'GDAL_CACHEMAX': '512',
-          'GDAL_PAM_ENABLED': 'YES',
-          'GDAL_VRT_ENABLE_PYTHON': 'YES',
-          'GDAL_TIFF_INTERNAL_MASK': 'NO'},
-         'ogr': {'OGR_SRS_PARSER': 'strict'},
-         'logging': {'level': 'DEBUG',
-          'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-          'file': 'pyramids.log'}}
+        Examples:
+            - Load settings from a config file and print them:
+
+              ```python
+              >>> config = Config(config_file="config.yaml")
+              >>> settings = config.load_config()
+              >>> print(settings) # doctest: +NORMALIZE_WHITESPACE
+              {'gdal': {'GDAL_CACHEMAX': '512',
+               'GDAL_PAM_ENABLED': 'YES',
+               'GDAL_VRT_ENABLE_PYTHON': 'YES',
+               'GDAL_TIFF_INTERNAL_MASK': 'NO'},
+               'ogr': {'OGR_SRS_PARSER': 'strict'},
+               'logging': {'level': 'DEBUG',
+                'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                'file': 'pyramids.log'}}
+
+              ```
         """
         with open(f"{root_path[0]}/{self.config_file}", "r") as file:
             return yaml.safe_load(file)
@@ -129,16 +130,19 @@ class Config:
 
         Configures GDAL and OGR options and dynamically sets the GDAL_DRIVER_PATH environment variable based on the system setup.
 
-        Notes
-        -----
-        - Uses the `dynamic_env_variables` method to locate the GDAL plugins path.
-        - By default, GDAL and OGR suppress exceptions unless explicitly enabled using `UseExceptions`.
+        Notes:
+            - Uses the `dynamic_env_variables` method to locate the GDAL plugins path.
+            - By default, GDAL and OGR suppress exceptions unless explicitly enabled using `UseExceptions`.
 
-        Examples
-        --------
-        >>> config = Config()
-        >>> config.initialize_gdal()
-        >>> print(os.environ.get("GDAL_DRIVER_PATH")) # doctest: +SKIP
+        Examples:
+            - Initialize GDAL and print the driver path:
+
+              ```python
+              >>> config = Config()
+              >>> config.initialize_gdal()
+              >>> print(os.environ.get("GDAL_DRIVER_PATH")) # doctest: +SKIP
+
+              ```
         """
         # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return
         # an error value such as None and write an error message to sys.stdout, to report errors by raising
@@ -161,21 +165,22 @@ class Config:
         """
         Set the environment variables for GDAL in a Conda environment.
 
-        Returns
-        -------
-        gdal_plugins_path: Path or None
-            The GDAL plugins path if found, otherwise None.
+        Returns:
+            Path | None: The GDAL plugins path if found, otherwise None.
 
-        Notes
-        -----
-        - Assumes the Conda environment variable `CONDA_PREFIX` is set.
-        - The method verifies the existence of the `gdalplugins` directory under the Conda environment.
+        Notes:
+            - Assumes the Conda environment variable `CONDA_PREFIX` is set.
+            - The method verifies the existence of the `gdalplugins` directory under the Conda environment.
 
-        Examples
-        --------
-        >>> config = Config()
-        >>> gdal_path = config.set_env_conda()
-        >>> print(gdal_path) # doctest: +SKIP
+        Examples:
+            - Set GDAL environment variables in a Conda environment and print the path:
+
+              ```python
+              >>> config = Config()
+              >>> gdal_path = config.set_env_conda()
+              >>> print(gdal_path) # doctest: +SKIP
+
+              ```
         """
         conda_prefix = os.getenv("CONDA_PREFIX")
 
@@ -200,21 +205,22 @@ class Config:
         """
         Dynamically locate the GDAL plugins path and set the GDAL_DRIVER_PATH environment variable.
 
-        Returns
-        -------
-        str
-            The GDAL plugins path if found, otherwise None.
+        Returns:
+            Path: The GDAL plugins path if found, otherwise None.
 
-        Notes
-        -----
-        - On Windows, it checks typical Python site-packages locations.
-        - On Linux/macOS, it checks common system directories like `/usr/lib/gdalplugins`.
+        Notes:
+            - On Windows, it checks typical Python site-packages locations.
+            - On Linux/macOS, it checks common system directories like `/usr/lib/gdalplugins`.
 
-        Examples
-        --------
-        >>> config = Config()
-        >>> gdal_path = config.dynamic_env_variables()
-        >>> print(gdal_path) # doctest: +SKIP
+        Examples:
+            - Locate the GDAL plugins path dynamically and print it:
+
+              ```python
+              >>> config = Config()
+              >>> gdal_path = config.dynamic_env_variables()
+              >>> print(gdal_path) # doctest: +SKIP
+
+              ```
         """
         # Check if we're in a Conda environment
         gdal_plugins_path = self.set_env_conda()
@@ -256,10 +262,14 @@ class Config:
 
         Uses basic logging with configurable level and format.
 
-        Examples
-        --------
-        >>> config = Config()
-        >>> config.setup_logging()
+        Examples:
+            - Setup logging:
+
+              ```python
+              >>> config = Config()
+              >>> config.setup_logging()
+
+              ```
         """
         log_config = {}  # self.config.get("logging", {})
         logging.basicConfig(
@@ -279,9 +289,13 @@ class Config:
 
         Suppresses warnings and errors or redirects them to a custom handler.
 
-        Examples
-        --------
-        >>> Config.set_error_handler()
+        Examples:
+            - Set a custom GDAL error handler:
+
+              ```python
+              >>> Config.set_error_handler()
+
+              ```
         """
 
         def gdal_error_handler(err_class, err_num, err_msg):

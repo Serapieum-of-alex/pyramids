@@ -403,81 +403,45 @@ class Datacube:
 
             - read the values stored in a given band.
 
-        Parameters
-        ----------
-        band : [integer]
-            the band you want to get its data. Default is 0
-        exclude_value: [Any]
-            value to exclude from the plot. Default is None.
-        **kwargs
-            points : [array]
-                3 column array with the first column as the value you want to display for the point, the second is the
-                rows index of the point in the array, and the third column as the column index in the array.
-                the second and third column tells the location of the point in the array.
-            point_color: [str]
-                color.
-            point_size: [Any]
-                size of the point.
-            pid_color: [str]
-                the color of the annotation of the point. Default is blue.
-            pid_size: [Any]
-                size of the point annotation.
-            figsize: [tuple], optional
-                figure size. The default is (8,8).
-            title: [str], optional
-                title of the plot. The default is 'Total Discharge'.
-            title_size: [integer], optional
-                title size. The default is 15.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            rotation: [number], optional
-                rotation of the color bar label. The default is -90.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            cbar_length: [float], optional
-                ratio to control the height of the color bar. The default is 0.75.
-            ticks_spacing: [integer], optional
-                Spacing in the color bar ticks. The default is 2.
-            cbar_label_size: integer, optional
-                size of the color bar label. The default is 12.
-            cbar_label: str, optional
-                label of the color bar. The default is 'Discharge m3/s'.
-            color_scale: integer, optional
-                there are 5 options to change the scale of the colors. The default is 1.
-                1- color_scale 1 is the normal scale
-                2- color_scale 2 is the power scale
-                3- color_scale 3 is the SymLogNorm scale
-                4- color_scale 4 is the PowerNorm scale
-                5- color_scale 5 is the BoundaryNorm scale
-                ------------------------------------------------------------------
-                gamma : [float], optional
-                    value needed for option 2 . The default is 1./2..
-                line_threshold : [float], optional
-                    value needed for option 3. The default is 0.0001.
-                line_scale : [float], optional
-                    value needed for option 3. The default is 0.001.
-                bounds: [List]
-                    a list of number to be used as a discrete bounds for the color scale 4.Default is None,
-                midpoint : [float], optional
-                    value needed for option 5. The default is 0.
-                ------------------------------------------------------------------
-            cmap : [str], optional
-                color style. The default is 'coolwarm_r'.
-            display_cell_value : [bool]
-                True if you want to display the values of the cells as a text
-            num_size : integer, optional
-                size of the numbers plotted in top of each cells. The default is 8.
-            background_color_threshold : [float/integer], optional
-                threshold value if the value of the cell is greater, the plotted
-                numbers will be black and if smaller the plotted number will be white
-                if None given the maxvalue/2 will be considered. The default is None.
+        Args:
+            band (int): The band you want to get its data. Default is 0.
+            exclude_value (Any): Value to exclude from the plot. Default is None.
+            **kwargs: Additional plotting options.
+                points (array): 3-column array with the first column as the value to display for the point, the second is the row index of the point in the array, and the third column is the column index in the array. The second and third columns indicate the location of the point in the array.
+                point_color (str): Color of the points.
+                point_size (Any): Size of the points.
+                pid_color (str): Color of the annotation of the point. Default is blue.
+                pid_size (Any): Size of the point annotation.
+                figsize (tuple, optional): Figure size. The default is (8, 8).
+                title (str, optional): Title of the plot. The default is 'Total Discharge'.
+                title_size (int, optional): Title size. The default is 15.
+                orientation (str, optional): Orientation of the color bar horizontal/vertical. The default is 'vertical'.
+                rotation (number, optional): Rotation of the color bar label. The default is -90.
+                cbar_length (float, optional): Ratio to control the height of the color bar. The default is 0.75.
+                ticks_spacing (int, optional): Spacing in the color bar ticks. The default is 2.
+                cbar_label_size (int, optional): Size of the color bar label. The default is 12.
+                cbar_label (str, optional): Label of the color bar. The default is 'Discharge m3/s'.
+                color_scale (int, optional): One of 1..5 to change the scale of the colors. Default is 1.
+                    1- color_scale 1 is the normal scale
+                    2- color_scale 2 is the power scale
+                    3- color_scale 3 is the SymLogNorm scale
+                    4- color_scale 4 is the PowerNorm scale
+                    5- color_scale 5 is the BoundaryNorm scale
+                    ------------------------------------------------------------------
+                    gamma (float, optional): Value needed for option 2. The default is 1./2..
+                    line_threshold (float, optional): Value needed for option 3. The default is 0.0001.
+                    line_scale (float, optional): Value needed for option 3. The default is 0.001.
+                    bounds (List): A list of numbers to be used as discrete bounds for the color scale 4. Default is None.
+                    midpoint (float, optional): Value needed for option 5. The default is 0.
+                    ------------------------------------------------------------------
+                cmap (str, optional): Color style. The default is 'coolwarm_r'.
+                display_cell_value (bool): True to display the values of the cells as text.
+                num_size (int, optional): Size of the numbers plotted on top of each cell. The default is 8.
+                background_color_threshold (float|int, optional): Threshold value; if the value of the cell is greater, the plotted numbers will be black and if smaller the plotted number will be white. If None, maxvalue/2 will be considered. Default is None.
 
-        Returns
-        -------
-        axes: [figure axes].
-            the axes of the matplotlib figure
-        fig: [matplotlib figure object]
-            the figure object
+        Returns:
+            axes: The axes of the matplotlib figure.
+            fig: The figure object.
         """
         import_cleopatra(
             "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
@@ -505,22 +469,21 @@ class Datacube:
 
             saveRaster saves a raster to a path
 
-        Parameters
-        ----------
-        path: [str/list]
-            a path includng the name of the raster and extention.
-            >>> path = "data/cropped.tif"
+        Args:
+            path (Union[str, List[str]]): a path includng the name of the raster and extention.
+                >>> path = "data/cropped.tif"
+            driver (str): driver = "geotiff".
+            band (int): band index, needed only in case of ascii drivers. Default is 1.
 
-        driver: [str]
-            driver = "geotiff".
-        band: [int]
-            band index, needed only in case of ascii drivers. Default is 1.
+        Examples:
+            - Save to a file:
 
-        Examples
-        --------
-        >>> raster_obj = Dataset.read_file("path/to/file/***.tif")
-        >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_file(output_path)
+              ```python
+              >>> raster_obj = Dataset.read_file("path/to/file/***.tif")
+              >>> output_path = "examples/GIS/data/save_raster_test.tif"
+              >>> raster_obj.to_file(output_path)
+
+              ```
         """
         ext = CATALOG.get_extension(driver)
 
@@ -551,29 +514,23 @@ class Datacube:
             - to_epsg reprojects a raster to any projection (default the WGS84 web mercator projection,
             without resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
-        Parameters
-        ----------
-        to_epsg: [integer]
-            reference number to the new projection (https://epsg.io/)
-            (default 3857 the reference no of WGS84 web mercator )
-        method: [String]
-            resampling technique default is "Nearest"
-            https://gisgeography.com/raster-resampling/
-            "Nearest" for nearest neighbor,"cubic" for cubic convolution,
-            "bilinear" for bilinear
-        maintain_alignment : [bool]
-            True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
+        Args:
+            to_epsg (int): Reference number to the new projection (https://epsg.io/) (default 3857 the reference no of WGS84 web mercator).
+            method (str): Resampling technique. Default is "Nearest". See https://gisgeography.com/raster-resampling/. "Nearest" for nearest neighbor, "cubic" for cubic convolution, "bilinear" for bilinear.
+            maintain_alignment (bool): True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
 
-        Returns
-        -------
-        raster:
-            gdal dataset (you can read it by ReadAsArray)
+        Returns:
+            raster: gdal dataset (you can read it by ReadAsArray)
 
-        Examples
-        --------
-        >>> from pyramids.dataset import Dataset
-        >>> src = Dataset.read_file("path/raster_name.tif")
-        >>> projected_raster = src.to_crs(to_epsg=3857)
+        Examples:
+            - Reproject dataset to EPSG:3857:
+
+              ```python
+              >>> from pyramids.dataset import Dataset
+              >>> src = Dataset.read_file("path/raster_name.tif")
+              >>> projected_raster = src.to_crs(to_epsg=3857)
+
+              ```
         """
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -604,35 +561,26 @@ class Datacube:
     ) -> Union[None, Dataset]:
         """cropAlignedFolder.
 
-            cropAlignedFolder matches the location of nodata value from src raster to dst
-            raster, Mask is where the NoDatavalue will be taken and the location of
-            this value src_dir is path to the folder where rasters exist where we
-            need to put the NoDataValue of the mask in RasterB at the same locations
+            cropAlignedFolder matches the location of nodata value from src raster to dst raster. Mask is where the NoDatavalue will be taken and the location of this value. src_dir is path to the folder where rasters exist where we need to put the NoDataValue of the mask in RasterB at the same locations.
 
-        Parameters
-        ----------
-        mask : [Dataset]
-            Dataset object of the mask raster to crop the rasters (to get the NoData value
-            and it location in the array) Mask should include the name of the raster and the
-            extension like "data/dem.tif", or you can read the mask raster using gdal and use
-            is the first parameter to the function.
-        inplace: [bool]
-            True to make the changes in place.
-        touch: [bool]
-            to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
-            Default is True.
+        Args:
+            mask (Dataset): Dataset object of the mask raster to crop the rasters (to get the NoData value and its location in the array). Mask should include the name of the raster and the extension like "data/dem.tif", or you can read the mask raster using gdal and use it as the first parameter to the function.
+            inplace (bool): True to make the changes in place.
+            touch (bool): Include the cells that touch the polygon, not only those that lie entirely inside the polygon mask. Default is True.
 
-        Returns
-        -------
-        new rasters have the values from rasters in B_input_path with the NoDataValue in the same
-        locations as raster A.
+        Returns:
+            Union[None, "Datacube"]: New rasters have the values from rasters in B_input_path with the NoDataValue in the same locations as raster A.
 
-        Examples
-        --------
-        >>> dem_path = "examples/GIS/data/acc4000.tif"
-        >>> src_path = "examples/GIS/data/aligned_rasters/"
-        >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-        >>> Datacube.crop(dem_path, src_path, out_path)
+        Examples:
+            - Crop aligned rasters using a DEM mask:
+
+              ```python
+              >>> dem_path = "examples/GIS/data/acc4000.tif"
+              >>> src_path = "examples/GIS/data/aligned_rasters/"
+              >>> out_path = "examples/GIS/data/crop_aligned_folder/"
+              >>> Datacube.crop(dem_path, src_path, out_path)
+
+              ```
         """
         for i in range(self.time_length):
             src = self.iloc(i)
