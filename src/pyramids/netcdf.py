@@ -196,18 +196,13 @@ class NetCDF(Dataset):
     ) -> "NetCDF":
         """read_file.
 
-        Parameters
-        ----------
-        path: [str]
-            Path of file to open.
-        read_only: [bool]
-            File mode, set to False, to open in "update" mode.
-        open_as_multi_dimensional: [bool]
-            Default is False.
+        Args:
+            path (str): Path of file to open.
+            read_only (bool): File mode. Set to False to open in "update" mode. Defaults to True.
+            open_as_multi_dimensional (bool): Open as multi-dimensional dataset. Defaults to False.
 
-        Returns
-        -------
-        NetCDF
+        Returns:
+            NetCDF: Opened NetCDF dataset.
         """
         src = _io.read_file(path, read_only, open_as_multi_dimensional)
         return cls(src)
@@ -235,17 +230,13 @@ class NetCDF(Dataset):
     def _read_variable(self, var: str) -> Union[gdal.Dataset, None]:
         """_read_variable.
 
-        Read variables in a dataset
+        Read a variable from the dataset.
 
-        Parameters
-        ----------
-        var: [str]
-            variable name in the dataset
+        Args:
+            var (str): Variable name in the dataset.
 
-        Returns
-        -------
-        GDAL dataset/None
-            if the variable exists in the dataset it will return a gdal dataset otherwise it will return None.
+        Returns:
+            gdal.Dataset | None: If the variable exists, returns a GDAL dataset; otherwise, None.
         """
         try:
             var_ds = gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
@@ -286,15 +277,11 @@ class NetCDF(Dataset):
     def get_variables(self, read_only: bool = True) -> Dict[str, "NetCDF"]:
         """get_variables.
 
-        Parameters
-        ----------
-        read_only: [bool]
-            Default is True.
+        Args:
+            read_only (bool): Open variables in read-only mode. Defaults to True.
 
-        Returns
-        -------
-        Dict["Dataset", "Dataset"]
-            Dictionary of the netcdf variables
+        Returns:
+            Dict[str, NetCDF]: Dictionary of the NetCDF variables.
         """
         variables = {}
         prefix = self.driver_type.upper()

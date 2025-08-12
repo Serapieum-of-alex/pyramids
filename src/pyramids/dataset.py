@@ -3991,20 +3991,16 @@ class Dataset(AbstractDataset):
     ) -> "Dataset":
         """Crop raster with polygon.
 
-            - do not convert the polygon into a raster but rather use it directly to crop the raster using the
+            - Do not convert the polygon into a raster but rather use it directly to crop the raster using the
             gdal.warp function.
 
-        Parameters
-        ----------
-        feature: [FeatureCollection]
-                vector mask.
-        touch: [bool]
-            To include the cells that touch the polygon not only those that lie entirely inside the polygon mask.
-            Default is True.
+        Args:
+            feature (FeatureCollection | GeoDataFrame): Vector mask.
+            touch (bool): Include cells that touch the polygon, not only those entirely inside the polygon mask.
+                Defaults to True.
 
-        Returns
-        -------
-        Dataset Object.
+        Returns:
+            Dataset: Cropped dataset.
         """
         if isinstance(feature, GeoDataFrame):
             feature = FeatureCollection(feature)
@@ -5238,80 +5234,67 @@ class Dataset(AbstractDataset):
     ):
         """Create overviews for the dataset.
 
-        Parameters
-        ----------
-        resampling_method: str, optional
-            The resampling method used to create the overviews, by default "nearest"
-            possible values are: "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE",
-            "AVERAGE_MAGPHASE", "RMS", "BILINEAR".
-        overview_levels: list, optional
-            The overview levels, overview_levels are restricted to the typical power-of-two reduction factors.
-            Default [2, 4, 8, 16, 32]
+        Args:
+            resampling_method (str): The resampling method used to create the overviews. Possible values are
+                "NEAREST", "CUBIC", "AVERAGE", "GAUSS", "CUBICSPLINE", "LANCZOS", "MODE",
+                "AVERAGE_MAGPHASE", "RMS", "BILINEAR". Defaults to "nearest".
+            overview_levels (list, optional): The overview levels. Restricted to typical power-of-two reduction
+                factors. Defaults to [2, 4, 8, 16, 32].
 
-        Returns
-        -------
-        internal/external overviews:
-            The overview (also known as pyramids) could be internal or external depending on the state you read
-            the dataset with.
+        Returns:
+            None
 
-            - External (.ovr file):
-                If the dataset is read with a`read_only=True` then the overviews' file will be created as anexternal
-                file in the same directory of the dataset, with the same name of the dataset and .ovr extension.
-            - Internal:
-                If the dataset is read with a`read_only=False` then the overviews will be created internally in the
-                dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
+        Notes:
+            - The overview (also known as pyramids) could be internal or external depending on the state you read the dataset with.
+            - External (.ovr file): If the dataset is read with read_only=True, an external .ovr file will be created in the same directory.
+            - Internal: If the dataset is read with read_only=False, the overviews will be created internally in the dataset and saved on flush.
+            - The overview_count property is a list of the number of overviews for each band.
 
-        overview_count: [list]
-            a list property attribute of the overviews for each band.
+        Examples:
+            - Create a Dataset with 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0):
 
-        Examples
-        --------
-        - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
+              ```python
+              >>> import numpy as np
+              >>> arr = np.random.rand(4, 10, 10)
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-            >>> import numpy as np
-            >>> arr = np.random.rand(4, 10, 10)
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```
+            - Now, create overviews using the default parameters:
 
-        - Now, let's create overviews using the `create_overviews` method with the default parameters.
+              ```python
+              >>> dataset.create_overviews()
+              >>> print(dataset.overview_count)  # doctest: +SKIP
+              [4, 4, 4, 4]
 
-            >>> dataset.create_overviews()
-            >>> print(dataset.overview_count)  # doctest: +SKIP
-            [4, 4, 4, 4]
+              ```
+            - For each band, there are 4 overview levels you can use to plot the bands:
 
-        - For each band, there are 4 overview levels, that you can use to plot the bands.
+              ```python
+              >>> dataset.plot(band=0, overview=True, overview_index=0) # doctest: +SKIP
 
-            >>> dataset.plot(band=0, overview=True, overview_index=0) # doctest: +SKIP
+              ```
+            - However, the dataset originally is 10*10, but the first overview level (2) displays half of the cells by
+              aggregating all the cells using the nearest neighbor. The second level displays only 3 cells in each:
 
-        .. image:: /_images/dataset/overviews-level-0.png
-          :alt: footprint
-          :align: center
+              ```python
+              >>> dataset.plot(band=0, overview=True, overview_index=1)   # doctest: +SKIP
 
-        - However, the dataset originally is 10*10, but the first overview level (2) displays half of the cells by
-            aggregating all the cells using the nearest neighbor. and the second level displays only 3 cells in each
+              ```
+            - For the third overview level:
 
-            >>> dataset.plot(band=0, overview=True, overview_index=1)   # doctest: +SKIP
+              ```python
+              >>> dataset.plot(band=0, overview=True, overview_index=2)       # doctest: +SKIP
 
-        .. image:: /_images/dataset/overviews-level-1.png
-          :alt: footprint
-          :align: center
+              ```
 
-        - For the third overview level.
-
-            >>> dataset.plot(band=0, overview=True, overview_index=2)       # doctest: +SKIP
-
-        .. image:: /_images/dataset/overviews-level-2.png
-          :alt: footprint
-          :align: center
-
-        See Also
-        --------
-        Dataset.recreate_overviews : recreate the dataset overviews if they exist
-        Dataset.get_overview : get an overview of a band
-        Dataset.overview_count : number of overviews
-        Dataset.read_overview_array : read overview values
-        Dataset.plot : plot a band
+        See Also:
+            - Dataset.recreate_overviews: Recreate the dataset overviews if they exist
+            - Dataset.get_overview: Get an overview of a band
+            - Dataset.overview_count: Number of overviews
+            - Dataset.read_overview_array: Read overview values
+            - Dataset.plot: Plot a band
         """
         if overview_levels is None:
             overview_levels = OVERVIEW_LEVELS

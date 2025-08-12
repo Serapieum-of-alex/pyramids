@@ -399,15 +399,11 @@ class Datacube:
 
             - Access dataset array using index.
 
-        Parameters
-        ----------
-        i: [int]
-            index
+        Args:
+            i (int): Index of the dataset to access.
 
-        Returns
-        -------
-        Dataset:
-            Dataset object.
+        Returns:
+            Dataset: Dataset object.
         """
         if not hasattr(self, "values"):
             raise DatasetNoFoundError("please read the dataset first")
@@ -762,33 +758,27 @@ class Datacube:
     def align(self, alignment_src: Dataset):
         """matchDataAlignment.
 
-        this function matches the coordinate system and the number of rows & columns
-        between two rasters
-        Raster A is the source of the coordinate system, no of rows and no of columns & cell size
-        rasters_dir is path to the folder where Raster B exist where  Raster B is
-        the source of data values in cells
-        the result will be a raster with the same structure as RasterA but with
-        values from RasterB using Nearest neighbor interpolation algorithm
+        This function matches the coordinate system and the number of rows and columns
+        between two rasters. Raster A is the source of the coordinate system, number of rows,
+        number of columns, and cell size. The result will be a raster with the same structure
+        as Raster A but with values from Raster B using nearest neighbor interpolation.
 
-        Parameters
-        ----------
-        alignment_src: [String]
-            path to the spatial information source raster to get the spatial information
-            (coordinate system, no of rows & columns) alignment_src should include the name of the raster
-            and the extension like "data/dem.tif"
+        Args:
+            alignment_src (Dataset): Dataset to use as the spatial template (CRS, rows, columns).
 
-        Returns
-        -------
-        new rasters:
-            ٌRasters have the values from rasters in rasters_dir with the same
-            cell size, no of rows & columns, coordinate system and alignment like raster A
+        Returns:
+            None: Updates the datacube values in place to match the alignment of alignment_src.
 
-        Examples
-        --------
-        >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
-        >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
-        >>> prec_out_path = "02Precipitation/4km/"
-        >>> Dataset.align(dem_path, prec_in_path, prec_out_path)
+        Examples:
+            - Align all rasters in the datacube to a DEM raster:
+
+              ```python
+              >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
+              >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
+              >>> prec_out_path = "02Precipitation/4km/"
+              >>> Dataset.align(dem_path, prec_in_path, prec_out_path)
+
+              ```
         """
         if not isinstance(alignment_src, Dataset):
             raise TypeError("alignment_src input should be a Dataset object")
@@ -822,25 +812,19 @@ class Datacube:
     ):
         """merge.
 
-            merges group of rasters into one raster
+            Merges a group of rasters into one raster.
 
-        Parameters
-        ----------
-        src: List[str]
-            list of the path to all input raster
-        dst: [str]
-            path to the output raster
-        no_data_value: [float/int]
-            Assign a specified nodata value to output bands.
-        init: [float/int]
-            Pre-initialize the output image bands with these values. However, it is not marked as the nodata value
-            in the output file. If only one value is given, the same value is used in all the bands.
-        n: [float/int]
-            Ignore pixels from files being merged in with this pixel value.
+        Args:
+            src (List[str]): List of paths to all input rasters.
+            dst (str): Path to the output raster.
+            no_data_value (float | int | str): Assign a specified nodata value to output bands.
+            init (float | int | str): Pre-initialize the output image bands with these values. However, it is not
+                marked as the nodata value in the output file. If only one value is given, the same value is used
+                in all the bands.
+            n (float | int | str): Ignore pixels from files being merged in with this pixel value.
 
-        Returns
-        -------
-        None
+        Returns:
+            None
         """
         # run the command
         # cmd = "gdal_merge.py -o merged_image_1.tif"
@@ -867,26 +851,26 @@ class Datacube:
     def apply(self, ufunc: Callable):
         """apply.
 
-        apply a function on each raster in the datacube.
+        Apply a function on each raster in the datacube.
 
-        Parameters
-        ----------
-        ufunc: [function]
-            callable universal function ufunc (builtin or user defined)
-            https://numpy.org/doc/stable/reference/ufuncs.html
-            - To create an ufunc from a normal function
-            (https://numpy.org/doc/stable/reference/generated/numpy.frompyfunc.html)
+        Args:
+            ufunc (Callable): Callable universal function (builtin or user defined). See
+                https://numpy.org/doc/stable/reference/ufuncs.html
+                - To create a ufunc from a normal function: https://numpy.org/doc/stable/reference/generated/numpy.frompyfunc.html
 
-        Returns
-        -------
-        new rasters will be saved to the save_to
+        Returns:
+            None
 
-        Examples
-        --------
-        >>> def func(val):
-        >>>    return val%2
-        >>> ufunc = np.frompyfunc(func, 1, 1)
-        >>> dataset.apply(ufunc)
+        Examples:
+            - Apply a simple modulo operation to each value:
+
+              ```python
+              >>> def func(val):
+              >>>    return val%2
+              >>> ufunc = np.frompyfunc(func, 1, 1)
+              >>> dataset.apply(ufunc)
+
+              ```
         """
         if not callable(ufunc):
             raise TypeError("The Second argument should be a function")
@@ -904,18 +888,13 @@ class Datacube:
     ) -> Dict[List[float], List[float]]:
         """Overlay.
 
-        Parameters
-        ----------
-        classes_map: [Dataset]
-            Dataset Object fpr the raster that have classes you want to overlay with the raster.
-        exclude_value: [Numeric]
-            values you want to exclude from extracted values.
+        Args:
+            classes_map (Dataset): Dataset object for the raster that has classes to overlay with.
+            exclude_value (float | int, optional): Values to exclude from extracted values. Defaults to None.
 
-        Returns
-        -------
-        Dictionary:
-            dictionary with a list of values in the basemap as keys and for each key a list of all the intersected
-            values in the maps from the path.
+        Returns:
+            Dict[List[float], List[float]]: Dictionary with a list of values in the basemap as keys and for each key
+                a list of all the intersected values in the maps from the path.
         """
         values = {}
         for i in range(self.time_length):
