@@ -105,18 +105,16 @@ class Datacube:
     def create_cube(cls, src: Dataset, dataset_length: int):
         """Create Datacube.
 
-            - Create Datacube from a sample raster and
+            - Create a Datacube from a sample raster.
 
-        Parameters
-        ----------
-        src: [Dataset]
-            RAster Object
-        dataset_length: [int]
-            length of the dataset.
+        Args:
+            src (Dataset):
+                Raster object.
+            dataset_length (int):
+                Length of the dataset.
 
-        Returns
-        -------
-        Datacube object.
+        Returns:
+            Datacube: Datacube object.
         """
         return cls(src, dataset_length)
 
@@ -135,71 +133,94 @@ class Datacube:
     ):
         r"""read_multiple_files.
 
-            - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
-            the folder and length as the number of files.
+            - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the
+              first raster and length equal to the number of files.
 
-        inside the folder.
-        - All rasters should have the same dimensions
-        - If you want to read the rasters with a certain order, then all raster file names should have a date that
-            follows the same format (YYYY.MM .DD / YYYY-MM-DD or YYYY_MM_DD) (i.e. "MSWEP_1979.01.01.tif").
+            - All rasters should have the same dimensions.
+            - If you want to read the rasters with a certain order, the raster file names should contain a date
+              that follows a consistent format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD), e.g. "MSWEP_1979.01.01.tif".
 
-        Parameters
-        ----------
-        path:[str/list]
-            path of the folder that contains all the rasters, ora list contains the paths of the rasters to read.
-        with_order: [bool]
-            True if the rasters names' follows a certain order, then the rasters' names should have a date that follows
-            the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD).
-            >>> "MSWEP_1979.01.01.tif"
-            >>> "MSWEP_1979.01.02.tif"
-            >>> ...
-            >>> "MSWEP_1979.01.20.tif"
+        Args:
+            path (str | List[str]):
+                Path of the folder that contains all the rasters, or a list containing the paths of the rasters to read.
+            with_order (bool):
+                True if the raster names follow a certain order. Then the raster names should have a date that follows
+                the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD). For example:
 
-        regex_string: [str]
-            a regex string that we can use to locate the date in the file names.Default is r"\d{4}.\d{
-            2}.\d{2}".
-            >>> fname = "MSWEP_YYYY.MM.DD.tif"
-            >>> regex_string = r"\d{4}.\d{2}.\d{2}"
-            - or
-            >>> fname = "MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d{4}_\d{1}_\d{1}"
-            - if there is a number at the beginning of the name
-            >>> fname = "1_MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d+"
+                ```python
+                >>> "MSWEP_1979.01.01.tif"
+                >>> "MSWEP_1979.01.02.tif"
+                >>> ...
+                >>> "MSWEP_1979.01.20.tif"
 
-        date: [bool]
-            True if the number in the file name is a date. Default is True.
-        file_name_data_fmt : [str]
-            if the files names' have a date and you want to read them ordered .Default is None
-            >>> "MSWEP_YYYY.MM.DD.tif"
-            >>> file_name_data_fmt = "%Y.%m.%d"
+                ```
 
-        start: [str]
-            start date if you want to read the input raster for a specific period only and not all rasters,
-            if not given all rasters in the given path will be read.
-        end: [str]
-            end date if you want to read the input temperature for a specific period only,
-            if not given all rasters in the given path will be read.
-        fmt: [str]
-            format of the given date in the start/end parameter.
-        extension: [str]
-            the extension of the files you want to read from the given path. Default is ".tif".
+            regex_string (str):
+                A regex string used to locate the date in the file names. Default is r"\d{4}.\d{2}.\d{2}". For example:
 
-        Returns
-        -------
-        DataCube:
-            instance of the datacube class.
+                ```python
+                >>> fname = "MSWEP_YYYY.MM.DD.tif"
+                >>> regex_string = r"\d{4}.\d{2}.\d{2}"
+                ```
 
-        Example
-        -------
-        >>> from pyramids.datacube import Datacube
-        >>> raster_folder = "examples/GIS/data/raster-folder"
-        >>> prec = Datacube.read_multiple_files(raster_folder)
+                - Or:
 
-        >>> import glob
-        >>> search_criteria = "*.tif"
-        >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Datacube.read_multiple_files(file_list, with_order=False)
+                ```python
+                >>> fname = "MSWEP_YYYY_M_D.tif"
+                >>> regex_string = r"\d{4}_\d{1}_\d{1}"
+                ```
+
+                - If there is a number at the beginning of the name:
+
+                ```python
+                >>> fname = "1_MSWEP_YYYY_M_D.tif"
+                >>> regex_string = r"\d+"
+                ```
+
+            date (bool):
+                True if the number in the file name is a date. Default is True.
+            file_name_data_fmt (str):
+                If the file names contain a date and you want to read them ordered. Default is None. For example:
+
+                ```python
+                >>> "MSWEP_YYYY.MM.DD.tif"
+                >>> file_name_data_fmt = "%Y.%m.%d"
+                ```
+
+            start (str):
+                Start date if you want to read the input raster for a specific period only and not all rasters. If not
+                given, all rasters in the given path will be read.
+            end (str):
+                End date if you want to read the input rasters for a specific period only. If not given, all rasters in
+                the given path will be read.
+            fmt (str):
+                Format of the given date in the start/end parameter.
+            extension (str):
+                The extension of the files you want to read from the given path. Default is ".tif".
+
+        Returns:
+            Datacube:
+                Instance of the Datacube class.
+
+        Examples:
+            - Read all rasters in a folder:
+
+              ```python
+              >>> from pyramids.datacube import Datacube
+              >>> raster_folder = "examples/GIS/data/raster-folder"
+              >>> prec = Datacube.read_multiple_files(raster_folder)
+
+              ```
+
+            - Read from a pre-collected list without ordering:
+
+              ```python
+              >>> import glob
+              >>> search_criteria = "*.tif"
+              >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
+              >>> prec = Datacube.read_multiple_files(file_list, with_order=False)
+
+              ```
         """
         if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")

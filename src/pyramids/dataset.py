@@ -4377,42 +4377,43 @@ class Dataset(AbstractDataset):
     ) -> Tuple[List[Number], List[Number]]:
         """Convert array indices to map coordinates.
 
-        array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat)
+        array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat).
 
-        Parameters
-        ----------
-        rows_index: List[Number]/ np.ndarray
-            the row index of the cells in the raster array.
-        column_index: List[Number]/np.ndarray
-            the column index of the cells in the raster array.
-        center: bool
-            if True, the coordinates will be the center of the cell. Default is False.
+        Args:
+            rows_index (List[Number] | np.ndarray):
+                The row indices of the cells in the raster array.
+            column_index (List[Number] | np.ndarray):
+                The column indices of the cells in the raster array.
+            center (bool):
+                If True, the coordinates will be the center of the cell. Default is False.
 
-        Returns
-        -------
-        List[Number]:
-            the x coordinates of the cells.
-        List[Number]:
-            the y coordinates of the cells.
+        Returns:
+            Tuple[List[Number], List[Number]]:
+                A tuple of two lists: the x coordinates and the y coordinates of the cells.
 
-        Examples
-        --------
-        - Create `Dataset` consists of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0).
+        Examples:
+            - Create `Dataset` consisting of 1 band, 10 rows, 10 columns, at the point lon/lat (0, 0):
 
-            >>> import numpy as np
-            >>> import pandas as pd
-            >>> arr = np.random.randint(1, 3, size=(10, 10))
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              ```python
+              >>> import numpy as np
+              >>> import pandas as pd
+              >>> arr = np.random.randint(1, 3, size=(10, 10))
+              >>> top_left_corner = (0, 0)
+              >>> cell_size = 0.05
+              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-        - Now let's call the function with two lists of row and column indices.
+              ```
 
-            >>> rows_index = [1, 3, 5]
-            >>> column_index = [2, 4, 6]
-            >>> coords = dataset.array_to_map_coordinates(rows_index, column_index)
-            >>> print(coords) # doctest: +SKIP
-            ([0.1, 0.2, 0.3], [-0.05, -0.15, -0.25])
+            - Now call the function with two lists of row and column indices:
+
+              ```python
+              >>> rows_index = [1, 3, 5]
+              >>> column_index = [2, 4, 6]
+              >>> coords = dataset.array_to_map_coordinates(rows_index, column_index)
+              >>> print(coords) # doctest: +SKIP
+              ([0.1, 0.2, 0.3], [-0.05, -0.15, -0.25])
+
+              ```
         """
         top_left_x, top_left_y = self.top_left_corner
         cell_size = self.cell_size
@@ -4439,29 +4440,27 @@ class Dataset(AbstractDataset):
 
         - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
         - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
-            values within the feature are extracted.
+          values within the feature are extracted.
 
-        Parameters
-        ----------
-        band: int, default is None.
-            band index.
-        exclude_value: Numeric
-            values you want to exclude from extracted values, if the dataset is multi-bands the values in the
-            `exclude_value` will be filtered out from the first band only.
-        feature: FeatureCollection/GeoDataFrame, default is None
-            vector file contains point geometries you want to extract the values at their location.
+        Args:
+            band (int, optional):
+                Band index. Default is None.
+            exclude_value (Numeric, optional):
+                Values to exclude from extracted values. If the dataset is multi-band, the values in `exclude_value`
+                will be filtered out from the first band only.
+            feature (FeatureCollection | GeoDataFrame, optional):
+                Vector data containing point geometries at which to extract the values. Default is None.
 
-        Returns
-        -------
-        np.ndarray:
-            The extracted values from each band in the dataset will be in one row in the returned array.
+        Returns:
+            np.ndarray:
+                The extracted values from each band in the dataset will be in one row in the returned array.
 
-        Examples
-        --------
-        - Extract all values from the dataset.
+        Examples:
+            - Extract all values from the dataset:
 
-            - First, we will create a dataset with 1 band, 3 rows and 5 columns.
+              - First, create a dataset with 2 bands, 4 rows and 4 columns:
 
+                ```python
                 >>> import numpy as np
                 >>> arr = np.random.randint(1, 5, size=(2, 4, 4))
                 >>> top_left_corner = (0, 0)
@@ -4488,31 +4487,43 @@ class Dataset(AbstractDataset):
                   [2 2 3 4]
                   [1 4 1 4]]]
 
-            - Now, lets, extract the values in the dataset.
+                ```
 
+              - Now, extract the values in the dataset:
+
+                ```python
                 >>> values = dataset.extract()
                 >>> print(values) # doctest: +SKIP
                 [[1 3 3 4 1 4 2 4 2 4 2 1 1 3 2 3]
                  [3 2 1 3 4 3 2 2 2 2 3 4 1 4 1 4]]
 
-            - lets, extract all the values except 2.
+                ```
 
+              - Extract all the values except 2:
+
+                ```python
                 >>> values = dataset.extract(exclude_value=2)
                 >>> print(values) # doctest: +SKIP
 
-        - Extract values at the location of the given point geometries.
+                ```
 
-            >>> import geopandas as gpd
-            >>> from shapely.geometry import Point
+            - Extract values at the location of the given point geometries:
 
-            - Create the polygon using shapely polygon, and use the xmin, ymin, xmax, ymax = [0.1, -0.2,
-                0.2 -0.1] to cover the 4 cells.
+              ```python
+              >>> import geopandas as gpd
+              >>> from shapely.geometry import Point
+              ```
 
-            >>> points = gpd.GeoDataFrame(geometry=[Point(0.1, -0.1), Point(0.1, -0.2), Point(0.2, -0.2), Point(0.2, -0.1)],crs=4326)
-            >>> values = dataset.extract(feature=points)
-            >>> print(values) # doctest: +SKIP
-            [[4 3 3 4]
-             [3 4 4 2]]
+              - Create the points using shapely and GeoPandas to cover the 4 cells with xmin, ymin, xmax, ymax = [0.1, -0.2, 0.2, -0.1]:
+
+                ```python
+                >>> points = gpd.GeoDataFrame(geometry=[Point(0.1, -0.1), Point(0.1, -0.2), Point(0.2, -0.2), Point(0.2, -0.1)],crs=4326)
+                >>> values = dataset.extract(feature=points)
+                >>> print(values) # doctest: +SKIP
+                [[4 3 3 4]
+                 [3 4 4 2]]
+
+                ```
         """
         # Optimize: make the read_array return only the array for inside the mask feature, and not to read the whole
         #  raster
@@ -4544,50 +4555,56 @@ class Dataset(AbstractDataset):
     ) -> Dict[List[float], List[float]]:
         """Overlay.
 
-        overlay method extracts all the values in the dataset for each class in the given class map
+        Overlay method extracts all the values in the dataset for each class in the given class map.
 
-        Parameters
-        ----------
-        classes_map: [Dataset]
-            Dataset Object for the raster that have classes you want to overlay with the raster.
-        band: [int]
-            if the raster is multi-band raster choose the band you want to overlay with the classes map. Default is 0.
-        exclude_value: [Numeric]
-            values you want to exclude from extracted values.
+        Args:
+            classes_map (Dataset):
+                Dataset object for the raster that has classes you want to overlay with the raster.
+            band (int):
+                If the raster is multi-band, choose the band you want to overlay with the classes map. Default is 0.
+            exclude_value (Numeric, optional):
+                Values you want to exclude from extracted values. Default is None.
 
-        Returns
-        -------
-        Dictionary:
-            dictionary with a list of values in the basemap as keys and for each key a list of all the intersected
-            values in the maps from the path.
+        Returns:
+            Dict:
+                Dictionary with class values as keys (from the class map), and for each key a list of all the intersected
+                values in the base map.
 
-        Examples
-        --------
-        - Read the dataset
+        Examples:
+            - Read the dataset:
 
-            >>> dataset = Dataset.read_file("examples/data/geotiff/raster-folder/MSWEP_1979.01.01.tif")
-            >>> dataset.plot(figsize=(6, 8)) # doctest: +SKIP
+              ```python
+              >>> dataset = Dataset.read_file("examples/data/geotiff/raster-folder/MSWEP_1979.01.01.tif")
+              >>> dataset.plot(figsize=(6, 8)) # doctest: +SKIP
 
-            .. image:: /_images/dataset/rhine-rainfall.png
-                :alt: Example Image
-                :align: center
+              ```
 
-        - read the classes dataset.
+              .. image:: /_images/dataset/rhine-rainfall.png
+                 :alt: Example Image
+                 :align: center
 
-            >>> classes = Dataset.read_file("examples/data/geotiff/rhine-classes.tif")
-            >>> classes.plot(figsize=(6, 8), color_scale=4, bounds=[1,2,3,4,5,6]) # doctest: +SKIP
+            - Read the classes dataset:
 
-            .. image:: /_images/dataset/rhine-classes.png
-                :alt: Example Image
-                :align: center
+              ```python
+              >>> classes = Dataset.read_file("examples/data/geotiff/rhine-classes.tif")
+              >>> classes.plot(figsize=(6, 8), color_scale=4, bounds=[1,2,3,4,5,6]) # doctest: +SKIP
 
-        - overlay the dataset with the classes dataset.
+              ```
 
-            >>> classes_dict = dataset.overlay(classes)
-            >>> print(classes_dict.keys()) # doctest: +SKIP
-            dict_keys([1, 2, 3, 4, 5])
+              .. image:: /_images/dataset/rhine-classes.png
+                 :alt: Example Image
+                 :align: center
 
-        - you can use the key `1` to get the values that overlays the class 1.
+            - Overlay the dataset with the classes dataset:
+
+              ```python
+              >>> classes_dict = dataset.overlay(classes)
+              >>> print(classes_dict.keys()) # doctest: +SKIP
+              dict_keys([1, 2, 3, 4, 5])
+
+              ```
+
+            - You can use the key `1` to get the values that overlay class 1.
         """
         if not self._check_alignment(classes_map):
             raise AlignmentError(
