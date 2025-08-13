@@ -1,156 +1,134 @@
 # Installation
 
+This page explains how to install pyramids-gis and its dependencies using Pixi/conda or pip. The instructions and versions below are aligned with the project’s pyproject.toml.
+
+Package name: pyramids-gis
+Current version: 0.7.3
+Supported Python versions: 3.11 – 3.13 (requires Python >=3.11,<4)
+
 ## Dependencies
 
-### Required dependencies
+### Core runtime (PyPI)
+- numpy >=2.0.0
+- pandas >=2.0.0
+- geopandas >=1.0.0
+- Shapely >=2.0.0
+- pyproj >=3.7.0
+- PyYAML >=6.0.0
+- loguru >=0.7.2
+- hpc-utils >=0.1.5
 
-- Python (3.11 or later)
-- numpy (1.21 or later)
-- GDAL (3.9.0 or later)
-- pandas (2 or later)
-- geopandas (0.12.2 or later)
-- Shapely (1.8.4 or later)
-- pyproj (3.4 or later)
-- PyYAML (6.0 or later)
+### GIS stack (recommended via conda-forge)
+- GDAL >=3.10,<4
+- libgdal-netcdf >=3.10,<4
+- libgdal-hdf4 >=3.10,<4
 
-### Optional dependencies
+### Optional extras
+- viz: cleopatra >=0.5.1
+- dev: nbval, pre-commit, pytest, coverage, build, twine, etc.
+- docs: mkdocs, mkdocs-material, mkdocstrings, mike, etc.
 
-- cleopatra (0.3.4 or later)
+## Recommended: Pixi/Conda environment
+This repository includes a Pixi configuration to create fully-solvable environments with the right GDAL build from conda-forge.
 
-## Stable release
+Prerequisites: Install Pixi (https://pixi.sh/) or have conda/mamba with the conda-forge channel available.
 
-Please install pyramids in a virtual environment so that its requirements don't tamper with your system Python.
-
-### conda
-
-The easiest way to install pyramids is using the conda package manager. pyramids is available in the conda-forge channel. To install, run:
-
-```console
-conda install -c conda-forge pyramids
-```
-
-If this works, it will install pyramids with all dependencies including Python and GDAL, and you can skip the rest of the installation instructions.
-
-## Installing Python and GDAL dependencies
-
-The main dependencies for pyramids are an installation of Python 3.9+ and GDAL.
-
-### Installing Python
-
-We recommend using the Anaconda Distribution for Python 3:
-https://www.anaconda.com/download/
-
-Ensure python, pip, and conda are on your PATH.
-
-Note: There is no hard requirement for Anaconda specifically, but conda often makes installing dependencies easier.
-
-## Install as a conda environment
-
-The easiest and most robust way to install pyramids is in a separate conda environment. In the root repository directory there is an environment.yml file listing all dependencies (use from a specific release for stability).
-
-Create the environment:
+### Using Pixi
+From the project root:
 
 ```console
-conda env create -f environment.yml
+pixi run main          # runs the main test suite to ensure the env is solvable
+pixi shell             # enter the Pixi environment
 ```
 
-Activate it:
+Pixi environments provided:
+- default: includes dev + viz extras
+- docs: documentation toolchain
+- py311 / py312 / py313: pinned Python versions
+
+To install the package in editable mode inside the Pixi environment:
 
 ```console
-conda activate pyramids
-```
-
-Install pyramids from PyPI (specific release example):
-
-```console
-pip install pyramids-gis=={release}
-```
-
-## From sources
-
-The sources for pyramids can be downloaded from the GitHub repo.
-
-Clone the repository:
-
-```console
-git clone https://github.com/MAfarrag/pyramids
-```
-
-Or download the tarball:
-
-```console
-curl -OJL https://github.com/MAfarrag/pyramids/tarball/main
-```
-
-Install from source:
-
-```console
-python -m pip install .
-```
-
-To install directly from GitHub (HEAD of main branch):
-
-```console
-pip install git+https://github.com/MAfarrag/pyramids.git
-```
-
-Or from a specific release:
-
-```console
-pip install git+https://github.com/MAfarrag/pyramids.git@{release}
-```
-
-Now you should be able to start Python and run:
-
-```python
-import pyramids
-```
-
-More details on conda environments:
-https://conda.io/docs/user-guide/tasks/manage-environments.html
-
-If you plan to contribute to development, clone the repository and do an editable install:
-
-```console
-git clone https://github.com/MAfarrag/pyramids.git
-cd pyramids
-conda activate pyramids
 pip install -e .
 ```
 
-Alternatively, download a zip archive and test the latest version:
-https://github.com/MAfarrag/pyramids/archive/master.zip
-
-## Install using pip
-
-Besides the recommended conda setup, you can also install with pip. For harder dependencies, use conda first:
+### Using conda/mamba directly
+Create and activate an environment (example with Python 3.12):
 
 ```console
-conda install numpy gdal
+mamba create -n pyramids -c conda-forge python=3.12 gdal libgdal-netcdf libgdal-hdf4
+mamba activate pyramids-gis
 ```
 
-Then install a release with pip:
+Then install the package from PyPI (release):
 
 ```console
-pip install pyramids-gis=={release}
+pip install pyramids-gis==0.7.3
 ```
 
-## Check if the installation is successful
-
-Go to the examples directory and run the following command:
+Optionally include extras (examples):
 
 ```console
-python -m pyramids.*******
+pip install "pyramids-gis[viz]"        # installs cleopatra
+pip install "pyramids-gis[dev]"        # developer tools
+pip install "pyramids-gis[docs]"       # docs toolchain
 ```
 
-This should run without errors.
+## Installing with pip only (advanced)
+Installing GDAL wheels via pip can be platform-specific. We strongly recommend installing GDAL from conda-forge first, then using pip for pyramids-gis:
 
-> Note
->
-> This documentation was generated on |today|
->
-> Documentation for the development version:
-> https://pyramids-gis.readthedocs.org/en/latest/
->
-> Documentation for the stable version:
-> https://pyramids-gis.readthedocs.org/en/stable/
+```console
+conda install -c conda-forge gdal libgdal-netcdf libgdal-hdf4
+pip install pyramids-gis
+```
+
+If you insist on a pip-only approach, consult the GDAL wheel guidance for your platform and ensure gdal is available at runtime before installing pyramids-gis.
+
+## Install from source
+Clone the repository and install:
+
+```console
+git clone https://github.com/Serapieum-of-alex/pyramids.git
+cd pyramids
+python -m pip install .
+```
+
+Editable (development) install:
+
+```console
+git clone https://github.com/Serapieum-of-alex/pyramids.git
+cd pyramids
+pip install -e .[dev]
+```
+
+Install directly from GitHub (latest main):
+
+```console
+pip install "git+https://github.com/Serapieum-of-alex/pyramids.git"
+```
+
+Install a specific tagged release from GitHub:
+
+```console
+pip install "git+https://github.com/Serapieum-of-alex/pyramids.git@v0.7.3"
+```
+
+## Quick check
+After installation, open Python and run:
+
+```python
+import pyramids
+print(pyramids.__version__)
+```
+
+You can also run the test suite if you installed dev tools:
+
+```console
+pytest -m "not plot" -q
+```
+
+## Notes
+- Supported Python versions are 3.11–3.13.
+- Prefer conda-forge for GDAL and related libraries.
+- Documentation: https://pyramids-gis.readthedocs.io/
+- Source repository: https://github.com/Serapieum-of-alex/pyramids
