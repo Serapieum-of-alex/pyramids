@@ -1581,6 +1581,7 @@ class Dataset(AbstractDataset):
                   </PAMDataset>
 
               ```
+
         Examples:
             - Get the statistics of all bands in the dataset:
 
@@ -1695,64 +1696,34 @@ class Dataset(AbstractDataset):
                 True if you want to plot the overview. Default is False.
             overview_index (int, optional):
                 Index of the overview. Default is 0.
-            **kwargs: Additional plotting options.
-                points (array):
-                    3 column array with the first column as the value you want to display for the point, the second is
-                    the rows index of the point in the array, and the third column as the column index in the array.
-                    The second and third columns tell the location of the point in the array.
-                point_color (str):
-                    Color.
-                point_size (Any):
-                    Size of the point.
-                pid_color (str):
-                    The color of the annotation of the point. Default is blue.
-                pid_size (Any):
-                    Size of the point annotation.
-                figsize (tuple, optional):
-                    Figure size. The default is (8, 8).
-                title (str, optional):
-                    Title of the plot. The default is 'Total Discharge'.
-                title_size (int, optional):
-                    Title size. The default is 15.
-                orientation (str, optional):
-                    Orientation of the color bar horizontal/vertical. The default is 'vertical'.
-                rotation (number, optional):
-                    Rotation of the color bar label. The default is -90.
-                cbar_length (float, optional):
-                    Ratio to control the height of the color bar. The default is 0.75.
-                ticks_spacing (int, optional):
-                    Spacing in the color bar ticks. The default is 2.
-                cbar_label_size (int, optional):
-                    Size of the color bar label. The default is 12.
-                cbar_label (str, optional):
-                    Label of the color bar. The default is 'Discharge m3/s'.
-                color_scale (int, optional):
-                    There are 5 options to change the scale of the colors. The default is 1.
-                    1- color_scale 1 is the normal scale
-                    2- color_scale 2 is the power scale
-                    3- color_scale 3 is the SymLogNorm scale
-                    4- color_scale 4 is the PowerNorm scale
-                    5- color_scale 5 is the BoundaryNorm scale
-                gamma (float, optional):
-                    Value needed for option 2. The default is 1./2.
-                line_threshold (float, optional):
-                    Value needed for option 3. The default is 0.0001.
-                line_scale (float, optional):
-                    Value needed for option 3. The default is 0.001.
-                bounds (List, optional):
-                    A list of number to be used as a discrete bounds for the color scale 4. Default is None.
-                midpoint (float, optional):
-                    Value needed for option 5. The default is 0.
-                cmap (str, optional):
-                    Color style. The default is 'coolwarm_r'.
-                display_cell_value (bool, optional):
-                    True if you want to display the values of the cells as a text.
-                num_size (int, optional):
-                    Size of the numbers plotted on top of each cell. The default is 8.
-                background_color_threshold (float | int, optional):
-                    Threshold value: if the value of the cell is greater, the plotted
-                    numbers will be black; if smaller the plotted number will be white.
-                    If None is given, maxvalue/2 will be considered. The default is None.
+            kwargs:
+                | Parameter                   | Type                | Description |
+                |-----------------------------|---------------------|-------------|
+                | `points`                    | array               | 3 column array with the first column as the value to display for the point, the second as the row index, and the third as the column index in the array. The second and third columns tell the location of the point. |
+                | `point_color`               | str                 | Color of the point. |
+                | `point_size`                | Any                 | Size of the point. |
+                | `pid_color`                 | str                 | Color of the annotation of the point. Default is blue. |
+                | `pid_size`                  | Any                 | Size of the point annotation. |
+                | `figsize`                   | tuple, optional     | Figure size. Default is `(8, 8)`. |
+                | `title`                     | str, optional       | Title of the plot. Default is `'Total Discharge'`. |
+                | `title_size`                | int, optional       | Title size. Default is `15`. |
+                | `orientation`               | str, optional       | Orientation of the color bar (`horizontal` or `vertical`). Default is `'vertical'`. |
+                | `rotation`                  | number, optional    | Rotation of the color bar label. Default is `-90`. |
+                | `cbar_length`               | float, optional     | Ratio to control the height of the color bar. Default is `0.75`. |
+                | `ticks_spacing`             | int, optional       | Spacing between color bar ticks. Default is `2`. |
+                | `cbar_label_size`           | int, optional       | Size of the color bar label. Default is `12`. |
+                | `cbar_label`                | str, optional       | Label of the color bar. Default is `'Discharge m³/s'`. |
+                | `color_scale`               | int, optional       | Scale mode for colors. Options: 1 = normal, 2 = power, 3 = SymLogNorm, 4 = PowerNorm, 5 = BoundaryNorm. Default is `1`. |
+                | `gamma`                     | float, optional     | Value needed for color scale option 2. Default is `1/2`. |
+                | `line_threshold`            | float, optional     | Value needed for color scale option 3. Default is `0.0001`. |
+                | `line_scale`                | float, optional     | Value needed for color scale option 3. Default is `0.001`. |
+                | `bounds`                    | list, optional      | Discrete bounds for color scale option 4. Default is `None`. |
+                | `midpoint`                  | float, optional     | Value needed for color scale option 5. Default is `0`. |
+                | `cmap`                      | str, optional       | Color map style. Default is `'coolwarm_r'`. |
+                | `display_cell_value`        | bool, optional      | Whether to display cell values as text. |
+                | `num_size`                  | int, optional       | Size of numbers plotted on top of each cell. Default is `8`. |
+                | `background_color_threshold`| float or int, optional | Threshold for deciding text color over cells: if value > threshold → black text; else white text. If `None`, max value / 2 is used. Default is `None`. |
+
 
         Returns:
             Tuple[Any, Any]:
@@ -2961,7 +2932,7 @@ class Dataset(AbstractDataset):
 
               ```
 
-        ![get_cell_polygons](/_images/dataset/get_cell_polygons.png)
+        ![get_cell_polygons](./../_images/dataset/get_cell_polygons.png)
         """
         coords = self.get_cell_coords(location="corner", mask=mask)
         cell_size = self.geotransform[1]
@@ -3044,7 +3015,7 @@ class Dataset(AbstractDataset):
 
               ```
 
-            ![get_cell_points](/_images/dataset/get_cell_points.png)
+            ![get_cell_points](./../_images/dataset/get_cell_points.png)
 
             - Get the coordinates of the top left corner of cells inside the domain.
 
@@ -3067,7 +3038,7 @@ class Dataset(AbstractDataset):
 
               ```
 
-            ![get_cell_points-corner](/_images/dataset/get_cell_points-corner.png)
+            ![get_cell_points-corner](./../_images/dataset/get_cell_points-corner.png)
         """
         coords = self.get_cell_coords(location=location, mask=mask)
         epsg = self._get_epsg()
@@ -3234,7 +3205,6 @@ class Dataset(AbstractDataset):
         """Convert a dataset to a vector.
 
         The function does the following:
-
             - Flatten the array in each band in the raster then mask the values if a vector_mask file is given
                 otherwise it will flatten all values.
             - Put the values for each band in a column in a dataframe under the name of the raster band,
@@ -3603,7 +3573,7 @@ class Dataset(AbstractDataset):
               (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
               ```
-              ![resample-source](/_images/dataset/resample-source.png)
+              ![resample-source](./../_images/dataset/resample-source.png)
 
             - Resample the raster to a new cell size of 0.1:
 
@@ -3624,7 +3594,7 @@ class Dataset(AbstractDataset):
               (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
               ```
-              ![resample-new](/_images/dataset/resample-new.png)
+              ![resample-new](./../_images/dataset/resample-new.png)
 
             - Resampling the dataset from cell_size 0.05 to 0.1 degrees reduced the number of cells to 5 in each dimension instead of 10.
         """
@@ -4029,7 +3999,7 @@ class Dataset(AbstractDataset):
 
               ```
 
-            ![align-source-target](/_images/dataset/align-source-target.png)
+            ![align-source-target](./../_images/dataset/align-source-target.png)
 
             - Now call the `align` method and use the dataset as the alignment source.
 
@@ -4049,7 +4019,7 @@ class Dataset(AbstractDataset):
 
               ```
 
-            ![align-result](/_images/dataset/align-result.png)
+            ![align-result](./../_images/dataset/align-result.png)
         """
         if isinstance(alignment_src, Dataset):
             src = alignment_src
@@ -4721,7 +4691,7 @@ class Dataset(AbstractDataset):
 
               ```
 
-              ![rhine-rainfall](/_images/dataset/rhine-rainfall.png)
+              ![rhine-rainfall](./../_images/dataset/rhine-rainfall.png)
 
             - Read the classes dataset:
 
@@ -4731,7 +4701,7 @@ class Dataset(AbstractDataset):
 
               ```
 
-              ![rhine-classes](/_images/dataset/rhine-classes.png)
+              ![rhine-classes](./../_images/dataset/rhine-classes.png)
 
             - Overlay the dataset with the classes dataset:
 
@@ -4831,7 +4801,7 @@ class Dataset(AbstractDataset):
 
               ```
 
-            ![dataset-footprint-rhine-flood](/_images/dataset/dataset-footprint-rhine-flood.png)
+            ![dataset-footprint-rhine-flood](./../_images/dataset/dataset-footprint-rhine-flood.png)
 
             - Now, to extract the footprint of the dataset band, we need to specify the `exclude_values` parameter with the
               value of the non-flooded cells.
@@ -4853,7 +4823,7 @@ class Dataset(AbstractDataset):
 
               ```
 
-            ![dataset-footprint-rhine-flood-extent](/_images/dataset/dataset-footprint-rhine-flood-extent.png)
+            ![dataset-footprint-rhine-flood-extent](./../_images/dataset/dataset-footprint-rhine-flood-extent.png)
 
         """
         arr = self.read_array(band=band)
@@ -5005,7 +4975,7 @@ class Dataset(AbstractDataset):
               [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
 
               ```
-              ![get_tile](/_images/dataset/get_tile.png)
+              ![get_tile](./../_images/dataset/get_tile.png)
 
             - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
             - The `get_tile` method returns a generator object that can be used to iterate over the smaller chunks of
@@ -5242,7 +5212,7 @@ class Dataset(AbstractDataset):
               ... )  # doctest: +SKIP
 
               ```
-              ![cluster](/_images/dataset/cluster.png)
+              ![cluster](./../_images/dataset/cluster.png)
 
             - Now let's cluster the values in the dataset that are between 2 and 4.
 
@@ -5448,7 +5418,7 @@ class Dataset(AbstractDataset):
               >>> dataset.plot(band=0, overview=True, overview_index=0) # doctest: +SKIP
 
               ```
-              ![overviews-level-0](/_images/dataset/overviews-level-0.png)
+              ![overviews-level-0](./../_images/dataset/overviews-level-0.png)
 
             - However, the dataset originally is 10*10, but the first overview level (2) displays half of the cells by
               aggregating all the cells using the nearest neighbor. The second level displays only 3 cells in each:
@@ -5457,7 +5427,7 @@ class Dataset(AbstractDataset):
               >>> dataset.plot(band=0, overview=True, overview_index=1)   # doctest: +SKIP
 
               ```
-              ![overviews-level-1](/_images/dataset/overviews-level-1.png)
+              ![overviews-level-1](./../_images/dataset/overviews-level-1.png)
 
             - For the third overview level:
 
@@ -5465,7 +5435,7 @@ class Dataset(AbstractDataset):
               >>> dataset.plot(band=0, overview=True, overview_index=2)       # doctest: +SKIP
 
               ```
-              ![overviews-level-2](/_images/dataset/overviews-level-2.png)
+              ![overviews-level-2](./../_images/dataset/overviews-level-2.png)
 
         See Also:
             - Dataset.recreate_overviews: Recreate the dataset overviews if they exist
@@ -6103,7 +6073,6 @@ class Dataset(AbstractDataset):
                 of .aux.xml.
 
             - The content of the file will be like the following:
-
               ```xml
 
                   <PAMDataset>
@@ -6123,6 +6092,7 @@ class Dataset(AbstractDataset):
                   </PAMDataset>
 
               ```
+
         Examples:
             - Create `Dataset` consists of 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0).
 
@@ -6140,43 +6110,42 @@ class Dataset(AbstractDataset):
                [ 7  7  2  2  5  3  7  2  9  9]
                [ 2 10  3  2  1 11  5  9  8 11]
                [ 1  5  6 11  3  3  8  1  2  1]]
-              >>> top_left_corner = (0, 0)
-              >>> cell_size = 0.05
-              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+               >>> top_left_corner = (0, 0)
+               >>> cell_size = 0.05
+               >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
 
-              ```
-            - Now, let's get the histogram of the first band using the `get_histogram` method with the default parameters.
+               ```
 
-              ```python
-              >>> hist, ranges = dataset.get_histogram(band=0)
-              >>> print(hist)  # doctest: +SKIP
-              [28, 17, 10, 15, 13, 7]
-              >>> print(ranges)   # doctest: +SKIP
-              [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
+            - Now, let's get the histogram of the first band using the `get_histogram` method with the default
+                parameters:
+                ```python
+                >>> hist, ranges = dataset.get_histogram(band=0)
+                >>> print(hist)  # doctest: +SKIP
+                [28, 17, 10, 15, 13, 7]
+                >>> print(ranges)   # doctest: +SKIP
+                [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
 
-              ```
-            - we can also exclude values from the histogram by using the `min_value` and `max_value`.
+                ```
+            - we can also exclude values from the histogram by using the `min_value` and `max_value`:
+                ```python
+                >>> hist, ranges = dataset.get_histogram(band=0, min_value=5, max_value=10)
+                >>> print(hist)  # doctest: +SKIP
+                [10, 8, 7, 7, 6, 0]
+                >>> print(ranges)   # doctest: +SKIP
+                [(1.0, 1.835), (1.835, 2.67), (2.67, 3.5), (3.5, 4.34), (4.34, 5.167), (5.167, 6.0)]
 
-              ```python
-              >>> hist, ranges = dataset.get_histogram(band=0, min_value=5, max_value=10)
-              >>> print(hist)  # doctest: +SKIP
-              [10, 8, 7, 7, 6, 0]
-              >>> print(ranges)   # doctest: +SKIP
-              [(1.0, 1.835), (1.835, 2.67), (2.67, 3.5), (3.5, 4.34), (4.34, 5.167), (5.167, 6.0)]
-
-              ```
+                ```
             - For datasets with big dimensions, computing the histogram can take some time; approximating the computation
                 of the histogram can save a lot of computation time. When using the parameter `approx_ok` with a `True`
                 value the histogram will be calculated from resampling the band or from the overviews if they exist.
+                ```python
+                >>> hist, ranges = dataset.get_histogram(band=0, approx_ok=True)
+                >>> print(hist)  # doctest: +SKIP
+                [28, 17, 10, 15, 13, 7]
+                >>> print(ranges)   # doctest: +SKIP
+                [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
 
-              ```python
-              >>> hist, ranges = dataset.get_histogram(band=0, approx_ok=True)
-              >>> print(hist)  # doctest: +SKIP
-              [28, 17, 10, 15, 13, 7]
-              >>> print(ranges)   # doctest: +SKIP
-              [(1.0, 2.67), (2.67, 4.34), (4.34, 6.0), (6.0, 7.67), (7.67, 9.34), (9.34, 11.0)]
-
-              ```
+                ```
             - As you see for small datasets, the approximation of the histogram will be the same as without approximation.
 
         """

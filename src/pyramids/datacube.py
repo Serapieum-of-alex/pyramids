@@ -424,63 +424,33 @@ class Datacube:
             exclude_value (Any):
                 Value to exclude from the plot. Default is None.
             **kwargs:
-                Additional plotting options.
-                points (array):
-                    3-column array with the first column as the value to display for the point, the second is the row index of the point in the array, and the third column is the column index in the array. The second and third columns indicate the location of the point in the array.
-                point_color (str):
-                    Color of the points.
-                point_size (Any):
-                    Size of the points.
-                pid_color (str):
-                    Color of the annotation of the point. Default is blue.
-                pid_size (Any):
-                    Size of the point annotation.
-                figsize (tuple, optional):
-                    Figure size. The default is (8, 8).
-                title (str, optional):
-                    Title of the plot. The default is 'Total Discharge'.
-                title_size (int, optional):
-                    Title size. The default is 15.
-                orientation (str, optional):
-                    Orientation of the color bar horizontal/vertical. The default is 'vertical'.
-                rotation (number, optional):
-                    Rotation of the color bar label. The default is -90.
-                cbar_length (float, optional):
-                    Ratio to control the height of the color bar. The default is 0.75.
-                ticks_spacing (int, optional):
-                    Spacing in the color bar ticks. The default is 2.
-                cbar_label_size (int, optional):
-                    Size of the color bar label. The default is 12.
-                cbar_label (str, optional):
-                    Label of the color bar. The default is 'Discharge m3/s'.
-                color_scale (int, optional):
-                    One of 1..5 to change the scale of the colors. Default is 1.
-                    1- color_scale 1 is the normal scale
-                    2- color_scale 2 is the power scale
-                    3- color_scale 3 is the SymLogNorm scale
-                    4- color_scale 4 is the PowerNorm scale
-                    5- color_scale 5 is the BoundaryNorm scale
-                    ------------------------------------------------------------------
-                    gamma (float, optional):
-                        Value needed for option 2. The default is 1./2..
-                    line_threshold (float, optional):
-                        Value needed for option 3. The default is 0.0001.
-                    line_scale (float, optional):
-                        Value needed for option 3. The default is 0.001.
-                    bounds (List):
-                        A list of numbers to be used as discrete bounds for the color scale 4. Default is None.
-                    midpoint (float, optional):
-                        Value needed for option 5. The default is 0.
-                    ------------------------------------------------------------------
-                cmap (str, optional):
-                    Color style. The default is 'coolwarm_r'.
-                display_cell_value (bool):
-                    True to display the values of the cells as text.
-                num_size (int, optional):
-                    Size of the numbers plotted on top of each cell. The default is 8.
-                background_color_threshold (float|int, optional):
-                    Threshold value; if the value of the cell is greater, the plotted numbers will be black and if
-                    smaller the plotted number will be white. If None, maxvalue/2 will be considered. Default is None.
+                | Parameter                  | Type                  | Description |
+                |----------------------------|-----------------------|-------------|
+                | points                     | array                 | 3-column array: col 1 = value to display, col 2 = row index, col 3 = column index. Columns 2 and 3 indicate the location of the point. |
+                | point_color                | str                   | Color of the points. |
+                | point_size                 | Any                   | Size of the points. |
+                | pid_color                  | str                   | Color of the annotation of the point. Default is blue. |
+                | pid_size                   | Any                   | Size of the point annotation. |
+                | figsize                    | tuple, optional       | Figure size. Default is `(8, 8)`. |
+                | title                      | str, optional         | Title of the plot. Default is `'Total Discharge'`. |
+                | title_size                 | int, optional         | Title size. Default is `15`. |
+                | orientation                | str, optional         | Orientation of the color bar (`horizontal` or `vertical`). Default is `'vertical'`. |
+                | rotation                   | number, optional      | Rotation of the color bar label. Default is `-90`. |
+                | cbar_length                | float, optional       | Ratio to control the height of the color bar. Default is `0.75`. |
+                | ticks_spacing              | int, optional         | Spacing in the color bar ticks. Default is `2`. |
+                | cbar_label_size            | int, optional         | Size of the color bar label. Default is `12`. |
+                | cbar_label                 | str, optional         | Label of the color bar. Default is `'Discharge m³/s'`. |
+                | color_scale                | int, optional         | Color scaling mode (default = `1`): 1 = normal scale, 2 = power scale, 3 = SymLogNorm scale, 4 = PowerNorm scale, 5 = BoundaryNorm scale. |
+                | gamma                      | float, optional       | Value needed for `color_scale=2`. Default is `1/2`. |
+                | line_threshold             | float, optional       | Value needed for `color_scale=3`. Default is `0.0001`. |
+                | line_scale                 | float, optional       | Value needed for `color_scale=3`. Default is `0.001`. |
+                | bounds                     | list                  | Discrete bounds for `color_scale=4`. Default is `None`. |
+                | midpoint                   | float, optional       | Value needed for `color_scale=5`. Default is `0`. |
+                | cmap                       | str, optional         | Color map style. Default is `'coolwarm_r'`. |
+                | display_cell_value         | bool                  | Whether to display the values of the cells as text. |
+                | num_size                   | int, optional         | Size of the numbers plotted on top of each cell. Default is `8`. |
+                | background_color_threshold | float \| int, optional| Threshold for deciding number color: if value > threshold → black; else white. If `None`, uses `max_value/2`. Default is `None`. |
+
 
         Returns:
             axes: The axes of the matplotlib figure.
