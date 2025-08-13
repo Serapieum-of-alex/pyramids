@@ -21,7 +21,7 @@ from pyramids.featurecollection import FeatureCollection
 
 
 DEFAULT_NO_DATA_VALUE = -9999
-CATALOG = Catalog(raster_driver=True)
+CATALOG = Catalog()
 OVERVIEW_LEVELS = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
 RESAMPLING_METHODS = [
     "NEAREST",

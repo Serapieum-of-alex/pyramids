@@ -187,10 +187,9 @@ class Dataset(AbstractDataset):
 
               ```
 
-        See Also
-        --------
-        Dataset.top_left_corner : coordinate of the top left corner of the dataset.
-        Dataset.epsg : epsg number of the dataset coordinate reference system.
+        See Also:
+            - Dataset.top_left_corner: Coordinate of the top left corner of the dataset.
+            - Dataset.epsg: EPSG number of the dataset coordinate reference system.
         """
         return super().geotransform
 
@@ -246,11 +245,10 @@ class Dataset(AbstractDataset):
                 AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",
                 0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
 
-        See Also
-        --------
-        Dataset.set_crs : Set the Coordinate Reference System (CRS).
-        Dataset.to_crs : Reproject the dataset to any projection.
-        Dataset.epsg : epsg number of the dataset coordinate reference system.
+        See Also:
+            - Dataset.set_crs: Set the Coordinate Reference System (CRS).
+            - Dataset.to_crs: Reproject the dataset to any projection.
+            - Dataset.epsg: EPSG number of the dataset coordinate reference system.
         """
         self.set_crs(value)
 
@@ -297,16 +295,14 @@ class Dataset(AbstractDataset):
 
         No data value that marks the cells out of the domain
 
-        Notes
-        -----
+        Notes:
             - The setter does not change the values of the cells to the new no_data_value, it only changes the
             `no_data_value` attribute.
             - Use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
             - To change the values of the cells, to the new no_data_value, use the `change_no_data_value` method.
 
-        See Also
-        --------
-        Dataset.change_no_data_value : Change the No Data Value.
+        See Also:
+            - Dataset.change_no_data_value: Change the No Data Value.
         """
         if isinstance(value, list):
             for i, val in enumerate(value):
@@ -318,11 +314,10 @@ class Dataset(AbstractDataset):
     def meta_data(self):
         """Meta-data.
 
-        Hint
-        ----
-        - This property does not need the Dataset to be opened in a write mode to be set.
-        - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
-            .aux.xml,
+        Hint:
+            - This property does not need the Dataset to be opened in a write mode to be set.
+            - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
+                .aux.xml,
 
         the content of the file will be like the following:
 
@@ -363,11 +358,10 @@ class Dataset(AbstractDataset):
 
               ```
 
-        See Also
-        --------
-        Dataset.get_block_arrangement : get block arrangement to read the dataset in chuncks.
-        Dataset.get_tile : get tile
-        Dataset.read_array : to read the data stored in the dataset bands.
+        See Also:
+            - Dataset.get_block_arrangement: Get block arrangement to read the dataset in chunks.
+            - Dataset.get_tile: Get tiles.
+            - Dataset.read_array: Read the data stored in the dataset bands.
         """
         return self._block_size
 
@@ -400,15 +394,14 @@ class Dataset(AbstractDataset):
 
         The value of the scale is used to convert the pixel values to the real-world values.
 
-        Hint
-        ----
-        - This property does not need the Dataset to be opened in a write mode to be set.
-        - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
-            .aux.xml.
+        Hint:
+            - This property does not need the Dataset to be opened in a write mode to be set.
+            - The value of the offset will be stored in an xml file by the name of the raster file with the extension of
+                .aux.xml.
 
         the content of the file will be like the following:
 
-        .. code-block:: xml
+        ```xml
 
             <PAMDataset>
               <PAMRasterBand band="1">
@@ -418,6 +411,7 @@ class Dataset(AbstractDataset):
                 <Scale>2</Scale>
               </PAMRasterBand>
             </PAMDataset>
+        ```
         """
         scale_list = []
         for i in range(self.band_count):
@@ -437,15 +431,14 @@ class Dataset(AbstractDataset):
 
         The value of the offset is used to convert the pixel values to the real-world values.
 
-        Hint
-        ----
-        - This property does not need the Dataset to be opened in a write mode to be set.
-        - The value of the offset will be stored in xml file by the name of the raster file with the extension of
-            .aux.xml.
+        Hint:
+            - This property does not need the Dataset to be opened in a write mode to be set.
+            - The value of the offset will be stored in xml file by the name of the raster file with the extension of
+                .aux.xml.
 
         the content of the file will be like the following:
 
-        .. code-block:: xml
+        ```xml
 
             <PAMDataset>
               <PAMRasterBand band="1">
@@ -455,6 +448,7 @@ class Dataset(AbstractDataset):
                 <Scale>2</Scale>
               </PAMRasterBand>
             </PAMDataset>
+        ```
         """
         offset_list = []
         for i in range(self.band_count):
@@ -551,9 +545,8 @@ class Dataset(AbstractDataset):
 
                 ```
 
-        See also
-        --------
-        Dataset.read_array : Read the values stored in a dataset band
+        See Also:
+            - Dataset.read_array: Read the values stored in a dataset band.
         """
         src = _io.read_file(path, read_only=read_only, file_i=file_i)
         return cls(src, access="read_only" if read_only else "write")
@@ -642,10 +635,9 @@ class Dataset(AbstractDataset):
 
               ```
 
-        See also
-        --------
-        Dataset.get_tile : read the dataset in chuncks
-        Dataset.get_block_arrangement : get block arrangement to read the dataset in chuncks.
+        See Also:
+            - Dataset.get_tile: Read the dataset in chunks.
+            - Dataset.get_block_arrangement: Get block arrangement to read the dataset in chunks.
         """
         if band is None and self.band_count > 1:
             rows = self.rows if window is None else window[3]
@@ -734,9 +726,8 @@ class Dataset(AbstractDataset):
     def top_left_corner(self):
         """Top left corner coordinates.
 
-        See also
-        --------
-        Dataset.geotransform : dataset geotransform
+        See Also:
+            - Dataset.geotransform: Dataset geotransform.
         """
         return super().top_left_corner
 
@@ -768,9 +759,8 @@ class Dataset(AbstractDataset):
 
               ```
 
-        See also
-        --------
-        Dataset.bbox : dataset bound box
+        See Also:
+            - Dataset.bbox: Dataset bounding box.
         """
         return self._calculate_bounds()
 
@@ -801,9 +791,8 @@ class Dataset(AbstractDataset):
 
               ```
 
-        See also
-        --------
-        Dataset.bounds : dataset bounding polygon.
+        See Also:
+            - Dataset.bounds: Dataset bounding polygon.
         """
         return self._calculate_bbox()
 
@@ -833,11 +822,10 @@ class Dataset(AbstractDataset):
 
               ```
 
-        See also
-        --------
-        Dataset.x : dataset x coordinates
-        Dataset.lat : dataset latitude
-        Dataset.lon : dataset longitude
+        See Also:
+            - Dataset.x: Dataset x coordinates.
+            - Dataset.lat: Dataset latitude.
+            - Dataset.lon: Dataset longitude.
         """
         if not hasattr(self, "_lon"):
             pivot_x = self.top_left_corner[0]
@@ -876,11 +864,10 @@ class Dataset(AbstractDataset):
 
               ```
 
-        See also
-        --------
-        Dataset.x : dataset x coordinates
-        Dataset.y : dataset y coordinates
-        Dataset.lon : dataset longitude
+        See Also:
+            - Dataset.x: Dataset x coordinates.
+            - Dataset.y: Dataset y coordinates.
+            - Dataset.lon: Dataset longitude.
         """
         if not hasattr(self, "_lat"):
             pivot_y = self.top_left_corner[1]
@@ -919,11 +906,10 @@ class Dataset(AbstractDataset):
 
               ```
 
-        See also
-        --------
-        Dataset.lat : dataset latitude
-        Dataset.y : dataset y coordinates
-        Dataset.lon : dataset longitude
+        See Also:
+            - Dataset.lat: Dataset latitude.
+            - Dataset.y: Dataset y coordinates.
+            - Dataset.lon: Dataset longitude.
         """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lon"):
@@ -969,11 +955,10 @@ class Dataset(AbstractDataset):
 
               ```
 
-        See also
-        --------
-        Dataset.x : dataset y coordinates
-        Dataset.lat : dataset latitude
-        Dataset.lon : dataset longitude
+        See Also:
+            - Dataset.x: Dataset y coordinates.
+            - Dataset.lat: Dataset latitude.
+            - Dataset.lon: Dataset longitude.
         """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         if not hasattr(self, "_lat"):
@@ -6000,15 +5985,13 @@ class Dataset(AbstractDataset):
     # def get_coverage(self, band: int = 0, polygon = GeoDataFrame) -> float:
     #     """get_coverage.
     #
-    #     Parameters
-    #     ----------
-    #     band: [int], optional
-    #         band index, Default is 1.
+    #     Args:
+    #         band: [int], optional
+    #             band index, Default is 1.
     #
-    #     Returns
-    #     -------
-    #     [float]
-    #         percentage of non-zero values.
+    #     Returns:
+    #         [float]
+    #             percentage of non-zero values.
     #     """
     #     # convert the polygon vertices to array indices using the map_to_array_coordinates method
     #     # then use the array indices in the GetDataCoverageStatus

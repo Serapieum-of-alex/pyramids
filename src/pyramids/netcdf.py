@@ -158,8 +158,7 @@ class NetCDF(Dataset):
 
         No data value that marks the cells out of the domain
 
-        Notes
-        -----
+        Notes:
             - the setter does not change the values of the cells to the new no_data_value, it only changes the
             `no_data_value` attribute.
             - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
@@ -307,10 +306,9 @@ class NetCDF(Dataset):
     def is_subset(self) -> bool:
         """is_subset.
 
-        Returns
-        -------
-        bool
-            True if the dataset is a sub_dataset .
+        Returns:
+            bool
+                True if the dataset is a sub_dataset .
         """
         return self._is_subset
 
@@ -318,10 +316,9 @@ class NetCDF(Dataset):
     def is_md_array(self):
         """is_md_array.
 
-        Returns
-        -------
-        bool
-            True if the dataset is a multidimensional array.
+        Returns:
+            bool
+                True if the dataset is a multidimensional array.
         """
         return self._is_md_array
 
