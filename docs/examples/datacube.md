@@ -3,7 +3,7 @@
 - DataCube class is made to operate on multiple single files.
 - DataCube represents a stack of rasters that have the same dimensions (rows & columns).
 
-![DataCube logo](_images/datacube/logo.png)
+![DataCube logo](./../_images/datacube/logo.png)
 
 The datacube object has attributes and methods to help working with multiple raster files, or to repeat the same operation on multiple rasters.
 
@@ -15,7 +15,7 @@ from pyramids.dataset import Datacube
 
 - The detailed module attributes and methods are summarized in the following figure.
 
-![DataCube details](_images/datacube/detailed.png)
+![DataCube details](./../_images/datacube/detailed.png)
 
 ## Attributes
 
@@ -28,7 +28,7 @@ The DataCube object has the following attributes:
 5. shape: (time_length, rows, columns)
 6. files: files that have been read
 
-![Attributes](_images/datacube/attributes.png)
+![Attributes](./../_images/datacube/attributes.png)
 
 ## Methods
 

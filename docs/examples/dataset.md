@@ -23,11 +23,11 @@
 - The main purpose of the `Dataset` object is to deal with raster objects, single or multi-bands, has variables/subsets
     like netcdf file or has one variable like most GeoTIFF files.
   
-![dataset](_images/dataset/dataset.png)
+![dataset](./../_images/dataset/dataset.png)
 
 - The `Dataset` object data model is as following
 
-![dataset-alone](_images/schemes/dataset-alone.png)
+![dataset-alone](./../_images/schemes/dataset-alone.png)
 
 - To import the Dataset object
 
@@ -47,7 +47,7 @@ dataset = Dataset.read_file(path)
 dataset.plot(title="Rhine river basin", ticks_spacing=500,cmap="terrain", color_scale=1, vmin=0,
          cbar_label="Elevation (m)")
 ```
-![rhine_dem](_images/dataset/rhine_dem.png)
+![rhine_dem](./../_images/dataset/rhine_dem.png)
 
 
 - The `read_file` method detects the type of the input file from the extension at the end of the path.
@@ -78,7 +78,7 @@ dataset.plot(title="Rhine river basin", ticks_spacing=500,cmap="terrain", color_
 - The Dataset object has  the following attributes, which enables you to access all the stored data in you raster
     file (GeoTIFF/NetCDF/ASCII)
 
-![dataset-attributes](_images/schemes/dataset-attributes.png)
+![dataset-attributes](./../_images/schemes/dataset-attributes.png)
 
 ### raster
 
@@ -163,7 +163,7 @@ print(dataset.bounds)
 
 dataset.bounds.plot()
 ```
-![bounds](_images/dataset/bounds.png)
+![bounds](./../_images/dataset/bounds.png)
 
 
 ### bbox
@@ -323,7 +323,7 @@ band values  red green blue alpha
 
 ## Create Dataset object
 
-![](_images/schemes/create-object.png)
+![](./../_images/schemes/create-object.png)
 
 ### create_from_array
 
@@ -358,7 +358,7 @@ Map.plot(src, title="Flow Accumulation")
 
 ```
 
-![flow_accumulation](_images/dataset/flow_accumulation.png)
+![flow_accumulation](./../_images/dataset/flow_accumulation.png)
 
 ### dataset_like
 - `dataset_like` method creates a Geotiff raster like another input raster, new raster will have the same projection,
@@ -402,12 +402,12 @@ dst = gdal.Open(path)
 Map.plot(dst, title="Flow Accumulation", color_scale=1)
 ```
 
-![](_images/dataset/raster_like.png)
+![](./../_images/dataset/raster_like.png)
 
 
 ## Access data methods
 
-![access-data](_images/schemes/access-data.png)
+![access-data](./../_images/schemes/access-data.png)
 
 ### read_array
 ```python
@@ -529,7 +529,7 @@ print(stats)
 to write the dataset object to disk using any of the raster formats (GeoTIFF/NetCDF/ASCII), you can use the `to_file`
 method.
 
-![](_images/schemes/write-to-disk.png)
+![](./../_images/schemes/write-to-disk.png)
 
 ### to_file
 
@@ -586,14 +586,14 @@ dataset.to_file("examples/data/dem/dem5km_rhine.nc", driver="netcdf")
 
 ## Spatial properties
 
-![](_images/schemes/spatial-operation.png)
+![](./../_images/schemes/spatial-operation.png)
 
 ### convert_longitude
 - some files (especially netcdf files) uses longitude values from 0 degrees to 360 degrees, instead of the usual,
     GIS-standard, arrangement of -180 degrees to 180 degrees for longitude centered on the Prime Meridian, and -90 degrees
     to 90 degrees for latitude centered on the Equator. the `convert_longitude` method corrects such behavior.
 
-![](_images/dataset/0-360-longitude-withbase-map.png)
+![](./../_images/dataset/0-360-longitude-withbase-map.png)
 
 - read the raster files using the `read_file` and plot it with the `plot` method.
 
@@ -607,7 +607,7 @@ fig, ax = dataset.plot(
 ```
 - You cas see how the most left of the map lies the african continent instead of north and south america.
 
-![](_images/dataset/0-360-longitude.png)
+![](./../_images/dataset/0-360-longitude.png)
 
 - To correct the values of the longitude you can use the `convert_longitude` as follows.
 
@@ -620,7 +620,7 @@ new_dataset.plot(
     cbar_length=0.85
 )
 ```
-![](_images/dataset/negative-180-to-180-longitude.png)
+![](./../_images/dataset/negative-180-to-180-longitude.png)
 
 
 ### resample
@@ -659,7 +659,7 @@ Original Cell Size =4000.0
 New cell size is 100.0
 ```
 
-![](_images/dataset/resample.png)
+![](./../_images/dataset/resample.png)
 
 ### to_crs
 
@@ -748,7 +748,7 @@ Map.plot(
     ticks_spacing=0.01,
 )
 ```
-![](_images/dataset/before_cropping.png)
+![](./../_images/dataset/before_cropping.png)
 
 
 ```python
@@ -762,7 +762,7 @@ Map.plot(
     ticks_spacing=0.01,
 )
 ```
-![](_images/dataset/cropped_array.png)
+![](./../_images/dataset/cropped_array.png)
 
 #### Crop raster using another raster while preserving the alignment
 - cropping rasters may  change the alignment of the cells and to keep the alignment during cropping a raster we will
@@ -775,7 +775,7 @@ dst_cropped = Raster.cropAlligned(dst, src)
 Map.plot(dst_cropped, title="Cropped raster", color_scale=1, ticks_spacing=0.01)
 ```
 
-![](_images/dataset/cropped_aligned_raster.png)
+![](./../_images/dataset/cropped_aligned_raster.png)
 
 
 #### Crop raster using array
@@ -785,7 +785,7 @@ Map.plot(dst_cropped, title="Cropped raster", color_scale=1, ticks_spacing=0.01)
 dst_cropped = Raster.cropAlligned(dst, arr, mask_noval=nodataval)
 Map.plot(dst_cropped, title="Cropped array", color_scale=1, ticks_spacing=0.01)
 ```
-![](_images/dataset/crop_raster_using_array.png)
+![](./../_images/dataset/crop_raster_using_array.png)
 
 #### crop
 - `crop` method crops a raster using another raster/polygon.
@@ -817,7 +817,7 @@ Map.plot(RasterA, title="Raster to be cropped", color_scale=1, ticks_spacing=1)
 Raster EPSG = 32618
 Raster Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 ```
-![](_images/dataset/raster_tobe_cropped.png)
+![](./../_images/dataset/raster_tobe_cropped.png)
 
 
 - We will use the soil raster from the previous example as a mask so the projection is different between the raster
@@ -834,7 +834,7 @@ Map.plot(dst, title="Cropped Raster", color_scale=1, ticks_spacing=1)
 resulted EPSG = 32618
 resulted Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 ```
-![](_images/dataset/cropped_raster.png)
+![](./../_images/dataset/cropped_raster.png)
 
 
 ### align
@@ -866,7 +866,7 @@ Map.plot(soil_raster, title="To be aligned", color_scale=1, ticks_spacing=1)
 Before alignment EPSG = 3116
 Before alignment Geotransform = (830606.744300001, 30.0, 0.0, 1011325.7178760837, 0.0, -30.0)
 ```
-![](_images/dataset/soil_map.png)
+![](./../_images/dataset/soil_map.png)
 
 
 ```python
@@ -880,7 +880,7 @@ Map.plot(soil_aligned, title="After alignment", color_scale=1, ticks_spacing=1)
 After alignment EPSG = 32618
 After alignment Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
 ```
-![](_images/dataset/soil_map_aligned.png)
+![](./../_images/dataset/soil_map_aligned.png)
 
 
 
@@ -1016,7 +1016,7 @@ in case the dataset is a multi-band raster, you can specify the band index.
 
 ## Mathematical operations
 
-![](_images/schemes/math-operations.png)
+![](./../_images/schemes/math-operations.png)
 
 ### apply
 - `apply` executes a mathematical operation on raster array and returns the result
@@ -1052,7 +1052,7 @@ def classify(val):
     dst = Raster.mapAlgebra(src, classify)
     Map.plot(dst, title="Classes", color_scale=4, ticks_spacing=1)
 
-![](_images/dataset/map_algebra.png)
+![](./../_images/dataset/map_algebra.png)
 
 
 
@@ -1081,7 +1081,7 @@ Raster.rasterFill(src, value, save_to=path)
 dst = gdal.Open(path)
 Map.plot(dst, title="Flow Accumulation")
 ```
-![](_images/dataset/raster_fill.png)
+![](./../_images/dataset/raster_fill.png)
 
 ### nearestNeighbour
 
