@@ -226,7 +226,8 @@ class FeatureCollection:
             path (str): Path to save the vector data.
 
         Returns:
-            DataSource | None: Created OGR DataSource or None if inplace behavior applies elsewhere.
+            DataSource | None:
+                Created OGR DataSource or None if inplace behavior applies elsewhere.
         """
         driver = driver.lower()
         gdal_name = CATALOG.get_gdal_name(driver)
@@ -261,11 +262,13 @@ class FeatureCollection:
     def to_file(self, path: str, driver: str = "geojson"):
         """Save FeatureCollection to disk.
 
-        Currently saves OGR DataSource to disk.
+            Currently, saves OGR DataSource to disk.
 
         Args:
-            path (str): Path to save the vector.
-            driver (str): Driver type.
+            path (str):
+                Path to save the vector.
+            driver (str):
+                Driver type.
 
         Returns:
             None
@@ -282,11 +285,14 @@ class FeatureCollection:
         """Convert a GeoPandas GeoDataFrame into an OGR DataSource.
 
         Args:
-            inplace (bool): Convert the GeoDataFrame to DataSource in place. Default is False.
-            gdal_dataset (bool): True to convert the GeoDataFrame into a GDAL Dataset (the object created by reading the vector with gdal.OpenEx). Default is False.
+            inplace (bool):
+                Convert the GeoDataFrame to DataSource in place. Default is False.
+            gdal_dataset (bool):
+                True to convert the GeoDataFrame into a GDAL Dataset (the object created by reading the vector with gdal.OpenEx). Default is False.
 
         Returns:
-            DataSource | FeatureCollection | None: OGR DataSource, or a FeatureCollection wrapper if not inplace.
+            DataSource | FeatureCollection | None:
+                OGR DataSource, or a FeatureCollection wrapper if not inplace.
         """
         if isinstance(self.feature, GeoDataFrame):
             gdf_json = json.loads(self.feature.to_json())
@@ -409,12 +415,18 @@ class FeatureCollection:
             - raster and vector should have the same projection
 
         Args:
-            cell_size (int | None): Cell size for the new raster. Optional if dataset is provided. Default is None.
-            dataset (Dataset | None): Raster object to copy geotransform (projection, rows, columns, location) from. Optional if cell_size is provided. Default is None.
-            column_name (str | List[str] | None): Column name(s) in the vector to burn values from. If None, all columns are considered as bands. Default is None.
+            cell_size (int | None):
+                Cell size for the new raster. Optional if dataset is provided. Default is None.
+            dataset (Dataset | None):
+                Raster object to copy geotransform (projection, rows, columns, location) from. Optional if cell_size is
+                provided. Default is None.
+            column_name (str | List[str] | None):
+                Column name(s) in the vector to burn values from. If None, all columns are considered as bands.
+                Default is None.
 
         Returns:
-            Dataset: Single-band raster with vector geometries burned.
+            Dataset:
+                Single-band raster with vector geometries burned.
         """
         from pyramids.dataset import Dataset
 
@@ -509,10 +521,12 @@ class FeatureCollection:
         """Get EPSG for a given OGR DataSource.
 
         Args:
-            ds (DataSource): OGR datasource (vector file read by OGR).
+            ds (DataSource):
+                OGR datasource (vector file read by OGR).
 
         Returns:
-            int: EPSG number.
+            int:
+                EPSG number.
         """
         layer = ds.GetLayer(0)
         spatial_ref = layer.GetSpatialRef()
@@ -525,9 +539,17 @@ class FeatureCollection:
         """Create a spatial reference object from projection.
 
         Args:
-            prj (str): Projection string, e.g.,
-                >>> "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]"
-            string_type (str): Type of the string ["ESRI wkt", "WKT", "PROj4"].
+            prj (str):
+                Projection string, e.g.,
+                ```python
+                "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",
+                \"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],
+                UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],
+                AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]"
+
+                ```
+            string_type (str):
+                Type of the string ["ESRI wkt", "WKT", "PROj4"].
         """
         srs = osr.SpatialReference()
 
@@ -586,7 +608,8 @@ class FeatureCollection:
         """Get epsg for a given geodataframe.
 
         Args:
-            gdf (GeoDataFrame): Vector file read by geopandas.
+            gdf (GeoDataFrame):
+                Vector file read by geopandas.
 
         Returns:
             int: epsg number
@@ -619,8 +642,10 @@ class FeatureCollection:
            Used with LineString and Polygon geometries.
 
         Args:
-            geometry (LineString): The geometry of a shapefile.
-            coord_type (str): Either "x" or "y".
+            geometry (LineString):
+                The geometry of a shapefile.
+            coord_type (str):
+                Either "x" or "y".
 
         Returns:
             array: Contains x coordinates or y coordinates of all edges of the shapefile
@@ -641,11 +666,14 @@ class FeatureCollection:
         Returns coordinates of a Point object.
 
         Args:
-            geometry (Point): The geometry of a shapefile.
-            coord_type (str): Either "x" or "y".
+            geometry (Point):
+                The geometry of a shapefile.
+            coord_type (str):
+                Either "x" or "y".
 
         Returns:
-            float | int: The x or y coordinate of the Point according to coord_type.
+            float | int:
+                The x or y coordinate of the Point according to coord_type.
         """
         if coord_type == "x":
             coord = geometry.x
@@ -661,8 +689,10 @@ class FeatureCollection:
         """Get coordinates of a LineString object.
 
         Args:
-            geometry (LineString): The geometry of a shapefile.
-            coord_type (str): Either "x" or "y".
+            geometry (LineString):
+                The geometry of a shapefile.
+            coord_type (str):
+                Either "x" or "y".
 
         Returns:
             list: Contains x or y coordinates of all edges of the shapefile.
@@ -674,11 +704,14 @@ class FeatureCollection:
         """Get coordinates of a Polygon's exterior.
 
         Args:
-            geometry (Polygon): The geometry of a shapefile.
-            coord_type (str): Either "x" or "y".
+            geometry (Polygon):
+                The geometry of a shapefile.
+            coord_type (str):
+                Either "x" or "y".
 
         Returns:
-            list: Contains x or y coordinates of all edges of the shapefile.
+            list:
+                Contains x or y coordinates of all edges of the shapefile.
         """
         # convert the polygon into lines
         ext = geometry.exterior  # type = LinearRing
@@ -690,10 +723,12 @@ class FeatureCollection:
         """Explode a MultiPolygon into its Polygon parts.
 
         Args:
-            multi_polygon (MultiPolygon): A MultiPolygon geometry.
+            multi_polygon (MultiPolygon):
+                A MultiPolygon geometry.
 
         Returns:
-            list: List of Polygon geometries.
+            list:
+                List of Polygon geometries.
         """
         # outdf = gpd.GeoDataFrame()
         # multdf = gpd.GeoDataFrame()
@@ -711,11 +746,14 @@ class FeatureCollection:
         Explodes MultiPolygon (or specified multi-geometry) into separate geometries per row.
 
         Args:
-            gdf (GeoDataFrame): GeoDataFrame to explode.
-            geometry (str): The multi-geometry type to explode. Default is "multipolygon".
+            gdf (GeoDataFrame):
+                GeoDataFrame to explode.
+            geometry (str):
+                The multi-geometry type to explode. Default is "multipolygon".
 
         Returns:
-            GeoDataFrame: A new GeoDataFrame with exploded geometries.
+            GeoDataFrame:
+                A new GeoDataFrame with exploded geometries.
         """
         # explode the multi_polygon into polygon
         new_gdf = gpd.GeoDataFrame()
@@ -750,12 +788,16 @@ class FeatureCollection:
         """Handle multi-geometries by merging coordinates.
 
         Function for handling multi-geometries (MultiPoint, MultiLineString, MultiPolygon).
-        Returns a list of coordinates where all parts are merged into a single list; individual geometries are separated with np.nan.
+        Returns a list of coordinates where all parts are merged into a single list; individual geometries are
+        separated with np.nan.
 
         Args:
-            multi_geometry (MultiPolygon | MultiPoint | MultiLineString): The geometry of a shapefile.
-            coord_type (str): Either "x" or "y".
-            geom_type (str): "MultiPoint" or "MultiLineString" or "MultiPolygon".
+            multi_geometry (MultiPolygon | MultiPoint | MultiLineString):
+                The geometry of a shapefile.
+            coord_type (str):
+                Either "x" or "y".
+            geom_type (str):
+                "MultiPoint" or "MultiLineString" or "MultiPolygon".
 
         Returns:
             list: Contains x or y coordinates of all edges of the shapefile.
@@ -782,15 +824,20 @@ class FeatureCollection:
     def _get_coords(row, geom_col: str, coord_type: str):
         """Get coordinates ('x' or 'y') of a geometry row.
 
-        Returns coordinates for Point, LineString, or Polygon as a list. Can also handle Multi geometries (not MultiPolygon) appropriately.
+        Returns coordinates for Point, LineString, or Polygon as a list. Can also handle Multi geometries
+        (not MultiPolygon) appropriately.
 
         Args:
-            row (pd.Series): A whole row of the GeoDataFrame.
-            geom_col (str): Name of the column where the geometry is stored in the dataframe.
-            coord_type (str): "x" or "y" to choose which coordinate to get.
+            row (pd.Series):
+                A whole row of the GeoDataFrame.
+            geom_col (str):
+                Name of the column where the geometry is stored in the dataframe.
+            coord_type (str):
+                "x" or "y" to choose which coordinate to get.
 
         Returns:
-            list | int: Coordinates or -9999 for multipolygon to mark for removal.
+            list | int:
+                Coordinates or -9999 for multipolygon to mark for removal.
         """
         # get geometry object
         geom = row[geom_col]
@@ -844,11 +891,14 @@ class FeatureCollection:
         """Create a polygon geometry from coordinates.
 
         Args:
-            coords (List[Tuple[float, float]]): List of (x, y) tuples.
-            wkt (bool): True to return Well-Known Text (WKT) string; False to return a Shapely Polygon object.
+            coords (List[Tuple[float, float]]):
+                List of (x, y) tuples.
+            wkt (bool):
+                True to return Well-Known Text (WKT) string; False to return a Shapely Polygon object.
 
         Returns:
-            str | Polygon: WKT string if wkt is True; otherwise a Shapely Polygon object.
+            str | Polygon:
+                WKT string if wkt is True; otherwise a Shapely Polygon object.
 
         Examples:
             - Create a WKT polygon from coordinates and print it:
@@ -882,11 +932,14 @@ class FeatureCollection:
         """Create Shapely Point objects from coordinate tuples.
 
         Args:
-            coords (Iterable[Tuple[float]]): List of tuples [(x1, y1), (x2, y2)] or [(lon1, lat1), (lon2, lat1)].
-            epsg (int): EPSG number for coordinates. If provided, returns a GeoDataFrame wrapped as FeatureCollection.
+            coords (Iterable[Tuple[float]]):
+                List of tuples [(x1, y1), (x2, y2)] or [(lon1, lat1), (lon2, lat1)].
+            epsg (int):
+                EPSG number for coordinates. If provided, returns a GeoDataFrame wrapped as FeatureCollection.
 
         Returns:
-            list | FeatureCollection: List of Shapely Point objects, or FeatureCollection if epsg is provided.
+            list | FeatureCollection:
+                List of Shapely Point objects, or FeatureCollection if epsg is provided.
 
         Examples:
             - Create points and assign to a GeoDataFrame:
@@ -911,11 +964,14 @@ class FeatureCollection:
         """Concatenate two shapefiles into one object.
 
         Args:
-            gdf (GeoDataFrame): GeoDataFrame containing the geometries to combine.
-            inplace (bool): If True, modifies the current object in place. Default is False.
+            gdf (GeoDataFrame):
+                GeoDataFrame containing the geometries to combine.
+            inplace (bool):
+                If True, modifies the current object in place. Default is False.
 
         Returns:
-            GeoDataFrame | None: New combined GeoDataFrame, or None if inplace is True.
+            GeoDataFrame | None:
+                New combined GeoDataFrame, or None if inplace is True.
 
         Examples:
             - Concatenate two GeoDataFrames:
@@ -983,14 +1039,20 @@ class FeatureCollection:
         This function changes the projection of coordinates from one coordinate system to another (default: from GCS to Web Mercator as used by Google Maps).
 
         Args:
-            lat (list): List of latitudes of the points.
-            lon (list): List of longitudes of the points.
-            from_epsg (int): Reference number of the source projection (https://epsg.io/).
-            to_epsg (int): Reference number of the target projection (https://epsg.io/).
-            precision (int): Number of decimal places.
+            lat (list):
+                List of latitudes of the points.
+            lon (list):
+                List of longitudes of the points.
+            from_epsg (int):
+                Reference number of the source projection (https://epsg.io/).
+            to_epsg (int):
+                Reference number of the target projection (https://epsg.io/).
+            precision (int):
+                Number of decimal places.
 
         Returns:
-            tuple[list, list]: y coordinates list, x coordinates list of the points.
+            tuple[list, list]:
+                y coordinates list, x coordinates list of the points.
 
         Examples:
             - From Web Mercator to GCS WGS84:
@@ -1028,16 +1090,22 @@ class FeatureCollection:
     ):
         """reproject_points.
 
-        This function changes the projection of the coordinates from one coordinate system to another (default: from GCS to Web Mercator used by Google Maps).
+        This function changes the projection of the coordinates from one coordinate system to another
+        (default: from GCS to Web Mercator used by Google Maps).
 
         Args:
-            lat (list): List of latitudes of the points.
-            lng (list): List of longitudes of the points.
-            from_epsg (int): EPSG code of the source projection (https://epsg.io/).
-            to_epsg (int): EPSG code of the target projection (https://epsg.io/).
+            lat (list):
+                List of latitudes of the points.
+            lng (list):
+                List of longitudes of the points.
+            from_epsg (int):
+                EPSG code of the source projection (https://epsg.io/).
+            to_epsg (int):
+                EPSG code of the target projection (https://epsg.io/).
 
         Returns:
-            tuple[list, list]: x coordinates list, y coordinates list of the points.
+            tuple[list, list]:
+                x coordinates list, y coordinates list of the points.
 
         Examples:
             - From Web Mercator to GCS WGS84:

@@ -196,12 +196,16 @@ class NetCDF(Dataset):
         """read_file.
 
         Args:
-            path (str): Path of file to open.
-            read_only (bool): File mode. Set to False to open in "update" mode. Defaults to True.
-            open_as_multi_dimensional (bool): Open as multi-dimensional dataset. Defaults to False.
+            path (str):
+                Path of file to open.
+            read_only (bool):
+                File mode. Set to False to open in "update" mode. Defaults to True.
+            open_as_multi_dimensional (bool):
+                Open as multi-dimensional dataset. Defaults to False.
 
         Returns:
-            NetCDF: Opened NetCDF dataset.
+            NetCDF:
+                Opened NetCDF dataset.
         """
         src = _io.read_file(path, read_only, open_as_multi_dimensional)
         return cls(src)
@@ -232,10 +236,12 @@ class NetCDF(Dataset):
         Read a variable from the dataset.
 
         Args:
-            var (str): Variable name in the dataset.
+            var (str):
+                Variable name in the dataset.
 
         Returns:
-            gdal.Dataset | None: If the variable exists, returns a GDAL dataset; otherwise, None.
+            gdal.Dataset | None:
+                If the variable exists, returns a GDAL dataset; otherwise, None.
         """
         try:
             var_ds = gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
@@ -277,10 +283,12 @@ class NetCDF(Dataset):
         """get_variables.
 
         Args:
-            read_only (bool): Open variables in read-only mode. Defaults to True.
+            read_only (bool):
+                Open variables in read-only mode. Defaults to True.
 
         Returns:
-            Dict[str, NetCDF]: Dictionary of the NetCDF variables.
+            Dict[str, NetCDF]:
+                Dictionary of the NetCDF variables.
         """
         variables = {}
         prefix = self.driver_type.upper()
@@ -308,7 +316,7 @@ class NetCDF(Dataset):
 
         Returns:
             bool
-                True if the dataset is a sub_dataset .
+                True if the dataset is a sub_dataset.
         """
         return self._is_subset
 
@@ -333,13 +341,18 @@ class NetCDF(Dataset):
         If the dimension name is bands or time, the dimension type will be temporal.
 
         Args:
-            group (gdal.Group): Dataset group.
-            dim_name (str): Dimension name.
-            dtype (int): Data type of the dimension.
-            values (np.ndarray): Values of the dimension.
+            group (gdal.Group):
+                Dataset group.
+            dim_name (str):
+                Dimension name.
+            dtype (int):
+                Data type of the dimension.
+            values (np.ndarray):
+                Values of the dimension.
 
         Returns:
-            gdal.Dimension: The created dimension.
+            gdal.Dimension:
+                The created dimension.
         """
         if dim_name in ["y", "lat", "latitude"]:
             dim_type = gdal.DIM_TYPE_HORIZONTAL_Y
@@ -372,17 +385,26 @@ class NetCDF(Dataset):
             - Create_from_array method creates a `Dataset` from a given array and geotransform data.
 
         Args:
-            arr (np.ndarray): Numpy array.
-            geo (Tuple[float, float, float, float, float, float]): Geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
-            bands_values (List | None): Names of the bands to be used in the netcdf file. Default is None.
-            epsg (int | str): EPSG code (https://epsg.io/). Default 3857 (WGS84 Web Mercator).
-            no_data_value (Any | list): No data value to mask cells out of the domain. Default is -9999.
-            driver_type (str): Driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM".
-            path (str | None): Path to save the driver.
-            variable_name (str | None): Name of the variable in the netcdf file. Default is None.
+            arr (np.ndarray):
+                Numpy array.
+            geo (Tuple[float, float, float, float, float, float]):
+                Geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
+            bands_values (List | None):
+                Names of the bands to be used in the netcdf file. Default is None.
+            epsg (int | str):
+                EPSG code (https://epsg.io/). Default 3857 (WGS84 Web Mercator).
+            no_data_value (Any | list):
+                No data value to mask cells out of the domain. Default is -9999.
+            driver_type (str):
+                Driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM".
+            path (str | None):
+                Path to save the driver.
+            variable_name (str | None):
+                Name of the variable in the netcdf file. Default is None.
 
         Returns:
-            Dataset: Dataset object.
+            Dataset:
+                Dataset object.
         """
         if arr.ndim == 2:
             bands = 1
@@ -429,20 +451,32 @@ class NetCDF(Dataset):
         """_create_netcdf_from_array.
 
         Args:
-            arr (np.ndarray): Numpy array.
-            variable_name (str): Variable name in the netcdf file.
-            cols (int): Number of columns in the array.
-            rows (int): Number of rows in the array.
-            bands (int | None): Number of bands; for 3D arrays bands is the first dimension.
-            bands_values (List | None): Names of the bands to be used in the netcdf file. Default is None.
-            geo (Tuple[float, float, float, float, float, float] | None): Geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
-            epsg (int | str | None): EPSG code (https://epsg.io/). Default 3857 (WGS84 Web Mercator).
-            no_data_value (Any | list): No data value to mask cells out of the domain. Default is -9999.
-            driver_type (str): Driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM".
-            path (str | None): Path to save the driver.
+            arr (np.ndarray):
+                Numpy array.
+            variable_name (str):
+                Variable name in the netcdf file.
+            cols (int):
+                Number of columns in the array.
+            rows (int):
+                Number of rows in the array.
+            bands (int | None):
+                Number of bands; for 3D arrays bands is the first dimension.
+            bands_values (List | None):
+                Names of the bands to be used in the netcdf file. Default is None.
+            geo (Tuple[float, float, float, float, float, float] | None):
+                Geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
+            epsg (int | str | None):
+                EPSG code (https://epsg.io/). Default 3857 (WGS84 Web Mercator).
+            no_data_value (Any | list):
+                No data value to mask cells out of the domain. Default is -9999.
+            driver_type (str):
+                Driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM".
+            path (str | None):
+                Path to save the driver.
 
         Returns:
-            gdal.Dataset: The created NetCDF GDAL dataset.
+            gdal.Dataset:
+                The created NetCDF GDAL dataset.
         """
         if variable_name is None:
             raise ValueError("Variable_name can not be None")
@@ -492,15 +526,17 @@ class NetCDF(Dataset):
         """add_variable.
 
         Args:
-            dataset (Dataset): Dataset to add to the current dataset.
-            variable_name (str | None): Variable name in the netcdf file. If not given, all variables in the given dataset will be added. Default is None.
+            dataset (Dataset):
+                Dataset to add to the current dataset.
+            variable_name (str | None):
+                Variable name in the netcdf file. If not given, all variables in the given dataset will be added. Default is None.
 
         Examples:
             - Add a variable from another dataset:
 
               ```python
               >>> dataset_1 = Dataset.read_file(
-              >>>         "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
+              >>>   "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
               >>> )
               >>> dataset_2 = Dataset.read_file("tests/data/netcdf/noah-precipitation-1979.nc")
               >>> dataset_1.add_variable(dataset_2, "temperature")
@@ -524,10 +560,12 @@ class NetCDF(Dataset):
         """remove_variable.
 
         Args:
-            variable_name (str): Variable name.
+            variable_name (str):
+                Variable name.
 
         Returns:
-            None: The internal dataset is updated in memory. Even if the original dataset was saved on disk, this updates the in-memory copy.
+            None:
+                The internal dataset is updated in memory. Even if the original dataset was saved on disk, this updates the in-memory copy.
 
         Notes:
             The method will not remove the variable from the disk if the dataset is saved on disk. Rather, the method will

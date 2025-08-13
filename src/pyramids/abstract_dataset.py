@@ -419,17 +419,26 @@ class AbstractDataset(ABC):
             - Create_from_array method creates a `Dataset` from a given array and geotransform data.
 
         Args:
-            arr (np.ndarray): Numpy array.
-            geo (Tuple[float, float, float, float, float, float]): Geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
-            bands_values (List, optional): Name of the bands to be used in the netcdf file. Default is None.
-            epsg (int | str, optional): Integer reference number to the new projection (https://epsg.io/) (default 3857 the reference no of WGS84 web mercator). Default is 4326.
-            no_data_value (Any, optional): No data value to mask the cells out of the domain. The default is -9999.
-            driver_type (str, optional): Driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM".
-            path (str, optional): Path to save the driver.
-            variable_name (str, optional): Name of the variable in the netcdf file. Default is None.
+            arr (np.ndarray):
+                Numpy array.
+            geo (Tuple[float, float, float, float, float, float]):
+                Geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
+            bands_values (List, optional):
+                Name of the bands to be used in the netcdf file. Default is None.
+            epsg (int | str, optional):
+                Integer reference number to the new projection (https://epsg.io/) (default 3857 the reference no of WGS84 web mercator). Default is 4326.
+            no_data_value (Any, optional):
+                No data value to mask the cells out of the domain. The default is -9999.
+            driver_type (str, optional):
+                Driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM".
+            path (str, optional):
+                Path to save the driver.
+            variable_name (str, optional):
+                Name of the variable in the netcdf file. Default is None.
 
         Returns:
-            AbstractDataset: Dataset object.
+            AbstractDataset:
+                Dataset object.
         """
         pass
 
@@ -446,10 +455,14 @@ class AbstractDataset(ABC):
 
         Args:
             crs (str): Optional if epsg is specified. WKT string.
+                ```python
                 i.e. 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"],
                 AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",
-                0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
-            epsg (int): Optional if crs is specified. EPSG code specifying the projection.
+                0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],
+                AUTHORITY["EPSG","4326"]]'
+                ```
+            epsg (int):
+                Optional if crs is specified. EPSG code specifying the projection.
         """
         # first change the projection of the gdal dataset object
         # second change the epsg attribute of the Dataset object
@@ -480,13 +493,18 @@ class AbstractDataset(ABC):
         (default the WGS84 web mercator projection, without resampling)
 
         Args:
-            to_epsg (int): Reference number to the new projection (https://epsg.io/) (default 3857 the reference no of WGS84 web mercator).
-            method (str): Resampling technique. See https://gisgeography.com/raster-resampling/. Options include "nearest neighbor", "cubic", and "bilinear". Default is "nearest neighbor".
-            maintain_alignment (bool): True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
-            inplace (bool): True to make changes inplace. Default is False.
+            to_epsg (int):
+                Reference number to the new projection (https://epsg.io/) (default 3857 the reference no of WGS84 web mercator).
+            method (str):
+                Resampling technique. See https://gisgeography.com/raster-resampling/. Options include "nearest neighbor", "cubic", and "bilinear". Default is "nearest neighbor".
+            maintain_alignment (bool):
+                True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
+            inplace (bool):
+                True to make changes inplace. Default is False.
 
         Returns:
-            Dataset | None: Dataset object, if inplace is True, the method returns None.
+            Dataset | None:
+                Dataset object, if inplace is True, the method returns None.
 
         Examples:
             - Reproject a dataset to EPSG:3857:
