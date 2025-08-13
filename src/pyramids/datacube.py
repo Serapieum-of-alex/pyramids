@@ -400,7 +400,8 @@ class Datacube:
             - Access dataset array using index.
 
         Args:
-            i (int): Index of the dataset to access.
+            i (int):
+                Index of the dataset to access.
 
         Returns:
             Dataset: Dataset object.
@@ -418,40 +419,68 @@ class Datacube:
             - read the values stored in a given band.
 
         Args:
-            band (int): The band you want to get its data. Default is 0.
-            exclude_value (Any): Value to exclude from the plot. Default is None.
-            **kwargs: Additional plotting options.
-                points (array): 3-column array with the first column as the value to display for the point, the second is the row index of the point in the array, and the third column is the column index in the array. The second and third columns indicate the location of the point in the array.
-                point_color (str): Color of the points.
-                point_size (Any): Size of the points.
-                pid_color (str): Color of the annotation of the point. Default is blue.
-                pid_size (Any): Size of the point annotation.
-                figsize (tuple, optional): Figure size. The default is (8, 8).
-                title (str, optional): Title of the plot. The default is 'Total Discharge'.
-                title_size (int, optional): Title size. The default is 15.
-                orientation (str, optional): Orientation of the color bar horizontal/vertical. The default is 'vertical'.
-                rotation (number, optional): Rotation of the color bar label. The default is -90.
-                cbar_length (float, optional): Ratio to control the height of the color bar. The default is 0.75.
-                ticks_spacing (int, optional): Spacing in the color bar ticks. The default is 2.
-                cbar_label_size (int, optional): Size of the color bar label. The default is 12.
-                cbar_label (str, optional): Label of the color bar. The default is 'Discharge m3/s'.
-                color_scale (int, optional): One of 1..5 to change the scale of the colors. Default is 1.
+            band (int):
+                The band you want to get its data. Default is 0.
+            exclude_value (Any):
+                Value to exclude from the plot. Default is None.
+            **kwargs:
+                Additional plotting options.
+                points (array):
+                    3-column array with the first column as the value to display for the point, the second is the row index of the point in the array, and the third column is the column index in the array. The second and third columns indicate the location of the point in the array.
+                point_color (str):
+                    Color of the points.
+                point_size (Any):
+                    Size of the points.
+                pid_color (str):
+                    Color of the annotation of the point. Default is blue.
+                pid_size (Any):
+                    Size of the point annotation.
+                figsize (tuple, optional):
+                    Figure size. The default is (8, 8).
+                title (str, optional):
+                    Title of the plot. The default is 'Total Discharge'.
+                title_size (int, optional):
+                    Title size. The default is 15.
+                orientation (str, optional):
+                    Orientation of the color bar horizontal/vertical. The default is 'vertical'.
+                rotation (number, optional):
+                    Rotation of the color bar label. The default is -90.
+                cbar_length (float, optional):
+                    Ratio to control the height of the color bar. The default is 0.75.
+                ticks_spacing (int, optional):
+                    Spacing in the color bar ticks. The default is 2.
+                cbar_label_size (int, optional):
+                    Size of the color bar label. The default is 12.
+                cbar_label (str, optional):
+                    Label of the color bar. The default is 'Discharge m3/s'.
+                color_scale (int, optional):
+                    One of 1..5 to change the scale of the colors. Default is 1.
                     1- color_scale 1 is the normal scale
                     2- color_scale 2 is the power scale
                     3- color_scale 3 is the SymLogNorm scale
                     4- color_scale 4 is the PowerNorm scale
                     5- color_scale 5 is the BoundaryNorm scale
                     ------------------------------------------------------------------
-                    gamma (float, optional): Value needed for option 2. The default is 1./2..
-                    line_threshold (float, optional): Value needed for option 3. The default is 0.0001.
-                    line_scale (float, optional): Value needed for option 3. The default is 0.001.
-                    bounds (List): A list of numbers to be used as discrete bounds for the color scale 4. Default is None.
-                    midpoint (float, optional): Value needed for option 5. The default is 0.
+                    gamma (float, optional):
+                        Value needed for option 2. The default is 1./2..
+                    line_threshold (float, optional):
+                        Value needed for option 3. The default is 0.0001.
+                    line_scale (float, optional):
+                        Value needed for option 3. The default is 0.001.
+                    bounds (List):
+                        A list of numbers to be used as discrete bounds for the color scale 4. Default is None.
+                    midpoint (float, optional):
+                        Value needed for option 5. The default is 0.
                     ------------------------------------------------------------------
-                cmap (str, optional): Color style. The default is 'coolwarm_r'.
-                display_cell_value (bool): True to display the values of the cells as text.
-                num_size (int, optional): Size of the numbers plotted on top of each cell. The default is 8.
-                background_color_threshold (float|int, optional): Threshold value; if the value of the cell is greater, the plotted numbers will be black and if smaller the plotted number will be white. If None, maxvalue/2 will be considered. Default is None.
+                cmap (str, optional):
+                    Color style. The default is 'coolwarm_r'.
+                display_cell_value (bool):
+                    True to display the values of the cells as text.
+                num_size (int, optional):
+                    Size of the numbers plotted on top of each cell. The default is 8.
+                background_color_threshold (float|int, optional):
+                    Threshold value; if the value of the cell is greater, the plotted numbers will be black and if
+                    smaller the plotted number will be white. If None, maxvalue/2 will be considered. Default is None.
 
         Returns:
             axes: The axes of the matplotlib figure.
@@ -484,10 +513,12 @@ class Datacube:
             saveRaster saves a raster to a path
 
         Args:
-            path (Union[str, List[str]]): a path includng the name of the raster and extention.
-                >>> path = "data/cropped.tif"
-            driver (str): driver = "geotiff".
-            band (int): band index, needed only in case of ascii drivers. Default is 1.
+            path (Union[str, List[str]]):
+                a path includng the name of the raster and extention.
+            driver (str):
+                driver = "geotiff".
+            band (int):
+                band index, needed only in case of ascii drivers. Default is 1.
 
         Examples:
             - Save to a file:
@@ -529,9 +560,15 @@ class Datacube:
             without resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
         Args:
-            to_epsg (int): Reference number to the new projection (https://epsg.io/) (default 3857 the reference no of WGS84 web mercator).
-            method (str): Resampling technique. Default is "Nearest". See https://gisgeography.com/raster-resampling/. "Nearest" for nearest neighbor, "cubic" for cubic convolution, "bilinear" for bilinear.
-            maintain_alignment (bool): True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
+            to_epsg (int):
+                Reference number to the new projection (https://epsg.io/)
+                (default 3857 the reference no of WGS84 web mercator).
+            method (str):
+                Resampling technique. Default is "Nearest". See https://gisgeography.com/raster-resampling/.
+                "Nearest" for nearest neighbor, "cubic" for cubic convolution, "bilinear" for bilinear.
+            maintain_alignment (bool):
+                True to maintain the number of rows and columns of the raster the same after reprojection.
+                Default is False.
 
         Returns:
             raster: gdal dataset (you can read it by ReadAsArray)
@@ -573,17 +610,26 @@ class Datacube:
     def crop(
         self, mask: Union[Dataset, str], inplace: bool = False, touch: bool = True
     ) -> Union[None, Dataset]:
-        """cropAlignedFolder.
+        """crop.
 
-            cropAlignedFolder matches the location of nodata value from src raster to dst raster. Mask is where the NoDatavalue will be taken and the location of this value. src_dir is path to the folder where rasters exist where we need to put the NoDataValue of the mask in RasterB at the same locations.
+            crop matches the location of nodata value from src raster to dst raster. Mask is where the NoDatavalue will
+            be taken and the location of this value. src_dir is path to the folder where rasters exist where we need to
+            put the NoDataValue of the mask in RasterB at the same locations.
 
         Args:
-            mask (Dataset): Dataset object of the mask raster to crop the rasters (to get the NoData value and its location in the array). Mask should include the name of the raster and the extension like "data/dem.tif", or you can read the mask raster using gdal and use it as the first parameter to the function.
-            inplace (bool): True to make the changes in place.
-            touch (bool): Include the cells that touch the polygon, not only those that lie entirely inside the polygon mask. Default is True.
+            mask (Dataset):
+                Dataset object of the mask raster to crop the rasters (to get the NoData value and its location in the
+                array). Mask should include the name of the raster and the extension like "data/dem.tif", or you can
+                read the mask raster using gdal and use it as the first parameter to the function.
+            inplace (bool):
+                True to make the changes in place.
+            touch (bool):
+                Include the cells that touch the polygon, not only those that lie entirely inside the polygon mask.
+                Default is True.
 
         Returns:
-            Union[None, "Datacube"]: New rasters have the values from rasters in B_input_path with the NoDataValue in the same locations as raster A.
+            Union[None, "Datacube"]: New rasters have the values from rasters in B_input_path with the NoDataValue in
+            the same locations as raster A.
 
         Examples:
             - Crop aligned rasters using a DEM mask:
@@ -758,16 +804,17 @@ class Datacube:
     def align(self, alignment_src: Dataset):
         """matchDataAlignment.
 
-        This function matches the coordinate system and the number of rows and columns
-        between two rasters. Raster A is the source of the coordinate system, number of rows,
-        number of columns, and cell size. The result will be a raster with the same structure
-        as Raster A but with values from Raster B using nearest neighbor interpolation.
+        This function matches the coordinate system and the number of rows and columns between two rasters. Raster A
+        is the source of the coordinate system, number of rows, number of columns, and cell size. The result will be
+        a raster with the same structure as Raster A but with values from Raster B using nearest neighbor interpolation.
 
         Args:
-            alignment_src (Dataset): Dataset to use as the spatial template (CRS, rows, columns).
+            alignment_src (Dataset):
+                Dataset to use as the spatial template (CRS, rows, columns).
 
         Returns:
-            None: Updates the datacube values in place to match the alignment of alignment_src.
+            None:
+                Updates the datacube values in place to match the alignment of alignment_src.
 
         Examples:
             - Align all rasters in the datacube to a DEM raster:
@@ -815,13 +862,18 @@ class Datacube:
             Merges a group of rasters into one raster.
 
         Args:
-            src (List[str]): List of paths to all input rasters.
-            dst (str): Path to the output raster.
-            no_data_value (float | int | str): Assign a specified nodata value to output bands.
-            init (float | int | str): Pre-initialize the output image bands with these values. However, it is not
+            src (List[str]):
+                List of paths to all input rasters.
+            dst (str):
+                Path to the output raster.
+            no_data_value (float | int | str):
+                Assign a specified nodata value to output bands.
+            init (float | int | str):
+                Pre-initialize the output image bands with these values. However, it is not
                 marked as the nodata value in the output file. If only one value is given, the same value is used
                 in all the bands.
-            n (float | int | str): Ignore pixels from files being merged in with this pixel value.
+            n (float | int | str):
+                Ignore pixels from files being merged in with this pixel value.
 
         Returns:
             None
@@ -854,9 +906,10 @@ class Datacube:
         Apply a function on each raster in the datacube.
 
         Args:
-            ufunc (Callable): Callable universal function (builtin or user defined). See
+            ufunc (Callable):
+                Callable universal function (builtin or user defined). See
                 https://numpy.org/doc/stable/reference/ufuncs.html
-                - To create a ufunc from a normal function: https://numpy.org/doc/stable/reference/generated/numpy.frompyfunc.html
+                To create a ufunc from a normal function: https://numpy.org/doc/stable/reference/generated/numpy.frompyfunc.html
 
         Returns:
             None
@@ -889,12 +942,15 @@ class Datacube:
         """Overlay.
 
         Args:
-            classes_map (Dataset): Dataset object for the raster that has classes to overlay with.
-            exclude_value (float | int, optional): Values to exclude from extracted values. Defaults to None.
+            classes_map (Dataset):
+                Dataset object for the raster that has classes to overlay with.
+            exclude_value (float | int, optional):
+                Values to exclude from extracted values. Defaults to None.
 
         Returns:
-            Dict[List[float], List[float]]: Dictionary with a list of values in the basemap as keys and for each key
-                a list of all the intersected values in the maps from the path.
+            Dict[List[float], List[float]]:
+                Dictionary with a list of values in the basemap as keys and for each key a list of all the
+                intersected values in the maps from the path.
         """
         values = {}
         for i in range(self.time_length):
