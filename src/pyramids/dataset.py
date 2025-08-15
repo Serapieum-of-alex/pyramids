@@ -4933,7 +4933,7 @@ class Dataset(AbstractDataset):
 
         Args:
             size (int):
-                Size of the window in pixels. One value required which is used for both the x and y size. e.g., 256
+                Size of the window in pixels. One value is required which is used for both the x and y size. e.g., 256
                 means a 256x256 window. Default is 256.
 
         Yields:
@@ -5000,7 +5000,7 @@ class Dataset(AbstractDataset):
               ```
         """
         for xoff, yoff, xsize, ysize in self._window(size=size):
-            # read the array at a certain indices
+            # read the array at certain indices
             yield self.raster.ReadAsArray(
                 xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize
             )

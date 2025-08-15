@@ -414,7 +414,7 @@ class Datacube:
         return Dataset(dst)
 
     def plot(self, band: int = 0, exclude_value: Any = None, **kwargs: Any) -> "ArrayGlyph":
-        """Read Array.
+        r"""Read Array.
 
             - read the values stored in a given band.
 
