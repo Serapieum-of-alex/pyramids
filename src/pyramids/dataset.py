@@ -4938,7 +4938,7 @@ class Dataset(AbstractDataset):
 
         Yields:
             np.ndarray:
-                Dataset array in form [band][y][x].
+                Dataset array with a shape `[band, y, x]`.
 
         Examples:
             - First, we will create a dataset with 3 rows and 5 columns.
