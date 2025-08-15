@@ -2,6 +2,6 @@
   {
     "version": "develop",
     "title": "develop",
-    "aliases": []
+    "aliases": ["latest"]
   }
 ]
