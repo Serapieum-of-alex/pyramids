@@ -45,26 +45,14 @@ gdal.UseExceptions()
 class FeatureCollection:
     """FeatureCollection.
 
-    FeatureCollection class contains different methods to deal with shapefiles
-
-    Methods:
-        1- GetXYCoords
-        2- GetPointCoords
-        3- GetLineCoords
-        4- GetPolyCoords
-        5- Explode
-        6- MultiGeomHandler
-        7- GetCoords
-        8- XY
-        9- CreatePolygon
-        10- CreatePoint
-        11- CombineGeometrics
-        12- GCSDistance
-        13- ReprojectPoints
-        14- ReprojectPoints_2
-        15- AddSpatialReference
-        16- PolygonCenterPoint
-        17- WriteShapefile
+    Utilities for working with vector datasets (GeoDataFrames/OGR DataSources), such as:
+    - Reading/writing files
+    - Converting between GeoDataFrame and OGR DataSource
+    - Creating simple geometries (points, polygons)
+    - Exploding multi-geometries, extracting coordinates
+    - Rasterization to a Dataset
+    - Reprojecting point coordinates
+    - Computing center points
     """
 
     def __init__(self, gdf: Union[GeoDataFrame, DataSource]):
@@ -201,7 +189,7 @@ class FeatureCollection:
         return dtypes
 
     @classmethod
-    def read_file(cls, path: str):
+    def read_file(cls, path: str) -> "FeatureCollection":
         """Open a vector dataset using OGR or GeoPandas.
 
         Args:
@@ -259,7 +247,7 @@ class FeatureCollection:
         """
         return ogr.GetDriverByName("Memory").CopyDataSource(ds, name)
 
-    def to_file(self, path: str, driver: str = "geojson"):
+    def to_file(self, path: str, driver: str = "geojson") -> None:
         """Save FeatureCollection to disk.
 
             Currently, saves OGR DataSource to disk.
@@ -281,7 +269,7 @@ class FeatureCollection:
 
     def _gdf_to_ds(
         self, inplace: bool = False, gdal_dataset=False
-    ) -> Union[DataSource, None]:
+    ) -> Union[DataSource, "FeatureCollection", None]:
         """Convert a GeoPandas GeoDataFrame into an OGR DataSource.
 
         Args:
@@ -407,7 +395,7 @@ class FeatureCollection:
         cell_size: Any = None,
         dataset=None,
         column_name: Union[str, List[str]] = None,
-    ):
+    ) -> "Dataset":
         """Covert a vector into raster.
 
             - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
@@ -960,7 +948,7 @@ class FeatureCollection:
 
         return points
 
-    def concate(self, gdf: GeoDataFrame, inplace: bool = False):
+    def concate(self, gdf: GeoDataFrame, inplace: bool = False) -> Union[GeoDataFrame, None]:
         """Concatenate two shapefiles into one object.
 
         Args:
@@ -1033,7 +1021,7 @@ class FeatureCollection:
         from_epsg: int = 4326,
         to_epsg: int = 3857,
         precision: int = 6,
-    ):
+    ) -> Tuple[List[float], List[float]]:
         """reproject_points.
 
         This function changes the projection of coordinates from one coordinate system to another (default: from GCS to Web Mercator as used by Google Maps).
@@ -1087,7 +1075,7 @@ class FeatureCollection:
     @staticmethod
     def reproject_points2(
         lat: list, lng: list, from_epsg: int = 4326, to_epsg: int = 3857
-    ):
+    ) -> Tuple[List[float], List[float]]:
         """reproject_points.
 
         This function changes the projection of the coordinates from one coordinate system to another
@@ -1137,11 +1125,10 @@ class FeatureCollection:
 
     def center_point(
         self,
-    ):
-        """PolygonCenterPoint.
+    ) -> GeoDataFrame:
+        """Center Point.
 
-        PolygonCenterPoint function takes the a geodata frame of polygons and and
-        returns the center of each polygon
+        Center Point function takes a geodata frame of polygons and returns the center of each polygon
 
         Returns:
             saveIng the shapefile or CenterPointDataFrame :

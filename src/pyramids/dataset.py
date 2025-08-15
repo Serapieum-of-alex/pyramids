@@ -1674,8 +1674,8 @@ class Dataset(AbstractDataset):
         cutoff: List = None,
         overview: bool = False,
         overview_index: int = 0,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Tuple[Any, Any]:
         """Plot the values/overviews of a given band.
 
         Args:
@@ -3126,7 +3126,7 @@ class Dataset(AbstractDataset):
                         f"Failed to save the {driver_name} raster to the path: {path}"
                     )
 
-    def convert_longitude(self, inplace: bool = False):
+    def convert_longitude(self, inplace: bool = False) -> Optional["Dataset"]:
         """Convert Longitude.
 
         - convert the longitude from 0-360 to -180 - 180.
@@ -5366,7 +5366,7 @@ class Dataset(AbstractDataset):
 
     def create_overviews(
         self, resampling_method: str = "nearest", overview_levels: list = None
-    ):
+    ) -> None:
         """Create overviews for the dataset.
 
         Args:
@@ -5379,19 +5379,15 @@ class Dataset(AbstractDataset):
                 32].
 
         Returns:
-            internal/external overviews:
-                The overview (also known as pyramids) could be internal or external depending on the state you read
-                the dataset with.
+            None:
+                Creates internal or external overviews depending on the dataset access mode. See Notes.
 
-                - External (.ovr file):
-                    If the dataset is read with a`read_only=True` then the overviews' file will be created as anexternal
-                    file in the same directory of the dataset, with the same name of the dataset and .ovr extension.
-                - Internal:
-                    If the dataset is read with a`read_only=False` then the overviews will be created internally in the
-                    dataset, and the dataset needs to be saved/flushed to save the new changes to disk.
-
-            overview_count: [list]
-                a list property attribute of the overviews for each band.
+        Notes:
+            - External (.ovr file): If the dataset is read with `read_only=True` then the overviews file will be created
+              as an external .ovr file in the same directory of the dataset.
+            - Internal: If the dataset is read with `read_only=False` then the overviews will be created internally in
+              the dataset, and the dataset needs to be saved/flushed to persist the changes to disk.
+            - You can check the count per band via the `overview_count` property.
 
         Examples:
             - Create a Dataset with 4 bands, 10 rows, 10 columns, at the point lon/lat (0, 0):

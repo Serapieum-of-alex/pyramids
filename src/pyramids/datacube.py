@@ -102,7 +102,7 @@ class Datacube:
         return self._base.columns
 
     @classmethod
-    def create_cube(cls, src: Dataset, dataset_length: int):
+    def create_cube(cls, src: Dataset, dataset_length: int) -> "Datacube":
         """Create Datacube.
 
             - Create a Datacube from a sample raster.
@@ -130,7 +130,7 @@ class Datacube:
         end: str = None,
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
-    ):
+    ) -> "Datacube":
         r"""read_multiple_files.
 
             - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the
@@ -291,7 +291,7 @@ class Datacube:
 
         return cls(sample, len(files), files)
 
-    def open_datacube(self, band: int = 0):
+    def open_datacube(self, band: int = 0) -> None:
         """Open the datacube.
 
         Read values from the given band as arrays for all files.
@@ -300,7 +300,7 @@ class Datacube:
             band (int): Index of the band you want to read. Default is 0.
 
         Returns:
-            np.ndarray: The loaded values into the internal 3D array [time, rows, cols].
+            None: Loads values into the internal 3D array [time, rows, cols] in-place.
         """
         # check the given band number
         if not hasattr(self, "base"):
@@ -394,7 +394,7 @@ class Datacube:
         """Last Dataset."""
         return self._values[-1, :, :]
 
-    def iloc(self, i):
+    def iloc(self, i) -> Dataset:
         """iloc.
 
             - Access dataset array using index.
@@ -413,7 +413,7 @@ class Datacube:
         dst.GetRasterBand(1).WriteArray(arr)
         return Dataset(dst)
 
-    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs):
+    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs: Any) -> "ArrayGlyph":
         """Read Array.
 
             - read the values stored in a given band.
@@ -453,8 +453,7 @@ class Datacube:
 
 
         Returns:
-            axes: The axes of the matplotlib figure.
-            fig: The figure object.
+            ArrayGlyph: A plotting/animation handle (from cleopatra.ArrayGlyph).
         """
         import_cleopatra(
             "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
@@ -523,7 +522,7 @@ class Datacube:
         to_epsg: int = 3857,
         method: str = "nearest neighbor",
         maintain_alignment: int = False,
-    ):
+    ) -> None:
         """to_epsg.
 
             - to_epsg reprojects a raster to any projection (default the WGS84 web mercator projection,
@@ -541,7 +540,7 @@ class Datacube:
                 Default is False.
 
         Returns:
-            raster: gdal dataset (you can read it by ReadAsArray)
+            None: Updates the datacube values and base in place after reprojection.
 
         Examples:
             - Reproject dataset to EPSG:3857:
@@ -771,7 +770,7 @@ class Datacube:
     #
     #     return dst
 
-    def align(self, alignment_src: Dataset):
+    def align(self, alignment_src: Dataset) -> None:
         """matchDataAlignment.
 
         This function matches the coordinate system and the number of rows and columns between two rasters. Raster A
@@ -826,7 +825,7 @@ class Datacube:
         no_data_value: Union[float, int, str] = "0",
         init: Union[float, int, str] = "nan",
         n: Union[float, int, str] = "nan",
-    ):
+    ) -> None:
         """merge.
 
             Merges a group of rasters into one raster.
@@ -870,7 +869,7 @@ class Datacube:
         )  # '-separate'
         gdal_merge.main(parameters)
 
-    def apply(self, ufunc: Callable):
+    def apply(self, ufunc: Callable) -> None:
         """apply.
 
         Apply a function on each raster in the datacube.
