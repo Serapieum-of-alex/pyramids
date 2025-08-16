@@ -142,3 +142,8 @@ extra:
   version:
       provider: mike
   version_selector: true
+
+extra_css:
+  - assets/stylesheets/mermaid-zoom.css
+extra_javascript:
+  - assets/javascripts/mermaid-zoom.js
