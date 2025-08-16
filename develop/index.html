@@ -645,7 +645,7 @@ Installing <code>pyramids</code> from the <code>conda-forge</code> channel can b
 <div class="highlight"><pre><span></span><code><a href="#__codelineno-4-1" id="__codelineno-4-1" name="__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
 <a href="#__codelineno-4-2" id="__codelineno-4-2" name="__codelineno-4-2"></a>
 <a href="#__codelineno-4-3" id="__codelineno-4-3" name="__codelineno-4-3"></a><span class="c1"># Use your own raster path (GeoTIFF/ASC/NetCDF supported); here we show a relative test file</span>
-<a href="#__codelineno-4-4" id="__codelineno-4-4" name="__codelineno-4-4"></a><span class="n">path</span> <span class="o">=</span> <span class="s2">"tests</span><span class="se">\\</span><span class="s2">data</span><span class="se">\\</span><span class="s2">geotiff</span><span class="se">\\</span><span class="s2">dem.tif"</span>  <span class="c1"># adjust path as needed</span>
+<a href="#__codelineno-4-4" id="__codelineno-4-4" name="__codelineno-4-4"></a><span class="n">path</span> <span class="o">=</span> <span class="s2">"tests/data/geotiff/dem.tif"</span>  <span class="c1"># adjust path as needed</span>
 <a href="#__codelineno-4-5" id="__codelineno-4-5" name="__codelineno-4-5"></a>
 <a href="#__codelineno-4-6" id="__codelineno-4-6" name="__codelineno-4-6"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 <a href="#__codelineno-4-7" id="__codelineno-4-7" name="__codelineno-4-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">transform</span><span class="p">)</span>
@@ -666,6 +666,7 @@ Installing <code>pyramids</code> from the <code>conda-forge</code> channel can b
 <li>See How it works for architecture and data flow.</li>
 <li>Browse the API Reference for details of classes and functions.</li>
 </ul>
+<p><img alt="Dataset diagram" src="_images/pyramids-dataset.svg"/></p>
 </article>
 </div>
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
