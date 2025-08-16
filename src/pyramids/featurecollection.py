@@ -524,7 +524,7 @@ class FeatureCollection:
 
     @staticmethod
     def _create_sr_from_proj(prj: str, string_type: str = None):
-        """Create a spatial reference object from projection.
+        r"""Create a spatial reference object from projection.
 
         Args:
             prj (str):
