@@ -30,7 +30,7 @@ pyramids - GIS utility package
 
 pyramids
 
-![1](/docs/source/_images/package-work-flow/overall.png)
+![1](./_images/package-work-flow/overall.png)
 
 Main Features
 -------------
@@ -39,42 +39,65 @@ Main Features
   needed to build the model (align rasters with the DEM), in addition to various methods to manipulate and
   convert different forms of distributed data (rasters, NetCDF, shapefiles)
 
-Installing pyramids
-===============
+## Installation
 
+- Conda (conda-forge):
 Installing `pyramids` from the `conda-forge` channel can be achieved by:
 
-```
-conda install -c conda-forge pyramids=0.7.3
+```bash
+conda install -c conda-forge pyramids
 ```
 
 It is possible to list all the versions of `pyramids` available on your platform with:
 
-```
+```bash
 conda search pyramids --channel conda-forge
 ```
 
-## Install from GitHub
-
-to install the last development to time, you can install the library from GitHub
-
-```
-pip install git+https://github.com/Serapieum-of-alex/pyramids
-```
-
-## pip
+- pip (PyPI):
 
 to install the last release, you can easily use pip
 
+```bash
+pip install pyramids-gis
 ```
-pip install pyramids-gis==0.7.3
+
+- From source (latest):
+
+to install the last development to time, you can install the library from GitHub
+
+```bash
+pip install git+https://github.com/Serapieum-of-alex/pyramids
 ```
 
 Quick start
 ===========
 
-```
-  >>> import pyramids
+## Minimal example: open a dataset and inspect metadata
+
+```python
+from pyramids.dataset import Dataset
+
+# Use your own raster path (GeoTIFF/ASC/NetCDF supported); here we show a relative test file
+path = "tests/data/geotiff/dem.tif"  # adjust path as needed
+
+ds = Dataset.read_file(path)
+print(ds.width, ds.height, ds.transform)
+print(ds.meta)
+
+# Access array data
+arr = ds.read()
+print(arr.shape, arr.dtype)
+
+# Save a single band to a new GeoTIFF (writes alongside input by default)
+out = "./dem_copy.tif"
+ds.to_file(out)
+print("Saved to", out)
 ```
 
-![Dataset diagram](./docs/_images/pyramids-dataset.svg)
+## Next steps
+- Explore the Tutorials for end-to-end workflows.
+- See How it works for architecture and data flow.
+- Browse the API Reference for details of classes and functions.
+
+![Dataset diagram](./_images/pyramids-dataset.svg)
