@@ -54,6 +54,10 @@ theme:
 plugins:
   - search
   - mkdocs-jupyter
+  - panzoom:
+      hint_location: "top"
+      key: "ctrl"
+      full_screen: true
   - autorefs
   - mkdocstrings:
       default_handler: python
@@ -142,8 +146,3 @@ extra:
   version:
       provider: mike
   version_selector: true
-
-extra_css:
-  - assets/stylesheets/mermaid-zoom.css
-extra_javascript:
-  - assets/javascripts/mermaid-zoom.js
