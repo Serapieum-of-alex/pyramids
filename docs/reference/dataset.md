@@ -1,157 +1,15 @@
 # Dataset Class
 
-![Dataset diagram](./../_images/pyramids-dataset.svg)
-
-
-::: pyramids.dataset.Dataset
-    options:
-        show_root_heading: true
-        show_source: true
-        heading_level: 3
-        members_order: source
-
-
-- brief class diagram for the `Dataset` class and related components:
-
-```mermaid
-classDiagram
-    %% configuration class
-    class config_Config {
-        +__init__(config_file)
-        +load_config()
-        +initialize_gdal()
-        +dynamic_env_variables()
-        +set_env_conda()
-        +set_env_os()
-    }
-
-    %% abstract base class for rasters
-    class abstract_dataset_AbstractDataset {
-        +__init__(src, access)
-        +values() np.ndarray
-        +rows() int
-        +columns() int
-        +shape() (bands, rows, cols)
-        +geotransform()
-        +top_left_corner()
-        +epsg() int
-        +crs()
-        +cell_size() int
-        +no_data_value
-        +meta_data()
-    }
-
-    %% concrete raster class
-    class dataset_Dataset {
-        +__init__(src, access)
-        +read_file(path, read_only)
-        +create_from_array(array, top_left_corner, cell_size, epsg)
-        +read_array(band, window)
-        +to_file(path, driver)
-        +align(alignment_src, data_src)
-        +resample(cell_size, method)
-        +crop(window)
-        +plot(title, ticks_spacing, cmap, color_scale, vmin, cbar_label)
-    }
-
-    %% NetCDF: raster class specialised for NetCDF variables
-    class netcdf_NetCDF {
-        +__init__(src, access)
-        +get_variable_names()
-        +get_variables()
-        +time_stamp()
-        +lat()
-        +lon()
-    }
-
-    %% DataCube: stack of rasters
-    class datacube_Datacube {
-        +__init__(src, time_length, files)
-        +create_cube(src, dataset_length)
-        +read_multiple_files(path, with_order, regex_string, date, file_name_data_fmt, start, end, fmt, extension)
-        +base() Dataset
-        +files() list
-        +time_length() int
-        +shape() (time, rows, cols)
-        +rows() int
-        +columns() int
-    }
-
-    %% FeatureCollection for vector data
-    class featurecollection_FeatureCollection {
-        +__init__(gdf)
-        +GetXYCoords()
-        +GetPointCoords()
-        +GetLineCoords()
-        +GetPolyCoords()
-        +Explode()
-        +CombineGeometrics()
-        +GCSDistance()
-        +ReprojectPoints()
-        +AddSpatialReference()
-        +WriteShapefile()
-    }
-
-    %% Driver catalog
-    class _utils_Catalog {
-        +__init__(raster_driver)
-        +get_driver(driver)
-        +get_gdal_name(driver)
-        +get_driver_by_extension(extension)
-        +get_extension(driver)
-        +exists(driver)
-    }
-
-    %% error classes
-    class _errors_ReadOnlyError
-    class _errors_DatasetNoFoundError
-    class _errors_NoDataValueError
-    class _errors_AlignmentError
-    class _errors_DriverNotExistError
-    class _errors_FileFormatNotSupported
-    class _errors_OptionalPackageDoesNotExist
-    class _errors_FailedToSaveError
-    class _errors_OutOfBoundsError
-
-    %% inheritance relations
-    abstract_dataset_AbstractDataset <|-- dataset_Dataset
-    dataset_Dataset <|-- netcdf_NetCDF
-
-    %% composition/usage relations
-    datacube_Datacube --> dataset_Dataset : "base raster"
-    abstract_dataset_AbstractDataset ..> _utils_Catalog : "uses Catalog constant"
-    abstract_dataset_AbstractDataset ..> featurecollection_FeatureCollection : "vector ops"
-    dataset_Dataset ..> featurecollection_FeatureCollection : "vector ops"
-    featurecollection_FeatureCollection ..> _utils_Catalog : "uses drivers"
-    dataset_Dataset ..> _errors_ReadOnlyError : "raises"
-    dataset_Dataset ..> _errors_AlignmentError : "raises"
-    dataset_Dataset ..> _errors_NoDataValueError : "raises"
-    dataset_Dataset ..> _errors_FailedToSaveError : "raises"
-    dataset_Dataset ..> _errors_OutOfBoundsError : "raises"
-    datacube_Datacube ..> _errors_DatasetNoFoundError : "raises"
-    featurecollection_FeatureCollection ..> _errors_DriverNotExistError : "raises"
-    netcdf_NetCDF ..> _errors_OptionalPackageDoesNotExist : "raises"
-    config_Config ..> dataset_Dataset : "initialises raster settings"
-
-```
-
 - Detailed class diagram for the `Dataset` class and related components:
 
 ```mermaid
 classDiagram
     %% configuration class
-    class config_Config {
-        +__init__(config_file)
-        +load_config()
-        +initialize_gdal()
-        +set_env_conda()
-        +dynamic_env_variables()
-        +setup_logging()
-        +set_error_handler()
+    class Config {
     }
 
     %% abstract base class for rasters
-    class abstract_dataset_AbstractDataset {
+    class AbstractDataset {
         +__init__(src, access)
         +__str__()
         +__repr__()
@@ -184,7 +42,7 @@ classDiagram
     }
 
     %% concrete raster class
-    class dataset_Dataset {
+    class Dataset {
         +__init__(src, access)
         +__str__()
         +__repr__()
@@ -233,122 +91,14 @@ classDiagram
         +overlay(classes_map, exclude_value)
     }
 
-    %% NetCDF: raster class specialised for NetCDF variables
-    class netcdf_NetCDF {
-        +__init__(src, access)
-        +__str__()
-        +__repr__()
-        +lon()
-        +lat()
-        +x()
-        +y()
-        +get_y_lat_dimension_array(pivot_y, cell_size, rows)
-        +get_x_lon_dimension_array(pivot_x, cell_size, columns)
-        +variables()
-        +no_data_value()
-        +no_data_value(value)
-        +file_name()
-        +time_stamp()
-        +read_file(path, read_only, open_as_multi_dimensional)
-        +_get_time_variable()
-        +_get_lat_lon()
-        +_read_variable(var)
-        +get_variable_names()
-        +_read_md_array(variable_name)
-        +get_variables(read_only)
-        +is_subset()
-        +is_md_array()
-        +create_main_dimension(group, dim_name, dtype, values)
-        +create_from_array(arr, geo, bands_values, epsg, no_data_value, driver_type, path, variable_name)
-        +_create_netcdf_from_array(arr, variable_name, cols, rows, bands, bands_values, geo, epsg, no_data_value, driver_type, path)
-        +_add_md_array_to_group(dst_group, var_name, src_mdarray)
-        +add_variable(dataset, variable_name)
-        +remove_variable(variable_name)
-    }
 
-    %% DataCube: stack of rasters
-    class datacube_Datacube {
-        +__init__(src, time_length, files)
-        +__str__()
-        +__repr__()
-        +base()
-        +files()
-        +time_length()
-        +rows()
-        +columns()
-        +shape()
-        +create_cube(src, dataset_length)
-        +read_multiple_files(path, with_order, regex_string, date, file_name_data_fmt, start, end, fmt, extension)
-        +open_datacube(band)
-        +values()
-        +values(val)
-        +__getitem__(key)
-        +__setitem__(key, value)
-        +__len__()
-        +__iter__()
-        +head(n)
-        +tail(n)
-        +first()
-        +last()
-        +iloc(i)
-        +plot(band, exclude_value, **kwargs)
-        +to_file(path, driver, band)
-        +to_crs(to_epsg, method, maintain_alignment)
-        +crop(mask, inplace, touch)
-        +align(alignment_src)
-        +merge(src, dst, no_data_value, init, n)
-        +apply(ufunc)
-        +overlay(classes_map, exclude_value)
-    }
-
-    %% FeatureCollection for vector data
-    class featurecollection_FeatureCollection {
-        +__init__(gdf)
-        +__str__()
-        +feature()
-        +epsg()
-        +total_bounds()
-        +top_left_corner()
-        +layers_count()
-        +layer_names()
-        +column()
-        +file_name()
-        +dtypes()
-        +read_file(path)
-        +create_ds(driver, path)
-        +_create_driver(driver, path)
-        +_copy_driver_to_memory(ds, name)
-        +to_file(path, driver)
-        +_gdf_to_ds(inplace, gdal_dataset)
-        +_ds_to_gdf_with_io(inplace)
-        +_ds_to_gdf_in_memory(inplace)
-        +GetXYCoords()
-        +GetPointCoords()
-        +GetLineCoords()
-        +GetPolyCoords()
-        +Explode()
-        +MultiGeomHandler()
-        +GetCoords()
-        +XY()
-        +CreatePolygon()
-        +CreatePoint()
-        +CombineGeometrics()
-        +GCSDistance()
-        +ReprojectPoints()
-        +ReprojectPoints_2()
-        +AddSpatialReference()
-        +PolygonCenterPoint()
-        +WriteShapefile()
-    }
 
     %% Driver catalog
     class _utils_Catalog {
-        +__init__(raster_driver)
-        +get_driver(driver)
-        +get_gdal_name(driver)
-        +get_driver_by_extension(extension)
-        +get_extension(driver)
-        +exists(driver)
+    }
+    
+    %% NetCDF
+    class NetCDF {
     }
 
     %% error classes
@@ -363,23 +113,181 @@ classDiagram
     class _errors_OutOfBoundsError
 
     %% inheritance relations
-    abstract_dataset_AbstractDataset <|-- dataset_Dataset
-    dataset_Dataset <|-- netcdf_NetCDF
+    AbstractDataset <|-- Dataset
+    Dataset <|-- NetCDF
 
     %% composition/usage relations
-    datacube_Datacube --> dataset_Dataset : "base raster"
-    abstract_dataset_AbstractDataset ..> _utils_Catalog : "uses Catalog constant"
-    abstract_dataset_AbstractDataset ..> featurecollection_FeatureCollection : "vector ops"
-    dataset_Dataset ..> featurecollection_FeatureCollection : "vector ops"
-    featurecollection_FeatureCollection ..> _utils_Catalog : "uses drivers"
-    dataset_Dataset ..> _errors_ReadOnlyError : "raises"
-    dataset_Dataset ..> _errors_AlignmentError : "raises"
-    dataset_Dataset ..> _errors_NoDataValueError : "raises"
-    dataset_Dataset ..> _errors_FailedToSaveError : "raises"
-    dataset_Dataset ..> _errors_OutOfBoundsError : "raises"
-    datacube_Datacube ..> _errors_DatasetNoFoundError : "raises"
-    featurecollection_FeatureCollection ..> _errors_DriverNotExistError : "raises"
-    netcdf_NetCDF ..> _errors_OptionalPackageDoesNotExist : "raises"
-    config_Config ..> dataset_Dataset : "initialises raster settings"
+    AbstractDataset ..> _utils_Catalog : "uses Catalog constant"
+    AbstractDataset ..> featurecollection_FeatureCollection : "vector ops"
+    Dataset ..> featurecollection_FeatureCollection : "vector ops"
+    Dataset ..> _errors_ReadOnlyError : "raises"
+    Dataset ..> _errors_AlignmentError : "raises"
+    Dataset ..> _errors_NoDataValueError : "raises"
+    Dataset ..> _errors_FailedToSaveError : "raises"
+    Dataset ..> _errors_OutOfBoundsError : "raises"
+    NetCDF ..> _errors_OptionalPackageDoesNotExist : "raises"
+    Config ..> Dataset : "initialises raster settings"
 
 ```
+
+
+```mermaid
+classDiagram
+
+    %% Central dataset class with its main attributes
+    class Dataset {
+        +raster
+        +cell_size
+        +values
+        +shape
+        +rows
+        +columns
+        +pivot_point
+        +geotransform
+        +bounds
+        +bbox
+        +epsg
+        +crs
+        +lon
+        +lat
+        +x
+        +y
+        +band_count
+        +band_names
+        +variables
+        +no_data_value
+        +meta_data
+        +dtype
+        +gdal_dtype
+        +numpy_dtype
+        +file_name
+        +time_stamp
+        +driver_type
+    }
+
+    %% Group: visualisation functionality
+    class Visualization {
+        +plot()
+        +overview_count()
+        +read_overview_array()
+        +create_overviews()
+        +recreate_overviews()
+        +get_overview()
+    }
+    Dataset --> Visualization : «visualisation»
+
+    %% Group: data access methods
+    class AccessData {
+        +read_array()
+        +get_variables()
+        +count_domain_cells()
+        +get_band_names()
+        +extract()
+        +stats()
+    }
+    Dataset --> AccessData : «data access»
+
+    %% Group: mathematical operations on raster values
+    class MathOperations {
+        +apply()
+        +fill()
+        +normalize()
+        +cluster()
+        +cluster2()
+        +get_tile()
+        +groupNeighbours()
+    }
+    Dataset --> MathOperations : «math ops»
+
+    %% Group: spatial operations and reprojection
+    class SpatialOperations {
+        +to_crs()
+        +resample()
+        +align()
+        +crop()
+        +locate_points()
+        +overlay()
+        +extract()
+        +footprint()
+    }
+    Dataset --> SpatialOperations : «spatial ops»
+
+    %% Group: conversion to other data types
+    class Conversion {
+        +to_feature_collection()
+    }
+    Dataset --> Conversion : «conversion»
+
+    %% Group: coordinate system handling
+    class OSR {
+        +create_sr_from_epsg()
+    }
+    Dataset --> OSR : «osr»
+
+    %% Group: bounding‐box and bounds calculations
+    class BBoxBounds {
+        +calculate_bbox()
+        +calculate_bounds()
+    }
+    Dataset --> BBoxBounds : «bbox/bounds»
+
+    %% Group: CRS/EPSG getters
+    class CrsEpsg {
+        +get_crs()
+        +get_epsg()
+    }
+    Dataset --> CrsEpsg : «crs/epsg»
+
+    %% Group: latitude/longitude getters
+    class LatLon {
+        +get_lat_lon()
+    }
+    Dataset --> LatLon : «lat/lon»
+
+    %% Group: band names management
+    class BandNames {
+        +get_band_names_internal()
+        +set_band_names()
+    }
+    Dataset --> BandNames : «band names»
+
+    %% Group: timestamp handling
+    class TimeStamp {
+        +get_time_variable()
+        +read_variable()
+    }
+    Dataset --> TimeStamp : «time»
+
+    %% Group: handling of no‐data values
+    class NoDataValue {
+        +set_no_data_value()
+        +set_no_data_value_backend()
+        +change_no_data_value_attr()
+    }
+    Dataset --> NoDataValue : «no data value»
+
+    %% Group: helpers for creating GDAL datasets
+    class GdalDataset {
+        +create_empty_driver()
+        +create_driver_from_scratch()
+        +create_mem_gtiff_dataset()
+    }
+    Dataset --> GdalDataset : «gdal creation»
+
+    %% Group: factory methods for creating Dataset objects
+    class CreateObject {
+        +from_gdal_dataset()
+        +read_file()
+        +create_from_array()
+        +dataset_like()
+    }
+    Dataset --> CreateObject : «object factory»
+
+```
+
+::: pyramids.dataset.Dataset
+    options:
+        show_root_heading: true
+        show_source: true
+        heading_level: 3
+        members_order: source

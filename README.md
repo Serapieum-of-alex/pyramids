@@ -76,3 +76,5 @@ Quick start
 ```
   >>> import pyramids
 ```
+
+![Dataset diagram](./docs/_images/pyramids-dataset.svg)

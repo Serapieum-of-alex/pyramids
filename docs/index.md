@@ -79,7 +79,7 @@ Quick start
 from pyramids.dataset import Dataset
 
 # Use your own raster path (GeoTIFF/ASC/NetCDF supported); here we show a relative test file
-path = "tests\\data\\geotiff\\dem.tif"  # adjust path as needed
+path = "tests/data/geotiff/dem.tif"  # adjust path as needed
 
 ds = Dataset.read_file(path)
 print(ds.width, ds.height, ds.transform)
@@ -99,3 +99,5 @@ print("Saved to", out)
 - Explore the Tutorials for end-to-end workflows.
 - See How it works for architecture and data flow.
 - Browse the API Reference for details of classes and functions.
+
+![Dataset diagram](./_images/pyramids-dataset.svg)
