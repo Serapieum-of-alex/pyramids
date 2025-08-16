@@ -104,19 +104,36 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Installation: installation.md
+  - Overview:
+    - Codebase Map: overview/codebase-map.md
+    - How it works: overview/how-it-works.md
+  - Architecture:
+    - Diagrams: architecture/diagrams.md
   - Reference:
     - Dataset: reference/dataset.md
     - Datacube: reference/datacube.md
     - Feature Collection: reference/featurecollection.md
-  - Examples:
+  - Tutorials:
       - Dataset: examples/dataset.md
       - Datacube: examples/datacube.md
+      - Raster basics: tutorials/raster-basics.md
+      - Datacube basics: tutorials/datacube-basics.md
+  - How-to:
+      - Recipes: how-to/recipes.md
+      - FAQ & Troubleshooting: how-to/faq.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md
     - Contributing: contributing.md
     - License: LICENSE.md
     - Authors: AUTHORS.md
+    - ADRs:
+        - Index: adr/index.md
+        - ADR-0001 Docs stack: adr/0001-docs-stack.md
+        - ADR-0002 Type checking: adr/0002-type-checking.md
+        - ADR-0003 IO formats: adr/0003-io-formats.md
+        - ADR-0004 Dependency graphing: adr/0004-dependency-graphing.md
+        - ADR-0005 Versioning docs: adr/0005-versioning-docs.md
 
 extra:
   social:
