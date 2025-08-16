@@ -7629,7 +7629,7 @@ packages:
 - pypi: ./
   name: pyramids-gis
   version: 0.7.3
-  sha256: 35191437af99ce42d7cbba57f2be69c93b7f32121d48f3353356824b02a6fbd0
+  sha256: 073008edb11e6b688ccf828842e143de7a260a9fa361bbb0b7a39ff9a4646d75
   requires_dist:
   - geopandas>=1.0.0
   - hpc-utils>=0.1.5
