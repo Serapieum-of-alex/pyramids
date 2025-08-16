@@ -43,3 +43,47 @@ This page summarizes the main modules, key classes, and the public API surface o
 - Outputs -> Dataset/FeatureCollection to_file(), ASCII/GeoTIFF/GeoJSON exports
 
 See the Architecture section for diagrams and deeper internals, and the API Reference for exhaustive signatures.
+
+## Class & Dependency Graph
+
+Below is a high-level Mermaid class dependency diagram showing the main modules and their primary classes, plus key dependencies between them.
+
+```mermaid
+classDiagram
+  class AbstractDataset {
+    <<abstract>>
+    +read_file(path, read_only)
+    +to_file(path, band)
+  }
+  class Dataset {
+    +read_file(path, read_only, file_i)
+    +to_file(path, band, tile_length)
+    +read()
+  }
+  class Datacube {
+    +read_multiple_files(...)
+    +open_datacube(...)
+    +to_file(...)
+  }
+  class FeatureCollection {
+    +read_file(path)
+    +to_file(path, driver)
+  }
+  class IO {
+    <<module>>
+  }
+  class Utils {
+    <<module>>
+  }
+
+  AbstractDataset <|-- Dataset
+  Datacube ..> Dataset : uses
+  FeatureCollection ..> IO : uses
+  Dataset ..> IO : uses
+  Dataset ..> Utils : uses
+  FeatureCollection ..> Utils : uses
+```
+
+Notes:
+- Module nodes like `_io` and `_utils` represent internal helper modules used by multiple classes.
+- Method lists are illustrative; see the API Reference for complete signatures.

@@ -114,8 +114,8 @@ nav:
     - Datacube: reference/datacube.md
     - Feature Collection: reference/featurecollection.md
   - Tutorials:
-      - Dataset: examples/dataset.md
-      - Datacube: examples/datacube.md
+      - Dataset: tutorials/dataset.md
+      - Datacube: tutorials/datacube.md
       - Raster basics: tutorials/raster-basics.md
       - Datacube basics: tutorials/datacube-basics.md
   - How-to:
