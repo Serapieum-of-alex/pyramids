@@ -7,7 +7,6 @@ ENV PIXI_ENV_DIR=/app/.pixi/envs/${ENV_NAME}
 
 WORKDIR /app
 
-
 COPY pyproject.toml pixi.lock README.md ./
 # Ensure non-editable install: set any 'editable = true' to 'editable = false' in pyproject.toml
 RUN sed -i -E 's/(\beditable[[:space:]]*=[[:space:]]*)true/\1false/g' pyproject.toml
@@ -29,10 +28,8 @@ print("dist-info:", [str(p) for p in pathlib.Path(sp[0]).glob("pyramids_gis-*.di
 PY
 
 
-# Produce a shell activation script so the runtime doesn't need Pixi
-RUN pixi shell-hook -e ${ENV_NAME} > /shell-hook.sh
 
-FROM debian:bullseye-slim AS production
+FROM debian:bookworm-slim AS production
 
 ARG ENV_NAME=default
 ENV ENV_NAME=${ENV_NAME}
