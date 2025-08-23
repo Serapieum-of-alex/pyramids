@@ -1,5 +1,12 @@
 # Docker image and GitHub Container Registry (GHCR)
 
+
+The image is a Library/runtime container
+- Purpose: Provide a fully set up environment with all native deps (GDAL/PROJ/etc.) so users can run arbitrary commands.
+- Endpoint: Keep it minimal; print version/help or drop into a shell for interactive use.
+
+
+
 This guide explains everything you need to work with the provided Dockerfile:
 - What the Dockerfile does and its stages
 - How to build the image locally
