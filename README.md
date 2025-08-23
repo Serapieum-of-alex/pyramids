@@ -77,4 +77,29 @@ Quick start
   >>> import pyramids
 ```
 
+Docker
+======
+
+A Dockerfile is provided to run pyramids-gis in a controlled environment with the correct GDAL stack preinstalled via conda-forge.
+
+Build the image:
+
+```
+# from the repository root
+docker build -t pyramids-gis:latest .
+```
+
+Run the container (mount your current folder as /workspace):
+
+```
+# Windows PowerShell
+docker run --rm -it -v ${PWD}:/workspace pyramids-gis:latest bash
+```
+
+Inside the container you can verify the package is installed:
+
+```
+python -c "import pyramids; import sys; print('pyramids', getattr(pyramids, '__version__', 'dev'), 'Python', sys.version.split()[0])"
+```
+
 ![Dataset diagram](./docs/_images/pyramids-dataset.svg)
