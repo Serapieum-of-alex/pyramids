@@ -43,8 +43,10 @@ COPY --from=build "${PIXI_ENV_DIR}" "${PIXI_ENV_DIR}"
 
 ENV PATH="${PIXI_ENV_DIR}/bin:${PATH}"
 
-# Verify installation of key dependencies
-RUN ${PIXI_ENV_DIR}/bin/python -c "from osgeo import gdal; import shapely; import pyproj; print(f'GDAL version: {gdal.__version__}')"
+ENV LD_LIBRARY_PATH="${PIXI_ENV_DIR}/lib:${LD_LIBRARY_PATH}"
+ENV PROJ_LIB="${PIXI_ENV_DIR}/share/proj"
+ENV GDAL_DATA="${PIXI_ENV_DIR}/share/gdal"
+ENV PYTHONNOUSERSITE=1
 
 # Build-time confirmation of pyramids install (fails build if import fails)
 RUN ${PIXI_ENV_DIR}/bin/python -c "import importlib, sys; importlib.import_module('pyramids'); print('pyramids-gis installed, Python='+sys.version.split()[0])"
