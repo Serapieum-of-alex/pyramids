@@ -6,12 +6,12 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <meta content="GIS package" name="description"/>
-<link href="https://serapieum-of-alex.github.io/pyramids/develop/overview/how-it-works/" rel="canonical"/>
-<link href="../codebase-map/" rel="prev"/>
-<link href="../../architecture/diagrams/" rel="next"/>
+<link href="https://serapieum-of-alex.github.io/pyramids/develop/how-to/docker/" rel="canonical"/>
+<link href="../../tutorials/datacube-basics/" rel="prev"/>
+<link href="../recipes/" rel="next"/>
 <link href="../../assets/images/favicon.png" rel="icon"/>
 <meta content="mkdocs-1.6.1, mkdocs-material-9.6.18" name="generator"/>
-<title>How it works - pyramids</title>
+<title>Docker &amp; GHCR - pyramids</title>
 <link href="../../assets/stylesheets/main.7e37652d.min.css" rel="stylesheet"/>
 <link href="../../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
@@ -25,7 +25,7 @@
 <input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
 <label class="md-overlay" for="__drawer"></label>
 <div data-md-component="skip">
-<a class="md-skip" href="#how-it-works">
+<a class="md-skip" href="#docker-image-and-github-container-registry-ghcr">
           Skip to content
         </a>
 </div>
@@ -51,7 +51,7 @@
 <div class="md-header__topic" data-md-component="header-topic">
 <span class="md-ellipsis">
             
-              How it works
+              Docker &amp; GHCR
             
           </span>
 </div>
@@ -139,8 +139,8 @@
 
       </a>
 </li>
-<li class="md-tabs__item md-tabs__item--active">
-<a class="md-tabs__link" href="../codebase-map/">
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../overview/codebase-map/">
           
   
   
@@ -183,8 +183,8 @@
 
         </a>
 </li>
-<li class="md-tabs__item">
-<a class="md-tabs__link" href="../../how-to/docker/">
+<li class="md-tabs__item md-tabs__item--active">
+<a class="md-tabs__link" href="./">
           
   
   
@@ -249,80 +249,36 @@
   </span>
 </a>
 </li>
-<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-<input checked="" class="md-nav__toggle md-toggle" id="__nav_3" type="checkbox"/>
-<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
 <span class="md-ellipsis">
     Overview
     
   </span>
 <span class="md-nav__icon md-icon"></span>
 </label>
-<nav aria-expanded="true" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<nav aria-expanded="false" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
 <label class="md-nav__title" for="__nav_3">
 <span class="md-nav__icon md-icon"></span>
             Overview
           </label>
 <ul class="md-nav__list" data-md-scrollfix="">
 <li class="md-nav__item">
-<a class="md-nav__link" href="../codebase-map/">
+<a class="md-nav__link" href="../../overview/codebase-map/">
 <span class="md-ellipsis">
     Codebase Map
     
   </span>
 </a>
 </li>
-<li class="md-nav__item md-nav__item--active">
-<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
-<label class="md-nav__link md-nav__link--active" for="__toc">
-<span class="md-ellipsis">
-    How it works
-    
-  </span>
-<span class="md-nav__icon md-icon"></span>
-</label>
-<a class="md-nav__link md-nav__link--active" href="./">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../overview/how-it-works/">
 <span class="md-ellipsis">
     How it works
     
   </span>
 </a>
-<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
-<label class="md-nav__title" for="__toc">
-<span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
-<li class="md-nav__item">
-<a class="md-nav__link" href="#system-context-c4-context">
-<span class="md-ellipsis">
-      System Context (C4: Context)
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#runtime-containers-c4-containers">
-<span class="md-ellipsis">
-      Runtime Containers (C4: Containers)
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#components-c4-components">
-<span class="md-ellipsis">
-      Components (C4: Components)
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#data-flow">
-<span class="md-ellipsis">
-      Data Flow
-    </span>
-</a>
-</li>
-</ul>
-</nav>
 </li>
 </ul>
 </nav>
@@ -445,31 +401,103 @@
 </ul>
 </nav>
 </li>
-<li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_7" type="checkbox"/>
-<label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_7" type="checkbox"/>
+<label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
 <span class="md-ellipsis">
     How-to
     
   </span>
 <span class="md-nav__icon md-icon"></span>
 </label>
-<nav aria-expanded="false" aria-labelledby="__nav_7_label" class="md-nav" data-md-level="1">
+<nav aria-expanded="true" aria-labelledby="__nav_7_label" class="md-nav" data-md-level="1">
 <label class="md-nav__title" for="__nav_7">
 <span class="md-nav__icon md-icon"></span>
             How-to
           </label>
 <ul class="md-nav__list" data-md-scrollfix="">
-<li class="md-nav__item">
-<a class="md-nav__link" href="../../how-to/docker/">
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    Docker &amp; GHCR
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
 <span class="md-ellipsis">
     Docker &amp; GHCR
     
   </span>
 </a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#understand-the-dockerfile">
+<span class="md-ellipsis">
+      Understand the Dockerfile
+    </span>
+</a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="../../how-to/recipes/">
+<a class="md-nav__link" href="#docker-runtime-environment-variables">
+<span class="md-ellipsis">
+      Docker runtime environment variables
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#build-the-image">
+<span class="md-ellipsis">
+      Build the image
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#run-the-container">
+<span class="md-ellipsis">
+      Run the container
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#push-to-github-container-registry-ghcr">
+<span class="md-ellipsis">
+      Push to GitHub Container Registry (GHCR)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#delete-images-from-ghcr">
+<span class="md-ellipsis">
+      Delete images from GHCR
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#troubleshooting">
+<span class="md-ellipsis">
+      Troubleshooting
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#references">
+<span class="md-ellipsis">
+      References
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../recipes/">
 <span class="md-ellipsis">
     Recipes
     
@@ -477,7 +505,7 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="../../how-to/faq/">
+<a class="md-nav__link" href="../faq/">
 <span class="md-ellipsis">
     FAQ &amp; Troubleshooting
     
@@ -622,30 +650,58 @@
     </label>
 <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
 <li class="md-nav__item">
-<a class="md-nav__link" href="#system-context-c4-context">
+<a class="md-nav__link" href="#understand-the-dockerfile">
 <span class="md-ellipsis">
-      System Context (C4: Context)
+      Understand the Dockerfile
     </span>
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#runtime-containers-c4-containers">
+<a class="md-nav__link" href="#docker-runtime-environment-variables">
 <span class="md-ellipsis">
-      Runtime Containers (C4: Containers)
+      Docker runtime environment variables
     </span>
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#components-c4-components">
+<a class="md-nav__link" href="#build-the-image">
 <span class="md-ellipsis">
-      Components (C4: Components)
+      Build the image
     </span>
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#data-flow">
+<a class="md-nav__link" href="#run-the-container">
 <span class="md-ellipsis">
-      Data Flow
+      Run the container
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#push-to-github-container-registry-ghcr">
+<span class="md-ellipsis">
+      Push to GitHub Container Registry (GHCR)
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#delete-images-from-ghcr">
+<span class="md-ellipsis">
+      Delete images from GHCR
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#troubleshooting">
+<span class="md-ellipsis">
+      Troubleshooting
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#references">
+<span class="md-ellipsis">
+      References
     </span>
 </a>
 </li>
@@ -656,52 +712,201 @@
 </div>
 <div class="md-content" data-md-component="content">
 <article class="md-content__inner md-typeset">
-<a class="md-content__button md-icon" href="https://github.com/Serapieum-of-alex/pyramids/edit/master/docs/overview/how-it-works.md" rel="edit" title="Edit this page">
+<a class="md-content__button md-icon" href="https://github.com/Serapieum-of-alex/pyramids/edit/master/docs/how-to/docker.md" rel="edit" title="Edit this page">
 <svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
 </a>
-<a class="md-content__button md-icon" href="https://github.com/Serapieum-of-alex/pyramids/raw/master/docs/overview/how-it-works.md" title="View source of this page">
+<a class="md-content__button md-icon" href="https://github.com/Serapieum-of-alex/pyramids/raw/master/docs/how-to/docker.md" title="View source of this page">
 <svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"></path></svg>
 </a>
-<h1 id="how-it-works"><a class="toclink" href="#how-it-works">How it works</a><a class="headerlink" href="#how-it-works" title="Permanent link">#</a></h1>
-<p>This overview explains the system boundaries and data flow of the pyramids package.</p>
-<h2 id="system-context-c4-context"><a class="toclink" href="#system-context-c4-context">System Context (C4: Context)</a><a class="headerlink" href="#system-context-c4-context" title="Permanent link">#</a></h2>
-<div class="panzoom-box" data-key="ctrl" id="panzoom0" oncontextmenu="return false;"><div class="panzoom-info-box-top panzoom-hidden">Press "Ctrl" to enable Pan &amp; Zoom</div><nav class="panzoom-nav-infobox-top"><button class="panzoom-info panzoom-button"><svg class="panzoom-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm169.8-90.7c7.9-22.3 29.1-37.3 52.8-37.3l58.3 0c34.9 0 63.1 28.3 63.1 63.1c0 22.6-12.1 43.5-31.7 54.8L280 264.4c-.2 13-10.9 23.6-24 23.6c-13.3 0-24-10.7-24-24l0-13.5c0-8.6 4.6-16.5 12.1-20.8l44.3-25.4c4.7-2.7 7.6-7.7 7.6-13.1c0-8.4-6.8-15.1-15.1-15.1l-58.3 0c-3.4 0-6.4 2.1-7.5 5.3l-.4 1.2c-4.4 12.5-18.2 19-30.6 14.6s-19-18.2-14.6-30.6l.4-1.2zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"></path></svg></button><button class="panzoom-reset panzoom-button"><svg class="panzoom-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M125.7 160l50.3 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L48 224c-17.7 0-32-14.3-32-32L16 64c0-17.7 14.3-32 32-32s32 14.3 32 32l0 51.2L97.6 97.6c87.5-87.5 229.3-87.5 316.8 0s87.5 229.3 0 316.8s-229.3 87.5-316.8 0c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0c62.5 62.5 163.8 62.5 226.3 0s62.5-163.8 0-226.3s-163.8-62.5-226.3 0L125.7 160z"></path></svg></button><button class="panzoom-max panzoom-button"><svg class="panzoom-icon" viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path d="M32 32C14.3 32 0 46.3 0 64l0 96c0 17.7 14.3 32 32 32s32-14.3 32-32l0-64 64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L32 32zM64 352c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 96c0 17.7 14.3 32 32 32l96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0 0-64zM320 32c-17.7 0-32 14.3-32 32s14.3 32 32 32l64 0 0 64c0 17.7 14.3 32 32 32s32-14.3 32-32l0-96c0-17.7-14.3-32-32-32l-96 0zM448 352c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 64-64 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0c17.7 0 32-14.3 32-32l0-96z"></path></svg></button><button class="panzoom-min panzoom-button panzoom-hidden"><svg class="panzoom-icon" viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path d="M160 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 64-64 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0c17.7 0 32-14.3 32-32l0-96zM32 320c-17.7 0-32 14.3-32 32s14.3 32 32 32l64 0 0 64c0 17.7 14.3 32 32 32s32-14.3 32-32l0-96c0-17.7-14.3-32-32-32l-96 0zM352 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 96c0 17.7 14.3 32 32 32l96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0 0-64zM320 320c-17.7 0-32 14.3-32 32l0 96c0 17.7 14.3 32 32 32s32-14.3 32-32l0-64 64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0z"></path></svg></button></nav><pre class="mermaid"><code>flowchart LR
-  user(User) --&gt;|Provides GIS data paths &amp; commands| pyramids{{pyramids package}}
-  ext1[(Raster files\nGeoTIFF/ASC/NetCDF)] --&gt; pyramids
-  ext2[(Vector files\nShapefile/GeoJSON/GeoPackage)] --&gt; pyramids
-  pyramids --&gt; out1[(Processed rasters\nGeoTIFF/ASC)]
-  pyramids --&gt; out2[(Processed vectors\nGeoJSON/GPKG)]</code></pre></div>
-<h2 id="runtime-containers-c4-containers"><a class="toclink" href="#runtime-containers-c4-containers">Runtime Containers (C4: Containers)</a><a class="headerlink" href="#runtime-containers-c4-containers" title="Permanent link">#</a></h2>
-<div class="panzoom-box" data-key="ctrl" id="panzoom1" oncontextmenu="return false;"><div class="panzoom-info-box-top panzoom-hidden">Press "Ctrl" to enable Pan &amp; Zoom</div><nav class="panzoom-nav-infobox-top"><button class="panzoom-info panzoom-button"><svg class="panzoom-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm169.8-90.7c7.9-22.3 29.1-37.3 52.8-37.3l58.3 0c34.9 0 63.1 28.3 63.1 63.1c0 22.6-12.1 43.5-31.7 54.8L280 264.4c-.2 13-10.9 23.6-24 23.6c-13.3 0-24-10.7-24-24l0-13.5c0-8.6 4.6-16.5 12.1-20.8l44.3-25.4c4.7-2.7 7.6-7.7 7.6-13.1c0-8.4-6.8-15.1-15.1-15.1l-58.3 0c-3.4 0-6.4 2.1-7.5 5.3l-.4 1.2c-4.4 12.5-18.2 19-30.6 14.6s-19-18.2-14.6-30.6l.4-1.2zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"></path></svg></button><button class="panzoom-reset panzoom-button"><svg class="panzoom-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M125.7 160l50.3 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L48 224c-17.7 0-32-14.3-32-32L16 64c0-17.7 14.3-32 32-32s32 14.3 32 32l0 51.2L97.6 97.6c87.5-87.5 229.3-87.5 316.8 0s87.5 229.3 0 316.8s-229.3 87.5-316.8 0c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0c62.5 62.5 163.8 62.5 226.3 0s62.5-163.8 0-226.3s-163.8-62.5-226.3 0L125.7 160z"></path></svg></button><button class="panzoom-max panzoom-button"><svg class="panzoom-icon" viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path d="M32 32C14.3 32 0 46.3 0 64l0 96c0 17.7 14.3 32 32 32s32-14.3 32-32l0-64 64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L32 32zM64 352c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 96c0 17.7 14.3 32 32 32l96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0 0-64zM320 32c-17.7 0-32 14.3-32 32s14.3 32 32 32l64 0 0 64c0 17.7 14.3 32 32 32s32-14.3 32-32l0-96c0-17.7-14.3-32-32-32l-96 0zM448 352c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 64-64 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0c17.7 0 32-14.3 32-32l0-96z"></path></svg></button><button class="panzoom-min panzoom-button panzoom-hidden"><svg class="panzoom-icon" viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path d="M160 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 64-64 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0c17.7 0 32-14.3 32-32l0-96zM32 320c-17.7 0-32 14.3-32 32s14.3 32 32 32l64 0 0 64c0 17.7 14.3 32 32 32s32-14.3 32-32l0-96c0-17.7-14.3-32-32-32l-96 0zM352 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 96c0 17.7 14.3 32 32 32l96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0 0-64zM320 320c-17.7 0-32 14.3-32 32l0 96c0 17.7 14.3 32 32 32s32-14.3 32-32l0-64 64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0z"></path></svg></button></nav><pre class="mermaid"><code>flowchart TB
-  subgraph Process
-    A[Dataset]:::c --&gt; B[_io]:::c
-    C[Datacube]:::c --&gt; B
-    D[FeatureCollection]:::c --&gt; B
-    A --&gt; E[_utils]
-    C --&gt; E
-    D --&gt; E
-  end
-  classDef c fill:#eef,stroke:#88f</code></pre></div>
-<h2 id="components-c4-components"><a class="toclink" href="#components-c4-components">Components (C4: Components)</a><a class="headerlink" href="#components-c4-components" title="Permanent link">#</a></h2>
-<div class="panzoom-box" data-key="ctrl" id="panzoom2" oncontextmenu="return false;"><div class="panzoom-info-box-top panzoom-hidden">Press "Ctrl" to enable Pan &amp; Zoom</div><nav class="panzoom-nav-infobox-top"><button class="panzoom-info panzoom-button"><svg class="panzoom-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm169.8-90.7c7.9-22.3 29.1-37.3 52.8-37.3l58.3 0c34.9 0 63.1 28.3 63.1 63.1c0 22.6-12.1 43.5-31.7 54.8L280 264.4c-.2 13-10.9 23.6-24 23.6c-13.3 0-24-10.7-24-24l0-13.5c0-8.6 4.6-16.5 12.1-20.8l44.3-25.4c4.7-2.7 7.6-7.7 7.6-13.1c0-8.4-6.8-15.1-15.1-15.1l-58.3 0c-3.4 0-6.4 2.1-7.5 5.3l-.4 1.2c-4.4 12.5-18.2 19-30.6 14.6s-19-18.2-14.6-30.6l.4-1.2zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"></path></svg></button><button class="panzoom-reset panzoom-button"><svg class="panzoom-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M125.7 160l50.3 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L48 224c-17.7 0-32-14.3-32-32L16 64c0-17.7 14.3-32 32-32s32 14.3 32 32l0 51.2L97.6 97.6c87.5-87.5 229.3-87.5 316.8 0s87.5 229.3 0 316.8s-229.3 87.5-316.8 0c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0c62.5 62.5 163.8 62.5 226.3 0s62.5-163.8 0-226.3s-163.8-62.5-226.3 0L125.7 160z"></path></svg></button><button class="panzoom-max panzoom-button"><svg class="panzoom-icon" viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path d="M32 32C14.3 32 0 46.3 0 64l0 96c0 17.7 14.3 32 32 32s32-14.3 32-32l0-64 64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L32 32zM64 352c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 96c0 17.7 14.3 32 32 32l96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0 0-64zM320 32c-17.7 0-32 14.3-32 32s14.3 32 32 32l64 0 0 64c0 17.7 14.3 32 32 32s32-14.3 32-32l0-96c0-17.7-14.3-32-32-32l-96 0zM448 352c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 64-64 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0c17.7 0 32-14.3 32-32l0-96z"></path></svg></button><button class="panzoom-min panzoom-button panzoom-hidden"><svg class="panzoom-icon" viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path d="M160 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 64-64 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0c17.7 0 32-14.3 32-32l0-96zM32 320c-17.7 0-32 14.3-32 32s14.3 32 32 32l64 0 0 64c0 17.7 14.3 32 32 32s32-14.3 32-32l0-96c0-17.7-14.3-32-32-32l-96 0zM352 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 96c0 17.7 14.3 32 32 32l96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0 0-64zM320 320c-17.7 0-32 14.3-32 32l0 96c0 17.7 14.3 32 32 32s32-14.3 32-32l0-64 64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0z"></path></svg></button></nav><pre class="mermaid"><code>flowchart LR
-  io[_io: read_file, to_ascii, path parsing]\nutils[_utils: geometry/index helpers]
-  ds[dataset.Dataset]\nabs[abstract_dataset.AbstractDataset]
-  dc[datacube.Datacube]\nfc[featurecollection.FeatureCollection]
-
-  abs --&gt; ds
-  ds --&gt; io
-  dc --&gt; ds
-  fc --&gt; io
-  ds --&gt; utils
-  fc --&gt; utils</code></pre></div>
-<h2 id="data-flow"><a class="toclink" href="#data-flow">Data Flow</a><a class="headerlink" href="#data-flow" title="Permanent link">#</a></h2>
-<ol>
-<li>Input paths are parsed; archives (.zip/.gz/.tar) are handled in <code>_io</code>.</li>
-<li>Raster inputs are loaded into <code>Dataset</code>; vector inputs into <code>FeatureCollection</code>.</li>
-<li><code>Datacube</code> orchestrates collections of datasets for temporal/spatial ops.</li>
-<li>Results are exported via <code>to_file</code> (GeoTIFF/ASCII/GeoJSON, etc.).</li>
-</ol>
-<p>See the diagrams page for UML and sequence flows.</p>
+<h1 id="docker-image-and-github-container-registry-ghcr"><a class="toclink" href="#docker-image-and-github-container-registry-ghcr">Docker image and GitHub Container Registry (GHCR)</a><a class="headerlink" href="#docker-image-and-github-container-registry-ghcr" title="Permanent link">#</a></h1>
+<p>The image is a Library/runtime container
+- Purpose: Provide a fully set up environment with all native deps (GDAL/PROJ/etc.) so users can run arbitrary commands.
+- Endpoint: Keep it minimal; print version/help or drop into a shell for interactive use.</p>
+<p>This guide explains everything you need to work with the provided Dockerfile:
+- What the Dockerfile does and its stages
+- How to build the image locally
+- How to run the container
+- How to push the image to GitHub Container Registry (GHCR)
+- How to delete images from GHCR when needed</p>
+<blockquote>
+<p>Requirements
+- Docker installed (Docker Desktop on Windows/macOS, or Docker Engine on Linux)
+- Optional: GitHub CLI (<code>gh</code>) for advanced GHCR management
+- Optional for pushing/deleting: a GitHub Personal Access Token (classic) with at least <code>read:packages</code> and <code>write:packages</code> scopes. For deleting, also <code>delete:packages</code>.</p>
+</blockquote>
+<hr/>
+<h2 id="understand-the-dockerfile"><a class="toclink" href="#understand-the-dockerfile">Understand the Dockerfile</a><a class="headerlink" href="#understand-the-dockerfile" title="Permanent link">#</a></h2>
+<p>Path: <code>./Dockerfile</code></p>
+<p>The Dockerfile is multi-stage and optimized to build a ready-to-run environment using [Pixi]. It has two stages:</p>
+<p>1) build (FROM <code>ghcr.io/prefix-dev/pixi:bookworm-slim</code>)
+   - Installs the project into an isolated Pixi environment.
+   - Honors <code>ENV_NAME</code> so you can choose which Pixi environment to build (defaults to <code>default</code>).
+   - Caches Pixi downloads for faster rebuilds.</p>
+<p>2) production (FROM <code>debian:bookworm-slim</code>)
+   - Copies only the built Pixi environment into a small runtime image.
+   - Sets environment variables so GDAL/PROJ, etc. work out of the box.
+   - Default <code>CMD</code> simply verifies the package import and prints Python version.</p>
+<p>Key build arguments and environment variables:
+- <code>ARG ENV_NAME=default</code> → set with <code>--build-arg ENV_NAME=&lt;name&gt;</code> to pick a Pixi environment.
+- <code>ENV PIXI_ENV_DIR=/app/.pixi/envs/${ENV_NAME}</code> → where the runtime lives.</p>
+<p>If you need multiple platforms (e.g., Apple Silicon/arm64 vs. amd64), you can use Buildx (see below).</p>
+<h2 id="docker-runtime-environment-variables"><a class="toclink" href="#docker-runtime-environment-variables">Docker runtime environment variables</a><a class="headerlink" href="#docker-runtime-environment-variables" title="Permanent link">#</a></h2>
+<ul>
+<li>
+<p>LD_LIBRARY_PATH</p>
+<ul>
+<li>Purpose: Ensures the dynamic linker can find shared libraries (e.g., GDAL, PROJ, GEOS) bundled inside the environment embedded in the image.</li>
+<li>Effect: Points the loader to the environment’s lib directory first so extensions depending on native libraries resolve correctly at runtime.</li>
+</ul>
+</li>
+<li>
+<p>PROJ_LIB</p>
+<ul>
+<li>Purpose: Tells PROJ where to find its datum shift grids and CRS resource files.</li>
+<li>Effect: Enables coordinate transformations and reprojections that require PROJ’s data files.</li>
+</ul>
+</li>
+<li>
+<p>GDAL_DATA</p>
+<ul>
+<li>Purpose: Points GDAL to its data directory containing coordinate system definitions, driver metadata, and supporting resources.</li>
+<li>Effect: Ensures GDAL utilities and Python bindings can locate EPSG definitions and other essential data.</li>
+</ul>
+</li>
+<li>
+<p>PYTHONNOUSERSITE=1</p>
+<ul>
+<li>Purpose: Prevents Python from loading packages from the user’s site-packages directory.</li>
+<li>Effect: Produces a hermetic runtime by using only the packages inside the image’s environment, avoiding accidental contamination from host-level Python packages.</li>
+</ul>
+</li>
+</ul>
+<hr/>
+<h2 id="build-the-image"><a class="toclink" href="#build-the-image">Build the image</a><a class="headerlink" href="#build-the-image" title="Permanent link">#</a></h2>
+<p>Typical local build (PowerShell or any shell):</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="c"># In the repo root</span>
+<a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a><span class="nv">$IMAGE</span> <span class="p">=</span> <span class="s2">"pyramids"</span>
+<a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a><span class="c"># Build using the default Pixi environment</span>
+<a href="#__codelineno-0-4" id="__codelineno-0-4" name="__codelineno-0-4"></a><span class="n">docker</span> <span class="n">build</span> <span class="n">-t</span> <span class="nv">$IMAGE</span><span class="p">:</span><span class="n">latest</span> <span class="p">.</span>
+</code></pre></div>
+<p>Choose a Pixi environment with <code>ENV_NAME</code> (if you have multiple, e.g., <code>py311</code>):</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a><span class="n">docker</span> <span class="n">build</span> <span class="p">-</span><span class="n">-build-arg</span> <span class="n">ENV_NAME</span><span class="p">=</span><span class="k">default</span> <span class="n">-t</span> <span class="n">pyramids</span><span class="p">:</span><span class="k">default</span> <span class="p">.</span>
+<a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a><span class="c"># or</span>
+<a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="c"># docker build --build-arg ENV_NAME=py311 -t pyramids:py311 .</span>
+</code></pre></div>
+<p>Tag with a version too:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="nv">$VERSION</span> <span class="p">=</span> <span class="s2">"0.1.0"</span>
+<a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a><span class="n">docker</span> <span class="n">build</span> <span class="n">-t</span> <span class="n">pyramids</span><span class="p">:</span><span class="n">latest</span> <span class="n">-t</span> <span class="n">pyramids</span><span class="p">:</span><span class="nv">$VERSION</span> <span class="p">.</span>
+</code></pre></div>
+<p>Multi-arch build (optional) with Buildx:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a><span class="c"># Create and use a builder once (if needed)</span>
+<a href="#__codelineno-3-2" id="__codelineno-3-2" name="__codelineno-3-2"></a><span class="n">docker</span> <span class="n">buildx</span> <span class="n">create</span> <span class="p">-</span><span class="n">-use</span> <span class="p">-</span><span class="n">-name</span> <span class="n">multi</span>
+<a href="#__codelineno-3-3" id="__codelineno-3-3" name="__codelineno-3-3"></a><span class="c"># Build for linux/amd64 (default on most PCs) and/or linux/arm64 (Apple Silicon)</span>
+<a href="#__codelineno-3-4" id="__codelineno-3-4" name="__codelineno-3-4"></a><span class="n">docker</span> <span class="n">buildx</span> <span class="n">build</span> <span class="p">-</span><span class="n">-platform</span> <span class="n">linux</span><span class="p">/</span><span class="n">amd64</span> <span class="n">-t</span> <span class="n">pyramids</span><span class="p">:</span><span class="n">latest</span> <span class="p">.</span>
+<a href="#__codelineno-3-5" id="__codelineno-3-5" name="__codelineno-3-5"></a><span class="c"># For arm64 as well:</span>
+<a href="#__codelineno-3-6" id="__codelineno-3-6" name="__codelineno-3-6"></a><span class="c"># docker buildx build --platform linux/amd64,linux/arm64 -t pyramids:latest .</span>
+</code></pre></div>
+<hr/>
+<h2 id="run-the-container"><a class="toclink" href="#run-the-container">Run the container</a><a class="headerlink" href="#run-the-container" title="Permanent link">#</a></h2>
+<p>Basic run:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-4-1" id="__codelineno-4-1" name="__codelineno-4-1"></a><span class="n">docker</span> <span class="n">run</span> <span class="p">-</span><span class="n">-rm</span> <span class="n">pyramids</span><span class="p">:</span><span class="n">latest</span>
+</code></pre></div>
+<p>Interactive shell inside the container:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-5-1" id="__codelineno-5-1" name="__codelineno-5-1"></a><span class="n">docker</span> <span class="n">run</span> <span class="p">-</span><span class="n">-rm</span> <span class="n">-it</span> <span class="n">pyramids</span><span class="p">:</span><span class="n">latest</span> <span class="n">bash</span>
+</code></pre></div>
+<p>Mount a local folder (e.g., to access data):</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-6-1" id="__codelineno-6-1" name="__codelineno-6-1"></a><span class="c"># Replace C:\data with your real path</span>
+<a href="#__codelineno-6-2" id="__codelineno-6-2" name="__codelineno-6-2"></a><span class="n">docker</span> <span class="n">run</span> <span class="p">-</span><span class="n">-rm</span> <span class="n">-it</span> <span class="n">-v</span> <span class="n">C</span><span class="p">:\</span><span class="n">data</span><span class="p">:/</span><span class="n">data</span> <span class="n">pyramids</span><span class="p">:</span><span class="n">latest</span> <span class="n">bash</span>
+</code></pre></div>
+<p>Note: Environment variables like <code>GDAL_DATA</code> and <code>PROJ_LIB</code> are already set inside the image. The Pixi environment is in the PATH by default.</p>
+<hr/>
+<h2 id="push-to-github-container-registry-ghcr"><a class="toclink" href="#push-to-github-container-registry-ghcr">Push to GitHub Container Registry (GHCR)</a><a class="headerlink" href="#push-to-github-container-registry-ghcr" title="Permanent link">#</a></h2>
+<p>Image naming convention for GHCR: <code>ghcr.io/&lt;owner&gt;/&lt;repo&gt;[:tag]</code>.</p>
+<p>For this repository, a convenient image name at release time is:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a>ghcr.io/&lt;lowercased-owner&gt;/&lt;lowercased-repo&gt;
+</code></pre></div>
+<p>Example (adjust owner/repo):</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a><span class="nv">$OWNER</span> <span class="p">=</span> <span class="s2">"Serapieum-of-alex"</span>
+<a href="#__codelineno-8-2" id="__codelineno-8-2" name="__codelineno-8-2"></a><span class="nv">$REPO</span>  <span class="p">=</span> <span class="s2">"pyramids"</span>
+<a href="#__codelineno-8-3" id="__codelineno-8-3" name="__codelineno-8-3"></a><span class="nv">$IMAGE</span> <span class="p">=</span> <span class="p">(</span><span class="s2">"ghcr.io/{0}/{1}"</span> <span class="o">-f</span> <span class="nv">$OWNER</span><span class="p">.</span><span class="n">ToLower</span><span class="p">(),</span> <span class="nv">$REPO</span><span class="p">.</span><span class="n">ToLower</span><span class="p">())</span>
+<a href="#__codelineno-8-4" id="__codelineno-8-4" name="__codelineno-8-4"></a><span class="nv">$VERSION</span> <span class="p">=</span> <span class="s2">"0.1.0"</span>
+<a href="#__codelineno-8-5" id="__codelineno-8-5" name="__codelineno-8-5"></a>
+<a href="#__codelineno-8-6" id="__codelineno-8-6" name="__codelineno-8-6"></a><span class="c"># Tag the local image to GHCR</span>
+<a href="#__codelineno-8-7" id="__codelineno-8-7" name="__codelineno-8-7"></a><span class="n">docker</span> <span class="n">tag</span> <span class="n">pyramids</span><span class="p">:</span><span class="n">latest</span>  <span class="nv">$IMAGE</span><span class="p">:</span><span class="n">latest</span>
+<a href="#__codelineno-8-8" id="__codelineno-8-8" name="__codelineno-8-8"></a><span class="n">docker</span> <span class="n">tag</span> <span class="n">pyramids</span><span class="p">:</span><span class="n">latest</span>  <span class="nv">$IMAGE</span><span class="p">:</span><span class="nv">$VERSION</span>
+<a href="#__codelineno-8-9" id="__codelineno-8-9" name="__codelineno-8-9"></a>
+<a href="#__codelineno-8-10" id="__codelineno-8-10" name="__codelineno-8-10"></a><span class="c"># Login to GHCR (use a PAT with write:packages)</span>
+<a href="#__codelineno-8-11" id="__codelineno-8-11" name="__codelineno-8-11"></a><span class="c"># On Windows PowerShell, you can be prompted for the PAT:</span>
+<a href="#__codelineno-8-12" id="__codelineno-8-12" name="__codelineno-8-12"></a><span class="c"># Create an env var GHCR_PAT temporarily if you prefer non-interactive login</span>
+<a href="#__codelineno-8-13" id="__codelineno-8-13" name="__codelineno-8-13"></a><span class="c"># $env:GHCR_PAT = "&lt;YOUR_PAT&gt;"</span>
+<a href="#__codelineno-8-14" id="__codelineno-8-14" name="__codelineno-8-14"></a><span class="c"># echo $env:GHCR_PAT | docker login ghcr.io -u &lt;your-github-username&gt; --password-stdin</span>
+<a href="#__codelineno-8-15" id="__codelineno-8-15" name="__codelineno-8-15"></a>
+<a href="#__codelineno-8-16" id="__codelineno-8-16" name="__codelineno-8-16"></a><span class="n">docker</span> <span class="n">login</span> <span class="n">ghcr</span><span class="p">.</span><span class="n">io</span> <span class="n">-u</span> <span class="p">&lt;</span><span class="n">your-github-username</span><span class="p">&gt;</span>
+<a href="#__codelineno-8-17" id="__codelineno-8-17" name="__codelineno-8-17"></a><span class="c"># Paste PAT when prompted</span>
+<a href="#__codelineno-8-18" id="__codelineno-8-18" name="__codelineno-8-18"></a>
+<a href="#__codelineno-8-19" id="__codelineno-8-19" name="__codelineno-8-19"></a><span class="c"># Push</span>
+<a href="#__codelineno-8-20" id="__codelineno-8-20" name="__codelineno-8-20"></a><span class="n">docker</span> <span class="n">push</span> <span class="nv">$IMAGE</span><span class="p">:</span><span class="nv">$VERSION</span>
+<a href="#__codelineno-8-21" id="__codelineno-8-21" name="__codelineno-8-21"></a><span class="n">docker</span> <span class="n">push</span> <span class="nv">$IMAGE</span><span class="p">:</span><span class="n">latest</span>
+</code></pre></div>
+<p>Automated publish on GitHub Release
+- This repository includes a workflow: <code>.github/workflows/docker-release.yml</code>.
+- When a GitHub Release is created, it:
+  - Builds the Docker image from <code>Dockerfile</code>.
+  - Tags it with the release version (and <code>latest</code> if not a pre-release) using <code>docker/metadata-action</code>.
+  - Pushes to <code>ghcr.io/&lt;owner&gt;/&lt;repo&gt;</code> using the repository’s <code>GITHUB_TOKEN</code>.</p>
+<p>To trigger: create a new release (or use the "Run workflow" button for manual dispatch if enabled).</p>
+<hr/>
+<h2 id="delete-images-from-ghcr"><a class="toclink" href="#delete-images-from-ghcr">Delete images from GHCR</a><a class="headerlink" href="#delete-images-from-ghcr" title="Permanent link">#</a></h2>
+<p>There are two common approaches: web UI and <code>gh</code> CLI.</p>
+<p>A) Web UI
+1. Go to your GitHub org/user → Packages → Find the container package named after the repo (e.g., <code>pyramids</code>).
+2. Open the package → Versions → Delete the version(s) you want. You may need <code>delete:packages</code> scope.</p>
+<p>B) GitHub CLI (<code>gh</code>)</p>
+<p>The API endpoints differ for user vs organization. Examples below assume the image name is <code>pyramids</code> under organization <code>Serapieum-of-alex</code>.</p>
+<p>List versions (organization):</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-9-1" id="__codelineno-9-1" name="__codelineno-9-1"></a><span class="nv">$ORG</span> <span class="p">=</span> <span class="s2">"Serapieum-of-alex"</span>
+<a href="#__codelineno-9-2" id="__codelineno-9-2" name="__codelineno-9-2"></a><span class="nv">$PKG</span> <span class="p">=</span> <span class="s2">"pyramids"</span>  <span class="c"># package name in GHCR equals the lowercased repo name by default</span>
+<a href="#__codelineno-9-3" id="__codelineno-9-3" name="__codelineno-9-3"></a>
+<a href="#__codelineno-9-4" id="__codelineno-9-4" name="__codelineno-9-4"></a><span class="n">gh</span> <span class="n">api</span> <span class="n">-H</span> <span class="s2">"Accept: application/vnd.github+json"</span> <span class="p">`</span>
+<a href="#__codelineno-9-5" id="__codelineno-9-5" name="__codelineno-9-5"></a>  <span class="s2">"/orgs/$ORG/packages/container/$PKG/versions"</span> <span class="p">|</span> <span class="p">`</span>
+<a href="#__codelineno-9-6" id="__codelineno-9-6" name="__codelineno-9-6"></a>  <span class="nb">ConvertFrom-Json</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">id</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">metadata</span>
+</code></pre></div>
+<p>Delete a specific version by ID (organization):</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-10-1" id="__codelineno-10-1" name="__codelineno-10-1"></a><span class="nv">$VERSION_ID</span> <span class="p">=</span> <span class="n">123456</span>
+<a href="#__codelineno-10-2" id="__codelineno-10-2" name="__codelineno-10-2"></a>
+<a href="#__codelineno-10-3" id="__codelineno-10-3" name="__codelineno-10-3"></a><span class="n">gh</span> <span class="n">api</span> <span class="n">-X</span> <span class="n">DELETE</span> <span class="n">-H</span> <span class="s2">"Accept: application/vnd.github+json"</span> <span class="p">`</span>
+<a href="#__codelineno-10-4" id="__codelineno-10-4" name="__codelineno-10-4"></a>  <span class="s2">"/orgs/$ORG/packages/container/$PKG/versions/$VERSION_ID"</span>
+</code></pre></div>
+<p>For user-owned packages, replace <code>/orgs/{org}</code> with <code>/user</code>:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-11-1" id="__codelineno-11-1" name="__codelineno-11-1"></a><span class="nv">$PKG</span> <span class="p">=</span> <span class="s2">"pyramids"</span>
+<a href="#__codelineno-11-2" id="__codelineno-11-2" name="__codelineno-11-2"></a>
+<a href="#__codelineno-11-3" id="__codelineno-11-3" name="__codelineno-11-3"></a><span class="c"># List</span>
+<a href="#__codelineno-11-4" id="__codelineno-11-4" name="__codelineno-11-4"></a><span class="n">gh</span> <span class="n">api</span> <span class="n">-H</span> <span class="s2">"Accept: application/vnd.github+json"</span> <span class="s2">"/user/packages/container/$PKG/versions"</span>
+<a href="#__codelineno-11-5" id="__codelineno-11-5" name="__codelineno-11-5"></a>
+<a href="#__codelineno-11-6" id="__codelineno-11-6" name="__codelineno-11-6"></a><span class="c"># Delete</span>
+<a href="#__codelineno-11-7" id="__codelineno-11-7" name="__codelineno-11-7"></a><span class="nv">$VERSION_ID</span> <span class="p">=</span> <span class="n">123456</span>
+<a href="#__codelineno-11-8" id="__codelineno-11-8" name="__codelineno-11-8"></a><span class="n">gh</span> <span class="n">api</span> <span class="n">-X</span> <span class="n">DELETE</span> <span class="n">-H</span> <span class="s2">"Accept: application/vnd.github+json"</span> <span class="s2">"/user/packages/container/$PKG/versions/$VERSION_ID"</span>
+</code></pre></div>
+<p>Notes:
+- You must authenticate <code>gh</code> (run <code>gh auth login</code>) with a token that has <code>read:packages</code>, <code>write:packages</code>, and <code>delete:packages</code> to delete.
+- Deleting "versions" removes specific tags. Deleting the whole package is also possible via the UI if you need a full reset.</p>
+<hr/>
+<h2 id="troubleshooting"><a class="toclink" href="#troubleshooting">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<ul>
+<li>denied: permission: Check you’re logged into GHCR and your token has the right scopes.</li>
+<li>image name invalid: Ensure the name is lowercase for GHCR (owner and repo must be lowercase in the full image reference).</li>
+<li>multi-arch build fails: Use <code>docker buildx</code> and ensure QEMU emulation is enabled if cross-building.</li>
+<li>slow builds: The Dockerfile uses Pixi cache; make sure Docker BuildKit is enabled (default in recent Docker releases).</li>
+</ul>
+<hr/>
+<h2 id="references"><a class="toclink" href="#references">References</a><a class="headerlink" href="#references" title="Permanent link">#</a></h2>
+<ul>
+<li>GitHub Container Registry: https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-container-registry</li>
+<li>docker/build-push-action: https://github.com/docker/build-push-action</li>
+<li>docker/login-action: https://github.com/docker/login-action</li>
+<li>docker/metadata-action: https://github.com/docker/metadata-action</li>
+<li>Pixi: https://pixi.sh</li>
+</ul>
 </article>
 </div>
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
@@ -713,7 +918,7 @@
 </main>
 <footer class="md-footer">
 <nav aria-label="Footer" class="md-footer__inner md-grid">
-<a aria-label="Previous: Codebase Map" class="md-footer__link md-footer__link--prev" href="../codebase-map/">
+<a aria-label="Previous: Datacube basics" class="md-footer__link md-footer__link--prev" href="../../tutorials/datacube-basics/">
 <div class="md-footer__button md-icon">
 <svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
 </div>
@@ -722,17 +927,17 @@
                 Previous
               </span>
 <div class="md-ellipsis">
-                Codebase Map
+                Datacube basics
               </div>
 </div>
 </a>
-<a aria-label="Next: Diagrams" class="md-footer__link md-footer__link--next" href="../../architecture/diagrams/">
+<a aria-label="Next: Recipes" class="md-footer__link md-footer__link--next" href="../recipes/">
 <div class="md-footer__title">
 <span class="md-footer__direction">
                 Next
               </span>
 <div class="md-ellipsis">
-                Diagrams
+                Recipes
               </div>
 </div>
 <div class="md-footer__button md-icon">
