@@ -28,7 +28,6 @@ print("dist-info:", [str(p) for p in pathlib.Path(sp[0]).glob("pyramids_gis-*.di
 PY
 
 
-
 FROM debian:bookworm-slim AS production
 
 ARG ENV_NAME=default
@@ -38,8 +37,6 @@ ENV PIXI_ENV_DIR=/app/.pixi/envs/${ENV_NAME}
 WORKDIR /app
 # Copy the ready-to-run environment
 COPY --from=build "${PIXI_ENV_DIR}" "${PIXI_ENV_DIR}"
-# Copy the source code to production for reference
-#COPY --from=build /app/src /app/src
 
 ENV PATH="${PIXI_ENV_DIR}/bin:${PATH}"
 
@@ -52,7 +49,4 @@ ENV PYTHONNOUSERSITE=1
 RUN ${PIXI_ENV_DIR}/bin/python -c "import importlib, sys; importlib.import_module('pyramids'); print('pyramids-gis installed, Python='+sys.version.split()[0])"
 
 # Simple default command prints package version to confirm install
-CMD ["${PIXI_ENV_DIR}/bin/python", "-c", "import importlib, sys; importlib.import_module('pyramids'); print('pyramids-gis installed,Python='+sys.version.split()[0])"]
-
-# Usage:
-#   docker build -t pyramids-gis:latest .
+CMD ["${PIXI_ENV_DIR}/bin/python", "-c", "import importlib, sys; importlib.import_module('pyramids'); print('pyramids installed,Python='+sys.version.split()[0])"]
