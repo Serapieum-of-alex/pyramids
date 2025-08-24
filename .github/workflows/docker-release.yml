@@ -16,10 +16,12 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Compute image name (lowercase)
+      - name: Get repo image name (lowercase)
+        shell: bash
         run: |
-          echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-          echo "IMAGE=ghcr.io/${REPO_LC}" >> $GITHUB_ENV
+          REPO_LC="${GITHUB_REPOSITORY,,}"
+          echo "REPO_LC=${REPO_LC}" >> "$GITHUB_ENV"
+          echo "IMAGE=ghcr.io/${REPO_LC}" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -37,9 +39,10 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
+            type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
+            type=sha,enable=${{ github.event_name != 'release' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
