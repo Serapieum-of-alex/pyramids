@@ -91,7 +91,7 @@ docker build --build-arg ENV_NAME=default -t pyramids:default .
 Tag with a version too:
 
 ```bash
-VERSION="0.1.0"
+VERSION="<your-version-here>"
 docker build -t pyramids:latest -t "pyramids:$VERSION" .
 ```
 
