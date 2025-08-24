@@ -178,14 +178,11 @@ INTERPOLATION_METHODS = {
 def color_name_to_gdal_constant(color_name: str) -> int:
     """Convert color name to GDAL constant.
 
-    Parameters
-    ----------
-    color_name: [str]
-        Color name
+    Args:
+        color_name (str): Color name.
 
-    Returns
-    -------
-    int
+    Returns:
+        int: GDAL constant corresponding to the color name.
     """
     if color_name not in COLOR_NAMES:
         raise ValueError(
@@ -201,14 +198,11 @@ def color_name_to_gdal_constant(color_name: str) -> int:
 def gdal_constant_to_color_name(gdal_constant: int) -> str:
     """Convert GDAL constant to color name.
 
-    Parameters
-    ----------
-    gdal_constant: [int]
-        GDAL constant
+    Args:
+        gdal_constant (int): GDAL constant.
 
-    Returns
-    -------
-    str
+    Returns:
+        str: Color name corresponding to the GDAL constant.
     """
     if gdal_constant not in COLOR_INTERPRETATIONS:
         raise ValueError(
@@ -221,16 +215,13 @@ def gdal_constant_to_color_name(gdal_constant: int) -> str:
 
 
 def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype, str]) -> int:
-    """Map function between numpy and gdal data types.
+    """Map function between numpy and GDAL data types.
 
-    Parameters
-    ----------
-    arr: [np.ndarray/np.dtype]
-        numpy array or numpy data type
+    Args:
+        arr (np.ndarray | np.dtype | str): Numpy array or numpy data type.
 
-    Returns
-    -------
-    gdal data type
+    Returns:
+        int: GDAL data type code.
     """
     if isinstance(arr, np.ndarray):
         np_dtype = arr.dtype
@@ -254,28 +245,25 @@ def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype, str]) -> int:
 def ogr_to_numpy_dtype(dtype_code: int):
     """Convert OGR dtype into numpy dtype.
 
-    Parameters
-    ----------
-    dtype_code: [int]
-        OGR data type code
-        ogr.OFTInteger: 0,
-        ogr.OFTIntegerList: 1,
-        ogr.OFTReal: 2,
-        ogr.OFTRealList: 3,
-        ogr.OFTString: 4,
-        ogr.OFTStringList: 5,
-        ogr.OFTWideString: 6,
-        ogr.OFTWideStringList: 7,
-        ogr.OFTBinary:8,
-        ogr.OFTDate:9,
-        ogr.OFTTime:10,
-        ogr.OFTDateTime:11,
-        ogr.OFTInteger64: 12,
-        ogr.OFTInteger64List: 13,
+    Args:
+        dtype_code (int): OGR data type code
+            - ogr.OFTInteger: 0
+            - ogr.OFTIntegerList: 1
+            - ogr.OFTReal: 2
+            - ogr.OFTRealList: 3
+            - ogr.OFTString: 4
+            - ogr.OFTStringList: 5
+            - ogr.OFTWideString: 6
+            - ogr.OFTWideStringList: 7
+            - ogr.OFTBinary: 8
+            - ogr.OFTDate: 9
+            - ogr.OFTTime: 10
+            - ogr.OFTDateTime: 11
+            - ogr.OFTInteger64: 12
+            - ogr.OFTInteger64List: 13
 
-    Returns
-    -------
-    Numpy data type
+    Returns:
+        numpy.dtype: Numpy data type corresponding to the OGR code.
     """
     # since there are more than one numpy dtype for the ogr.OFTInteger (0), and the ogr.OFTInteger64 (12),
     # we will return int32 for 0 and int64 for 12.
@@ -302,15 +290,13 @@ def ogr_to_numpy_dtype(dtype_code: int):
 
 
 def gdal_to_numpy_dtype(dtype: int) -> str:
-    """Convert gdal dtype into numpy dtype.
+    """Convert GDAL dtype into numpy dtype.
 
-    Parameters
-    ----------
-    dtype: [int]
+    Args:
+        dtype (int): GDAL data type code.
 
-    Returns
-    -------
-    str
+    Returns:
+        str: Name of the corresponding numpy dtype.
     """
     gdal_dtypes = DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == dtype, "numpy"]
     if len(gdal_dtypes) == 0:
@@ -325,18 +311,14 @@ def gdal_to_numpy_dtype(dtype: int) -> str:
 
 
 def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
-    """Get The corresponding data type from ogr to each gdal data type.
+    """Get the corresponding OGR data type for a given GDAL band.
 
-    Parameters
-    ----------
-    src: [DataSet]
-        gdal Datacube
-    band: [gda Band]
-        gdal band
+    Args:
+        src (gdal.Dataset): GDAL dataset.
+        band (int): Band index (1-based). Default is 1.
 
-    Returns
-    -------
-    gdal data type
+    Returns:
+        int: OGR data type code corresponding to the band GDAL dtype.
     """
     band = src.GetRasterBand(band)
     gdal_dtype = band.DataType
@@ -348,17 +330,13 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
 
 
 def create_time_conversion_func(time: str) -> callable:
-    """Create a function to convert the ordinal time to gregorian date.
+    """Create a function to convert the ordinal time to Gregorian date.
 
-    Parameters
-    ----------
-    time: [str]
-        time unit string extracted from netcdf file
-        >>> 'seconds since 1970-01-01'
+    Args:
+        time (str): Time unit string extracted from netcdf file, e.g., 'seconds since 1970-01-01'.
 
-    Returns
-    -------
-    callacle
+    Returns:
+        callable: A function that converts an integer time step to a datetime.
     """
     time_unit, start = time.split(" since ")
     datum = dt.datetime.strptime(start, "%Y-%m-%d")
@@ -415,15 +393,11 @@ class Catalog:
     def get_driver_name_by_extension(self, extension: str):
         """Get driver by extension.
 
-        Parameters
-        ----------
-        extension: [str]
-            extenstion of the file.
+        Args:
+            extension (str): Extension of the file.
 
-        Returns
-        -------
-        str:
-            Driver name.
+        Returns:
+            str: Driver name.
         """
         try:
             key = next(
@@ -445,15 +419,11 @@ class Catalog:
     def get_driver_by_extension(self, extension):
         """Get driver by extension.
 
-        Parameters
-        ----------
-        extension: [str]
-            extenstion of the file.
+        Args:
+            extension (str): Extension of the file.
 
-        Returns
-        -------
-        Dict:
-            Driver dictionary
+        Returns:
+            dict: Driver dictionary.
         """
         driver_name = self.get_driver_name_by_extension(extension)
         return self.get_driver(driver_name)
@@ -493,16 +463,13 @@ def import_cleopatra(message: str):
 
 
 def ogr_ds_togdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
-    """Convert ogr.Datasource object to a gdal.Dataset.
+    """Convert ogr.DataSource object to a gdal.Dataset.
 
-    Parameters
-    ----------
-    ogr_ds: [Datasource]
-        ogr.Datasource object
+    Args:
+        ogr_ds (ogr.DataSource): OGR data source object.
 
-    Returns
-    -------
-    gdal.Dataset
+    Returns:
+        gdal.Dataset: An in-memory GDAL dataset converted from the OGR source.
     """
     gdal_ds = gdal.GetDriverByName("Memory").Create("", 0, 0, 0, gdal.GDT_Unknown)
 

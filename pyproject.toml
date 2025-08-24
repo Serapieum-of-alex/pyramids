@@ -59,6 +59,7 @@ docs = [
     "mkdocs-table-reader-plugin  >=3.1.0",
     "mkdocs-mermaid2-plugin  >=1.2.1",
     "jupyter-contrib-nbextensions  >=0.7.0",
+    "mkdocs-panzoom-plugin",
     "notebook<7.0",
     "jupyter"
 ]
@@ -68,8 +69,8 @@ viz = ["cleopatra>=0.5.1"]
 [project.urls]
 homepage = "https://github.com/Serapieum-of-alex/pyramids"
 repository = "https://github.com/Serapieum-of-alex/pyramids"
-documentation = "https://pyramids-gis.readthedocs.io/"
-Changelog = "https://github.com/Serapieum-of-alex/pyramids/HISTORY.rst"
+documentation = "https://serapieum-of-alex.github.io/pyramids/"
+Changelog = "https://github.com/Serapieum-of-alex/pyramids/docs/change-log.md"
 
 
 [build-system]
@@ -128,7 +129,8 @@ build-dist = { cmd = "python -m build", description = "Build sdist and wheel for
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
 
 [tool.pixi.environments]
-default = { features = ["viz", "dev"], solve-group = "default" }
+default = {features = ["viz"], solve-group = "default" }
+dev = { features = ["viz", "dev"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "default" }
 py311 = { features = ["py311", "viz", "dev"], solve-group = "py311" }
 py312 = { features = ["py312", "viz", "dev"], solve-group = "py312" }

@@ -102,21 +102,19 @@ class Datacube:
         return self._base.columns
 
     @classmethod
-    def create_cube(cls, src: Dataset, dataset_length: int):
+    def create_cube(cls, src: Dataset, dataset_length: int) -> "Datacube":
         """Create Datacube.
 
-            - Create Datacube from a sample raster and
+            - Create a Datacube from a sample raster.
 
-        Parameters
-        ----------
-        src: [Dataset]
-            RAster Object
-        dataset_length: [int]
-            length of the dataset.
+        Args:
+            src (Dataset):
+                Raster object.
+            dataset_length (int):
+                Length of the dataset.
 
-        Returns
-        -------
-        Datacube object.
+        Returns:
+            Datacube: Datacube object.
         """
         return cls(src, dataset_length)
 
@@ -132,74 +130,97 @@ class Datacube:
         end: str = None,
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
-    ):
+    ) -> "Datacube":
         r"""read_multiple_files.
 
-            - reads rasters from a folder and creates a 3d array with the same 2d dimensions of the first raster in
-            the folder and length as the number of files.
+            - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the
+              first raster and length equal to the number of files.
 
-        inside the folder.
-        - All rasters should have the same dimensions
-        - If you want to read the rasters with a certain order, then all raster file names should have a date that
-            follows the same format (YYYY.MM .DD / YYYY-MM-DD or YYYY_MM_DD) (i.e. "MSWEP_1979.01.01.tif").
+            - All rasters should have the same dimensions.
+            - If you want to read the rasters with a certain order, the raster file names should contain a date
+              that follows a consistent format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD), e.g. "MSWEP_1979.01.01.tif".
 
-        Parameters
-        ----------
-        path:[str/list]
-            path of the folder that contains all the rasters, ora list contains the paths of the rasters to read.
-        with_order: [bool]
-            True if the rasters names' follows a certain order, then the rasters' names should have a date that follows
-            the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD).
-            >>> "MSWEP_1979.01.01.tif"
-            >>> "MSWEP_1979.01.02.tif"
-            >>> ...
-            >>> "MSWEP_1979.01.20.tif"
+        Args:
+            path (str | List[str]):
+                Path of the folder that contains all the rasters, or a list containing the paths of the rasters to read.
+            with_order (bool):
+                True if the raster names follow a certain order. Then the raster names should have a date that follows
+                the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD). For example:
 
-        regex_string: [str]
-            a regex string that we can use to locate the date in the file names.Default is r"\d{4}.\d{
-            2}.\d{2}".
-            >>> fname = "MSWEP_YYYY.MM.DD.tif"
-            >>> regex_string = r"\d{4}.\d{2}.\d{2}"
-            - or
-            >>> fname = "MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d{4}_\d{1}_\d{1}"
-            - if there is a number at the beginning of the name
-            >>> fname = "1_MSWEP_YYYY_M_D.tif"
-            >>> regex_string = r"\d+"
+                ```python
+                >>> "MSWEP_1979.01.01.tif"
+                >>> "MSWEP_1979.01.02.tif"
+                >>> ...
+                >>> "MSWEP_1979.01.20.tif"
 
-        date: [bool]
-            True if the number in the file name is a date. Default is True.
-        file_name_data_fmt : [str]
-            if the files names' have a date and you want to read them ordered .Default is None
-            >>> "MSWEP_YYYY.MM.DD.tif"
-            >>> file_name_data_fmt = "%Y.%m.%d"
+                ```
 
-        start: [str]
-            start date if you want to read the input raster for a specific period only and not all rasters,
-            if not given all rasters in the given path will be read.
-        end: [str]
-            end date if you want to read the input temperature for a specific period only,
-            if not given all rasters in the given path will be read.
-        fmt: [str]
-            format of the given date in the start/end parameter.
-        extension: [str]
-            the extension of the files you want to read from the given path. Default is ".tif".
+            regex_string (str):
+                A regex string used to locate the date in the file names. Default is r"\d{4}.\d{2}.\d{2}". For example:
 
-        Returns
-        -------
-        DataCube:
-            instance of the datacube class.
+                ```python
+                >>> fname = "MSWEP_YYYY.MM.DD.tif"
+                >>> regex_string = r"\d{4}.\d{2}.\d{2}"
+                ```
 
-        Example
-        -------
-        >>> from pyramids.datacube import Datacube
-        >>> raster_folder = "examples/GIS/data/raster-folder"
-        >>> prec = Datacube.read_multiple_files(raster_folder)
+                - Or:
 
-        >>> import glob
-        >>> search_criteria = "*.tif"
-        >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-        >>> prec = Datacube.read_multiple_files(file_list, with_order=False)
+                ```python
+                >>> fname = "MSWEP_YYYY_M_D.tif"
+                >>> regex_string = r"\d{4}_\d{1}_\d{1}"
+                ```
+
+                - If there is a number at the beginning of the name:
+
+                ```python
+                >>> fname = "1_MSWEP_YYYY_M_D.tif"
+                >>> regex_string = r"\d+"
+                ```
+
+            date (bool):
+                True if the number in the file name is a date. Default is True.
+            file_name_data_fmt (str):
+                If the file names contain a date and you want to read them ordered. Default is None. For example:
+
+                ```python
+                >>> "MSWEP_YYYY.MM.DD.tif"
+                >>> file_name_data_fmt = "%Y.%m.%d"
+                ```
+
+            start (str):
+                Start date if you want to read the input raster for a specific period only and not all rasters. If not
+                given, all rasters in the given path will be read.
+            end (str):
+                End date if you want to read the input rasters for a specific period only. If not given, all rasters in
+                the given path will be read.
+            fmt (str):
+                Format of the given date in the start/end parameter.
+            extension (str):
+                The extension of the files you want to read from the given path. Default is ".tif".
+
+        Returns:
+            Datacube:
+                Instance of the Datacube class.
+
+        Examples:
+            - Read all rasters in a folder:
+
+              ```python
+              >>> from pyramids.datacube import Datacube
+              >>> raster_folder = "examples/GIS/data/raster-folder"
+              >>> prec = Datacube.read_multiple_files(raster_folder)
+
+              ```
+
+            - Read from a pre-collected list without ordering:
+
+              ```python
+              >>> import glob
+              >>> search_criteria = "*.tif"
+              >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
+              >>> prec = Datacube.read_multiple_files(file_list, with_order=False)
+
+              ```
         """
         if not isinstance(path, str) and not isinstance(path, list):
             raise TypeError(f"path input should be string/list type, given{type(path)}")
@@ -270,19 +291,16 @@ class Datacube:
 
         return cls(sample, len(files), files)
 
-    def open_datacube(self, band: int = 0):
-        """open_datacube.
+    def open_datacube(self, band: int = 0) -> None:
+        """Open the datacube.
 
-            Read values form the given bands as Arrays for all files
+        Read values from the given band as arrays for all files.
 
-        Parameters
-        ----------
-        band: [int]
-            index of the band you want to read default is 0.
+        Args:
+            band (int): Index of the band you want to read. Default is 0.
 
-        Returns
-        -------
-        Array
+        Returns:
+            None: Loads values into the internal 3D array [time, rows, cols] in-place.
         """
         # check the given band number
         if not hasattr(self, "base"):
@@ -376,20 +394,17 @@ class Datacube:
         """Last Dataset."""
         return self._values[-1, :, :]
 
-    def iloc(self, i):
+    def iloc(self, i) -> Dataset:
         """iloc.
 
             - Access dataset array using index.
 
-        Parameters
-        ----------
-        i: [int]
-            index
+        Args:
+            i (int):
+                Index of the dataset to access.
 
-        Returns
-        -------
-        Dataset:
-            Dataset object.
+        Returns:
+            Dataset: Dataset object.
         """
         if not hasattr(self, "values"):
             raise DatasetNoFoundError("please read the dataset first")
@@ -398,86 +413,47 @@ class Datacube:
         dst.GetRasterBand(1).WriteArray(arr)
         return Dataset(dst)
 
-    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs):
-        """Read Array.
+    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs: Any) -> "ArrayGlyph":
+        r"""Read Array.
 
             - read the values stored in a given band.
 
-        Parameters
-        ----------
-        band : [integer]
-            the band you want to get its data. Default is 0
-        exclude_value: [Any]
-            value to exclude from the plot. Default is None.
-        **kwargs
-            points : [array]
-                3 column array with the first column as the value you want to display for the point, the second is the
-                rows index of the point in the array, and the third column as the column index in the array.
-                the second and third column tells the location of the point in the array.
-            point_color: [str]
-                color.
-            point_size: [Any]
-                size of the point.
-            pid_color: [str]
-                the color of the annotation of the point. Default is blue.
-            pid_size: [Any]
-                size of the point annotation.
-            figsize: [tuple], optional
-                figure size. The default is (8,8).
-            title: [str], optional
-                title of the plot. The default is 'Total Discharge'.
-            title_size: [integer], optional
-                title size. The default is 15.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            rotation: [number], optional
-                rotation of the color bar label. The default is -90.
-            orientation: [string], optional
-                orientation of the color bar horizontal/vertical. The default is 'vertical'.
-            cbar_length: [float], optional
-                ratio to control the height of the color bar. The default is 0.75.
-            ticks_spacing: [integer], optional
-                Spacing in the color bar ticks. The default is 2.
-            cbar_label_size: integer, optional
-                size of the color bar label. The default is 12.
-            cbar_label: str, optional
-                label of the color bar. The default is 'Discharge m3/s'.
-            color_scale: integer, optional
-                there are 5 options to change the scale of the colors. The default is 1.
-                1- color_scale 1 is the normal scale
-                2- color_scale 2 is the power scale
-                3- color_scale 3 is the SymLogNorm scale
-                4- color_scale 4 is the PowerNorm scale
-                5- color_scale 5 is the BoundaryNorm scale
-                ------------------------------------------------------------------
-                gamma : [float], optional
-                    value needed for option 2 . The default is 1./2..
-                line_threshold : [float], optional
-                    value needed for option 3. The default is 0.0001.
-                line_scale : [float], optional
-                    value needed for option 3. The default is 0.001.
-                bounds: [List]
-                    a list of number to be used as a discrete bounds for the color scale 4.Default is None,
-                midpoint : [float], optional
-                    value needed for option 5. The default is 0.
-                ------------------------------------------------------------------
-            cmap : [str], optional
-                color style. The default is 'coolwarm_r'.
-            display_cell_value : [bool]
-                True if you want to display the values of the cells as a text
-            num_size : integer, optional
-                size of the numbers plotted in top of each cells. The default is 8.
-            background_color_threshold : [float/integer], optional
-                threshold value if the value of the cell is greater, the plotted
-                numbers will be black and if smaller the plotted number will be white
-                if None given the maxvalue/2 will be considered. The default is None.
+        Args:
+            band (int):
+                The band you want to get its data. Default is 0.
+            exclude_value (Any):
+                Value to exclude from the plot. Default is None.
+            **kwargs:
+                | Parameter                  | Type                  | Description |
+                |----------------------------|-----------------------|-------------|
+                | points                     | array                 | 3-column array: col 1 = value to display, col 2 = row index, col 3 = column index. Columns 2 and 3 indicate the location of the point. |
+                | point_color                | str                   | Color of the points. |
+                | point_size                 | Any                   | Size of the points. |
+                | pid_color                  | str                   | Color of the annotation of the point. Default is blue. |
+                | pid_size                   | Any                   | Size of the point annotation. |
+                | figsize                    | tuple, optional       | Figure size. Default is `(8, 8)`. |
+                | title                      | str, optional         | Title of the plot. Default is `'Total Discharge'`. |
+                | title_size                 | int, optional         | Title size. Default is `15`. |
+                | orientation                | str, optional         | Orientation of the color bar (`horizontal` or `vertical`). Default is `'vertical'`. |
+                | rotation                   | number, optional      | Rotation of the color bar label. Default is `-90`. |
+                | cbar_length                | float, optional       | Ratio to control the height of the color bar. Default is `0.75`. |
+                | ticks_spacing              | int, optional         | Spacing in the color bar ticks. Default is `2`. |
+                | cbar_label_size            | int, optional         | Size of the color bar label. Default is `12`. |
+                | cbar_label                 | str, optional         | Label of the color bar. Default is `'Discharge m³/s'`. |
+                | color_scale                | int, optional         | Color scaling mode (default = `1`): 1 = normal scale, 2 = power scale, 3 = SymLogNorm scale, 4 = PowerNorm scale, 5 = BoundaryNorm scale. |
+                | gamma                      | float, optional       | Value needed for `color_scale=2`. Default is `1/2`. |
+                | line_threshold             | float, optional       | Value needed for `color_scale=3`. Default is `0.0001`. |
+                | line_scale                 | float, optional       | Value needed for `color_scale=3`. Default is `0.001`. |
+                | bounds                     | list                  | Discrete bounds for `color_scale=4`. Default is `None`. |
+                | midpoint                   | float, optional       | Value needed for `color_scale=5`. Default is `0`. |
+                | cmap                       | str, optional         | Color map style. Default is `'coolwarm_r'`. |
+                | display_cell_value         | bool                  | Whether to display the values of the cells as text. |
+                | num_size                   | int, optional         | Size of the numbers plotted on top of each cell. Default is `8`. |
+                | background_color_threshold | float \| int, optional| Threshold for deciding number color: if value > threshold → black; else white. If `None`, uses `max_value/2`. Default is `None`. |
 
-        Returns
-        -------
-        axes: [figure axes].
-            the axes of the matplotlib figure
-        fig: [matplotlib figure object]
-            the figure object
+
+        Returns:
+            ArrayGlyph: A plotting/animation handle (from cleopatra.ArrayGlyph).
         """
         import_cleopatra(
             "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
@@ -505,22 +481,23 @@ class Datacube:
 
             saveRaster saves a raster to a path
 
-        Parameters
-        ----------
-        path: [str/list]
-            a path includng the name of the raster and extention.
-            >>> path = "data/cropped.tif"
+        Args:
+            path (Union[str, List[str]]):
+                a path includng the name of the raster and extention.
+            driver (str):
+                driver = "geotiff".
+            band (int):
+                band index, needed only in case of ascii drivers. Default is 1.
 
-        driver: [str]
-            driver = "geotiff".
-        band: [int]
-            band index, needed only in case of ascii drivers. Default is 1.
+        Examples:
+            - Save to a file:
 
-        Examples
-        --------
-        >>> raster_obj = Dataset.read_file("path/to/file/***.tif")
-        >>> output_path = "examples/GIS/data/save_raster_test.tif"
-        >>> raster_obj.to_file(output_path)
+              ```python
+              >>> raster_obj = Dataset.read_file("path/to/file/***.tif")
+              >>> output_path = "examples/GIS/data/save_raster_test.tif"
+              >>> raster_obj.to_file(output_path)
+
+              ```
         """
         ext = CATALOG.get_extension(driver)
 
@@ -545,35 +522,35 @@ class Datacube:
         to_epsg: int = 3857,
         method: str = "nearest neighbor",
         maintain_alignment: int = False,
-    ):
+    ) -> None:
         """to_epsg.
 
             - to_epsg reprojects a raster to any projection (default the WGS84 web mercator projection,
             without resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
 
-        Parameters
-        ----------
-        to_epsg: [integer]
-            reference number to the new projection (https://epsg.io/)
-            (default 3857 the reference no of WGS84 web mercator )
-        method: [String]
-            resampling technique default is "Nearest"
-            https://gisgeography.com/raster-resampling/
-            "Nearest" for nearest neighbor,"cubic" for cubic convolution,
-            "bilinear" for bilinear
-        maintain_alignment : [bool]
-            True to maintain the number of rows and columns of the raster the same after reprojection. Default is False.
+        Args:
+            to_epsg (int):
+                Reference number to the new projection (https://epsg.io/)
+                (default 3857 the reference no of WGS84 web mercator).
+            method (str):
+                Resampling technique. Default is "Nearest". See https://gisgeography.com/raster-resampling/.
+                "Nearest" for nearest neighbor, "cubic" for cubic convolution, "bilinear" for bilinear.
+            maintain_alignment (bool):
+                True to maintain the number of rows and columns of the raster the same after reprojection.
+                Default is False.
 
-        Returns
-        -------
-        raster:
-            gdal dataset (you can read it by ReadAsArray)
+        Returns:
+            None: Updates the datacube values and base in place after reprojection.
 
-        Examples
-        --------
-        >>> from pyramids.dataset import Dataset
-        >>> src = Dataset.read_file("path/raster_name.tif")
-        >>> projected_raster = src.to_crs(to_epsg=3857)
+        Examples:
+            - Reproject dataset to EPSG:3857:
+
+              ```python
+              >>> from pyramids.dataset import Dataset
+              >>> src = Dataset.read_file("path/raster_name.tif")
+              >>> projected_raster = src.to_crs(to_epsg=3857)
+
+              ```
         """
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -602,37 +579,37 @@ class Datacube:
     def crop(
         self, mask: Union[Dataset, str], inplace: bool = False, touch: bool = True
     ) -> Union[None, Dataset]:
-        """cropAlignedFolder.
+        """crop.
 
-            cropAlignedFolder matches the location of nodata value from src raster to dst
-            raster, Mask is where the NoDatavalue will be taken and the location of
-            this value src_dir is path to the folder where rasters exist where we
-            need to put the NoDataValue of the mask in RasterB at the same locations
+            crop matches the location of nodata value from src raster to dst raster. Mask is where the NoDatavalue will
+            be taken and the location of this value. src_dir is path to the folder where rasters exist where we need to
+            put the NoDataValue of the mask in RasterB at the same locations.
 
-        Parameters
-        ----------
-        mask : [Dataset]
-            Dataset object of the mask raster to crop the rasters (to get the NoData value
-            and it location in the array) Mask should include the name of the raster and the
-            extension like "data/dem.tif", or you can read the mask raster using gdal and use
-            is the first parameter to the function.
-        inplace: [bool]
-            True to make the changes in place.
-        touch: [bool]
-            to include the cells that touches the polygon not only those that lies entirely inside the polygon mask.
-            Default is True.
+        Args:
+            mask (Dataset):
+                Dataset object of the mask raster to crop the rasters (to get the NoData value and its location in the
+                array). Mask should include the name of the raster and the extension like "data/dem.tif", or you can
+                read the mask raster using gdal and use it as the first parameter to the function.
+            inplace (bool):
+                True to make the changes in place.
+            touch (bool):
+                Include the cells that touch the polygon, not only those that lie entirely inside the polygon mask.
+                Default is True.
 
-        Returns
-        -------
-        new rasters have the values from rasters in B_input_path with the NoDataValue in the same
-        locations as raster A.
+        Returns:
+            Union[None, "Datacube"]: New rasters have the values from rasters in B_input_path with the NoDataValue in
+            the same locations as raster A.
 
-        Examples
-        --------
-        >>> dem_path = "examples/GIS/data/acc4000.tif"
-        >>> src_path = "examples/GIS/data/aligned_rasters/"
-        >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-        >>> Datacube.crop(dem_path, src_path, out_path)
+        Examples:
+            - Crop aligned rasters using a DEM mask:
+
+              ```python
+              >>> dem_path = "examples/GIS/data/acc4000.tif"
+              >>> src_path = "examples/GIS/data/aligned_rasters/"
+              >>> out_path = "examples/GIS/data/crop_aligned_folder/"
+              >>> Datacube.crop(dem_path, src_path, out_path)
+
+              ```
         """
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -793,36 +770,31 @@ class Datacube:
     #
     #     return dst
 
-    def align(self, alignment_src: Dataset):
+    def align(self, alignment_src: Dataset) -> None:
         """matchDataAlignment.
 
-        this function matches the coordinate system and the number of rows & columns
-        between two rasters
-        Raster A is the source of the coordinate system, no of rows and no of columns & cell size
-        rasters_dir is path to the folder where Raster B exist where  Raster B is
-        the source of data values in cells
-        the result will be a raster with the same structure as RasterA but with
-        values from RasterB using Nearest neighbor interpolation algorithm
+        This function matches the coordinate system and the number of rows and columns between two rasters. Raster A
+        is the source of the coordinate system, number of rows, number of columns, and cell size. The result will be
+        a raster with the same structure as Raster A but with values from Raster B using nearest neighbor interpolation.
 
-        Parameters
-        ----------
-        alignment_src: [String]
-            path to the spatial information source raster to get the spatial information
-            (coordinate system, no of rows & columns) alignment_src should include the name of the raster
-            and the extension like "data/dem.tif"
+        Args:
+            alignment_src (Dataset):
+                Dataset to use as the spatial template (CRS, rows, columns).
 
-        Returns
-        -------
-        new rasters:
-            ٌRasters have the values from rasters in rasters_dir with the same
-            cell size, no of rows & columns, coordinate system and alignment like raster A
+        Returns:
+            None:
+                Updates the datacube values in place to match the alignment of alignment_src.
 
-        Examples
-        --------
-        >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
-        >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
-        >>> prec_out_path = "02Precipitation/4km/"
-        >>> Dataset.align(dem_path, prec_in_path, prec_out_path)
+        Examples:
+            - Align all rasters in the datacube to a DEM raster:
+
+              ```python
+              >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
+              >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
+              >>> prec_out_path = "02Precipitation/4km/"
+              >>> Dataset.align(dem_path, prec_in_path, prec_out_path)
+
+              ```
         """
         if not isinstance(alignment_src, Dataset):
             raise TypeError("alignment_src input should be a Dataset object")
@@ -853,28 +825,27 @@ class Datacube:
         no_data_value: Union[float, int, str] = "0",
         init: Union[float, int, str] = "nan",
         n: Union[float, int, str] = "nan",
-    ):
+    ) -> None:
         """merge.
 
-            merges group of rasters into one raster
+            Merges a group of rasters into one raster.
 
-        Parameters
-        ----------
-        src: List[str]
-            list of the path to all input raster
-        dst: [str]
-            path to the output raster
-        no_data_value: [float/int]
-            Assign a specified nodata value to output bands.
-        init: [float/int]
-            Pre-initialize the output image bands with these values. However, it is not marked as the nodata value
-            in the output file. If only one value is given, the same value is used in all the bands.
-        n: [float/int]
-            Ignore pixels from files being merged in with this pixel value.
+        Args:
+            src (List[str]):
+                List of paths to all input rasters.
+            dst (str):
+                Path to the output raster.
+            no_data_value (float | int | str):
+                Assign a specified nodata value to output bands.
+            init (float | int | str):
+                Pre-initialize the output image bands with these values. However, it is not
+                marked as the nodata value in the output file. If only one value is given, the same value is used
+                in all the bands.
+            n (float | int | str):
+                Ignore pixels from files being merged in with this pixel value.
 
-        Returns
-        -------
-        None
+        Returns:
+            None
         """
         # run the command
         # cmd = "gdal_merge.py -o merged_image_1.tif"
@@ -898,29 +869,30 @@ class Datacube:
         )  # '-separate'
         gdal_merge.main(parameters)
 
-    def apply(self, ufunc: Callable):
+    def apply(self, ufunc: Callable) -> None:
         """apply.
 
-        apply a function on each raster in the datacube.
+        Apply a function on each raster in the datacube.
 
-        Parameters
-        ----------
-        ufunc: [function]
-            callable universal function ufunc (builtin or user defined)
-            https://numpy.org/doc/stable/reference/ufuncs.html
-            - To create an ufunc from a normal function
-            (https://numpy.org/doc/stable/reference/generated/numpy.frompyfunc.html)
+        Args:
+            ufunc (Callable):
+                Callable universal function (builtin or user defined). See
+                https://numpy.org/doc/stable/reference/ufuncs.html
+                To create a ufunc from a normal function: https://numpy.org/doc/stable/reference/generated/numpy.frompyfunc.html
 
-        Returns
-        -------
-        new rasters will be saved to the save_to
+        Returns:
+            None
 
-        Examples
-        --------
-        >>> def func(val):
-        >>>    return val%2
-        >>> ufunc = np.frompyfunc(func, 1, 1)
-        >>> dataset.apply(ufunc)
+        Examples:
+            - Apply a simple modulo operation to each value:
+
+              ```python
+              >>> def func(val):
+              >>>    return val%2
+              >>> ufunc = np.frompyfunc(func, 1, 1)
+              >>> dataset.apply(ufunc)
+
+              ```
         """
         if not callable(ufunc):
             raise TypeError("The Second argument should be a function")
@@ -938,18 +910,16 @@ class Datacube:
     ) -> Dict[List[float], List[float]]:
         """Overlay.
 
-        Parameters
-        ----------
-        classes_map: [Dataset]
-            Dataset Object fpr the raster that have classes you want to overlay with the raster.
-        exclude_value: [Numeric]
-            values you want to exclude from extracted values.
+        Args:
+            classes_map (Dataset):
+                Dataset object for the raster that has classes to overlay with.
+            exclude_value (float | int, optional):
+                Values to exclude from extracted values. Defaults to None.
 
-        Returns
-        -------
-        Dictionary:
-            dictionary with a list of values in the basemap as keys and for each key a list of all the intersected
-            values in the maps from the path.
+        Returns:
+            Dict[List[float], List[float]]:
+                Dictionary with a list of values in the basemap as keys and for each key a list of all the
+                intersected values in the maps from the path.
         """
         values = {}
         for i in range(self.time_length):

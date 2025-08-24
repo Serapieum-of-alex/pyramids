@@ -172,3 +172,4 @@ tests/data/not-used/*
 /my-dataset.tif
 # pixi environments
 .pixi
+/site/*
