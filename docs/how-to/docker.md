@@ -28,18 +28,23 @@ Path: `./Dockerfile`
 The Dockerfile is multi-stage and optimized to build a ready-to-run environment using [Pixi]. It has two stages:
 
 1) build (FROM `ghcr.io/prefix-dev/pixi:bookworm-slim`)
-   - Installs the project into an isolated Pixi environment.
+   - Installs the project into an isolated Pixi environment (at `/app/.pixi/envs/${ENV_NAME}`).
    - Honors `ENV_NAME` so you can choose which Pixi environment to build (defaults to `default`).
-   - Caches Pixi downloads for faster rebuilds.
+   - Ensures a non-editable install by rewriting any `editable = true` to `editable = false` in `pyproject.toml` during the build.
+   - Benefits from Docker layer caching of Pixi downloads and the environment for faster rebuilds.
 
 2) production (FROM `debian:bookworm-slim`)
-   - Copies only the built Pixi environment into a small runtime image.
-   - Sets environment variables so GDAL/PROJ, etc. work out of the box.
-   - Default `CMD` simply verifies the package import and prints Python version.
+   - Copies only the built Pixi environment into a neutral runtime prefix at `/opt/venv` (`VENV_DIR`).
+   - Adds `${VENV_DIR}/bin` to `PATH` and sets `LD_LIBRARY_PATH`, `PROJ_LIB`, `GDAL_DATA`, and `PYTHONNOUSERSITE` so GDAL/PROJ, etc. work out of the box.
+   - Runs a verification step during the image build that imports `pyramids`, `osgeo.gdal`, `shapely`, and `pyproj`, and asserts Python runs from `${VENV_DIR}`.
+   - Default `CMD` invokes `${VENV_DIR}/bin/python` to import `pyramids` and print the Python version.
 
 Key build arguments and environment variables:
 - `ARG ENV_NAME=default` → set with `--build-arg ENV_NAME=<name>` to pick a Pixi environment.
-- `ENV PIXI_ENV_DIR=/app/.pixi/envs/${ENV_NAME}` → where the runtime lives.
+- `ENV PIXI_ENV_DIR=/app/.pixi/envs/${ENV_NAME}` → where the build-stage environment is created.
+- `ENV VENV_DIR=/opt/venv` → runtime prefix in the final image where the environment is copied.
+- `ENV PATH="${VENV_DIR}/bin:${PATH}"` → ensures the environment’s Python and tools are first on PATH at runtime.
+- `ENV LD_LIBRARY_PATH`, `ENV PROJ_LIB`, `ENV GDAL_DATA`, `ENV PYTHONNOUSERSITE=1` → set to make GDAL/PROJ work and keep the runtime hermetic (details below).
 
 If you need multiple platforms (e.g., Apple Silicon/arm64 vs. amd64), you can use Buildx (see below).
 
@@ -68,16 +73,16 @@ If you need multiple platforms (e.g., Apple Silicon/arm64 vs. amd64), you can us
 
 Typical local build (PowerShell or any shell):
 
-```powershell
+```bash
 # In the repo root
-$IMAGE = "pyramids"
+IMAGE="pyramids"
 # Build using the default Pixi environment
-docker build -t $IMAGE:latest .
+docker build -t "$IMAGE:latest" .
 ```
 
 Choose a Pixi environment with `ENV_NAME` (if you have multiple, e.g., `py311`):
 
-```powershell
+```bash
 docker build --build-arg ENV_NAME=default -t pyramids:default .
 # or
 # docker build --build-arg ENV_NAME=py311 -t pyramids:py311 .
@@ -85,14 +90,14 @@ docker build --build-arg ENV_NAME=default -t pyramids:default .
 
 Tag with a version too:
 
-```powershell
-$VERSION = "0.1.0"
-docker build -t pyramids:latest -t pyramids:$VERSION .
+```bash
+VERSION="0.1.0"
+docker build -t pyramids:latest -t "pyramids:$VERSION" .
 ```
 
 Multi-arch build (optional) with Buildx:
 
-```powershell
+```bash
 # Create and use a builder once (if needed)
 docker buildx create --use --name multi
 # Build for linux/amd64 (default on most PCs) and/or linux/arm64 (Apple Silicon)
@@ -107,21 +112,23 @@ docker buildx build --platform linux/amd64 -t pyramids:latest .
 
 Basic run:
 
-```powershell
+```bash
 docker run --rm pyramids:latest
 ```
 
 Interactive shell inside the container:
 
-```powershell
+```bash
 docker run --rm -it pyramids:latest bash
 ```
 
 Mount a local folder (e.g., to access data):
 
-```powershell
-# Replace C:\data with your real path
-docker run --rm -it -v C:\data:/data pyramids:latest bash
+```bash
+# Replace /path/to/data with your real path (e.g., use $(wslpath -a 'C:\data') on WSL)
+docker run --rm -it -v /path/to/data:/data pyramids:latest bash
+# Example using Windows path in WSL:
+# docker run --rm -it -v "$(wslpath -a 'C:\data')":/data pyramids:latest bash
 ```
 
 Note: Environment variables like `GDAL_DATA` and `PROJ_LIB` are already set inside the image. The Pixi environment is in the PATH by default.
@@ -135,33 +142,30 @@ Image naming convention for GHCR: `ghcr.io/<owner>/<repo>[:tag]`.
 For this repository, a convenient image name at release time is:
 
 ```
-ghcr.io/<lowercased-owner>/<lowercased-repo>
+ghcr.io/serapieum-of-alex/pyramids
 ```
 
 Example (adjust owner/repo):
 
-```powershell
-$OWNER = "Serapieum-of-alex"
-$REPO  = "pyramids"
-$IMAGE = ("ghcr.io/{0}/{1}" -f $OWNER.ToLower(), $REPO.ToLower())
-$VERSION = "0.1.0"
+```bash
+OWNER="Serapieum-of-alex"
+REPO="pyramids"
+IMAGE="ghcr.io/${OWNER,,}/${REPO,,}"
+VERSION="<your-version-here>"
 
 # Tag the local image to GHCR
-docker tag pyramids:latest  $IMAGE:latest
-docker tag pyramids:latest  $IMAGE:$VERSION
+docker tag pyramids:latest  "$IMAGE:latest"
+docker tag pyramids:latest  "$IMAGE:$VERSION"
 
 # Login to GHCR (use a PAT with write:packages)
-# On Windows PowerShell, you can be prompted for the PAT:
-# Create an env var GHCR_PAT temporarily if you prefer non-interactive login
-# $env:GHCR_PAT = "<YOUR_PAT>"
-# echo $env:GHCR_PAT | docker login ghcr.io -u <your-github-username> --password-stdin
-
+# Option A: interactive (paste PAT when prompted)
 docker login ghcr.io -u <your-github-username>
-# Paste PAT when prompted
+# Option B: non-interactive using GHCR_PAT environment variable
+# echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-username> --password-stdin
 
 # Push
-docker push $IMAGE:$VERSION
-docker push $IMAGE:latest
+docker push "$IMAGE:$VERSION"
+docker push "$IMAGE:latest"
 ```
 
 Automated publish on GitHub Release
@@ -189,34 +193,35 @@ The API endpoints differ for user vs organization. Examples below assume the ima
 
 List versions (organization):
 
-```powershell
-$ORG = "Serapieum-of-alex"
-$PKG = "pyramids"  # package name in GHCR equals the lowercased repo name by default
+```bash
+ORG="Serapieum-of-alex"
+PKG="pyramids"  # package name in GHCR equals the lowercased repo name by default
 
-gh api -H "Accept: application/vnd.github+json" `
-  "/orgs/$ORG/packages/container/$PKG/versions" | `
-  ConvertFrom-Json | Select-Object id,name,metadata
+gh api -H "Accept: application/vnd.github+json" \
+  "/orgs/$ORG/packages/container/$PKG/versions"
+# Optionally pretty-print with jq:
+# gh api -H "Accept: application/vnd.github+json" "/orgs/$ORG/packages/container/$PKG/versions" | jq '.[] | {id,name,metadata}'
 ```
 
 Delete a specific version by ID (organization):
 
-```powershell
-$VERSION_ID = 123456
+```bash
+VERSION_ID=123456
 
-gh api -X DELETE -H "Accept: application/vnd.github+json" `
+gh api -X DELETE -H "Accept: application/vnd.github+json" \
   "/orgs/$ORG/packages/container/$PKG/versions/$VERSION_ID"
 ```
 
 For user-owned packages, replace `/orgs/{org}` with `/user`:
 
-```powershell
-$PKG = "pyramids"
+```bash
+PKG="pyramids"
 
 # List
 gh api -H "Accept: application/vnd.github+json" "/user/packages/container/$PKG/versions"
 
 # Delete
-$VERSION_ID = 123456
+VERSION_ID=123456
 gh api -X DELETE -H "Accept: application/vnd.github+json" "/user/packages/container/$PKG/versions/$VERSION_ID"
 ```
 
