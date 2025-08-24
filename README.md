@@ -1,16 +1,16 @@
-[![Documentation Status](https://readthedocs.org/projects/pyramids-gis/badge/?version=latest)](https://pyramids-gis.readthedocs.io/en/latest/?badge=latest)
+[![Documentations](https://img.shields.io/badge/Documentations-blue?logo=github&logoColor=white)](https://serapieum-of-alex.github.io/pyramids/main/)
+[![pages-build-deployment](https://github.com/Serapieum-of-alex/pyramids/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/Serapieum-of-alex/pyramids/actions/workflows/pages/pages-build-deployment)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pyramids-gis.png)](https://img.shields.io/pypi/pyversions/pyramids-gis)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/MAfarrag/Hapi.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/MAfarrag/Hapi/context:python)
+
 
 ![GitHub last commit](https://img.shields.io/github/last-commit/Serapieum-of-alex/pyramids)
-![GitHub forks](https://img.shields.io/github/forks/Serapieum-of-alex/pyramids?style=social)
 ![GitHub Repo stars](https://img.shields.io/github/stars/Serapieum-of-alex/pyramids?style=social)
 [![codecov](https://codecov.io/gh/Serapieum-of-alex/pyramids/graph/badge.svg?token=g0DV4dCa8N)](https://codecov.io/gh/Serapieum-of-alex/pyramids)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/5e3aa4d0acc843d1a91caf33545ecf03)](https://www.codacy.com/gh/Serapieum-of-alex/pyramids/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Serapieum-of-alex/pyramids&amp;utm_campaign=Badge_Grade)
 
-![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.io/github/commits-since/Serapieum-of-alex/pyramids/0.5.0?include_prereleases&style=plastic)
+![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.io/github/commits-since/Serapieum-of-alex/pyramids/latest?include_prereleases&style=plastic)
 
 Current release info
 ====================
@@ -30,7 +30,7 @@ pyramids - GIS utility package
 
 pyramids
 
-![1](/docs/source/_images/package-work-flow/overall.png)
+![1](/docs/_images/package-work-flow/overall.png)
 
 Main Features
 -------------
