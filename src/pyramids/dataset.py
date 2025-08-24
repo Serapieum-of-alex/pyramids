@@ -2035,8 +2035,8 @@ class Dataset(AbstractDataset):
             >>> dataset = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.05, epsg=4326)
 
             >>> hill_shade = dataset.hill_shade(
-            ... band=0, altitude=45, azimuth=315, vertical_exaggeration=1, scale=1
-            ...)
+            ...     band=0, altitude=45, azimuth=315, vertical_exaggeration=1, scale=1
+            ... )
 
             >>> print(hill_shade.dtype) # doctest: +SKIP
             ['byte']
@@ -2055,18 +2055,15 @@ class Dataset(AbstractDataset):
 
             >>> hill_shade = dataset.hill_shade(
             ...     band=0, azimuth=[315, 45], altitude=[45, 45], vertical_exaggeration=[1, 1], scale=[1, 1]
-            ...)
+            ... )
 
             >>> hill_shade.plot() # doctest: +SKIP
 
-            .. image:: /_images/dataset/hill-shade-multi.png
-                :alt: Example Image
-                :align: center
+            ![hill-shade-multi](./../_images/dataset/hill-shade-multi.png)
 
-        See Also
-        --------
-        Dataset.color_relief: create a color relief for a band in the Dataset.
-        Dataset.slope: create a slope for a band in the Dataset.
+        See Also:
+            Dataset.color_relief: create a color relief for a band in the Dataset.
+            Dataset.slope: create a slope for a band in the Dataset.
         """
         if "multi_directional" in kwargs:
             if not isinstance(kwargs["multi_directional"], bool):
