@@ -8,8 +8,6 @@ algebraic operation on cell's values.
 import os
 import warnings
 import logging
-import tempfile
-import uuid
 from numbers import Number
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -48,7 +46,6 @@ from pyramids.abstract_dataset import (
     CATALOG,
     OVERVIEW_LEVELS,
     RESAMPLING_METHODS,
-    CREATION_OPTIONS,
 )
 
 
