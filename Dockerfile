@@ -46,4 +46,4 @@ print('pyramids-gis installed, Python=' + sys.version.split()[0])
 PY
 
 # Simple default command prints package version to confirm install
-CMD ["${VENV_DIR}/bin/python", "-c", "import importlib, sys; importlib.import_module('pyramids'); print('pyramids installed,Python='+sys.version.split()[0])"]
+CMD ["python", "-c", "import importlib, sys; importlib.import_module('pyramids'); print('pyramids installed,Python='+sys.version.split()[0])"]
