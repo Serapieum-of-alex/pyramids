@@ -17,7 +17,7 @@
 <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
 <link href="../../assets/_mkdocstrings.css" rel="stylesheet"/>
 <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
-<link href="../../assets/stylesheets/panzoom.css" rel="stylesheet"/><meta content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}' name="panzoom-data"/><meta content="material" name="panzoom-theme"/></head>
+<link href="../../assets/stylesheets/panzoom.css" rel="stylesheet"/><meta content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}' name="panzoom-data"/><meta content="material" name="panzoom-theme"/></head>
 <body data-md-color-accent="indigo" data-md-color-primary="indigo" data-md-color-scheme="default" dir="ltr">
 <input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
 <input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
@@ -612,37 +612,48 @@
 <h1 id="adr-0006-docker-image"><a class="toclink" href="#adr-0006-docker-image">ADR-0006: Docker image</a><a class="headerlink" href="#adr-0006-docker-image" title="Permanent link">#</a></h1>
 <ul>
 <li>Status: Accepted</li>
-<li>Date: 2025-08-16</li>
+<li>Date: 2025-08-24</li>
 </ul>
 <h2 id="context"><a class="toclink" href="#context">Context</a><a class="headerlink" href="#context" title="Permanent link">#</a></h2>
-<p>We want a reproducible, contributor-friendly container that can build and run the pyramids package across platforms 
-without forcing local GDAL/PROJ/NetCDF installations. The image should:
-- Be reasonably small and fast to build using layer caching.
-- Support Python 3.12 by default but allow other patch/minor versions when needed.
-- Include the minimum native libraries commonly required by geospatial Python wheels and tools.
-- Avoid environment managers that complicate CI (e.g., conda) for the base image.</p>
+<p>We need a reproducible, hermetic container that runs the pyramids package across platforms without requiring local
+installations of GDAL/PROJ/NetCDF or compiler toolchains. The image should:
+- Be fast to rebuild via Docker layer caching.
+- Bundle all native geospatial dependencies inside the image/runtime environment.
+- Be CI-friendly and cross-platform (supporting amd64/arm64 builds via Buildx when needed).
+- Avoid ad-hoc apt installs in the final image and avoid conda complexity; rely on a locked environment.</p>
 <h2 id="decision"><a class="toclink" href="#decision">Decision</a><a class="headerlink" href="#decision" title="Permanent link">#</a></h2>
 <ul>
-<li>Base image: <code>python:${PYTHON_VERSION}-slim</code> with a build arg <code>PYTHON_VERSION</code> defaulting to 3.12.</li>
-<li>Install a minimal set of native packages useful for geospatial stacks: <code>gdal-bin</code>, <code>libgdal-dev</code>, <code>libgeos-dev</code>, 
- <code>proj-bin</code>, <code>libproj-dev</code>, <code>libnetcdf-dev</code>, <code>libhdf4-0-alt</code>, plus common runtime libs (<code>libxml2</code>, <code>libsqlite3-0</code>, 
-  <code>libcurl4</code>, <code>ca-certificates</code>) and build tools (<code>build-essential</code>, <code>git</code>).</li>
-<li>Copy <code>pyproject.toml</code> and <code>README.md</code> first to leverage Docker layer caching; copy <code>src/</code> afterward.</li>
-<li>Use PEP 517/518 build flow and install via <code>pip install .</code> to produce a wheel and install the package from <code>pyproject.toml</code>.</li>
-<li>Create and use an unprivileged user (<code>appuser</code>, uid 1000) for runtime.</li>
-<li>Set the working directory to <code>/workspace</code> at runtime to support volume mounts for local projects/data.</li>
-<li>Provide a simple default <code>CMD</code> that verifies installation by printing the package version.</li>
-<li>Keep a single-stage Dockerfile (no separate builder stage) to reduce complexity; revisit if size becomes an issue.</li>
-<li>Document common usage in comments within the Dockerfile (build with <code>--build-arg PYTHON_VERSION=3.12</code>, run with a volume mount).</li>
+<li>Use a multi-stage Dockerfile driven by Pixi environments:</li>
+<li>build stage: <code>FROM ghcr.io/prefix-dev/pixi:bookworm-slim</code><ul>
+<li>Build arg <code>ENV_NAME</code> (defaults to <code>default</code>) selects which Pixi environment to build.</li>
+<li>Environment path: <code>/app/.pixi/envs/${ENV_NAME}</code> (exported as <code>PIXI_ENV_DIR</code>).</li>
+<li>Copy <code>pyproject.toml</code>, <code>pixi.lock</code>, and <code>README.md</code> first for caching; then <code>src/</code>.</li>
+<li>Ensure non-editable install by rewriting any <code>editable = true</code> to <code>editable = false</code> in <code>pyproject.toml</code> during build.</li>
+<li>Run <code>pixi install -e "${ENV_NAME}"</code> to resolve and build the environment per <code>pixi.lock</code>.</li>
+</ul>
+</li>
+<li>production stage: <code>FROM debian:bookworm-slim</code><ul>
+<li>Copy only the built environment from the build stage into a neutral prefix <code>VENV_DIR=/opt/venv</code>.</li>
+<li>Set runtime environment variables so native deps resolve correctly:</li>
+<li><code>PATH="${VENV_DIR}/bin:${PATH}</code></li>
+<li><code>LD_LIBRARY_PATH="${VENV_DIR}/lib:${LD_LIBRARY_PATH}</code></li>
+<li><code>PROJ_LIB="${VENV_DIR}/share/proj"</code>, <code>GDAL_DATA="${VENV_DIR}/share/gdal"</code>, <code>PYTHONNOUSERSITE=1</code></li>
+<li>Verify at build time that <code>pyramids</code>, <code>osgeo.gdal</code>, <code>shapely</code>, and <code>pyproj</code> import and that Python runs from <code>${VENV_DIR}</code>.</li>
+<li>Default <code>CMD</code> uses <code>${VENV_DIR}/bin/python</code> to import <code>pyramids</code> and print the Python version as a sanity check.</li>
+</ul>
+</li>
+<li>Python version and native library versions are pinned by <code>pixi.lock</code> (not by a Docker <code>PYTHON_VERSION</code> build arg).</li>
+<li>No additional <code>apt-get</code> installs are performed in the final image; all binaries and data files come from the bundled environment.</li>
+<li>No non-root user or explicit <code>WORKDIR</code> is set in the current design; revisit if required for security or UX.</li>
 </ul>
 <h2 id="consequences"><a class="toclink" href="#consequences">Consequences</a><a class="headerlink" href="#consequences" title="Permanent link">#</a></h2>
 <ul>
-<li>Reproducible builds across developer machines and CI without requiring local GDAL/PROJ installations.</li>
-<li>Image size remains moderate because we start from <code>-slim</code> and install only necessary native libs; still larger than pure Python due to geospatial deps.</li>
-<li>Layer caching makes incremental builds fast when only source changes (since dependency layers are above source layers).</li>
-<li>Users can override the Python version with a build arg for compatibility testing.</li>
-<li>Non-root default user improves security; some volumes may need adjusted permissions on host systems.</li>
-<li>If heavier native stacks (e.g., full GDAL CLI usage) or conda-only packages are needed, we can introduce an alternative <code>-conda</code> or <code>-tools</code> image in a future ADR.</li>
+<li>Reproducible builds and runs across developer machines and CI without local GDAL/PROJ installs.</li>
+<li>Hermetic runtime: GDAL/PROJ/GEOS, etc., come from the copied environment; env vars ensure correct resolution.</li>
+<li>Good layer caching: dependency resolution happens in the build stage and is cached until <code>pyproject.toml</code>/<code>pixi.lock</code> change; source changes rebuild quickly.</li>
+<li>Users switch environments with <code>--build-arg ENV_NAME=&lt;name&gt;</code>; Python version comes from the selected Pixi env.</li>
+<li>Image remains moderately sized because we copy only the resolved environment into a slim Debian base; no extra system packages are added.</li>
+<li>Absence of a non-root user means the container runs as root by default; consider adding an unprivileged user in a future revision if needed.</li>
 </ul>
 </article>
 </div>
