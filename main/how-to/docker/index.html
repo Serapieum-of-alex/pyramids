@@ -800,7 +800,7 @@
 <a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="c1"># docker build --build-arg ENV_NAME=py311 -t pyramids:py311 .</span>
 </code></pre></div>
 <p>Tag with a version too:</p>
-<div class="highlight"><pre><span></span><code><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="nv">VERSION</span><span class="o">=</span><span class="s2">"0.1.0"</span>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="nv">VERSION</span><span class="o">=</span><span class="s2">"&lt;your-version-here&gt;"</span>
 <a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>pyramids:latest<span class="w"> </span>-t<span class="w"> </span><span class="s2">"pyramids:</span><span class="nv">$VERSION</span><span class="s2">"</span><span class="w"> </span>.
 </code></pre></div>
 <p>Multi-arch build (optional) with Buildx:</p>
