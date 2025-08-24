@@ -2,102 +2,110 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/AUTHORS/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/CODE_OF_CONDUCT/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/LICENSE/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/change-log/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/contributing/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/installation/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/adr/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/adr/0001-docs-stack/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/adr/0002-type-checking/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/adr/0003-io-formats/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/adr/0004-dependency-graphing/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/adr/0005-versioning-docs/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
+    </url>
+    <url>
+         <loc>https://serapieum-of-alex.github.io/pyramids/main/adr/0006-docker-image/</loc>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/architecture/diagrams/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
+    </url>
+    <url>
+         <loc>https://serapieum-of-alex.github.io/pyramids/main/how-to/docker/</loc>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/how-to/faq/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/how-to/recipes/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/overview/codebase-map/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/overview/how-it-works/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/reference/datacube/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/reference/dataset/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/reference/featurecollection/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/tutorials/datacube-basics/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/tutorials/datacube/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/tutorials/dataset/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
     <url>
          <loc>https://serapieum-of-alex.github.io/pyramids/main/tutorials/raster-basics/</loc>
-         <lastmod>2025-08-16</lastmod>
+         <lastmod>2025-08-24</lastmod>
     </url>
 </urlset>
