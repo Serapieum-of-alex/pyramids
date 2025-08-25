@@ -1835,5 +1835,5 @@ class TestTranslate:
         )
         dataset.scale = [0.1]
         unscaled_dataset = dataset.translate(unscale=True)
-        unscalled_arr = unscaled_dataset.read_array()
-        np.testing.assert_almost_equal(unscalled_arr, arr * 0.1)
+        unscaled_arr = unscaled_dataset.read_array()
+        np.testing.assert_almost_equal(unscaled_arr, arr * 0.1)
