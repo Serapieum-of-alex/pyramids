@@ -1679,7 +1679,7 @@ class Dataset(AbstractDataset):
         overview_index: int = 0,
         percentile: int = None,
         **kwargs: Any,
-    ) -> Tuple[Any, Any]:
+    ) -> "ArrayGlyph":
         """Plot the values/overviews of a given band.
 
         The plot function uses the `cleopatra` as a backend to plot the raster data, for more information check
