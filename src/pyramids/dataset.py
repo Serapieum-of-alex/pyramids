@@ -1767,7 +1767,7 @@ class Dataset(AbstractDataset):
             - plot using SymLogNorm scale.
 
               ```python
-              >>> dataset.plot(band=0, color_scale=="sym-lognorm")
+              >>> dataset.plot(band=0, color_scale="sym-lognorm")
               (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
               ```
