@@ -1,0 +1,33 @@
+{
+  "name": "pyramids",
+  "build": {
+    "context": "..",
+    "dockerfile": "./../Dockerfile",
+    "args": {
+      "ENV_NAME": "default"
+    }
+  },
+  "remoteUser": "root",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {}
+  },
+  "postCreateCommand": "pre-commit install || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/venv/bin/python",
+        "python.terminal.activateEnvironment": false,
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["-m", "not plot", "-vvv"],
+        "jupyter.jupyterServerType": "local"
+      }
+    }
+  }
+}
