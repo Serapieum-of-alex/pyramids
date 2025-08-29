@@ -10,28 +10,28 @@
       
       
       
-        <link rel="canonical" href="https://serapieum-of-alex.github.io/pyramids/develop/installation/">
+        <link rel="canonical" href="https://serapieum-of-alex.github.io/pyramids/develop/how-to/devcontainer/">
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../../tutorials/datacube-basics/">
       
       
-        <link rel="next" href="../overview/codebase-map/">
+        <link rel="next" href="../docker/">
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
     
     
       
-        <title>Installation - pyramids</title>
+        <title>Dev Container - pyramids</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.7e37652d.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.7e37652d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -50,11 +50,11 @@
       
     
     
-      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../assets/stylesheets/panzoom.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/panzoom.css">
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installation" class="md-skip">
+        <a href="#using-the-dev-container" class="md-skip">
           Skip to content
         </a>
       
@@ -101,7 +101,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="pyramids" class="md-header__button md-logo" aria-label="pyramids" data-md-component="logo">
+    <a href="../.." title="pyramids" class="md-header__button md-logo" aria-label="pyramids" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -121,7 +121,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Installation
+              Dev Container
             
           </span>
         </div>
@@ -238,7 +238,7 @@
   
   
     <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
@@ -255,11 +255,9 @@
   
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../../installation/" class="md-tabs__link">
         
   
   
@@ -280,7 +278,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../overview/codebase-map/" class="md-tabs__link">
+        <a href="../../overview/codebase-map/" class="md-tabs__link">
           
   
   
@@ -302,7 +300,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../architecture/diagrams/" class="md-tabs__link">
+        <a href="../../architecture/diagrams/" class="md-tabs__link">
           
   
   
@@ -324,7 +322,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../reference/dataset/" class="md-tabs__link">
+        <a href="../../reference/dataset/" class="md-tabs__link">
           
   
   
@@ -346,7 +344,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../tutorials/dataset/" class="md-tabs__link">
+        <a href="../../tutorials/dataset/" class="md-tabs__link">
           
   
   
@@ -364,11 +362,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../how-to/devcontainer/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -390,7 +390,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../change-log/" class="md-tabs__link">
+        <a href="../../change-log/" class="md-tabs__link">
           
   
   
@@ -432,7 +432,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="pyramids" class="md-nav__button md-logo" aria-label="pyramids" data-md-component="logo">
+    <a href="../.." title="pyramids" class="md-nav__button md-logo" aria-label="pyramids" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -462,7 +462,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -481,32 +481,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Installation
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
         
   
   
@@ -517,137 +495,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      Dependencies
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Dependencies">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#core-runtime-pypi" class="md-nav__link">
-    <span class="md-ellipsis">
-      Core runtime (PyPI)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gis-stack-recommended-via-conda-forge" class="md-nav__link">
-    <span class="md-ellipsis">
-      GIS stack (recommended via conda-forge)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#optional-extras" class="md-nav__link">
-    <span class="md-ellipsis">
-      Optional extras
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recommended-pixiconda-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      Recommended: Pixi/Conda environment
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Recommended: Pixi/Conda environment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-pixi" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using Pixi
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-condamamba-directly" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using conda/mamba directly
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#installing-with-pip-only-advanced" class="md-nav__link">
-    <span class="md-ellipsis">
-      Installing with pip only (advanced)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#install-from-source" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install from source
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      Quick check
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Notes
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -710,7 +557,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overview/codebase-map/" class="md-nav__link">
+      <a href="../../overview/codebase-map/" class="md-nav__link">
         
   
   
@@ -733,7 +580,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overview/how-it-works/" class="md-nav__link">
+      <a href="../../overview/how-it-works/" class="md-nav__link">
         
   
   
@@ -812,7 +659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/diagrams/" class="md-nav__link">
+      <a href="../../architecture/diagrams/" class="md-nav__link">
         
   
   
@@ -895,7 +742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/dataset/" class="md-nav__link">
+      <a href="../../reference/dataset/" class="md-nav__link">
         
   
   
@@ -918,7 +765,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/datacube/" class="md-nav__link">
+      <a href="../../reference/datacube/" class="md-nav__link">
         
   
   
@@ -941,7 +788,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/featurecollection/" class="md-nav__link">
+      <a href="../../reference/featurecollection/" class="md-nav__link">
         
   
   
@@ -1026,7 +873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tutorials/dataset/" class="md-nav__link">
+      <a href="../../tutorials/dataset/" class="md-nav__link">
         
   
   
@@ -1049,7 +896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tutorials/datacube/" class="md-nav__link">
+      <a href="../../tutorials/datacube/" class="md-nav__link">
         
   
   
@@ -1072,7 +919,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tutorials/raster-basics/" class="md-nav__link">
+      <a href="../../tutorials/raster-basics/" class="md-nav__link">
         
   
   
@@ -1095,7 +942,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tutorials/datacube-basics/" class="md-nav__link">
+      <a href="../../tutorials/datacube-basics/" class="md-nav__link">
         
   
   
@@ -1122,8 +969,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1139,21 +988,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
-        
-          
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -1166,7 +1016,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             How-to
@@ -1177,10 +1027,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../how-to/devcontainer/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Dev Container
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1191,6 +1063,152 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-the-repository-in-the-dev-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      Open the repository in the Dev Container
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-interpreter" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python interpreter
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running tests
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-notebooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working with notebooks
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-commit-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-commit hooks
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#editable-install-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      Editable install (optional)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rebuild-and-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rebuild and update
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables-for-gdalproj" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment variables for GDAL/PROJ
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#github-codespaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitHub Codespaces
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-the-dev-container-in-pycharm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Use the Dev Container in PyCharm
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-in-the-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      What’s in the container?
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1203,7 +1221,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../how-to/docker/" class="md-nav__link">
+      <a href="../docker/" class="md-nav__link">
         
   
   
@@ -1226,7 +1244,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../how-to/recipes/" class="md-nav__link">
+      <a href="../recipes/" class="md-nav__link">
         
   
   
@@ -1249,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../how-to/faq/" class="md-nav__link">
+      <a href="../faq/" class="md-nav__link">
         
   
   
@@ -1338,7 +1356,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../change-log/" class="md-nav__link">
+      <a href="../../change-log/" class="md-nav__link">
         
   
   
@@ -1361,7 +1379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../CODE_OF_CONDUCT/" class="md-nav__link">
+      <a href="../../CODE_OF_CONDUCT/" class="md-nav__link">
         
   
   
@@ -1384,7 +1402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1407,7 +1425,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../LICENSE/" class="md-nav__link">
+      <a href="../../LICENSE/" class="md-nav__link">
         
   
   
@@ -1430,7 +1448,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../AUTHORS/" class="md-nav__link">
+      <a href="../../AUTHORS/" class="md-nav__link">
         
   
   
@@ -1488,7 +1506,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../adr/" class="md-nav__link ">
+            <a href="../../adr/" class="md-nav__link ">
               
   
   
@@ -1523,7 +1541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0001-docs-stack/" class="md-nav__link">
+      <a href="../../adr/0001-docs-stack/" class="md-nav__link">
         
   
   
@@ -1546,7 +1564,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0002-type-checking/" class="md-nav__link">
+      <a href="../../adr/0002-type-checking/" class="md-nav__link">
         
   
   
@@ -1569,7 +1587,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0003-io-formats/" class="md-nav__link">
+      <a href="../../adr/0003-io-formats/" class="md-nav__link">
         
   
   
@@ -1592,7 +1610,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0004-dependency-graphing/" class="md-nav__link">
+      <a href="../../adr/0004-dependency-graphing/" class="md-nav__link">
         
   
   
@@ -1615,7 +1633,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0005-versioning-docs/" class="md-nav__link">
+      <a href="../../adr/0005-versioning-docs/" class="md-nav__link">
         
   
   
@@ -1673,111 +1691,126 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      Dependencies
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Dependencies">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#core-runtime-pypi" class="md-nav__link">
-    <span class="md-ellipsis">
-      Core runtime (PyPI)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gis-stack-recommended-via-conda-forge" class="md-nav__link">
-    <span class="md-ellipsis">
-      GIS stack (recommended via conda-forge)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#optional-extras" class="md-nav__link">
-    <span class="md-ellipsis">
-      Optional extras
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recommended-pixiconda-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      Recommended: Pixi/Conda environment
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Recommended: Pixi/Conda environment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-pixi" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using Pixi
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-condamamba-directly" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using conda/mamba directly
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#installing-with-pip-only-advanced" class="md-nav__link">
-    <span class="md-ellipsis">
-      Installing with pip only (advanced)
+      Prerequisites
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-from-source" class="md-nav__link">
+  <a href="#open-the-repository-in-the-dev-container" class="md-nav__link">
     <span class="md-ellipsis">
-      Install from source
+      Open the repository in the Dev Container
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-check" class="md-nav__link">
+  <a href="#python-interpreter" class="md-nav__link">
     <span class="md-ellipsis">
-      Quick check
+      Python interpreter
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
+  <a href="#running-tests" class="md-nav__link">
     <span class="md-ellipsis">
-      Notes
+      Running tests
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-notebooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working with notebooks
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-commit-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-commit hooks
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#editable-install-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      Editable install (optional)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rebuild-and-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rebuild and update
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables-for-gdalproj" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment variables for GDAL/PROJ
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#github-codespaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitHub Codespaces
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-the-dev-container-in-pycharm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Use the Dev Container in PyCharm
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-in-the-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      What’s in the container?
     </span>
   </a>
   
@@ -1799,7 +1832,7 @@
 
 
   
-    <a href="https://github.com/Serapieum-of-alex/pyramids/edit/master/docs/installation.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/Serapieum-of-alex/pyramids/edit/master/docs/how-to/devcontainer.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1808,108 +1841,141 @@
     
       
     
-    <a href="https://github.com/Serapieum-of-alex/pyramids/raw/master/docs/installation.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/Serapieum-of-alex/pyramids/raw/master/docs/how-to/devcontainer.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="installation"><a class="toclink" href="#installation">Installation</a><a class="headerlink" href="#installation" title="Permanent link">#</a></h1>
-<p>This page explains how to install pyramids-gis and its dependencies using Pixi/conda or pip. The instructions and versions below are aligned with the project’s pyproject.toml.</p>
-<p>Package name: pyramids-gis
-Current version: 0.7.3
-Supported Python versions: 3.11 – 3.13 (requires Python &gt;=3.11,&lt;4)</p>
-<h2 id="dependencies"><a class="toclink" href="#dependencies">Dependencies</a><a class="headerlink" href="#dependencies" title="Permanent link">#</a></h2>
-<h3 id="core-runtime-pypi"><a class="toclink" href="#core-runtime-pypi">Core runtime (PyPI)</a><a class="headerlink" href="#core-runtime-pypi" title="Permanent link">#</a></h3>
+<h1 id="using-the-dev-container"><a class="toclink" href="#using-the-dev-container">Using the Dev Container</a><a class="headerlink" href="#using-the-dev-container" title="Permanent link">#</a></h1>
+<p>This guide explains how to develop this project inside a reproducible Dev Container. The Dev Container is configured to 
+build from the repository Dockerfile (production stage) and provisions a complete GIS stack (GDAL/PROJ) plus development tools.</p>
+<p>Key facts:
+- Image is built from the Dockerfile <code>production</code> stage with <code>ENV_NAME=default</code> so default dependencies are included.
+- The Python environment lives at <code>/opt/venv</code>. VS Code is configured to use <code>/opt/venv/bin/python</code> automatically.
+- GDAL/PROJ environment variables are already set inside the container.
+- By default, the package is installed non-editably (production-like install). You can optionally enable editable installs 
+for live code reloading (see below).</p>
+<h2 id="prerequisites"><a class="toclink" href="#prerequisites">Prerequisites</a><a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
+<p>Choose one of the following:
+- VS Code on your machine with the “Dev Containers” extension (or "Remote - Containers").
+- GitHub Codespaces (works similarly; the config is the same).</p>
+<p>You also need Docker running if you build locally.</p>
+<h2 id="open-the-repository-in-the-dev-container"><a class="toclink" href="#open-the-repository-in-the-dev-container">Open the repository in the Dev Container</a><a class="headerlink" href="#open-the-repository-in-the-dev-container" title="Permanent link">#</a></h2>
+<ol>
+<li>Open the folder in VS Code.</li>
+<li>Run: Command Palette → "Dev Containers: Reopen in Container".</li>
+<li>The first run will build the image from your Dockerfile and then open the workspace in the container.</li>
+<li>Post-create step will install git hooks (<code>pre-commit install</code>).</li>
+</ol>
+<p>Tip: The first build can take a while because it resolves the Pixi environment and installs GDAL/PROJ.</p>
+<h2 id="python-interpreter"><a class="toclink" href="#python-interpreter">Python interpreter</a><a class="headerlink" href="#python-interpreter" title="Permanent link">#</a></h2>
 <ul>
-<li>numpy &gt;=2.0.0</li>
-<li>pandas &gt;=2.0.0</li>
-<li>geopandas &gt;=1.0.0</li>
-<li>Shapely &gt;=2.0.0</li>
-<li>pyproj &gt;=3.7.0</li>
-<li>PyYAML &gt;=6.0.0</li>
-<li>loguru &gt;=0.7.2</li>
-<li>hpc-utils &gt;=0.1.5</li>
+<li>VS Code is set to use: <code>/opt/venv/bin/python</code>.</li>
+<li>You can confirm in VS Code settings or by running <code>which python</code> (Linux-style path inside the container):
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>which<span class="w"> </span>python
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>-V
+</code></pre></div></li>
 </ul>
-<h3 id="gis-stack-recommended-via-conda-forge"><a class="toclink" href="#gis-stack-recommended-via-conda-forge">GIS stack (recommended via conda-forge)</a><a class="headerlink" href="#gis-stack-recommended-via-conda-forge" title="Permanent link">#</a></h3>
+<h2 id="running-tests"><a class="toclink" href="#running-tests">Running tests</a><a class="headerlink" href="#running-tests" title="Permanent link">#</a></h2>
 <ul>
-<li>GDAL &gt;=3.10,&lt;4</li>
-<li>libgdal-netcdf &gt;=3.10,&lt;4</li>
-<li>libgdal-hdf4 &gt;=3.10,&lt;4</li>
+<li>From the integrated terminal in the container:
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;not plot&quot;</span><span class="w"> </span>-vvv
+</code></pre></div></li>
+<li>VS Code Testing UI is already enabled for pytest.</li>
 </ul>
-<h3 id="optional-extras"><a class="toclink" href="#optional-extras">Optional extras</a><a class="headerlink" href="#optional-extras" title="Permanent link">#</a></h3>
+<h2 id="working-with-notebooks"><a class="toclink" href="#working-with-notebooks">Working with notebooks</a><a class="headerlink" href="#working-with-notebooks" title="Permanent link">#</a></h2>
 <ul>
-<li>viz: cleopatra &gt;=0.5.1</li>
-<li>dev: nbval, pre-commit, pytest, coverage, build, twine, etc.</li>
-<li>docs: mkdocs, mkdocs-material, mkdocstrings, mike, etc.</li>
+<li>Jupyter extension is installed. Open a notebook and select the kernel at <code>/opt/venv/bin/python</code> if not already selected.</li>
 </ul>
-<h2 id="recommended-pixiconda-environment"><a class="toclink" href="#recommended-pixiconda-environment">Recommended: Pixi/Conda environment</a><a class="headerlink" href="#recommended-pixiconda-environment" title="Permanent link">#</a></h2>
-<p>This repository includes a Pixi configuration to create fully-solvable environments with the right GDAL build from conda-forge.</p>
-<p>Prerequisites: Install Pixi (https://pixi.sh/) or have conda/mamba with the conda-forge channel available.</p>
-<h3 id="using-pixi"><a class="toclink" href="#using-pixi">Using Pixi</a><a class="headerlink" href="#using-pixi" title="Permanent link">#</a></h3>
-<p>From the project root:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">pixi run main          # runs the main test suite to ensure the env is solvable</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="go">pixi shell             # enter the Pixi environment</span>
-</code></pre></div>
-<p>Pixi environments provided:
-- default: includes dev + viz extras
-- docs: documentation toolchain
-- py311 / py312 / py313: pinned Python versions</p>
-<p>To install the package in editable mode inside the Pixi environment:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">pip install -e .</span>
-</code></pre></div>
-<h3 id="using-condamamba-directly"><a class="toclink" href="#using-condamamba-directly">Using conda/mamba directly</a><a class="headerlink" href="#using-condamamba-directly" title="Permanent link">#</a></h3>
-<p>Create and activate an environment (example with Python 3.12):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">mamba create -n pyramids -c conda-forge python=3.12 gdal libgdal-netcdf libgdal-hdf4</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">mamba activate pyramids-gis</span>
-</code></pre></div>
-<p>Then install the package from PyPI (release):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="go">pip install pyramids-gis==0.7.3</span>
-</code></pre></div>
-<p>Optionally include extras (examples):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="go">pip install &quot;pyramids-gis[viz]&quot;        # installs cleopatra</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">pip install &quot;pyramids-gis[dev]&quot;        # developer tools</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="go">pip install &quot;pyramids-gis[docs]&quot;       # docs toolchain</span>
-</code></pre></div>
-<h2 id="installing-with-pip-only-advanced"><a class="toclink" href="#installing-with-pip-only-advanced">Installing with pip only (advanced)</a><a class="headerlink" href="#installing-with-pip-only-advanced" title="Permanent link">#</a></h2>
-<p>Installing GDAL wheels via pip can be platform-specific. We strongly recommend installing GDAL from conda-forge first, then using pip for pyramids-gis:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="go">conda install -c conda-forge gdal libgdal-netcdf libgdal-hdf4</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">pip install pyramids-gis</span>
-</code></pre></div>
-<p>If you insist on a pip-only approach, consult the GDAL wheel guidance for your platform and ensure gdal is available at runtime before installing pyramids-gis.</p>
-<h2 id="install-from-source"><a class="toclink" href="#install-from-source">Install from source</a><a class="headerlink" href="#install-from-source" title="Permanent link">#</a></h2>
-<p>Clone the repository and install:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">git clone https://github.com/Serapieum-of-alex/pyramids.git</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">cd pyramids</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">python -m pip install .</span>
-</code></pre></div>
-<p>Editable (development) install:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="go">git clone https://github.com/Serapieum-of-alex/pyramids.git</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="go">cd pyramids</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="go">pip install -e .[dev]</span>
-</code></pre></div>
-<p>Install directly from GitHub (latest main):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">pip install &quot;git+https://github.com/Serapieum-of-alex/pyramids.git&quot;</span>
-</code></pre></div>
-<p>Install a specific tagged release from GitHub:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="go">pip install &quot;git+https://github.com/Serapieum-of-alex/pyramids.git@v0.7.3&quot;</span>
-</code></pre></div>
-<h2 id="quick-check"><a class="toclink" href="#quick-check">Quick check</a><a class="headerlink" href="#quick-check" title="Permanent link">#</a></h2>
-<p>After installation, open Python and run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyramids</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">pyramids</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
-</code></pre></div>
-<p>You can also run the test suite if you installed dev tools:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="go">pytest -m &quot;not plot&quot; -q</span>
-</code></pre></div>
-<h2 id="notes"><a class="toclink" href="#notes">Notes</a><a class="headerlink" href="#notes" title="Permanent link">#</a></h2>
+<h2 id="pre-commit-hooks"><a class="toclink" href="#pre-commit-hooks">Pre-commit hooks</a><a class="headerlink" href="#pre-commit-hooks" title="Permanent link">#</a></h2>
 <ul>
-<li>Supported Python versions are 3.11–3.13.</li>
-<li>Prefer conda-forge for GDAL and related libraries.</li>
-<li>Documentation: https://pyramids-gis.readthedocs.io/</li>
-<li>Source repository: https://github.com/Serapieum-of-alex/pyramids</li>
+<li>Hooks are installed on first container create: <code>pre-commit install</code>.</li>
+<li>You can run them manually:
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files
+</code></pre></div></li>
 </ul>
+<h2 id="editable-install-optional"><a class="toclink" href="#editable-install-optional">Editable install (optional)</a><a class="headerlink" href="#editable-install-optional" title="Permanent link">#</a></h2>
+<p>By default the Dockerfile enforces a non-editable install for a production-like environment. This means code edits in <code>src/</code> may not immediately reflect in the runtime environment.</p>
+<p>If you prefer a live dev workflow inside the container:
+1. Open a terminal in the container.
+2. Run:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>uninstall<span class="w"> </span>-y<span class="w"> </span>pyramids-gis<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</code></pre></div>
+3. Now changes under <code>src/</code> are reflected without rebuilding the image.</p>
+<p>Note: If you rebuild the container image, it will revert to the default non-editable install.</p>
+<h2 id="rebuild-and-update"><a class="toclink" href="#rebuild-and-update">Rebuild and update</a><a class="headerlink" href="#rebuild-and-update" title="Permanent link">#</a></h2>
+<ul>
+<li>After changing dependencies (pyproject.toml), rebuild the container to capture them:</li>
+<li>VS Code Command Palette → "Dev Containers: Rebuild Container".</li>
+<li>If caching causes trouble, do a no-cache rebuild via the Dev Containers UI or remove the prior image.</li>
+</ul>
+<h2 id="environment-variables-for-gdalproj"><a class="toclink" href="#environment-variables-for-gdalproj">Environment variables for GDAL/PROJ</a><a class="headerlink" href="#environment-variables-for-gdalproj" title="Permanent link">#</a></h2>
+<p>The Dockerfile’s <code>production</code> stage sets these for you:
+- <code>PATH=/opt/venv/bin:...</code>
+- <code>LD_LIBRARY_PATH=/opt/venv/lib:...</code>
+- <code>GDAL_DATA=/opt/venv/share/gdal</code>
+- <code>PROJ_LIB=/opt/venv/share/proj</code>
+- <code>PYTHONNOUSERSITE=1</code></p>
+<p>You normally don’t need to change them.</p>
+<h2 id="debugging"><a class="toclink" href="#debugging">Debugging</a><a class="headerlink" href="#debugging" title="Permanent link">#</a></h2>
+<ul>
+<li>Use VS Code’s debugger with the Python extension; it will use <code>/opt/venv/bin/python</code>.</li>
+<li>For CLI scripts, add a launch configuration or use the "Run and Debug" panel.</li>
+</ul>
+<h2 id="github-codespaces"><a class="toclink" href="#github-codespaces">GitHub Codespaces</a><a class="headerlink" href="#github-codespaces" title="Permanent link">#</a></h2>
+<ul>
+<li>This configuration also works in Codespaces. Open the repo in a Codespace; it will build and use the same container image settings.</li>
+</ul>
+<h2 id="troubleshooting"><a class="toclink" href="#troubleshooting">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<ul>
+<li>Build is slow or fails on GDAL/PROJ:</li>
+<li>Ensure Docker has enough RAM/CPU.</li>
+<li>Try a rebuild without cache.</li>
+<li>Changes in code not reflected:</li>
+<li>Use the editable install approach above or rebuild the container.</li>
+<li>Disk space issues:</li>
+<li>Remove old images/containers or increase Docker disk allocation.</li>
+<li>Interpreter mismatch in VS Code:</li>
+<li>Set Python interpreter to <code>/opt/venv/bin/python</code> (Command Palette → Python: Select Interpreter).</li>
+</ul>
+<h2 id="use-the-dev-container-in-pycharm"><a class="toclink" href="#use-the-dev-container-in-pycharm">Use the Dev Container in PyCharm</a><a class="headerlink" href="#use-the-dev-container-in-pycharm" title="Permanent link">#</a></h2>
+<p>You can use this same Dev Container from PyCharm in two ways.</p>
+<p>Prerequisites:
+- PyCharm Professional 2023.3+ (recommended 2024.1 or newer)
+- Docker Desktop running
+- Install the JetBrains plugin: "Dev Containers" (Settings → Plugins → Marketplace → search "Dev Containers" → Install)</p>
+<p>Option A — Open the project via the Dev Containers plugin (recommended):
+1. File → Open… and select the repository folder (with .devcontainer/devcontainer.json).
+2. If prompted by the Dev Containers plugin, choose "Open in Dev Container". Alternatively, Tools → Dev Containers → Open Folder in Dev Container.
+3. The plugin will build from .devcontainer/devcontainer.json (target=production, ENV_NAME=dev) and open the workspace inside the container at <code>/workspaces/&lt;repo&gt;</code>.
+4. PyCharm will detect the interpreter inside the container. If needed, set it explicitly to <code>/opt/venv/bin/python</code>:
+   - Settings → Project → Python Interpreter → gear icon → Add… → Dev Container → pick the running devcontainer → Interpreter path: <code>/opt/venv/bin/python</code>.
+5. Run/Debug configurations:
+   - Create a Python configuration using the container interpreter.
+   - For tests: Settings → Tools → Python Integrated Tools → Default test runner: pytest.
+   - Configure pytest: Settings → Tools → Python Integrated Tools → pytest → Additional arguments: <code>-m "not plot" -vvv</code>.
+6. Terminals opened in PyCharm will run inside the container (Tools → Terminal). Use <code>pytest</code> or any CLI as usual.</p>
+<p>Option B — Attach a Docker-based remote interpreter (without the plugin):
+1. Build and start the Dev Container once (e.g., via VS Code or <code>devcontainer up</code>) so the container exists.
+2. In PyCharm: Settings → Project → Python Interpreter → gear icon → Add… → Docker.
+3. Select Docker → "Container" and pick the running devcontainer container.
+4. Interpreter path: <code>/opt/venv/bin/python</code>.
+5. Apply. You can now run/debug and test within the container environment.</p>
+<p>Notes and tips for PyCharm:
+- Workspace path inside container: <code>/workspaces/${localWorkspaceFolderBasename}</code> (as per devcontainer.json). PyCharm will map your local project to this path automatically when using the Dev Containers plugin.
+- Pre-commit hooks are installed by the container on first create (<code>pre-commit install</code>). You can run them in PyCharm’s terminal: <code>pre-commit run --all-files</code>.
+- Notebooks: PyCharm Pro supports Jupyter. Select the same interpreter <code>/opt/venv/bin/python</code> for the notebook kernel.
+- Rebuild the container after dependency changes: Tools → Dev Containers → Rebuild (or rebuild via VS Code). This ensures the image picks up changes from pyproject.toml.
+- If you see missing GDAL/PROJ or shared library errors, verify the interpreter path is <code>/opt/venv/bin/python</code> and that the container you’re attaching to is the devcontainer defined by this repo.</p>
+<h2 id="whats-in-the-container"><a class="toclink" href="#whats-in-the-container">What’s in the container?</a><a class="headerlink" href="#whats-in-the-container" title="Permanent link">#</a></h2>
+<ul>
+<li>Python tools: pytest, pre-commit, Jupyter, Ruff/Pylance (via VS Code extensions; in PyCharm, use built-in inspections/formatters or configure plugins as desired).</li>
+<li>GIS stack: GDAL, PROJ and related libs, aligned with conda-forge packages solved by Pixi during the image build.</li>
+</ul>
+<p>If you want a different balance between dev convenience and production parity (e.g., always editable installs), let us know and we can adjust the devcontainer configuration accordingly.</p>
 
 
 
@@ -1945,7 +2011,7 @@ Supported Python versions: 3.11 – 3.13 (requires Python &gt;=3.11,&lt;4)</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
+          <a href="../../tutorials/datacube-basics/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Datacube basics">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1955,20 +2021,20 @@ Supported Python versions: 3.11 – 3.13 (requires Python &gt;=3.11,&lt;4)</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Home
+                Datacube basics
               </div>
             </div>
           </a>
         
         
           
-          <a href="../overview/codebase-map/" class="md-footer__link md-footer__link--next" aria-label="Next: Codebase Map">
+          <a href="../docker/" class="md-footer__link md-footer__link--next" aria-label="Next: Docker &amp; GHCR">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Codebase Map
+                Docker & GHCR
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2020,14 +2086,14 @@ Supported Python versions: 3.11 – 3.13 (requires Python &gt;=3.11,&lt;4)</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.expand", "navigation.indexes", "navigation.footer", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "content.code.copy", "content.code.annotate", "content.action.edit", "content.action.view", "content.tooltips", "search.highlight", "search.suggest", "toc.follow", "announce.dismiss"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.expand", "navigation.indexes", "navigation.footer", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "content.code.copy", "content.code.annotate", "content.action.edit", "content.action.view", "content.tooltips", "search.highlight", "search.suggest", "toc.follow", "announce.dismiss"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.92b07e13.min.js"></script>
+      <script src="../../assets/javascripts/bundle.92b07e13.min.js"></script>
       
-        <script src="../assets/javascripts/panzoom.min.js"></script>
+        <script src="../../assets/javascripts/panzoom.min.js"></script>
       
-        <script src="../assets/javascripts/zoompan.js"></script>
+        <script src="../../assets/javascripts/zoompan.js"></script>
       
     
   </body>
