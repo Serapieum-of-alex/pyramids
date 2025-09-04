@@ -124,6 +124,7 @@ pyramids-gis = { path = ".", editable = true }
 [tool.pixi.tasks]
 main = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'not plot' --cov-report=xml", description = "Run the main test suite" }
 plot = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'plot' --cov-report=xml", description = "Run plot test suite" }
+test-all = { cmd = "pytest -vvv --cov=src/pyramids -sv --cov-report=xml --cov-report=term-missing", description = "Run all testsuite" }
 notebooks = { cmd = "pytest --nbval --nbval-lax --verbose examples/notebooks", description = "check notebooks" }
 build-dist = { cmd = "python -m build", description = "Build sdist and wheel for PyPI" }
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
