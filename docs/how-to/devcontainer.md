@@ -1,14 +1,15 @@
 # Using the Dev Container
 
 This guide explains how to develop this project inside a reproducible Dev Container. The Dev Container is configured to 
-build from the repository Dockerfile (production stage) and provisions a complete GIS stack (GDAL/PROJ) plus development tools.
+build from the repository Dockerfile (production stage) and provisions a complete GIS stack (GDAL/PROJ); development tools are available when `ENV_NAME=dev`.
 
 Key facts:
-- Image is built from the Dockerfile `production` stage with `ENV_NAME=default` so default dependencies are included.
+- Image is built from the Dockerfile `production` stage with `ENV_NAME=default` so default (runtime) dependencies are included.
 - The Python environment lives at `/opt/venv`. VS Code is configured to use `/opt/venv/bin/python` automatically.
 - GDAL/PROJ environment variables are already set inside the container.
 - By default, the package is installed non-editably (production-like install). You can optionally enable editable installs 
 for live code reloading (see below).
+- Dev tools like `pytest` and `pre-commit` are part of the Pixi `dev` environment. To include them by default, change `ENV_NAME` to `dev` in `.devcontainer/devcontainer.json` and rebuild; otherwise you can install them manually inside the container (e.g., `pip install -U pytest pre-commit`).
 
 ## Prerequisites
 
@@ -23,7 +24,7 @@ You also need Docker running if you build locally.
 1. Open the folder in VS Code.
 2. Run: Command Palette → "Dev Containers: Reopen in Container".
 3. The first run will build the image from your Dockerfile and then open the workspace in the container.
-4. Post-create step will install git hooks (`pre-commit install`).
+4. Post-create step tries to install git hooks (`pre-commit install`) if `pre-commit` is available; otherwise install it (`pip install pre-commit`) or set `ENV_NAME` to `dev` in `.devcontainer/devcontainer.json` and rebuild.
 
 Tip: The first build can take a while because it resolves the Pixi environment and installs GDAL/PROJ.
 
@@ -43,6 +44,7 @@ Tip: The first build can take a while because it resolves the Pixi environment a
   pytest -m "not plot" -vvv
   ```
 - VS Code Testing UI is already enabled for pytest.
+- If pytest is not found (because `ENV_NAME=default` excludes dev tools), either install it (`pip install -U pytest`) or set `ENV_NAME` to `dev` in `.devcontainer/devcontainer.json` and rebuild.
 
 ## Working with notebooks
 
@@ -119,9 +121,14 @@ Prerequisites:
 - Install the JetBrains plugin: "Dev Containers" (Settings → Plugins → Marketplace → search "Dev Containers" → Install)
 
 Option A — Open the project via the Dev Containers plugin (recommended):
-1. File → Open… and select the repository folder (with .devcontainer/devcontainer.json).
-2. If prompted by the Dev Containers plugin, choose "Open in Dev Container". Alternatively, Tools → Dev Containers → Open Folder in Dev Container.
-3. The plugin will build from .devcontainer/devcontainer.json (target=production, ENV_NAME=dev) and open the workspace inside the container at `/workspaces/<repo>`.
+1. File → remote development → dev container → New dev container → select from local Project → then select the 
+   devcontainer file .devcontainer/devcontainer.json).
+2. Once you select the devcontainer file, the plugin will build the image from the Dockerfile and the `Services` ta 
+   will open and display the build progress.
+![build-log](./../_images/dev-container-build-log.PNG)
+3. Once the build is done you can open the project in the container.
+![build-finished](./../_images/dev-container-build-finished.png)
+3. The plugin will build from .devcontainer/devcontainer.json (ENV_NAME=default; target is the final production stage) and open the workspace inside the container at `/workspaces/<repo>`.
 4. PyCharm will detect the interpreter inside the container. If needed, set it explicitly to `/opt/venv/bin/python`:
    - Settings → Project → Python Interpreter → gear icon → Add… → Dev Container → pick the running devcontainer → Interpreter path: `/opt/venv/bin/python`.
 5. Run/Debug configurations:
@@ -146,7 +153,8 @@ Notes and tips for PyCharm:
 
 ## What’s in the container?
 
-- Python tools: pytest, pre-commit, Jupyter, Ruff/Pylance (via VS Code extensions; in PyCharm, use built-in inspections/formatters or configure plugins as desired).
+- Editor tooling: Ruff/Pylance extensions are preinstalled for VS Code; in PyCharm, use built-in inspections/formatters or plugins as desired.
+- Dev tools: pytest, pre-commit, and Jupyter are available when using `ENV_NAME=dev` or can be installed via `pip` inside the container.
 - GIS stack: GDAL, PROJ and related libs, aligned with conda-forge packages solved by Pixi during the image build.
 
 If you want a different balance between dev convenience and production parity (e.g., always editable installs), let us know and we can adjust the devcontainer configuration accordingly.
