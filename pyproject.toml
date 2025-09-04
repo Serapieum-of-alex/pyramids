@@ -48,7 +48,8 @@ dev = [
     "twine>=5.0.0",
     "pip",
     "jupyterlab",
-    "notebook"
+    "notebook",
+    "jupyter"
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -64,7 +65,7 @@ docs = [
     "jupyter-contrib-nbextensions  >=0.7.0",
     "mkdocs-panzoom-plugin",
 #    "notebook<7.0",
-#    "jupyter"
+#
 ]
 
 viz = ["cleopatra>=0.5.1"]
