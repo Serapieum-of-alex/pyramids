@@ -123,6 +123,7 @@ nav:
       - Raster basics: tutorials/raster-basics.md
       - Datacube basics: tutorials/datacube-basics.md
   - How-to:
+      - Dev Container: how-to/devcontainer.md
       - Docker & GHCR: how-to/docker.md
       - Recipes: how-to/recipes.md
       - FAQ & Troubleshooting: how-to/faq.md
