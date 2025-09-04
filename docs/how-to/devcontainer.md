@@ -125,9 +125,9 @@ Option A — Open the project via the Dev Containers plugin (recommended):
    devcontainer file .devcontainer/devcontainer.json).
 2. Once you select the devcontainer file, the plugin will build the image from the Dockerfile and the `Services` ta 
    will open and display the build progress.
-![build-log](./../_images/dev-container-build-log.PNG)
+![build-log](./../_images/development/dev-container-build-log.png)
 3. Once the build is done you can open the project in the container.
-![build-finished](./../_images/dev-container-build-finished.png)
+![build-finished](./../_images/development/dev-container-build-finished.png)
 3. The plugin will build from .devcontainer/devcontainer.json (ENV_NAME=default; target is the final production stage) and open the workspace inside the container at `/workspaces/<repo>`.
 4. PyCharm will detect the interpreter inside the container. If needed, set it explicitly to `/opt/venv/bin/python`:
    - Settings → Project → Python Interpreter → gear icon → Add… → Dev Container → pick the running devcontainer → Interpreter path: `/opt/venv/bin/python`.
