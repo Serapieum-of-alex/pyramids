@@ -123,7 +123,7 @@ Prerequisites:
 Option A — Open the project via the Dev Containers plugin (recommended):
 1. File → remote development → dev container → New dev container → select from local Project → then select the 
    devcontainer file .devcontainer/devcontainer.json).
-2. Once you select the devcontainer file, the plugin will build the image from the Dockerfile and the `Services` ta 
+2. Once you select the devcontainer file, the plugin will build the image from the Dockerfile and the `Services` tab 
    will open and display the build progress.
 ![build-log](./../_images/development/dev-container-build-log.png)
 3. Once the build is done you can open the project in the container.
