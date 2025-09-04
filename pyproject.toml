@@ -64,8 +64,7 @@ docs = [
     "mkdocs-mermaid2-plugin  >=1.2.1",
     "jupyter-contrib-nbextensions  >=0.7.0",
     "mkdocs-panzoom-plugin",
-#    "notebook<7.0",
-#
+    "notebook<7.0",
 ]
 
 viz = ["cleopatra>=0.5.1"]
@@ -148,8 +147,7 @@ python = "3.11.*"
 python = "3.12.*"
 [tool.pixi.feature.py313.dependencies]
 python = "3.13.*"
-[tool.pixi.feature.docs.dependencies]
-notebook = "<7.0"
+
 
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"

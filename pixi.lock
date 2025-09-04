@@ -9413,7 +9413,7 @@ packages:
 - pypi: ./
   name: pyramids-gis
   version: 0.7.3
-  sha256: aad6e51bb3f2da94184451256da81116f946bc051a56eb6d568755a862d3177e
+  sha256: efc22262d23c0fce6e96b13f677b8274fb75fc5af0bbddd0f9a359890e1ed7c6
   requires_dist:
   - geopandas>=1.0.0
   - hpc-utils>=0.1.5
@@ -9447,6 +9447,7 @@ packages:
   - mkdocs-mermaid2-plugin>=1.2.1 ; extra == 'docs'
   - jupyter-contrib-nbextensions>=0.7.0 ; extra == 'docs'
   - mkdocs-panzoom-plugin ; extra == 'docs'
+  - notebook<7.0 ; extra == 'docs'
   - cleopatra>=0.5.1 ; extra == 'viz'
   requires_python: '>=3.11,<4'
   editable: true
