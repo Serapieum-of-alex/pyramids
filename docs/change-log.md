@@ -4,10 +4,31 @@
 
 ### Feat
 
-- **plot**: add to_xyz method and improve plotting integration with Cleopatra (#99)
 - **plot**: add to_xyz method and improve plotting integration with Cleopatra
-- **docker**: add Docker support with workflow and documentation (#127)
 - **docker**: add Docker support with workflow and documentation
+
+### CI
+
+- **docker**: fix docker-release workflow configuration
+
+### Docs
+
+- update badges and improve formatting in README and index files
+- fix typo in dev container setup steps
+- migrate to MkDocs with Google-style docstrings and diagrams
+
+### Chore
+
+- **deps**: disable changelog autoupdate - Disabled `update_changelog_on_bump` in pyproject settings - Updated styles in pyproject for improved terminal prompts - Simplified release workflow by removing unnecessary debug steps
+- **release**: enhance debug visibility and tag handling in workflow
+- **release**: ensure tags are fetched for release workflow
+- **deps**: update sha256 checksum for `pyramids-gis` to match new version 0.7.3
+- **pyproject**: remove `major_version_zero` configuration
+- **release**: add Commitizen and automated release workflow
+- update dependencies, workflows, and docs
+- **dev**: add dev container and docs
+- **ci**: update workflow permissions and group publishing dependencies
+
 
 ## 0.7.3 (2025-08-02)
 
