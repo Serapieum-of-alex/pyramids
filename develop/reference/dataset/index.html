@@ -62,7 +62,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -10081,8 +10081,7 @@ systems.</p>
 <span class="normal"><a href="#__codelineno-0-6577">6577</a></span>
 <span class="normal"><a href="#__codelineno-0-6578">6578</a></span>
 <span class="normal"><a href="#__codelineno-0-6579">6579</a></span>
-<span class="normal"><a href="#__codelineno-0-6580">6580</a></span>
-<span class="normal"><a href="#__codelineno-0-6581">6581</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span><span class="n">AbstractDataset</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-6580">6580</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span><span class="n">AbstractDataset</span><span class="p">):</span>
 <a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Dataset.</span>
 <a id="__codelineno-0-54" name="__codelineno-0-54"></a>
 <a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">    The Dataset class contains methods to deal with raster and netcdf files, change projection and coordinate</span>
@@ -11703,14 +11702,14 @@ systems.</p>
 <a id="__codelineno-0-1670" name="__codelineno-0-1670"></a>
 <a id="__codelineno-0-1671" name="__codelineno-0-1671"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
 <a id="__codelineno-0-1672" name="__codelineno-0-1672"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-1673" name="__codelineno-0-1673"></a>        <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1674" name="__codelineno-0-1674"></a>        <span class="n">exclude_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1675" name="__codelineno-0-1675"></a>        <span class="n">rgb</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1676" name="__codelineno-0-1676"></a>        <span class="n">surface_reflectance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1677" name="__codelineno-0-1677"></a>        <span class="n">cutoff</span><span class="p">:</span> <span class="n">List</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1678" name="__codelineno-0-1678"></a>        <span class="n">overview</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-1679" name="__codelineno-0-1679"></a>        <span class="n">overview_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-0-1680" name="__codelineno-0-1680"></a>        <span class="n">percentile</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1673" name="__codelineno-0-1673"></a>        <span class="n">band</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1674" name="__codelineno-0-1674"></a>        <span class="n">exclude_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1675" name="__codelineno-0-1675"></a>        <span class="n">rgb</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1676" name="__codelineno-0-1676"></a>        <span class="n">surface_reflectance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1677" name="__codelineno-0-1677"></a>        <span class="n">cutoff</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1678" name="__codelineno-0-1678"></a>        <span class="n">overview</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-1679" name="__codelineno-0-1679"></a>        <span class="n">overview_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-0-1680" name="__codelineno-0-1680"></a>        <span class="n">percentile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-1681" name="__codelineno-0-1681"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
 <a id="__codelineno-0-1682" name="__codelineno-0-1682"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ArrayGlyph&quot;</span><span class="p">:</span>
 <a id="__codelineno-0-1683" name="__codelineno-0-1683"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot the values/overviews of a given band.</span>
@@ -13368,11 +13367,11 @@ systems.</p>
 <a id="__codelineno-0-3335" name="__codelineno-0-3335"></a>        <span class="k">return</span> <span class="n">gdf</span>
 <a id="__codelineno-0-3336" name="__codelineno-0-3336"></a>
 <a id="__codelineno-0-3337" name="__codelineno-0-3337"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_file</span><span class="p">(</span>
-<a id="__codelineno-0-3338" name="__codelineno-0-3338"></a>            <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-3339" name="__codelineno-0-3339"></a>            <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-3340" name="__codelineno-0-3340"></a>            <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-0-3341" name="__codelineno-0-3341"></a>            <span class="n">tile_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-3342" name="__codelineno-0-3342"></a>            <span class="n">creation_options</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-3338" name="__codelineno-0-3338"></a>        <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-3339" name="__codelineno-0-3339"></a>        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-0-3340" name="__codelineno-0-3340"></a>        <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-0-3341" name="__codelineno-0-3341"></a>        <span class="n">tile_length</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-3342" name="__codelineno-0-3342"></a>        <span class="n">creation_options</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-3343" name="__codelineno-0-3343"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-3344" name="__codelineno-0-3344"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Save dataset to tiff file.</span>
 <a id="__codelineno-0-3345" name="__codelineno-0-3345"></a>
@@ -16524,94 +16523,93 @@ systems.</p>
 <a id="__codelineno-0-6491" name="__codelineno-0-6491"></a>    <span class="c1">#     return percent</span>
 <a id="__codelineno-0-6492" name="__codelineno-0-6492"></a>
 <a id="__codelineno-0-6493" name="__codelineno-0-6493"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_xyz</span><span class="p">(</span>
-<a id="__codelineno-0-6494" name="__codelineno-0-6494"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">bands</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-6494" name="__codelineno-0-6494"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">bands</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 <a id="__codelineno-0-6495" name="__codelineno-0-6495"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">DataFrame</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
 <a id="__codelineno-0-6496" name="__codelineno-0-6496"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert to XYZ.</span>
 <a id="__codelineno-0-6497" name="__codelineno-0-6497"></a>
-<a id="__codelineno-0-6498" name="__codelineno-0-6498"></a><span class="sd">        Parameters</span>
-<a id="__codelineno-0-6499" name="__codelineno-0-6499"></a><span class="sd">        ----------</span>
-<a id="__codelineno-0-6500" name="__codelineno-0-6500"></a><span class="sd">        path: str, optional, default is None</span>
-<a id="__codelineno-0-6501" name="__codelineno-0-6501"></a><span class="sd">            path to the file where the data will be saved. If None, the data will be returned as a DataFrame.</span>
-<a id="__codelineno-0-6502" name="__codelineno-0-6502"></a><span class="sd">        bands: List[int], optional, default is None</span>
-<a id="__codelineno-0-6503" name="__codelineno-0-6503"></a><span class="sd">            indices of the bands. If None, all bands will be used.</span>
+<a id="__codelineno-0-6498" name="__codelineno-0-6498"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-6499" name="__codelineno-0-6499"></a><span class="sd">            path (str, optional):</span>
+<a id="__codelineno-0-6500" name="__codelineno-0-6500"></a><span class="sd">                path to the file where the data will be saved. If None, the data will be returned as a DataFrame.</span>
+<a id="__codelineno-0-6501" name="__codelineno-0-6501"></a><span class="sd">                default is None.</span>
+<a id="__codelineno-0-6502" name="__codelineno-0-6502"></a><span class="sd">            bands (List[int], optional):</span>
+<a id="__codelineno-0-6503" name="__codelineno-0-6503"></a><span class="sd">                indices of the bands. If None, all bands will be used. default is None</span>
 <a id="__codelineno-0-6504" name="__codelineno-0-6504"></a>
-<a id="__codelineno-0-6505" name="__codelineno-0-6505"></a><span class="sd">        Returns</span>
-<a id="__codelineno-0-6506" name="__codelineno-0-6506"></a><span class="sd">        -------</span>
-<a id="__codelineno-0-6507" name="__codelineno-0-6507"></a><span class="sd">        DataFrame/File:</span>
-<a id="__codelineno-0-6508" name="__codelineno-0-6508"></a><span class="sd">            DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to</span>
-<a id="__codelineno-0-6509" name="__codelineno-0-6509"></a><span class="sd">            disk as a .xyz file</span>
-<a id="__codelineno-0-6510" name="__codelineno-0-6510"></a>
-<a id="__codelineno-0-6511" name="__codelineno-0-6511"></a><span class="sd">        Examples</span>
-<a id="__codelineno-0-6512" name="__codelineno-0-6512"></a><span class="sd">        --------</span>
-<a id="__codelineno-0-6513" name="__codelineno-0-6513"></a><span class="sd">        - First we will create a dataset from a float32 array with values between 1 and 10, and then we will</span>
-<a id="__codelineno-0-6514" name="__codelineno-0-6514"></a><span class="sd">            assign a scale of 0.1 to the dataset.</span>
-<a id="__codelineno-0-6515" name="__codelineno-0-6515"></a>
-<a id="__codelineno-0-6516" name="__codelineno-0-6516"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
-<a id="__codelineno-0-6517" name="__codelineno-0-6517"></a><span class="sd">            &gt;&gt;&gt; arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])</span>
-<a id="__codelineno-0-6518" name="__codelineno-0-6518"></a><span class="sd">            &gt;&gt;&gt; top_left_corner = (0, 0)</span>
-<a id="__codelineno-0-6519" name="__codelineno-0-6519"></a><span class="sd">            &gt;&gt;&gt; cell_size = 0.05</span>
-<a id="__codelineno-0-6520" name="__codelineno-0-6520"></a><span class="sd">            &gt;&gt;&gt; dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)</span>
-<a id="__codelineno-0-6521" name="__codelineno-0-6521"></a><span class="sd">            &gt;&gt;&gt; print(dataset)</span>
-<a id="__codelineno-0-6522" name="__codelineno-0-6522"></a><span class="sd">            &lt;BLANKLINE&gt;</span>
-<a id="__codelineno-0-6523" name="__codelineno-0-6523"></a><span class="sd">                        Top Left Corner: (0.0, 0.0)</span>
-<a id="__codelineno-0-6524" name="__codelineno-0-6524"></a><span class="sd">                        Cell size: 0.05</span>
-<a id="__codelineno-0-6525" name="__codelineno-0-6525"></a><span class="sd">                        Dimension: 2 * 2</span>
-<a id="__codelineno-0-6526" name="__codelineno-0-6526"></a><span class="sd">                        EPSG: 4326</span>
-<a id="__codelineno-0-6527" name="__codelineno-0-6527"></a><span class="sd">                        Number of Bands: 2</span>
-<a id="__codelineno-0-6528" name="__codelineno-0-6528"></a><span class="sd">                        Band names: [&#39;Band_1&#39;, &#39;Band_2&#39;]</span>
-<a id="__codelineno-0-6529" name="__codelineno-0-6529"></a><span class="sd">                        Band colors: {0: &#39;undefined&#39;, 1: &#39;undefined&#39;}</span>
-<a id="__codelineno-0-6530" name="__codelineno-0-6530"></a><span class="sd">                        Band units: [&#39;&#39;, &#39;&#39;]</span>
-<a id="__codelineno-0-6531" name="__codelineno-0-6531"></a><span class="sd">                        Scale: [1.0, 1.0]</span>
-<a id="__codelineno-0-6532" name="__codelineno-0-6532"></a><span class="sd">                        Offset: [0, 0]</span>
-<a id="__codelineno-0-6533" name="__codelineno-0-6533"></a><span class="sd">                        Mask: -9999.0</span>
-<a id="__codelineno-0-6534" name="__codelineno-0-6534"></a><span class="sd">                        Data type: int64</span>
-<a id="__codelineno-0-6535" name="__codelineno-0-6535"></a><span class="sd">                        File: ...</span>
-<a id="__codelineno-0-6536" name="__codelineno-0-6536"></a><span class="sd">            &lt;BLANKLINE&gt;</span>
-<a id="__codelineno-0-6537" name="__codelineno-0-6537"></a><span class="sd">            &gt;&gt;&gt; df = dataset.to_xyz()</span>
-<a id="__codelineno-0-6538" name="__codelineno-0-6538"></a><span class="sd">            &gt;&gt;&gt; print(df)</span>
-<a id="__codelineno-0-6539" name="__codelineno-0-6539"></a><span class="sd">                 lon    lat  Band_1  Band_2</span>
-<a id="__codelineno-0-6540" name="__codelineno-0-6540"></a><span class="sd">            0  0.025 -0.025       1       5</span>
-<a id="__codelineno-0-6541" name="__codelineno-0-6541"></a><span class="sd">            1  0.075 -0.025       2       6</span>
-<a id="__codelineno-0-6542" name="__codelineno-0-6542"></a><span class="sd">            2  0.025 -0.075       3       7</span>
-<a id="__codelineno-0-6543" name="__codelineno-0-6543"></a><span class="sd">            3  0.075 -0.075       4       8</span>
-<a id="__codelineno-0-6544" name="__codelineno-0-6544"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-6545" name="__codelineno-0-6545"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-6546" name="__codelineno-0-6546"></a>            <span class="kn">from</span><span class="w"> </span><span class="nn">osgeo_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">gdal2xyz</span>
-<a id="__codelineno-0-6547" name="__codelineno-0-6547"></a>        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-<a id="__codelineno-0-6548" name="__codelineno-0-6548"></a>            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-<a id="__codelineno-0-6549" name="__codelineno-0-6549"></a>                <span class="s2">&quot;osgeo_utils is not installed. Install it using pip: pip install osgeo-utils&quot;</span>
-<a id="__codelineno-0-6550" name="__codelineno-0-6550"></a>            <span class="p">)</span>
-<a id="__codelineno-0-6551" name="__codelineno-0-6551"></a>
-<a id="__codelineno-0-6552" name="__codelineno-0-6552"></a>        <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-6553" name="__codelineno-0-6553"></a>            <span class="n">bands</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-6554" name="__codelineno-0-6554"></a>        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-<a id="__codelineno-0-6555" name="__codelineno-0-6555"></a>            <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="n">bands</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
-<a id="__codelineno-0-6556" name="__codelineno-0-6556"></a>        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-<a id="__codelineno-0-6557" name="__codelineno-0-6557"></a>            <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">]</span>
-<a id="__codelineno-0-6558" name="__codelineno-0-6558"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-6559" name="__codelineno-0-6559"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bands must be an integer or a list of integers.&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-6560" name="__codelineno-0-6560"></a>
-<a id="__codelineno-0-6561" name="__codelineno-0-6561"></a>        <span class="n">band_nums</span> <span class="o">=</span> <span class="n">bands</span>
-<a id="__codelineno-0-6562" name="__codelineno-0-6562"></a>        <span class="n">arr</span> <span class="o">=</span> <span class="n">gdal2xyz</span><span class="o">.</span><span class="n">gdal2xyz</span><span class="p">(</span>
-<a id="__codelineno-0-6563" name="__codelineno-0-6563"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span>
-<a id="__codelineno-0-6564" name="__codelineno-0-6564"></a>            <span class="n">path</span><span class="p">,</span>
-<a id="__codelineno-0-6565" name="__codelineno-0-6565"></a>            <span class="n">skip_nodata</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-6566" name="__codelineno-0-6566"></a>            <span class="n">return_np_arrays</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-6567" name="__codelineno-0-6567"></a>            <span class="n">band_nums</span><span class="o">=</span><span class="n">band_nums</span><span class="p">,</span>
-<a id="__codelineno-0-6568" name="__codelineno-0-6568"></a>        <span class="p">)</span>
-<a id="__codelineno-0-6569" name="__codelineno-0-6569"></a>        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-6570" name="__codelineno-0-6570"></a>            <span class="n">band_names</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-6571" name="__codelineno-0-6571"></a>            <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-6572" name="__codelineno-0-6572"></a>                <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">:</span>
-<a id="__codelineno-0-6573" name="__codelineno-0-6573"></a>                    <span class="n">band_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_names</span><span class="p">[</span><span class="n">band</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
-<a id="__codelineno-0-6574" name="__codelineno-0-6574"></a>            <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-6575" name="__codelineno-0-6575"></a>                <span class="n">band_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_names</span>
-<a id="__codelineno-0-6576" name="__codelineno-0-6576"></a>
-<a id="__codelineno-0-6577" name="__codelineno-0-6577"></a>            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">band_names</span><span class="p">)</span>
-<a id="__codelineno-0-6578" name="__codelineno-0-6578"></a>            <span class="n">df</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-6579" name="__codelineno-0-6579"></a>            <span class="n">df</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-<a id="__codelineno-0-6580" name="__codelineno-0-6580"></a>            <span class="n">df</span><span class="p">[</span><span class="n">band_names</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
-<a id="__codelineno-0-6581" name="__codelineno-0-6581"></a>            <span class="k">return</span> <span class="n">df</span>
+<a id="__codelineno-0-6505" name="__codelineno-0-6505"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-6506" name="__codelineno-0-6506"></a><span class="sd">            DataFrame/File:</span>
+<a id="__codelineno-0-6507" name="__codelineno-0-6507"></a><span class="sd">                DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to</span>
+<a id="__codelineno-0-6508" name="__codelineno-0-6508"></a><span class="sd">                disk as a .xyz file</span>
+<a id="__codelineno-0-6509" name="__codelineno-0-6509"></a>
+<a id="__codelineno-0-6510" name="__codelineno-0-6510"></a><span class="sd">        Examples:</span>
+<a id="__codelineno-0-6511" name="__codelineno-0-6511"></a><span class="sd">            - First we will create a dataset from a float32 array with values between 1 and 10, and then we will</span>
+<a id="__codelineno-0-6512" name="__codelineno-0-6512"></a><span class="sd">                assign a scale of 0.1 to the dataset.</span>
+<a id="__codelineno-0-6513" name="__codelineno-0-6513"></a><span class="sd">                ```python</span>
+<a id="__codelineno-0-6514" name="__codelineno-0-6514"></a><span class="sd">                &gt;&gt;&gt; import numpy as np</span>
+<a id="__codelineno-0-6515" name="__codelineno-0-6515"></a><span class="sd">                &gt;&gt;&gt; arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])</span>
+<a id="__codelineno-0-6516" name="__codelineno-0-6516"></a><span class="sd">                &gt;&gt;&gt; top_left_corner = (0, 0)</span>
+<a id="__codelineno-0-6517" name="__codelineno-0-6517"></a><span class="sd">                &gt;&gt;&gt; cell_size = 0.05</span>
+<a id="__codelineno-0-6518" name="__codelineno-0-6518"></a><span class="sd">                &gt;&gt;&gt; dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)</span>
+<a id="__codelineno-0-6519" name="__codelineno-0-6519"></a><span class="sd">                &gt;&gt;&gt; print(dataset)</span>
+<a id="__codelineno-0-6520" name="__codelineno-0-6520"></a><span class="sd">                &lt;BLANKLINE&gt;</span>
+<a id="__codelineno-0-6521" name="__codelineno-0-6521"></a><span class="sd">                            Top Left Corner: (0.0, 0.0)</span>
+<a id="__codelineno-0-6522" name="__codelineno-0-6522"></a><span class="sd">                            Cell size: 0.05</span>
+<a id="__codelineno-0-6523" name="__codelineno-0-6523"></a><span class="sd">                            Dimension: 2 * 2</span>
+<a id="__codelineno-0-6524" name="__codelineno-0-6524"></a><span class="sd">                            EPSG: 4326</span>
+<a id="__codelineno-0-6525" name="__codelineno-0-6525"></a><span class="sd">                            Number of Bands: 2</span>
+<a id="__codelineno-0-6526" name="__codelineno-0-6526"></a><span class="sd">                            Band names: [&#39;Band_1&#39;, &#39;Band_2&#39;]</span>
+<a id="__codelineno-0-6527" name="__codelineno-0-6527"></a><span class="sd">                            Band colors: {0: &#39;undefined&#39;, 1: &#39;undefined&#39;}</span>
+<a id="__codelineno-0-6528" name="__codelineno-0-6528"></a><span class="sd">                            Band units: [&#39;&#39;, &#39;&#39;]</span>
+<a id="__codelineno-0-6529" name="__codelineno-0-6529"></a><span class="sd">                            Scale: [1.0, 1.0]</span>
+<a id="__codelineno-0-6530" name="__codelineno-0-6530"></a><span class="sd">                            Offset: [0, 0]</span>
+<a id="__codelineno-0-6531" name="__codelineno-0-6531"></a><span class="sd">                            Mask: -9999.0</span>
+<a id="__codelineno-0-6532" name="__codelineno-0-6532"></a><span class="sd">                            Data type: int64</span>
+<a id="__codelineno-0-6533" name="__codelineno-0-6533"></a><span class="sd">                            File: ...</span>
+<a id="__codelineno-0-6534" name="__codelineno-0-6534"></a><span class="sd">                &lt;BLANKLINE&gt;</span>
+<a id="__codelineno-0-6535" name="__codelineno-0-6535"></a><span class="sd">                &gt;&gt;&gt; df = dataset.to_xyz()</span>
+<a id="__codelineno-0-6536" name="__codelineno-0-6536"></a><span class="sd">                &gt;&gt;&gt; print(df)</span>
+<a id="__codelineno-0-6537" name="__codelineno-0-6537"></a><span class="sd">                     lon    lat  Band_1  Band_2</span>
+<a id="__codelineno-0-6538" name="__codelineno-0-6538"></a><span class="sd">                0  0.025 -0.025       1       5</span>
+<a id="__codelineno-0-6539" name="__codelineno-0-6539"></a><span class="sd">                1  0.075 -0.025       2       6</span>
+<a id="__codelineno-0-6540" name="__codelineno-0-6540"></a><span class="sd">                2  0.025 -0.075       3       7</span>
+<a id="__codelineno-0-6541" name="__codelineno-0-6541"></a><span class="sd">                3  0.075 -0.075       4       8</span>
+<a id="__codelineno-0-6542" name="__codelineno-0-6542"></a><span class="sd">                ```</span>
+<a id="__codelineno-0-6543" name="__codelineno-0-6543"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-6544" name="__codelineno-0-6544"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-6545" name="__codelineno-0-6545"></a>            <span class="kn">from</span><span class="w"> </span><span class="nn">osgeo_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">gdal2xyz</span>
+<a id="__codelineno-0-6546" name="__codelineno-0-6546"></a>        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+<a id="__codelineno-0-6547" name="__codelineno-0-6547"></a>            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+<a id="__codelineno-0-6548" name="__codelineno-0-6548"></a>                <span class="s2">&quot;osgeo_utils is not installed. Install it using pip: pip install osgeo-utils&quot;</span>
+<a id="__codelineno-0-6549" name="__codelineno-0-6549"></a>            <span class="p">)</span>
+<a id="__codelineno-0-6550" name="__codelineno-0-6550"></a>
+<a id="__codelineno-0-6551" name="__codelineno-0-6551"></a>        <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-6552" name="__codelineno-0-6552"></a>            <span class="n">bands</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-6553" name="__codelineno-0-6553"></a>        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+<a id="__codelineno-0-6554" name="__codelineno-0-6554"></a>            <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="n">bands</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-0-6555" name="__codelineno-0-6555"></a>        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+<a id="__codelineno-0-6556" name="__codelineno-0-6556"></a>            <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">]</span>
+<a id="__codelineno-0-6557" name="__codelineno-0-6557"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-6558" name="__codelineno-0-6558"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bands must be an integer or a list of integers.&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-6559" name="__codelineno-0-6559"></a>
+<a id="__codelineno-0-6560" name="__codelineno-0-6560"></a>        <span class="n">band_nums</span> <span class="o">=</span> <span class="n">bands</span>
+<a id="__codelineno-0-6561" name="__codelineno-0-6561"></a>        <span class="n">arr</span> <span class="o">=</span> <span class="n">gdal2xyz</span><span class="o">.</span><span class="n">gdal2xyz</span><span class="p">(</span>
+<a id="__codelineno-0-6562" name="__codelineno-0-6562"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span>
+<a id="__codelineno-0-6563" name="__codelineno-0-6563"></a>            <span class="n">path</span><span class="p">,</span>
+<a id="__codelineno-0-6564" name="__codelineno-0-6564"></a>            <span class="n">skip_nodata</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-6565" name="__codelineno-0-6565"></a>            <span class="n">return_np_arrays</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-6566" name="__codelineno-0-6566"></a>            <span class="n">band_nums</span><span class="o">=</span><span class="n">band_nums</span><span class="p">,</span>
+<a id="__codelineno-0-6567" name="__codelineno-0-6567"></a>        <span class="p">)</span>
+<a id="__codelineno-0-6568" name="__codelineno-0-6568"></a>        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-6569" name="__codelineno-0-6569"></a>            <span class="n">band_names</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-6570" name="__codelineno-0-6570"></a>            <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-6571" name="__codelineno-0-6571"></a>                <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">:</span>
+<a id="__codelineno-0-6572" name="__codelineno-0-6572"></a>                    <span class="n">band_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_names</span><span class="p">[</span><span class="n">band</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+<a id="__codelineno-0-6573" name="__codelineno-0-6573"></a>            <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-6574" name="__codelineno-0-6574"></a>                <span class="n">band_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_names</span>
+<a id="__codelineno-0-6575" name="__codelineno-0-6575"></a>
+<a id="__codelineno-0-6576" name="__codelineno-0-6576"></a>            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">band_names</span><span class="p">)</span>
+<a id="__codelineno-0-6577" name="__codelineno-0-6577"></a>            <span class="n">df</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-6578" name="__codelineno-0-6578"></a>            <span class="n">df</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-0-6579" name="__codelineno-0-6579"></a>            <span class="n">df</span><span class="p">[</span><span class="n">band_names</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+<a id="__codelineno-0-6580" name="__codelineno-0-6580"></a>            <span class="k">return</span> <span class="n">df</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -20903,7 +20901,7 @@ and scale them back to between 0 and 1). Default is None.</p>
                 <code>percentile</code>
             </td>
             <td>
-                  <code><span title="int">int</span></code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="int">int</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -21177,14 +21175,14 @@ The percentile value to be used for scaling.</p>
 <span class="normal"><a href="#__codelineno-0-1836">1836</a></span>
 <span class="normal"><a href="#__codelineno-0-1837">1837</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1671" name="__codelineno-0-1671"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
 <a id="__codelineno-0-1672" name="__codelineno-0-1672"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-1673" name="__codelineno-0-1673"></a>    <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1674" name="__codelineno-0-1674"></a>    <span class="n">exclude_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1675" name="__codelineno-0-1675"></a>    <span class="n">rgb</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1676" name="__codelineno-0-1676"></a>    <span class="n">surface_reflectance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1677" name="__codelineno-0-1677"></a>    <span class="n">cutoff</span><span class="p">:</span> <span class="n">List</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1678" name="__codelineno-0-1678"></a>    <span class="n">overview</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-1679" name="__codelineno-0-1679"></a>    <span class="n">overview_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-0-1680" name="__codelineno-0-1680"></a>    <span class="n">percentile</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1673" name="__codelineno-0-1673"></a>    <span class="n">band</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1674" name="__codelineno-0-1674"></a>    <span class="n">exclude_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1675" name="__codelineno-0-1675"></a>    <span class="n">rgb</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1676" name="__codelineno-0-1676"></a>    <span class="n">surface_reflectance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1677" name="__codelineno-0-1677"></a>    <span class="n">cutoff</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1678" name="__codelineno-0-1678"></a>    <span class="n">overview</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-1679" name="__codelineno-0-1679"></a>    <span class="n">overview_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-0-1680" name="__codelineno-0-1680"></a>    <span class="n">percentile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-1681" name="__codelineno-0-1681"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
 <a id="__codelineno-0-1682" name="__codelineno-0-1682"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ArrayGlyph&quot;</span><span class="p">:</span>
 <a id="__codelineno-0-1683" name="__codelineno-0-1683"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot the values/overviews of a given band.</span>
@@ -25531,7 +25529,7 @@ extension at the end of the given path.
                 <code>creation_options</code>
             </td>
             <td>
-                  <code><span title="typing.List">List</span>[<span title="str">str</span>]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[<span title="str">str</span>]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -25657,11 +25655,11 @@ i.e., ['PREDICTOR=2']</p>
 <span class="normal"><a href="#__codelineno-0-3420">3420</a></span>
 <span class="normal"><a href="#__codelineno-0-3421">3421</a></span>
 <span class="normal"><a href="#__codelineno-0-3422">3422</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-3337" name="__codelineno-0-3337"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_file</span><span class="p">(</span>
-<a id="__codelineno-0-3338" name="__codelineno-0-3338"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-3339" name="__codelineno-0-3339"></a>        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-3340" name="__codelineno-0-3340"></a>        <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-0-3341" name="__codelineno-0-3341"></a>        <span class="n">tile_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-3342" name="__codelineno-0-3342"></a>        <span class="n">creation_options</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-3338" name="__codelineno-0-3338"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-3339" name="__codelineno-0-3339"></a>    <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-0-3340" name="__codelineno-0-3340"></a>    <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-0-3341" name="__codelineno-0-3341"></a>    <span class="n">tile_length</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-3342" name="__codelineno-0-3342"></a>    <span class="n">creation_options</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-3343" name="__codelineno-0-3343"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-3344" name="__codelineno-0-3344"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Save dataset to tiff file.</span>
 <a id="__codelineno-0-3345" name="__codelineno-0-3345"></a>
@@ -33311,55 +33309,114 @@ dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_s
     <div class="doc doc-contents ">
 
         <p>Convert to XYZ.</p>
-<h6 id="pyramids.dataset.Dataset.to_xyz--parameters"><a class="toclink" href="#pyramids.dataset.Dataset.to_xyz--parameters">Parameters</a><a class="headerlink" href="#pyramids.dataset.Dataset.to_xyz--parameters" title="Permanent link">#</a></h6>
-<p>path: str, optional, default is None
-    path to the file where the data will be saved. If None, the data will be returned as a DataFrame.
-bands: List[int], optional, default is None
-    indices of the bands. If None, all bands will be used.</p>
-<h6 id="pyramids.dataset.Dataset.to_xyz--returns"><a class="toclink" href="#pyramids.dataset.Dataset.to_xyz--returns">Returns</a><a class="headerlink" href="#pyramids.dataset.Dataset.to_xyz--returns" title="Permanent link">#</a></h6>
-<p>DataFrame/File:
-    DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to
-    disk as a .xyz file</p>
-<h6 id="pyramids.dataset.Dataset.to_xyz--examples"><a class="toclink" href="#pyramids.dataset.Dataset.to_xyz--examples">Examples</a><a class="headerlink" href="#pyramids.dataset.Dataset.to_xyz--examples" title="Permanent link">#</a></h6>
-<ul>
-<li>
-<p>First we will create a dataset from a float32 array with values between 1 and 10, and then we will
-    assign a scale of 0.1 to the dataset.</p>
-<blockquote>
-<blockquote>
-<blockquote>
-<p>import numpy as np
-arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
-top_left_corner = (0, 0)
-cell_size = 0.05
-dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
-print(dataset)
-<BLANKLINE>
-            Top Left Corner: (0.0, 0.0)
-            Cell size: 0.05
-            Dimension: 2 * 2
-            EPSG: 4326
-            Number of Bands: 2
-            Band names: ['Band_1', 'Band_2']
-            Band colors: {0: 'undefined', 1: 'undefined'}
-            Band units: ['', '']
-            Scale: [1.0, 1.0]
-            Offset: [0, 0]
-            Mask: -9999.0
-            Data type: int64
-            File: ...
-<BLANKLINE>
-df = dataset.to_xyz()
-print(df)
-     lon    lat  Band_1  Band_2
-0  0.025 -0.025       1       5
-1  0.075 -0.025       2       6
-2  0.025 -0.075       3       7
-3  0.075 -0.075       4       8</p>
-</blockquote>
-</blockquote>
-</blockquote>
-</li>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>path to the file where the data will be saved. If None, the data will be returned as a DataFrame.
+default is None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>bands</code>
+            </td>
+            <td>
+                  <code><span title="typing.List">List</span>[<span title="int">int</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>indices of the bands. If None, all bands will be used. default is None</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="geopandas.geodataframe.DataFrame">DataFrame</span>, None]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>DataFrame/File:
+DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to
+disk as a .xyz file</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <ul>
+<li>First we will create a dataset from a float32 array with values between 1 and 10, and then we will
+    assign a scale of 0.1 to the dataset.
+    <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">]]])</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">top_left_corner</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">cell_size</span> <span class="o">=</span> <span class="mf">0.05</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">create_from_array</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">top_left_corner</span><span class="o">=</span><span class="n">top_left_corner</span><span class="p">,</span> <span class="n">cell_size</span><span class="o">=</span><span class="n">cell_size</span><span class="p">,</span><span class="n">epsg</span><span class="o">=</span><span class="mi">4326</span><span class="p">)</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="o">&gt;&gt;&gt;</span> <span class="nb">print</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="o">&lt;</span><span class="n">BLANKLINE</span><span class="o">&gt;</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>            <span class="n">Top</span> <span class="n">Left</span> <span class="n">Corner</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>            <span class="n">Cell</span> <span class="n">size</span><span class="p">:</span> <span class="mf">0.05</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>            <span class="n">Dimension</span><span class="p">:</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">2</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>            <span class="n">EPSG</span><span class="p">:</span> <span class="mi">4326</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>            <span class="n">Number</span> <span class="n">of</span> <span class="n">Bands</span><span class="p">:</span> <span class="mi">2</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>            <span class="n">Band</span> <span class="n">names</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Band_1&#39;</span><span class="p">,</span> <span class="s1">&#39;Band_2&#39;</span><span class="p">]</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>            <span class="n">Band</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;undefined&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;undefined&#39;</span><span class="p">}</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>            <span class="n">Band</span> <span class="n">units</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>            <span class="n">Scale</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>            <span class="n">Offset</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>            <span class="n">Mask</span><span class="p">:</span> <span class="o">-</span><span class="mf">9999.0</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>            <span class="n">Data</span> <span class="nb">type</span><span class="p">:</span> <span class="n">int64</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>            <span class="n">File</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="o">&lt;</span><span class="n">BLANKLINE</span><span class="o">&gt;</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">df</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">to_xyz</span><span class="p">()</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="o">&gt;&gt;&gt;</span> <span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>     <span class="n">lon</span>    <span class="n">lat</span>  <span class="n">Band_1</span>  <span class="n">Band_2</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="mi">0</span>  <span class="mf">0.025</span> <span class="o">-</span><span class="mf">0.025</span>       <span class="mi">1</span>       <span class="mi">5</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="mi">1</span>  <span class="mf">0.075</span> <span class="o">-</span><span class="mf">0.025</span>       <span class="mi">2</span>       <span class="mi">6</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="mi">2</span>  <span class="mf">0.025</span> <span class="o">-</span><span class="mf">0.075</span>       <span class="mi">3</span>       <span class="mi">7</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="mi">3</span>  <span class="mf">0.075</span> <span class="o">-</span><span class="mf">0.075</span>       <span class="mi">4</span>       <span class="mi">8</span>
+</code></pre></div></li>
 </ul>
 
 
@@ -33452,96 +33509,94 @@ print(df)
 <span class="normal"><a href="#__codelineno-0-6577">6577</a></span>
 <span class="normal"><a href="#__codelineno-0-6578">6578</a></span>
 <span class="normal"><a href="#__codelineno-0-6579">6579</a></span>
-<span class="normal"><a href="#__codelineno-0-6580">6580</a></span>
-<span class="normal"><a href="#__codelineno-0-6581">6581</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-6493" name="__codelineno-0-6493"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_xyz</span><span class="p">(</span>
-<a id="__codelineno-0-6494" name="__codelineno-0-6494"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">bands</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="normal"><a href="#__codelineno-0-6580">6580</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-6493" name="__codelineno-0-6493"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_xyz</span><span class="p">(</span>
+<a id="__codelineno-0-6494" name="__codelineno-0-6494"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">bands</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 <a id="__codelineno-0-6495" name="__codelineno-0-6495"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">DataFrame</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
 <a id="__codelineno-0-6496" name="__codelineno-0-6496"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert to XYZ.</span>
 <a id="__codelineno-0-6497" name="__codelineno-0-6497"></a>
-<a id="__codelineno-0-6498" name="__codelineno-0-6498"></a><span class="sd">    Parameters</span>
-<a id="__codelineno-0-6499" name="__codelineno-0-6499"></a><span class="sd">    ----------</span>
-<a id="__codelineno-0-6500" name="__codelineno-0-6500"></a><span class="sd">    path: str, optional, default is None</span>
-<a id="__codelineno-0-6501" name="__codelineno-0-6501"></a><span class="sd">        path to the file where the data will be saved. If None, the data will be returned as a DataFrame.</span>
-<a id="__codelineno-0-6502" name="__codelineno-0-6502"></a><span class="sd">    bands: List[int], optional, default is None</span>
-<a id="__codelineno-0-6503" name="__codelineno-0-6503"></a><span class="sd">        indices of the bands. If None, all bands will be used.</span>
+<a id="__codelineno-0-6498" name="__codelineno-0-6498"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-6499" name="__codelineno-0-6499"></a><span class="sd">        path (str, optional):</span>
+<a id="__codelineno-0-6500" name="__codelineno-0-6500"></a><span class="sd">            path to the file where the data will be saved. If None, the data will be returned as a DataFrame.</span>
+<a id="__codelineno-0-6501" name="__codelineno-0-6501"></a><span class="sd">            default is None.</span>
+<a id="__codelineno-0-6502" name="__codelineno-0-6502"></a><span class="sd">        bands (List[int], optional):</span>
+<a id="__codelineno-0-6503" name="__codelineno-0-6503"></a><span class="sd">            indices of the bands. If None, all bands will be used. default is None</span>
 <a id="__codelineno-0-6504" name="__codelineno-0-6504"></a>
-<a id="__codelineno-0-6505" name="__codelineno-0-6505"></a><span class="sd">    Returns</span>
-<a id="__codelineno-0-6506" name="__codelineno-0-6506"></a><span class="sd">    -------</span>
-<a id="__codelineno-0-6507" name="__codelineno-0-6507"></a><span class="sd">    DataFrame/File:</span>
-<a id="__codelineno-0-6508" name="__codelineno-0-6508"></a><span class="sd">        DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to</span>
-<a id="__codelineno-0-6509" name="__codelineno-0-6509"></a><span class="sd">        disk as a .xyz file</span>
-<a id="__codelineno-0-6510" name="__codelineno-0-6510"></a>
-<a id="__codelineno-0-6511" name="__codelineno-0-6511"></a><span class="sd">    Examples</span>
-<a id="__codelineno-0-6512" name="__codelineno-0-6512"></a><span class="sd">    --------</span>
-<a id="__codelineno-0-6513" name="__codelineno-0-6513"></a><span class="sd">    - First we will create a dataset from a float32 array with values between 1 and 10, and then we will</span>
-<a id="__codelineno-0-6514" name="__codelineno-0-6514"></a><span class="sd">        assign a scale of 0.1 to the dataset.</span>
-<a id="__codelineno-0-6515" name="__codelineno-0-6515"></a>
-<a id="__codelineno-0-6516" name="__codelineno-0-6516"></a><span class="sd">        &gt;&gt;&gt; import numpy as np</span>
-<a id="__codelineno-0-6517" name="__codelineno-0-6517"></a><span class="sd">        &gt;&gt;&gt; arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])</span>
-<a id="__codelineno-0-6518" name="__codelineno-0-6518"></a><span class="sd">        &gt;&gt;&gt; top_left_corner = (0, 0)</span>
-<a id="__codelineno-0-6519" name="__codelineno-0-6519"></a><span class="sd">        &gt;&gt;&gt; cell_size = 0.05</span>
-<a id="__codelineno-0-6520" name="__codelineno-0-6520"></a><span class="sd">        &gt;&gt;&gt; dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)</span>
-<a id="__codelineno-0-6521" name="__codelineno-0-6521"></a><span class="sd">        &gt;&gt;&gt; print(dataset)</span>
-<a id="__codelineno-0-6522" name="__codelineno-0-6522"></a><span class="sd">        &lt;BLANKLINE&gt;</span>
-<a id="__codelineno-0-6523" name="__codelineno-0-6523"></a><span class="sd">                    Top Left Corner: (0.0, 0.0)</span>
-<a id="__codelineno-0-6524" name="__codelineno-0-6524"></a><span class="sd">                    Cell size: 0.05</span>
-<a id="__codelineno-0-6525" name="__codelineno-0-6525"></a><span class="sd">                    Dimension: 2 * 2</span>
-<a id="__codelineno-0-6526" name="__codelineno-0-6526"></a><span class="sd">                    EPSG: 4326</span>
-<a id="__codelineno-0-6527" name="__codelineno-0-6527"></a><span class="sd">                    Number of Bands: 2</span>
-<a id="__codelineno-0-6528" name="__codelineno-0-6528"></a><span class="sd">                    Band names: [&#39;Band_1&#39;, &#39;Band_2&#39;]</span>
-<a id="__codelineno-0-6529" name="__codelineno-0-6529"></a><span class="sd">                    Band colors: {0: &#39;undefined&#39;, 1: &#39;undefined&#39;}</span>
-<a id="__codelineno-0-6530" name="__codelineno-0-6530"></a><span class="sd">                    Band units: [&#39;&#39;, &#39;&#39;]</span>
-<a id="__codelineno-0-6531" name="__codelineno-0-6531"></a><span class="sd">                    Scale: [1.0, 1.0]</span>
-<a id="__codelineno-0-6532" name="__codelineno-0-6532"></a><span class="sd">                    Offset: [0, 0]</span>
-<a id="__codelineno-0-6533" name="__codelineno-0-6533"></a><span class="sd">                    Mask: -9999.0</span>
-<a id="__codelineno-0-6534" name="__codelineno-0-6534"></a><span class="sd">                    Data type: int64</span>
-<a id="__codelineno-0-6535" name="__codelineno-0-6535"></a><span class="sd">                    File: ...</span>
-<a id="__codelineno-0-6536" name="__codelineno-0-6536"></a><span class="sd">        &lt;BLANKLINE&gt;</span>
-<a id="__codelineno-0-6537" name="__codelineno-0-6537"></a><span class="sd">        &gt;&gt;&gt; df = dataset.to_xyz()</span>
-<a id="__codelineno-0-6538" name="__codelineno-0-6538"></a><span class="sd">        &gt;&gt;&gt; print(df)</span>
-<a id="__codelineno-0-6539" name="__codelineno-0-6539"></a><span class="sd">             lon    lat  Band_1  Band_2</span>
-<a id="__codelineno-0-6540" name="__codelineno-0-6540"></a><span class="sd">        0  0.025 -0.025       1       5</span>
-<a id="__codelineno-0-6541" name="__codelineno-0-6541"></a><span class="sd">        1  0.075 -0.025       2       6</span>
-<a id="__codelineno-0-6542" name="__codelineno-0-6542"></a><span class="sd">        2  0.025 -0.075       3       7</span>
-<a id="__codelineno-0-6543" name="__codelineno-0-6543"></a><span class="sd">        3  0.075 -0.075       4       8</span>
-<a id="__codelineno-0-6544" name="__codelineno-0-6544"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-6545" name="__codelineno-0-6545"></a>    <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-6546" name="__codelineno-0-6546"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">osgeo_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">gdal2xyz</span>
-<a id="__codelineno-0-6547" name="__codelineno-0-6547"></a>    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-<a id="__codelineno-0-6548" name="__codelineno-0-6548"></a>        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-<a id="__codelineno-0-6549" name="__codelineno-0-6549"></a>            <span class="s2">&quot;osgeo_utils is not installed. Install it using pip: pip install osgeo-utils&quot;</span>
-<a id="__codelineno-0-6550" name="__codelineno-0-6550"></a>        <span class="p">)</span>
-<a id="__codelineno-0-6551" name="__codelineno-0-6551"></a>
-<a id="__codelineno-0-6552" name="__codelineno-0-6552"></a>    <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-6553" name="__codelineno-0-6553"></a>        <span class="n">bands</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-6554" name="__codelineno-0-6554"></a>    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-<a id="__codelineno-0-6555" name="__codelineno-0-6555"></a>        <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="n">bands</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
-<a id="__codelineno-0-6556" name="__codelineno-0-6556"></a>    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-<a id="__codelineno-0-6557" name="__codelineno-0-6557"></a>        <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">]</span>
-<a id="__codelineno-0-6558" name="__codelineno-0-6558"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-6559" name="__codelineno-0-6559"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bands must be an integer or a list of integers.&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-6560" name="__codelineno-0-6560"></a>
-<a id="__codelineno-0-6561" name="__codelineno-0-6561"></a>    <span class="n">band_nums</span> <span class="o">=</span> <span class="n">bands</span>
-<a id="__codelineno-0-6562" name="__codelineno-0-6562"></a>    <span class="n">arr</span> <span class="o">=</span> <span class="n">gdal2xyz</span><span class="o">.</span><span class="n">gdal2xyz</span><span class="p">(</span>
-<a id="__codelineno-0-6563" name="__codelineno-0-6563"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span>
-<a id="__codelineno-0-6564" name="__codelineno-0-6564"></a>        <span class="n">path</span><span class="p">,</span>
-<a id="__codelineno-0-6565" name="__codelineno-0-6565"></a>        <span class="n">skip_nodata</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-6566" name="__codelineno-0-6566"></a>        <span class="n">return_np_arrays</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-6567" name="__codelineno-0-6567"></a>        <span class="n">band_nums</span><span class="o">=</span><span class="n">band_nums</span><span class="p">,</span>
-<a id="__codelineno-0-6568" name="__codelineno-0-6568"></a>    <span class="p">)</span>
-<a id="__codelineno-0-6569" name="__codelineno-0-6569"></a>    <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-6570" name="__codelineno-0-6570"></a>        <span class="n">band_names</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-6571" name="__codelineno-0-6571"></a>        <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-6572" name="__codelineno-0-6572"></a>            <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">:</span>
-<a id="__codelineno-0-6573" name="__codelineno-0-6573"></a>                <span class="n">band_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_names</span><span class="p">[</span><span class="n">band</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
-<a id="__codelineno-0-6574" name="__codelineno-0-6574"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-6575" name="__codelineno-0-6575"></a>            <span class="n">band_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_names</span>
-<a id="__codelineno-0-6576" name="__codelineno-0-6576"></a>
-<a id="__codelineno-0-6577" name="__codelineno-0-6577"></a>        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">band_names</span><span class="p">)</span>
-<a id="__codelineno-0-6578" name="__codelineno-0-6578"></a>        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-6579" name="__codelineno-0-6579"></a>        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-<a id="__codelineno-0-6580" name="__codelineno-0-6580"></a>        <span class="n">df</span><span class="p">[</span><span class="n">band_names</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
-<a id="__codelineno-0-6581" name="__codelineno-0-6581"></a>        <span class="k">return</span> <span class="n">df</span>
+<a id="__codelineno-0-6505" name="__codelineno-0-6505"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-6506" name="__codelineno-0-6506"></a><span class="sd">        DataFrame/File:</span>
+<a id="__codelineno-0-6507" name="__codelineno-0-6507"></a><span class="sd">            DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to</span>
+<a id="__codelineno-0-6508" name="__codelineno-0-6508"></a><span class="sd">            disk as a .xyz file</span>
+<a id="__codelineno-0-6509" name="__codelineno-0-6509"></a>
+<a id="__codelineno-0-6510" name="__codelineno-0-6510"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-6511" name="__codelineno-0-6511"></a><span class="sd">        - First we will create a dataset from a float32 array with values between 1 and 10, and then we will</span>
+<a id="__codelineno-0-6512" name="__codelineno-0-6512"></a><span class="sd">            assign a scale of 0.1 to the dataset.</span>
+<a id="__codelineno-0-6513" name="__codelineno-0-6513"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-6514" name="__codelineno-0-6514"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
+<a id="__codelineno-0-6515" name="__codelineno-0-6515"></a><span class="sd">            &gt;&gt;&gt; arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])</span>
+<a id="__codelineno-0-6516" name="__codelineno-0-6516"></a><span class="sd">            &gt;&gt;&gt; top_left_corner = (0, 0)</span>
+<a id="__codelineno-0-6517" name="__codelineno-0-6517"></a><span class="sd">            &gt;&gt;&gt; cell_size = 0.05</span>
+<a id="__codelineno-0-6518" name="__codelineno-0-6518"></a><span class="sd">            &gt;&gt;&gt; dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)</span>
+<a id="__codelineno-0-6519" name="__codelineno-0-6519"></a><span class="sd">            &gt;&gt;&gt; print(dataset)</span>
+<a id="__codelineno-0-6520" name="__codelineno-0-6520"></a><span class="sd">            &lt;BLANKLINE&gt;</span>
+<a id="__codelineno-0-6521" name="__codelineno-0-6521"></a><span class="sd">                        Top Left Corner: (0.0, 0.0)</span>
+<a id="__codelineno-0-6522" name="__codelineno-0-6522"></a><span class="sd">                        Cell size: 0.05</span>
+<a id="__codelineno-0-6523" name="__codelineno-0-6523"></a><span class="sd">                        Dimension: 2 * 2</span>
+<a id="__codelineno-0-6524" name="__codelineno-0-6524"></a><span class="sd">                        EPSG: 4326</span>
+<a id="__codelineno-0-6525" name="__codelineno-0-6525"></a><span class="sd">                        Number of Bands: 2</span>
+<a id="__codelineno-0-6526" name="__codelineno-0-6526"></a><span class="sd">                        Band names: [&#39;Band_1&#39;, &#39;Band_2&#39;]</span>
+<a id="__codelineno-0-6527" name="__codelineno-0-6527"></a><span class="sd">                        Band colors: {0: &#39;undefined&#39;, 1: &#39;undefined&#39;}</span>
+<a id="__codelineno-0-6528" name="__codelineno-0-6528"></a><span class="sd">                        Band units: [&#39;&#39;, &#39;&#39;]</span>
+<a id="__codelineno-0-6529" name="__codelineno-0-6529"></a><span class="sd">                        Scale: [1.0, 1.0]</span>
+<a id="__codelineno-0-6530" name="__codelineno-0-6530"></a><span class="sd">                        Offset: [0, 0]</span>
+<a id="__codelineno-0-6531" name="__codelineno-0-6531"></a><span class="sd">                        Mask: -9999.0</span>
+<a id="__codelineno-0-6532" name="__codelineno-0-6532"></a><span class="sd">                        Data type: int64</span>
+<a id="__codelineno-0-6533" name="__codelineno-0-6533"></a><span class="sd">                        File: ...</span>
+<a id="__codelineno-0-6534" name="__codelineno-0-6534"></a><span class="sd">            &lt;BLANKLINE&gt;</span>
+<a id="__codelineno-0-6535" name="__codelineno-0-6535"></a><span class="sd">            &gt;&gt;&gt; df = dataset.to_xyz()</span>
+<a id="__codelineno-0-6536" name="__codelineno-0-6536"></a><span class="sd">            &gt;&gt;&gt; print(df)</span>
+<a id="__codelineno-0-6537" name="__codelineno-0-6537"></a><span class="sd">                 lon    lat  Band_1  Band_2</span>
+<a id="__codelineno-0-6538" name="__codelineno-0-6538"></a><span class="sd">            0  0.025 -0.025       1       5</span>
+<a id="__codelineno-0-6539" name="__codelineno-0-6539"></a><span class="sd">            1  0.075 -0.025       2       6</span>
+<a id="__codelineno-0-6540" name="__codelineno-0-6540"></a><span class="sd">            2  0.025 -0.075       3       7</span>
+<a id="__codelineno-0-6541" name="__codelineno-0-6541"></a><span class="sd">            3  0.075 -0.075       4       8</span>
+<a id="__codelineno-0-6542" name="__codelineno-0-6542"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-6543" name="__codelineno-0-6543"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-6544" name="__codelineno-0-6544"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-6545" name="__codelineno-0-6545"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">osgeo_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">gdal2xyz</span>
+<a id="__codelineno-0-6546" name="__codelineno-0-6546"></a>    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+<a id="__codelineno-0-6547" name="__codelineno-0-6547"></a>        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+<a id="__codelineno-0-6548" name="__codelineno-0-6548"></a>            <span class="s2">&quot;osgeo_utils is not installed. Install it using pip: pip install osgeo-utils&quot;</span>
+<a id="__codelineno-0-6549" name="__codelineno-0-6549"></a>        <span class="p">)</span>
+<a id="__codelineno-0-6550" name="__codelineno-0-6550"></a>
+<a id="__codelineno-0-6551" name="__codelineno-0-6551"></a>    <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-6552" name="__codelineno-0-6552"></a>        <span class="n">bands</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-6553" name="__codelineno-0-6553"></a>    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+<a id="__codelineno-0-6554" name="__codelineno-0-6554"></a>        <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="n">bands</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-0-6555" name="__codelineno-0-6555"></a>    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+<a id="__codelineno-0-6556" name="__codelineno-0-6556"></a>        <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">]</span>
+<a id="__codelineno-0-6557" name="__codelineno-0-6557"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-6558" name="__codelineno-0-6558"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bands must be an integer or a list of integers.&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-6559" name="__codelineno-0-6559"></a>
+<a id="__codelineno-0-6560" name="__codelineno-0-6560"></a>    <span class="n">band_nums</span> <span class="o">=</span> <span class="n">bands</span>
+<a id="__codelineno-0-6561" name="__codelineno-0-6561"></a>    <span class="n">arr</span> <span class="o">=</span> <span class="n">gdal2xyz</span><span class="o">.</span><span class="n">gdal2xyz</span><span class="p">(</span>
+<a id="__codelineno-0-6562" name="__codelineno-0-6562"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span>
+<a id="__codelineno-0-6563" name="__codelineno-0-6563"></a>        <span class="n">path</span><span class="p">,</span>
+<a id="__codelineno-0-6564" name="__codelineno-0-6564"></a>        <span class="n">skip_nodata</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-6565" name="__codelineno-0-6565"></a>        <span class="n">return_np_arrays</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-6566" name="__codelineno-0-6566"></a>        <span class="n">band_nums</span><span class="o">=</span><span class="n">band_nums</span><span class="p">,</span>
+<a id="__codelineno-0-6567" name="__codelineno-0-6567"></a>    <span class="p">)</span>
+<a id="__codelineno-0-6568" name="__codelineno-0-6568"></a>    <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-6569" name="__codelineno-0-6569"></a>        <span class="n">band_names</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-6570" name="__codelineno-0-6570"></a>        <span class="k">if</span> <span class="n">bands</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-6571" name="__codelineno-0-6571"></a>            <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">:</span>
+<a id="__codelineno-0-6572" name="__codelineno-0-6572"></a>                <span class="n">band_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_names</span><span class="p">[</span><span class="n">band</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+<a id="__codelineno-0-6573" name="__codelineno-0-6573"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-6574" name="__codelineno-0-6574"></a>            <span class="n">band_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_names</span>
+<a id="__codelineno-0-6575" name="__codelineno-0-6575"></a>
+<a id="__codelineno-0-6576" name="__codelineno-0-6576"></a>        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">band_names</span><span class="p">)</span>
+<a id="__codelineno-0-6577" name="__codelineno-0-6577"></a>        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-6578" name="__codelineno-0-6578"></a>        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-0-6579" name="__codelineno-0-6579"></a>        <span class="n">df</span><span class="p">[</span><span class="n">band_names</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+<a id="__codelineno-0-6580" name="__codelineno-0-6580"></a>        <span class="k">return</span> <span class="n">df</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
