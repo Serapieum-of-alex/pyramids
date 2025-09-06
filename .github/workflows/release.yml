@@ -1,5 +1,8 @@
 name: Automated release workflow
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -55,7 +58,7 @@ jobs:
           fi
 
       - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@v0.8.14
+        uses: prefix-dev/setup-pixi@v0.9.0
         with:
           pixi-version: v0.49.0
           cache: true
@@ -64,7 +67,7 @@ jobs:
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
 
       - name: Generate changelog
-        run: pixi run -e dev cz changelog --unreleased-version="${{ steps.get_version.outputs.VERSION }}" --incremental
+        run: pixi run -e dev cz-changelog --unreleased-version="${{ steps.get_version.outputs.VERSION }}" --incremental
 
       - name: Get user info
         id: user_info
@@ -84,7 +87,7 @@ jobs:
         run: |
           set -e  # Exit immediately if a command exits with a non-zero status
           echo "Bumping version to ${{ steps.get_version.outputs.VERSION }}"
-          pixi run -e dev cz bump --yes --check-consistency "${{ steps.get_version.outputs.VERSION }}"
+          pixi run -e dev cz-bump --yes --check-consistency "${{ steps.get_version.outputs.VERSION }}"
 
           echo "Pushing changes to repository"
           if ! git push; then
