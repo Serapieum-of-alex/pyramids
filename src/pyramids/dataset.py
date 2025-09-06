@@ -1738,9 +1738,7 @@ class Dataset(AbstractDataset):
 
         Returns:
             ArrayGlyph:
-                ArrayGlyph object. For more details of the ArrayGlyph object check the [ArrayGlyph](
-                https://cleopatra.readthedocs.io/en/latest/arrayglyph-class.html).
-
+                ArrayGlyph object. For more details of the ArrayGlyph object check the [ArrayGlyph](https://serapieum-of-alex.github.io/cleopatra/latest/api/array-glyph-class/).
 
 
         Examples:
