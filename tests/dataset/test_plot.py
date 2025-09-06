@@ -70,7 +70,8 @@ class TestColorTable:
 
     @pytest.mark.plot
     def test_generated_data(self):
-        arr = np.random.randint(1, 3, size=(2, 5, 5))
+        rng = np.random.default_rng(0)
+        arr = rng.integers(1, 3, size=(2, 5, 5))
         top_left_corner = (0, 0)
         cell_size = 0.05
         dataset = Dataset.create_from_array(
