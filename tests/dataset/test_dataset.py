@@ -1818,7 +1818,7 @@ def test_to_xyz():
     df = dataset.to_xyz(bands=0)
     pd.testing.assert_frame_equal(df, check_df.loc[:, ["lon", "lat", "Band_1"]])
 
-    # test with one bands as integer
+    # test with one band as integer
     df = dataset.to_xyz(bands=[1])
     pd.testing.assert_frame_equal(df, check_df.loc[:, ["lon", "lat", "Band_2"]])
     with pytest.raises(ValueError):
