@@ -6,12 +6,11 @@ from osgeo import gdal
 from pyramids.dataset import Dataset
 from pyramids.datacube import Datacube
 from cleopatra.array_glyph import ArrayGlyph
+from cleopatra.config import Config
 
 
 class TestPlotDataSet:
-    import matplotlib
-
-    matplotlib.use("agg")
+    Config.set_matplotlib_backend("agg")
 
     @pytest.mark.plot
     def test_single_band(
