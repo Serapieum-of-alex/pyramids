@@ -1,5 +1,14 @@
 ﻿# Change log
 
+## 0.8.0 (2025-09-06)
+
+### Feat
+
+- **plot**: add to_xyz method and improve plotting integration with Cleopatra (#99)
+- **plot**: add to_xyz method and improve plotting integration with Cleopatra
+- **docker**: add Docker support with workflow and documentation (#127)
+- **docker**: add Docker support with workflow and documentation
+
 ## 0.7.3 (2025-08-02)
 
 
