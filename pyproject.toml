@@ -68,7 +68,7 @@ docs = [
     "notebook<7.0",
 ]
 
-viz = ["cleopatra>=0.5.1"]
+viz = ["cleopatra>=0.6.0"]
 
 [project.urls]
 homepage = "https://github.com/Serapieum-of-alex/pyramids"
