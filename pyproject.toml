@@ -49,7 +49,8 @@ dev = [
     "pip",
     "jupyterlab",
     "notebook",
-    "jupyter"
+    "jupyter",
+    "commitizen>=4.8.4"
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -67,7 +68,7 @@ docs = [
     "notebook<7.0",
 ]
 
-viz = ["cleopatra>=0.5.1"]
+viz = ["cleopatra>=0.6.0"]
 
 [project.urls]
 homepage = "https://github.com/Serapieum-of-alex/pyramids"
@@ -106,6 +107,15 @@ line_length = 88
 multi_line_output = 3
 
 
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "pep621"
+tag_format = "$version"
+changelog_file = "docs/change-log.md"
+major_version_zero = true
+update_changelog_on_bump = true
+
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
@@ -131,6 +141,9 @@ test-all = { cmd = "pytest -vvv --cov=src/pyramids -sv --cov-report=xml --cov-re
 notebooks = { cmd = "pytest --nbval --nbval-lax --verbose examples/notebooks", description = "check notebooks" }
 build-dist = { cmd = "python -m build", description = "Build sdist and wheel for PyPI" }
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
+cz-changelog = { cmd = "cz changelog", description = "Generate changelog using Commitizen" }
+cz-bump = { cmd = "cz bump", description = "Bump version using Commitizen" }
+
 
 [tool.pixi.environments]
 default = {features = ["viz"], solve-group = "default" }
