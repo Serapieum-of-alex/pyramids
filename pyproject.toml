@@ -112,7 +112,6 @@ name = "cz_conventional_commits"
 version_provider = "pep621"
 tag_format = "$version"
 changelog_file = "docs/change-log.md"
-major_version_zero = true
 update_changelog_on_bump = true
 
 
