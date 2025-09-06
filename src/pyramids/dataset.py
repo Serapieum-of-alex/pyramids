@@ -1670,14 +1670,14 @@ class Dataset(AbstractDataset):
 
     def plot(
         self,
-        band: int = None,
-        exclude_value: Any = None,
-        rgb: List[int] = None,
-        surface_reflectance: int = None,
-        cutoff: List = None,
-        overview: bool = False,
-        overview_index: int = 0,
-        percentile: int = None,
+        band: Optional[int] = None,
+        exclude_value: Optional[Any] = None,
+        rgb: Optional[List[int]] = None,
+        surface_reflectance: Optional[int] = None,
+        cutoff: Optional[List] = None,
+        overview: Optional[bool] = False,
+        overview_index: Optional[int] = 0,
+        percentile: Optional[int] = None,
         **kwargs: Any,
     ) -> "ArrayGlyph":
         """Plot the values/overviews of a given band.
