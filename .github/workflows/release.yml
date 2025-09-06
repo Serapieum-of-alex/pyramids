@@ -44,6 +44,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.release_branch }}
+          fetch-tags: true
 
       - name: Determine release version
         id: get_version
@@ -85,6 +86,10 @@ jobs:
         run: |
           git config --local user.email "${{ steps.user_info.outputs.email }}"
           git config --local user.name "${{ steps.user_info.outputs.name }}"
+
+      - name: Ensure tags are available (safety)
+        run: |
+          git fetch --tags --force
 
       - name: Bump version
         run: |
