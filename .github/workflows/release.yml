@@ -58,7 +58,7 @@ jobs:
           fi
 
       - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@v0.9.0
+        uses: prefix-dev/setup-pixi@fef5c9568ca6c4ff7707bf840ab0692ba3f08293 #v0.9.0
         with:
           pixi-version: v0.49.0
           cache: true
@@ -107,12 +107,12 @@ jobs:
         run: pixi run -e dev build-dist
 
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e #release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@26994186c0ac3ef5cae75ac16aa32e8153525f77 #v1
         with:
           name: Release v${{ steps.get_version.outputs.VERSION }}
           tag_name: "${{ steps.get_version.outputs.VERSION }}"
