@@ -5,6 +5,8 @@ from unittest.mock import patch
 from pathlib import Path
 from osgeo import gdal
 from pyramids.config import Config
+import io
+from contextlib import redirect_stdout
 
 
 class TestConfigEndToEnd(unittest.TestCase):
@@ -118,3 +120,18 @@ class TestConfigMock(unittest.TestCase):
     def test_set_error_handler(self, mock_set_config):
         self.config.set_error_handler()
         mock_set_config.assert_not_called()
+
+
+@patch("osgeo.gdal.PushErrorHandler")
+def test_set_error_handler_prints_for_low_error_class(mock_push):
+    # Install the handler via Config and capture it from the patched GDAL entry point
+    Config.set_error_handler()
+    handler = mock_push.call_args[0][0]
+
+    # Invoke the handler with an error class lower than CE_Warning to trigger printing
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        handler(0, 42, "oops")
+    out = buf.getvalue().strip()
+
+    assert out == "GDAL error (class 0, number 42): oops"
