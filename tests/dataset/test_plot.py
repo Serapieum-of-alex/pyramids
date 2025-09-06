@@ -5,8 +5,11 @@ from pandas import DataFrame
 from osgeo import gdal
 from pyramids.dataset import Dataset
 from pyramids.datacube import Datacube
-from cleopatra.array_glyph import ArrayGlyph
-from cleopatra.config import Config
+try:
+    from cleopatra.array_glyph import ArrayGlyph
+    from cleopatra.config import Config
+except ImportError:
+    raise ImportError("Cleopatra is not installed")
 
 
 class TestPlotDataSet:
