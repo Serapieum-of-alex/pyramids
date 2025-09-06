@@ -46,6 +46,47 @@ jobs:
           ref: ${{ github.event.inputs.release_branch }}
           fetch-tags: true
 
+      - name: Ensure tags are available (safety) and debug git state
+        run: |
+          set -x
+          git fetch --tags --force
+          echo "==== HEAD commit ===="
+          git show -s --format='%H %D %s' HEAD
+          echo "==== Recent commits ===="
+          git log --oneline -n 20 || true
+          echo "==== All tags (by creation date) ===="
+          git tag -l --sort=creatordate || true
+          echo "==== Nearest tag to HEAD (describe) ===="
+          git describe --tags --abbrev=0 || true
+          echo "==== Tags that contain HEAD ===="
+          git tag --contains HEAD || true
+          echo "==== Branches that contain HEAD ===="
+          git branch --contains HEAD || true
+          echo "==== Check previous tag ancestry (dynamic) ===="
+          LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+          if [ -n "$LAST_TAG" ]; then
+            echo "LAST_TAG=$LAST_TAG"
+            if git merge-base --is-ancestor "$LAST_TAG" HEAD; then
+              echo "$LAST_TAG is an ancestor of HEAD"
+            else
+              echo "$LAST_TAG is NOT an ancestor of HEAD"
+            fi
+          else
+            echo "No tag returned by git describe for current HEAD"
+          fi
+          echo "==== Check specific tag 0.7.3 (if present) ===="
+          if git rev-parse 0.7.3 >/dev/null 2>&1; then
+            echo "0.7.3 commit: $(git rev-list -n 1 0.7.3)"
+            if git merge-base --is-ancestor 0.7.3 HEAD; then
+              echo "0.7.3 is an ancestor of HEAD"
+            else
+              echo "0.7.3 is NOT an ancestor of HEAD"
+            fi
+          else
+            echo "Tag 0.7.3 not found locally"
+          fi
+          set +x
+
       - name: Determine release version
         id: get_version
         run: |
@@ -86,10 +127,6 @@ jobs:
         run: |
           git config --local user.email "${{ steps.user_info.outputs.email }}"
           git config --local user.name "${{ steps.user_info.outputs.name }}"
-
-      - name: Ensure tags are available (safety)
-        run: |
-          git fetch --tags --force
 
       - name: Bump version
         run: |
