@@ -3335,11 +3335,11 @@ class Dataset(AbstractDataset):
         return gdf
 
     def to_file(
-            self,
-            path: str,
-            band: int = 0,
-            tile_length: int = None,
-            creation_options: List[str] = None,
+        self,
+        path: str,
+        band: int = 0,
+        tile_length: Optional[int] = None,
+        creation_options: Optional[List[str]] = None,
     ) -> None:
         """Save dataset to tiff file.
 
@@ -6491,56 +6491,55 @@ class Dataset(AbstractDataset):
     #     return percent
 
     def to_xyz(
-        self, bands: List[int] = None, path: str = None
+        self, bands: Optional[List[int]] = None, path: Optional[str] = None
     ) -> Union[DataFrame, None]:
         """Convert to XYZ.
 
-        Parameters
-        ----------
-        path: str, optional, default is None
-            path to the file where the data will be saved. If None, the data will be returned as a DataFrame.
-        bands: List[int], optional, default is None
-            indices of the bands. If None, all bands will be used.
+        Args:
+            path (str, optional):
+                path to the file where the data will be saved. If None, the data will be returned as a DataFrame.
+                default is None.
+            bands (List[int], optional):
+                indices of the bands. If None, all bands will be used. default is None
 
-        Returns
-        -------
-        DataFrame/File:
-            DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to
-            disk as a .xyz file
+        Returns:
+            DataFrame/File:
+                DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to
+                disk as a .xyz file
 
-        Examples
-        --------
-        - First we will create a dataset from a float32 array with values between 1 and 10, and then we will
-            assign a scale of 0.1 to the dataset.
-
-            >>> import numpy as np
-            >>> arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
-            >>> print(dataset)
-            <BLANKLINE>
-                        Top Left Corner: (0.0, 0.0)
-                        Cell size: 0.05
-                        Dimension: 2 * 2
-                        EPSG: 4326
-                        Number of Bands: 2
-                        Band names: ['Band_1', 'Band_2']
-                        Band colors: {0: 'undefined', 1: 'undefined'}
-                        Band units: ['', '']
-                        Scale: [1.0, 1.0]
-                        Offset: [0, 0]
-                        Mask: -9999.0
-                        Data type: int64
-                        File: ...
-            <BLANKLINE>
-            >>> df = dataset.to_xyz()
-            >>> print(df)
-                 lon    lat  Band_1  Band_2
-            0  0.025 -0.025       1       5
-            1  0.075 -0.025       2       6
-            2  0.025 -0.075       3       7
-            3  0.075 -0.075       4       8
+        Examples:
+            - First we will create a dataset from a float32 array with values between 1 and 10, and then we will
+                assign a scale of 0.1 to the dataset.
+                ```python
+                >>> import numpy as np
+                >>> arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+                >>> top_left_corner = (0, 0)
+                >>> cell_size = 0.05
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Top Left Corner: (0.0, 0.0)
+                            Cell size: 0.05
+                            Dimension: 2 * 2
+                            EPSG: 4326
+                            Number of Bands: 2
+                            Band names: ['Band_1', 'Band_2']
+                            Band colors: {0: 'undefined', 1: 'undefined'}
+                            Band units: ['', '']
+                            Scale: [1.0, 1.0]
+                            Offset: [0, 0]
+                            Mask: -9999.0
+                            Data type: int64
+                            File: ...
+                <BLANKLINE>
+                >>> df = dataset.to_xyz()
+                >>> print(df)
+                     lon    lat  Band_1  Band_2
+                0  0.025 -0.025       1       5
+                1  0.075 -0.025       2       6
+                2  0.025 -0.075       3       7
+                3  0.075 -0.075       4       8
+                ```
         """
         try:
             from osgeo_utils import gdal2xyz
