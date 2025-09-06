@@ -5,9 +5,16 @@ from pandas import DataFrame
 from osgeo import gdal
 from pyramids.dataset import Dataset
 from pyramids.datacube import Datacube
+try:
+    from cleopatra.array_glyph import ArrayGlyph
+    from cleopatra.config import Config
+except ImportError:
+    raise ImportError("Cleopatra is not installed")
 
 
 class TestPlotDataSet:
+    Config.set_matplotlib_backend("agg")
+
     @pytest.mark.plot
     def test_single_band(
         self,
@@ -15,11 +22,9 @@ class TestPlotDataSet:
         src_shape: tuple,
         src_arr: np.ndarray,
     ):
-        from matplotlib.figure import Figure
-
         dataset = Dataset(src)
-        fig, ax = dataset.plot(band=0)
-        assert isinstance(fig, Figure)
+        array_glyph = dataset.plot(band=0)
+        assert isinstance(array_glyph, ArrayGlyph)
 
     @pytest.mark.plot
     def test_multi_band(
@@ -28,11 +33,9 @@ class TestPlotDataSet:
         src_shape: tuple,
         src_arr: np.ndarray,
     ):
-        from matplotlib.figure import Figure
-
         dataset = Dataset(sentinel_raster)
-        fig, ax = dataset.plot(rgb=[3, 2, 1])
-        assert isinstance(fig, Figure)
+        array_glyph = dataset.plot(rgb=[3, 2, 1])
+        assert isinstance(array_glyph, ArrayGlyph)
 
     @pytest.mark.plot
     def test_multi_band_overviews(
@@ -41,12 +44,10 @@ class TestPlotDataSet:
         src_shape: tuple,
         src_arr: np.ndarray,
     ):
-        from matplotlib.figure import Figure
-
         dataset = Dataset(era5_image_internal_overviews_read_only_true)
-        fig, ax = dataset.plot(band=0, overview=True, overview_index=0)
+        array_glyph = dataset.plot(band=0, overview=True, overview_index=0)
 
-        assert isinstance(fig, Figure)
+        assert isinstance(array_glyph, ArrayGlyph)
 
 
 class TestPlotDataCube:
@@ -58,7 +59,6 @@ class TestPlotDataCube:
         rasters_folder_dim: tuple,
     ):
         from cleopatra.array_glyph import ArrayGlyph
-        from matplotlib.animation import FuncAnimation
 
         cube = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
         cube.open_datacube()
@@ -70,7 +70,8 @@ class TestColorTable:
 
     @pytest.mark.plot
     def test_generated_data(self):
-        arr = np.random.randint(1, 3, size=(2, 5, 5))
+        rng = np.random.default_rng(0)
+        arr = rng.integers(1, 3, size=(2, 5, 5))
         top_left_corner = (0, 0)
         cell_size = 0.05
         dataset = Dataset.create_from_array(
@@ -142,3 +143,19 @@ class TestColorTable:
         ]
         # test the color_table property
         dataset.color_table = df
+
+
+class TestColorRelief:
+    color_hex = ["#709959", "#F2EEA2", "#F2CE85", "#C28C7C", "#D6C19C"]
+    values = [1, 3, 5, 7, 9]
+    df = pd.DataFrame(columns=["values", "color"])
+    df.loc[:, "values"] = values
+    df.loc[:, "color"] = color_hex
+
+    @pytest.mark.plot
+    def test_process_color_table(self):
+
+        color_table = Dataset._process_color_table(self.df)
+        assert isinstance(color_table, DataFrame)
+        assert all(color_table.columns == ["values", "red", "green", "blue", "alpha"])
+

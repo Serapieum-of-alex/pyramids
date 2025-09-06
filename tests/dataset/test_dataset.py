@@ -1793,3 +1793,48 @@ def test_nearest_neigbors():
     req_cols = [2, 4]
     no_data_value = dataset.no_data_value[0]
     new_array = Dataset._nearest_neighbour(arr, no_data_value, req_rows, req_cols)
+
+
+def test_to_xyz():
+    arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    top_left_corner = (0, 0)
+    cell_size = 0.05
+    dataset = Dataset.create_from_array(
+        arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+    )
+    # test with default parameters
+    df = dataset.to_xyz()
+    check_df = DataFrame(
+        {
+            "lon": [0.025, 0.075, 0.025, 0.075],
+            "lat": [-0.025, -0.025, -0.075, -0.075],
+            "Band_1": [1, 2, 3, 4],
+            "Band_2": [5, 6, 7, 8],
+        }
+    )
+
+    pd.testing.assert_frame_equal(df, check_df)
+    # test with one bands as integer
+    df = dataset.to_xyz(bands=0)
+    pd.testing.assert_frame_equal(df, check_df.loc[:, ["lon", "lat", "Band_1"]])
+
+    # test with one band as integer
+    df = dataset.to_xyz(bands=[1])
+    pd.testing.assert_frame_equal(df, check_df.loc[:, ["lon", "lat", "Band_2"]])
+    with pytest.raises(ValueError):
+        dataset.to_xyz(bands="1")
+
+
+class TestTranslate:
+    def test_scale(self):
+        rng = np.random.default_rng(0)
+        arr = rng.integers(1, 10, size=(5, 5)).astype(np.float32)
+        top_left_corner = (0, 0)
+        cell_size = 0.05
+        dataset = Dataset.create_from_array(
+            arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326
+        )
+        dataset.scale = [0.1]
+        unscaled_dataset = dataset.translate(unscale=True)
+        unscaled_arr = unscaled_dataset.read_array()
+        np.testing.assert_almost_equal(unscaled_arr, arr * 0.1)

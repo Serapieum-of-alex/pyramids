@@ -71,51 +71,28 @@ class Dataset(AbstractDataset):
             src.GetRasterBand(i).GetUnitType() for i in range(1, self.band_count + 1)
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """__str__."""
         message = f"""
+            Top Left Corner: {self.top_left_corner}
             Cell size: {self.cell_size}
             Dimension: {self.rows} * {self.columns}
             EPSG: {self.epsg}
             Number of Bands: {self.band_count}
             Band names: {self.band_names}
+            Band colors: {self.band_color}
+            Band units: {self.band_units}
+            Scale: {self.scale}
+            Offset: {self.offset}
             Mask: {self._no_data_value[0]}
             Data type: {self.dtype[0]}
             File: {self.file_name}
         """
         return message
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """__repr__."""
-        message = """
-            Cell size: {0}
-            Dimension: {1} * {2}
-            EPSG: {3}
-            Number of Bands: {4}
-            Band names: {5}
-            Mask: {6}
-            Data type: {7}
-            projection: {8}
-            Metadata: {9}
-            File: {10}
-        """.format(
-            self.cell_size,
-            self.rows,
-            self.columns,
-            self.epsg,
-            self.band_count,
-            self.band_names,
-            (
-                self._no_data_value
-                if self._no_data_value == []
-                else self._no_data_value[0]
-            ),
-            self.dtype if self.dtype == [] else self.dtype[0],
-            self.crs,
-            self.meta_data,
-            self.file_name,
-        )
-        return message
+        return gdal.Info(self.raster)
 
     @property
     def access(self) -> str:
@@ -235,6 +212,10 @@ class Dataset(AbstractDataset):
               GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
 
               ```
+        See Also:
+            Dataset.set_crs : Set the Coordinate Reference System (CRS).
+            Dataset.to_crs : Reproject the dataset to any projection.
+            Dataset.epsg : epsg number of the dataset coordinate reference system.
         """
         return self._get_crs()
 
@@ -557,7 +538,29 @@ class Dataset(AbstractDataset):
                 <BLANKLINE>
 
                 ```
+        Virtual files:
+            - You can open files stored online simply by using the full url to the file with the `read_file` method.
+                ```python
+                >>> url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/31/U/FU/2020/3/S2A_31UFU_20200328_0_L2A/B01.tif"
+                >>> dataset = Dataset.read_file(url)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Top Left Corner: (600000.0, 5900040.0)
+                            Cell size: 60.0
+                            Dimension: 1830 * 1830
+                            EPSG: 32631
+                            Number of Bands: 1
+                            Band names: ['Band_1']
+                            Band colors: {0: 'gray_index'}
+                            Band units: ['']
+                            Scale: [1.0]
+                            Offset: [0]
+                            Mask: 0.0
+                            Data type: uint16
+                            File: https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/31/U/FU/2020/3/S2A_31UFU_20200328_0_L2A/B01.tif
+                <BLANKLINE>
 
+                ```
         See Also:
             - Dataset.read_array: Read the values stored in a dataset band.
         """
@@ -1667,16 +1670,20 @@ class Dataset(AbstractDataset):
 
     def plot(
         self,
-        band: int = None,
-        exclude_value: Any = None,
-        rgb: List[int] = None,
-        surface_reflectance: int = 10000,
-        cutoff: List = None,
-        overview: bool = False,
-        overview_index: int = 0,
+        band: Optional[int] = None,
+        exclude_value: Optional[Any] = None,
+        rgb: Optional[List[int]] = None,
+        surface_reflectance: Optional[int] = None,
+        cutoff: Optional[List] = None,
+        overview: Optional[bool] = False,
+        overview_index: Optional[int] = 0,
+        percentile: Optional[int] = None,
         **kwargs: Any,
-    ) -> Tuple[Any, Any]:
+    ) -> "ArrayGlyph":
         """Plot the values/overviews of a given band.
+
+        The plot function uses the `cleopatra` as a backend to plot the raster data, for more information check
+        [ArrayGlyph](https://serapieum-of-alex.github.io/cleopatra/latest/api/array-glyph-class/#cleopatra.array_glyph.ArrayGlyph.plot).
 
         Args:
             band (int, optional):
@@ -1684,19 +1691,24 @@ class Dataset(AbstractDataset):
             exclude_value (Any, optional):
                 Value to exclude from the plot. Default is None.
             rgb (List[int], optional):
-                The `plot` method will check if the RGB bands are defined in the raster file; if all three bands
-                (red, green, blue) are defined, the method will use them to plot the real image; otherwise, the
-                RGB bands will be considered as [2, 1, 0].
+                The indices of the red, green, and blue bands in the `Dataset`. the `rgb` parameter can be a list of
+                three values, or a list of four values if the alpha band is also included.
+                The `plot` method will check if the rgb bands are defined in the `Dataset`, if all the three bands (
+                red, green, blue)) are defined, the method will use them to plot the real image, if not the rgb bands
+                will be considered as [2,1,0] as the default order for sentinel tif files.
             surface_reflectance (int, optional):
-                Default is 10,000.
+                Surface reflectance value for normalizing satellite data, by default None.
+                Typically 10000 for Sentinel-2 data.
             cutoff (List, optional):
-                Clip the range of pixel values for each band (take only the pixel values from 0 to the value of the cutoff
+                clip the range of pixel values for each band. (take only the pixel values from 0 to the value of the cutoff
                 and scale them back to between 0 and 1). Default is None.
             overview (bool, optional):
                 True if you want to plot the overview. Default is False.
             overview_index (int, optional):
                 Index of the overview. Default is 0.
-            kwargs:
+            percentile: int
+                The percentile value to be used for scaling.
+        kwargs:
                 | Parameter                   | Type                | Description |
                 |-----------------------------|---------------------|-------------|
                 | `points`                    | array               | 3 column array with the first column as the value to display for the point, the second as the row index, and the third as the column index in the array. The second and third columns tell the location of the point. |
@@ -1724,10 +1736,10 @@ class Dataset(AbstractDataset):
                 | `num_size`                  | int, optional       | Size of numbers plotted on top of each cell. Default is `8`. |
                 | `background_color_threshold`| float or int, optional | Threshold for deciding text color over cells: if value > threshold → black text; else white text. If `None`, max value / 2 is used. Default is `None`. |
 
-
         Returns:
-            Tuple[Any, Any]:
-                The axes of the matplotlib figure and the figure object.
+            ArrayGlyph:
+                ArrayGlyph object. For more details of the ArrayGlyph object check the [ArrayGlyph](https://serapieum-of-alex.github.io/cleopatra/latest/api/array-glyph-class/).
+
 
         Examples:
             - Plot a certain band:
@@ -1746,7 +1758,7 @@ class Dataset(AbstractDataset):
             - plot using power scale.
 
               ```python
-              >>> dataset.plot(band=0, color_scale=2)
+              >>> dataset.plot(band=0, color_scale="power")
               (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
               ```
@@ -1754,7 +1766,7 @@ class Dataset(AbstractDataset):
             - plot using SymLogNorm scale.
 
               ```python
-              >>> dataset.plot(band=0, color_scale=3)
+              >>> dataset.plot(band=0, color_scale="sym-lognorm")
               (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
               ```
@@ -1762,7 +1774,7 @@ class Dataset(AbstractDataset):
             - plot using PowerNorm scale.
 
               ```python
-              >>> dataset.plot(band=0, color_scale=4, bounds=[0, 0.2, 0.4, 0.6, 0.8, 1])
+              >>> dataset.plot(band=0, color_scale="boundary-norm", bounds=[0, 0.2, 0.4, 0.6, 0.8, 1])
               (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
               ```
@@ -1770,7 +1782,7 @@ class Dataset(AbstractDataset):
             - plot using BoundaryNorm scale.
 
               ```python
-              >>> dataset.plot(band=0, color_scale=5)
+              >>> dataset.plot(band=0, color_scale="midpoint")
               (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
               ```
@@ -1818,10 +1830,282 @@ class Dataset(AbstractDataset):
             rgb=rgb,
             surface_reflectance=surface_reflectance,
             cutoff=cutoff,
+            percentile=percentile,
             **kwargs,
         )
-        fig, ax = cleo.plot(**kwargs)
-        return fig, ax
+        cleo.plot(**kwargs)
+        return cleo
+
+    def translate(self, path: str = None, **kwargs):
+        """Translate.
+
+        The translate function can be used to
+        - Convert Between Formats: Convert a raster from one format to another (e.g., from GeoTIFF to JPEG).
+        - Subset: Extract a subregion of a raster.
+        - Resample: Change the resolution of a raster.
+        - Reproject: Change the coordinate reference system of a raster.
+        - Scale Values: Scale pixel values to a new range.
+        - Change Data Type: Convert the data type of the raster.
+        - Apply Compression: Apply compression to the output raster.
+        - Apply No-Data Values: Define no-data values for the output raster.
+
+
+        Parameters
+        ----------
+        path: str, optional, default is None.
+            path to save the output, if None, the output will be saved in memory.
+        kwargs:
+            unscale:
+                unscale values with scale and offset metadata.
+            scaleParams:
+                list of scale parameters, each of the form [src_min,src_max] or [src_min,src_max,dst_min,dst_max]
+            outputType:
+                output type (gdalconst.GDT_Byte, etc...)
+            exponents:
+                list of exponentiation parameters
+            bandList:
+                array of band numbers (index start at 1)
+            maskBand:
+                mask band to generate or not ("none", "auto", "mask", 1, ...)
+            creationOptions:
+                list or dict of creation options
+            srcWin:
+                subwindow in pixels to extract: [left_x, top_y, width, height]
+            projWin:
+                subwindow in projected coordinates to extract: [ulx, uly, lrx, lry]
+            projWinSRS:
+                SRS in which projWin is expressed
+            outputBounds:
+                assigned output bounds: [ulx, uly, lrx, lry]
+            outputGeotransform:
+                assigned geotransform matrix (array of 6 values) (mutually exclusive with outputBounds)
+            metadataOptions:
+                list or dict of metadata options
+            outputSRS:
+                assigned output SRS
+            noData:
+                nodata value (or "none" to unset it)
+            rgbExpand:
+                Color palette expansion mode: "gray", "rgb", "rgba"
+            xmp:
+                whether to copy XMP metadata
+            resampleAlg:
+                resampling mode
+            overviewLevel:
+                To specify which overview level of source files must be used
+            domainMetadataOptions:
+                list or dict of domain-specific metadata options
+
+        Returns
+        -------
+        Dataset
+
+        Examples
+        --------
+        Scale & offset:
+            - the translate function can be used to get rid of the scale and offset that are used to manipulate the
+            dataset, to get the real values of the dataset.
+
+            Scale:
+                - First we will create a dataset from a float32 array with values between 1 and 10, and then we will
+                    assign a scale of 0.1 to the dataset.
+
+                    >>> import numpy as np
+                    >>> arr = np.random.randint(1, 10, size=(5, 5)).astype(np.float32)
+                    >>> print(arr) # doctest: +SKIP
+                    [[5. 5. 3. 4. 2.]
+                     [2. 5. 5. 8. 5.]
+                     [7. 5. 6. 1. 2.]
+                     [6. 8. 1. 5. 8.]
+                     [2. 5. 2. 2. 9.]]
+                    >>> top_left_corner = (0, 0)
+                    >>> cell_size = 0.05
+                    >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                    >>> print(dataset)
+                    <BLANKLINE>
+                                Top Left Corner: (0.0, 0.0)
+                                Cell size: 0.05
+                                Dimension: 5 * 5
+                                EPSG: 4326
+                                Number of Bands: 1
+                                Band names: ['Band_1']
+                                Band colors: {0: 'undefined'}
+                                Band units: ['']
+                                Scale: [1.0]
+                                Offset: [0]
+                                Mask: -9999.0
+                                Data type: float32
+                                File: ...
+                    <BLANKLINE>
+                    >>> dataset.scale = [0.1]
+
+                - now lets unscale the dataset values.
+
+                    >>> unscaled_dataset = dataset.translate(unscale=True)
+                    >>> print(unscaled_dataset) # doctest: +SKIP
+                    <BLANKLINE>
+                                Top Left Corner: (0.0, 0.0)
+                                Cell size: 0.05
+                                Dimension: 5 * 5
+                                EPSG: 4326
+                                Number of Bands: 1
+                                Band names: ['Band_1']
+                                Band colors: {0: 'undefined'}
+                                Band units: ['']
+                                Scale: [1.0]
+                                Offset: [0]
+                                Mask: -9999.0
+                                Data type: float32
+                                File:
+                    <BLANKLINE>
+                    >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
+                    [[0.5 0.5 0.3 0.4 0.2]
+                     [0.2 0.5 0.5 0.8 0.5]
+                     [0.7 0.5 0.6 0.1 0.2]
+                     [0.6 0.8 0.1 0.5 0.8]
+                     [0.2 0.5 0.2 0.2 0.9]]
+
+            offset:
+                - You can also unshift the values of the dataset if the dataset has an offset. To remove the offset from
+                    all values in the dataset, you can read the values using the `read_array` and then add the offset value
+                    to the array. we will create a dataset from the same array we created above (values are between 1, and 10)
+                    with an offset of 100.
+
+                    >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                    >>> print(dataset)
+                    <BLANKLINE>
+                                Top Left Corner: (0.0, 0.0)
+                                Cell size: 0.05
+                                Dimension: 5 * 5
+                                EPSG: 4326
+                                Number of Bands: 1
+                                Band names: ['Band_1']
+                                Band colors: {0: 'undefined'}
+                                Band units: ['']
+                                Scale: [1.0]
+                                Offset: [0]
+                                Mask: -9999.0
+                                Data type: float32
+                                File: ...
+                    <BLANKLINE>
+
+                - set the offset to 100.
+
+                    >>> dataset.offset = [100]
+
+                - check if the offset has been set.
+
+                    >>> print(dataset.offset)
+                    [100.0]
+
+                - now lets unscale the dataset values.
+
+                    >>> unscaled_dataset = dataset.translate(unscale=True)
+                    >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
+                    [[105. 105. 103. 104. 102.]
+                     [102. 105. 105. 108. 105.]
+                     [107. 105. 106. 101. 102.]
+                     [106. 108. 101. 105. 108.]
+                     [102. 105. 102. 102. 109.]]
+
+                - as you see, all the values have been shifted by 100. now if you check the offset of the dataset
+
+                    >>> print(unscaled_dataset.offset)
+                    [0]
+
+            Offset and Scale together:
+                - we can unscale and get rid of the offset at the same time.
+
+                    >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+
+                - set the offset to 100, and a scale of 0.1.
+
+                    >>> dataset.offset = [100]
+                    >>> dataset.scale = [0.1]
+
+                - check if the offset has been set.
+
+                    >>> print(dataset.offset)
+                    [100.0]
+                    >>> print(dataset.scale)
+                    [0.1]
+
+                - now lets unscale the dataset values.
+
+                    >>> unscaled_dataset = dataset.translate(unscale=True)
+                    >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
+                    [[100.5 100.5 100.3 100.4 100.2]
+                     [100.2 100.5 100.5 100.8 100.5]
+                     [100.7 100.5 100.6 100.1 100.2]
+                     [100.6 100.8 100.1 100.5 100.8]
+                     [100.2 100.5 100.2 100.2 100.9]]
+
+                - Now you can see that the values were multiplied first by the scale; then the offset value was added.
+                    `value * scale + offset`
+
+                    >>> print(unscaled_dataset.offset)
+                    [0]
+                    >>> print(unscaled_dataset.scale)
+                    [1.0]
+
+        Scale between two values:
+            - you can scale the values of the dataset between two values, for example, you can scale the values between
+                two values 0 and 1.
+
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                >>> print(dataset.stats()) # doctest: +SKIP
+                        min  max  mean      std
+                Band_1  1.0  9.0   4.0  2.19089
+                >>> scaled_dataset = dataset.translate(scaleParams=[[1, 9, 0, 255]], outputType=gdal.GDT_Byte)
+                >>> print(scaled_dataset.read_array()) # doctest: +SKIP
+                [[128 128  64  96  32]
+                 [ 32 128 128 223 128]
+                 [191 128 159   0  32]
+                 [159 223   0 128 223]
+                 [ 32 128  32  32 255]]
+
+
+        """
+        if path is None:
+            driver = "MEM"
+            path = ""
+        else:
+            driver = "GTiff"
+
+        options = gdal.TranslateOptions(format=driver, **kwargs)
+        dst = gdal.Translate(path, self.raster, options=options)
+        return Dataset(dst, access="write")
+
+    @staticmethod
+    def _process_color_table(color_table: DataFrame) -> DataFrame:
+        import_cleopatra(
+            "The current function uses cleopatra package to for plotting, please install it manually, for more info"
+            " check https://github.com/Serapieum-of-alex/cleopatra"
+        )
+        from cleopatra.colors import Colors
+
+        # if the color_table does not contain the red, green, and blue columns, assume it has one column with
+        # the color as hex and then, convert the color to rgb.
+        if all(elem in color_table.columns for elem in ["red", "green", "blue"]):
+            color_df = color_table.loc[:, ["values", "red", "green", "blue"]]
+        elif "color" in color_table.columns:
+            color = Colors(color_table["color"].tolist())
+            color_rgb = color.to_rgb(normalized=False)
+            color_df = DataFrame(columns=["values"])
+            color_df["values"] = color_table["values"].to_list()
+            color_df.loc[:, ["red", "green", "blue"]] = color_rgb
+        else:
+            raise ValueError(
+                f"color_table must contain either red, green, blue, or color columns. given columns are: "
+                f"{color_table.columns}"
+            )
+
+        if "alpha" not in color_table.columns:
+            color_df.loc[:, "alpha"] = 255
+        else:
+            color_df.loc[:, "alpha"] = color_table["alpha"]
+
+        return color_df
 
     @staticmethod
     def _create_dataset(
@@ -3050,7 +3334,13 @@ class Dataset(AbstractDataset):
         gdf["id"] = gdf.index
         return gdf
 
-    def to_file(self, path: str, band: int = 0, tile_length: int = None) -> None:
+    def to_file(
+        self,
+        path: str,
+        band: int = 0,
+        tile_length: Optional[int] = None,
+        creation_options: Optional[List[str]] = None,
+    ) -> None:
         """Save dataset to tiff file.
 
             `to_file` saves a raster to disk, the type of the driver (georiff/netcdf/ascii) will be implied from the
@@ -3063,6 +3353,9 @@ class Dataset(AbstractDataset):
                 Band index, needed only in case of ascii drivers. Default is 0.
             tile_length (int, optional):
                 Length of the tiles in the driver. Default is 256.
+            creation_options: List[str], Default is None
+                List of strings that will be passed to the GDAL driver during the creation of the dataset.
+                i.e., ['PREDICTOR=2']
 
         Examples:
             - Create a Dataset with 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0):
@@ -3112,6 +3405,8 @@ class Dataset(AbstractDataset):
                     "BLOCKXSIZE={}".format(self._block_size[0][0]),
                     "BLOCKYSIZE={}".format(self._block_size[0][1]),
                 ]
+            if creation_options is not None:
+                options += creation_options
 
             try:
                 dst = gdal.GetDriverByName(driver_name).CreateCopy(
@@ -4777,7 +5072,7 @@ class Dataset(AbstractDataset):
 
                   ```python
                   >>> exclude_values = [0]
-                  
+
                   ```
 
                 - This parameter is introduced particularly in the case of rasters that has the no_data_value stored in
@@ -4785,7 +5080,7 @@ class Dataset(AbstractDataset):
                   this behavior.
 
         Returns:
-            GeoDataFrame: 
+            GeoDataFrame:
                 - geodataframe containing the polygon representing the extent of the raster. the extent column should
                   contain a value of 2 only.
                 - if the dataset had separate polygons, each polygon will be in a separate row.
@@ -4891,6 +5186,11 @@ class Dataset(AbstractDataset):
         array_min = array.min()
         array_max = array.max()
         val = (array - array_min) / (array_max - array_min)
+        return val
+
+    @staticmethod
+    def _rescale(array: np.ndarray, min_value: float, max_value: float) -> np.ndarray:
+        val = (array - min_value) / (max_value - min_value)
         return val
 
     def _window(self, size: int = 256):
@@ -6189,3 +6489,92 @@ class Dataset(AbstractDataset):
     #     x_off, y_off =  # the top left corner point of the polygon.
     #     flags, percent = band.GetDataCoverageStatus(x_off, y_off, x_size, y_size, sampling)
     #     return percent
+
+    def to_xyz(
+        self, bands: Optional[List[int]] = None, path: Optional[str] = None
+    ) -> Union[DataFrame, None]:
+        """Convert to XYZ.
+
+        Args:
+            path (str, optional):
+                path to the file where the data will be saved. If None, the data will be returned as a DataFrame.
+                default is None.
+            bands (List[int], optional):
+                indices of the bands. If None, all bands will be used. default is None
+
+        Returns:
+            DataFrame/File:
+                DataFrame with columns: lon, lat, band_1, band_2,... . If a path is provided the data will be saved to
+                disk as a .xyz file
+
+        Examples:
+            - First we will create a dataset from a float32 array with values between 1 and 10, and then we will
+                assign a scale of 0.1 to the dataset.
+                ```python
+                >>> import numpy as np
+                >>> arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+                >>> top_left_corner = (0, 0)
+                >>> cell_size = 0.05
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size,epsg=4326)
+                >>> print(dataset)
+                <BLANKLINE>
+                            Top Left Corner: (0.0, 0.0)
+                            Cell size: 0.05
+                            Dimension: 2 * 2
+                            EPSG: 4326
+                            Number of Bands: 2
+                            Band names: ['Band_1', 'Band_2']
+                            Band colors: {0: 'undefined', 1: 'undefined'}
+                            Band units: ['', '']
+                            Scale: [1.0, 1.0]
+                            Offset: [0, 0]
+                            Mask: -9999.0
+                            Data type: int64
+                            File: ...
+                <BLANKLINE>
+                >>> df = dataset.to_xyz()
+                >>> print(df)
+                     lon    lat  Band_1  Band_2
+                0  0.025 -0.025       1       5
+                1  0.075 -0.025       2       6
+                2  0.025 -0.075       3       7
+                3  0.075 -0.075       4       8
+                ```
+        """
+        try:
+            from osgeo_utils import gdal2xyz
+        except ImportError:
+            raise ImportError(
+                "osgeo_utils is not installed. Install it using pip: pip install osgeo-utils"
+            )
+
+        if bands is None:
+            bands = range(1, self.band_count + 1)
+        elif isinstance(bands, int):
+            bands = [bands + 1]
+        elif isinstance(bands, list):
+            bands = [band + 1 for band in bands]
+        else:
+            raise ValueError("bands must be an integer or a list of integers.")
+
+        band_nums = bands
+        arr = gdal2xyz.gdal2xyz(
+            self.raster,
+            path,
+            skip_nodata=True,
+            return_np_arrays=True,
+            band_nums=band_nums,
+        )
+        if path is None:
+            band_names = []
+            if bands is not None:
+                for band in bands:
+                    band_names.append(self.band_names[band - 1])
+            else:
+                band_names = self.band_names
+
+            df = pd.DataFrame(columns=["lon", "lat"] + band_names)
+            df["lon"] = arr[0]
+            df["lat"] = arr[1]
+            df[band_names] = arr[2].transpose()
+            return df

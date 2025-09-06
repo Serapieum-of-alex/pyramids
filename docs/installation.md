@@ -130,5 +130,5 @@ pytest -m "not plot" -q
 ## Notes
 - Supported Python versions are 3.11–3.13.
 - Prefer conda-forge for GDAL and related libraries.
-- Documentation: https://pyramids-gis.readthedocs.io/
+- Documentation: https://serapieum-of-alex.github.io/pyramids/latest
 - Source repository: https://github.com/Serapieum-of-alex/pyramids
