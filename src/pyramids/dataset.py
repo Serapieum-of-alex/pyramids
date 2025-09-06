@@ -1683,7 +1683,7 @@ class Dataset(AbstractDataset):
         """Plot the values/overviews of a given band.
 
         The plot function uses the `cleopatra` as a backend to plot the raster data, for more information check
-        [Cleopatra](https://cleopatra.readthedocs.io/en/latest/arrayglyph-class.html#array_glyph.ArrayGlyph.plot).
+        [ArrayGlyph](https://serapieum-of-alex.github.io/cleopatra/latest/api/array-glyph-class/#cleopatra.array_glyph.ArrayGlyph.plot).
 
         Args:
             band (int, optional):
@@ -1697,7 +1697,8 @@ class Dataset(AbstractDataset):
                 red, green, blue)) are defined, the method will use them to plot the real image, if not the rgb bands
                 will be considered as [2,1,0] as the default order for sentinel tif files.
             surface_reflectance (int, optional):
-                Default is None.
+                Surface reflectance value for normalizing satellite data, by default None.
+                Typically 10000 for Sentinel-2 data.
             cutoff (List, optional):
                 clip the range of pixel values for each band. (take only the pixel values from 0 to the value of the cutoff
                 and scale them back to between 0 and 1). Default is None.
@@ -1940,7 +1941,7 @@ class Dataset(AbstractDataset):
                     <BLANKLINE>
                     >>> dataset.scale = [0.1]
 
-                - now lets uscale the dataset values.
+                - now lets unscale the dataset values.
 
                     >>> unscaled_dataset = dataset.translate(unscale=True)
                     >>> print(unscaled_dataset) # doctest: +SKIP
@@ -1999,7 +2000,7 @@ class Dataset(AbstractDataset):
                     >>> print(dataset.offset)
                     [100.0]
 
-                - now lets uscale the dataset values.
+                - now lets unscale the dataset values.
 
                     >>> unscaled_dataset = dataset.translate(unscale=True)
                     >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
@@ -2031,7 +2032,7 @@ class Dataset(AbstractDataset):
                     >>> print(dataset.scale)
                     [0.1]
 
-                - now lets uscale the dataset values.
+                - now lets unscale the dataset values.
 
                     >>> unscaled_dataset = dataset.translate(unscale=True)
                     >>> print(unscaled_dataset.read_array()) # doctest: +SKIP
