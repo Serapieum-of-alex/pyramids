@@ -24,8 +24,8 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
-class Datacube:
-    """DataCube."""
+class MultiDataset:
+    """MultiDataset."""
 
     files: List[str]
     data: np.ndarray
@@ -104,7 +104,7 @@ class Datacube:
         return self._base.columns
 
     @classmethod
-    def create_cube(cls, src: Dataset, dataset_length: int) -> "Datacube":
+    def create_cube(cls, src: Dataset, dataset_length: int) -> "MultiDataset":
         """Create MultiDataset.
 
             - Create MultiDataset from a sample raster and
@@ -116,7 +116,7 @@ class Datacube:
                 Length of the dataset.
 
         Returns:
-            Datacube: Datacube object.
+            MultiDataset: Datacube object.
         """
         return cls(src, dataset_length)
 
@@ -132,7 +132,7 @@ class Datacube:
         end: str = None,
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
-    ) -> "Datacube":
+    ) -> "MultiDataset":
         r"""read_multiple_files.
 
             - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the
@@ -609,7 +609,7 @@ class Datacube:
               >>> dem_path = "examples/GIS/data/acc4000.tif"
               >>> src_path = "examples/GIS/data/aligned_rasters/"
               >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-              >>> Datacube.crop(dem_path, src_path, out_path)
+              >>> MultiDataset.crop(dem_path, src_path, out_path)
 
               ```
         """

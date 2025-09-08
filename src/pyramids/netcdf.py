@@ -323,7 +323,7 @@ class NetCDF(Dataset):
 
         return src
 
-    def get_variable(self, variable_name: str) -> "DataCube":
+    def get_variable(self, variable_name: str) -> "NetCDF":
         """get_variables.
 
         Returns
@@ -343,13 +343,13 @@ class NetCDF(Dataset):
         if prefix == "MEMORY" or rg is not None:
             src = self._read_md_array(variable_name)
             if isinstance(src, gdal.Dataset):
-                cube = DataCube(src)
+                cube = NetCDF(src)
                 cube._is_md_array = True
             else:
                 cube = src
         else:
             src = gdal.Open(f"{prefix}:{self.file_name}:{variable_name}")
-            cube = DataCube(src)
+            cube = NetCDF(src)
             cube._is_md_array = False
 
         cube._is_subset = True
@@ -433,7 +433,7 @@ class NetCDF(Dataset):
 
         src = gdal.GetDriverByName(driver).CreateCopy(path, self._raster)
 
-        return DataCube(src, access="write")
+        return NetCDF(src, access="write")
 
     @staticmethod
     def create_main_dimension(
@@ -587,8 +587,8 @@ class NetCDF(Dataset):
             raise ValueError("Variable_name cannot be None")
 
         dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
-        x_dim_values = DataCube.get_x_lon_dimension_array(geo[0], geo[1], cols)
-        y_dim_values = DataCube.get_y_lat_dimension_array(geo[3], geo[1], rows)
+        x_dim_values = NetCDF.get_x_lon_dimension_array(geo[0], geo[1], cols)
+        y_dim_values = NetCDF.get_y_lat_dimension_array(geo[3], geo[1], rows)
 
         if path is None and driver_type == "netcdf":
             path = "netcdf"
@@ -596,10 +596,10 @@ class NetCDF(Dataset):
         src = gdal.GetDriverByName(driver_type).CreateMultiDimensional(path)
         rg = src.GetRootGroup()
 
-        dim_x = DataCube.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))
-        dim_y = DataCube.create_main_dimension(rg, "y", dtype, np.array(y_dim_values))
+        dim_x = NetCDF.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))
+        dim_y = NetCDF.create_main_dimension(rg, "y", dtype, np.array(y_dim_values))
         if arr.ndim == 3:
-            dim_bands = DataCube.create_main_dimension(
+            dim_bands = NetCDF.create_main_dimension(
                 rg, "bands", dtype, np.array(bands_values)
             )
             md_arr = rg.CreateMDArray(variable_name, [dim_bands, dim_y, dim_x], dtype)

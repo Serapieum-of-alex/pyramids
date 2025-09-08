@@ -3,7 +3,7 @@ import pytest
 from osgeo import gdal
 import numpy as np
 from pyramids.dataset import Dataset
-from pyramids.datacube import DataCube
+from pyramids.netcdf import NetCDF as DataCube
 
 
 class TestProperties:
