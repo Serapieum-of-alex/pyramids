@@ -94,6 +94,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
       - pypi: https://files.pythonhosted.org/packages/4f/52/34c6cf5bb9285074dc3531c437b3919e825d976fde097a7a73f79e726d03/certifi-2025.7.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/13/59/28b888bf165104a79724b62c8d0d5d625af624fed803bd1bc86ec45be14a/cleopatra-0.6.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cc/8f/ec6289987824b29529d0dfda0d74a07cec60e54b9c92f3c9da4c0ac732de/contourpy-1.3.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/e7/05/c19819d5e3d95294a6f5947fb9b9629efb316b96de511b418c53d245aae6/cycler-0.12.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/0c/56be52741f75bad4dc6555991fabd2e07b432d333da82c11ad701123888a/ffmpeg_python-0.2.0-py3-none-any.whl
@@ -190,6 +191,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
       - pypi: https://files.pythonhosted.org/packages/4f/52/34c6cf5bb9285074dc3531c437b3919e825d976fde097a7a73f79e726d03/certifi-2025.7.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/13/59/28b888bf165104a79724b62c8d0d5d625af624fed803bd1bc86ec45be14a/cleopatra-0.6.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/0b/0098c214843213759692cc638fce7de5c289200a830e5035d1791d7a2338/contourpy-1.3.3-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/e7/05/c19819d5e3d95294a6f5947fb9b9629efb316b96de511b418c53d245aae6/cycler-0.12.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/0c/56be52741f75bad4dc6555991fabd2e07b432d333da82c11ad701123888a/ffmpeg_python-0.2.0-py3-none-any.whl
@@ -8512,7 +8514,7 @@ packages:
 - pypi: ./
   name: pyramids-gis
   version: 0.8.0
-  sha256: d70e07e57b5939ade892d33262cc8beafb945f3365a8504ca33c8586d4900e9e
+  sha256: 3625d987876c904d6f06c64d5e4da7bd2f078bd6e4c0540a4d88bc5e9d3cd85f
   requires_dist:
   - geopandas>=1.0.0
   - hpc-utils>=0.1.5
@@ -8521,6 +8523,7 @@ packages:
   - pyproj>=3.7.0
   - pyyaml>=6.0.0
   - shapely>=2.0.0
+  - colorama>=0.4.6,<0.5
   - nbval>=0.11.0 ; extra == 'dev'
   - pre-commit>=3.7.1 ; extra == 'dev'
   - pre-commit-hooks>=4.6.0 ; extra == 'dev'
