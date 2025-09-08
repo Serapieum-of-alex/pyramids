@@ -60,7 +60,7 @@ class TestPlotMultiDataset:
         from cleopatra.array_glyph import ArrayGlyph
 
         cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
-        cube.open_MultiDataset()
+        cube.open_multi_dataset()
         cleo = cube.plot()
         assert isinstance(cleo, ArrayGlyph)
 
