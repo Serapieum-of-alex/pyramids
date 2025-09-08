@@ -15,18 +15,17 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import DataFrame, GeoDataFrame
-from loguru import logger
 from osgeo import gdal, ogr, osr
 from osgeo.osr import SpatialReference
 
-from pyramids._errors import (
+from pyramids.base._errors import (
     AlignmentError,
     FailedToSaveError,
     NoDataValueError,
     ReadOnlyError,
     OutOfBoundsError,
 )
-from pyramids._utils import (
+from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     INTERPOLATION_METHODS,
     gdal_to_numpy_dtype,
@@ -2889,7 +2888,7 @@ class Dataset(AbstractDataset):
                     )
                 else:
                     self._set_no_data_value_backend(band, DEFAULT_NO_DATA_VALUE)
-                    logger.warning(
+                    self.logger.warning(
                         "the type of the given no_data_value differs from the dtype of the raster"
                         f"no_data_value now is set to {DEFAULT_NO_DATA_VALUE} in the raster"
                     )
@@ -3144,7 +3143,7 @@ class Dataset(AbstractDataset):
         ) = self.geotransform
         if cell_size_x != cell_size_y:
             if np.abs(cell_size_x) != np.abs(cell_size_y):
-                logger.warning(
+                self.logger.warning(
                     f"The given raster does not have a square cells, the cell size is {cell_size_x}*{cell_size_y} "
                 )
 
@@ -3152,7 +3151,7 @@ class Dataset(AbstractDataset):
         no_val = self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
         arr = self.read_array(band=0)
         if mask is not None and no_val not in arr:
-            logger.warning(
+            self.logger.warning(
                 "The no data value does not exist in the band, so all the cells will be considered, and the "
                 "mask will not be considered."
             )
@@ -5126,14 +5125,14 @@ class Dataset(AbstractDataset):
 
         if no_data_val is None:
             if not (np.isnan(arr)).any():
-                logger.warning(
+                self.logger.warning(
                     "The nodata value stored in the raster does not exist in the raster "
                     "so either the raster extent is all full of data, or the no_data_value stored in the raster is"
                     " not correct"
                 )
         else:
             if not (np.isclose(arr, no_data_val, rtol=0.00001)).any():
-                logger.warning(
+                self.logger.warning(
                     "the nodata value stored in the raster does not exist in the raster "
                     "so either the raster extent is all full of data, or the no_data_value stored in the raster is"
                     " not correct"
@@ -5153,14 +5152,14 @@ class Dataset(AbstractDataset):
         if no_data_val is None:
             # check if the whole raster is full of no_data_value
             if (np.isnan(arr)).all():
-                logger.warning("the raster is full of no_data_value")
+                self.logger.warning("the raster is full of no_data_value")
                 return None
 
             arr[~np.isnan(arr)] = 2
         else:
             # check if the whole raster is full of no_data_value
             if (np.isclose(arr, no_data_val, rtol=0.00001)).all():
-                logger.warning("the raster is full of no_data_value")
+                self.logger.warning("the raster is full of no_data_value")
                 return None
 
             arr[~np.isclose(arr, no_data_val, rtol=0.00001)] = 2

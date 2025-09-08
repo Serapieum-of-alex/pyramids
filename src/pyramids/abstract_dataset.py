@@ -14,7 +14,7 @@ from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr
 from osgeo.osr import SpatialReference
 
-from pyramids._utils import (
+from pyramids.base._utils import (
     Catalog,
 )
 from pyramids.featurecollection import FeatureCollection

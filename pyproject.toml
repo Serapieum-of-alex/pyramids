@@ -28,7 +28,6 @@ requires-python = ">= 3.11, <4"
 dependencies = [
     "geopandas >=1.0.0",
     "hpc-utils >=0.1.5",
-    "loguru >=0.7.2",
     "numpy >=2.0.0",
     "pandas >=2.0.0",
     "pyproj >=3.7.0",

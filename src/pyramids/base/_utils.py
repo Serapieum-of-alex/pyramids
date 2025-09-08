@@ -1,42 +1,16 @@
 """Utility module."""
 
 from typing import Union
+from pathlib import Path
 import yaml
 import datetime as dt
 import numpy as np
 from pandas import DataFrame
 from osgeo import gdal, ogr, gdalconst  # gdal_array,
 from osgeo.gdal import Dataset
-from pyramids._errors import OptionalPackageDoesNotExist, DriverNotExistError
+from pyramids.base._errors import OptionalPackageDoesNotExist, DriverNotExistError
 from pyramids import __path__
 
-# from urllib.parse import urlparse as parse_url
-# OGR_DATA_TYPES = {
-#     ogr.OFTInteger: 0,
-#     ogr.OFTIntegerList: 1,
-#     ogr.OFTReal: 2,
-#     ogr.OFTRealList: 3,
-#     ogr.OFTString: 4,
-#     ogr.OFTStringList: 5,
-#     ogr.OFTWideString: 6,
-#     ogr.OFTWideStringList: 7,
-#     ogr.OFTBinary: 8,
-#     ogr.OFTDate: 9,
-#     ogr.OFTTime: 10,
-#     ogr.OFTDateTime: 11,
-#     ogr.OFTInteger64: 12,
-#     ogr.OFTInteger64List: 13,
-# }
-
-# OGR_NUMPY_DATA_TYPES = {
-#     0: np.int64,  # ogr.OFTInteger is actually int32 but to unify it with how geopandas read it, we will use int64.
-#     12: np.int64,  # ogr.OFTInteger64
-#     2: np.float64,  # ogr.OFTReal
-#     4: np.object_,  # ogr.OFTString
-#     11: np.datetime64,  # ogr.OFTDateTime
-#     9: np.datetime64,  # ogr.OFTDate
-#     10: np.datetime64,  # ogr.OFTTime
-# }
 
 DTYPE_NAMES = [
     None,
@@ -170,9 +144,6 @@ INTERPOLATION_METHODS = {
     "cubic": gdal.GRA_Cubic,
     "bilinear": gdal.GRA_Bilinear,
 }
-
-
-# TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
 
 
 def color_name_to_gdal_constant(color_name: str) -> int:
@@ -352,8 +323,6 @@ def create_time_conversion_func(time: str) -> callable:
             gregorian = datum + dt.timedelta(hours=time_step)
         elif time_unit == "minutes":
             gregorian = datum + dt.timedelta(minutes=time_step)
-        elif time_unit == "hours":
-            gregorian = datum + dt.timedelta(hours=time_step)
         elif time_unit == "days":
             gregorian = datum + dt.timedelta(days=time_step)
         else:
@@ -376,7 +345,8 @@ class Catalog:
 
     @staticmethod
     def _get_gdal_catalog(path: str):
-        with open(f"{__path__[0]}/{path}", "r") as stream:
+        path = Path(__path__[0]) / f"base/{path}"
+        with open(path, "r") as stream:
             gdal_catalog = yaml.safe_load(stream)
 
         return gdal_catalog
@@ -462,7 +432,7 @@ def import_cleopatra(message: str):
         raise OptionalPackageDoesNotExist(message)
 
 
-def ogr_ds_togdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
+def ogr_ds_to_gdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
     """Convert ogr.DataSource object to a gdal.Dataset.
 
     Args:

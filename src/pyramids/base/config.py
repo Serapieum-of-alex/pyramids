@@ -14,7 +14,7 @@ Examples:
 - Initialize and access the GDAL driver path:
 
   ```python
-  >>> from pyramids.config import Config
+  >>> from pyramids.base.config import Config
   >>> config = Config()
   >>> config.initialize_gdal()
   >>> print(os.environ.get("GDAL_DRIVER_PATH"))  # doctest: +SKIP
@@ -45,6 +45,163 @@ from osgeo import gdal, ogr
 from pyramids import __path__ as root_path
 
 
+class ColorFormatter(logging.Formatter):
+    """Console formatter that colors the levelname based on log level."""
+
+    RESET = "\x1b[0m"
+    LEVEL_COLORS = {
+        logging.DEBUG: "\x1b[36m",  # Cyan
+        logging.INFO: "\x1b[32m",  # Green
+        logging.WARNING: "\x1b[33m",  # Yellow
+        logging.ERROR: "\x1b[31m",  # Red
+        logging.CRITICAL: "\x1b[35m",  # Magenta
+    }
+
+    def format(self, record: logging.LogRecord) -> str:
+        import copy as _copy
+
+        colored = _copy.copy(record)
+        color = self.LEVEL_COLORS.get(record.levelno, "")
+        colored.levelname = f"{color}{record.levelname}{self.RESET}"
+        return super().format(colored)
+
+
+class LoggerManager:
+    """Encapsulates logging setup and GDAL error handler installation for Pyramids.
+
+    This class centralizes logging responsibilities to improve separation of concerns
+    from the Config class. It provides static methods to configure logging and to
+    integrate GDAL error output with the configured logger hierarchy.
+    """
+
+    FMT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    DATE_FMT = "%Y-%m-%d %H:%M:%S"
+    LEVELS = ["FATAL", 'CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']
+
+    def __init__(
+        self,
+        level: Union[int, str] = logging.INFO,
+        log_file: Union[str, Path, None] = None,
+    ):
+        """Initialize the logger manager."""
+        self._setup_logging(level=level, log_file=log_file)
+        self._set_error_handler()
+
+    def _setup_logging(
+        self,
+        level: Union[int, str] = logging.INFO,
+        log_file: Union[str, Path, None] = None,
+    ) -> None:
+        """
+        Configure application-wide logging for Pyramids.
+
+        This initializes a colored console handler and, optionally, a file handler using a consistent
+        format. The configuration is idempotent: calling this method multiple times will not create
+        duplicate handlers. It also reduces noise by elevating log levels for common third‑party
+        libraries.
+        """
+        # Normalize level
+        if isinstance(level, str):
+            if level.upper() not in self.LEVELS:
+                raise ValueError(f"Invalid log level: {level}")
+            level = getattr(logging, level.upper(), logging.INFO)
+
+        # Enable ANSI colors on Windows terminals when possible
+        try:  # pragma: no cover - best effort without hard dependency
+            import colorama
+
+            colorama.just_fix_windows_console()
+        except Exception:
+            pass
+
+        root_logger = logging.getLogger()
+        root_logger.setLevel(level)
+
+        # Determine if a console handler already exists
+        console_handler = None
+        file_handler_exists_for = set()
+        for h in root_logger.handlers:
+            if isinstance(h, logging.StreamHandler) and not isinstance(
+                h, logging.FileHandler
+            ):
+                console_handler = h
+            if isinstance(h, logging.FileHandler):
+                try:
+                    file_handler_exists_for.add(Path(h.baseFilename))
+                except Exception:
+                    pass
+
+        # Create or update console handler
+        if console_handler is None:
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(level)
+            console_handler.setFormatter(
+                ColorFormatter(fmt=self.FMT, datefmt=self.DATE_FMT)
+            )
+            root_logger.addHandler(console_handler)
+        else:
+            console_handler.setLevel(level)
+            # Always ensure colored formatter on console
+            if not isinstance(console_handler.formatter, ColorFormatter):
+                console_handler.setFormatter(
+                    ColorFormatter(fmt=self.FMT, datefmt=self.DATE_FMT)
+                )
+
+        # Create file handler if requested and not already present
+        if log_file is not None:
+            log_file_path = Path(log_file)
+            if log_file_path not in file_handler_exists_for:
+                fh = logging.FileHandler(log_file_path, encoding="utf-8")
+                fh.setLevel(level)
+                fh.setFormatter(logging.Formatter(fmt=self.FMT, datefmt=self.DATE_FMT))
+                root_logger.addHandler(fh)
+
+        # Reduce noise from common third-party libraries
+        for noisy in ("fiona", "rasterio", "shapely", "matplotlib", "urllib3", "osgeo"):
+            logging.getLogger(noisy).setLevel(logging.WARNING)
+
+        # Announce configuration via the module logger so tests can assert on it
+        logging.getLogger(__name__).info("Logging is configured.")
+
+    @staticmethod
+    def _set_error_handler() -> None:
+        """
+        Link GDAL error output to the configured Pyramids logger and install the handler.
+
+        Low-severity GDAL messages (below CE_Warning) are printed to stdout to preserve
+        expected behavior in tests and certain GDAL workflows.
+        """
+        # Use a child of the module logger so it inherits the handlers/format configured in setup_logging()
+        log = logging.getLogger(__name__).getChild("gdal")
+
+        def gdal_error_handler(err_class, err_num, err_msg):
+            """Error handler for GDAL mapped to logging levels."""
+            try:
+                # For error classes lower than CE_Warning, print to stdout (expected by tests)
+                if err_class is not None and err_class < getattr(gdal, "CE_Warning", 2):
+                    print(
+                        f"GDAL error (class {err_class}, number {err_num}): {err_msg}"
+                    )
+                    return
+
+                # Map GDAL error classes to logging levels
+                if err_class == gdal.CE_Debug:
+                    log.debug(f"GDAL[{err_num}] {err_msg}")
+                elif err_class == gdal.CE_Warning:
+                    log.warning(f"GDAL[{err_num}] {err_msg}")
+                elif err_class == gdal.CE_Failure:
+                    log.error(f"GDAL[{err_num}] {err_msg}")
+                elif err_class == gdal.CE_Fatal:
+                    log.critical(f"GDAL[{err_num}] {err_msg}")
+                else:
+                    log.error(f"GDAL(class={err_class}, code={err_num}) {err_msg}")
+            except Exception:
+                # Fallback to error level if mapping fails for any reason
+                log.error(f"GDAL(class={err_class}, code={err_num}) {err_msg}")
+
+        gdal.PushErrorHandler(gdal_error_handler)
+
+
 class Config:
     r"""
     Configuration class for the pyramids package.
@@ -65,12 +222,12 @@ class Config:
         - Initialize the configuration and load settings from the default config file:
 
           ```python
-          >>> from pyramids.config import Config
+          >>> from pyramids.base.config import Config
           >>> config = Config() # doctest: +SKIP
-          2025-01-11 23:13:48,889 - pyramids.config - INFO - Logging is configured.
-          2025-01-11 23:13:48,891 - pyramids.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
+          2025-01-11 23:13:48,889 - pyramids.base.config - INFO - Logging is configured.
+          2025-01-11 23:13:48,891 - pyramids.base.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
           >>> config.initialize_gdal() # doctest: +SKIP
-          2025-01-11 23:13:48,891 - pyramids.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
+          2025-01-11 23:13:48,891 - pyramids.base.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
           >>> print(os.environ.get("GDAL_DRIVER_PATH")) # doctest: +SKIP
           C:\\Miniconda3\\envs\\pyramids\\Library\\lib\\gdalplugins
 
@@ -121,7 +278,8 @@ class Config:
 
               ```
         """
-        with open(f"{root_path[0]}/{self.config_file}", "r") as file:
+        config_file = Path(root_path[0]) / "base" / self.config_file
+        with open(config_file, "r") as file:
             return yaml.safe_load(file)
 
     def initialize_gdal(self):
@@ -185,16 +343,16 @@ class Config:
         conda_prefix = os.getenv("CONDA_PREFIX")
 
         if not conda_prefix:
-            self.logger.info("CONDA_PREFIX is not set. Ensure Conda is activated.")
+            self.logger.debug("CONDA_PREFIX is not set. Ensure Conda is activated.")
             return None
 
         gdal_plugins_path = Path(conda_prefix) / "Library/lib/gdalplugins"
 
         if gdal_plugins_path.exists():
             os.environ["GDAL_DRIVER_PATH"] = str(gdal_plugins_path)
-            self.logger.info(f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}")
+            self.logger.debug(f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}")
         else:
-            self.logger.info(
+            self.logger.debug(
                 f"GDAL plugins path not found at: {gdal_plugins_path}. Please check your GDAL installation."
             )
             gdal_plugins_path = None
@@ -235,7 +393,7 @@ class Config:
                     gdal_plugins_path = Path(site_path) / "Library/Lib/gdalplugins"
                     if gdal_plugins_path.exists():
                         os.environ["GDAL_DRIVER_PATH"] = str(gdal_plugins_path)
-                        self.logger.info(
+                        self.logger.debug(
                             f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}"
                         )
             else:
@@ -250,63 +408,24 @@ class Config:
                     if path.exists():
                         os.environ["GDAL_DRIVER_PATH"] = str(path)
                         gdal_plugins_path = path
-                        self.logger.info(f"GDAL_DRIVER_PATH set to: {path}")
+                        self.logger.debug(f"GDAL_DRIVER_PATH set to: {path}")
 
                 # If the path is not found
                 # print("GDAL plugins path could not be found. Please check your GDAL installation.")
         return gdal_plugins_path
 
-    def setup_logging(self):
+    def setup_logging(
+        self,
+        level: Union[int, str] = logging.INFO,
+        log_file: Union[str, Path, None] = None,
+    ):
         """
-        Set up the logging configuration.
+        Configure application-wide logging for Pyramids by delegating to LoggerManager.
 
-        Uses basic logging with configurable level and format.
-
-        Examples:
-            - Setup logging:
-
-              ```python
-              >>> config = Config()
-              >>> config.setup_logging()
-
-              ```
+        This method preserves the public API while separating responsibilities. It delegates
+        the actual logging configuration to the LoggerManager constructor and then sets
+        self.logger and self._logging_configured for convenience/compatibility.
         """
-        log_config = {}  # self.config.get("logging", {})
-        logging.basicConfig(
-            level=log_config.get("level", "INFO"),
-            format=log_config.get(
-                "format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            ),
-            filename=log_config.get("file", None),
-        )
+        LoggerManager(level=level, log_file=log_file)
+        self._logging_configured = True
         self.logger = logging.getLogger(__name__)
-        self.logger.info("Logging is configured.")
-
-    @staticmethod
-    def set_error_handler():
-        """
-        Set the error handler for GDAL.
-
-        Suppresses warnings and errors or redirects them to a custom handler.
-
-        Examples:
-            - Set a custom GDAL error handler:
-
-              ```python
-              >>> Config.set_error_handler()
-
-              ```
-        """
-
-        def gdal_error_handler(err_class, err_num, err_msg):
-            """Error handler for GDAL."""
-            if err_class >= gdal.CE_Warning:
-                pass  # Ignore warnings and higher level messages (errors, fatal errors)
-            else:
-                print(
-                    "GDAL error (class {}, number {}): {}".format(
-                        err_class, err_num, err_msg
-                    )
-                )
-
-        gdal.PushErrorHandler(gdal_error_handler)

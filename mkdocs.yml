@@ -117,6 +117,7 @@ nav:
     - Dataset: reference/dataset.md
     - Datacube: reference/datacube.md
     - Feature Collection: reference/featurecollection.md
+    - config: reference/config.md
   - Tutorials:
       - Dataset: tutorials/dataset.md
       - Datacube: tutorials/datacube.md

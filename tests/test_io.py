@@ -3,7 +3,7 @@ from typing import List
 
 import pytest
 from osgeo import gdal
-from pyramids._errors import FileFormatNotSupported
+from pyramids.base._errors import FileFormatNotSupported
 from pyramids._io import _parse_path, extract_from_gz, read_file
 
 

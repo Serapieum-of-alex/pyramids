@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 from osgeo import gdal
-from pyramids._utils import (
+from pyramids.base._utils import (
     create_time_conversion_func,
     numpy_to_gdal_dtype,
 )
@@ -536,8 +536,8 @@ class NetCDF(Dataset):
 
               ```python
               >>> dataset_1 = Dataset.read_file(
-              >>>   "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
-              >>> )
+              ...   "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
+              ... )
               >>> dataset_2 = Dataset.read_file("tests/data/netcdf/noah-precipitation-1979.nc")
               >>> dataset_1.add_variable(dataset_2, "temperature")
 

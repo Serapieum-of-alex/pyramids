@@ -5,7 +5,7 @@ import pytest
 from osgeo import gdal
 import numpy as np
 from pyramids.dataset import Dataset
-from pyramids._errors import ReadOnlyError
+from pyramids.base._errors import ReadOnlyError
 
 
 def test_get_overview_error(era5_image: gdal.Dataset):
