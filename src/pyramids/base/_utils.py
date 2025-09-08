@@ -146,9 +146,6 @@ INTERPOLATION_METHODS = {
 }
 
 
-# TODO: check the gdal.GRA_Lanczos, gdal.GRA_Average resampling method
-
-
 def color_name_to_gdal_constant(color_name: str) -> int:
     """Convert color name to GDAL constant.
 
@@ -437,7 +434,7 @@ def import_cleopatra(message: str):
         raise OptionalPackageDoesNotExist(message)
 
 
-def ogr_ds_togdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
+def ogr_ds_to_gdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
     """Convert ogr.DataSource object to a gdal.Dataset.
 
     Args:
