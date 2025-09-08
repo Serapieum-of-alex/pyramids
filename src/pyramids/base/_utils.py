@@ -347,7 +347,7 @@ class Catalog:
 
     @staticmethod
     def _get_gdal_catalog(path: str):
-        path = Path(__path__[0]) / f"/base/{path}"
+        path = Path(__path__[0]) / f"base/{path}"
         with open(path, "r") as stream:
             gdal_catalog = yaml.safe_load(stream)
 
