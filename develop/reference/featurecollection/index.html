@@ -62,7 +62,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3507,7 +3507,7 @@
 <a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-353" name="__codelineno-0-353"></a><span class="sd">            GeoDataFrame</span>
 <a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355"></a>        <span class="n">gdal_ds</span> <span class="o">=</span> <span class="n">ogr_ds_togdal_dataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature</span><span class="p">)</span>
+<a id="__codelineno-0-355" name="__codelineno-0-355"></a>        <span class="n">gdal_ds</span> <span class="o">=</span> <span class="n">ogr_ds_to_gdal_dataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature</span><span class="p">)</span>
 <a id="__codelineno-0-356" name="__codelineno-0-356"></a>        <span class="n">layer_name</span> <span class="o">=</span> <span class="n">gdal_ds</span><span class="o">.</span><span class="n">GetLayer</span><span class="p">()</span><span class="o">.</span><span class="n">GetName</span><span class="p">()</span>  <span class="c1"># self.layer_names[0]</span>
 <a id="__codelineno-0-357" name="__codelineno-0-357"></a>        <span class="n">gdal</span><span class="o">.</span><span class="n">VectorTranslate</span><span class="p">(</span>
 <a id="__codelineno-0-358" name="__codelineno-0-358"></a>            <span class="n">MEMORY_FILE</span><span class="p">,</span>
