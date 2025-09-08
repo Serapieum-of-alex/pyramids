@@ -1,6 +1,6 @@
 [project]
 name = "pyramids-gis"
-version = "0.7.3"
+version = "0.8.0"
 description = "GIS utility package"
 readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
@@ -28,12 +28,12 @@ requires-python = ">= 3.11, <4"
 dependencies = [
     "geopandas >=1.0.0",
     "hpc-utils >=0.1.5",
-    "loguru >=0.7.2",
     "numpy >=2.0.0",
     "pandas >=2.0.0",
     "pyproj >=3.7.0",
     "PyYAML >=6.0.0",
     "Shapely >=2.0.0",
+    "colorama >=0.4.6,<0.5"
 ]
 
 [project.optional-dependencies]
@@ -46,6 +46,11 @@ dev = [
     "coverage",
     "build>=1.0.0",
     "twine>=5.0.0",
+    "pip",
+    "jupyterlab",
+    "notebook",
+    "jupyter",
+    "commitizen>=4.8.4"
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -59,21 +64,21 @@ docs = [
     "mkdocs-table-reader-plugin  >=3.1.0",
     "mkdocs-mermaid2-plugin  >=1.2.1",
     "jupyter-contrib-nbextensions  >=0.7.0",
+    "mkdocs-panzoom-plugin",
     "notebook<7.0",
-    "jupyter"
 ]
 
-viz = ["cleopatra>=0.5.1"]
+viz = ["cleopatra>=0.6.0"]
 
 [project.urls]
 homepage = "https://github.com/Serapieum-of-alex/pyramids"
 repository = "https://github.com/Serapieum-of-alex/pyramids"
-documentation = "https://pyramids-gis.readthedocs.io/"
-Changelog = "https://github.com/Serapieum-of-alex/pyramids/HISTORY.rst"
+documentation = "https://serapieum-of-alex.github.io/pyramids"
+Changelog = "https://github.com/Serapieum-of-alex/pyramids/docs/change-log.md"
 
 
 [build-system]
-requires = ["setuptools>=70.1.1", "wheel"]
+requires = ["setuptools>=80.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -102,6 +107,25 @@ line_length = 88
 multi_line_output = 3
 
 
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "pep621"
+tag_format = "$version"
+changelog_file = "docs/change-log.md"
+update_changelog_on_bump = false
+style = [
+    ["qmark", "fg:#ff9d00 bold"],
+    ["question", "bold"],
+    ["answer", "fg:#ff9d00 bold"],
+    ["pointer", "fg:#ff9d00 bold"],
+    ["highlighted", "fg:#ff9d00 bold"],
+    ["selected", "fg:#cc5454"],
+    ["separator", "fg:#cc5454"],
+    ["instruction", ""],
+    ["text", ""],
+    ["disabled", "fg:#858585 italic"]
+]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
@@ -123,13 +147,18 @@ pyramids-gis = { path = ".", editable = true }
 [tool.pixi.tasks]
 main = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'not plot' --cov-report=xml", description = "Run the main test suite" }
 plot = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'plot' --cov-report=xml", description = "Run plot test suite" }
+test-all = { cmd = "pytest -vvv --cov=src/pyramids -sv --cov-report=xml --cov-report=term-missing", description = "Run all testsuite" }
 notebooks = { cmd = "pytest --nbval --nbval-lax --verbose examples/notebooks", description = "check notebooks" }
 build-dist = { cmd = "python -m build", description = "Build sdist and wheel for PyPI" }
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
+cz-changelog = { cmd = "cz changelog", description = "Generate changelog using Commitizen" }
+cz-bump = { cmd = "cz bump", description = "Bump version using Commitizen" }
+
 
 [tool.pixi.environments]
-default = { features = ["viz", "dev"], solve-group = "default" }
-docs = { features = ["docs"], solve-group = "default" }
+default = {features = ["viz"], solve-group = "default" }
+dev = { features = ["viz", "dev"], solve-group = "default" }
+docs = { features = ["docs"], solve-group = "docs" }
 py311 = { features = ["py311", "viz", "dev"], solve-group = "py311" }
 py312 = { features = ["py312", "viz", "dev"], solve-group = "py312" }
 py313 = { features = ["py313", "viz", "dev"], solve-group = "py313" }
@@ -142,7 +171,9 @@ python = "3.12.*"
 [tool.pixi.feature.py313.dependencies]
 python = "3.13.*"
 
+
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"
 libgdal-netcdf = ">=3.10.0,<4"
 libgdal-hdf4 = ">=3.10.0,<4"
+

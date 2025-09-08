@@ -1,6 +1,6 @@
 """pyramids - GIS utility package."""
 
-from pyramids.config import Config
+from pyramids.base.config import Config
 
 __all__ = ["dataset", "multidataset", "datacube", "featurecollection"]
 
@@ -18,7 +18,6 @@ except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
 
 config = Config()
-config.set_error_handler()
 
 # documentation format
 __author__ = "Mostafa Farrag"

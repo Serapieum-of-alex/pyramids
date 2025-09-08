@@ -6,7 +6,7 @@ import numpy as np
 import warnings
 from osgeo import gdal
 
-from pyramids._errors import FileFormatNotSupported
+from pyramids.base._errors import FileFormatNotSupported
 
 gdal.UseExceptions()
 
@@ -29,37 +29,41 @@ def _is_tar(path: str):
 def _get_zip_path(path: str, file_i: int = 0):
     """Get Zip Path.
 
-    Parameters
-    ----------
-    path: [str]
-        path to the zip file.
-    file_i: [int]
-        index to the file inside the compressed file you want to read.
+    Args:
+        path (str): Path to the zip file.
+        file_i (int): Index to the file inside the compressed file you want to read.
 
-    Returns
-    -------
-    str path to gdal to read the zipped file.
+    Returns:
+        str: Path for GDAL to read the zipped file.
 
-    Examples
-    --------
-    - Internal Zip file path (one/multiple files inside the compressed file):
-        if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains
-        the internal path inside the zip file, so just ad
-    >>> rdir = "tests/data/virtual-file-system"
-    >>> path = _get_zip_path(f"{rdir}/multiple_compressed_files.zip/1.asc")
-    >>> print(path)
-    >>> "/vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/1.asc"
-    - Only the Zip file path (one/multiple files inside the compressed file):
-        If you provide the name of the zip file with multiple files inside it, it will return the path to the first
-        file.
-    >>> path = _get_zip_path(f"{rdir}/multiple_compressed_files.zip")
-    >>> print(path)
-    >>> "/vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/1.asc"
-    - Zip file path and an index (one/multiple files inside the compressed file):
-        if you provide the path to the zip file and an index to the file inside the compressed file you want to read
-    >>> path = _get_zip_path("compressed-file-name.zip", file_i=1)
-    >>> print(path)
-    >>> "/vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/2.asc"
+    Examples:
+        - Internal Zip file path (one/multiple files inside the compressed file): if the path contains a zip but does not end with zip (compressed-file-name.zip/1.asc), so the path contains the internal path inside the zip file, so just add the prefix
+
+          ```python
+          >>> rdir = "tests/data/virtual-file-system"
+          >>> path = _get_zip_path(f"{rdir}/multiple_compressed_files.zip/1.asc")
+          >>> print(path)
+          "/vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/1.asc"
+
+          ```
+
+        - Only the Zip file path (one/multiple files inside the compressed file): If you provide the name of the zip file with multiple files inside it, it will return the path to the first file.
+
+          ```python
+          >>> path = _get_zip_path(f"{rdir}/multiple_compressed_files.zip")
+          >>> print(path)
+          "/vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/1.asc"
+
+          ```
+
+        - Zip file path and an index (one/multiple files inside the compressed file): if you provide the path to the zip file and an index to the file inside the compressed file you want to read
+
+          ```python
+          >>> path = _get_zip_path("compressed-file-name.zip", file_i=1)
+          >>> print(path)
+          "/vsizip/tests/data/virtual-file-system/multiple_compressed_files.zip/2.asc"
+
+          ```
     """
     # get a list of files inside the compressed file
     if path.__contains__(".zip") and not path.endswith(".zip"):
@@ -73,19 +77,15 @@ def _get_zip_path(path: str, file_i: int = 0):
 def _get_gzip_path(path: str, file_i: int = 0):
     """Get Zip Path.
 
-        - check if the given path contains a .gz in it
-        - if the path contains a gz but does not end with gz (xxxx.gz/1.asc), so the path contains the
-        internal path inside the gz file, so just add the prefix
-        - anything else just add the prefix.
+    - Check if the given path contains a .gz in it.
+    - If the path contains a gz but does not end with gz (xxxx.gz/1.asc), so the path contains the internal path inside the gz file, so just add the prefix.
+    - Anything else just add the prefix.
 
-    Parameters
-    ----------
-    path: [str]
-        path to the zip file.
+    Args:
+        path (str): Path to the zip file.
 
-    Returns
-    -------
-    str path to gdal to read the zipped file.
+    Returns:
+        str: Path for GDAL to read the zipped file.
     """
     # get list of files inside the compressed file
     warnings.warn(
@@ -109,19 +109,15 @@ def _get_gzip_path(path: str, file_i: int = 0):
 def _get_tar_path(path: str):
     """Get Zip Path.
 
-        - check if the given path contains a .gz in it
-        - if the path contains a gz but does not end with gz (xxxx.gz/1.asc), so the path contains the
-        internal path inside the gz file, so just add the prefix
-        - anything else just add the prefix.
+    - Check if the given path contains a .tar in it.
+    - If the path contains a .tar but does not end with .tar (xxxx.tar/1.asc), so the path contains the internal path inside the tar file, so just add the prefix.
+    - Otherwise, just add the prefix.
 
-    Parameters
-    ----------
-    path: [str]
-        path to the zip file.
+    Args:
+        path (str): Path to the tar file.
 
-    Returns
-    -------
-    str path to gdal to read the zipped file.
+    Returns:
+        str: Path for GDAL to read the tar file.
     """
     # get list of files inside the compressed file
     if path.__contains__(".tar") and not path.endswith(".tar"):
@@ -134,18 +130,12 @@ def _get_tar_path(path: str):
 def _parse_path(path: str, file_i: int = 0) -> str:
     """Parse Path.
 
-    Parameters
-    ----------
-    path: [str]
-        path to the file.
-    file_i: [int]
-        index to the file inside the compressed file you want to read, if the compressed file has only one file
-        inside it will read this file, if multiple files are compressed, it will return the first file.
+    Args:
+        path (str): Path to the file.
+        file_i (int): Index to the file inside the compressed file you want to read. If the compressed file has only one file inside, it will read this file; if multiple files are compressed, it will return the first file.
 
-    Returns
-    -------
-    file path: [str]
-        path to the file to read.
+    Returns:
+        str: Path to the file to read.
     """
     if _is_zip(path):
         new_path = _get_zip_path(path, file_i=file_i)
@@ -159,20 +149,15 @@ def _parse_path(path: str, file_i: int = 0) -> str:
 
 
 def extract_from_gz(input_file: str, output_file: str, delete=False):
-    """Extract data from the zip/.gz files, save the data.
+    """Extract data from zip/.gz files and save the data.
 
-    Parameters
-    ----------
-    input_file : [str]
-        zipped file name.
-    output_file : [str]
-        directory where the unzipped data must be
-                            stored.
-    delete : [bool]
-        True if you want to delete the zipped file after the extracting the data
-    Returns
-    -------
-    None.
+    Args:
+        input_file (str): Zipped file name.
+        output_file (str): Path where the unzipped data must be stored.
+        delete (bool): True to delete the zipped file after extracting the data.
+
+    Returns:
+        None
     """
     with gzip.GzipFile(input_file, "rb") as zf:
         content = zf.read()
@@ -192,24 +177,18 @@ def read_file(
     open_as_multi_dimensional: bool = False,
     file_i: int = 0,
 ):
-    """Open file.
+    """Open file (GeoTIFF and ASCII).
 
-        - for geotiff and ASCII files.
+    - For GeoTIFF and ASCII files.
 
-    Parameters
-    ----------
-    path : [str]
-        Path of file to open (works for ascii, geotiff).
-    read_only : [bool]
-        File mode, set to `False` to open in "update" mode.
-    open_as_multi_dimensional: [bool]
-        Default is False.
-    file_i: [int] default is 0
-        index to the file inside the compressed file you want to read, if the compressed file have only one file
+    Args:
+        path (str): Path of file to open (works for ASCII, GeoTIFF).
+        read_only (bool): File mode; set to False to open in "update" mode.
+        open_as_multi_dimensional (bool): If True, opens using OF_MULTIDIM_RASTER for multi-dimensional formats. Default is False.
+        file_i (int): Index to the file inside the compressed file you want to read (default 0). If the compressed file has only one file, the first file is used.
 
-    Returns
-    -------
-    GDAL dataset
+    Returns:
+        gdal.Dataset: Opened dataset.
     """
     if not isinstance(path, str):
         raise TypeError(
@@ -268,25 +247,20 @@ def insert_space(inp):
 def to_ascii(
     arr: np.ndarray, cell_size: int, xmin, ymin, no_data_value, path: str
 ) -> None:
-    """Write raster into ascii file.
+    """Write raster into ASCII file.
 
-        to_ascii reads writes the raster to disk into an ascii format.
+    Writes the raster to disk in ASCII format.
 
-    Parameters
-    ----------
-    arr: [np.ndarray]
-        array you want to write to disk.
-    cell_size: [int]
-        cell size.
-    xmin: [float]
-        x coordinate of the lower left corner.
-    ymin: [float]
-        y coordinate of the lower left corner.
-    no_data_value: [numeric]
-        no data vlaue.
-    path: [str]
-        name of the ASCII file you want to convert and the name
-        should include the extension ".asc"
+    Args:
+        arr (np.ndarray): Array you want to write to disk.
+        cell_size (int): Cell size.
+        xmin (float): X coordinate of the lower left corner.
+        ymin (float): Y coordinate of the lower left corner.
+        no_data_value (numeric): No data value.
+        path (str): Name of the ASCII file to create; should include the extension ".asc".
+
+    Returns:
+        None
     """
     if not isinstance(path, str):
         raise TypeError("path input should be string type")

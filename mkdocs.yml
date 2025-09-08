@@ -1,0 +1,151 @@
+site_name: pyramids
+site_description: GIS package
+site_url: https://serapieum-of-alex.github.io/pyramids/
+repo_url: https://github.com/Serapieum-of-alex/pyramids
+repo_name: Serapieum-of-alex/pyramids
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.expand
+    - navigation.indexes
+    - navigation.footer
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.action.view
+    - content.tooltips
+    - search.highlight
+    - search.suggest
+    - toc.follow
+    - announce.dismiss
+  palette:
+  - media: "(prefers-color-scheme)"
+    toggle:
+      icon: material/brightness-auto
+      name: Switch to light mode
+  - media: "(prefers-color-scheme: light)"
+    scheme: default
+    primary: teal
+    accent: purple
+    toggle:
+      icon: material/weather-sunny
+      name: Switch to dark mode
+  - media: "(prefers-color-scheme: dark)"
+    scheme: slate
+    primary: black
+    accent: lime
+    toggle:
+      icon: material/weather-night
+      name: Switch to system preference
+  primary: indigo
+  accent: indigo
+  icon:
+    repo: fontawesome/brands/github
+
+
+plugins:
+  - search
+  - mkdocs-jupyter
+  - panzoom:
+      hint_location: "top"
+      key: "ctrl"
+      full_screen: true
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            heading_level: 2
+            docstring_style: google
+  - table-reader
+  - tags
+  - mike:
+      # These fields are all optional; the defaults are as below...
+      alias_type: symlink
+      redirect_template: null
+      deploy_prefix: ''
+      canonical_version: null
+      version_selector: true
+      css_dir: css
+      javascript_dir: js
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - footnotes
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+      permalink: "#"
+      toc_depth: 1-4
+      anchorlink: true
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Overview:
+    - Codebase Map: overview/codebase-map.md
+    - How it works: overview/how-it-works.md
+  - Architecture:
+    - Diagrams: architecture/diagrams.md
+  - Reference:
+    - Dataset: reference/dataset.md
+    - Datacube: reference/datacube.md
+    - Feature Collection: reference/featurecollection.md
+    - config: reference/config.md
+  - Tutorials:
+      - Dataset: tutorials/dataset.md
+      - Datacube: tutorials/datacube.md
+      - Raster basics: tutorials/raster-basics.md
+      - Datacube basics: tutorials/datacube-basics.md
+  - How-to:
+      - Dev Container: how-to/devcontainer.md
+      - Docker & GHCR: how-to/docker.md
+      - Recipes: how-to/recipes.md
+      - FAQ & Troubleshooting: how-to/faq.md
+  - About:
+    - Change-log: change-log.md
+    - Code of Conduct: CODE_OF_CONDUCT.md
+    - Contributing: contributing.md
+    - License: LICENSE.md
+    - Authors: AUTHORS.md
+    - ADRs:
+        - Index: adr/index.md
+        - ADR-0001 Docs stack: adr/0001-docs-stack.md
+        - ADR-0002 Type checking: adr/0002-type-checking.md
+        - ADR-0003 IO formats: adr/0003-io-formats.md
+        - ADR-0004 Dependency graphing: adr/0004-dependency-graphing.md
+        - ADR-0005 Versioning docs: adr/0005-versioning-docs.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Serapieum-of-alex/pyramids
+  version:
+      provider: mike
+  version_selector: true
