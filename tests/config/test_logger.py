@@ -18,7 +18,7 @@ def isolated_root_logging():
     old_level = root.level
     old_handlers = list(root.handlers)
     try:
-        for h in root.handlers:
+        for h in list(root.handlers):
             root.removeHandler(h)
         yield root
     finally:
