@@ -323,8 +323,6 @@ def create_time_conversion_func(time: str) -> callable:
             gregorian = datum + dt.timedelta(hours=time_step)
         elif time_unit == "minutes":
             gregorian = datum + dt.timedelta(minutes=time_step)
-        elif time_unit == "hours":
-            gregorian = datum + dt.timedelta(hours=time_step)
         elif time_unit == "days":
             gregorian = datum + dt.timedelta(days=time_step)
         else:
