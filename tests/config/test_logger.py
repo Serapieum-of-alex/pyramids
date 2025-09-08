@@ -5,7 +5,8 @@ from contextlib import contextmanager, redirect_stdout
 from unittest.mock import patch
 import io
 from osgeo import gdal
-from pyramids.base.config import LoggerManager
+from pyramids.base.config import LoggerManager, Config
+import pytest
 
 
 @contextmanager
@@ -134,3 +135,84 @@ def test_set_error_handler_logs_severities(mock_push, capsys):
             "pyramids.base.config.gdal | GDAL(class=999, code=55) unknown class msg"
             in err_text
         )
+
+
+def test_setup_logging_invalid_level_string_raises():
+    with isolated_root_logging():
+        with pytest.raises(ValueError):
+            LoggerManager(level="NOT_A_LEVEL")
+
+
+def test_setup_logging_colorama_import_failure_path():
+    # Simulate colorama present but its call raises, exercising the except path
+    class DummyColorama:
+        @staticmethod
+        def just_fix_windows_console():
+            raise RuntimeError("no console")
+
+    with (
+        isolated_root_logging(),
+        patch.dict("sys.modules", {"colorama": DummyColorama}),
+    ):
+        # We still expect logging to be configured without raising
+        LoggerManager(level="INFO")
+
+
+@patch("pyramids.base.config.Config.set_env_conda")
+def test_dynamic_env_variables_returns_early_when_conda_provides_path(mock_set_env):
+    # Return a specific path from set_env_conda to ensure early return
+    expected = Path("/fake/conda/env/Library/lib/gdalplugins")
+    mock_set_env.return_value = expected
+    cfg = object.__new__(Config)
+    cfg.logger = logging.getLogger("tests.config.coverage")
+    with patch("sys.platform", new="linux"):
+        result = cfg.dynamic_env_variables()
+    assert result == expected
+
+
+@patch("osgeo.gdal.SetConfigOption")
+@patch("osgeo.gdal.AllRegister")
+@patch("pyramids.base.config.Config.dynamic_env_variables")
+def test_initialize_gdal_sets_options_and_conditional_driver_path(
+        mock_dyn, mock_register, mock_setopt
+):
+    # Create instance without running __init__ side-effects
+    cfg = object.__new__(Config)
+    cfg.logger = logging.getLogger("tests.config.coverage")
+    cfg.config = {
+        "gdal": {"GDAL_CACHEMAX": "256"},
+        "ogr": {"OGR_SRS_PARSER": "strict"},
+    }
+
+    # Case 1: dynamic_env_variables returns None -> no GDAL_DRIVER_PATH set
+    mock_dyn.return_value = None
+    cfg.initialize_gdal()
+    # Called for provided options
+    mock_setopt.assert_any_call("GDAL_CACHEMAX", "256")
+    mock_setopt.assert_any_call("OGR_SRS_PARSER", "strict")
+    # Ensure GDAL_DRIVER_PATH was not set in this branch
+    assert ("GDAL_DRIVER_PATH",) not in [c.args[:1] for c in mock_setopt.call_args_list]
+
+    mock_setopt.reset_mock()
+
+    # Case 2: dynamic_env_variables returns a Path -> GDAL_DRIVER_PATH set
+    path = Path("/some/plugins")
+    mock_dyn.return_value = path
+    cfg.initialize_gdal()
+    mock_setopt.assert_any_call("GDAL_DRIVER_PATH", str(path))
+    mock_register.assert_called()
+
+
+@patch("osgeo.gdal.PushErrorHandler")
+def test_error_handler_exception_fallback_logs_error(mock_push, capsys):
+    # Install handler via LoggerManager
+    with isolated_root_logging():
+        LoggerManager(level="DEBUG")
+        handler = mock_push.call_args[0][0]
+        # Cause a TypeError inside the handler's try block by passing a non-orderable err_class
+        handler(object(), 66, "boom")
+        err = capsys.readouterr().err
+    # The fallback except path logs an error with the generic format
+    assert "GDAL(class=" in err
+    assert "code=66" in err
+    assert "boom" in err
