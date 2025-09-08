@@ -2,7 +2,9 @@
 
 import os
 import re
-from loguru import logger
+import logging
+
+logger = logging.getLogger(__name__)
 import datetime as dt
 import pandas as pd
 from pathlib import Path

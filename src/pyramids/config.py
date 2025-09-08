@@ -45,6 +45,25 @@ from osgeo import gdal, ogr
 from pyramids import __path__ as root_path
 
 
+class ColorFormatter(logging.Formatter):
+    """Console formatter that colors the levelname based on log level."""
+    RESET = "\x1b[0m"
+    LEVEL_COLORS = {
+        logging.DEBUG: "\x1b[36m",    # Cyan
+        logging.INFO: "\x1b[32m",     # Green
+        logging.WARNING: "\x1b[33m",  # Yellow
+        logging.ERROR: "\x1b[31m",    # Red
+        logging.CRITICAL: "\x1b[35m", # Magenta
+    }
+
+    def format(self, record: logging.LogRecord) -> str:
+        import copy as _copy
+        colored = _copy.copy(record)
+        color = self.LEVEL_COLORS.get(record.levelno, "")
+        colored.levelname = f"{color}{record.levelname}{self.RESET}"
+        return super().format(colored)
+
+
 class Config:
     r"""
     Configuration class for the pyramids package.
@@ -256,29 +275,79 @@ class Config:
                 # print("GDAL plugins path could not be found. Please check your GDAL installation.")
         return gdal_plugins_path
 
-    def setup_logging(self):
+    def setup_logging(self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None):
         """
         Set up the logging configuration.
 
-        Uses basic logging with configurable level and format.
+        Parameters:
+            level (int | str): Logging level (e.g., logging.INFO or "INFO"). Default is logging.INFO.
+            log_file (str | Path | None): Optional path to a file where logs will be written.
 
-        Examples:
-            - Setup logging:
-
-              ```python
-              >>> config = Config()
-              >>> config.setup_logging()
-
-              ```
+        Behavior:
+            - Uses a hard-coded log format for consistency across the project.
+            - Adds colored console output with distinct colors per logging level.
+            - File handler (if provided) uses the same format without colors.
+            - Idempotent: avoids adding duplicate handlers when called multiple times.
         """
-        log_config = {}  # self.config.get("logging", {})
-        logging.basicConfig(
-            level=log_config.get("level", "INFO"),
-            format=log_config.get(
-                "format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            ),
-            filename=log_config.get("file", None),
-        )
+        # Normalize level
+        if isinstance(level, str):
+            level = getattr(logging, level.upper(), logging.INFO)
+
+        # Hard-coded format
+        fmt = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+        datefmt = "%Y-%m-%d %H:%M:%S"
+
+
+        # Enable ANSI colors on Windows terminals when possible
+        try:  # pragma: no cover - best effort without hard dependency
+            import colorama
+
+            colorama.just_fix_windows_console()
+        except Exception:
+            pass
+
+        root_logger = logging.getLogger()
+        root_logger.setLevel(level)
+
+        # Determine if a console handler already exists
+        console_handler = None
+        file_handler_exists_for = set()
+        for h in root_logger.handlers:
+            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+                console_handler = h
+            if isinstance(h, logging.FileHandler):
+                try:
+                    file_handler_exists_for.add(Path(h.baseFilename))
+                except Exception:
+                    pass
+
+        # Create or update console handler
+        if console_handler is None:
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(level)
+            console_handler.setFormatter(ColorFormatter(fmt=fmt, datefmt=datefmt))
+            root_logger.addHandler(console_handler)
+        else:
+            console_handler.setLevel(level)
+            # Always ensure colored formatter on console
+            if not isinstance(console_handler.formatter, ColorFormatter):
+                console_handler.setFormatter(ColorFormatter(fmt=fmt, datefmt=datefmt))
+
+        # Create file handler if requested and not already present
+        if log_file is not None:
+            log_file_path = Path(log_file)
+            if log_file_path not in file_handler_exists_for:
+                fh = logging.FileHandler(log_file_path, encoding="utf-8")
+                fh.setLevel(level)
+                fh.setFormatter(logging.Formatter(fmt=fmt, datefmt=datefmt))
+                root_logger.addHandler(fh)
+
+        # Reduce noise from common third-party libraries
+        for noisy in ("fiona", "rasterio", "shapely", "matplotlib", "urllib3", "osgeo"):
+            logging.getLogger(noisy).setLevel(logging.WARNING)
+
+        self._logging_configured = True
+
         self.logger = logging.getLogger(__name__)
         self.logger.info("Logging is configured.")
 
@@ -287,26 +356,28 @@ class Config:
         """
         Set the error handler for GDAL.
 
-        Suppresses warnings and errors or redirects them to a custom handler.
-
-        Examples:
-            - Set a custom GDAL error handler:
-
-              ```python
-              >>> Config.set_error_handler()
-
-              ```
+        Redirect GDAL messages to Python's logging module with proper severity mapping.
         """
+        import logging
+
+        log = logging.getLogger("pyramids.gdal")
 
         def gdal_error_handler(err_class, err_num, err_msg):
-            """Error handler for GDAL."""
-            if err_class >= gdal.CE_Warning:
-                pass  # Ignore warnings and higher level messages (errors, fatal errors)
-            else:
-                print(
-                    "GDAL error (class {}, number {}): {}".format(
-                        err_class, err_num, err_msg
-                    )
-                )
+            """Error handler for GDAL mapped to logging levels."""
+            try:
+                # Map GDAL error classes to logging levels
+                if err_class == gdal.CE_Debug:
+                    log.debug(f"GDAL[{err_num}] {err_msg}")
+                elif err_class == gdal.CE_Warning:
+                    log.warning(f"GDAL[{err_num}] {err_msg}")
+                elif err_class == gdal.CE_Failure:
+                    log.error(f"GDAL[{err_num}] {err_msg}")
+                elif err_class == gdal.CE_Fatal:
+                    log.critical(f"GDAL[{err_num}] {err_msg}")
+                else:
+                    log.error(f"GDAL(class={err_class}, code={err_num}) {err_msg}")
+            except Exception:
+                # Fallback to error level if mapping fails for any reason
+                log.error(f"GDAL(class={err_class}, code={err_num}) {err_msg}")
 
         gdal.PushErrorHandler(gdal_error_handler)
