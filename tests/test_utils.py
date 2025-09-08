@@ -8,7 +8,7 @@ from pyramids.base._utils import (
     gdal_to_numpy_dtype,
     gdal_to_ogr_dtype,
     Catalog,
-    ogr_ds_togdal_dataset,
+    ogr_ds_to_gdal_dataset,
     ogr_to_numpy_dtype,
     color_name_to_gdal_constant,
     gdal_constant_to_color_name,
@@ -91,7 +91,7 @@ class TestCatalog:
 
 
 def test_ogr_ds_togdal_dataset(data_source: ogr.DataSource):
-    gdal_ds = ogr_ds_togdal_dataset(data_source)
+    gdal_ds = ogr_ds_to_gdal_dataset(data_source)
     assert isinstance(gdal_ds, gdal.Dataset)
 
 

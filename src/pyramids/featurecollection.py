@@ -32,7 +32,7 @@ from shapely.geometry.multipolygon import MultiPolygon
 from pyramids.base._errors import DriverNotExistError
 from pyramids.base._utils import (
     Catalog,
-    ogr_ds_togdal_dataset,
+    ogr_ds_to_gdal_dataset,
     ogr_to_numpy_dtype,
 )
 
@@ -352,7 +352,7 @@ class FeatureCollection:
         Returns:
             GeoDataFrame
         """
-        gdal_ds = ogr_ds_togdal_dataset(self.feature)
+        gdal_ds = ogr_ds_to_gdal_dataset(self.feature)
         layer_name = gdal_ds.GetLayer().GetName()  # self.layer_names[0]
         gdal.VectorTranslate(
             MEMORY_FILE,
