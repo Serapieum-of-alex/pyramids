@@ -76,6 +76,7 @@ class LoggerManager:
 
     FMT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
     DATE_FMT = "%Y-%m-%d %H:%M:%S"
+    LEVELS = ["FATAL", 'CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']
 
     def __init__(
         self,
@@ -101,7 +102,7 @@ class LoggerManager:
         """
         # Normalize level
         if isinstance(level, str):
-            if level.upper() not in logging._nameToLevel:
+            if level.upper() not in self.LEVELS:
                 raise ValueError(f"Invalid log level: {level}")
             level = getattr(logging, level.upper(), logging.INFO)
 
