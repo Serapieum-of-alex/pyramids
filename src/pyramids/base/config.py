@@ -14,7 +14,7 @@ Examples:
 - Initialize and access the GDAL driver path:
 
   ```python
-  >>> from pyramids.config import Config
+  >>> from pyramids.base.config import Config
   >>> config = Config()
   >>> config.initialize_gdal()
   >>> print(os.environ.get("GDAL_DRIVER_PATH"))  # doctest: +SKIP
@@ -202,12 +202,12 @@ class Config:
         - Initialize the configuration and load settings from the default config file:
 
           ```python
-          >>> from pyramids.config import Config
+          >>> from pyramids.base.config import Config
           >>> config = Config() # doctest: +SKIP
-          2025-01-11 23:13:48,889 - pyramids.config - INFO - Logging is configured.
-          2025-01-11 23:13:48,891 - pyramids.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
+          2025-01-11 23:13:48,889 - pyramids.base.config - INFO - Logging is configured.
+          2025-01-11 23:13:48,891 - pyramids.base.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
           >>> config.initialize_gdal() # doctest: +SKIP
-          2025-01-11 23:13:48,891 - pyramids.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
+          2025-01-11 23:13:48,891 - pyramids.base.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
           >>> print(os.environ.get("GDAL_DRIVER_PATH")) # doctest: +SKIP
           C:\\Miniconda3\\envs\\pyramids\\Library\\lib\\gdalplugins
 
@@ -258,7 +258,7 @@ class Config:
 
               ```
         """
-        with open(f"{root_path[0]}/{self.config_file}", "r") as file:
+        with open(f"{root_path[0]}/base/{self.config_file}", "r") as file:
             return yaml.safe_load(file)
 
     def initialize_gdal(self):

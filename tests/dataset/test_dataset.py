@@ -11,7 +11,7 @@ import pytest
 from shapely.geometry import Polygon
 from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, osr
-from pyramids._errors import NoDataValueError, ReadOnlyError, OutOfBoundsError
+from pyramids.base._errors import NoDataValueError, ReadOnlyError, OutOfBoundsError
 from pyramids.dataset import Dataset
 
 

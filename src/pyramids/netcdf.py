@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 from osgeo import gdal
-from pyramids._utils import (
+from pyramids.base._utils import (
     create_time_conversion_func,
     numpy_to_gdal_dtype,
 )

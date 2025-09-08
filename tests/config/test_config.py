@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 from pathlib import Path
-from pyramids.config import Config
+from pyramids.base.config import Config
 
 
 class TestConfigEndToEnd(unittest.TestCase):
@@ -51,8 +51,8 @@ class TestConfigMock(unittest.TestCase):
         self.config = Config()
 
     @patch("os.environ", new_callable=dict)
-    @patch("pyramids.config.Config.set_env_conda")
-    @patch("pyramids.config.Config.dynamic_env_variables")
+    @patch("pyramids.base.config.Config.set_env_conda")
+    @patch("pyramids.base.config.Config.dynamic_env_variables")
     @patch("osgeo.gdal.AllRegister")
     def test_initialize_gdal(self, mock_register, mock_dynamic, mock_conda, mock_env):
         mock_dynamic.return_value = Path("/usr/lib/gdalplugins")
@@ -87,7 +87,7 @@ class TestConfigMock(unittest.TestCase):
     @patch("pathlib.Path.exists", return_value=True)
     def test_dynamic_env_variables_windows(self, mock_exists, mock_site):
         with (
-            patch("pyramids.config.Config.set_env_conda", return_value=None),
+            patch("pyramids.base.config.Config.set_env_conda", return_value=None),
             patch("sys.platform", new="win32"),
         ):
             result = self.config.dynamic_env_variables()
@@ -100,7 +100,7 @@ class TestConfigMock(unittest.TestCase):
     @patch("pathlib.Path.exists", return_value=True)
     def test_dynamic_env_variables_linux(self, mock_exists):
         with (
-            patch("pyramids.config.Config.set_env_conda", return_value=None),
+            patch("pyramids.base.config.Config.set_env_conda", return_value=None),
             patch("sys.platform", new="linux"),
         ):
             result = self.config.dynamic_env_variables()

@@ -12,9 +12,9 @@ from typing import List, Union, Any, Callable, Dict
 import numpy as np
 from osgeo import gdal
 from pyramids.dataset import Dataset
-from pyramids._errors import DatasetNoFoundError
+from pyramids.base._errors import DatasetNoFoundError
 from pyramids.abstract_dataset import CATALOG
-from pyramids._utils import import_cleopatra
+from pyramids.base._utils import import_cleopatra
 
 try:
     from osgeo_utils import gdal_merge

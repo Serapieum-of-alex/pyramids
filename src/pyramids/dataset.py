@@ -18,14 +18,14 @@ from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, ogr, osr
 from osgeo.osr import SpatialReference
 
-from pyramids._errors import (
+from pyramids.base._errors import (
     AlignmentError,
     FailedToSaveError,
     NoDataValueError,
     ReadOnlyError,
     OutOfBoundsError,
 )
-from pyramids._utils import (
+from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     INTERPOLATION_METHODS,
     gdal_to_numpy_dtype,

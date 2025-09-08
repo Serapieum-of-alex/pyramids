@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from osgeo import gdal, ogr
 
-from pyramids._errors import DriverNotExistError
-from pyramids._utils import (
+from pyramids.base._errors import DriverNotExistError
+from pyramids.base._utils import (
     numpy_to_gdal_dtype,
     gdal_to_numpy_dtype,
     gdal_to_ogr_dtype,

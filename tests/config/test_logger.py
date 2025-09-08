@@ -6,7 +6,7 @@ from unittest.mock import patch
 import io
 from contextlib import redirect_stdout
 from osgeo import gdal
-from pyramids.config import LoggerManager
+from pyramids.base.config import LoggerManager
 
 
 @contextmanager
@@ -43,7 +43,7 @@ def test_console_logging_colored_and_message(capsys):
         # Should have at least one ANSI escape (from ColorFormatter)
         assert "\x1b[" in stderr_text
         assert "Logging is configured." in stderr_text
-        assert "pyramids.config" in stderr_text  # logger name
+        assert "pyramids.base.config" in stderr_text  # logger name
 
         # Also test that subsequent logs go to the console
         logging.getLogger(__name__).info("hello world")
@@ -124,7 +124,7 @@ def test_set_error_handler_logs_severities(mock_push, capsys):
         out = capsys.readouterr()
         err_text = out.err
         # Assert substrings exist in stderr (avoid brittle timestamp/ANSI sequences)
-        assert "pyramids.config.gdal | GDAL[22] warn msg" in err_text
-        assert "pyramids.config.gdal | GDAL[33] fail msg" in err_text
-        assert "pyramids.config.gdal | GDAL[44] fatal msg" in err_text
-        assert "pyramids.config.gdal | GDAL(class=999, code=55) unknown class msg" in err_text
+        assert "pyramids.base.config.gdal | GDAL[22] warn msg" in err_text
+        assert "pyramids.base.config.gdal | GDAL[33] fail msg" in err_text
+        assert "pyramids.base.config.gdal | GDAL[44] fatal msg" in err_text
+        assert "pyramids.base.config.gdal | GDAL(class=999, code=55) unknown class msg" in err_text

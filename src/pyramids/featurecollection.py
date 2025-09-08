@@ -29,8 +29,8 @@ from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
-from pyramids._errors import DriverNotExistError
-from pyramids._utils import (
+from pyramids.base._errors import DriverNotExistError
+from pyramids.base._utils import (
     Catalog,
     ogr_ds_togdal_dataset,
     ogr_to_numpy_dtype,

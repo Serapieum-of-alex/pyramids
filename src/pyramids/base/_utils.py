@@ -7,7 +7,7 @@ import numpy as np
 from pandas import DataFrame
 from osgeo import gdal, ogr, gdalconst  # gdal_array,
 from osgeo.gdal import Dataset
-from pyramids._errors import OptionalPackageDoesNotExist, DriverNotExistError
+from pyramids.base._errors import OptionalPackageDoesNotExist, DriverNotExistError
 from pyramids import __path__
 
 # from urllib.parse import urlparse as parse_url
@@ -376,7 +376,7 @@ class Catalog:
 
     @staticmethod
     def _get_gdal_catalog(path: str):
-        with open(f"{__path__[0]}/{path}", "r") as stream:
+        with open(f"{__path__[0]}/base/{path}", "r") as stream:
             gdal_catalog = yaml.safe_load(stream)
 
         return gdal_catalog
