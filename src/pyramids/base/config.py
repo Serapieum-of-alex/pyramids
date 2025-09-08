@@ -277,7 +277,8 @@ class Config:
 
               ```
         """
-        with open(f"{root_path[0]}/base/{self.config_file}", "r") as file:
+        config_file = Path(root_path[0]) / "base" / self.config_file
+        with open(config_file, "r") as file:
             return yaml.safe_load(file)
 
     def initialize_gdal(self):
@@ -421,7 +422,7 @@ class Config:
         Configure application-wide logging for Pyramids by delegating to LoggerManager.
 
         This method preserves the public API while separating responsibilities. It delegates
-        the actual logging configuration to LoggerManager.setup_logging and then sets
+        the actual logging configuration to the LoggerManager constructor and then sets
         self.logger and self._logging_configured for convenience/compatibility.
         """
         LoggerManager(level=level, log_file=log_file)
