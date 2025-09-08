@@ -47,17 +47,19 @@ from pyramids import __path__ as root_path
 
 class ColorFormatter(logging.Formatter):
     """Console formatter that colors the levelname based on log level."""
+
     RESET = "\x1b[0m"
     LEVEL_COLORS = {
-        logging.DEBUG: "\x1b[36m",    # Cyan
-        logging.INFO: "\x1b[32m",     # Green
+        logging.DEBUG: "\x1b[36m",  # Cyan
+        logging.INFO: "\x1b[32m",  # Green
         logging.WARNING: "\x1b[33m",  # Yellow
-        logging.ERROR: "\x1b[31m",    # Red
-        logging.CRITICAL: "\x1b[35m", # Magenta
+        logging.ERROR: "\x1b[31m",  # Red
+        logging.CRITICAL: "\x1b[35m",  # Magenta
     }
 
     def format(self, record: logging.LogRecord) -> str:
         import copy as _copy
+
         colored = _copy.copy(record)
         color = self.LEVEL_COLORS.get(record.levelno, "")
         colored.levelname = f"{color}{record.levelname}{self.RESET}"
@@ -71,15 +73,24 @@ class LoggerManager:
     from the Config class. It provides static methods to configure logging and to
     integrate GDAL error output with the configured logger hierarchy.
     """
+
     FMT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
     DATE_FMT = "%Y-%m-%d %H:%M:%S"
 
-    def __init__(self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None):
+    def __init__(
+        self,
+        level: Union[int, str] = logging.INFO,
+        log_file: Union[str, Path, None] = None,
+    ):
         """Initialize the logger manager."""
         self._setup_logging(level=level, log_file=log_file)
         self._set_error_handler()
 
-    def _setup_logging(self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None) -> None:
+    def _setup_logging(
+        self,
+        level: Union[int, str] = logging.INFO,
+        log_file: Union[str, Path, None] = None,
+    ) -> None:
         """
         Configure application-wide logging for Pyramids.
 
@@ -109,7 +120,9 @@ class LoggerManager:
         console_handler = None
         file_handler_exists_for = set()
         for h in root_logger.handlers:
-            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+            if isinstance(h, logging.StreamHandler) and not isinstance(
+                h, logging.FileHandler
+            ):
                 console_handler = h
             if isinstance(h, logging.FileHandler):
                 try:
@@ -121,13 +134,17 @@ class LoggerManager:
         if console_handler is None:
             console_handler = logging.StreamHandler()
             console_handler.setLevel(level)
-            console_handler.setFormatter(ColorFormatter(fmt=self.FMT, datefmt=self.DATE_FMT))
+            console_handler.setFormatter(
+                ColorFormatter(fmt=self.FMT, datefmt=self.DATE_FMT)
+            )
             root_logger.addHandler(console_handler)
         else:
             console_handler.setLevel(level)
             # Always ensure colored formatter on console
             if not isinstance(console_handler.formatter, ColorFormatter):
-                console_handler.setFormatter(ColorFormatter(fmt=self.FMT, datefmt=self.DATE_FMT))
+                console_handler.setFormatter(
+                    ColorFormatter(fmt=self.FMT, datefmt=self.DATE_FMT)
+                )
 
         # Create file handler if requested and not already present
         if log_file is not None:
@@ -161,7 +178,9 @@ class LoggerManager:
             try:
                 # For error classes lower than CE_Warning, print to stdout (expected by tests)
                 if err_class is not None and err_class < getattr(gdal, "CE_Warning", 2):
-                    print(f"GDAL error (class {err_class}, number {err_num}): {err_msg}")
+                    print(
+                        f"GDAL error (class {err_class}, number {err_num}): {err_msg}"
+                    )
                     return
 
                 # Map GDAL error classes to logging levels
@@ -393,7 +412,11 @@ class Config:
                 # print("GDAL plugins path could not be found. Please check your GDAL installation.")
         return gdal_plugins_path
 
-    def setup_logging(self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None):
+    def setup_logging(
+        self,
+        level: Union[int, str] = logging.INFO,
+        log_file: Union[str, Path, None] = None,
+    ):
         """
         Configure application-wide logging for Pyramids by delegating to LoggerManager.
 
