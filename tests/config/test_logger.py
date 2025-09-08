@@ -2,12 +2,11 @@ import logging
 from pathlib import Path
 from contextlib import contextmanager
 
-import pytest
 from unittest.mock import patch
 import io
 from contextlib import redirect_stdout
 from osgeo import gdal
-from pyramids.config import Config
+from pyramids.config import LoggerManager
 
 
 @contextmanager
@@ -33,18 +32,10 @@ def isolated_root_logging():
         root.setLevel(old_level)
 
 
-def _new_config_instance():
-    # Avoid running Config.__init__ (which touches GDAL, config file, etc.)
-    from pyramids.config import Config  # import here to avoid module-level cycles
-
-    return object.__new__(Config)
-
-
 def test_console_logging_colored_and_message(capsys):
     with isolated_root_logging():
-        cfg = _new_config_instance()
-        # Configure logging at INFO level
-        cfg.setup_logging(level="INFO")
+        # Configure logging at INFO level using LoggerManager
+        LoggerManager(level="INFO")
 
         # Emitted by setup_logging
         out = capsys.readouterr()
@@ -64,8 +55,7 @@ def test_console_logging_colored_and_message(capsys):
 def test_file_logging_no_colors_and_writes(tmp_path: Path):
     log_file = tmp_path / "test.log"
     with isolated_root_logging():
-        cfg = _new_config_instance()
-        cfg.setup_logging(level=logging.DEBUG, log_file=log_file)
+        LoggerManager(level=logging.DEBUG, log_file=log_file)
 
         # setup_logging should log a message already
         # Now log something extra
@@ -82,10 +72,9 @@ def test_file_logging_no_colors_and_writes(tmp_path: Path):
 def test_idempotent_handlers(tmp_path: Path):
     log_file = tmp_path / "dup.log"
     with isolated_root_logging() as root:
-        cfg = _new_config_instance()
-        cfg.setup_logging(level="INFO", log_file=log_file)
+        LoggerManager(level="INFO", log_file=log_file)
         # Call again with the same parameters
-        cfg.setup_logging(level="INFO", log_file=log_file)
+        LoggerManager(level="INFO", log_file=log_file)
 
         # Expect exactly one StreamHandler (console) and one FileHandler
         stream_handlers = [h for h in root.handlers if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)]
@@ -99,8 +88,8 @@ def test_idempotent_handlers(tmp_path: Path):
 
 @patch("osgeo.gdal.PushErrorHandler")
 def test_set_error_handler_prints_for_low_error_class(mock_push):
-    # Install the handler via Config and capture it from the patched GDAL entry point
-    Config.set_error_handler()
+    # Install the handler via LoggerManager and capture it from the patched GDAL entry point
+    LoggerManager()
     handler = mock_push.call_args[0][0]
 
     # Invoke the handler with an error class lower than CE_Warning to trigger printing
@@ -120,11 +109,9 @@ def _collect_log_messages(records, logger_name: str):
 def test_set_error_handler_logs_severities(mock_push, capsys):
     # Isolate root logging and configure
     with isolated_root_logging():
-        cfg = _new_config_instance()
-        cfg.setup_logging(level="DEBUG")
+        LoggerManager(level="DEBUG")
 
-        # Install handler and capture it
-        Config.set_error_handler()
+        # Capture the handler installed during construction
         handler = mock_push.call_args[0][0]
 
         # Emit messages: warning and higher are routed to the configured logger -> console (stderr)

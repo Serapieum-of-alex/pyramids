@@ -18,7 +18,6 @@ except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
 
 config = Config()
-config.set_error_handler()
 
 # documentation format
 __author__ = "Mostafa Farrag"

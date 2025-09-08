@@ -64,6 +64,124 @@ class ColorFormatter(logging.Formatter):
         return super().format(colored)
 
 
+class LoggerManager:
+    """Encapsulates logging setup and GDAL error handler installation for Pyramids.
+
+    This class centralizes logging responsibilities to improve separation of concerns
+    from the Config class. It provides static methods to configure logging and to
+    integrate GDAL error output with the configured logger hierarchy.
+    """
+    FMT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    DATE_FMT = "%Y-%m-%d %H:%M:%S"
+
+    def __init__(self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None):
+        """Initialize the logger manager."""
+        self._setup_logging(level=level, log_file=log_file)
+        self._set_error_handler()
+
+    def _setup_logging(self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None) -> None:
+        """
+        Configure application-wide logging for Pyramids.
+
+        This initializes a colored console handler and, optionally, a file handler using a consistent
+        format. The configuration is idempotent: calling this method multiple times will not create
+        duplicate handlers. It also reduces noise by elevating log levels for common third‑party
+        libraries.
+        """
+        # Normalize level
+        if isinstance(level, str):
+            if level.upper() not in logging._nameToLevel:
+                raise ValueError(f"Invalid log level: {level}")
+            level = getattr(logging, level.upper(), logging.INFO)
+
+        # Enable ANSI colors on Windows terminals when possible
+        try:  # pragma: no cover - best effort without hard dependency
+            import colorama
+
+            colorama.just_fix_windows_console()
+        except Exception:
+            pass
+
+        root_logger = logging.getLogger()
+        root_logger.setLevel(level)
+
+        # Determine if a console handler already exists
+        console_handler = None
+        file_handler_exists_for = set()
+        for h in root_logger.handlers:
+            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+                console_handler = h
+            if isinstance(h, logging.FileHandler):
+                try:
+                    file_handler_exists_for.add(Path(h.baseFilename))
+                except Exception:
+                    pass
+
+        # Create or update console handler
+        if console_handler is None:
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(level)
+            console_handler.setFormatter(ColorFormatter(fmt=self.FMT, datefmt=self.DATE_FMT))
+            root_logger.addHandler(console_handler)
+        else:
+            console_handler.setLevel(level)
+            # Always ensure colored formatter on console
+            if not isinstance(console_handler.formatter, ColorFormatter):
+                console_handler.setFormatter(ColorFormatter(fmt=self.FMT, datefmt=self.DATE_FMT))
+
+        # Create file handler if requested and not already present
+        if log_file is not None:
+            log_file_path = Path(log_file)
+            if log_file_path not in file_handler_exists_for:
+                fh = logging.FileHandler(log_file_path, encoding="utf-8")
+                fh.setLevel(level)
+                fh.setFormatter(logging.Formatter(fmt=self.FMT, datefmt=self.DATE_FMT))
+                root_logger.addHandler(fh)
+
+        # Reduce noise from common third-party libraries
+        for noisy in ("fiona", "rasterio", "shapely", "matplotlib", "urllib3", "osgeo"):
+            logging.getLogger(noisy).setLevel(logging.WARNING)
+
+        # Announce configuration via the module logger so tests can assert on it
+        logging.getLogger(__name__).info("Logging is configured.")
+
+    @staticmethod
+    def _set_error_handler() -> None:
+        """
+        Link GDAL error output to the configured Pyramids logger and install the handler.
+
+        Low-severity GDAL messages (below CE_Warning) are printed to stdout to preserve
+        expected behavior in tests and certain GDAL workflows.
+        """
+        # Use a child of the module logger so it inherits the handlers/format configured in setup_logging()
+        log = logging.getLogger(__name__).getChild("gdal")
+
+        def gdal_error_handler(err_class, err_num, err_msg):
+            """Error handler for GDAL mapped to logging levels."""
+            try:
+                # For error classes lower than CE_Warning, print to stdout (expected by tests)
+                if err_class is not None and err_class < getattr(gdal, "CE_Warning", 2):
+                    print(f"GDAL error (class {err_class}, number {err_num}): {err_msg}")
+                    return
+
+                # Map GDAL error classes to logging levels
+                if err_class == gdal.CE_Debug:
+                    log.debug(f"GDAL[{err_num}] {err_msg}")
+                elif err_class == gdal.CE_Warning:
+                    log.warning(f"GDAL[{err_num}] {err_msg}")
+                elif err_class == gdal.CE_Failure:
+                    log.error(f"GDAL[{err_num}] {err_msg}")
+                elif err_class == gdal.CE_Fatal:
+                    log.critical(f"GDAL[{err_num}] {err_msg}")
+                else:
+                    log.error(f"GDAL(class={err_class}, code={err_num}) {err_msg}")
+            except Exception:
+                # Fallback to error level if mapping fails for any reason
+                log.error(f"GDAL(class={err_class}, code={err_num}) {err_msg}")
+
+        gdal.PushErrorHandler(gdal_error_handler)
+
+
 class Config:
     r"""
     Configuration class for the pyramids package.
@@ -110,8 +228,6 @@ class Config:
         self.config_file = config_file
         self.config = self.load_config()
         self.initialize_gdal()
-        # Ensure GDAL errors are routed to our configured logger/handlers
-        self.set_error_handler()
 
     def load_config(self):
         """
@@ -279,227 +395,12 @@ class Config:
 
     def setup_logging(self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None):
         """
-        Configure application-wide logging for Pyramids.
+        Configure application-wide logging for Pyramids by delegating to LoggerManager.
 
-        This initializes a colored console handler and, optionally, a file handler using a consistent
-        format. The configuration is idempotent: calling this method multiple times will not create
-        duplicate handlers. It also reduces noise by elevating log levels for common third‑party
-        libraries.
-
-        Args:
-            level (int | str):
-                Desired logging level. Possible options are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`.
-                Defaults to ``logging.INFO``.
-            log_file (str | pathlib.Path | None):
-                Optional path to a log file. If provided, a file handler is added with the same format but without
-                ANSI colors. Defaults to ``None``.
-
-        Returns:
-            None: The method configures the root logger and sets ``self.logger`` to ``logging.getLogger(__name__)``.
-
-        Side Effects:
-            - Configures the root logger level to ``level``.
-            - Adds a colored console ``StreamHandler`` if not already present.
-            - Adds a non-colored ``FileHandler`` if ``log_file`` is provided and not already attached.
-            - Stores a module-specific logger on ``self.logger``.
-            - Sets a flag ``self._logging_configured = True``.
-            - Sets log level to WARNING for noisy libraries (``fiona``, ``rasterio``, ``shapely``, ``matplotlib``, ``urllib3``, ``osgeo``).
-
-        Raises:
-            None.
-
-        Notes:
-            - Colors are applied to the level name in console output using ANSI escape sequences. On Windows,
-              this attempts to enable ANSI handling via ``colorama.just_fix_windows_console()`` if available.
-            - The log format is hard-coded for consistency: ``"%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"``.
-            - The configuration is safe to call multiple times; it detects existing handlers to avoid duplication.
-
-        Warnings:
-            - If an invalid string is passed for ``level``, it falls back to ``logging.INFO``.
-            - When ``log_file`` points to an unreadable or unwritable path, the underlying ``logging.FileHandler``
-              may raise an exception at handler creation time.
-
-        Examples:
-            - Configure colored console logging at INFO level (default), then emit a message:
-
-                ```python
-                >>> from pyramids.config import Config # setup_logging() is called in __init__
-                >>> cfg = Config() # doctest: +SKIP
-                ```python
-                2025-09-08 13:05:55 | INFO | pyramids.config | Logging is configured.
-                2025-09-08 13:05:55 | INFO | pyramids.config | CONDA_PREFIX is not set. Ensure Conda is activated.
-                2025-09-08 13:05:55 | INFO | pyramids.config | GDAL_DRIVER_PATH set to: C:\pixi\envs\pyramids-gis\envs\dev\Library\Lib\gdalplugins
-
-                ```
-                >>> cfg.logger.info("Hello from Pyramids") #doctest: +SKIP
-                2025-09-08 13:06:43 | INFO | pyramids.config | Hello from Pyramids
-                
-                ```
-
-            - Add a file handler while keeping colored console output:
-
-                ```python
-                >>> from pathlib import Path
-                >>> cfg = Config()
-                >>> cfg.setup_logging(level="DEBUG", log_file=Path("pyramids.log")) #doctes: +SKIP
-                2025-09-08 13:07:48 | INFO | pyramids.config | Logging is configured.
-                ```
-
-            - Demonstrate idempotency (calling twice does not duplicate handlers):
-
-                ```python
-                >>> cfg = Config()
-                >>> cfg.setup_logging("INFO")
-                >>> cfg.setup_logging("INFO")  #doctest: +SKIP # no duplicate console/file handlers added
-                ```
+        This method preserves the public API while separating responsibilities. It delegates
+        the actual logging configuration to LoggerManager.setup_logging and then sets
+        self.logger and self._logging_configured for convenience/compatibility.
         """
-        # Normalize level
-        if isinstance(level, str):
-            if level.upper() not in logging._nameToLevel:
-                raise ValueError(f"Invalid log level: {level}")
-            level = getattr(logging, level.upper(), logging.INFO)
-
-        fmt = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
-        date_fmt = "%Y-%m-%d %H:%M:%S"
-
-
-        # Enable ANSI colors on Windows terminals when possible
-        try:  # pragma: no cover - best effort without hard dependency
-            import colorama
-
-            colorama.just_fix_windows_console()
-        except Exception:
-            pass
-
-        root_logger = logging.getLogger()
-        root_logger.setLevel(level)
-
-        # Determine if a console handler already exists
-        console_handler = None
-        file_handler_exists_for = set()
-        for h in root_logger.handlers:
-            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
-                console_handler = h
-            if isinstance(h, logging.FileHandler):
-                try:
-                    file_handler_exists_for.add(Path(h.baseFilename))
-                except Exception:
-                    pass
-
-        # Create or update console handler
-        if console_handler is None:
-            console_handler = logging.StreamHandler()
-            console_handler.setLevel(level)
-            console_handler.setFormatter(ColorFormatter(fmt=fmt, datefmt=date_fmt))
-            root_logger.addHandler(console_handler)
-        else:
-            console_handler.setLevel(level)
-            # Always ensure colored formatter on console
-            if not isinstance(console_handler.formatter, ColorFormatter):
-                console_handler.setFormatter(ColorFormatter(fmt=fmt, datefmt=date_fmt))
-
-        # Create file handler if requested and not already present
-        if log_file is not None:
-            log_file_path = Path(log_file)
-            if log_file_path not in file_handler_exists_for:
-                fh = logging.FileHandler(log_file_path, encoding="utf-8")
-                fh.setLevel(level)
-                fh.setFormatter(logging.Formatter(fmt=fmt, datefmt=date_fmt))
-                root_logger.addHandler(fh)
-
-        # Reduce noise from common third-party libraries
-        for noisy in ("fiona", "rasterio", "shapely", "matplotlib", "urllib3", "osgeo"):
-            logging.getLogger(noisy).setLevel(logging.WARNING)
-
+        LoggerManager(level=level, log_file=log_file)
         self._logging_configured = True
-
         self.logger = logging.getLogger(__name__)
-        self.logger.info("Logging is configured.")
-
-    @staticmethod
-    def set_error_handler():
-        """
-        Link GDAL error output to the configured Pyramids logger and install the handler.
-
-        This registers a GDAL error handler that maps GDAL severities to Python logging levels and routes
-        messages to the same logger hierarchy configured by `setup_logging()`. Specifically, it writes via
-        the module logger child `pyramids.config.gdal` (derived from `__name__`). Low-severity GDAL messages
-        (below `CE_Warning`) are printed to stdout to preserve expected behavior in tests and certain GDAL
-        workflows.
-
-        Returns:
-            None: Installs the GDAL error handler via `gdal.PushErrorHandler`.
-
-        Notes:
-            - Logger linkage: uses `logging.getLogger(__name__).getChild("gdal")`, which will inherit handlers and
-              formatting established by `setup_logging()`.
-            - Severity mapping:
-              - CE_Debug   -> logger.debug
-              - CE_Warning -> logger.warning
-              - CE_Failure -> logger.error
-              - CE_Fatal   -> logger.critical
-              - Other/unknown -> logger.error
-            - For severities lower than CE_Warning, the message is printed to stdout in the exact format expected by
-              tests: "GDAL error (class <class>, number <code>): <message>".
-
-        Examples:
-            - GDAL logs through the configured logger:
-
-                ```python
-                >>> from pyramids.config import Config  # doctest: +SKIP
-                >>> cfg = Config()  # installs logging and error handler
-                >>> import logging
-                >>> lg = logging.getLogger("pyramids.config.gdal")
-                >>> isinstance(lg, logging.Logger)
-                True
-                
-                ```
-
-            - Low severity message prints to stdout:
-
-                ```python
-                >>> # Simulate handler call (class < CE_Warning)
-                >>> from osgeo import gdal
-                >>> cfg = Config()
-                >>> # Access the installed handler by re-installing and capturing
-                >>> import io
-                >>> from contextlib import redirect_stdout
-                >>> import pyramids.config as pc
-                >>> # Re-install to get a direct reference to the handler function
-                >>> buf = io.StringIO()
-                >>> with redirect_stdout(buf):
-                ...     Config.set_error_handler(); handler = gdal.PushErrorHandler.call_args[0][0]  # doctest: +SKIP
-                >>> # Now call the handler (this line illustrates the expected output format)
-                >>> # handler(0, 42, "oops")  # doctest: +SKIP
-                
-                result of executing the line above
-                
-                ```
-        """
-        # Use a child of the module logger so it inherits the handlers/format configured in setup_logging()
-        log = logging.getLogger(__name__).getChild("gdal")
-
-        def gdal_error_handler(err_class, err_num, err_msg):
-            """Error handler for GDAL mapped to logging levels."""
-            try:
-                # For error classes lower than CE_Warning, print to stdout (expected by tests)
-                if err_class is not None and err_class < getattr(gdal, "CE_Warning", 2):
-                    print(f"GDAL error (class {err_class}, number {err_num}): {err_msg}")
-                    return
-
-                # Map GDAL error classes to logging levels
-                if err_class == gdal.CE_Debug:
-                    log.debug(f"GDAL[{err_num}] {err_msg}")
-                elif err_class == gdal.CE_Warning:
-                    log.warning(f"GDAL[{err_num}] {err_msg}")
-                elif err_class == gdal.CE_Failure:
-                    log.error(f"GDAL[{err_num}] {err_msg}")
-                elif err_class == gdal.CE_Fatal:
-                    log.critical(f"GDAL[{err_num}] {err_msg}")
-                else:
-                    log.error(f"GDAL(class={err_class}, code={err_num}) {err_msg}")
-            except Exception:
-                # Fallback to error level if mapping fails for any reason
-                log.error(f"GDAL(class={err_class}, code={err_num}) {err_msg}")
-
-        gdal.PushErrorHandler(gdal_error_handler)

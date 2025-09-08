@@ -1,12 +1,8 @@
 import os
-import pytest
 import unittest
 from unittest.mock import patch
 from pathlib import Path
-from osgeo import gdal
 from pyramids.config import Config
-import io
-from contextlib import redirect_stdout
 
 
 class TestConfigEndToEnd(unittest.TestCase):
@@ -48,10 +44,6 @@ class TestConfigEndToEnd(unittest.TestCase):
             self.assertEqual(os.environ.get("GDAL_DRIVER_PATH"), str(gdal_plugins_path))
         else:
             self.assertIsNone(gdal_plugins_path)
-
-    def test_set_error_handler(self):
-        """End-to-end test for setting the GDAL error handler."""
-        self.config.set_error_handler()
 
 
 class TestConfigMock(unittest.TestCase):
@@ -116,9 +108,5 @@ class TestConfigMock(unittest.TestCase):
         path = Path(os.environ["GDAL_DRIVER_PATH"])
         self.assertEqual(path, Path("/usr/local/lib/gdalplugins"))
 
-    @patch("osgeo.gdal.SetConfigOption")
-    def test_set_error_handler(self, mock_set_config):
-        self.config.set_error_handler()
-        mock_set_config.assert_not_called()
 
 
