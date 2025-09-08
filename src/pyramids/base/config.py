@@ -342,16 +342,16 @@ class Config:
         conda_prefix = os.getenv("CONDA_PREFIX")
 
         if not conda_prefix:
-            self.logger.info("CONDA_PREFIX is not set. Ensure Conda is activated.")
+            self.logger.debug("CONDA_PREFIX is not set. Ensure Conda is activated.")
             return None
 
         gdal_plugins_path = Path(conda_prefix) / "Library/lib/gdalplugins"
 
         if gdal_plugins_path.exists():
             os.environ["GDAL_DRIVER_PATH"] = str(gdal_plugins_path)
-            self.logger.info(f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}")
+            self.logger.debug(f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}")
         else:
-            self.logger.info(
+            self.logger.debug(
                 f"GDAL plugins path not found at: {gdal_plugins_path}. Please check your GDAL installation."
             )
             gdal_plugins_path = None
@@ -392,7 +392,7 @@ class Config:
                     gdal_plugins_path = Path(site_path) / "Library/Lib/gdalplugins"
                     if gdal_plugins_path.exists():
                         os.environ["GDAL_DRIVER_PATH"] = str(gdal_plugins_path)
-                        self.logger.info(
+                        self.logger.debug(
                             f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}"
                         )
             else:
@@ -407,7 +407,7 @@ class Config:
                     if path.exists():
                         os.environ["GDAL_DRIVER_PATH"] = str(path)
                         gdal_plugins_path = path
-                        self.logger.info(f"GDAL_DRIVER_PATH set to: {path}")
+                        self.logger.debug(f"GDAL_DRIVER_PATH set to: {path}")
 
                 # If the path is not found
                 # print("GDAL plugins path could not be found. Please check your GDAL installation.")
