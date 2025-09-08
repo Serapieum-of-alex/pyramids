@@ -46,8 +46,6 @@ class MultiDataset:
         self._files = files
         self._time_length = time_length
 
-        pass
-
     def __str__(self):
         """__str__."""
         message = f"""
@@ -293,7 +291,7 @@ class MultiDataset:
 
         return cls(sample, len(files), files)
 
-    def open_MultiDataset(self, band: int = 0) -> None:
+    def open_multi_dataset(self, band: int = 0) -> None:
         """open_MultiDataset.
 
         Read values from the given band as arrays for all files.
