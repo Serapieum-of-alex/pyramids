@@ -536,8 +536,8 @@ class NetCDF(Dataset):
 
               ```python
               >>> dataset_1 = Dataset.read_file(
-              >>>   "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
-              >>> )
+              ...   "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
+              ... )
               >>> dataset_2 = Dataset.read_file("tests/data/netcdf/noah-precipitation-1979.nc")
               >>> dataset_1.add_variable(dataset_2, "temperature")
 

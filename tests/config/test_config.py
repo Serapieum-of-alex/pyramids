@@ -107,6 +107,3 @@ class TestConfigMock(unittest.TestCase):
         self.assertEqual(result, Path("/usr/local/lib/gdalplugins"))
         path = Path(os.environ["GDAL_DRIVER_PATH"])
         self.assertEqual(path, Path("/usr/local/lib/gdalplugins"))
-
-
-

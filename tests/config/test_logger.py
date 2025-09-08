@@ -1,10 +1,9 @@
 import logging
 from pathlib import Path
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 
 from unittest.mock import patch
 import io
-from contextlib import redirect_stdout
 from osgeo import gdal
 from pyramids.base.config import LoggerManager
 
@@ -77,13 +76,17 @@ def test_idempotent_handlers(tmp_path: Path):
         LoggerManager(level="INFO", log_file=log_file)
 
         # Expect exactly one StreamHandler (console) and one FileHandler
-        stream_handlers = [h for h in root.handlers if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)]
+        stream_handlers = [
+            h
+            for h in root.handlers
+            if isinstance(h, logging.StreamHandler)
+            and not isinstance(h, logging.FileHandler)
+        ]
         file_handlers = [h for h in root.handlers if isinstance(h, logging.FileHandler)]
         assert len(stream_handlers) == 1
         assert len(file_handlers) == 1
         # And that file handler targets the same file
         assert Path(file_handlers[0].baseFilename) == log_file
-
 
 
 @patch("osgeo.gdal.PushErrorHandler")
@@ -127,4 +130,7 @@ def test_set_error_handler_logs_severities(mock_push, capsys):
         assert "pyramids.base.config.gdal | GDAL[22] warn msg" in err_text
         assert "pyramids.base.config.gdal | GDAL[33] fail msg" in err_text
         assert "pyramids.base.config.gdal | GDAL[44] fatal msg" in err_text
-        assert "pyramids.base.config.gdal | GDAL(class=999, code=55) unknown class msg" in err_text
+        assert (
+            "pyramids.base.config.gdal | GDAL(class=999, code=55) unknown class msg"
+            in err_text
+        )
