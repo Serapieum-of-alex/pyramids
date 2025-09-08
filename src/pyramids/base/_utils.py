@@ -1,6 +1,7 @@
 """Utility module."""
 
 from typing import Union
+from pathlib import Path
 import yaml
 import datetime as dt
 import numpy as np
@@ -376,7 +377,8 @@ class Catalog:
 
     @staticmethod
     def _get_gdal_catalog(path: str):
-        with open(f"{__path__[0]}/base/{path}", "r") as stream:
+        path = Path(__path__[0]) / f"/base/{path}"
+        with open(path, "r") as stream:
             gdal_catalog = yaml.safe_load(stream)
 
         return gdal_catalog
