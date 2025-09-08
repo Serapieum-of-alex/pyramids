@@ -19,7 +19,7 @@ from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 
 
-class DataCube(Dataset):
+class NetCDF(Dataset):
     """DataCube.
 
     DataCube class is a recursive data structure or self-referential object.

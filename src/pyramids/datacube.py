@@ -22,7 +22,7 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
-class MultiDataset:
+class DataCube:
     """MultiDataset."""
 
     files: List[str]
