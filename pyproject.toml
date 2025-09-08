@@ -33,6 +33,7 @@ dependencies = [
     "pyproj >=3.7.0",
     "PyYAML >=6.0.0",
     "Shapely >=2.0.0",
+    "colorama >=0.4.6,<0.5"
 ]
 
 [project.optional-dependencies]
