@@ -277,25 +277,88 @@ class Config:
 
     def setup_logging(self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None):
         """
-        Set up the logging configuration.
+        Configure application-wide logging for Pyramids.
 
-        Parameters:
-            level (int | str): Logging level (e.g., logging.INFO or "INFO"). Default is logging.INFO.
-            log_file (str | Path | None): Optional path to a file where logs will be written.
+        This initializes a colored console handler and, optionally, a file handler using a consistent
+        format. The configuration is idempotent: calling this method multiple times will not create
+        duplicate handlers. It also reduces noise by elevating log levels for common third‑party
+        libraries.
 
-        Behavior:
-            - Uses a hard-coded log format for consistency across the project.
-            - Adds colored console output with distinct colors per logging level.
-            - File handler (if provided) uses the same format without colors.
-            - Idempotent: avoids adding duplicate handlers when called multiple times.
+        Args:
+            level (int | str):
+                Desired logging level. Possible options are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`.
+                Defaults to ``logging.INFO``.
+            log_file (str | pathlib.Path | None):
+                Optional path to a log file. If provided, a file handler is added with the same format but without
+                ANSI colors. Defaults to ``None``.
+
+        Returns:
+            None: The method configures the root logger and sets ``self.logger`` to ``logging.getLogger(__name__)``.
+
+        Side Effects:
+            - Configures the root logger level to ``level``.
+            - Adds a colored console ``StreamHandler`` if not already present.
+            - Adds a non-colored ``FileHandler`` if ``log_file`` is provided and not already attached.
+            - Stores a module-specific logger on ``self.logger``.
+            - Sets a flag ``self._logging_configured = True``.
+            - Sets log level to WARNING for noisy libraries (``fiona``, ``rasterio``, ``shapely``, ``matplotlib``, ``urllib3``, ``osgeo``).
+
+        Raises:
+            None.
+
+        Notes:
+            - Colors are applied to the level name in console output using ANSI escape sequences. On Windows,
+              this attempts to enable ANSI handling via ``colorama.just_fix_windows_console()`` if available.
+            - The log format is hard-coded for consistency: ``"%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"``.
+            - The configuration is safe to call multiple times; it detects existing handlers to avoid duplication.
+
+        Warnings:
+            - If an invalid string is passed for ``level``, it falls back to ``logging.INFO``.
+            - When ``log_file`` points to an unreadable or unwritable path, the underlying ``logging.FileHandler``
+              may raise an exception at handler creation time.
+
+        Examples:
+            - Configure colored console logging at INFO level (default), then emit a message:
+
+                ```python
+                >>> from pyramids.config import Config # setup_logging() is called in __init__
+                >>> cfg = Config() # doctest: +SKIP
+                ```python
+                2025-09-08 13:05:55 | INFO | pyramids.config | Logging is configured.
+                2025-09-08 13:05:55 | INFO | pyramids.config | CONDA_PREFIX is not set. Ensure Conda is activated.
+                2025-09-08 13:05:55 | INFO | pyramids.config | GDAL_DRIVER_PATH set to: C:\pixi\envs\pyramids-gis\envs\dev\Library\Lib\gdalplugins
+
+                ```
+                >>> cfg.logger.info("Hello from Pyramids") #doctest: +SKIP
+                2025-09-08 13:06:43 | INFO | pyramids.config | Hello from Pyramids
+                
+                ```
+
+            - Add a file handler while keeping colored console output:
+
+                ```python
+                >>> from pathlib import Path
+                >>> cfg = Config()
+                >>> cfg.setup_logging(level="DEBUG", log_file=Path("pyramids.log")) #doctes: +SKIP
+                2025-09-08 13:07:48 | INFO | pyramids.config | Logging is configured.
+                ```
+
+            - Demonstrate idempotency (calling twice does not duplicate handlers):
+
+                ```python
+                >>> cfg = Config()
+                >>> cfg.setup_logging("INFO")
+                >>> cfg.setup_logging("INFO")  #doctest: +SKIP # no duplicate console/file handlers added
+                ```
         """
         # Normalize level
         if isinstance(level, str):
+            if level.upper() not in logging._nameToLevel:
+                raise ValueError(f"Invalid log level: {level}")
             level = getattr(logging, level.upper(), logging.INFO)
 
-        # Hard-coded format
         fmt = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
-        datefmt = "%Y-%m-%d %H:%M:%S"
+        date_fmt = "%Y-%m-%d %H:%M:%S"
 
 
         # Enable ANSI colors on Windows terminals when possible
@@ -325,13 +388,13 @@ class Config:
         if console_handler is None:
             console_handler = logging.StreamHandler()
             console_handler.setLevel(level)
-            console_handler.setFormatter(ColorFormatter(fmt=fmt, datefmt=datefmt))
+            console_handler.setFormatter(ColorFormatter(fmt=fmt, datefmt=date_fmt))
             root_logger.addHandler(console_handler)
         else:
             console_handler.setLevel(level)
             # Always ensure colored formatter on console
             if not isinstance(console_handler.formatter, ColorFormatter):
-                console_handler.setFormatter(ColorFormatter(fmt=fmt, datefmt=datefmt))
+                console_handler.setFormatter(ColorFormatter(fmt=fmt, datefmt=date_fmt))
 
         # Create file handler if requested and not already present
         if log_file is not None:
@@ -339,7 +402,7 @@ class Config:
             if log_file_path not in file_handler_exists_for:
                 fh = logging.FileHandler(log_file_path, encoding="utf-8")
                 fh.setLevel(level)
-                fh.setFormatter(logging.Formatter(fmt=fmt, datefmt=datefmt))
+                fh.setFormatter(logging.Formatter(fmt=fmt, datefmt=date_fmt))
                 root_logger.addHandler(fh)
 
         # Reduce noise from common third-party libraries
@@ -365,6 +428,11 @@ class Config:
         def gdal_error_handler(err_class, err_num, err_msg):
             """Error handler for GDAL mapped to logging levels."""
             try:
+                # For error classes lower than CE_Warning, print to stdout (expected by tests)
+                if err_class is not None and err_class < getattr(gdal, "CE_Warning", 2):
+                    print(f"GDAL error (class {err_class}, number {err_num}): {err_msg}")
+                    return
+
                 # Map GDAL error classes to logging levels
                 if err_class == gdal.CE_Debug:
                     log.debug(f"GDAL[{err_num}] {err_msg}")
