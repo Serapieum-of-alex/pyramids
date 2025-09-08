@@ -110,6 +110,8 @@ class Config:
         self.config_file = config_file
         self.config = self.load_config()
         self.initialize_gdal()
+        # Ensure GDAL errors are routed to our configured logger/handlers
+        self.set_error_handler()
 
     def load_config(self):
         """
@@ -417,13 +419,65 @@ class Config:
     @staticmethod
     def set_error_handler():
         """
-        Set the error handler for GDAL.
+        Link GDAL error output to the configured Pyramids logger and install the handler.
 
-        Redirect GDAL messages to Python's logging module with proper severity mapping.
+        This registers a GDAL error handler that maps GDAL severities to Python logging levels and routes
+        messages to the same logger hierarchy configured by `setup_logging()`. Specifically, it writes via
+        the module logger child `pyramids.config.gdal` (derived from `__name__`). Low-severity GDAL messages
+        (below `CE_Warning`) are printed to stdout to preserve expected behavior in tests and certain GDAL
+        workflows.
+
+        Returns:
+            None: Installs the GDAL error handler via `gdal.PushErrorHandler`.
+
+        Notes:
+            - Logger linkage: uses `logging.getLogger(__name__).getChild("gdal")`, which will inherit handlers and
+              formatting established by `setup_logging()`.
+            - Severity mapping:
+              - CE_Debug   -> logger.debug
+              - CE_Warning -> logger.warning
+              - CE_Failure -> logger.error
+              - CE_Fatal   -> logger.critical
+              - Other/unknown -> logger.error
+            - For severities lower than CE_Warning, the message is printed to stdout in the exact format expected by
+              tests: "GDAL error (class <class>, number <code>): <message>".
+
+        Examples:
+            - GDAL logs through the configured logger:
+
+                ```python
+                >>> from pyramids.config import Config  # doctest: +SKIP
+                >>> cfg = Config()  # installs logging and error handler
+                >>> import logging
+                >>> lg = logging.getLogger("pyramids.config.gdal")
+                >>> isinstance(lg, logging.Logger)
+                True
+                
+                ```
+
+            - Low severity message prints to stdout:
+
+                ```python
+                >>> # Simulate handler call (class < CE_Warning)
+                >>> from osgeo import gdal
+                >>> cfg = Config()
+                >>> # Access the installed handler by re-installing and capturing
+                >>> import io
+                >>> from contextlib import redirect_stdout
+                >>> import pyramids.config as pc
+                >>> # Re-install to get a direct reference to the handler function
+                >>> buf = io.StringIO()
+                >>> with redirect_stdout(buf):
+                ...     Config.set_error_handler(); handler = gdal.PushErrorHandler.call_args[0][0]  # doctest: +SKIP
+                >>> # Now call the handler (this line illustrates the expected output format)
+                >>> # handler(0, 42, "oops")  # doctest: +SKIP
+                
+                result of executing the line above
+                
+                ```
         """
-        import logging
-
-        log = logging.getLogger("pyramids.gdal")
+        # Use a child of the module logger so it inherits the handlers/format configured in setup_logging()
+        log = logging.getLogger(__name__).getChild("gdal")
 
         def gdal_error_handler(err_class, err_num, err_msg):
             """Error handler for GDAL mapped to logging levels."""
