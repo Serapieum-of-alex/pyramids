@@ -3,25 +3,25 @@ import pytest
 from osgeo import gdal
 import numpy as np
 from pyramids.dataset import Dataset
-from pyramids.netcdf import NetCDF as DataCube
+from pyramids.netcdf import NetCDF
 
 
 class TestProperties:
     def test__str__(self, noah_nc_path: str):
-        src = DataCube.read_file(noah_nc_path)
+        src = NetCDF.read_file(noah_nc_path)
         assert isinstance(src.__str__(), str)
 
     def test__repr__(self, noah_nc_path: str):
-        src = DataCube.read_file(noah_nc_path)
+        src = NetCDF.read_file(noah_nc_path)
         assert isinstance(src.__repr__(), str)
 
     def test_x_lon_y_lat(self, noah_nc_path: str):
-        cube = DataCube.read_file(noah_nc_path)
+        cube = NetCDF.read_file(noah_nc_path)
         np.testing.assert_array_equal(cube.x, cube.lon)
         np.testing.assert_array_equal(cube.y, cube.lat)
 
     def test_geotransform(self, noah_nc_path: str):
-        cube = DataCube.read_file(noah_nc_path)
+        cube = NetCDF.read_file(noah_nc_path)
         assert cube.geotransform == (-0.25, 1.0, 0, -89.25, 0, -1.0)
 
 
@@ -31,10 +31,10 @@ def test_netcdf_create_from_array(
     src_geotransform: tuple,
     src_epsg: int,
     src_no_data_value: float,
-) -> DataCube:
+) -> NetCDF:
     src_arr = np.array([src_arr, src_arr, src_arr])
     variable_name = "values"
-    cube = DataCube.create_from_array(
+    cube = NetCDF.create_from_array(
         arr=src_arr,
         geo=src_geotransform,
         epsg=src_epsg,
@@ -64,7 +64,7 @@ def test_netcdf_create_from_array(
 
 class TestReadNetCDF:
     def test_standard_netcdf(self, noah_nc_path):
-        dataset = DataCube.read_file(noah_nc_path)
+        dataset = NetCDF.read_file(noah_nc_path)
         assert dataset.raster is not None
         assert dataset.shape == (0, 512, 512)
         assert dataset.variable_names == ["Band1", "Band2", "Band3", "Band4"]
@@ -82,10 +82,10 @@ class TestReadNetCDF:
         assert var.cell_size == 0.5
 
     def test_read_netcdf_file_created_by_pyramids(self, pyramids_created_nc_3d: str):
-        dataset = DataCube.read_file(pyramids_created_nc_3d)
+        dataset = NetCDF.read_file(pyramids_created_nc_3d)
         # arr = dataset.read_array()
         assert dataset.variable_names == []
-        dataset = DataCube.read_file(
+        dataset = NetCDF.read_file(
             pyramids_created_nc_3d, open_as_multi_dimensional=True
         )
         assert dataset.variable_names == ["values"]
@@ -112,7 +112,7 @@ class TestCreateNetCDF:
         no_data_value = dataset.no_data_value[0]
         band_values = [1]
         variable_name = "values"
-        src = DataCube._create_netcdf_from_array(
+        src = NetCDF._create_netcdf_from_array(
             arr,
             variable_name,
             cols,
@@ -155,13 +155,13 @@ class TestCreateNetCDF:
         """
         mainly to test the self.get_variables() method
         """
-        dataset = DataCube(test_create_netcdf_from_array_2d)
+        dataset = NetCDF(test_create_netcdf_from_array_2d)
         assert dataset.variable_names == ["values"]
         assert dataset.get_variable("values").shape == (1, 13, 14)
 
 
 class TestAddVariable:
-    def test_add_variable(self, test_netcdf_create_from_array: DataCube):
+    def test_add_variable(self, test_netcdf_create_from_array: NetCDF):
         dataset = test_netcdf_create_from_array
         dataset.add_variable(test_netcdf_create_from_array)
 
@@ -182,26 +182,26 @@ class TestAddVariable:
 class TestMultiVariablesNC:
     def test_x_lon_y_lat(self, two_variable_nc: str):
         """test getting the lat/lon/x/y values from the outer group"""
-        cube = DataCube.read_file(two_variable_nc)
+        cube = NetCDF.read_file(two_variable_nc)
         np.testing.assert_array_equal(cube.x, np.array(range(-10, 11), dtype=float))
         np.testing.assert_array_equal(cube.lon, np.array(range(-10, 11), dtype=float))
         np.testing.assert_array_equal(cube.y, np.array(range(-10, 11), dtype=float))
         np.testing.assert_array_equal(cube.lat, np.array(range(-10, 11), dtype=float))
 
     def test_geotransform(self, two_variable_nc: str):
-        cube = DataCube.read_file(two_variable_nc)
+        cube = NetCDF.read_file(two_variable_nc)
         assert cube.geotransform == (-10.5, 1.0, 0, -9.5, 0, -1.0)
 
     def test_variables(self, two_variable_nc: str):
-        cube = DataCube.read_file(two_variable_nc)
+        cube = NetCDF.read_file(two_variable_nc)
         assert cube.variable_names == ["z", "q"]
-        assert isinstance(cube.variables["q"], DataCube)
-        assert isinstance(cube.variables["z"], DataCube)
+        assert isinstance(cube.variables["q"], NetCDF)
+        assert isinstance(cube.variables["z"], NetCDF)
         var = cube.get_variable("q")
         assert var.shape == (1, 21, 21)
 
     def test_variables_x_lon_y_lat(self, two_variable_nc: str):
-        cube = DataCube.read_file(two_variable_nc)
+        cube = NetCDF.read_file(two_variable_nc)
         var = cube.get_variable("q")
         print(var.x)
         print(var.geotransform)
