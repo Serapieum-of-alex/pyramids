@@ -540,7 +540,7 @@ class MultiDataset:
                 Default is False.
 
         Returns:
-            None: Updates the datacube values and base in place after reprojection.
+            None: Updates the multidataset values and base in place after reprojection.
 
         Examples:
             - Reproject dataset to EPSG:3857:
@@ -783,10 +783,10 @@ class MultiDataset:
 
         Returns:
             None:
-                Updates the datacube values in place to match the alignment of alignment_src.
+                Updates the multidataset values in place to match the alignment of alignment_src.
 
         Examples:
-            - Align all rasters in the datacube to a DEM raster:
+            - Align all rasters in the multidataset to a DEM raster:
 
               ```python
               >>> dem_path = "01GIS/inputs/4000/acc4000.tif"

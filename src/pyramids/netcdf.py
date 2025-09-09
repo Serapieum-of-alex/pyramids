@@ -22,10 +22,10 @@ from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 class NetCDF(Dataset):
     """NetCDF.
 
-    DataCube class is a recursive data structure or self-referential object.
-    The DataCube class contains methods to deal with DataCube files.
+    NetCDF class is a recursive data structure or self-referential object.
+    The NetCDF class contains methods to deal with NetCDF files.
 
-    DataCube Creation guidelines:
+    NetCDF Creation guidelines:
         https://acdguide.github.io/Governance/create/create-basics.html
     """
 
@@ -159,7 +159,7 @@ class NetCDF(Dataset):
 
     @property
     def variables(self) -> Dict[str, str]:
-        """Variables in the dataset (resembles the variables in DataCube files.)."""
+        """Variables in the dataset (resembles the variables in NetCDF files.)."""
         vars_dict = {}
         for var in self.variable_names:
             vars_dict[var] = self.get_variable(var)
@@ -627,7 +627,7 @@ class NetCDF(Dataset):
         new_md_array.SetSpatialRef(src_mdarray.GetSpatialRef())
 
     def add_variable(
-        self, dataset: Union["Dataset", "DataCube"], variable_name: str = None
+        self, dataset: Union["Dataset", "NetCDF"], variable_name: str = None
     ):
         """add_variable.
 
