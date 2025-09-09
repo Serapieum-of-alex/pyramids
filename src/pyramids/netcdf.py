@@ -32,11 +32,10 @@ class NetCDF(Dataset):
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
         """__init__.
 
-        Hint
-        ----
-        - The method will first look for the variables named "lat" and "lon" in the dataset.
-        - If the variables are not found, the method will look for the variables named "x" and "y".
-        - If the variables are not found, the method will return None.
+        Hint:
+            - The method will first look for the variables named "lat" and "lon" in the dataset.
+            - If the variables are not found, the method will look for the variables named "x" and "y".
+            - If the variables are not found, the method will return None.
 
         """
         super().__init__(src, access=access)
