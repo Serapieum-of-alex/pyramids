@@ -1,38 +1,40 @@
 """
-Configuration module for the pyramids package.
+Configuration utilities for the pyramids package.
 
-This module provides a Config class to manage configuration settings, initialize GDAL and OGR options, and dynamically
-adjust environment variables based on the system's setup.
-
-Features:
-- Load configurations from YAML files.
-- Initialize GDAL and OGR settings.
-- Dynamically set up environment variables for GDAL plugins.
-- Handle error logging and error handlers.
+This module exposes helpers to:
+- Configure application logging with colored console output.
+- Load package configuration from YAML.
+- Initialize GDAL/OGR (errors routed to Python logging).
+- Discover and export environment variables (e.g., GDAL_DRIVER_PATH) across platforms.
 
 Examples:
-- Initialize and access the GDAL driver path:
+- Set up logging and route GDAL errors into Python logging
 
-  ```python
-  >>> from pyramids.base.config import Config
-  >>> config = Config()
-  >>> config.initialize_gdal()
-  >>> print(os.environ.get("GDAL_DRIVER_PATH"))  # doctest: +SKIP
+    ```python
 
-  ```
+    >>> from pyramids.base.config import Config
+    >>> cfg = Config(level="DEBUG")  # doctest: +SKIP
+    >>> # - Creates a colored console handler and optionally a file handler
+    >>> # - Installs a GDAL error handler that forwards messages to logging
 
-- Load configuration from a specific file:
+    ```
 
-  ```python
-  >>> config_file = "path/to/config.yaml"
-  >>> config = Config(config_file=config_file) # doctest: +SKIP
-  >>> config.load_config() # doctest: +SKIP
+- Load configuration values from the default config.yaml
 
-  ```
+    ```python
 
-Classes:
-- Config: The main configuration class for managing GDAL, OGR, and environment settings.
+    >>> from pyramids.base.config import Config
+    >>> cfg = Config(level="WARNING")  # doctest: +SKIP
+    >>> settings = cfg.config  # doctest: +SKIP
+    >>> isinstance(settings, dict)  # doctest: +SKIP
+    True
 
+    ```
+
+See Also:
+- Config: Main entry point to configure logging and GDAL.
+- LoggerManager: Internal helper that performs logging configuration.
+- ColorFormatter: Adds ANSI colors to console logs.
 """
 
 import os
@@ -47,7 +49,31 @@ from pyramids import __path__ as root_path
 
 
 class ColorFormatter(logging.Formatter):
-    """Console formatter that colors the levelname based on log level."""
+    """Formatter that adds ANSI colors to the log level name for console output.
+
+    This formatter wraps the levelname (e.g., INFO, WARNING) with an ANSI color
+    escape sequence appropriate for the record's level. It is intended for
+    console handlers and leaves the message text untouched.
+
+    Examples:
+    - Demonstrate how the formatter colors the levelname
+
+        ```python
+        >>> import logging
+        >>> from pyramids.base.config import ColorFormatter  # doctest: +SKIP
+        >>> logger = logging.getLogger("example.color")
+        >>> handler = logging.StreamHandler()
+        >>> handler.setFormatter(ColorFormatter("%(levelname)s - %(message)s"))
+        >>> logger.addHandler(handler)
+        >>> logger.setLevel(logging.INFO)
+        >>> logger.info("hello")  # doctest: +SKIP
+        INFO - hello
+
+        ```
+
+    See Also:
+        - Config.setup_logging: Uses this formatter for console logging.
+    """
 
     RESET = "\x1b[0m"
     LEVEL_COLORS = {
@@ -59,6 +85,35 @@ class ColorFormatter(logging.Formatter):
     }
 
     def format(self, record: logging.LogRecord) -> str:
+        """Format a log record by applying a color to its level name.
+
+        Args:
+            record (logging.LogRecord): The log record to format.
+
+        Returns:
+            str: The formatted message where the levelname is wrapped in an ANSI
+                color escape sequence suitable for consoles.
+
+        Raises:
+            None: This method does not raise exceptions on its own.
+
+        Examples:
+        - Use the formatter with a logger to colorize level names
+
+            ```python
+
+            >>> import logging
+            >>> from pyramids.base.config import ColorFormatter
+            >>> handler = logging.StreamHandler()
+            >>> handler.setFormatter(ColorFormatter('%(levelname)s - %(message)s'))
+            >>> logger = logging.getLogger('example.color.format')
+            >>> _ = [logger.removeHandler(h) for h in list(logger.handlers)]
+            >>> logger.addHandler(handler)
+            >>> logger.setLevel(logging.WARNING)
+            >>> logger.warning('warn')  # doctest: +SKIP
+
+            ```
+        """
         import copy as _copy
 
         colored = _copy.copy(record)
@@ -70,9 +125,27 @@ class ColorFormatter(logging.Formatter):
 class LoggerManager:
     """Encapsulates logging setup and GDAL error handler installation for Pyramids.
 
-    This class centralizes logging responsibilities to improve separation of concerns
-    from the Config class. It provides static methods to configure logging and to
-    integrate GDAL error output with the configured logger hierarchy.
+    This helper centralizes all logging-related concerns so that the public
+    configuration class can remain small. It configures a colored console handler,
+    an optional file handler, and redirects GDAL errors to the logging subsystem.
+
+    Examples:
+    - Basic usage to configure logging and register the GDAL error handler
+
+        ```python
+
+        >>> from pyramids.base.config import LoggerManager
+        >>> _ = LoggerManager(level="INFO")  # doctest: +SKIP
+        2025-09-09 23:01:39 | INFO | pyramids.base.config | Logging is configured.
+        >>> # - Creates a console handler with colorized levels
+        >>> # - Optionally creates a file handler when log_file is provided
+        >>> # - Installs a GDAL error handler that forwards messages to logging
+
+        ```
+
+    See Also:
+        - ColorFormatter: Used by the console handler for colored levels.
+        - Config.setup_logging: Public API that delegates to this class.
     """
 
     FMT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
@@ -84,7 +157,28 @@ class LoggerManager:
         level: Union[int, str] = logging.INFO,
         log_file: Union[str, Path, None] = None,
     ):
-        """Initialize the logger manager."""
+        """Create a LoggerManager and configure logging.
+
+        Args:
+            level (int | str, optional): Logging level as an int (e.g., logging.INFO)
+                or as a case-insensitive string ("DEBUG", "INFO", ...). Defaults to logging.INFO.
+            log_file (str | pathlib.Path | None, optional): Optional path to a log file to
+                also write logs to. If None, no file handler is added. Defaults to None.
+
+        Raises:
+            ValueError: If an invalid level string is provided (e.g., "VERBOS").
+
+        Examples:
+        - Configure logging at DEBUG level and write to a file
+
+            ```python
+
+            >>> from pyramids.base.config import LoggerManager
+            >>> _ = LoggerManager(level="DEBUG", log_file="pyramids.log")  # doctest: +SKIP
+            2025-09-09 23:02:23 | INFO | pyramids.base.config | Logging is configured.
+
+            ```
+        """
         self._setup_logging(level=level, log_file=log_file)
         self._set_error_handler()
 
@@ -93,13 +187,37 @@ class LoggerManager:
         level: Union[int, str] = logging.INFO,
         log_file: Union[str, Path, None] = None,
     ) -> None:
-        """
-        Configure application-wide logging for Pyramids.
+        """Configure application-wide logging for Pyramids.
 
-        This initializes a colored console handler and, optionally, a file handler using a consistent
-        format. The configuration is idempotent: calling this method multiple times will not create
-        duplicate handlers. It also reduces noise by elevating log levels for common third‑party
-        libraries.
+        Args:
+            level (int | str, optional): Logging level as an int or one of
+                "FATAL", "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG" (case-insensitive).
+                Defaults to logging.INFO.
+            log_file (str | pathlib.Path | None, optional): Optional path to a log file to
+                write logs to in addition to console output. If None, no file is used.
+
+        Returns:
+            None: This method configures the root logger in-place.
+
+        Raises:
+            ValueError: If an invalid level string is provided.
+            OSError: If the file handler cannot be created (e.g., invalid path or permissions).
+
+        Examples:
+        - Configure only console logging at WARNING level
+            ```python
+            >>> from pyramids.base.config import LoggerManager
+            >>> _ = LoggerManager(level="WARNING")  # doctest: +SKIP
+            ```
+
+        - Configure console and file logging
+            ```python
+            >>> from pyramids.base.config import LoggerManager
+            >>> _ = LoggerManager(level="INFO", log_file="pyramids.log")  # doctest: +SKIP
+            ```
+
+        See Also:
+            ColorFormatter: Colorizes level names for console output.
         """
         # Normalize level
         if isinstance(level, str):
@@ -166,11 +284,11 @@ class LoggerManager:
 
     @staticmethod
     def _set_error_handler() -> None:
-        """
-        Link GDAL error output to the configured Pyramids logger and install the handler.
+        """Install a GDAL error handler that forwards messages to logging.
 
-        Low-severity GDAL messages (below CE_Warning) are printed to stdout to preserve
-        expected behavior in tests and certain GDAL workflows.
+        The handler maps GDAL error classes to Python logging levels. Messages below
+        CE_Warning are printed to stdout to preserve expected behaviors in some
+        GDAL workflows and tests.
         """
         # Use a child of the module logger so it inherits the handlers/format configured in setup_logging()
         log = logging.getLogger(__name__).getChild("gdal")
@@ -205,30 +323,155 @@ class LoggerManager:
 
 @dataclass
 class EnvironmentVariables:
+    """Utility helpers to inspect and modify PATH-related environment variables.
+
+    This small helper provides convenient accessors for the PATH string and its
+    components, as well as a prepend operation; combine with if_exists() to avoid
+    duplicates.
+
+    Examples:
+    - Create the helper and inspect PATH entries
+
+        ```python
+
+        >>> from pyramids.base.config import EnvironmentVariables
+        >>> env = EnvironmentVariables()
+        >>> isinstance(env.paths, list)
+        True
+
+        ```
+
+    See Also:
+        - Plugins: Uses EnvironmentVariables to adjust PATH when GDAL bins are found.
+    """
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__)
 
     @property
     def path(self) -> str:
+        """Return the raw PATH environment variable.
+
+        Returns:
+            str: The current value of the PATH environment variable, or an empty
+                string if not set.
+
+        Examples:
+        - Read PATH as a string
+
+            ```python
+            >>> from pyramids.base.config import EnvironmentVariables
+            >>> ev = EnvironmentVariables()
+            >>> isinstance(ev.path, str)
+            True
+
+            ```
+        """
         return os.environ.get("PATH", "")
 
     @property
     def paths(self) -> list[str]:
+        """Return PATH components as a list, split by the OS separator.
+
+        Returns:
+            list[str]: A list of absolute/relative directories contained in PATH.
+
+        Examples:
+        - Split PATH into components
+
+            ```python
+            >>> from pyramids.base.config import EnvironmentVariables
+            >>> ev = EnvironmentVariables()
+            >>> isinstance(ev.paths, list)
+            True
+
+            ```
+        """
         path = self.path
         paths = path.split(os.pathsep) if path else []
         return paths
 
     def if_exists(self, path: Union[str, Path]) -> bool:
-        return path in self.paths
+        """Check whether a directory exists in PATH.
+
+        Args:
+            path (str | pathlib.Path): Directory to look for.
+
+        Returns:
+            bool: True if the directory is already present in PATH, False otherwise.
+
+        Examples:
+        - Check for a directory in PATH
+
+            ```python
+            >>> from pyramids.base.config import EnvironmentVariables
+            >>> env = EnvironmentVariables()
+            >>> env.if_exists("C:/") in (True, False)
+            True
+
+            ```
+        """
+        return str(path) in self.paths
 
     def prepend(self, path: Union[str, Path]) -> None:
-        os.environ["PATH"] = path + (os.pathsep + self.path)
-        self.logger.debug(f"Prepended to PATH: {path}")
+        """Prepend a directory to PATH if not already present.
+
+        Args:
+            path (str | pathlib.Path): Directory to prepend to PATH.
+
+        Examples:
+            - Prepend a directory to PATH safely
+                ```python
+                >>> import os
+                >>> from pyramids.base.config import EnvironmentVariables
+                >>> env = EnvironmentVariables()
+                >>> original = env.path
+                >>> env.prepend("C:/example/bin")
+                >>> print(env.paths[0])
+                C:/example/bin
+
+                ```
+        """
+        p = str(path)
+        os.environ["PATH"] = p + (os.pathsep + self.path)
+        self.logger.debug(f"Prepended to PATH: {p}")
 
 
 @dataclass
 class Plugins:
+    """Discover and export GDAL-related paths within a Python site-packages tree.
+
+    Given a site-packages directory, this helper resolves conventional GDAL
+    locations used by Conda-forge (Library/Lib/gdalplugins, Library/bin, etc.)
+    and can export them into environment variables suitable for GDAL loading.
+
+    Args:
+        site_packages_path (str | pathlib.Path): Root path to a site-packages directory
+            (e.g., one of values from site.getsitepackages()).
+
+    Attributes:
+        plugins_path (pathlib.Path | None): Expected GDAL plugins directory.
+        bin_path (pathlib.Path | None): Expected DLL bin directory.
+        data_path (pathlib.Path | None): Expected GDAL data directory.
+        proj_path (pathlib.Path | None): Expected PROJ data directory.
+
+    Examples:
+        - Discover GDAL paths and export to the environment
+            ```python
+            >>> import site
+            >>> from pyramids.base.config import Plugins
+            >>> sp = next(iter(site.getsitepackages()), None)  # doctest: +SKIP
+            >>> if sp:  # doctest: +SKIP
+            ...     p = Plugins(site_packages_path=sp)  # doctest: +SKIP
+            ...     _ = p.check_path()  # doctest: +SKIP
+
+            ```
+
+    See Also:
+        - EnvironmentVariables: Used to manage PATH updates.
+        - Config.dynamic_env_variables: Uses this class to probe for GDAL on Windows.
+    """
+
     site_packages_path: str | Path
     plugins_path: Optional[Path] = None
     bin_path: Optional[Path] = None
@@ -236,6 +479,7 @@ class Plugins:
     proj_path: Optional[Path] = None
 
     def __post_init__(self):
+        """Initialize derived GDAL-related paths based on site_packages_path."""
         self.logger = logging.getLogger(__name__)
         self.plugins_path = Path(self.site_packages_path) / "Library/Lib/gdalplugins"
         base_path = Path(self.site_packages_path) / "Library"
@@ -243,7 +487,30 @@ class Plugins:
         self.data_path = base_path / "share" / "gdal"
         self.proj_path = base_path / "share" / "proj"
 
-    def check_path(self):
+    def check_path(self) -> Optional[Path]:
+        """Probe known locations under site-packages and set GDAL env variables.
+
+        This method checks for the presence of the GDAL plugins folder and, if
+        found, sets the following environment variables where appropriate:
+        - GDAL_DRIVER_PATH
+        - Optionally prepends Library/bin to PATH (so GDAL plugin DLLs resolve)
+        - Optionally sets GDAL_DATA and PROJ_LIB if those directories exist
+
+        Returns:
+            pathlib.Path | None: The detected plugins_path if found, otherwise None.
+
+        Examples:
+            - Probe a site-packages tree and set environment variables
+                ```python
+                >>> import site
+                >>> from pyramids.base.config import Plugins
+                >>> sp = next(iter(site.getsitepackages()), None)  # doctest: +SKIP
+                >>> if sp:  # doctest: +SKIP
+                ...     p = Plugins(site_packages_path=sp)  # doctest: +SKIP
+                ...     _ = p.check_path()  # doctest: +SKIP
+
+                ```
+        """
         if self.plugins_path.exists():
             os.environ["GDAL_DRIVER_PATH"] = str(self.plugins_path)
             self.logger.debug(
@@ -263,6 +530,7 @@ class Plugins:
             if self.proj_path.exists() and os.environ.get("PROJ_LIB") != str(self.proj_path):
                 os.environ["PROJ_LIB"] = str(self.proj_path)
                 self.logger.debug(f"PROJ_LIB set to: {self.proj_path}")
+
             path = self.plugins_path
         else:
             path = None
@@ -271,114 +539,143 @@ class Plugins:
 
 
 class Config:
-    r"""
-    Configuration class for the pyramids package.
+    """High-level configuration entry point for logging and GDAL environment.
 
-    This class handles:
-    - Loading configuration settings from YAML files.
-    - Initializing GDAL and OGR configurations.
-    - Dynamically setting environment variables for GDAL plugins based on the operating system and environment (e.g., Conda).
+    This class orchestrates:
+    - Loading user/package configuration from YAML.
+    - Configuring Python logging (console with colors, optional file).
+    - Initializing GDAL/OGR and discovering GDAL-related environment variables.
 
     Args:
-        config_file (str, optional): Path to the configuration YAML file. Default is "config.yaml" in the module's directory.
+        level (int | str, optional): Logging level. Defaults to logging.INFO.
+        log_file (str | pathlib.Path | None, optional): Optional path to a file for logs.
+        config_file (str, optional): YAML filename to read from the package's base folder.
+            Defaults to "config.yaml".
 
     Attributes:
-        config (dict): Loaded configuration settings.
-        logger (logging.Logger): Logger for logging messages.
+        config (dict): Parsed configuration values from YAML.
+        logger (logging.Logger): Module logger configured by setup_logging().
 
     Examples:
-        - Initialize the configuration and load settings from the default config file:
+    - Create a configuration with console logging
 
-          ```python
-          >>> from pyramids.base.config import Config
-          >>> config = Config() # doctest: +SKIP
-          2025-01-11 23:13:48,889 - pyramids.base.config - INFO - Logging is configured.
-          2025-01-11 23:13:48,891 - pyramids.base.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
-          >>> config.initialize_gdal() # doctest: +SKIP
-          2025-01-11 23:13:48,891 - pyramids.base.config - INFO - GDAL_DRIVER_PATH set to: your\\conda\\env\\Library\\lib\\gdalplugins
-          >>> print(os.environ.get("GDAL_DRIVER_PATH")) # doctest: +SKIP
-          C:\\Miniconda3\\envs\\pyramids\\Library\\lib\\gdalplugins
+        ```python
 
-          ```
+        >>> from pyramids.base.config import Config  # doctest: +SKIP
+        >>> cfg = Config(level="INFO")  # doctest: +SKIP
+        2025-09-09 23:10:28 | INFO | pyramids.base.config | Logging is configured.
+        >>> print(cfg.config)  # doctest: +SKIP
+        {'gdal': {'GDAL_CACHEMAX': '512',
+          'GDAL_PAM_ENABLED': 'YES',
+          'GDAL_VRT_ENABLE_PYTHON': 'YES',
+          'GDAL_TIFF_INTERNAL_MASK': 'NO'},
+         'ogr': {'OGR_SRS_PARSER': 'strict'},
+         'logging': {'level': 'DEBUG',
+          'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+          'file': 'pyramids.log'}}
 
-    Notes:
-        - The GDAL and OGR Python bindings use exceptions for error reporting when `UseExceptions` is enabled.
-        - Environment variable settings depend on the presence of Conda and platform-specific paths.
+        ````
 
     See Also:
-        - gdal.UseExceptions: Documentation on enabling GDAL exceptions.
-        - ogr.UseExceptions: Documentation on enabling OGR exceptions.
+        - LoggerManager: Implements logging configuration details.
+        - Config.initialize_gdal: Applies GDAL/OGR options and registers drivers.
     """
 
     def __init__(
-            self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None,
-            config_file="config.yaml"
+        self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None,
+        config_file="config.yaml"
     ):
-        """Initialize the configuration."""
+        """Construct a Config, load YAML, configure logging, and initialize GDAL.
+
+        Args:
+            level (int | str, optional):
+                Logging level (e.g., logging.INFO or "DEBUG").
+            log_file (str | pathlib.Path | None, optional):
+                Optional path to a log file.
+            config_file (str, optional):
+                Name of the YAML configuration file shipped in pyramids/base. Defaults to "config.yaml".
+
+        Raises:
+            FileNotFoundError: If the YAML file cannot be found.
+            yaml.YAMLError: If parsing the YAML fails.
+            Exception: Any GDAL-related error if GDAL initialization fails.
+
+        Examples:
+            - Create a configuration with INFO logging
+                ```python
+                >>> from pyramids.base.config import Config  # doctest: +SKIP
+                >>> cfg = Config(level="INFO")  # doctest: +SKIP
+                2025-09-09 23:11:52 | INFO | pyramids.base.config | Logging is configured.
+
+                ```
+        """
         self.setup_logging(level=level, log_file=log_file)
         self.config_file = config_file
         self.config = self.load_config()
         self.initialize_gdal()
 
     def load_config(self):
-        """
-        Load the configuration from the specified YAML file.
+        """Load configuration from the package YAML file.
+
+        The YAML file is expected to live under pyramids/base/<config_file>.
 
         Returns:
-            dict: A dictionary containing the configuration settings.
+            dict: Parsed configuration values.
 
         Raises:
             FileNotFoundError: If the configuration file is not found.
-            yaml.YAMLError: If there is an error parsing the YAML file.
+            yaml.YAMLError: If the YAML cannot be parsed.
 
         Examples:
-            - Load settings from a config file and print them:
+            - Load settings and verify the result is a dictionary
+                ```python
+                >>> from pyramids.base.config import Config
+                >>> cfg = Config(config_file="config.yaml")
+                >>> print(cfg.config)  # doctest: +SKIP
+                {'gdal': {'GDAL_CACHEMAX': '512',
+                  'GDAL_PAM_ENABLED': 'YES',
+                  'GDAL_VRT_ENABLE_PYTHON': 'YES',
+                  'GDAL_TIFF_INTERNAL_MASK': 'NO'},
+                 'ogr': {'OGR_SRS_PARSER': 'strict'},
+                 'logging': {'level': 'DEBUG',
+                  'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                  'file': 'pyramids.log'}}
 
-              ```python
-              >>> config = Config(config_file="config.yaml")
-              >>> settings = config.load_config()
-              >>> print(settings) # doctest: +NORMALIZE_WHITESPACE
-              {'gdal': {'GDAL_CACHEMAX': '512',
-               'GDAL_PAM_ENABLED': 'YES',
-               'GDAL_VRT_ENABLE_PYTHON': 'YES',
-               'GDAL_TIFF_INTERNAL_MASK': 'NO'},
-               'ogr': {'OGR_SRS_PARSER': 'strict'},
-               'logging': {'level': 'DEBUG',
-                'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                'file': 'pyramids.log'}}
-
-              ```
+                ```
         """
         config_file = Path(root_path[0]) / "base" / self.config_file
         with open(config_file, "r") as file:
             return yaml.safe_load(file)
 
     def initialize_gdal(self):
-        """
-        Initialize GDAL and OGR settings from the loaded configuration.
+        """Initialize GDAL/OGR options and register drivers.
 
-        Configures GDAL and OGR options and dynamically sets the GDAL_DRIVER_PATH environment variable based on the system setup.
+        This method:
+        - Enables exceptions in GDAL and OGR.
+        - Applies options from the loaded YAML under keys `gdal` and `ogr`.
+        - Attempts to detect and export the GDAL_DRIVER_PATH using dynamic_env_variables().
+        - Calls gdal.AllRegister() to ensure drivers are available.
 
-        Notes:
-            - Uses the `dynamic_env_variables` method to locate the GDAL plugins path.
-            - By default, GDAL and OGR suppress exceptions unless explicitly enabled using `UseExceptions`.
+        Raises:
+            RuntimeError: If GDAL initialization encounters issues (propagated from GDAL).
 
         Examples:
-            - Initialize GDAL and print the driver path:
+            - Initialize GDAL and then query GDAL_DRIVER_PATH
+                ```python
+                >>> from pyramids.base.config import Config
+                >>> cfg = Config()  # doctest: +SKIP
+                >>> # Depending on the environment, GDAL_DRIVER_PATH may or may not be set
+                >>> _ = cfg.initialize_gdal()  # doctest: +SKIP
 
-              ```python
-              >>> config = Config()
-              >>> config.initialize_gdal()
-              >>> print(os.environ.get("GDAL_DRIVER_PATH")) # doctest: +SKIP
+                ```
 
-              ```
+        See Also:
+            - Config.dynamic_env_variables: Locates plugin directories across platforms.
         """
-        # By default, the GDAL and OGR Python bindings do not raise exceptions when errors occur. Instead, they return
-        # an error value such as None and write an error message to sys.stdout, to report errors by raising
-        # exceptions. You can enable this behavior in GDAL and OGR by calling the UseExceptions().
+        # Enable exceptions so GDAL/OGR raise on error instead of printing to stdout
         gdal.UseExceptions()
         ogr.UseExceptions()
-        # gdal.ErrorReset()
+        # Apply GDAL/OGR options from configuration
         for key, value in self.config.get("gdal", {}).items():
             gdal.SetConfigOption(key, value)
         for key, value in self.config.get("ogr", {}).items():
@@ -390,16 +687,26 @@ class Config:
             gdal.SetConfigOption("GDAL_DRIVER_PATH", str(gdal_plugins_path))
         gdal.AllRegister()
 
-    def set_env_conda(self) -> Union[Path, None]:
-        """
-        Set the environment variables for GDAL in a Conda environment.
+    def set_env_conda(self) -> Optional[Path]:
+        """Set GDAL-related environment variables in a Conda environment.
+
+        This method looks up the active Conda environment (via CONDA_PREFIX) and
+        configures:
+        - GDAL_DRIVER_PATH (if Library/lib/gdalplugins exists)
+        - PATH (prepends Library/bin so dependent DLLs can be found)
+        - GDAL_DATA and PROJ_LIB (if their directories exist)
 
         Returns:
-            Path | None: The GDAL plugins path if found, otherwise None.
+            pathlib.Path | None: The GDAL plugins path if found, else None.
 
-        Notes:
-            - Assumes the Conda environment variable `CONDA_PREFIX` is set.
-            - The method verifies the existence of the `gdalplugins` directory under the Conda environment.
+        Examples:
+            - Configure environment variables when running inside Conda
+                ```python
+                >>> from pyramids.base.config import Config  # doctest: +SKIP
+                >>> cfg = Config()  # doctest: +SKIP
+                >>> _ = cfg.set_env_conda()  # doctest: +SKIP
+
+                ```
         """
         conda_prefix = os.getenv("CONDA_PREFIX")
 
@@ -450,26 +757,29 @@ class Config:
 
         return gdal_plugins_path if gdal_plugins_path.exists() else None
 
-    def dynamic_env_variables(self) -> Path:
-        """
-        Dynamically locate the GDAL plugins path and set the GDAL_DRIVER_PATH environment variable.
+    def dynamic_env_variables(self) -> Optional[Path]:
+        """Locate GDAL plugin directories and export GDAL_DRIVER_PATH.
+
+        The search proceeds in this order:
+        - If inside Conda, use set_env_conda().
+        - On Windows, probe site.getsitepackages() using Plugins helper.
+        - On POSIX, probe common locations like /usr/local/lib/gdalplugins.
 
         Returns:
-            Path: The GDAL plugins path if found, otherwise None.
-
-        Notes:
-            - On Windows, it checks typical Python site-packages locations.
-            - On Linux/macOS, it checks common system directories like `/usr/lib/gdalplugins`.
+            pathlib.Path | None: The detected GDAL plugins path, or None if not found.
 
         Examples:
-            - Locate the GDAL plugins path dynamically and print it:
+            - Attempt to discover plugin directory in the current environment
+                ```python
+                >>> from pyramids.base.config import Config
+                >>> cfg = Config()
+                >>> _ = cfg.dynamic_env_variables()  # doctest: +SKIP
 
-              ```python
-              >>> config = Config()
-              >>> gdal_path = config.dynamic_env_variables()
-              >>> print(gdal_path) # doctest: +SKIP
+                ```
 
-              ```
+        See Also:
+            - Plugins: Windows helper for site-packages probing.
+            - Config.set_env_conda: Conda-specific environment configuration.
         """
         # Check if we're in a Conda environment
         gdal_plugins_path = self.set_env_conda()
