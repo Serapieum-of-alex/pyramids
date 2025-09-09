@@ -87,6 +87,10 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 include = ["pyramids", "pyramids.*"]
 
+[tool.pip.index-url]
+url = "https://girder.github.io/large_image_wheels"
+
+
 [tool.setuptools.package-data]
 pyramids = ["*.yaml"]
 
