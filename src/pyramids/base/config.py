@@ -643,7 +643,7 @@ class Config:
 
                 ```
         """
-        config_file = Path(root_path[0]) / "base" / self.config_file
+        config_file = Path(root_path[0]) / "base/data" / self.config_file
         with open(config_file, "r") as file:
             return yaml.safe_load(file)
 
