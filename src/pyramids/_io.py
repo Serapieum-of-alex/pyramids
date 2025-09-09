@@ -2,6 +2,7 @@ import os
 import zipfile
 import tarfile
 import gzip
+from pathlib import Path
 import numpy as np
 import warnings
 from osgeo import gdal
@@ -194,11 +195,13 @@ def read_file(
         raise TypeError(
             f"the path parameter should be of string type, given: {type(path)}"
         )
+    if not Path(path).exists():
+        raise FileNotFoundError(f"{path} you entered does not exist")
+
     path = _parse_path(path, file_i=file_i)
     access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
     try:
         # get the file extension
-        # file_extension = path.split(".")[-1].lower()
         # Example criteria for using gdal.OpenEx with OF_MULTIDIM_RASTER for complex multi-dimensional formats
         if (
             open_as_multi_dimensional
