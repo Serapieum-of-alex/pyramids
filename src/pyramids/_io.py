@@ -195,8 +195,6 @@ def read_file(
         raise TypeError(
             f"the path parameter should be of string type, given: {type(path)}"
         )
-    if not Path(path).exists():
-        raise FileNotFoundError(f"{path} you entered does not exist")
 
     path = _parse_path(path, file_i=file_i)
     access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
