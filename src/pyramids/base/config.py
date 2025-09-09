@@ -204,6 +204,30 @@ class LoggerManager:
 
 
 @dataclass
+class EnvironmentVariables:
+
+    def __post_init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    @property
+    def path(self) -> str:
+        return os.environ.get("PATH", "")
+
+    @property
+    def paths(self) -> list[str]:
+        path = self.path
+        paths = path.split(os.pathsep) if path else []
+        return paths
+
+    def if_exists(self, path: Union[str, Path]) -> bool:
+        return path in self.paths
+
+    def prepend(self, path: Union[str, Path]) -> None:
+        os.environ["PATH"] = path + (os.pathsep + self.path)
+        self.logger.debug(f"Prepended to PATH: {path}")
+
+
+@dataclass
 class Plugins:
     site_packages_path: str | Path
     plugins_path: Optional[Path] = None
@@ -218,21 +242,19 @@ class Plugins:
         self.bin_path = base_path / "bin"
         self.data_path = base_path / "share" / "gdal"
         self.proj_path = base_path / "share" / "proj"
-        self.__if_exists()
 
-    def __if_exists(self):
+    def check_path(self):
         if self.plugins_path.exists():
             os.environ["GDAL_DRIVER_PATH"] = str(self.plugins_path)
             self.logger.debug(
                 f"GDAL_DRIVER_PATH set to: {self.plugins_path}"
             )
             if self.bin_path.exists():
-                current_path = os.environ.get("PATH", "")
+                env_vars = EnvironmentVariables()
                 bin_str = str(self.bin_path)
-                path_parts = current_path.split(os.pathsep) if current_path else []
-                if bin_str not in path_parts:
-                    os.environ["PATH"] = bin_str + (os.pathsep + current_path if current_path else "")
-                    self.logger.debug(f"Prepended to PATH: {bin_str}")
+
+                if not env_vars.if_exists(bin_str):
+                    env_vars.prepend(bin_str)
 
             # Optionally set GDAL_DATA and PROJ_LIB
             if self.data_path.exists() and os.environ.get("GDAL_DATA") != str(self.data_path):
@@ -241,6 +263,11 @@ class Plugins:
             if self.proj_path.exists() and os.environ.get("PROJ_LIB") != str(self.proj_path):
                 os.environ["PROJ_LIB"] = str(self.proj_path)
                 self.logger.debug(f"PROJ_LIB set to: {self.proj_path}")
+            path = self.plugins_path
+        else:
+            path = None
+
+        return path
 
 
 class Config:
@@ -373,16 +400,6 @@ class Config:
         Notes:
             - Assumes the Conda environment variable `CONDA_PREFIX` is set.
             - The method verifies the existence of the `gdalplugins` directory under the Conda environment.
-
-        Examples:
-            - Set GDAL environment variables in a Conda environment and print the path:
-
-              ```python
-              >>> config = Config()
-              >>> gdal_path = config.set_env_conda()
-              >>> print(gdal_path) # doctest: +SKIP
-
-              ```
         """
         conda_prefix = os.getenv("CONDA_PREFIX")
 
@@ -390,8 +407,13 @@ class Config:
             self.logger.debug("CONDA_PREFIX is not set. Ensure Conda is activated.")
             return None
 
-        gdal_plugins_path = Path(conda_prefix) / "Library/lib/gdalplugins"
+        conda_prefix_path = Path(conda_prefix)
+        gdal_plugins_path = conda_prefix_path / "Library" / "lib" / "gdalplugins"
+        library_bin_path = conda_prefix_path / "Library" / "bin"
+        gdal_data_path = conda_prefix_path / "Library" / "share" / "gdal"
+        proj_lib_path = conda_prefix_path / "Library" / "share" / "proj"
 
+        # Set GDAL plugins path
         if gdal_plugins_path.exists():
             os.environ["GDAL_DRIVER_PATH"] = str(gdal_plugins_path)
             self.logger.debug(f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}")
@@ -399,9 +421,34 @@ class Config:
             self.logger.debug(
                 f"GDAL plugins path not found at: {gdal_plugins_path}. Please check your GDAL installation."
             )
-            gdal_plugins_path = None
 
-        return gdal_plugins_path
+        # Ensure dependent DLLs are on PATH (fixes error 126 on Windows when loading plugins like HDF5)
+        if library_bin_path.exists():
+            current_path = os.environ.get("PATH", "")
+            bin_str = str(library_bin_path)
+            path_parts = current_path.split(os.pathsep) if current_path else []
+            if bin_str not in path_parts:
+                os.environ["PATH"] = bin_str + (os.pathsep + current_path if current_path else "")
+                self.logger.debug(f"Prepended to PATH: {bin_str}")
+        else:
+            self.logger.debug(f"Library bin path not found at: {library_bin_path}")
+
+        # Optionally set GDAL_DATA and PROJ_LIB if available
+        if gdal_data_path.exists():
+            if os.environ.get("GDAL_DATA") != str(gdal_data_path):
+                os.environ["GDAL_DATA"] = str(gdal_data_path)
+                self.logger.debug(f"GDAL_DATA set to: {gdal_data_path}")
+        else:
+            self.logger.debug(f"GDAL data path not found at: {gdal_data_path}")
+
+        if proj_lib_path.exists():
+            if os.environ.get("PROJ_LIB") != str(proj_lib_path):
+                os.environ["PROJ_LIB"] = str(proj_lib_path)
+                self.logger.debug(f"PROJ_LIB set to: {proj_lib_path}")
+        else:
+            self.logger.debug(f"PROJ lib path not found at: {proj_lib_path}")
+
+        return gdal_plugins_path if gdal_plugins_path.exists() else None
 
     def dynamic_env_variables(self) -> Path:
         """
@@ -434,7 +481,10 @@ class Config:
                 import site
 
                 for site_path in site.getsitepackages():
-                    Plugins(site_packages_path=site_path)
+                    plugins = Plugins(site_packages_path=site_path)
+                    path = plugins.check_path()
+                    if path:
+                        gdal_plugins_path = path
             else:
 
                 # Check typical system locations (Linux/MacOS)
