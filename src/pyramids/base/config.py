@@ -39,8 +39,9 @@ import os
 import yaml
 import logging
 import sys
-from typing import Union
+from typing import Union, Optional
 from pathlib import Path
+from dataclasses import dataclass
 from osgeo import gdal, ogr
 from pyramids import __path__ as root_path
 
@@ -202,6 +203,46 @@ class LoggerManager:
         gdal.PushErrorHandler(gdal_error_handler)
 
 
+@dataclass
+class Plugins:
+    site_packages_path: str | Path
+    plugins_path: Optional[Path] = None
+    bin_path: Optional[Path] = None
+    data_path: Optional[Path] = None
+    proj_path: Optional[Path] = None
+
+    def __post_init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.plugins_path = Path(self.site_packages_path) / "Library/Lib/gdalplugins"
+        base_path = Path(self.site_packages_path) / "Library"
+        self.bin_path = base_path / "bin"
+        self.data_path = base_path / "share" / "gdal"
+        self.proj_path = base_path / "share" / "proj"
+        self.__if_exists()
+
+    def __if_exists(self):
+        if self.plugins_path.exists():
+            os.environ["GDAL_DRIVER_PATH"] = str(self.plugins_path)
+            self.logger.debug(
+                f"GDAL_DRIVER_PATH set to: {self.plugins_path}"
+            )
+            if self.bin_path.exists():
+                current_path = os.environ.get("PATH", "")
+                bin_str = str(self.bin_path)
+                path_parts = current_path.split(os.pathsep) if current_path else []
+                if bin_str not in path_parts:
+                    os.environ["PATH"] = bin_str + (os.pathsep + current_path if current_path else "")
+                    self.logger.debug(f"Prepended to PATH: {bin_str}")
+
+            # Optionally set GDAL_DATA and PROJ_LIB
+            if self.data_path.exists() and os.environ.get("GDAL_DATA") != str(self.data_path):
+                os.environ["GDAL_DATA"] = str(self.data_path)
+                self.logger.debug(f"GDAL_DATA set to: {self.data_path}")
+            if self.proj_path.exists() and os.environ.get("PROJ_LIB") != str(self.proj_path):
+                os.environ["PROJ_LIB"] = str(self.proj_path)
+                self.logger.debug(f"PROJ_LIB set to: {self.proj_path}")
+
+
 class Config:
     r"""
     Configuration class for the pyramids package.
@@ -242,9 +283,12 @@ class Config:
         - ogr.UseExceptions: Documentation on enabling OGR exceptions.
     """
 
-    def __init__(self, config_file="config.yaml"):
+    def __init__(
+            self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None,
+            config_file="config.yaml"
+    ):
         """Initialize the configuration."""
-        self.setup_logging()
+        self.setup_logging(level=level, log_file=log_file)
         self.config_file = config_file
         self.config = self.load_config()
         self.initialize_gdal()
@@ -390,18 +434,13 @@ class Config:
                 import site
 
                 for site_path in site.getsitepackages():
-                    gdal_plugins_path = Path(site_path) / "Library/Lib/gdalplugins"
-                    if gdal_plugins_path.exists():
-                        os.environ["GDAL_DRIVER_PATH"] = str(gdal_plugins_path)
-                        self.logger.debug(
-                            f"GDAL_DRIVER_PATH set to: {gdal_plugins_path}"
-                        )
+                    Plugins(site_packages_path=site_path)
             else:
 
                 # Check typical system locations (Linux/MacOS)
                 system_paths = [
-                    "/usr/lib/gdalplugins",
                     "/usr/local/lib/gdalplugins",
+                    "/usr/lib/gdalplugins",
                 ]
                 for path in system_paths:
                     path = Path(path)
