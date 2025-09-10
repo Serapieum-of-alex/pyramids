@@ -83,16 +83,14 @@ class NetCDF(Dataset):
     def lon(self) -> np.ndarray:
         """Longitude coordinates.
 
-        Returns
-        -------
-        np.ndarray:
-            If the longitude does not exist as a variable in the netcdf file, it will return None.
+        Args:
+            np.ndarray:
+                If the longitude does not exist as a variable in the netcdf file, it will return None.
 
-        Hint
-        ----
-        - The method will first look for the variables "lon" in the dataset.
-        - If the variable is not found, the method will look for the variable "x".
-        - If both lon/x are not found, the method will return None.
+        Hint:
+            - The method will first look for the variables "lon" in the dataset.
+            - If the variable is not found, the method will look for the variable "x".
+            - If both lon/x are not found, the method will return None.
         """
         lon = self._read_variable("lon")
         if lon is None:
@@ -105,17 +103,15 @@ class NetCDF(Dataset):
     def lat(self) -> np.ndarray:
         """Latitude-coordinate.
 
-        Returns
-        -------
-        np.ndarray:
-            If the variables are not found in the dataset, it will return None.
+        Args:
+            np.ndarray:
+                If the variables are not found in the dataset, it will return None.
 
-        Hint
-        ----
-        - The method will first look for the variables "lat" in the dataset.
-        - If the variable is not found, the method will look for the variable "y".
-        - If the variables are not found, the method will Calculate the longitude coordinate using the
-        pivot point coordinates, cell size and the number of columns.
+        Hint:
+            - The method will first look for the variables "lat" in the dataset.
+            - If the variable is not found, the method will look for the variable "y".
+            - If the variables are not found, the method will Calculate the longitude coordinate using the
+            pivot point coordinates, cell size and the number of columns.
         """
         lat = self._read_variable("lat")
         if lat is None:
@@ -205,7 +201,7 @@ class NetCDF(Dataset):
 
     @classmethod
     def read_file(
-        cls, path: str, read_only=True, open_as_multi_dimensional: bool = False
+        cls, path: str, read_only=True, open_as_multi_dimensional: bool = True
     ) -> "NetCDF":
         """read_file.
 
@@ -268,19 +264,15 @@ class NetCDF(Dataset):
         return dim
 
     def _read_variable(self, var: str) -> Union[np.ndarray, None]:
-        """_read_variable.
+        """Read variables in a netcdf file.
 
-        Read variables in a dataset
+        Args:
+            var(str):
+                variable name in the dataset
 
-        Parameters
-        ----------
-        var: [str]
-            variable name in the dataset
-
-        Returns
-        -------
-        GDAL dataset/None
-            if the variable exists in the dataset it will return a gdal dataset otherwise it will return None.
+        Returns:
+            GDAL dataset/None
+                if the variable exists in the dataset it will return a gdal dataset otherwise it will return None.
         """
         try:
             var_ds = gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
@@ -308,6 +300,7 @@ class NetCDF(Dataset):
         return variable_names
 
     def _read_md_array(self, variable_name: str) -> gdal.Dataset:
+        """Read multidimensional array. and return it as a classical dataset"""
         rg = self._raster.GetRootGroup()
         md_arr = rg.OpenMDArray(variable_name)
         dtype = md_arr.GetDataType()
@@ -325,10 +318,9 @@ class NetCDF(Dataset):
     def get_variable(self, variable_name: str) -> "NetCDF":
         """get_variables.
 
-        Returns
-        -------
-        Dict["Dataset", "Dataset"]
-            Dictionary of the netcdf variables
+        Returns:
+            Dict["Dataset", "Dataset"]
+                Dictionary of the netcdf variables
         """
         # convert the variable_name to a list if it is a string
         if variable_name not in self.variable_names:
@@ -378,51 +370,58 @@ class NetCDF(Dataset):
     def copy(self, path: str = None) -> "Dataset":
         """Deep copy.
 
-        Parameters
-        ----------
-        path: str, optional
-            destination path to save the copied dataset, if None is passed, the copy dataset will be created in memory
+        Args:
+            path (str, optional):
+                destination path to save the copied dataset, if None is passed, the copy dataset will be created in memory
 
-        Examples
-        --------
-        - First, we will create a dataset with 1 band, 3 rows and 5 columns.
-
-            >>> import numpy as np
-            >>> arr = np.random.rand(3, 5)
-            >>> top_left_corner = (0, 0)
-            >>> cell_size = 0.05
-            >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-            >>> print(dataset)
-            <BLANKLINE>
+        Examples:
+            - First, we will create a dataset with 1 band, 3 rows and 5 columns.
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset
+                >>> arr = np.random.rand(3, 5)
+                >>> top_left_corner = (0, 0)
+                >>> cell_size = 0.05
+                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+                >>> print(dataset)
+                <BLANKLINE>
+                        Top Left Corner: (0.0, 0.0)
                         Cell size: 0.05
                         Dimension: 3 * 5
                         EPSG: 4326
                         Number of Bands: 1
                         Band names: ['Band_1']
+                        Band colors: {0: 'undefined'}
+                        Band units: ['']
+                        Scale: [1.0]
+                        Offset: [0]
                         Mask: -9999.0
                         Data type: float64
-                        File:...
-            <BLANKLINE>
+                        File:
+                <BLANKLINE>
 
-        - Now, we will create a copy of the dataset.
+                ```
+            - Now, we will create a copy of the dataset.
+                ```python
+                >>> copied_dataset = dataset.copy(path="copy-dataset.tif")
+                >>> print(copied_dataset)
+                <BLANKLINE>
+                            Cell size: 0.05
+                            Dimension: 3 * 5
+                            EPSG: 4326
+                            Number of Bands: 1
+                            Band names: ['Band_1']
+                            Mask: -9999.0
+                            Data type: float64
+                            File: copy-dataset.tif
+                <BLANKLINE>
 
-            >>> copied_dataset = dataset.copy(path="copy-dataset.tif")
-            >>> print(copied_dataset)
-            <BLANKLINE>
-                        Cell size: 0.05
-                        Dimension: 3 * 5
-                        EPSG: 4326
-                        Number of Bands: 1
-                        Band names: ['Band_1']
-                        Mask: -9999.0
-                        Data type: float64
-                        File: copy-dataset.tif
-            <BLANKLINE>
+                ```
+            - Now close the dataset.
+                ```python
+                >>> copied_dataset.close()
 
-        - Now close the dataset.
-
-            >>> copied_dataset.close()
-
+                ```
         """
         if path is None:
             path = ""
