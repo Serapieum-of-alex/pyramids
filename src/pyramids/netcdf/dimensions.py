@@ -67,6 +67,17 @@ def _parse_values_list(text: str) -> List[Union[str, Number]]:
     return [_coerce_scalar(t) for t in _smart_split_csv(text)]
 
 
+def _format_braced_list(values: Iterable[Union[str, Number]]) -> str:
+    """Format a sequence as a GDAL-style braced list without spaces.
+
+    Args:
+        values: Iterable of scalars to format.
+
+    Returns:
+        A string like "{1,2,foo}". Empty iterables yield "{}".
+    """
+    return "{" + ",".join(str(v) for v in values) + "}"
+
 @dataclass(frozen=True)
 class Dimension:
     """Represents a single netCDF dimension discovered in GDAL metadata.
@@ -89,6 +100,30 @@ class Dimension:
     Notes:
         This class does not assume semantics for ``*_DEF`` beyond exposing it. See
         the GDAL netCDF driver docs for details.
+    """
+
+    name: str
+    size: Optional[int] = None
+    values: Optional[List[Union[str, Number]]] = None
+    def_fields: Optional[Tuple[int, ...]] = None
+    raw: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class DimensionsIndex:
+    """Index of :class:`Dimension` parsed from GDAL netCDF metadata.
+
+    Use :meth:`from_metadata` to construct from a GDAL metadata mapping (e.g.,
+    the result of ``gdal.Dataset.GetMetadata()``).
+
+    This parser is intentionally permissive and will:
+        * accept dimensions listed under ``NETCDF_DIM_EXTRA``;
+        * also pick up any ``NETCDF_DIM_<name>_DEF`` or ``NETCDF_DIM_<name>_VALUES``
+          even when ``<name>`` is not listed in ``EXTRA``;
+        * coerce numeric tokens to ``int`` or ``float`` where possible.
+
+    The parsed dimensions are available via mapping-style access (``idx[name]``)
+    and iteration.
 
     Examples:
         ```python
@@ -107,30 +142,6 @@ class Dimension:
         >>> idx['level0'].values
         [1, 2, 3]
         ```
-    """
-
-    name: str
-    size: Optional[int] = None
-    values: Optional[List[Union[str, Number]]] = None
-    def_fields: Optional[Tuple[int, ...]] = None
-    raw: Dict[str, str] = field(default_factory=dict)
-
-
-@dataclass
-class DimensionsIndex:
-    """Index of :class:`Dimension` parsed from GDAL netCDF metadata.
-
-    Use :meth:`from_metadata` to construct from a GDAL metadata mapping (e.g.,
-    the result of ``gdal.Dataset.GetMetadata()``). This parser is intentionally
-    permissive and will:
-
-        - accept dimensions listed under ``NETCDF_DIM_EXTRA``;
-        - also pick up any ``NETCDF_DIM_<name>_DEF`` or ``NETCDF_DIM_<name>_VALUES``
-          even if ``<name>`` is not listed in ``EXTRA``;
-        - coerce numeric tokens to ``int`` or ``float`` where possible.
-
-    The parsed dimensions are available via mapping-style access (``idx[name]``)
-    and iteration.
     """
 
     _dims: Dict[str, Dimension] = field(default_factory=dict)
@@ -231,14 +242,35 @@ class DimensionsIndex:
     def __getitem__(self, name: str) -> Dimension:
         return self._dims[name]
 
+    def __str__(self) -> str:
+        """Return a compact, human-readable summary of the index.
+
+        Returns:
+            A multi-line string listing each dimension with size, values and
+            DEF fields when available.
+        """
+        lines: List[str] = [f"NetCDFDimensionsIndex({len(self)} dims)"]
+        for name in sorted(self._dims):
+            d = self._dims[name]
+            parts: List[str] = []
+            if d.size is not None:
+                parts.append(f"size={d.size}")
+            if d.values is not None:
+                vals = ", ".join(str(v) for v in d.values)
+                parts.append(f"values=[{vals}]")
+            if d.def_fields is not None:
+                parts.append(f"def={tuple(d.def_fields)}")
+            detail = ", ".join(parts) if parts else "(no details)"
+            lines.append(f"- {name}: {detail}")
+        return "\n".join(lines)
+
     def to_dict(self) -> Dict[str, Dict[str, object]]:
         """Serialize to a plain dictionary for easy debugging/IO.
 
-        Returns
-        -------
-        dict
-            Mapping from dimension name to a structure with ``size``,
-            ``values`` and ``def_fields`` fields.
+        Returns:
+            dict
+                Mapping from dimension name to a structure with ``size``,
+                ``values`` and ``def_fields`` fields.
         """
         out: Dict[str, Dict[str, object]] = {}
         for k, d in self._dims.items():
@@ -248,6 +280,42 @@ class DimensionsIndex:
                 "def_fields": d.def_fields,
             }
         return out
+
+    def to_metadata(
+        self,
+        *,
+        prefix: str = "NETCDF_DIM_",
+        include_extra: bool = True,
+        sort_names: bool = True,
+    ) -> Dict[str, str]:
+        """Serialize the index back to GDAL netCDF metadata keys.
+
+        This produces keys compatible with the netCDF GDAL driver such as
+        ``NETCDF_DIM_EXTRA``, ``NETCDF_DIM_<name>_DEF`` and
+        ``NETCDF_DIM_<name>_VALUES``.
+
+        Args:
+            prefix: Metadata key prefix (defaults to "NETCDF_DIM_").
+            include_extra: Whether to include the ``<prefix>EXTRA`` key listing
+                dimension names.
+            sort_names: Whether to sort names deterministically in outputs.
+
+        Returns:
+            A dictionary suitable for use with GDAL's metadata API.
+        """
+        md: Dict[str, str] = {}
+        names = list(self._dims.keys())
+        if sort_names:
+            names.sort()
+        if include_extra and names:
+            md[f"{prefix}EXTRA"] = _format_braced_list(names)
+        for name in names:
+            d = self._dims[name]
+            if d.def_fields:
+                md[f"{prefix}{name}_DEF"] = _format_braced_list(d.def_fields)
+            if d.values is not None:
+                md[f"{prefix}{name}_VALUES"] = _format_braced_list(d.values)
+        return md
 
 
 def parse_gdal_netcdf_dimensions(metadata: Mapping[str, str]) -> DimensionsIndex:
