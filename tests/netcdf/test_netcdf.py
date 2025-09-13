@@ -64,7 +64,7 @@ def test_netcdf_create_from_array(
 
 class TestReadNetCDF:
     def test_standard_netcdf(self, noah_nc_path):
-        dataset = NetCDF.read_file(noah_nc_path)
+        dataset = NetCDF.read_file(noah_nc_path, open_as_multi_dimensional=False)
         assert dataset.raster is not None
         assert dataset.shape == (0, 512, 512)
         assert dataset.variable_names == ["Band1", "Band2", "Band3", "Band4"]
@@ -82,7 +82,7 @@ class TestReadNetCDF:
         assert var.cell_size == 0.5
 
     def test_read_netcdf_file_created_by_pyramids(self, pyramids_created_nc_3d: str):
-        dataset = NetCDF.read_file(pyramids_created_nc_3d,open_as_multi_dimensional=False)
+        dataset = NetCDF.read_file(pyramids_created_nc_3d, open_as_multi_dimensional=False)
         # arr = dataset.read_array()
         assert dataset.variable_names == []
         dataset = NetCDF.read_file(
