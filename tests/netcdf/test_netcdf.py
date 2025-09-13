@@ -82,7 +82,7 @@ class TestReadNetCDF:
         assert var.cell_size == 0.5
 
     def test_read_netcdf_file_created_by_pyramids(self, pyramids_created_nc_3d: str):
-        dataset = NetCDF.read_file(pyramids_created_nc_3d)
+        dataset = NetCDF.read_file(pyramids_created_nc_3d,open_as_multi_dimensional=False)
         # arr = dataset.read_array()
         assert dataset.variable_names == []
         dataset = NetCDF.read_file(
