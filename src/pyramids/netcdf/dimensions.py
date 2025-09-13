@@ -6,8 +6,6 @@ import re
 
 Number = Union[int, float]
 
-_DIM_KEY_RE = re.compile(r"^NETCDF_DIM_([A-Za-z0-9_]+?)(?:_(DEF|VALUES))?$")
-
 
 def _strip_braces(value: str) -> str:
     """Return the content between outer curly braces if present.
@@ -169,6 +167,10 @@ class DimensionsIndex:
         dim_names: set[str] = set()
         buckets: Dict[str, Dict[str, str]] = {}
 
+        # Build a regex that respects the provided prefix
+        # Example: ^NETCDF_DIM_(<name>)(?:_(DEF|VALUES))?$ when prefix is default
+        _DIM_KEY_RE = re.compile(rf"^{re.escape(prefix)}([A-Za-z0-9_]+?)(?:_(DEF|VALUES))?$")
+
         for key, value in metadata.items():
             if not key.startswith(prefix):
                 continue
@@ -249,7 +251,7 @@ class DimensionsIndex:
             A multi-line string listing each dimension with size, values and
             DEF fields when available.
         """
-        lines: List[str] = [f"NetCDFDimensionsIndex({len(self)} dims)"]
+        lines: List[str] = [f"DimensionsIndex({len(self)} dims)"]
         for name in sorted(self._dims):
             d = self._dims[name]
             parts: List[str] = []
