@@ -79,14 +79,14 @@ def _format_braced_list(values: Iterable[Union[str, Number]]) -> str:
     return "{" + ",".join(str(v) for v in values) + "}"
 
 @dataclass(frozen=True)
-class Dimension:
+class DimMetaData:
     """Represents a single netCDF dimension discovered in GDAL metadata.
 
     Args:
         name (str):
-            Dimension name (e.g., ``"time"``, ``"level0"``).
+            DimMetaData name (e.g., ``"time"``, ``"level0"``).
         size (int | None):
-            Dimension length when known. If not present in metadata it may be
+            DimMetaData length when known. If not present in metadata it may be
             ``None``.
         values (list[int]|float|str|None):
             Parsed numeric (or string) values from the ``*_VALUES`` entry, if
@@ -111,7 +111,7 @@ class Dimension:
 
 @dataclass
 class DimensionsIndex:
-    """Index of :class:`Dimension` parsed from GDAL netCDF metadata.
+    """Index of :class:`DimMetaData` parsed from GDAL netCDF metadata.
 
     Use :meth:`from_metadata` to construct from a GDAL metadata mapping (e.g.,
     the result of ``gdal.Dataset.GetMetadata()``).
@@ -144,7 +144,7 @@ class DimensionsIndex:
         ```
     """
 
-    _dims: Dict[str, Dimension] = field(default_factory=dict)
+    _dims: Dict[str, DimMetaData] = field(default_factory=dict)
 
     @classmethod
     def from_metadata(
@@ -190,7 +190,7 @@ class DimensionsIndex:
             buckets.setdefault(name, {})[suffix or "_root"] = value
             dim_names.add(name)
 
-        dims: Dict[str, Dimension] = {}
+        dims: Dict[str, DimMetaData] = {}
         for name in sorted(dim_names):
             raw_bucket = buckets.get(name, {})
             # DEF may contain integers, often first item is size
@@ -212,7 +212,7 @@ class DimensionsIndex:
                 if size is None and values is not None:
                     size = len(values)
 
-            dims[name] = Dimension(
+            dims[name] = DimMetaData(
                 name=name,
                 size=size,
                 values=values,
@@ -233,13 +233,13 @@ class DimensionsIndex:
     def __len__(self) -> int:  # pragma: no cover - trivial
         return len(self._dims)
 
-    def __iter__(self) -> Iterable[Dimension]:  # pragma: no cover - trivial
+    def __iter__(self) -> Iterable[DimMetaData]:  # pragma: no cover - trivial
         return iter(self._dims.values())
 
     def __contains__(self, name: str) -> bool:  # pragma: no cover - trivial
         return name in self._dims
 
-    def __getitem__(self, name: str) -> Dimension:
+    def __getitem__(self, name: str) -> DimMetaData:
         return self._dims[name]
 
     def __str__(self) -> str:

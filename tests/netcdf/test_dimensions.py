@@ -6,7 +6,7 @@ from pyramids.netcdf.dimensions import (
     _parse_values_list,
     _format_braced_list,
     DimensionsIndex,
-    Dimension,
+    DimMetaData,
     parse_gdal_netcdf_dimensions
 )
 
@@ -218,7 +218,7 @@ class TestFormatBracedList:
 
 class TestNetCDFDimensionDataclass:
     def test_basic_construction(self):
-        """Construct Dimension with explicit fields.
+        """Construct DimMetaData with explicit fields.
 
         Input:
             name="time", size=2, values=[0, 31], def_fields=(2, 6).
@@ -229,7 +229,7 @@ class TestNetCDFDimensionDataclass:
         Checks:
             Dataclass field assignment and defaults.
         """
-        d = Dimension(name="time", size=2, values=[0, 31], def_fields=(2, 6))
+        d = DimMetaData(name="time", size=2, values=[0, 31], def_fields=(2, 6))
         assert d.name == "time"
         assert d.size == 2
         assert d.values == [0, 31]
@@ -447,7 +447,7 @@ class TestIndexApi:
             One dimension defined by VALUES.
 
         Expected:
-            "level0" in idx and idx["level0"] returns a Dimension.
+            "level0" in idx and idx["level0"] returns a DimMetaData.
 
         Checks:
             __contains__ and __getitem__.
@@ -456,7 +456,7 @@ class TestIndexApi:
         idx = DimensionsIndex.from_metadata(md)
         assert "level0" in idx
         dim = idx["level0"]
-        assert isinstance(dim, Dimension)
+        assert isinstance(dim, DimMetaData)
         assert dim.values == [1, 2, 3]
 
     def test_len_and_iter(self):
@@ -466,7 +466,7 @@ class TestIndexApi:
             Two dimensions.
 
         Expected:
-            len(idx) == 2 and iter yields Dimension objects.
+            len(idx) == 2 and iter yields DimMetaData objects.
 
         Checks:
             __len__ and __iter__.
@@ -477,7 +477,7 @@ class TestIndexApi:
         }
         idx = DimensionsIndex.from_metadata(md)
         assert len(idx) == 2
-        assert all(isinstance(d, Dimension) for d in iter(idx))
+        assert all(isinstance(d, DimMetaData) for d in iter(idx))
 
     def test_to_dict_serialization(self):
         """Serialize to a plain dictionary.
@@ -614,8 +614,8 @@ class TestToMetadataMethod:
         # inside from_metadata, the internal order is sorted. To truly test
         # sort_names=False we create an index manually.
         idx2 = DimensionsIndex({
-            "b": Dimension(name="b", values=[2], size=1),
-            "a": Dimension(name="a", values=[1], size=1),
+            "b": DimMetaData(name="b", values=[2], size=1),
+            "a": DimMetaData(name="a", values=[1], size=1),
         })
         out_manual = idx2.to_metadata(sort_names=False)
         assert out_manual["NETCDF_DIM_EXTRA"] == "{b,a}"
@@ -633,8 +633,8 @@ class TestToMetadataMethod:
             Conditional emission for each field.
         """
         idx = DimensionsIndex({
-            "onlydef": Dimension(name="onlydef", def_fields=(5, 1), size=5),
-            "onlyvals": Dimension(name="onlyvals", values=[10, 20]),
+            "onlydef": DimMetaData(name="onlydef", def_fields=(5, 1), size=5),
+            "onlyvals": DimMetaData(name="onlyvals", values=[10, 20]),
         })
         out = idx.to_metadata()
         assert out["NETCDF_DIM_EXTRA"] in ("{onlydef,onlyvals}", "{onlyvals,onlydef}")
