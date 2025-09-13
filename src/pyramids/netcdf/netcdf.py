@@ -6,7 +6,7 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union
-
+from dataclasses import dataclass
 import numpy as np
 from osgeo import gdal
 from pyramids.base._utils import (
@@ -17,6 +17,11 @@ from pyramids.base._utils import (
 from pyramids import _io
 from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
+
+@dataclass
+class ExtraDIMs:
+    names: Dict[str, str]
+    dims: Dict[str, List[Any]]
 
 
 class NetCDF(Dataset):
@@ -78,6 +83,12 @@ class NetCDF(Dataset):
             self.file_name,
         )
         return message
+
+    @property
+    def top_left_corner(self):
+        """Top left corner coordinates."""
+        xmin, _, _, ymax, _, _ = self._geotransform
+        return xmin, ymax
 
     @property
     def lon(self) -> np.ndarray:
