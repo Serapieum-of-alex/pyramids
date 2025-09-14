@@ -57,32 +57,16 @@ class NetCDF(Dataset):
             Cell size: {self.cell_size}
             Dimension: {self.rows} * {self.columns}
             EPSG: {self.epsg}
+            projection: {self.crs}
             Variables: {self.variable_names}
+            Metadata: {self.meta_data}
             File: {self.file_name}
         """
         return message
 
     def __repr__(self):
         """__repr__."""
-        message = """
-            Cell size: {0}
-            Dimension: {1} * {2}
-            EPSG: {3}
-            Variables: {4}
-            projection: {5}
-            Metadata: {6}
-            File: {7}
-        """.format(
-            self.cell_size,
-            self.rows,
-            self.columns,
-            self.epsg,
-            self.variable_names,
-            self.crs,
-            self.meta_data,
-            self.file_name,
-        )
-        return message
+        return super().__repr__()
 
     @property
     def top_left_corner(self):
