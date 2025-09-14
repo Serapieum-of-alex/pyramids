@@ -6,22 +6,15 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union
-from dataclasses import dataclass
 import numpy as np
 from osgeo import gdal
-from pyramids.base._utils import (
-    create_time_conversion_func,
-    numpy_to_gdal_dtype,
-)
+from pyramids.base._utils import numpy_to_gdal_dtype
+from pyramids.netcdf.utils import create_time_conversion_func
 
 from pyramids import _io
 from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
-
-@dataclass
-class ExtraDIMs:
-    names: Dict[str, str]
-    dims: Dict[str, List[Any]]
+from pyramids.netcdf.dimensions import MetaData
 
 
 class NetCDF(Dataset):
@@ -47,9 +40,7 @@ class NetCDF(Dataset):
         # set the is_subset to false before retrieving the variables
         self._is_subset = False
         self._is_md_array = False
-
-        if len(self.variable_names) > 0:
-            self._time_stamp = self._get_time_variable()
+        self._meta_data = MetaData.from_metadata(self._meta_data)
 
     def __str__(self):
         """__str__."""
@@ -187,12 +178,7 @@ class NetCDF(Dataset):
     @property
     def time_stamp(self):
         """Time stamp."""
-        if hasattr(self, "_time_stamp"):
-            val = self._time_stamp
-        else:
-            val = None
-
-        return val
+        return self.get_time_variable()
 
     @classmethod
     def read_file(
@@ -219,16 +205,18 @@ class NetCDF(Dataset):
             read_only = "write"
         return cls(src, access=read_only)
 
-    def _get_time_variable(self):
+    @property
+    def meta_data(self) -> MetaData:
+        """meta_data."""
+        return self._meta_data
+
+    def get_time_variable(self, var_name = "time", time_format: str = "%Y-%m-%d"):
         """_get_time_variable."""
-        # time_vars = [(i, self.meta_data.get(i)) for i in self.meta_data.keys() if i.startswith("time")]
-        # time_var_name = time_vars[0][0].split("#")[0]
-        extra_dim = self.meta_data.get("NETCDF_DIM_EXTRA")
-        if extra_dim is not None:
-            time_var_name = extra_dim.replace("{", "").replace("}", "")
-            units = self.meta_data.get(f"{time_var_name}#units")
-            func = create_time_conversion_func(units)
-            time_vals = self._read_variable(time_var_name)
+        time_dim = self.meta_data.get_dimension(var_name)
+        if time_dim:
+            units = time_dim.attrs["units"]
+            func = create_time_conversion_func(units, time_format)
+            time_vals = self._read_variable(var_name)
             time_stamp = list(map(func, time_vals[0]))
         else:
             time_stamp = None
