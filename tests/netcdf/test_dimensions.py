@@ -54,6 +54,22 @@ class TestStripBraces:
         """
         assert _strip_braces("{}") == ""
 
+    def test_strip_braces_type_error(self):
+        """_strip_braces raises TypeError when input is not a string.
+
+        Input:
+            A non-string value (e.g., None).
+
+        Expected:
+            TypeError is raised.
+
+        Checks:
+            Strict type checking in helper.
+        """
+        with pytest.raises(TypeError):
+            _strip_braces(None)  # type: ignore[arg-type]
+
+
 
 class TestSmartSplitCsv:
     def test_simple_list(self):
@@ -112,6 +128,22 @@ class TestSmartSplitCsv:
         """
         assert _smart_split_csv("a, b") == ["a", "b"]
 
+    def test_smart_split_csv_type_error_and_empty_tokens(self):
+        """_smart_split_csv raises TypeError for non-strings and ignores empty tokens.
+
+        Input:
+            text=None (error case) and text='a,, ,b' (empty tokens included).
+
+        Expected:
+            TypeError for non-string; ['a', 'b'] for the second input.
+
+        Checks:
+            Type validation and filtering of empty/space-only tokens.
+        """
+        with pytest.raises(TypeError):
+            _smart_split_csv(None)  # type: ignore[arg-type]
+        assert _smart_split_csv("a,, ,b") == ["a", "b"]
+
 
 class TestCoerceScalar:
     @pytest.mark.parametrize(
@@ -140,6 +172,22 @@ class TestCoerceScalar:
             Precedence of int over float for integer-like tokens.
         """
         assert _coerce_scalar(token) == expected
+
+    def test_coerce_scalar_type_error_and_non_numeric_token(self):
+        """_coerce_scalar raises TypeError for non-strings and preserves non-numeric tokens.
+
+        Input:
+            token=None (error) and token='0x10' (hex-like string).
+
+        Expected:
+            TypeError for non-string; '0x10' returned unchanged.
+
+        Checks:
+            Type validation and conservative coercion behavior.
+        """
+        with pytest.raises(TypeError):
+            _coerce_scalar(None)  # type: ignore[arg-type]
+        assert _coerce_scalar("0x10") == "0x10"
 
 
 class TestParseValuesList:
@@ -171,6 +219,22 @@ class TestParseValuesList:
             Empty handling.
         """
         assert _parse_values_list("{}") == []
+
+    def test_parse_values_list_type_error(self):
+        """_parse_values_list raises TypeError for non-string input.
+
+        Input:
+            text=None.
+
+        Expected:
+            TypeError is raised.
+
+        Checks:
+            Type validation path.
+        """
+        with pytest.raises(TypeError):
+            _parse_values_list(None)  # type: ignore[arg-type]
+
 
 class TestFormatBracedList:
     def test_regular_values(self):
@@ -215,8 +279,23 @@ class TestFormatBracedList:
         """
         assert _format_braced_list(["a", 1, 2.5]) == "{a,1,2.5}"
 
+    def test_format_braced_list_non_iterable_raises(self):
+        """_format_braced_list raises TypeError when values is not iterable.
 
-class TestNetCDFDimensionDataclass:
+        Input:
+            values=None (non-iterable).
+
+        Expected:
+            A TypeError due to iteration attempt over None.
+
+        Checks:
+            The helper relies on Python iteration semantics and thus raises TypeError.
+        """
+    with pytest.raises(TypeError):
+        _format_braced_list(None)  # type: ignore[arg-type]
+
+
+class TestDimMetaData:
     def test_basic_construction(self):
         """Construct DimMetaData with explicit fields.
 
@@ -237,7 +316,7 @@ class TestNetCDFDimensionDataclass:
         assert d.raw == {}
 
 
-class TestFromMetadata:
+class TestDimensionsIndex:
     def test_full_example_with_extra_def_values(self):
         """Parse dimensions with EXTRA, DEF and VALUES present.
 
@@ -643,6 +722,42 @@ class TestToMetadataMethod:
         assert out["NETCDF_DIM_onlyvals_VALUES"] == "{10,20}"
         assert "NETCDF_DIM_onlyvals_DEF" not in out
 
+
+class TestDimensionsIndexAdditionalEdgeCases:
+    def test_to_metadata_empty_index(self):
+        """When the index is empty, to_metadata emits no keys.
+
+        Input:
+            An empty DimensionsIndex.
+
+        Expected:
+            Returned dict is empty; no EXTRA key is produced.
+
+        Checks:
+            Guard on empty names list for EXTRA emission.
+        """
+        idx = DimensionsIndex({})
+        out = idx.to_metadata()
+        assert out == {}
+
+    def test_dimension_name_regex_allows_punctuation(self):
+        """Names with '.', '-' and '_' are supported by the regex used in from_metadata.
+
+        Input:
+            Keys like NETCDF_DIM_x.y-1_2_VALUES.
+
+        Expected:
+            A dimension with the exact name is created and values are parsed.
+
+        Checks:
+            The character class [A-Za-z0-9_.-]+ is honored by the parser.
+        """
+        md = {
+            "NETCDF_DIM_x.y-1_2_VALUES": "{1,2}",
+        }
+        idx = DimensionsIndex.from_metadata(md)
+        assert idx.names == ["x.y-1_2"]
+        assert idx["x.y-1_2"].values == [1, 2]
 
 class TestParseGdalNetcdfDimensions:
     def test_wrapper_function(self):
