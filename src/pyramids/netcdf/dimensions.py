@@ -807,7 +807,7 @@ def parse_dimension_attributes(
     key_re = re.compile(r"^([^#\s]+)#([^#\s]+)$")
 
     for k, v in metadata.items():
-        m = key_re.match(k)
+        m = key_re.match(k.strip())
         if not m:
             continue
         name, attr = m.group(1), m.group(2)
@@ -975,7 +975,6 @@ class MetaData:
         Examples:
             - Get a merged DimMetaData and inspect attributes
                 ```python
-
                 >>> from pyramids.netcdf.dimensions import MetaData
                 >>> md = {'NETCDF_DIM_time_DEF': '{2,6}', 'time#axis': 'T'}
                 >>> meta = MetaData.from_metadata(md)
@@ -984,10 +983,8 @@ class MetaData:
                 ('time', 2, 'T')
 
                 ```
-
             - Unknown name returns None
                 ```python
-
                 >>> meta.get_dimension('lat') is None
                 True
 
