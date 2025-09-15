@@ -1,8 +1,113 @@
+from typing import Any, Dict, Union, List, TypeAlias, Optional, Tuple
 import re
 from datetime import datetime, timedelta
+from osgeo import gdal, osr
 
+# Keep simple, JSON-serializable attribute values only
+AttributeScalar: TypeAlias = Union[bool, int, float, str]
+AttributeVector: TypeAlias = List[AttributeScalar]
+AttributeValue: TypeAlias = Union[AttributeScalar, AttributeVector]
 _ORIGIN_RE = re.compile(r'^\s*([A-Za-z]+)\s+since\s+(.+?)\s*$', re.IGNORECASE)
 
+
+
+def _export_srs(srs: Optional[osr.SpatialReference]) -> Tuple[Optional[str], Optional[str]]:
+    if not srs:
+        return None, None
+    wkt = None
+    projjson = None
+    try:
+        wkt = srs.ExportToWkt()
+    except Exception:
+        pass
+    try:
+        projjson = srs.ExportToJSON()
+    except Exception:
+        pass
+    return wkt, projjson
+
+
+def _get_array_nodata(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue]) -> Optional[Union[int, float, str]]:
+    # Precedence: CF _FillValue, then missing_value, then driver API
+    for key in ("_FillValue", "missing_value"):
+        if key in attrs:
+            v = attrs[key]
+            if isinstance(v, list):
+                return v[0] if v else None
+            return v  # type: ignore[return-value]
+    # Try driver API
+    for meth in ("GetNoDataValueAsDouble", "GetNoDataValueAsInt64", "GetNoDataValueAsString"):
+        if hasattr(mdarr, meth):
+            try:
+                v = getattr(mdarr, meth)()
+                # Some GDAL versions return (value, hasval)
+                if isinstance(v, (list, tuple)) and len(v) == 2 and isinstance(v[1], (bool, int)):
+                    if v[1]:
+                        return _to_py_scalar(v[0])
+                    continue
+                return _to_py_scalar(v)
+            except Exception:
+                continue
+    return None
+
+
+def _get_array_scale_offset(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue]) -> Tuple[Optional[float], Optional[float]]:
+    scale = None
+    offset = None
+    # CF attributes first
+    if isinstance(attrs.get("scale_factor"), (int, float)):
+        scale = float(attrs["scale_factor"])  # type: ignore[index]
+    if isinstance(attrs.get("add_offset"), (int, float)):
+        offset = float(attrs["add_offset"])  # type: ignore[index]
+    # GDAL API may also expose
+    if hasattr(mdarr, "GetScale"):
+        try:
+            s = mdarr.GetScale()
+            if s is not None:
+                scale = float(s)
+        except Exception:
+            pass
+    if hasattr(mdarr, "GetOffset"):
+        try:
+            o = mdarr.GetOffset()
+            if o is not None:
+                offset = float(o)
+        except Exception:
+            pass
+    return scale, offset
+
+
+def _get_block_size(mdarr: gdal.MDArray) -> Optional[List[int]]:
+    try:
+        bs = mdarr.GetBlockSize()
+        if bs:
+            return [int(b) for b in bs]
+    except Exception:
+        pass
+    return None
+
+
+def _get_coord_variable_names(mdarr: gdal.MDArray) -> List[str]:
+    names: List[str] = []
+    try:
+        cvs = mdarr.GetCoordinateVariables()
+    except Exception:
+        cvs = None
+    if not cvs:
+        return names
+    for cv in cvs:
+        try:
+            # Some GDAL versions return MDArray objects, others names
+            if hasattr(cv, "GetFullName"):
+                names.append(cv.GetFullName())  # type: ignore[attr-defined]
+            elif hasattr(cv, "GetName"):
+                names.append(cv.GetName())
+            else:
+                names.append(str(cv))
+        except Exception:
+            # Fallback
+            names.append(str(cv))
+    return names
 
 def _normalize_origin_string(origin: str) -> str:
     """
@@ -80,3 +185,97 @@ def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S
         return dt.strftime(out_format)
 
     return convert
+
+
+def _dtype_to_str(dt: Any) -> str:
+    try:
+        # gdal.ExtendedDataType in MDIM
+        name = dt.GetName()
+        if isinstance(name, str) and name:
+            return name
+    except Exception:
+        pass
+    try:
+        # As a fallback, class name
+        return str(dt)
+    except Exception:
+        return "unknown"
+
+
+def _to_py_scalar(x: Any) -> Any:
+    """Convert numpy scalars/bytes to native JSON-serializable Python types."""
+    try:
+        # numpy scalar
+        if hasattr(x, "item") and callable(x.item):
+            return x.item()
+    except Exception:
+        pass
+
+    if isinstance(x, bytes):
+        try:
+            return x.decode("utf-8")
+        except Exception:
+            return x.decode("utf-8", errors="ignore")
+
+    # Already a JSON-friendly scalar
+    if isinstance(x, (bool, int, float, str)) or x is None:
+        return x
+
+    # Fallback to string representation to avoid breaking JSON dump
+    return str(x)
+
+
+def _normalize_attr_value(val: Any) -> AttributeValue:
+    # Vector
+    if isinstance(val, (list, tuple)):
+        return [ _to_py_scalar(v) for v in val ]
+
+    # Scalar
+    return _to_py_scalar(val)  # type: ignore[return-value]
+
+
+def _read_attribute_value(attr: gdal.Attribute) -> AttributeValue:
+    # Try the generic Read() first; it often returns appropriate Python types
+    val: Any
+    try:
+        val = attr.Read()
+    except Exception:
+        # try type-specifics
+        for meth in (
+                "ReadAsInt64",
+                "ReadAsInt64Array",
+                "ReadAsDouble",
+                "ReadAsDoubleArray",
+                "ReadAsString",
+                "ReadAsStringArray",
+        ):
+            if hasattr(attr, meth):
+                try:
+                    val = getattr(attr, meth)()
+                    break
+                except Exception:
+                    continue
+        else:
+            val = None
+    return _normalize_attr_value(val)
+
+
+def _read_attributes(obj: Any) -> Dict[str, AttributeValue]:
+    attrs: Dict[str, AttributeValue] = {}
+    try:
+        att_list = obj.GetAttributes()
+    except Exception:
+        att_list = None
+    if not att_list:
+        return attrs
+    for att in att_list:
+        try:
+            name = att.GetName()
+        except Exception:
+            continue
+        try:
+            attrs[name] = _read_attribute_value(att)
+        except Exception:
+            # Be robust; don't crash on odd attribute types
+            attrs[name] = _normalize_attr_value(None)
+    return attrs
