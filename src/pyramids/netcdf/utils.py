@@ -10,6 +10,19 @@ AttributeValue: TypeAlias = Union[AttributeScalar, AttributeVector]
 _ORIGIN_RE = re.compile(r'^\s*([A-Za-z]+)\s+since\s+(.+?)\s*$', re.IGNORECASE)
 
 
+
+def _full_name_with_fallback(group: gdal.Group, default_name: Optional[str] = None) -> str:
+    try:
+        return group.GetFullName()
+    except Exception:
+        # Root or fallback to "/<name>"
+        try:
+            gname = group.GetName()
+        except Exception:
+            gname = default_name or ""
+        return "/" if not gname else f"/{gname}"
+
+
 def _get_group_name(group: gdal.Group) -> str:
     # Names
     try:

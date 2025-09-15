@@ -3,8 +3,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 from osgeo import gdal
-from pyramids.netcdf.utils import (_dtype_to_str, AttributeValue, _read_attributes, _get_array_nodata,
-                                   _get_array_scale_offset, _export_srs, _get_block_size, _get_coord_variable_names)
+from pyramids.netcdf.utils import (
+    _dtype_to_str,
+    AttributeValue,
+    _read_attributes,
+    _get_array_nodata,
+    _get_array_scale_offset,
+    _export_srs,
+    _get_block_size,
+    _get_coord_variable_names,
+    _get_group_name,
+    _full_name_with_fallback
+)
 
 @dataclass(frozen=True)
 class GroupInfo:
@@ -26,8 +36,6 @@ class GroupInfo:
         *,
         arrays: List[str],
         children: List[str],
-        name: Optional[str] = None,
-        full_name: Optional[str] = None,
         attributes: Optional[Dict[str, AttributeValue]] = None,
     ) -> "GroupInfo":
         """Build a GroupInfo from a GDAL Group.
@@ -39,31 +47,20 @@ class GroupInfo:
                 Full names of arrays that belong to this group.
             children: List[str]
                 Full names of child groups.
-            name: Optional[str]
-                Precomputed short name; if not provided, computed from the group.
-            full_name: Optional[str]
-                Precomputed full name; if not provided, computed with fallback.
             attributes: Optional[Dict[str, AttributeValue]]
                 Pre-read attributes; if not provided, they are read from the group.
 
         Returns:
             GroupInfo: Constructed metadata instance for the group.
         """
-        # Name
-        if name is None:
-            try:
-                name = group.GetName()
-            except Exception:
-                name = ""
+        name = _get_group_name(group)
         # Full name with fallback
-        if full_name is None:
-            try:
-                full_name = group.GetFullName()
-            except Exception:
-                full_name = "/" if not name else f"/{name}"
+        full_name = _full_name_with_fallback(group, name)
+
         # Attributes
         if attributes is None:
             attributes = _read_attributes(group)
+
         return cls(
             name=name,
             full_name=full_name,

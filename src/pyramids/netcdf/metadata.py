@@ -58,7 +58,9 @@ class MetadataBuilder:
         dimensions_map: Dict[str, DimensionInfo] = {}
 
         if root_group is not None:
-            GroupTraverser(groups_map, arrays_map, dimensions_map).walk(root_group)
+            traverser = GroupTraverser(groups_map, arrays_map, dimensions_map)
+            traverser.walk(root_group)
+
             try:
                 root_name = root_group.GetFullName()
             except Exception:
@@ -152,18 +154,6 @@ class GroupTraverser:
         self.arrays = arrays
         self.dimensions = dimensions
 
-    @staticmethod
-    def _full_name_with_fallback(group: gdal.Group, default_name: Optional[str] = None) -> str:
-        try:
-            return group.GetFullName()
-        except Exception:
-            # Root or fallback to "/<name>"
-            try:
-                gname = group.GetName()
-            except Exception:
-                gname = default_name or ""
-            return "/" if not gname else f"/{gname}"
-
     def _collect_dimensions(self, group: gdal.Group, group_full_name: str) -> None:
 
         try:
@@ -207,9 +197,9 @@ class GroupTraverser:
         while q:
             group = q.popleft()
 
-            # Names (needed early for consistent dimension/array keys)
-            group_name = _get_group_name(group)
-            group_full_name = self._full_name_with_fallback(group, group_name)
+            # Compute group identity (name/full_name) via GroupInfo for separation of concerns
+            base_group = GroupInfo.from_group(group, arrays=[], children=[], attributes={})
+            group_full_name = base_group.full_name
 
             # Dimensions and arrays for this group
             self._collect_dimensions(group, group_full_name)
@@ -226,9 +216,12 @@ class GroupTraverser:
                 if current_group is None:
                     continue
 
+                # Delegate child full-name resolution to GroupInfo
                 try:
-                    current_group_full_name = current_group.GetFullName()
+                    child_info = GroupInfo.from_group(current_group, arrays=[], children=[], attributes={})
+                    current_group_full_name = child_info.full_name
                 except Exception:
+                    # As a last resort, fall back to simple path concatenation
                     current_group_full_name = f"{group_full_name}/{cn}" if group_full_name != "/" else f"/{cn}"
 
                 children_full.append(current_group_full_name)
@@ -239,8 +232,6 @@ class GroupTraverser:
                 group,
                 arrays=group_arrays,
                 children=children_full,
-                name=group_name,
-                full_name=group_full_name,
             )
             self.groups[ginfo.full_name] = ginfo
 
