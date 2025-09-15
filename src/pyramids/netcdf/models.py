@@ -243,7 +243,7 @@ class StructuralInfo:
             dmd = None
         return cls(driver_name=driver_name, driver_metadata=dmd)
 
-@dataclass(frozen=True)
+@dataclass
 class NetCDFMetadata:
     """Top-level metadata model for NetCDF MDIM content."""
 
@@ -254,6 +254,6 @@ class NetCDFMetadata:
     dimensions: Dict[str, DimensionInfo]
     global_attributes: Dict[str, AttributeValue]
     structural: Optional[StructuralInfo]
-    open_options_used: Optional[Dict[str, str]]
     created_with: Dict[str, str]
+    open_options_used: Optional[Dict[str, str]] = None
     dimension_overview: Optional[Dict[str, Any]] = None

@@ -5,17 +5,17 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 """
 
 from numbers import Number
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union, Optional
 import numpy as np
 from osgeo import gdal
 from pyramids.base._utils import numpy_to_gdal_dtype
-from pyramids.netcdf.utils import create_time_conversion_func
+from pyramids.netcdf.utils import create_time_conversion_func, _to_py_scalar
 
 from pyramids import _io
 from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 from pyramids.netcdf.dimensions import MetaData
-
+from pyramids.netcdf.metadata import get_mdim_metadata
 
 class NetCDF(Dataset):
     """NetCDF.
@@ -226,9 +226,53 @@ class NetCDF(Dataset):
             NetCDFMetadata
                 A metadata object describing the full MDIM structure and attributes.
         """
-        from pyramids.netcdf.metadata import get_mdim_metadata
+        metadata = get_mdim_metadata(self._raster, open_options)
+        metadata.dimension_overview = self._build_dimension_overview()
+        open_opts = {str(k): str(v) for k, v in (open_options or {}).items()} if open_options else None
+        metadata.open_options = open_opts
+        return metadata
 
-        return get_mdim_metadata(self, open_options)
+    def _build_dimension_overview(self) -> Optional[Dict[str, Any]]:
+        """Create a compact snapshot of dimensions using the existing MetaData parser.
+
+        This provides a CF-friendly view in addition to the full MDIM traversal.
+        """
+        try:
+            md = self.meta_data
+            names = list(md.names)
+            sizes = {name: int(md.get_dimension(name).size) for name in names if md.get_dimension(name) is not None}
+            attrs: Dict[str, Dict[str, Any]] = {}
+            values: Dict[str, List[Union[int, float, str]]] = {}
+
+            for name in names:
+                a = md.get_attrs(name)
+                if a is not None:
+                    attrs[name] = {str(k): (list(v) if isinstance(v, list) else v) for k, v in a.items()}
+
+            # Try to get coordinate values through NetCDF._read_variable, when present
+            for name in names:
+                try:
+                    arr = self._read_variable(name)
+                except Exception:
+                    arr = None
+                if arr is None:
+                    continue
+                try:
+                    values[name] = [_to_py_scalar(v) for v in arr.reshape(-1).tolist()]
+                except Exception:
+                    try:
+                        values[name] = [_to_py_scalar(v) for v in list(arr)]  # type: ignore[arg-type]
+                    except Exception:
+                        pass
+
+            return {
+                "names": names,
+                "sizes": sizes,
+                "attrs": attrs,
+                "values": values if values else None,
+            }
+        except Exception:
+            return None
 
     def get_time_variable(self, var_name = "time", time_format: str = "%Y-%m-%d"):
         """_get_time_variable."""

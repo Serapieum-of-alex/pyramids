@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import json
 from osgeo import gdal
@@ -14,15 +14,12 @@ from pyramids.netcdf.models import (
     StructuralInfo,
 )
 from pyramids.netcdf.utils import (
-    _to_py_scalar,
     _read_attributes,
     _get_driver_name,
     _get_root_group,
     _safe_group_names,
     _safe_array_names,
-    _get_group_name
 )
-from pyramids.netcdf.netcdf import NetCDF
 
 
 class MetadataBuilder:
@@ -33,21 +30,12 @@ class MetadataBuilder:
     functions delegate to this builder to preserve API compatibility.
     """
 
-    def __init__(self, netcdf: NetCDF, open_options: Optional[Dict[str, Any]] = None) -> None:
-        self.netcdf = netcdf
+    def __init__(self, src: gdal.Dataset, open_options: Optional[Dict[str, Any]] = None) -> None:
+        self.gdal_dataset = src
         self.open_options = open_options or None
 
-    @classmethod
-    def from_source(cls, source: Union[str, NetCDF], open_options: Optional[Dict[str, Any]] = None) -> "MetadataBuilder":
-        if isinstance(source, NetCDF):
-            nc = source
-        else:
-            # Ensure MDIM mode when opening from path
-            nc = NetCDF.read_file(str(source), open_as_multi_dimensional=True)
-        return cls(nc, open_options)
-
     def build(self) -> NetCDFMetadata:
-        ds = self.netcdf._raster
+        ds = self.gdal_dataset
 
         # Driver name and root group
         driver_name = _get_driver_name(ds)
@@ -68,18 +56,16 @@ class MetadataBuilder:
             global_attrs = _read_attributes(root_group)
         else:
             root_name = None
+            global_attrs = {}
             # Fallback: use classic flattened metadata exposed by MetaData
-            try:
-                md = self.netcdf.meta_data
-                global_attrs = {str(k): str(v) for k, v in (md.to_metadata() if hasattr(md, 'to_metadata') else {}).items()}  # type: ignore[arg-type]
-            except Exception:
-                global_attrs = {}
+            # try:
+            #     md = self.netcdf.meta_data
+            #     global_attrs = {str(k): str(v) for k, v in (md.to_metadata() if hasattr(md, 'to_metadata') else {}).items()}  # type: ignore[arg-type]
+            # except Exception:
+            #     global_attrs = {}
 
         structural_info = StructuralInfo.from_dataset(ds, driver_name)
         created_with = {"library": "GDAL", "version": getattr(gdal, "__version__", "unknown")}
-        open_opts = {str(k): str(v) for k, v in (self.open_options or {}).items()} if self.open_options else None
-
-        dimension_overview = self._build_dimension_overview()
 
         return NetCDFMetadata(
             driver=driver_name,
@@ -89,52 +75,8 @@ class MetadataBuilder:
             dimensions=dimensions_map,
             global_attributes=global_attrs,
             structural=structural_info,
-            open_options_used=open_opts,
             created_with=created_with,
-            dimension_overview=dimension_overview,
         )
-
-    def _build_dimension_overview(self) -> Optional[Dict[str, Any]]:
-        """Create a compact snapshot of dimensions using the existing MetaData parser.
-
-        This provides a CF-friendly view in addition to the full MDIM traversal.
-        """
-        try:
-            md = self.netcdf.meta_data
-            names = list(md.names)
-            sizes = {name: int(md.get_dimension(name).size) for name in names if md.get_dimension(name) is not None}
-            attrs: Dict[str, Dict[str, Any]] = {}
-            values: Dict[str, List[Union[int, float, str]]] = {}
-
-            for name in names:
-                a = md.get_attrs(name)
-                if a is not None:
-                    attrs[name] = {str(k): (list(v) if isinstance(v, list) else v) for k, v in a.items()}
-
-            # Try to get coordinate values through NetCDF._read_variable, when present
-            for name in names:
-                try:
-                    arr = self.netcdf._read_variable(name)
-                except Exception:
-                    arr = None
-                if arr is None:
-                    continue
-                try:
-                    values[name] = [_to_py_scalar(v) for v in arr.reshape(-1).tolist()]
-                except Exception:
-                    try:
-                        values[name] = [_to_py_scalar(v) for v in list(arr)]  # type: ignore[arg-type]
-                    except Exception:
-                        pass
-
-            return {
-                "names": names,
-                "sizes": sizes,
-                "attrs": attrs,
-                "values": values if values else None,
-            }
-        except Exception:
-            return None
 
 
 class GroupTraverser:
@@ -236,13 +178,13 @@ class GroupTraverser:
             self.groups[ginfo.full_name] = ginfo
 
 
-def get_mdim_metadata(source: Union[str, NetCDF], open_options: Optional[Dict[str, Any]] = None) -> NetCDFMetadata:
+def get_mdim_metadata(source: gdal.Dataset, open_options: Optional[Dict[str, Any]] = None) -> NetCDFMetadata:
     """Read and normalize all NetCDF MDIM metadata.
 
     This is a thin wrapper that delegates to the class-based builder
     MetadataBuilder for clarity and maintainability.
     """
-    builder = MetadataBuilder.from_source(source, open_options)
+    builder = MetadataBuilder(source, open_options)
     return builder.build()
 
 
