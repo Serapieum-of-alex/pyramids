@@ -10,6 +10,43 @@ AttributeValue: TypeAlias = Union[AttributeScalar, AttributeVector]
 _ORIGIN_RE = re.compile(r'^\s*([A-Za-z]+)\s+since\s+(.+?)\s*$', re.IGNORECASE)
 
 
+def _get_group_name(group: gdal.Group) -> str:
+    # Names
+    try:
+        gname = group.GetName()
+    except Exception:
+        gname = ""
+    return gname
+
+
+def _safe_array_names(group: gdal.Group) -> List[str]:
+    try:
+        names = group.GetMDArrayNames() or []
+    except Exception:
+        names = []
+    return sorted(list(names))
+
+
+def _safe_group_names(group: gdal.Group) -> List[str]:
+    try:
+        names = group.GetGroupNames() or []
+    except Exception:
+        names = []
+    return sorted(list(names))
+
+
+def _get_root_group(dataset: gdal.Dataset) -> Optional[gdal.Group]:
+    try:
+        return dataset.GetRootGroup()
+    except Exception:
+        return None
+
+def _get_driver_name(dataset: gdal.Dataset) -> str:
+    try:
+        return dataset.GetDriver().ShortName
+    except Exception:
+        return "UNKNOWN"
+
 
 def _export_srs(srs: Optional[osr.SpatialReference]) -> Tuple[Optional[str], Optional[str]]:
     if not srs:

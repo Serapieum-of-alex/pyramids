@@ -210,6 +210,26 @@ class NetCDF(Dataset):
         """meta_data."""
         return self._meta_data
 
+    def get_all_metadata(self, open_options: dict | None = None) -> "NetCDFMetadata":
+        """Enumerate and normalize all MDIM metadata for this NetCDF.
+
+        This is additive to the existing dimension-focused view available via
+        the ``meta_data`` property. It traverses groups, arrays, and dimensions
+        using GDAL's Multidimensional API and returns a structured model.
+
+        Args:
+            open_options : dict | None
+                Optional open options used when opening the dataset. These will be recorded
+                in the returned metadata structure for provenance.
+
+        Returns:
+            NetCDFMetadata
+                A metadata object describing the full MDIM structure and attributes.
+        """
+        from pyramids.netcdf.metadata import get_mdim_metadata
+
+        return get_mdim_metadata(self, open_options)
+
     def get_time_variable(self, var_name = "time", time_format: str = "%Y-%m-%d"):
         """_get_time_variable."""
         time_dim = self.meta_data.get_dimension(var_name)
