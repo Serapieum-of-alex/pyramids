@@ -1,9 +1,9 @@
 # DataCube Class
 
-![Datacube diagram](./../_images/pyramids-datacube.svg)
+![Datacube diagram](./../_images/pyramids-multi-dataset.svg)
 
 
-::: pyramids.datacube.Datacube
+::: pyramids.multidataset.MultiDataset
     options:
         show_root_heading: true
         show_source: true
