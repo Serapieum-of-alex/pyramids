@@ -33,14 +33,12 @@ def _strip_braces(value: str) -> str:
             '1,2,3'
 
             ```
-
         - No braces: returns stripped content
             ```python
             >>> _strip_braces("  a, b  ")
             'a, b'
     
             ```
-
         - Empty braces: yields empty string
             ```python
             >>> _strip_braces("{}")
@@ -92,7 +90,6 @@ def _smart_split_csv(text: str) -> List[str]:
             ['x', 'y']
 
             ```
-
         - Empty content
             ```python
             >>> _smart_split_csv('{}')
@@ -135,7 +132,6 @@ def _coerce_scalar(token: str) -> Union[str, Number]:
     Examples:
         - Integer-like token
             ```python
-
             >>> from pyramids.netcdf.dimensions import _coerce_scalar
             >>> _coerce_scalar('42')
             42
@@ -147,7 +143,6 @@ def _coerce_scalar(token: str) -> Union[str, Number]:
             3.14
 
             ```
-
         - Non-numeric token stays a string
             ```python
             >>> _coerce_scalar('foo')
@@ -195,7 +190,6 @@ def _parse_values_list(text: str) -> List[Union[str, Number]]:
             [0, 31, 'foo']
 
             ```
-
         - Empty list
             ```python
             >>> _parse_values_list('{}')
@@ -229,14 +223,12 @@ def _format_braced_list(values: Iterable[Union[str, Number]]) -> str:
             '{1,2,3}'
 
             ```
-
         - Mixed types
             ```python
             >>> _format_braced_list(['a', 1, 2.5])
             '{a,1,2.5}'
 
             ```
-
         - Empty input
             ```python
             >>> _format_braced_list([])
@@ -340,7 +332,6 @@ class DimensionsIndex:
     Examples:
         - Build from typical NETCDF_DIM_* keys
             ```python
-    
             >>> from pyramids.netcdf.dimensions import DimensionsIndex
             >>> md = {
             ...     'NETCDF_DIM_EXTRA': '{time,level0}',
@@ -516,7 +507,6 @@ class DimensionsIndex:
         Examples:
             - Length of a simple index
                 ```python
-
                 >>> from pyramids.netcdf.dimensions import DimensionsIndex
                 >>> idx = DimensionsIndex.from_metadata({'NETCDF_DIM_time_DEF': '{2,6}'})
                 >>> len(idx)
@@ -534,9 +524,7 @@ class DimensionsIndex:
 
         Examples:
           - Iterate names
-
             ```python
-
             >>> from pyramids.netcdf.dimensions import DimensionsIndex
             >>> idx = DimensionsIndex.from_metadata({'NETCDF_DIM_a_DEF': '{1,0}', 'NETCDF_DIM_b_DEF': '{2,0}'})
             >>> [d.name for d in idx]
@@ -582,7 +570,6 @@ class DimensionsIndex:
         Examples:
             - Access an existing dimension
                 ```python
-
                 >>> from pyramids.netcdf.dimensions import DimensionsIndex
                 >>> idx = DimensionsIndex.from_metadata({'NETCDF_DIM_time_DEF': '{2,6}'})
                 >>> idx['time'].size
@@ -721,7 +708,6 @@ def parse_gdal_netcdf_dimensions(metadata: Mapping[str, str]) -> DimensionsIndex
     Examples:
         - Typical usage
             ```python
-
             >>> md = {
             ...     'NETCDF_DIM_EXTRA': '{time,level0}',
             ...     'NETCDF_DIM_level0_DEF': '{3,6}',
@@ -775,7 +761,6 @@ def parse_dimension_attributes(
     Examples:
         - Parse all attributes for any name
             ```python
-
             >>> md = {
             ...     'lat#bounds': 'bounds_lat',
             ...     'lat#long_name': 'latitude',
@@ -922,9 +907,7 @@ class MetaData:
 
         Examples:
           - Inspect names
-
             ```python
-
             >>> from pyramids.netcdf.dimensions import MetaData
             >>> md = {'NETCDF_DIM_time_DEF': '{2,6}', 'time#axis': 'T'}
             >>> MetaData.from_metadata(md).names
@@ -1054,7 +1037,6 @@ class MetaData:
         Examples:
             - Merge structure and attributes
                 ```python
-
                 >>> from pyramids.netcdf.dimensions import MetaData
                 >>> md = {'NETCDF_DIM_time_DEF': '{2,6}', 'time#axis': 'T'}
                 >>> meta = MetaData.from_metadata(md)
