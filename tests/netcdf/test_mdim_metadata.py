@@ -2,7 +2,7 @@ import pytest
 
 from pyramids.netcdf.netcdf import NetCDF
 from pyramids.netcdf.metadata import (
-    get_mdim_metadata,
+    get_metadata,
     to_json,
     from_json,
     to_dict,
@@ -58,8 +58,8 @@ def test_mdim_metadata_basic(request, fixture_name: str):
 def test_get_mdim_metadata_from_path_and_instance(pyramids_created_nc_3d: str):
     """Ensure both path and instance inputs are supported and equivalent."""
     nc = NetCDF.read_file(pyramids_created_nc_3d, open_as_multi_dimensional=True)
-    md_from_instance = get_mdim_metadata(nc)
-    md_from_path = get_mdim_metadata(pyramids_created_nc_3d)
+    md_from_instance = get_metadata(nc)
+    md_from_path = get_metadata(pyramids_created_nc_3d)
 
     # They should describe the same file structure (allowing for open_options differences)
     # Compare flattened summaries which should be equivalent regardless of ephemeral differences

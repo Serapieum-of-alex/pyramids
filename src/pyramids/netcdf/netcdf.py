@@ -14,8 +14,7 @@ from pyramids.netcdf.utils import create_time_conversion_func, _to_py_scalar
 from pyramids import _io
 from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
-from pyramids.netcdf.dimensions import MetaData
-from pyramids.netcdf.metadata import get_mdim_metadata
+from pyramids.netcdf.metadata import get_metadata
 
 class NetCDF(Dataset):
     """NetCDF.
@@ -27,7 +26,7 @@ class NetCDF(Dataset):
         https://acdguide.github.io/Governance/create/create-basics.html
     """
 
-    def __init__(self, src: gdal.Dataset, access: str = "read_only"):
+    def __init__(self, src: gdal.Dataset, access: str = "read_only", open_as_multi_dimensional: bool = True):
         """__init__.
 
         Hint:
@@ -38,9 +37,12 @@ class NetCDF(Dataset):
         """
         super().__init__(src, access=access)
         # set the is_subset to false before retrieving the variables
-        self._is_subset = False
-        self._is_md_array = False
-        self._meta_data = MetaData.from_metadata(self._meta_data)
+        if open_as_multi_dimensional:
+            self._is_md_array = True
+            self._is_subset = False
+        else:
+            self._is_md_array = False
+            self._is_subset = True
 
     def __str__(self):
         """__str__."""
@@ -203,33 +205,26 @@ class NetCDF(Dataset):
             read_only = "read_only"
         else:
             read_only = "write"
-        return cls(src, access=read_only)
+        return cls(src, access=read_only, open_as_multi_dimensional=open_as_multi_dimensional)
 
     @property
-    def meta_data(self) -> MetaData:
-        """meta_data."""
-        return self._meta_data
-
-    def get_all_metadata(self, open_options: dict | None = None) -> "NetCDFMetadata":
+    def meta_data(self) -> "NetCDFMetadata":
         """Enumerate and normalize all MDIM metadata for this NetCDF.
 
         This is additive to the existing dimension-focused view available via
         the ``meta_data`` property. It traverses groups, arrays, and dimensions
         using GDAL's Multidimensional API and returns a structured model.
 
-        Args:
-            open_options : dict | None
-                Optional open options used when opening the dataset. These will be recorded
-                in the returned metadata structure for provenance.
-
         Returns:
             NetCDFMetadata
                 A metadata object describing the full MDIM structure and attributes.
         """
-        metadata = get_mdim_metadata(self._raster, open_options)
-        metadata.dimension_overview = self._build_dimension_overview()
-        open_opts = {str(k): str(v) for k, v in (open_options or {}).items()} if open_options else None
-        metadata.open_options = open_opts
+        open_options = {
+            "Open Mode": "SHARED" if self.is_subset else "MULTIDIM_RASTER"
+        }
+
+        metadata = get_metadata(self._raster, open_options)
+        # metadata.dimension_overview = self._build_dimension_overview()
         return metadata
 
     def _build_dimension_overview(self) -> Optional[Dict[str, Any]]:

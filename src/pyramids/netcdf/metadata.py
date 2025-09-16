@@ -21,6 +21,7 @@ from pyramids.netcdf.utils import (
     _safe_array_names,
 )
 
+from pyramids.netcdf.dimensions import MetaData as SharedMetaData
 
 class MetadataBuilder:
     """Class-based builder that constructs NetCDFMetadata from a NetCDF source.
@@ -56,13 +57,12 @@ class MetadataBuilder:
             global_attrs = _read_attributes(root_group)
         else:
             root_name = None
-            global_attrs = {}
             # Fallback: use classic flattened metadata exposed by MetaData
-            # try:
-            #     md = self.netcdf.meta_data
-            #     global_attrs = {str(k): str(v) for k, v in (md.to_metadata() if hasattr(md, 'to_metadata') else {}).items()}  # type: ignore[arg-type]
-            # except Exception:
-            #     global_attrs = {}
+            try:
+                md = SharedMetaData.from_metadata(ds.GetMetadata())
+                global_attrs = {str(k): str(v) for k, v in (md.to_metadata() if hasattr(md, 'to_metadata') else {}).items()}  # type: ignore[arg-type]
+            except Exception:
+                global_attrs = {}
 
         structural_info = StructuralInfo.from_dataset(ds, driver_name)
         created_with = {"library": "GDAL", "version": getattr(gdal, "__version__", "unknown")}
@@ -76,6 +76,7 @@ class MetadataBuilder:
             global_attributes=global_attrs,
             structural=structural_info,
             created_with=created_with,
+            open_options_used=self.open_options,
         )
 
 
@@ -178,7 +179,7 @@ class GroupTraverser:
             self.groups[ginfo.full_name] = ginfo
 
 
-def get_mdim_metadata(source: gdal.Dataset, open_options: Optional[Dict[str, Any]] = None) -> NetCDFMetadata:
+def get_metadata(source: gdal.Dataset, open_options: Optional[Dict[str, Any]] = None) -> NetCDFMetadata:
     """Read and normalize all NetCDF MDIM metadata.
 
     This is a thin wrapper that delegates to the class-based builder
