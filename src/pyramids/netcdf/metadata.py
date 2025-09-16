@@ -171,12 +171,12 @@ class GroupTraverser:
                 q.append(current_group)
 
             # Record this group entry via GroupInfo factory
-            ginfo = GroupInfo.from_group(
+            group_info = GroupInfo.from_group(
                 group,
                 arrays=group_arrays,
                 children=children_full,
             )
-            self.groups[ginfo.full_name] = ginfo
+            self.groups[group_info.full_name] = group_info
 
 
 def get_metadata(source: gdal.Dataset, open_options: Optional[Dict[str, Any]] = None) -> NetCDFMetadata:
