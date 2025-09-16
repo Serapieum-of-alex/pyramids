@@ -51,11 +51,8 @@ from pyramids.abstract_dataset import (
 class Dataset(AbstractDataset):
     """Dataset.
 
-    The Dataset class contains methods to deal with raster and netcdf files, change projection and coordinate
-    systems.
+    The Dataset class contains methods to deal with raster and netcdf files, change projection and coordinate systems.
     """
-
-    default_no_data_value = DEFAULT_NO_DATA_VALUE
 
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
         """__init__."""
@@ -824,7 +821,7 @@ class Dataset(AbstractDataset):
         return self._calculate_bbox()
 
     @property
-    def lon(self):
+    def lon(self) -> np.ndarray:
         """Longitude coordinates.
 
         Examples:
@@ -853,19 +850,13 @@ class Dataset(AbstractDataset):
             - Dataset.lat: Dataset latitude.
             - Dataset.lon: Dataset longitude.
         """
-        if not hasattr(self, "_lon"):
-            pivot_x = self.top_left_corner[0]
-            cell_size = self.cell_size
-            x_coords = [
-                pivot_x + i * cell_size + cell_size / 2 for i in range(self.columns)
-            ]
-        else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
-            x_coords = self._lon
-        return np.array(x_coords)
+        x_coords = self.get_x_lon_dimension_array(
+            self.top_left_corner[0], self.cell_size, self.columns
+        )
+        return x_coords
 
     @property
-    def lat(self):
+    def lat(self) -> np.ndarray:
         """Latitude-coordinate.
 
         Examples:
@@ -895,19 +886,13 @@ class Dataset(AbstractDataset):
             - Dataset.y: Dataset y coordinates.
             - Dataset.lon: Dataset longitude.
         """
-        if not hasattr(self, "_lat"):
-            pivot_y = self.top_left_corner[1]
-            cell_size = self.cell_size
-            y_coords = [
-                pivot_y - i * cell_size - cell_size / 2 for i in range(self.rows)
-            ]
-        else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
-            y_coords = self._lat
-        return np.array(y_coords)
+        y_coords = self.get_y_lat_dimension_array(
+            self.top_left_corner[1], self.cell_size, self.rows
+        )
+        return y_coords
 
     @property
-    def x(self):
+    def x(self) -> np.ndarray:
         """X-coordinate/Longitude.
 
         Examples:
@@ -938,25 +923,10 @@ class Dataset(AbstractDataset):
             - Dataset.lon: Dataset longitude.
         """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
-        if not hasattr(self, "_lon"):
-            pivot_x = self.top_left_corner[0]
-            cell_size = self.cell_size
-            x_coords = Dataset.get_x_lon_dimension_array(
-                pivot_x, cell_size, self.columns
-            )
-        else:
-            # in case the lat and lon are read from the netcdf file just read the values from the file
-            x_coords = self._lon
-        return np.array(x_coords)
-
-    @staticmethod
-    def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> List[float]:
-        """Get X/Lon coordinates."""
-        x_coords = [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
-        return x_coords
+        return self.lon
 
     @property
-    def y(self):
+    def y(self) -> np.ndarray:
         """Y-coordinate/Latitude.
 
         Examples:
@@ -987,19 +957,22 @@ class Dataset(AbstractDataset):
             - Dataset.lon: Dataset longitude.
         """
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
-        if not hasattr(self, "_lat"):
-            pivot_y = self.top_left_corner[1]
-            cell_size = self.cell_size
-            y_coords = Dataset.get_y_lat_dimension_array(pivot_y, cell_size, self.rows)
-        else:
-            # in case the lat and lon are read from the netcdf file, just read the values from the file
-            y_coords = self._lat
-        return np.array(y_coords)
+        return self.lat
 
     @staticmethod
-    def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> List[float]:
+    def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> np.ndarray:
+        """Get X/Lon coordinates."""
+        x_coords = np.array(
+            [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
+        )
+        return x_coords
+
+    @staticmethod
+    def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> np.ndarray:
         """Get Y/Lat coordinates."""
-        y_coords = [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
+        y_coords = np.array(
+            [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
+        )
         return y_coords
 
     @property
@@ -2945,7 +2918,7 @@ class Dataset(AbstractDataset):
     def _change_no_data_value_attr(self, band: int, no_data_value):
         """Change the no_data_value attribute.
 
-            - Change only the no_data_value attribute in the gdal Datacube object.
+            - Change only the no_data_value attribute in the gdal Dataset object.
             - Change the no_data_value in the Dataset object for the given band index.
             - The corresponding value in the array will not be changed.
 
@@ -4142,7 +4115,7 @@ class Dataset(AbstractDataset):
             row, col = mask.shape
         else:
             raise TypeError(
-                "The second parameter 'mask' has to be either gdal.Datacube or numpy array"
+                "The second parameter 'mask' has to be either gdal.Dataset or numpy array"
                 f"given - {type(mask)}"
             )
 
@@ -4373,7 +4346,7 @@ class Dataset(AbstractDataset):
             mask = mask
         else:
             raise TypeError(
-                "The second parameter has to be either path to the mask raster or a gdal.Datacube object"
+                "The second parameter has to be either path to the mask raster or a gdal.Dataset object"
             )
         if not self._check_alignment(mask):
             # first align the mask with the src raster

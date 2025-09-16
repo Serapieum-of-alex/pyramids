@@ -3,7 +3,6 @@
 from typing import Union
 from pathlib import Path
 import yaml
-import datetime as dt
 import numpy as np
 from pandas import DataFrame
 from osgeo import gdal, ogr, gdalconst  # gdal_array,
@@ -300,37 +299,6 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
     )
 
 
-def create_time_conversion_func(time: str) -> callable:
-    """Create a function to convert the ordinal time to Gregorian date.
-
-    Args:
-        time (str): Time unit string extracted from netcdf file, e.g., 'seconds since 1970-01-01'.
-
-    Returns:
-        callable: A function that converts an integer time step to a datetime.
-    """
-    time_unit, start = time.split(" since ")
-    datum = dt.datetime.strptime(start, "%Y-%m-%d")
-
-    def ordinal_to_date(time_step: int):
-        if time_unit == "microseconds":
-            gregorian = datum + dt.timedelta(microseconds=time_step)
-        elif time_unit == "milliseconds":
-            gregorian = datum + dt.timedelta(milliseconds=time_step)
-        elif time_unit == "seconds":
-            gregorian = datum + dt.timedelta(seconds=time_step)
-        elif time_unit == "hours":
-            gregorian = datum + dt.timedelta(hours=time_step)
-        elif time_unit == "minutes":
-            gregorian = datum + dt.timedelta(minutes=time_step)
-        elif time_unit == "days":
-            gregorian = datum + dt.timedelta(days=time_step)
-        else:
-            raise ValueError(f"The given time unit is not available: {time_unit}")
-        return gregorian
-
-    return ordinal_to_date
-
 
 class Catalog:
     """Data Catalog."""
@@ -345,7 +313,7 @@ class Catalog:
 
     @staticmethod
     def _get_gdal_catalog(path: str):
-        path = Path(__path__[0]) / f"base/{path}"
+        path = Path(__path__[0]) / f"base/data/{path}"
         with open(path, "r") as stream:
             gdal_catalog = yaml.safe_load(stream)
 

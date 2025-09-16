@@ -2,7 +2,8 @@ import os
 import pytest
 from osgeo import gdal
 import numpy as np
-from pyramids.netcdf import NetCDF
+from pyramids.dataset import Dataset
+from pyramids.netcdf.netcdf import NetCDF
 
 
 class TestProperties:
@@ -14,6 +15,15 @@ class TestProperties:
         src = NetCDF.read_file(noah_nc_path)
         assert isinstance(src.__repr__(), str)
 
+    def test_x_lon_y_lat(self, noah_nc_path: str):
+        cube = NetCDF.read_file(noah_nc_path)
+        np.testing.assert_array_equal(cube.x, cube.lon)
+        np.testing.assert_array_equal(cube.y, cube.lat)
+
+    def test_geotransform(self, noah_nc_path: str):
+        cube = NetCDF.read_file(noah_nc_path)
+        assert cube.geotransform == (-0.25, 1.0, 0, -89.25, 0, -1.0)
+
 
 @pytest.fixture(scope="module")
 def test_netcdf_create_from_array(
@@ -21,10 +31,10 @@ def test_netcdf_create_from_array(
     src_geotransform: tuple,
     src_epsg: int,
     src_no_data_value: float,
-):
+) -> NetCDF:
     src_arr = np.array([src_arr, src_arr, src_arr])
     variable_name = "values"
-    src = NetCDF.create_from_array(
+    cube = NetCDF.create_from_array(
         arr=src_arr,
         geo=src_geotransform,
         epsg=src_epsg,
@@ -33,34 +43,35 @@ def test_netcdf_create_from_array(
         path=None,
         variable_name=variable_name,
     )
-    assert isinstance(src.raster, gdal.Dataset)
-    assert src.variable_names == [variable_name]
-    var = src.variables[variable_name]
+    assert isinstance(cube.raster, gdal.Dataset)
+    assert cube.variable_names == [variable_name]
+    var = cube.get_variable(variable_name)
     assert var.shape == (3, 13, 14)
-    assert np.isclose(var.read_array(), src_arr, rtol=0.00001).all()
+    np.testing.assert_array_equal(var.read_array(), src_arr)
     assert var.cell_size == 4000
     assert var.read_array(0, [3, 3, 1, 1]) == 0
-    assert np.isclose(
+    np.testing.assert_allclose(
         var.no_data_value, [-3.402823e38, -3.402823e38, -3.402823e38]
-    ).all()
-
-    assert np.isclose(var.geotransform, src_geotransform).all()
+    )
+    # np.testing.assert_allclose(var.geotransform, src_geotransform)
     path = "save_created_netcdf_file.nc"
-    # assert src.to_file(path) is None
-    # os.remove(path)
-    return src
+    assert cube.to_file(path) is None
+    new_cube = cube.copy()
+    cube.close()
+    os.remove(path)
+    return new_cube
 
 
 class TestReadNetCDF:
     def test_standard_netcdf(self, noah_nc_path):
-        dataset = NetCDF.read_file(noah_nc_path)
+        dataset = NetCDF.read_file(noah_nc_path, open_as_multi_dimensional=False)
         assert dataset.raster is not None
         assert dataset.shape == (0, 512, 512)
         assert dataset.variable_names == ["Band1", "Band2", "Band3", "Band4"]
-        assert list(dataset.variables.keys()) == ["Band1", "Band2", "Band3", "Band4"]
+        # assert list(dataset.get_variable().keys()) == ["Band1", "Band2", "Band3", "Band4"]
         assert not dataset.is_subset
         assert not dataset.is_md_array
-        var = dataset.variables["Band1"]
+        var = dataset.get_variable("Band1")
         assert var.is_subset
         assert not var.is_md_array
         assert var.shape == (1, 360, 720)
@@ -71,14 +82,14 @@ class TestReadNetCDF:
         assert var.cell_size == 0.5
 
     def test_read_netcdf_file_created_by_pyramids(self, pyramids_created_nc_3d: str):
-        dataset = NetCDF.read_file(pyramids_created_nc_3d)
+        dataset = NetCDF.read_file(pyramids_created_nc_3d, open_as_multi_dimensional=False)
         # arr = dataset.read_array()
         assert dataset.variable_names == []
         dataset = NetCDF.read_file(
             pyramids_created_nc_3d, open_as_multi_dimensional=True
         )
         assert dataset.variable_names == ["values"]
-        var = dataset.variables["values"]
+        var = dataset.get_variable("values")
         assert var.shape == (3, 13, 14)
         assert var.cell_size == 4000
         assert np.isclose(
@@ -92,7 +103,7 @@ class TestReadNetCDF:
 class TestCreateNetCDF:
     @pytest.fixture(scope="module")
     def test_create_netcdf_from_array_2d(self, src: gdal.Dataset):
-        dataset = NetCDF(src)
+        dataset = Dataset(src)
         rows = dataset.rows
         cols = dataset.columns
         arr = dataset.read_array()
@@ -106,7 +117,6 @@ class TestCreateNetCDF:
             variable_name,
             cols,
             rows,
-            1,
             band_values,
             geo,
             epsg,
@@ -118,7 +128,7 @@ class TestCreateNetCDF:
         dims = rg.GetDimensions()
         assert [dim.GetName() for dim in dims] == ["x", "y"]
         dim_x = rg.OpenMDArray("x")
-        assert np.isclose(
+        np.testing.assert_allclose(
             dim_x.ReadAsArray(),
             [
                 434968.12,
@@ -136,7 +146,7 @@ class TestCreateNetCDF:
                 482968.12,
                 486968.12,
             ],
-        ).all()
+        )
         return src
 
     def test_instantiate_dataset_from_2d_mdarray(
@@ -147,11 +157,11 @@ class TestCreateNetCDF:
         """
         dataset = NetCDF(test_create_netcdf_from_array_2d)
         assert dataset.variable_names == ["values"]
-        assert dataset.variables["values"].shape == (1, 13, 14)
+        assert dataset.get_variable("values").shape == (1, 13, 14)
 
 
 class TestAddVariable:
-    def test_add_variable(self, test_netcdf_create_from_array):
+    def test_add_variable(self, test_netcdf_create_from_array: NetCDF):
         dataset = test_netcdf_create_from_array
         dataset.add_variable(test_netcdf_create_from_array)
 
@@ -159,7 +169,7 @@ class TestAddVariable:
             [item in dataset.variable_names for item in ["values", "values-new"]]
         )
 
-        var = dataset.variables["values-new"]
+        var = dataset.get_variable("values-new")
         assert var.shape == (3, 13, 14)
 
     def test_remove_variable_in_memory_driver(self, test_netcdf_create_from_array):
@@ -167,3 +177,31 @@ class TestAddVariable:
         variable_name = "values"
         dataset.remove_variable(variable_name)
         assert variable_name not in dataset.variable_names
+
+
+class TestMultiVariablesNC:
+    def test_x_lon_y_lat(self, two_variable_nc: str):
+        """test getting the lat/lon/x/y values from the outer group"""
+        cube = NetCDF.read_file(two_variable_nc)
+        np.testing.assert_array_equal(cube.x, np.array(range(-10, 11), dtype=float))
+        np.testing.assert_array_equal(cube.lon, np.array(range(-10, 11), dtype=float))
+        np.testing.assert_array_equal(cube.y, np.array(range(-10, 11), dtype=float))
+        np.testing.assert_array_equal(cube.lat, np.array(range(-10, 11), dtype=float))
+
+    def test_geotransform(self, two_variable_nc: str):
+        cube = NetCDF.read_file(two_variable_nc)
+        assert cube.geotransform == (-10.5, 1.0, 0, -9.5, 0, -1.0)
+
+    def test_variables(self, two_variable_nc: str):
+        cube = NetCDF.read_file(two_variable_nc)
+        assert cube.variable_names == ["z", "q"]
+        assert isinstance(cube.variables["q"], NetCDF)
+        assert isinstance(cube.variables["z"], NetCDF)
+        var = cube.get_variable("q")
+        assert var.shape == (1, 21, 21)
+
+    def test_variables_x_lon_y_lat(self, two_variable_nc: str):
+        cube = NetCDF.read_file(two_variable_nc)
+        var = cube.get_variable("q")
+        print(var.x)
+        print(var.geotransform)

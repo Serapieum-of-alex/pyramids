@@ -2,7 +2,7 @@
 
 from pyramids.base.config import Config
 
-__all__ = ["dataset", "netcdf", "featurecollection"]
+__all__ = ["dataset", "multidataset", "netcdf", "featurecollection"]
 
 try:
     from importlib.metadata import PackageNotFoundError  # type: ignore

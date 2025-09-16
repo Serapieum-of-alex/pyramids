@@ -52,7 +52,7 @@ class AbstractDataset(ABC):
         self._access = access
         self._raster = src
         self._geotransform = src.GetGeoTransform()
-        self._cell_size = self.geotransform[1]
+        self._cell_size = self._geotransform[1]
         # replace with a loop over the GetMetadata for each separate band
         self._meta_data = src.GetMetadata()
         self._file_name = src.GetDescription()
@@ -181,6 +181,24 @@ class AbstractDataset(ABC):
         """Meta data."""
         return self._raster.GetMetadata()
 
+    @staticmethod
+    def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> np.ndarray:
+        """get_x_lon_dimension_array."""
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
+        x_coords = np.array(
+            [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
+        )
+        return x_coords
+
+    @staticmethod
+    def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> np.ndarray:
+        """get_y_lat_dimension_array."""
+        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
+        y_coords = np.array(
+            [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
+        )
+        return y_coords
+
     @property
     def block_size(self) -> List[Tuple[int, int]]:
         """Block Size.
@@ -218,11 +236,7 @@ class AbstractDataset(ABC):
     @abstractmethod
     def file_name(self):
         """File name."""
-        if self._file_name.startswith("NETCDF"):
-            name = self._file_name.split(":")[1][1:-1]
-        else:
-            name = self._file_name
-        return name
+        return self._file_name
 
     @property
     @abstractmethod

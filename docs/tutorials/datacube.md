@@ -10,7 +10,7 @@ The datacube object has attributes and methods to help working with multiple ras
 - To import the Datacube class:
 
 ```python
-from pyramids.dataset import Datacube
+from pyramids.multidataset import MultiDataset
 ```
 
 - The detailed module attributes and methods are summarized in the following figure.
@@ -60,13 +60,13 @@ If you want to make some mathematical operation on all the rasters, the order of
 
 ```python
 >>> rasters_folder_path = "examples/data/geotiff/raster-folder"
->>> datacube = Datacube.read_multiple_files(rasters_folder_path)
+>>> datacube = MultiDataset.read_multiple_files(rasters_folder_path)
 >>> print(datacube)
-    Files: 6
-    Cell size: 5000.0
-    EPSG: 4647
-    Dimension: 125 * 93
-    Mask: 2147483648.0
+Files: 6
+Cell size: 5000.0
+EPSG: 4647
+Dimension: 125 * 93
+Mask: 2147483648.0
 ```
 
 #### Case: with_order = True
@@ -87,7 +87,7 @@ MSWEP_1979.01.06.tif
 
 ```python
 >>> rasters_folder_path = "examples/data/geotiff/raster-folder"
->>> datacube = Datacube.read_multiple_files(
+>>> datacube = MultiDataset.read_multiple_files(
 ...     rasters_folder_path,
 ...     regex_string=r"\d{4}.\d{2}.\d{2}",
 ...     date=True,
@@ -113,7 +113,7 @@ If the directory contains files with a number in each file name:
 
 ```python
 rasters_folder_path = "tests/data/geotiff/rhine"
-datacube = Datacube.read_multiple_files(
+datacube = MultiDataset.read_multiple_files(
     rasters_folder_path, with_order=True, regex_string=r"\d+", date=False,
 )
 print(datacube)
@@ -130,7 +130,7 @@ After using read_multiple_files to parse the files in the directory, you can rea
 
 ```python
 rasters_folder_path = "examples/data/geotiff/raster-folder"
-datacube = Datacube.read_multiple_files(rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator=".")
+datacube = MultiDataset.read_multiple_files(rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator=".")
 dataset.open_datacube()
 print(dataset.values.shape)
 # >>>     (6, 125, 93)

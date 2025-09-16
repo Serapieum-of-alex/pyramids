@@ -1,4 +1,4 @@
-"""Datacube module."""
+"""MultiDataset module."""
 
 import os
 import re
@@ -24,8 +24,8 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
-class Datacube:
-    """DataCube."""
+class MultiDataset:
+    """MultiDataset."""
 
     files: List[str]
     data: np.ndarray
@@ -41,12 +41,10 @@ class Datacube:
         time_length: int,
         files: List[str] = None,
     ):
-        """Construct Datacube object."""
+        """Construct MultiDataset object."""
         self._base = src
         self._files = files
         self._time_length = time_length
-
-        pass
 
     def __str__(self):
         """__str__."""
@@ -104,10 +102,10 @@ class Datacube:
         return self._base.columns
 
     @classmethod
-    def create_cube(cls, src: Dataset, dataset_length: int) -> "Datacube":
-        """Create Datacube.
+    def create_cube(cls, src: Dataset, dataset_length: int) -> "MultiDataset":
+        """Create MultiDataset.
 
-            - Create a Datacube from a sample raster.
+            - Create MultiDataset from a sample raster and
 
         Args:
             src (Dataset):
@@ -116,7 +114,7 @@ class Datacube:
                 Length of the dataset.
 
         Returns:
-            Datacube: Datacube object.
+            MultiDataset: Datacube object.
         """
         return cls(src, dataset_length)
 
@@ -132,7 +130,7 @@ class Datacube:
         end: str = None,
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
-    ) -> "Datacube":
+    ) -> "MultiDataset":
         r"""read_multiple_files.
 
             - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the
@@ -201,16 +199,16 @@ class Datacube:
                 The extension of the files you want to read from the given path. Default is ".tif".
 
         Returns:
-            Datacube:
-                Instance of the Datacube class.
+            MultiDataset:
+                Instance of the MultiDataset class.
 
         Examples:
             - Read all rasters in a folder:
 
               ```python
-              >>> from pyramids.datacube import Datacube
+              >>> from pyramids.multidataset import MultiDataset
               >>> raster_folder = "examples/GIS/data/raster-folder"
-              >>> prec = Datacube.read_multiple_files(raster_folder)
+              >>> prec = MultiDataset.read_multiple_files(raster_folder)
 
               ```
 
@@ -220,7 +218,7 @@ class Datacube:
               >>> import glob
               >>> search_criteria = "*.tif"
               >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
-              >>> prec = Datacube.read_multiple_files(file_list, with_order=False)
+              >>> prec = MultiDataset.read_multiple_files(file_list, with_order=False)
 
               ```
         """
@@ -293,8 +291,8 @@ class Datacube:
 
         return cls(sample, len(files), files)
 
-    def open_datacube(self, band: int = 0) -> None:
-        """Open the datacube.
+    def open_multi_dataset(self, band: int = 0) -> None:
+        """open_MultiDataset.
 
         Read values from the given band as arrays for all files.
 
@@ -373,11 +371,11 @@ class Datacube:
         self._values[key, :, :] = value
 
     def __len__(self):
-        """Length of the Datacube."""
+        """Length of the MultiDataset."""
         return self._values.shape[0]
 
     def __iter__(self):
-        """Iterate over the Datacube."""
+        """Iterate over the MultiDataset."""
         return iter(self._values[:])
 
     def head(self, n: int = 5):
@@ -396,7 +394,7 @@ class Datacube:
         """Last Dataset."""
         return self._values[-1, :, :]
 
-    def iloc(self, i) -> Dataset:
+    def iloc(self, i):
         """iloc.
 
             - Access dataset array using index.
@@ -542,7 +540,7 @@ class Datacube:
                 Default is False.
 
         Returns:
-            None: Updates the datacube values and base in place after reprojection.
+            None: Updates the multidataset values and base in place after reprojection.
 
         Examples:
             - Reproject dataset to EPSG:3857:
@@ -609,7 +607,7 @@ class Datacube:
               >>> dem_path = "examples/GIS/data/acc4000.tif"
               >>> src_path = "examples/GIS/data/aligned_rasters/"
               >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-              >>> Datacube.crop(dem_path, src_path, out_path)
+              >>> MultiDataset.crop(dem_path, src_path, out_path)
 
               ```
         """
@@ -633,7 +631,7 @@ class Datacube:
             # use the last src as
             self._base = dst
         else:
-            dataset = Datacube(dst, time_length=self.time_length)
+            dataset = MultiDataset(dst, time_length=self.time_length)
             dataset._values = array
             return dataset
 
@@ -641,12 +639,12 @@ class Datacube:
     # # TODO: still needs to be tested
     # @staticmethod
     # def to_epsg(
-    #         src: gdal.Datacube,
+    #         src: gdal.MultiDataset,
     #         to_epsg: int = 3857,
     #         cell_size: int = [],
     #         method: str = "Nearest",
     #
-    # ) -> gdal.Datacube:
+    # ) -> gdal.MultiDataset:
     #     """to_epsg.
     #
     #         - to_epsg reprojects and resamples a folder of rasters to any projection
@@ -670,10 +668,10 @@ class Datacube:
     #
     #     Returns
     #     -------
-    #     raster: [gdal Datacube]
+    #     raster: [gdal MultiDataset]
     #          a GDAL in-memory file object, where you can ReadAsArray etc.
     #     """
-    #     if not isinstance(src, gdal.Datacube):
+    #     if not isinstance(src, gdal.MultiDataset):
     #         raise TypeError(
     #             "src should be read using gdal (gdal dataset please read it using gdal"
     #             f" library) given {type(src)}"
@@ -785,10 +783,10 @@ class Datacube:
 
         Returns:
             None:
-                Updates the datacube values in place to match the alignment of alignment_src.
+                Updates the multidataset values in place to match the alignment of alignment_src.
 
         Examples:
-            - Align all rasters in the datacube to a DEM raster:
+            - Align all rasters in the multidataset to a DEM raster:
 
               ```python
               >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
@@ -874,7 +872,7 @@ class Datacube:
     def apply(self, ufunc: Callable) -> None:
         """apply.
 
-        Apply a function on each raster in the datacube.
+        apply a function on each raster in the MultiDataset.
 
         Args:
             ufunc (Callable):

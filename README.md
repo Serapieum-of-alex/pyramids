@@ -75,6 +75,27 @@ Quick start
   >>> import pyramids
 ```
 
+Testing
+=======
+
+Use Pixi to run tests in the dev environment:
+
+```console
+pixi run -e dev pytest -q
+```
+
+Run a specific test file:
+
+```console
+pixi run -e dev pytest tests/netcdf/test_dimensions.py
+```
+
+Run a single test by node id:
+
+```console
+pixi run -e dev pytest tests/netcdf/test_dimensions.py::TestStripBraces::test_with_braces -q
+```
+
 Docker
 ======
 

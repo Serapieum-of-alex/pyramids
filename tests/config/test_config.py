@@ -97,7 +97,7 @@ class TestConfigMock(unittest.TestCase):
         path = Path(os.environ["GDAL_DRIVER_PATH"])
         self.assertEqual(path, Path("C:/Python/site-packages/Library/Lib/gdalplugins"))
 
-    @patch("pathlib.Path.exists", return_value=True)
+    @patch("pathlib.Path.exists", side_effect=[True, False])
     def test_dynamic_env_variables_linux(self, mock_exists):
         with (
             patch("pyramids.base.config.Config.set_env_conda", return_value=None),

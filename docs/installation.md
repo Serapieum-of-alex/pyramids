@@ -121,10 +121,14 @@ import pyramids
 print(pyramids.__version__)
 ```
 
-You can also run the test suite if you installed dev tools:
-
+You can also run the test suite via Pixi:
 ```console
-pytest -m "not plot" -q
+pixi run -e dev pytest -m "not plot" -q
+```
+
+To run a specific test file:
+```console
+pixi run -e dev pytest tests/netcdf/test_dimensions.py
 ```
 
 ## Notes
