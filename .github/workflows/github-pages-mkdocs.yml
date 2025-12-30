@@ -48,7 +48,7 @@ jobs:
         fetch-depth: 0
 
     - name: Set up Python
-      uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@v1
+      uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@main
       with:
         python-version: '3.12'
         install-groups: 'docs'
@@ -70,7 +70,7 @@ jobs:
       with:
         fetch-depth: 0
     - name: Set up Python
-      uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@v1
+      uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@main
       with:
         python-version: '3.12'
         install-groups: 'docs'
