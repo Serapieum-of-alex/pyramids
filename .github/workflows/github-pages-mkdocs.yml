@@ -25,13 +25,10 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@main
         with:
           python-version: '3.12'
-
-      - name: Install dependencies
-        run: |
-          pip install .[docs]
+          install-groups: 'docs'
 
       - name: Deploy to GitHub Pages (Pull Request)
         env:
@@ -51,13 +48,10 @@ jobs:
         fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@v1
       with:
         python-version: '3.12'
-
-    - name: Install dependencies
-      run: |
-        pip install .[docs]
+        install-groups: 'docs'
 
     - name: Deploy to GitHub Pages (Main)
       env:
@@ -76,13 +70,10 @@ jobs:
       with:
         fetch-depth: 0
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@v1
       with:
         python-version: '3.12'
-
-    - name: Install dependencies
-      run: |
-          pip install .[docs]
+        install-groups: 'docs'
 
     - name: Set release notes tag
       run: |
