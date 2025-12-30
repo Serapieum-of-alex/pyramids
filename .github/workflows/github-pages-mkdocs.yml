@@ -17,74 +17,38 @@ on:
 
 jobs:
   deploy-pr:
-      if: github.event_name == 'pull_request'
-      runs-on: ubuntu-latest
-      steps:
-      - uses: actions/checkout@v4
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@main
         with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@main
-        with:
+          trigger: 'pull_request'
+          package-manager: 'pip'
           python-version: '3.12'
           install-groups: 'docs'
-
-      - name: Deploy to GitHub Pages (Pull Request)
-        env:
-          ACTIONS_DEPLOY_TOKEN: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
-        run: |
-          git config --global user.name '${{ github.actor }}'
-          git config --global user.email '${{ github.actor }}@users.noreply.github.com'
-
-          mike deploy --push develop
+          deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
 
   deploy-main:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Set up Python
-      uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@main
-      with:
-        python-version: '3.12'
-        install-groups: 'docs'
-
-    - name: Deploy to GitHub Pages (Main)
-      env:
-        ACTIONS_DEPLOY_TOKEN: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
-      run: |
-        git config --global user.name '${{ github.actor }}'
-        git config --global user.email '${{ github.actor }}@users.noreply.github.com'
-        mike deploy --push main
-        mike set-default --push main
+      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@main
+        with:
+          trigger: 'main'
+          package-manager: 'pip'
+          python-version: '3.12'
+          install-groups: 'docs'
+          deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
 
   deploy-release:
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Set up Python
-      uses: Serapieum-of-alex/github-actions/actions/python-setup/pip@main
-      with:
-        python-version: '3.12'
-        install-groups: 'docs'
-
-    - name: Set release notes tag
-      run: |
-        export RELEASE_TAG_VERSION=${{ github.event.release.tag_name }}
-        echo "RELEASE_TAG_VERSION=${RELEASE_TAG_VERSION}" >> $GITHUB_ENV
-
-    - name: Deploy to GitHub Pages
-      env:
-        ACTIONS_DEPLOY_TOKEN: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
-      run: |
-        git config --global user.name '${{ github.actor }}'
-        git config --global user.email '${{ github.actor }}@users.noreply.github.com'
-        mike deploy --push --update-aliases ${RELEASE_TAG_VERSION} latest
-        mike set-default --push latest
+      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@main
+        with:
+          trigger: 'release'
+          package-manager: 'pip'
+          python-version: '3.12'
+          install-groups: 'docs'
+          deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
+          mike-alias: 'latest'
