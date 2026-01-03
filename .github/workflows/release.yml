@@ -50,10 +50,10 @@ jobs:
           package-manager: pixi
           install-groups: "dev"
 
-#       - name: Build package
-#         run: pixi run -e dev build-dist
-#
-#       - name: Publish package to PyPI
-#         uses: pypa/gh-action-pypi-publish@release/v1
-#         with:
-#           password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Build package
+        run: pixi run -e dev build-dist
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
