@@ -6,15 +6,29 @@ permissions:
 
 on:
   workflow_dispatch:
-  release:
-    types: [created]
+  workflow_run:
+    workflows: ["Automated release workflow"]
+    types:
+      - completed
+    branches:
+      - main
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Get latest release tag
+        if: github.event_name == 'workflow_run'
+        id: get-release
+        run: |
+          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Get repo image name (lowercase)
         shell: bash
@@ -39,10 +53,10 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           tags: |
-            type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
-            type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
-            type=sha,enable=${{ github.event_name != 'release' }}
+            type=semver,pattern={{version}},enable=${{ github.event_name == 'workflow_run' }},value=${{ steps.get-release.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'workflow_run' }},value=${{ steps.get-release.outputs.tag }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_run' }}
+            type=sha,enable=${{ github.event_name == 'workflow_dispatch' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
