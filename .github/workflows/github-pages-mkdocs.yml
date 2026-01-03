@@ -11,9 +11,12 @@ on:
   pull_request:
     branches:
       - '**'  # Match all branches for pull requests
-  release:
-      types:
-        - published
+  workflow_run:
+    workflows: ["Automated release workflow"]
+    types:
+      - completed
+    branches:
+      - main
 
 jobs:
   deploy-pr:
@@ -41,9 +44,17 @@ jobs:
           deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
 
   deploy-release:
-    if: github.event_name == 'release'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Get latest release tag
+        id: get-release
+        run: |
+          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@main
         with:
           trigger: 'release'
@@ -51,4 +62,5 @@ jobs:
           python-version: '3.12'
           install-groups: 'docs'
           deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
+          release-tag: ${{ steps.get-release.outputs.tag }}
           mike-alias: 'latest'
