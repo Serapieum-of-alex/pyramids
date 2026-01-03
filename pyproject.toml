@@ -37,6 +37,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+viz = ["cleopatra>=0.6.0"]
+
+[dependency-groups]
 dev = [
     "nbval >=0.11.0",
     "pre-commit >=3.7.1",
@@ -67,8 +70,6 @@ docs = [
     "mkdocs-panzoom-plugin",
     "notebook<7.0",
 ]
-
-viz = ["cleopatra>=0.6.0"]
 
 [project.urls]
 homepage = "https://github.com/Serapieum-of-alex/pyramids"
