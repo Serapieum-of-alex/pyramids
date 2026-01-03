@@ -49,11 +49,3 @@ jobs:
           draft: ${{ github.event.inputs.draft }}
           package-manager: pixi
           install-groups: "dev"
-
-      - name: Build package
-        run: pixi run -e dev build-dist
-
-      - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1.13
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
