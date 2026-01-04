@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Environment ${{ matrix.environment }} ${{ matrix.os }}
-        uses: Serapieum-of-alex/github-actions/actions/python-setup/pixi@main
+        uses: Serapieum-of-alex/github-actions/actions/python-setup/pixi@v1
         with:
           environments: ${{ matrix.environment }}
           activate-environment: ${{ matrix.environment }}
