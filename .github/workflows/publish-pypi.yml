@@ -1,4 +1,4 @@
-name: Automated release workflow
+name: Publish package to PyPI
 
 permissions:
   contents: write
