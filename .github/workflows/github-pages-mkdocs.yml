@@ -23,7 +23,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@main
+      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@mkdocs/v1
         with:
           trigger: 'pull_request'
           package-manager: 'pip'
@@ -35,12 +35,12 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@main
+      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@mkdocs/v1
         with:
           trigger: 'main'
           package-manager: 'pip'
           python-version: '3.12'
-          install-groups: 'docs'
+          install-groups: 'groups: docs'
           deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
 
   deploy-release:
@@ -55,12 +55,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@main
+      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@mkdocs/v1
         with:
           trigger: 'release'
           package-manager: 'pip'
           python-version: '3.12'
-          install-groups: 'docs'
+          install-groups: 'groups: docs'
           deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
           release-tag: ${{ steps.get-release.outputs.tag }}
           mike-alias: 'latest'
