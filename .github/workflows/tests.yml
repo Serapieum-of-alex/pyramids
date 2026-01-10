@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        environment: [py311, py312, py313]
+        environment: [py311, py312, py313, py314]
 
     steps:
       - uses: actions/checkout@v4
