@@ -1,6 +1,13 @@
 ﻿# Change log
 
 
+## 0.9.0a0 (2026-01-18)
+
+### Feat
+
+- **logging**: Centralized logging via `LoggerManager` with colored console and optional file logging; reduced third‑party log noise. (#135)
+- **logging**: Centralized logging via `LoggerManager` with colored console and optional file logging; reduced third‑party log noise. (#135)
+
 ## 0.8.0 (2025-09-06)
 
 ### Feat
