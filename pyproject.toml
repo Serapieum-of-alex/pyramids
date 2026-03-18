@@ -37,6 +37,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+viz = ["cleopatra>=0.6.0"]
+
+[dependency-groups]
 dev = [
     "nbval >=0.11.0",
     "pre-commit >=3.7.1",
@@ -67,8 +70,6 @@ docs = [
     "mkdocs-panzoom-plugin",
     "notebook<7.0",
 ]
-
-viz = ["cleopatra>=0.6.0"]
 
 [project.urls]
 homepage = "https://github.com/Serapieum-of-alex/pyramids"
@@ -112,7 +113,7 @@ name = "cz_conventional_commits"
 version_provider = "pep621"
 tag_format = "$version"
 changelog_file = "docs/change-log.md"
-update_changelog_on_bump = false
+update_changelog_on_bump = true
 style = [
     ["qmark", "fg:#ff9d00 bold"],
     ["question", "bold"],
@@ -162,6 +163,7 @@ docs = { features = ["docs"], solve-group = "docs" }
 py311 = { features = ["py311", "viz", "dev"], solve-group = "py311" }
 py312 = { features = ["py312", "viz", "dev"], solve-group = "py312" }
 py313 = { features = ["py313", "viz", "dev"], solve-group = "py313" }
+py314 = { features = ["py314", "viz", "dev"], solve-group = "py314" }
 
 
 [tool.pixi.feature.py311.dependencies]
@@ -170,6 +172,8 @@ python = "3.11.*"
 python = "3.12.*"
 [tool.pixi.feature.py313.dependencies]
 python = "3.13.*"
+[tool.pixi.feature.py314.dependencies]
+python = "3.14.*"
 
 
 [tool.pixi.dependencies]
