@@ -56,7 +56,7 @@ class NetCDF(Dataset):
         self._cached_meta_data = None
 
     def __str__(self):
-        """__str__."""
+        """Return a human-readable summary of the NetCDF dataset."""
         message = f"""
             Cell size: {self.cell_size}
             Dimension: {self.rows} * {self.columns}
@@ -177,15 +177,16 @@ class NetCDF(Dataset):
 
     @no_data_value.setter
     def no_data_value(self, value: Union[List, Number]):
-        """no_data_value.
+        """Set the no-data value that marks cells outside the domain.
 
-        No data value that marks the cells out of the domain
+        The setter only changes the ``no_data_value`` attribute; it does
+        **not** modify the underlying cell values.  Use this to align the
+        attribute with whatever sentinel is already stored in the cells.
+        To actually rewrite cell values, use ``change_no_data_value``.
 
-        Notes:
-            - the setter does not change the values of the cells to the new no_data_value, it only changes the
-            `no_data_value` attribute.
-            - use this method to change the `no_data_value` attribute to match the value that is stored in the cells.
-            - to change the values of the cells, to the new no_data_value, use the `change_no_data_value` method.
+        Args:
+            value: New no-data value. A single number applied to all
+                bands, or a list with one value per band.
         """
         super().no_data_value = value
 
@@ -349,11 +350,14 @@ class NetCDF(Dataset):
     ) -> Optional[Dict[str, Any]]:
         """Create a compact snapshot of dimensions.
 
-        Parameters
-        ----------
-        metadata : NetCDFMetadata, optional
-            Pre-built metadata to avoid re-calling self.meta_data (which would
-            cause infinite recursion if called from within meta_data).
+        Args:
+            metadata: Pre-built metadata to avoid re-calling
+                ``self.meta_data`` (which would cause infinite recursion
+                if called from within ``meta_data``). Defaults to None.
+
+        Returns:
+            dict or None: Dictionary with ``names``, ``sizes``, ``attrs``,
+                and ``values`` keys, or None on failure.
         """
         try:
             md = metadata if metadata is not None else self.meta_data
@@ -465,11 +469,11 @@ class NetCDF(Dataset):
         handle). Falls back to the classic ``NETCDF:file:var`` path.
 
         Args:
-            var (str):
-                Variable name in the dataset.
+            var: Variable name in the dataset.
 
         Returns:
-            np.ndarray or None
+            np.ndarray or None: The variable data, or None if the
+                variable is not found.
         """
         rg = self._raster.GetRootGroup()
         if rg is not None:
@@ -545,15 +549,15 @@ class NetCDF(Dataset):
         The returned object carries origin metadata so that modified data
         can be written back via ``set_variable()``.
 
-        Parameters
-        ----------
-        variable_name : str
-            Name of the variable to extract.
+        Args:
+            variable_name: Name of the variable to extract.
 
-        Returns
-        -------
-        NetCDF
-            A subset backed by a classic dataset (bands = non-spatial dims).
+        Returns:
+            NetCDF: A subset backed by a classic dataset where
+                non-spatial dimensions are mapped to bands.
+
+        Raises:
+            ValueError: If ``variable_name`` is not present in the dataset.
         """
         if variable_name not in self.variable_names:
             raise ValueError(
@@ -670,21 +674,22 @@ class NetCDF(Dataset):
 
     @property
     def is_subset(self) -> bool:
-        """is_subset.
+        """Whether this object represents a single-variable subset.
 
         Returns:
-            bool
-                True if the dataset is a sub_dataset.
+            bool: True if the dataset is a variable subset extracted
+                via ``get_variable()``.
         """
         return self._is_subset
 
     @property
     def is_md_array(self):
-        """is_md_array.
+        """Whether this dataset was opened in multidimensional mode.
 
         Returns:
-            bool
-                True if the dataset is a multidimensional array.
+            bool: True if the dataset was opened with
+                ``gdal.OF_MULTIDIM_RASTER`` and supports groups,
+                MDArrays, and dimensions.
         """
         return self._is_md_array
 
@@ -758,27 +763,25 @@ class NetCDF(Dataset):
     def create_main_dimension(
         group: gdal.Group, dim_name: str, dtype: int, values: np.ndarray
     ) -> gdal.Dimension:
-        """Create NetCDF dimension.
+        """Create a NetCDF dimension with an indexing variable.
 
-        If the dimension name is y, lat, or latitude, the dimension type will be horizontal y.
-        If the dimension name is x, lon, or longitude, the dimension type will be horizontal x.
-        If the dimension name is bands or time, the dimension type will be temporal.
+        The dimension type is inferred from ``dim_name``:
+        ``y``/``lat``/``latitude`` → horizontal Y,
+        ``x``/``lon``/``longitude`` → horizontal X,
+        ``bands``/``time`` → temporal.
+
+        The dimension is registered in the group together with a
+        matching MDArray that stores the coordinate values.
 
         Args:
-            group (gdal.Group):
-                Dataset group.
-            dim_name (str):
-                Dimension name.
-            dtype (int):
-                Data type of the dimension.
-            values (np.ndarray):
-                Values of the dimension.
+            group: Root group (or sub-group) of the multidimensional
+                dataset.
+            dim_name: Name of the dimension to create.
+            dtype: GDAL ``ExtendedDataType`` for the indexing variable.
+            values: Coordinate values for the dimension.
 
         Returns:
-            gdal.Dimension
-
-        Hint:
-            - The dimension will be saved as a dimension and a mdarray in the given group.
+            gdal.Dimension: The newly created dimension.
         """
         if dim_name in ["y", "lat", "latitude"]:
             dim_type = gdal.DIM_TYPE_HORIZONTAL_Y
@@ -806,31 +809,28 @@ class NetCDF(Dataset):
         path: str = None,
         variable_name: str = None,
     ) -> "Dataset":
-        """create_from_array.
-
-            - Create_from_array method creates a `Dataset` from a given array and geotransform data.
+        """Create a NetCDF dataset from a NumPy array and geotransform.
 
         Args:
-            arr (np.ndarray):
-                Numpy array.
-            geo (Tuple[float, float, float, float, float, float]):
-                Geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
-            bands_values (List | None):
-                Names of the bands to be used in the netcdf file. Default is None.
-            epsg (int | str):
-                EPSG code (https://epsg.io/). Default 3857 (WGS84 Web Mercator).
-            no_data_value (Any | list):
-                No data value to mask cells out of the domain. Default is -9999.
-            driver_type (str):
-                Driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM".
-            path (str | None):
-                Path to save the driver.
-            variable_name (str | None):
-                Name of the variable in the netcdf file. Default is None.
+            arr: 2-D ``(rows, cols)`` or 3-D ``(bands, rows, cols)``
+                NumPy array.
+            geo: Geotransform tuple ``(x_min, pixel_size, rotation,
+                y_max, rotation, pixel_size)``.
+            bands_values: Coordinate values for the band/time
+                dimension. Defaults to None (auto-numbered 1..N).
+            epsg: EPSG code for the spatial reference.
+                Defaults to 4326.
+            no_data_value: Sentinel value for cells outside the domain.
+                Defaults to DEFAULT_NO_DATA_VALUE.
+            driver_type: GDAL driver name (``"MEM"``, ``"netcdf"``).
+                Defaults to ``"MEM"``.
+            path: Output file path. Required when ``driver_type`` is
+                ``"netcdf"``. Defaults to None.
+            variable_name: Name of the data variable in the NetCDF
+                file. Defaults to None.
 
         Returns:
-            Dataset:
-                Dataset object.
+            Dataset: The newly created NetCDF dataset.
         """
         if arr.ndim == 2:
             bands = 1
@@ -872,35 +872,30 @@ class NetCDF(Dataset):
         driver_type: str = "MEM",
         path: str = None,
     ) -> gdal.Dataset:
-        """_create_netcdf_from_array.
+        """Build an in-memory multidimensional GDAL dataset from an array.
 
         Args:
-            arr (np.ndarray):
-                Numpy array.
-            variable_name (str):
-                Variable name in the netcdf file.
-            cols (int):
-                Number of columns in the array.
-            rows (int):
-                Number of rows in the array.
-            bands (int | None):
-                Number of bands; for 3D arrays bands is the first dimension.
-            bands_values (List | None):
-                Names of the bands to be used in the netcdf file. Default is None.
-            geo (Tuple[float, float, float, float, float, float] | None):
-                Geotransform tuple [minimum lon/x, pixel-size, rotation, maximum lat/y, rotation, pixel-size].
-            epsg (int | str | None):
-                EPSG code (https://epsg.io/). Default 3857 (WGS84 Web Mercator).
-            no_data_value (Any | list):
-                No data value to mask cells out of the domain. Default is -9999.
-            driver_type (str):
-                Driver type ["GTiff", "MEM", "netcdf"]. Default is "MEM".
-            path (str | None):
-                Path to save the driver.
+            arr: 2-D ``(rows, cols)`` or 3-D ``(bands, rows, cols)``
+                NumPy array.
+            variable_name: Name of the data variable.
+            cols: Number of columns.
+            rows: Number of rows.
+            bands_values: Coordinate values for the band dimension.
+                Defaults to None.
+            geo: Geotransform tuple ``(x_min, pixel_size, rotation,
+                y_max, rotation, pixel_size)``. Defaults to None.
+            epsg: EPSG code for the spatial reference.
+                Defaults to None.
+            no_data_value: Sentinel value for cells outside the domain.
+                Defaults to DEFAULT_NO_DATA_VALUE.
+            driver_type: GDAL driver name. Defaults to ``"MEM"``.
+            path: Output file path. Defaults to None.
 
         Returns:
-            gdal.Dataset:
-                The created NetCDF GDAL dataset.
+            gdal.Dataset: The created multidimensional GDAL dataset.
+
+        Raises:
+            ValueError: If ``variable_name`` is None.
         """
         if variable_name is None:
             raise ValueError("Variable_name cannot be None")

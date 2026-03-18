@@ -7,13 +7,13 @@ test_stage_validation.py.
 Style: Google-style docstrings, ≤120 char lines, no inline imports,
 no primitive AAA comments, descriptive assertion messages.
 """
-
+from __future__ import annotations
 import os
 import numpy as np
 import pytest
 from osgeo import gdal
 from pyramids.netcdf.netcdf import NetCDF
-from pyramids.netcdf.models import NetCDFMetadata
+
 from pyramids.dataset import Dataset
 
 

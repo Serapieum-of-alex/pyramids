@@ -4,7 +4,7 @@ Abstract Dataset.
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
-
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from numbers import Number
 from typing import Any, Dict, List, Optional, Tuple, Union
