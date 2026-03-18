@@ -81,6 +81,7 @@ class DimensionInfo:
     type: Optional[str] = None
     direction: Optional[str] = None
     indexing_variable: Optional[str] = None  # full name or short name
+    attrs: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_gdal_dim(cls, d: gdal.Dimension, group_full_name: str) -> "DimensionInfo":
@@ -116,7 +117,14 @@ class DimensionInfo:
             else:
                 ivname = None
         except Exception:
+            iv = None
             ivname = None
+
+        # Read attributes from the indexing variable (e.g., "units", "calendar")
+        try:
+            iv_attrs = _read_attributes(iv) if iv is not None else {}
+        except Exception:
+            iv_attrs = {}
 
         return cls(
             name=dim_name,
@@ -125,6 +133,7 @@ class DimensionInfo:
             type=dtype,
             direction=dim_dir,
             indexing_variable=ivname,
+            attrs=iv_attrs,
         )
 
 
@@ -257,3 +266,29 @@ class NetCDFMetadata:
     created_with: Dict[str, str]
     open_options_used: Optional[Dict[str, str]] = None
     dimension_overview: Optional[Dict[str, Any]] = None
+
+    @property
+    def names(self) -> List[str]:
+        """Short names of all dimensions."""
+        return [dim.name for dim in self.dimensions.values()]
+
+    def get_dimension(self, name: str) -> Optional[DimensionInfo]:
+        """Look up a dimension by short name or full name.
+
+        Parameters
+        ----------
+        name : str
+            Dimension short name (e.g., "time") or full name (e.g., "/time").
+
+        Returns
+        -------
+        DimensionInfo or None
+        """
+        # Try full name first (exact key lookup)
+        if name in self.dimensions:
+            return self.dimensions[name]
+        # Try matching by short name
+        for dim in self.dimensions.values():
+            if dim.name == name:
+                return dim
+        return None

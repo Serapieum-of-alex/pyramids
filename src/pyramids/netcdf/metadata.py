@@ -179,14 +179,36 @@ class GroupTraverser:
             self.groups[group_info.full_name] = group_info
 
 
-def get_metadata(source: gdal.Dataset, open_options: Optional[Dict[str, Any]] = None) -> NetCDFMetadata:
+def get_metadata(source, open_options: Optional[Dict[str, Any]] = None) -> NetCDFMetadata:
     """Read and normalize all NetCDF MDIM metadata.
 
-    This is a thin wrapper that delegates to the class-based builder
-    MetadataBuilder for clarity and maintainability.
+    Parameters
+    ----------
+    source : gdal.Dataset, str, or object with ``_raster`` attribute
+        The data source. Accepts a GDAL dataset directly, a file path
+        (opened with OF_MULTIDIM_RASTER), or a pyramids NetCDF/Dataset
+        instance (the internal ``_raster`` is extracted).
+    open_options : dict, optional
+        Passed through to the builder as informational metadata.
+
+    Returns
+    -------
+    NetCDFMetadata
     """
-    builder = MetadataBuilder(source, open_options)
-    return builder.build()
+    if isinstance(source, str):
+        ds = gdal.OpenEx(source, gdal.OF_MULTIDIM_RASTER)
+        if ds is None:
+            raise ValueError(f"Could not open '{source}' as multidimensional raster")
+        builder = MetadataBuilder(ds, open_options)
+        result = builder.build()
+        ds = None  # close the temporary handle
+        return result
+    elif hasattr(source, "_raster"):
+        builder = MetadataBuilder(source._raster, open_options)
+        return builder.build()
+    else:
+        builder = MetadataBuilder(source, open_options)
+        return builder.build()
 
 
 def to_dict(metadata: NetCDFMetadata) -> Dict[str, Any]:
@@ -232,6 +254,7 @@ def from_json(s: str) -> NetCDFMetadata:
             type=dd.get("type"),
             direction=dd.get("direction"),
             indexing_variable=dd.get("indexing_variable"),
+            attrs=dd.get("attrs", {}),
         )
 
     def build_array(ad: Dict[str, Any]) -> ArrayInfo:

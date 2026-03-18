@@ -42,7 +42,7 @@ class NetCDF(Dataset):
             self._is_subset = False
         else:
             self._is_md_array = False
-            self._is_subset = True
+            self._is_subset = False
 
     def __str__(self):
         """__str__."""
@@ -224,27 +224,55 @@ class NetCDF(Dataset):
         }
 
         metadata = get_metadata(self._raster, open_options)
-        # metadata.dimension_overview = self._build_dimension_overview()
         return metadata
 
-    def _build_dimension_overview(self) -> Optional[Dict[str, Any]]:
-        """Create a compact snapshot of dimensions using the existing MetaData parser.
+    def get_all_metadata(self, open_options: Dict = None) -> "NetCDFMetadata":
+        """Get full MDIM metadata with dimension overview.
 
-        This provides a CF-friendly view in addition to the full MDIM traversal.
+        Parameters
+        ----------
+        open_options : dict, optional
+            Open options passed to get_metadata.
+
+        Returns
+        -------
+        NetCDFMetadata
+            Metadata with dimension_overview populated.
+        """
+        metadata = get_metadata(self._raster, open_options)
+        metadata.dimension_overview = self._build_dimension_overview(metadata)
+        return metadata
+
+    def _build_dimension_overview(
+        self, metadata: "NetCDFMetadata" = None
+    ) -> Optional[Dict[str, Any]]:
+        """Create a compact snapshot of dimensions.
+
+        Parameters
+        ----------
+        metadata : NetCDFMetadata, optional
+            Pre-built metadata to avoid re-calling self.meta_data (which would
+            cause infinite recursion if called from within meta_data).
         """
         try:
-            md = self.meta_data
+            md = metadata if metadata is not None else self.meta_data
             names = list(md.names)
-            sizes = {name: int(md.get_dimension(name).size) for name in names if md.get_dimension(name) is not None}
+            sizes = {
+                name: int(md.get_dimension(name).size)
+                for name in names
+                if md.get_dimension(name) is not None
+            }
             attrs: Dict[str, Dict[str, Any]] = {}
             values: Dict[str, List[Union[int, float, str]]] = {}
 
             for name in names:
-                a = md.get_attrs(name)
-                if a is not None:
-                    attrs[name] = {str(k): (list(v) if isinstance(v, list) else v) for k, v in a.items()}
+                dim = md.get_dimension(name)
+                if dim is not None and dim.attrs:
+                    attrs[name] = {
+                        str(k): (list(v) if isinstance(v, list) else v)
+                        for k, v in dim.attrs.items()
+                    }
 
-            # Try to get coordinate values through NetCDF._read_variable, when present
             for name in names:
                 try:
                     arr = self._read_variable(name)
@@ -253,10 +281,12 @@ class NetCDF(Dataset):
                 if arr is None:
                     continue
                 try:
-                    values[name] = [_to_py_scalar(v) for v in arr.reshape(-1).tolist()]
+                    values[name] = [
+                        _to_py_scalar(v) for v in arr.reshape(-1).tolist()
+                    ]
                 except Exception:
                     try:
-                        values[name] = [_to_py_scalar(v) for v in list(arr)]  # type: ignore[arg-type]
+                        values[name] = [_to_py_scalar(v) for v in list(arr)]
                     except Exception:
                         pass
 
@@ -388,6 +418,40 @@ class NetCDF(Dataset):
         cube._is_subset = True
 
         return cube
+
+    def _replace_raster(self, new_raster: gdal.Dataset):
+        """Replace the internal GDAL dataset, closing the old one if different.
+
+        Re-derives all base-class state (geotransform, CRS, band info, etc.)
+        without resetting NetCDF-specific flags (_is_md_array, _is_subset).
+        """
+        old = self._raster
+        if old is not None and old is not new_raster:
+            old.FlushCache()
+        # AbstractDataset state
+        self._raster = new_raster
+        self._geotransform = new_raster.GetGeoTransform()
+        self._cell_size = self._geotransform[1]
+        self._meta_data = new_raster.GetMetadata()
+        self._file_name = new_raster.GetDescription()
+        self._epsg = self._get_epsg()
+        self._rows = new_raster.RasterYSize
+        self._columns = new_raster.RasterXSize
+        self._band_count = new_raster.RasterCount
+        self._block_size = [
+            new_raster.GetRasterBand(i).GetBlockSize()
+            for i in range(1, self._band_count + 1)
+        ]
+        # Dataset state
+        self._no_data_value = [
+            new_raster.GetRasterBand(i).GetNoDataValue()
+            for i in range(1, self._band_count + 1)
+        ]
+        self._band_names = self._get_band_names()
+        self._band_units = [
+            new_raster.GetRasterBand(i).GetUnitType()
+            for i in range(1, self._band_count + 1)
+        ]
 
     @property
     def is_subset(self) -> bool:
@@ -662,7 +726,7 @@ class NetCDF(Dataset):
         new_md_array.Write(arr)
         try:
             new_md_array.SetNoDataValueDouble(src_mdarray.GetNoDataValue())
-        except:
+        except Exception:
             new_md_array.SetNoDataValueDouble(-9999)
 
         new_md_array.SetSpatialRef(src_mdarray.GetSpatialRef())
@@ -700,7 +764,6 @@ class NetCDF(Dataset):
             if var in self.variable_names:
                 var = f"{var}-new"
             self._add_md_array_to_group(src_rg, var, md_arr)
-        self.__init__(self._raster)
 
     def remove_variable(self, variable_name: str):
         """remove_variable.
@@ -727,4 +790,4 @@ class NetCDF(Dataset):
         rg = dst.GetRootGroup()
         rg.DeleteMDArray(variable_name)
 
-        self.__init__(dst)
+        self._replace_raster(dst)
