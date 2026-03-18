@@ -43,6 +43,9 @@ class NetCDF(Dataset):
         else:
             self._is_md_array = False
             self._is_subset = False
+        # Caches (invalidated by _replace_raster, add_variable, remove_variable)
+        self._cached_variables = None
+        self._cached_meta_data = None
 
     def __str__(self):
         """__str__."""
@@ -122,11 +125,13 @@ class NetCDF(Dataset):
 
     @property
     def geotransform(self):
-        """Geotransform."""
-        if self.lon is None:
-            geotransform = None
-        else:
-            geotransform = (
+        """Geotransform.
+
+        Computes from lon/lat coordinate arrays if available.
+        Falls back to the parent GDAL GetGeoTransform() otherwise.
+        """
+        if self.lon is not None and self.lat is not None:
+            return (
                 self.lon[0] - self.cell_size / 2,
                 self.cell_size,
                 0,
@@ -134,7 +139,7 @@ class NetCDF(Dataset):
                 0,
                 -self.cell_size,
             )
-        return geotransform
+        return self._geotransform
 
     @property
     def variable_names(self) -> List[str]:
@@ -142,12 +147,13 @@ class NetCDF(Dataset):
         return self.get_variable_names()
 
     @property
-    def variables(self) -> Dict[str, str]:
+    def variables(self) -> Dict[str, "NetCDF"]:
         """Variables in the dataset (resembles the variables in NetCDF files.)."""
-        vars_dict = {}
-        for var in self.variable_names:
-            vars_dict[var] = self.get_variable(var)
-        return vars_dict
+        if self._cached_variables is None:
+            self._cached_variables = {
+                var: self.get_variable(var) for var in self.variable_names
+            }
+        return self._cached_variables
 
     @property
     def no_data_value(self):
@@ -182,6 +188,19 @@ class NetCDF(Dataset):
         """Time stamp."""
         return self.get_time_variable()
 
+    def read_array(self, band: int = None, window=None) -> np.ndarray:
+        """Read array from the dataset.
+
+        Raises a clear error when called on the root MDIM container
+        (which has no raster bands).
+        """
+        if self._is_md_array and not self._is_subset and self.band_count == 0:
+            raise ValueError(
+                "Cannot read array from NetCDF container. "
+                "Use .get_variable('name').read_array() instead."
+            )
+        return super().read_array(band=band, window=window)
+
     @classmethod
     def read_file(
         cls, path: str, read_only=True, open_as_multi_dimensional: bool = True
@@ -209,22 +228,24 @@ class NetCDF(Dataset):
 
     @property
     def meta_data(self) -> "NetCDFMetadata":
-        """Enumerate and normalize all MDIM metadata for this NetCDF.
+        """Structured metadata for this NetCDF.
 
-        This is additive to the existing dimension-focused view available via
-        the ``meta_data`` property. It traverses groups, arrays, and dimensions
-        using GDAL's Multidimensional API and returns a structured model.
+        Uses the GDAL Multidimensional API (groups, arrays, dimensions) when
+        the file was opened with ``open_as_multi_dimensional=True``.  Falls
+        back to the classic ``NETCDF_DIM_*`` parser (``dimensions.py``) when
+        opened in classic mode (no root group available).
+
+        Cached on first access. Invalidated by add_variable/remove_variable.
 
         Returns:
             NetCDFMetadata
-                A metadata object describing the full MDIM structure and attributes.
         """
-        open_options = {
-            "Open Mode": "SHARED" if self.is_subset else "MULTIDIM_RASTER"
-        }
-
-        metadata = get_metadata(self._raster, open_options)
-        return metadata
+        if self._cached_meta_data is None:
+            open_options = {
+                "Open Mode": "SHARED" if self.is_subset else "MULTIDIM_RASTER"
+            }
+            self._cached_meta_data = get_metadata(self._raster, open_options)
+        return self._cached_meta_data
 
     def get_all_metadata(self, open_options: Dict = None) -> "NetCDFMetadata":
         """Get full MDIM metadata with dimension overview.
@@ -336,25 +357,42 @@ class NetCDF(Dataset):
         return dim
 
     def _read_variable(self, var: str) -> Union[np.ndarray, None]:
-        """Read variables in a netcdf file.
+        """Read a variable's data as a numpy array.
+
+        Uses the MDIM root group when available (avoids opening a new GDAL
+        handle). Falls back to the classic ``NETCDF:file:var`` path.
 
         Args:
-            var(str):
-                variable name in the dataset
+            var (str):
+                Variable name in the dataset.
 
         Returns:
-            GDAL dataset/None
-                if the variable exists in the dataset it will return a gdal dataset otherwise it will return None.
+            np.ndarray or None
         """
-        try:
-            var_ds = gdal.Open(f"NETCDF:{self.file_name}:{var}").ReadAsArray()
-        except RuntimeError:
+        rg = self._raster.GetRootGroup()
+        if rg is not None:
+            # Try as an MDArray first
+            try:
+                md_arr = rg.OpenMDArray(var)
+                if md_arr is not None:
+                    return md_arr.ReadAsArray()
+            except Exception:
+                pass
+            # Fall back to dimension indexing variable
             dim = self._get_dimension(var)
-            var_ds = (
-                dim.GetIndexingVariable().ReadAsArray() if dim is not None else None
-            )
+            if dim is not None:
+                iv = dim.GetIndexingVariable()
+                if iv is not None:
+                    return iv.ReadAsArray()
+            return None
 
-        return var_ds
+        # Classic mode: open via subdataset string
+        try:
+            return gdal.Open(
+                f"NETCDF:{self.file_name}:{var}"
+            ).ReadAsArray()
+        except (RuntimeError, AttributeError):
+            return None
 
     def get_variable_names(self) -> List[str]:
         """get_variable_names."""
@@ -452,6 +490,14 @@ class NetCDF(Dataset):
             new_raster.GetRasterBand(i).GetUnitType()
             for i in range(1, self._band_count + 1)
         ]
+        # Invalidate caches
+        self._cached_variables = None
+        self._cached_meta_data = None
+
+    def _invalidate_caches(self):
+        """Invalidate cached variables and metadata."""
+        self._cached_variables = None
+        self._cached_meta_data = None
 
     @property
     def is_subset(self) -> bool:
@@ -764,6 +810,7 @@ class NetCDF(Dataset):
             if var in self.variable_names:
                 var = f"{var}-new"
             self._add_md_array_to_group(src_rg, var, md_arr)
+        self._invalidate_caches()
 
     def remove_variable(self, variable_name: str):
         """remove_variable.
