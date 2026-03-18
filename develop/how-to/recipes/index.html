@@ -826,7 +826,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/datacube/" class="md-nav__link">
+      <a href="../../reference/datacube.md" class="md-nav__link">
         
   
   
@@ -1965,9 +1965,9 @@
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># cropped.to_file(&quot;dem_cropped.tif&quot;)</span>
 </code></pre></div>
 <h2 id="read-multiple-rasters-into-a-datacube"><a class="toclink" href="#read-multiple-rasters-into-a-datacube">Read multiple rasters into a datacube</a><a class="headerlink" href="#read-multiple-rasters-into-a-datacube" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.datacube</span><span class="w"> </span><span class="kn">import</span> <span class="n">Datacube</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.datacube</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiDataset</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">dc</span> <span class="o">=</span> <span class="n">Datacube</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="s2">&quot;tests</span><span class="se">\\</span><span class="s2">data</span><span class="se">\\</span><span class="s2">geotiff</span><span class="se">\\</span><span class="s2">rhine&quot;</span><span class="p">,</span> <span class="n">with_order</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">regex_string</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">d+&quot;</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">dc</span> <span class="o">=</span> <span class="n">MultiDataset</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="s2">&quot;tests</span><span class="se">\\</span><span class="s2">data</span><span class="se">\\</span><span class="s2">geotiff</span><span class="se">\\</span><span class="s2">rhine&quot;</span><span class="p">,</span> <span class="n">with_order</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">regex_string</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">d+&quot;</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">dc</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="zonal-statistics-with-a-polygon-layer"><a class="toclink" href="#zonal-statistics-with-a-polygon-layer">Zonal statistics with a polygon layer</a><a class="headerlink" href="#zonal-statistics-with-a-polygon-layer" title="Permanent link">#</a></h2>

@@ -826,7 +826,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/datacube/" class="md-nav__link">
+      <a href="../../reference/datacube.md" class="md-nav__link">
         
   
   
@@ -1784,21 +1784,22 @@
 
 <h1 id="tutorial-datacube-basics"><a class="toclink" href="#tutorial-datacube-basics">Tutorial: Datacube basics</a><a class="headerlink" href="#tutorial-datacube-basics" title="Permanent link">#</a></h1>
 <p>This tutorial shows how to construct a simple datacube from a folder of rasters and compute a basic aggregation.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.datacube</span><span class="w"> </span><span class="kn">import</span> <span class="n">Datacube</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.datacube</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiDataset</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Prepare a folder with a few demo rasters (use repo tests or your own)</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">folder</span> <span class="o">=</span> <span class="s2">&quot;tests</span><span class="se">\\</span><span class="s2">data</span><span class="se">\\</span><span class="s2">geotiff</span><span class="se">\\</span><span class="s2">rhine&quot;</span>  <span class="c1"># adjust as needed</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># Parse files and build cube (order: numeric part in filenames)</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">dc</span> <span class="o">=</span> <span class="n">Datacube</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">with_order</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">regex_string</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\d+&quot;</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">dc</span><span class="p">)</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># Open bands into the cube&#39;s memory structure (if required by API)</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># dc.open_datacube()</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># Example: compute per-pixel mean over time (pseudo-code; see your API methods)</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># mean_arr = dc.mean(axis=0)</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="c1"># print(mean_arr.shape)</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Prepare a folder with a few demo rasters (use repo tests or your own)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">folder</span> <span class="o">=</span> <span class="s2">&quot;tests</span><span class="se">\\</span><span class="s2">data</span><span class="se">\\</span><span class="s2">geotiff</span><span class="se">\\</span><span class="s2">rhine&quot;</span>  <span class="c1"># adjust as needed</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Parse files and build cube (order: numeric part in filenames)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">dc</span> <span class="o">=</span> <span class="n">MultiDataset</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">with_order</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">regex_string</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\d+&quot;</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">dc</span><span class="p">)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># Open bands into the cube&#39;s memory structure (if required by API)</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="c1"># dc.open_datacube()</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># Example: compute per-pixel mean over time (pseudo-code; see your API methods)</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="c1"># mean_arr = dc.mean(axis=0)</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="c1"># print(mean_arr.shape)</span>
 </code></pre></div>
 <p>Notes:
 - Ensure the rasters share the same shape and georeferencing.
