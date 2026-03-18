@@ -26,14 +26,22 @@ class NetCDF(Dataset):
         https://acdguide.github.io/Governance/create/create-basics.html
     """
 
-    def __init__(self, src: gdal.Dataset, access: str = "read_only", open_as_multi_dimensional: bool = True):
-        """__init__.
+    def __init__(
+        self,
+        src: gdal.Dataset,
+        access: str = "read_only",
+        open_as_multi_dimensional: bool = True,
+    ):
+        """Initialize a NetCDF dataset wrapper.
 
-        Hint:
-            - The method will first look for the variables named "lat" and "lon" in the dataset.
-            - If the variables are not found, the method will look for the variables named "x" and "y".
-            - If the variables are not found, the method will return None.
-
+        Args:
+            src: A GDAL dataset handle (either classic or multidimensional).
+            access: Access mode, either ``"read_only"`` or ``"write"``.
+                Defaults to ``"read_only"``.
+            open_as_multi_dimensional: If True the dataset was opened with
+                ``gdal.OF_MULTIDIM_RASTER`` and supports groups, MDArrays,
+                and dimensions.  If False it was opened in classic raster
+                mode (subdatasets, bands). Defaults to True.
         """
         super().__init__(src, access=access)
         # set the is_subset to false before retrieving the variables
@@ -72,16 +80,13 @@ class NetCDF(Dataset):
 
     @property
     def lon(self) -> np.ndarray:
-        """Longitude coordinates.
+        """Longitude / x-coordinate values as a 1D array.
 
-        Args:
-            np.ndarray:
-                If the longitude does not exist as a variable in the netcdf file, it will return None.
+        Looks for a variable named ``"lon"`` first, then ``"x"``.
 
-        Hint:
-            - The method will first look for the variables "lon" in the dataset.
-            - If the variable is not found, the method will look for the variable "x".
-            - If both lon/x are not found, the method will return None.
+        Returns:
+            np.ndarray or None: Flattened coordinate array, or None if
+            neither ``lon`` nor ``x`` exists in the dataset.
         """
         lon = self._read_variable("lon")
         if lon is None:
@@ -92,17 +97,13 @@ class NetCDF(Dataset):
 
     @property
     def lat(self) -> np.ndarray:
-        """Latitude-coordinate.
+        """Latitude / y-coordinate values as a 1D array.
 
-        Args:
-            np.ndarray:
-                If the variables are not found in the dataset, it will return None.
+        Looks for a variable named ``"lat"`` first, then ``"y"``.
 
-        Hint:
-            - The method will first look for the variables "lat" in the dataset.
-            - If the variable is not found, the method will look for the variable "y".
-            - If the variables are not found, the method will Calculate the longitude coordinate using the
-            pivot point coordinates, cell size and the number of columns.
+        Returns:
+            np.ndarray or None: Flattened coordinate array, or None if
+            neither ``lat`` nor ``y`` exists in the dataset.
         """
         lat = self._read_variable("lat")
         if lat is None:
@@ -143,12 +144,26 @@ class NetCDF(Dataset):
 
     @property
     def variable_names(self) -> List[str]:
-        """variable_names."""
+        """Names of data variables (excluding dimension coordinate arrays).
+
+        Returns:
+            list[str]: Variable names. For MDIM mode these come from
+            ``GetMDArrayNames()`` minus dimension names; for classic mode
+            from ``GetSubDatasets()``.
+        """
         return self.get_variable_names()
 
     @property
     def variables(self) -> Dict[str, "NetCDF"]:
-        """Variables in the dataset (resembles the variables in NetCDF files.)."""
+        """All data variables as a dict of ``{name: NetCDF}`` subsets.
+
+        Each value is a classic-raster NetCDF obtained via
+        ``get_variable()``.  Cached on first access; invalidated by
+        ``add_variable`` / ``remove_variable`` / ``set_variable``.
+
+        Returns:
+            dict[str, NetCDF]: Mapping from variable name to its subset.
+        """
         if self._cached_variables is None:
             self._cached_variables = {
                 var: self.get_variable(var) for var in self.variable_names
@@ -176,7 +191,11 @@ class NetCDF(Dataset):
 
     @property
     def file_name(self):
-        """File name."""
+        """File path, with the ``NETCDF:"path":var`` prefix stripped if present.
+
+        Returns:
+            str: Clean file path.
+        """
         if self._file_name.startswith("NETCDF"):
             name = self._file_name.split(":")[1][1:-1]
         else:
@@ -185,7 +204,12 @@ class NetCDF(Dataset):
 
     @property
     def time_stamp(self):
-        """Time stamp."""
+        """Time coordinate values parsed from the CF-compliant ``time`` variable.
+
+        Returns:
+            list[str] or None: Formatted time strings, or None if no time
+            dimension with a ``units`` attribute is found.
+        """
         return self.get_time_variable()
 
     def _check_not_container(self, operation: str):
@@ -206,12 +230,49 @@ class NetCDF(Dataset):
         return super().read_array(band=band, window=window)
 
     def crop(self, mask, touch: bool = True, inplace: bool = False):
-        """Crop dataset. Blocked on root MDIM container."""
+        """Crop the dataset using a polygon or raster mask.
+
+        Blocked on root MDIM containers — extract a variable first with
+        ``get_variable()``.
+
+        Args:
+            mask: GeoDataFrame with polygon geometry, or a Dataset to use
+                as a spatial mask.
+            touch: If True, include cells that touch the mask boundary.
+                Defaults to True.
+            inplace: If True, modify this object in place. Defaults to False.
+
+        Returns:
+            Dataset or None: Cropped dataset (or None if inplace=True).
+
+        Raises:
+            ValueError: If called on a root MDIM container.
+        """
         self._check_not_container("crop")
         return super().crop(mask=mask, touch=touch, inplace=inplace)
 
-    def to_crs(self, to_epsg, method="nearest neighbor", maintain_alignment=False, inplace=False):
-        """Reproject dataset. Blocked on root MDIM container."""
+    def to_crs(
+        self, to_epsg, method="nearest neighbor",
+        maintain_alignment=False, inplace=False,
+    ):
+        """Reproject the dataset to a different coordinate reference system.
+
+        Blocked on root MDIM containers — extract a variable first with
+        ``get_variable()``.
+
+        Args:
+            to_epsg: Target EPSG code (e.g., 4326, 32637).
+            method: Resampling method. Defaults to ``"nearest neighbor"``.
+            maintain_alignment: If True, keep the same number of rows and
+                columns after reprojection. Defaults to False.
+            inplace: If True, modify this object in place. Defaults to False.
+
+        Returns:
+            Dataset or None: Reprojected dataset (or None if inplace=True).
+
+        Raises:
+            ValueError: If called on a root MDIM container.
+        """
         self._check_not_container("to_crs")
         return super().to_crs(
             to_epsg=to_epsg, method=method,
@@ -222,19 +283,20 @@ class NetCDF(Dataset):
     def read_file(
         cls, path: str, read_only=True, open_as_multi_dimensional: bool = True
     ) -> "NetCDF":
-        """read_file.
+        """Open a NetCDF file from disk.
 
         Args:
-            path (str):
-                Path of file to open.
-            read_only (bool):
-                File mode. Set to False to open in "update" mode. Defaults to True.
-            open_as_multi_dimensional (bool):
-                Open as multi-dimensional dataset. Defaults to False.
+            path: Path to the ``.nc`` file.
+            read_only: If True, open in read-only mode. Set to False for
+                write access. Defaults to True.
+            open_as_multi_dimensional: If True, open with
+                ``gdal.OF_MULTIDIM_RASTER`` to access the full group /
+                dimension / variable hierarchy.  If False, open in classic
+                raster mode where each variable is a subdataset.
+                Defaults to True.
 
         Returns:
-            NetCDF:
-                Opened NetCDF dataset.
+            NetCDF: The opened dataset.
         """
         src = _io.read_file(path, read_only, open_as_multi_dimensional)
         if read_only:
@@ -265,17 +327,18 @@ class NetCDF(Dataset):
         return self._cached_meta_data
 
     def get_all_metadata(self, open_options: Dict = None) -> "NetCDFMetadata":
-        """Get full MDIM metadata with dimension overview.
+        """Get full MDIM metadata with a dimension overview snapshot.
 
-        Parameters
-        ----------
-        open_options : dict, optional
-            Open options passed to get_metadata.
+        Unlike ``meta_data`` (which is cached), this always re-traverses
+        the GDAL multidimensional structure and populates the
+        ``dimension_overview`` field with coordinate values and sizes.
 
-        Returns
-        -------
-        NetCDFMetadata
-            Metadata with dimension_overview populated.
+        Args:
+            open_options: Driver-specific open options forwarded to
+                ``get_metadata()``. Defaults to None.
+
+        Returns:
+            NetCDFMetadata: Metadata with ``dimension_overview`` populated.
         """
         metadata = get_metadata(self._raster, open_options)
         metadata.dimension_overview = self._build_dimension_overview(metadata)
@@ -337,8 +400,25 @@ class NetCDF(Dataset):
         except Exception:
             return None
 
-    def get_time_variable(self, var_name = "time", time_format: str = "%Y-%m-%d"):
-        """_get_time_variable."""
+    def get_time_variable(
+        self, var_name="time", time_format: str = "%Y-%m-%d"
+    ):
+        """Parse the time coordinate variable into formatted date strings.
+
+        Reads the ``units`` attribute (e.g., ``"days since 1979-01-01"``)
+        from the dimension metadata and converts raw numeric values to
+        human-readable date strings.
+
+        Args:
+            var_name: Name of the time dimension / variable.
+                Defaults to ``"time"``.
+            time_format: strftime format for the output strings.
+                Defaults to ``"%Y-%m-%d"``.
+
+        Returns:
+            list[str] or None: Formatted time strings, or None if the
+            time dimension is not found or lacks a ``units`` attribute.
+        """
         time_dim = self.meta_data.get_dimension(var_name)
         if time_dim:
             units = time_dim.attrs["units"]
@@ -360,7 +440,12 @@ class NetCDF(Dataset):
 
     @property
     def dimension_names(self) -> List[str]:
-        """dimension_names."""
+        """Names of all dimensions in the root group (e.g., ``["x", "y", "time"]``).
+
+        Returns:
+            list[str] or None: Dimension names, or None if no root group
+            is available (classic mode).
+        """
         return self._get_dimension_names()
 
     def _get_dimension(self, name: str) -> gdal.Dimension:
@@ -412,7 +497,15 @@ class NetCDF(Dataset):
             return None
 
     def get_variable_names(self) -> List[str]:
-        """get_variable_names."""
+        """Return names of data variables, excluding dimension coordinates.
+
+        In MDIM mode, queries ``GetMDArrayNames()`` and filters out arrays
+        that are also dimensions (x, y, time, etc.).  In classic mode,
+        parses subdataset metadata.
+
+        Returns:
+            list[str]: Variable names (e.g., ``["temperature", "precipitation"]``).
+        """
         rg = self._raster.GetRootGroup()
         if rg is not None:
             variable_names = rg.GetMDArrayNames()
@@ -427,7 +520,11 @@ class NetCDF(Dataset):
         return variable_names
 
     def _read_md_array(self, variable_name: str) -> gdal.Dataset:
-        """Read multidimensional array. and return it as a classical dataset"""
+        """Convert an MDArray to a classic GDAL dataset via AsClassicDataset.
+
+        The last two dimensions become X (columns) and Y (rows); all
+        remaining dimensions are flattened into bands.
+        """
         rg = self._raster.GetRootGroup()
         md_arr = rg.OpenMDArray(variable_name)
         dtype = md_arr.GetDataType()
@@ -592,18 +689,24 @@ class NetCDF(Dataset):
         return self._is_md_array
 
     def to_file(self, path: str, **kwargs) -> None:
-        """Save NetCDF to disk.
+        """Save the dataset to disk.
 
-        For ``.nc`` files the multidimensional structure is preserved using
-        ``CreateCopy`` with the netCDF driver.  For other extensions (e.g.
-        ``.tif``) the parent ``Dataset.to_file`` is used.
+        For ``.nc`` / ``.nc4`` files the full multidimensional structure
+        (groups, dimensions, variables, attributes) is preserved via
+        ``CreateCopy`` with the netCDF driver.  For other extensions
+        (e.g. ``.tif``), the parent ``Dataset.to_file`` is used — but only
+        on variable subsets, not on root MDIM containers.
 
-        Parameters
-        ----------
-        path : str
-            Destination file path.
-        **kwargs
-            Forwarded to ``Dataset.to_file`` for non-NetCDF extensions.
+        Args:
+            path: Destination file path. The extension determines the
+                output driver (``.nc`` → netCDF, ``.tif`` → GeoTIFF, etc.).
+            **kwargs: Forwarded to ``Dataset.to_file`` for non-NetCDF
+                extensions (e.g. ``tile_length``, ``creation_options``).
+
+        Raises:
+            RuntimeError: If the netCDF ``CreateCopy`` call fails.
+            ValueError: If a root MDIM container is saved to a non-NC
+                extension (use ``.nc`` or extract a variable first).
         """
         extension = path.rsplit(".", 1)[-1].lower()
         if extension in ("nc", "nc4"):
@@ -626,16 +729,17 @@ class NetCDF(Dataset):
             super().to_file(path, **kwargs)
 
     def copy(self, path: str = None) -> "NetCDF":
-        """Deep copy of this NetCDF dataset.
+        """Create a deep copy of this NetCDF dataset.
 
-        Parameters
-        ----------
-        path : str, optional
-            Destination path. If None, the copy is created in memory.
+        Args:
+            path: Destination file path. If None, the copy is created
+                in memory using the MEM driver. Defaults to None.
 
-        Returns
-        -------
-        NetCDF
+        Returns:
+            NetCDF: A new NetCDF object with copied data.
+
+        Raises:
+            RuntimeError: If ``CreateCopy`` fails.
         """
         if path is None:
             path = ""
@@ -830,6 +934,7 @@ class NetCDF(Dataset):
 
     @staticmethod
     def _add_md_array_to_group(dst_group, var_name, src_mdarray):
+        """Copy an MDArray from one group to another, preserving data and metadata."""
         src_dims = src_mdarray.GetDimensions()
         arr = src_mdarray.ReadAsArray()
         dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
@@ -848,26 +953,21 @@ class NetCDF(Dataset):
     ) -> gdal.Dimension:
         """Reuse an existing dimension or create a new one.
 
-        If a dimension with ``dim_name`` already exists in the root group and
-        has the same size as ``values``, it is returned directly.  Otherwise a
-        new dimension (with its indexing variable) is created.
+        If a dimension with ``dim_name`` already exists in the root group
+        and has the same size as ``values``, it is returned directly.
+        On size mismatch, a new dimension with a ``_{size}`` suffix is
+        created to avoid conflicts.
 
-        Parameters
-        ----------
-        rg : gdal.Group
-            The root group of the multidimensional dataset.
-        dim_name : str
-            Name of the dimension (e.g., "x", "y", "time").
-        values : np.ndarray
-            Coordinate values for this dimension.
-        dtype : gdal.ExtendedDataType
-            Data type for the indexing variable.
-        dim_type : str or None
-            GDAL dimension type constant (e.g., gdal.DIM_TYPE_HORIZONTAL_X).
+        Args:
+            rg: The root group of the multidimensional dataset.
+            dim_name: Name of the dimension (e.g., ``"x"``, ``"time"``).
+            values: Coordinate values for this dimension.
+            dtype: GDAL ``ExtendedDataType`` for the indexing variable.
+            dim_type: GDAL dimension type constant (e.g.,
+                ``gdal.DIM_TYPE_HORIZONTAL_X``). Defaults to None.
 
-        Returns
-        -------
-        gdal.Dimension
+        Returns:
+            gdal.Dimension: The reused or newly created dimension.
         """
         for existing_dim in (rg.GetDimensions() or []):
             if existing_dim.GetName() == dim_name:
@@ -890,27 +990,28 @@ class NetCDF(Dataset):
         """Write a classic Dataset back as an MDArray variable in this container.
 
         This is the reverse of ``get_variable()``.  After performing GIS
-        operations (crop, reproject, …) on a variable subset, use this method
-        to store the result back into the NetCDF container.
+        operations (crop, reproject, etc.) on a variable subset, use this
+        method to store the result back into the NetCDF container.
 
-        Parameters
-        ----------
-        variable_name : str
-            Name for the variable in this container.  If a variable with this
-            name already exists it is replaced.
-        dataset : Dataset
-            A classic raster dataset — typically the result of a GIS operation
-            on a variable obtained via ``get_variable()``.
-        band_dim_name : str, optional
-            Name of the dimension that maps to bands (e.g. "time", "bands").
-            Auto-detected from the dataset's ``_band_dim_name`` if it was
-            obtained via ``get_variable()``.
-        band_dim_values : list, optional
-            Coordinate values for the band dimension.  Auto-detected from
-            ``_band_dim_values`` if available.
-        attrs : dict, optional
-            Variable attributes to set (e.g. ``{"units": "K"}``).
-            Auto-detected from ``_variable_attrs`` if available.
+        Args:
+            variable_name: Name for the variable in this container.  If a
+                variable with this name already exists it is replaced.
+            dataset: A classic raster dataset, typically the result of a
+                GIS operation on a variable obtained via ``get_variable()``.
+            band_dim_name: Name of the dimension that maps to bands
+                (e.g. ``"time"``, ``"bands"``).  Auto-detected from the
+                dataset's ``_band_dim_name`` attribute when available.
+                Defaults to None.
+            band_dim_values: Coordinate values for the band dimension.
+                Auto-detected from ``_band_dim_values`` when available.
+                Defaults to None.
+            attrs: Variable attributes to set (e.g. ``{"units": "K"}``).
+                Auto-detected from ``_variable_attrs`` when available.
+                Defaults to None.
+
+        Raises:
+            ValueError: If called on a dataset without a root group
+                (not opened in multidimensional mode).
         """
         rg = self._raster.GetRootGroup()
         if rg is None:
@@ -1016,24 +1117,15 @@ class NetCDF(Dataset):
     def add_variable(
         self, dataset: Union["Dataset", "NetCDF"], variable_name: str = None
     ):
-        """add_variable.
+        """Copy MDArray variables from another NetCDF into this container.
 
         Args:
-            dataset (Dataset):
-                Dataset to add to the current dataset.
-            variable_name (str | None):
-                Variable name in the netcdf file. If not given, all variables in the given dataset will be added. Default is None.
-
-        Examples:
-            - Add a variable from another dataset:
-              ```python
-              >>> dataset_1 = Dataset.read_file(
-              ...   "tests/data/netcdf/era5_land_monthly_averaged.nc", open_as_multi_dimensional=True
-              ... )
-              >>> dataset_2 = Dataset.read_file("tests/data/netcdf/noah-precipitation-1979.nc")
-              >>> dataset_1.add_variable(dataset_2, "temperature")
-
-              ```
+            dataset: Source NetCDF dataset whose variables will be copied.
+                Must have a root group (opened in MDIM mode).
+            variable_name: Specific variable name(s) to copy. If None, all
+                variables from the source are copied. If a variable with
+                the same name already exists, it is renamed with a
+                ``"-new"`` suffix.
         """
         src_rg = self._raster.GetRootGroup()
         var_rg = dataset._raster.GetRootGroup()
@@ -1049,20 +1141,14 @@ class NetCDF(Dataset):
         self._invalidate_caches()
 
     def remove_variable(self, variable_name: str):
-        """remove_variable.
+        """Delete a variable from this container.
+
+        If the dataset is backed by a file on disk, a MEM copy is made first
+        so that the on-disk file is not modified.  The internal raster
+        reference is replaced with the modified copy.
 
         Args:
-            variable_name (str):
-                Variable name.
-
-        Returns:
-            None:
-                The internal dataset is updated in memory. Even if the original dataset was saved on disk, this updates the in-memory copy.
-
-        Notes:
-            The method will not remove the variable from the disk if the dataset is saved on disk. Rather, the method will
-            make a Memory driver and copy the original dataset to the memory driver, and then remove the variable from the
-            memory dataset.
+            variable_name: Name of the variable to remove.
         """
         if self.driver_type == "memory":
             # first copy the dataset to memory
