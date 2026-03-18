@@ -266,36 +266,195 @@ class TestStage2_VariableNoDataValue:
 
 
 # ===========================================================================
-# Stage 3 forward-looking tests — Round-trip workflow
-# These are xfail until Stage 3 is implemented.
+# Stage 3 validation — Round-trip workflow
 # ===========================================================================
 
-class TestStage3_RoundTrip:
-    """Forward-looking tests for the MDArray <-> Classic Dataset round-trip.
+class TestStage3_VariableOriginTracking:
+    """RT-4: get_variable() must track parent context for round-trip."""
 
-    These verify expected behavior that Stage 3 must implement.
-    They don't call GDAL operations (which can hang on MEM views on Windows),
-    instead checking for API surface and code patterns.
-    """
+    def test_parent_reference(self, created_nc):
+        var = created_nc.get_variable("temperature")
+        assert var._parent_nc is created_nc
 
-    def test_set_variable_not_yet_implemented(self):
-        """RT-3: set_variable() should be added in Stage 3."""
-        has_it = hasattr(NetCDF, "set_variable")
-        if not has_it:
-            pytest.xfail("RT-3: set_variable() not implemented yet")
+    def test_source_variable_name(self, created_nc):
+        var = created_nc.get_variable("temperature")
+        assert var._source_var_name == "temperature"
 
-    def test_variable_origin_not_yet_tracked(self, mdim_nc):
-        """RT-4: get_variable() should track parent context."""
-        var = mdim_nc.get_variable(mdim_nc.variable_names[0])
-        has_parent = hasattr(var, "_parent_nc") and var._parent_nc is not None
-        if not has_parent:
-            pytest.xfail("RT-4: variable subsets don't track parent context yet")
+    def test_dimension_names_tracked(self, created_nc):
+        var = created_nc.get_variable("temperature")
+        assert isinstance(var._md_array_dims, list)
+        assert len(var._md_array_dims) > 0
+        assert "x" in var._md_array_dims
+        assert "y" in var._md_array_dims
 
-    def test_crop_returns_dataset_not_netcdf(self):
-        """RT-1: GIS ops currently return Dataset — Stage 3 should fix this."""
+    def test_band_dim_tracked_for_3d(self, created_nc):
+        var = created_nc.get_variable("temperature")
+        # 3D array → bands dimension should be tracked
+        assert var._band_dim_name is not None
+        assert var._band_dim_values is not None
+        assert len(var._band_dim_values) == 3  # 3 bands
+
+    def test_variable_attrs_tracked(self, created_nc):
+        var = created_nc.get_variable("temperature")
+        assert isinstance(var._variable_attrs, dict)
+
+    def test_2d_variable_no_band_dim(self):
+        """2D variables should have band_dim_name=None."""
+        arr = np.random.rand(10, 12).astype(np.float64)
+        geo = (0.0, 1.0, 0, 10.0, 0, -1.0)
+        nc = NetCDF.create_from_array(
+            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
+            driver_type="netcdf", path=None,
+            variable_name="elevation",
+        )
+        var = nc.get_variable("elevation")
+        assert var._band_dim_name is None
+        assert var._band_dim_values is None
+
+    def test_origin_on_classic_mode_variable(self, classic_nc):
+        """Even classic-mode variables should have origin attrs (empty)."""
+        var = classic_nc.get_variable(classic_nc.variable_names[0])
+        assert hasattr(var, "_parent_nc")
+        assert hasattr(var, "_source_var_name")
+        assert var._source_var_name == classic_nc.variable_names[0]
+
+
+class TestStage3_SetVariable:
+    """RT-3: set_variable() writes a classic Dataset back as an MDArray."""
+
+    def test_set_variable_basic(self, created_nc):
+        """Write a modified array back as a new variable."""
+        var = created_nc.get_variable("temperature")
+        arr = var.read_array() * 2
         from pyramids.dataset import Dataset
+        modified = Dataset.create_from_array(
+            arr, geo=var.geotransform, epsg=var.epsg,
+            no_data_value=var.no_data_value,
+        )
+        created_nc.set_variable("temp_doubled", modified)
+        assert "temp_doubled" in created_nc.variable_names
+
+    def test_set_variable_data_preserved(self, created_nc):
+        """The written data should match what was provided."""
+        var = created_nc.get_variable("temperature")
+        arr_orig = var.read_array()
+        arr_doubled = arr_orig * 2
+        from pyramids.dataset import Dataset
+        modified = Dataset.create_from_array(
+            arr_doubled, geo=var.geotransform, epsg=var.epsg,
+            no_data_value=var.no_data_value,
+        )
+        created_nc.set_variable("temp_check", modified)
+        # Read back via MDIM
+        rg = created_nc._raster.GetRootGroup()
+        md_arr = rg.OpenMDArray("temp_check")
+        written = md_arr.ReadAsArray()
+        np.testing.assert_array_almost_equal(written, arr_doubled, decimal=5)
+
+    def test_set_variable_replaces_existing(self):
+        """Setting a variable with an existing name replaces it."""
+        arr = np.ones((5, 5), dtype=np.float64)
+        geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
+        nc = NetCDF.create_from_array(
+            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
+            driver_type="netcdf", path=None,
+            variable_name="data",
+        )
+        arr2 = np.ones((5, 5), dtype=np.float64) * 42
+        from pyramids.dataset import Dataset
+        ds2 = Dataset.create_from_array(arr2, geo=geo, epsg=4326, no_data_value=-9999.0)
+        nc.set_variable("data", ds2)
+        assert "data" in nc.variable_names
+        rg = nc._raster.GetRootGroup()
+        md_arr = rg.OpenMDArray("data")
+        np.testing.assert_array_almost_equal(md_arr.ReadAsArray(), arr2)
+
+    def test_set_variable_auto_detects_band_dim(self, created_nc):
+        """When dataset came from get_variable(), band_dim is auto-detected."""
+        var = created_nc.get_variable("temperature")
+        arr = var.read_array()
+        from pyramids.dataset import Dataset
+        ds = Dataset.create_from_array(
+            arr, geo=var.geotransform, epsg=var.epsg,
+            no_data_value=var.no_data_value,
+        )
+        # Transfer origin metadata
+        ds._band_dim_name = var._band_dim_name
+        ds._band_dim_values = var._band_dim_values
+        ds._variable_attrs = var._variable_attrs
+        created_nc.set_variable("temp_autodetect", ds)
+        assert "temp_autodetect" in created_nc.variable_names
+
+    def test_set_variable_invalidates_caches(self):
+        """Cache should be invalidated after set_variable."""
+        arr = np.random.rand(5, 5).astype(np.float64)
+        geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
+        nc = NetCDF.create_from_array(
+            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
+            driver_type="netcdf", path=None,
+            variable_name="original",
+        )
+        _ = nc.variables  # populate cache
+        from pyramids.dataset import Dataset
+        ds = Dataset.create_from_array(
+            np.random.rand(5, 5), geo=geo, epsg=4326, no_data_value=-9999.0,
+        )
+        nc.set_variable("new_var", ds)
+        assert "new_var" in nc.variables
+
+    def test_set_variable_requires_mdim_container(self, classic_nc):
+        """set_variable on a classic-mode container should raise."""
+        from pyramids.dataset import Dataset
+        ds = Dataset.create_from_array(
+            np.random.rand(5, 5),
+            geo=(0, 1, 0, 5, 0, -1), epsg=4326, no_data_value=-9999.0,
+        )
+        with pytest.raises(ValueError, match="multidimensional container"):
+            classic_nc.set_variable("test", ds)
+
+
+class TestStage3_DimensionReuse:
+    """RT-6: Dimensions should be reused when sizes match."""
+
+    def test_same_size_dimensions_reused(self):
+        """Adding two variables with same spatial extent should reuse x/y dims."""
+        arr = np.random.rand(5, 8).astype(np.float64)
+        geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
+        nc = NetCDF.create_from_array(
+            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
+            driver_type="netcdf", path=None,
+            variable_name="var1",
+        )
+        from pyramids.dataset import Dataset
+        ds2 = Dataset.create_from_array(
+            np.random.rand(5, 8), geo=geo, epsg=4326, no_data_value=-9999.0,
+        )
+        nc.set_variable("var2", ds2)
+        rg = nc._raster.GetRootGroup()
+        dim_names = [d.GetName() for d in rg.GetDimensions()]
+        # Should still only have x and y (not x_8 or y_5)
+        assert "x" in dim_names
+        assert "y" in dim_names
+        x_count = sum(1 for n in dim_names if n.startswith("x"))
+        y_count = sum(1 for n in dim_names if n.startswith("y"))
+        assert x_count == 1
+        assert y_count == 1
+
+
+class TestStage3_RoundTripDecision:
+    """RT-1: Documenting the chosen approach for GIS ops return type."""
+
+    def test_crop_returns_dataset_by_design(self):
+        """GIS ops return Dataset. Users use set_variable() to write back.
+
+        This is the chosen design: explicit round-trip via set_variable(),
+        rather than trying to make crop/to_crs return NetCDF.
+        """
+        from pyramids.dataset import Dataset
+        # Verify the workflow exists
+        assert hasattr(NetCDF, "set_variable")
+        assert hasattr(NetCDF, "get_variable")
+        # The crop method is on Dataset, returns Dataset — by design
         import inspect
-        src = inspect.getsource(Dataset._crop_with_polygon_warp)
-        preserves_type = "type(self)" in src or "NetCDF" in src
-        if not preserves_type:
-            pytest.xfail("RT-1: crop returns Dataset, not NetCDF")
+        sig = inspect.signature(Dataset.crop)
+        assert "mask" in sig.parameters

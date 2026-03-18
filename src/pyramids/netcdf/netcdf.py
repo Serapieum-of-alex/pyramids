@@ -426,13 +426,21 @@ class NetCDF(Dataset):
         return src
 
     def get_variable(self, variable_name: str) -> "NetCDF":
-        """get_variables.
+        """Extract a single variable as a classic-raster NetCDF object.
 
-        Returns:
-            Dict["Dataset", "Dataset"]
-                Dictionary of the netcdf variables
+        The returned object carries origin metadata so that modified data
+        can be written back via ``set_variable()``.
+
+        Parameters
+        ----------
+        variable_name : str
+            Name of the variable to extract.
+
+        Returns
+        -------
+        NetCDF
+            A subset backed by a classic dataset (bands = non-spatial dims).
         """
-        # convert the variable_name to a list if it is a string
         if variable_name not in self.variable_names:
             raise ValueError(
                 f"{variable_name} is not a valid variable name in {self.variable_names}"
@@ -454,6 +462,53 @@ class NetCDF(Dataset):
             cube._is_md_array = False
 
         cube._is_subset = True
+
+        # --- RT-4: Track variable origin for round-trip ---
+        cube._parent_nc = self
+        cube._source_var_name = variable_name
+
+        if rg is not None:
+            md_arr = rg.OpenMDArray(variable_name)
+            if md_arr is not None:
+                dims = md_arr.GetDimensions()
+                cube._md_array_dims = [d.GetName() for d in dims]
+
+                # Identify which dimension became bands (all except X/Y)
+                if len(dims) > 2:
+                    spatial_indices = {len(dims) - 1, len(dims) - 2}
+                    band_dims = [
+                        d for i, d in enumerate(dims) if i not in spatial_indices
+                    ]
+                    if len(band_dims) == 1:
+                        cube._band_dim_name = band_dims[0].GetName()
+                        iv = band_dims[0].GetIndexingVariable()
+                        cube._band_dim_values = (
+                            iv.ReadAsArray().tolist() if iv is not None else None
+                        )
+                    else:
+                        cube._band_dim_name = None
+                        cube._band_dim_values = None
+                else:
+                    cube._band_dim_name = None
+                    cube._band_dim_values = None
+
+                # Copy variable attributes
+                cube._variable_attrs = {}
+                try:
+                    for attr in md_arr.GetAttributes():
+                        cube._variable_attrs[attr.GetName()] = attr.Read()
+                except Exception:
+                    pass
+            else:
+                cube._md_array_dims = []
+                cube._band_dim_name = None
+                cube._band_dim_values = None
+                cube._variable_attrs = {}
+        else:
+            cube._md_array_dims = []
+            cube._band_dim_name = None
+            cube._band_dim_values = None
+            cube._variable_attrs = {}
 
         return cube
 
@@ -776,6 +831,177 @@ class NetCDF(Dataset):
             new_md_array.SetNoDataValueDouble(-9999)
 
         new_md_array.SetSpatialRef(src_mdarray.GetSpatialRef())
+
+    @staticmethod
+    def _get_or_create_dimension(
+        rg: gdal.Group, dim_name: str, values: np.ndarray, dtype, dim_type=None
+    ) -> gdal.Dimension:
+        """Reuse an existing dimension or create a new one.
+
+        If a dimension with ``dim_name`` already exists in the root group and
+        has the same size as ``values``, it is returned directly.  Otherwise a
+        new dimension (with its indexing variable) is created.
+
+        Parameters
+        ----------
+        rg : gdal.Group
+            The root group of the multidimensional dataset.
+        dim_name : str
+            Name of the dimension (e.g., "x", "y", "time").
+        values : np.ndarray
+            Coordinate values for this dimension.
+        dtype : gdal.ExtendedDataType
+            Data type for the indexing variable.
+        dim_type : str or None
+            GDAL dimension type constant (e.g., gdal.DIM_TYPE_HORIZONTAL_X).
+
+        Returns
+        -------
+        gdal.Dimension
+        """
+        for existing_dim in (rg.GetDimensions() or []):
+            if existing_dim.GetName() == dim_name:
+                if existing_dim.GetSize() == len(values):
+                    return existing_dim
+                # Size mismatch — need a new dimension with a unique name
+                dim_name = f"{dim_name}_{len(values)}"
+                break
+
+        return NetCDF.create_main_dimension(rg, dim_name, dtype, values)
+
+    def set_variable(
+        self,
+        variable_name: str,
+        dataset: "Dataset",
+        band_dim_name: str = None,
+        band_dim_values: list = None,
+        attrs: dict = None,
+    ):
+        """Write a classic Dataset back as an MDArray variable in this container.
+
+        This is the reverse of ``get_variable()``.  After performing GIS
+        operations (crop, reproject, …) on a variable subset, use this method
+        to store the result back into the NetCDF container.
+
+        Parameters
+        ----------
+        variable_name : str
+            Name for the variable in this container.  If a variable with this
+            name already exists it is replaced.
+        dataset : Dataset
+            A classic raster dataset — typically the result of a GIS operation
+            on a variable obtained via ``get_variable()``.
+        band_dim_name : str, optional
+            Name of the dimension that maps to bands (e.g. "time", "bands").
+            Auto-detected from the dataset's ``_band_dim_name`` if it was
+            obtained via ``get_variable()``.
+        band_dim_values : list, optional
+            Coordinate values for the band dimension.  Auto-detected from
+            ``_band_dim_values`` if available.
+        attrs : dict, optional
+            Variable attributes to set (e.g. ``{"units": "K"}``).
+            Auto-detected from ``_variable_attrs`` if available.
+        """
+        rg = self._raster.GetRootGroup()
+        if rg is None:
+            raise ValueError(
+                "set_variable requires a multidimensional container. "
+                "Open the file with open_as_multi_dimensional=True."
+            )
+
+        # Auto-detect from tracked origin metadata (RT-4)
+        if band_dim_name is None and hasattr(dataset, "_band_dim_name"):
+            band_dim_name = dataset._band_dim_name
+        if band_dim_values is None and hasattr(dataset, "_band_dim_values"):
+            band_dim_values = dataset._band_dim_values
+        if attrs is None and hasattr(dataset, "_variable_attrs"):
+            attrs = dataset._variable_attrs
+
+        # Delete existing variable if present
+        if variable_name in self.variable_names:
+            rg.DeleteMDArray(variable_name)
+
+        # Read data from the classic dataset
+        arr = dataset.read_array()
+        gt = dataset.geotransform
+        dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
+
+        # Build spatial dimensions from the geotransform
+        x_values = np.array(
+            NetCDF.get_x_lon_dimension_array(gt[0], gt[1], dataset.columns)
+        )
+        y_values = np.array(
+            NetCDF.get_y_lat_dimension_array(gt[3], abs(gt[5]), dataset.rows)
+        )
+        dim_x = self._get_or_create_dimension(
+            rg, "x", x_values, dtype, gdal.DIM_TYPE_HORIZONTAL_X
+        )
+        dim_y = self._get_or_create_dimension(
+            rg, "y", y_values, dtype, gdal.DIM_TYPE_HORIZONTAL_Y
+        )
+
+        # Build band dimension if the data is 3D
+        if arr.ndim == 3:
+            if band_dim_name is None:
+                band_dim_name = "bands"
+            if band_dim_values is None:
+                band_dim_values = list(range(arr.shape[0]))
+            dim_band = self._get_or_create_dimension(
+                rg,
+                band_dim_name,
+                np.array(band_dim_values, dtype=np.float64),
+                dtype,
+                gdal.DIM_TYPE_TEMPORAL,
+            )
+            md_arr = rg.CreateMDArray(
+                variable_name, [dim_band, dim_y, dim_x], dtype
+            )
+        else:
+            md_arr = rg.CreateMDArray(variable_name, [dim_y, dim_x], dtype)
+
+        # Write array data
+        md_arr.Write(arr)
+
+        # Set spatial reference (RT-7: attribute copying)
+        if dataset.epsg:
+            srs = Dataset._create_sr_from_epsg(dataset.epsg)
+            md_arr.SetSpatialRef(srs)
+
+        # Set no-data value
+        if dataset.no_data_value and dataset.no_data_value[0] is not None:
+            try:
+                md_arr.SetNoDataValueDouble(float(dataset.no_data_value[0]))
+            except Exception:
+                pass
+
+        # Set variable attributes (RT-7)
+        if attrs:
+            for key, value in attrs.items():
+                try:
+                    if isinstance(value, str):
+                        attr = md_arr.CreateAttribute(
+                            key, [], gdal.ExtendedDataType.CreateString()
+                        )
+                    elif isinstance(value, float):
+                        attr = md_arr.CreateAttribute(
+                            key, [],
+                            gdal.ExtendedDataType.Create(gdal.GDT_Float64),
+                        )
+                    elif isinstance(value, int):
+                        attr = md_arr.CreateAttribute(
+                            key, [],
+                            gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+                        )
+                    else:
+                        attr = md_arr.CreateAttribute(
+                            key, [], gdal.ExtendedDataType.CreateString()
+                        )
+                        value = str(value)
+                    attr.Write(value)
+                except Exception:
+                    pass
+
+        self._invalidate_caches()
 
     def add_variable(
         self, dataset: Union["Dataset", "NetCDF"], variable_name: str = None
