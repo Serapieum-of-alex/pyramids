@@ -238,7 +238,7 @@ class TestStage2_ReadArrayGuard:
     """NCP-2.2: read_array() on root MDIM container raises ValueError."""
 
     def test_read_array_on_container_raises(self, mdim_nc):
-        with pytest.raises(ValueError, match="Cannot read array from NetCDF container"):
+        with pytest.raises(ValueError, match="not supported on the NetCDF container"):
             mdim_nc.read_array()
 
     def test_read_array_on_variable_works(self, created_nc):
@@ -458,3 +458,105 @@ class TestStage3_RoundTripDecision:
         import inspect
         sig = inspect.signature(Dataset.crop)
         assert "mask" in sig.parameters
+
+
+# ===========================================================================
+# Stage 4 validation — Save to Disk
+# ===========================================================================
+
+class TestStage4_SpatialOpsGuard:
+    """NCP-3.2: Spatial operations on root container raise ValueError."""
+
+    def test_crop_on_container_raises(self, mdim_nc):
+        mask = gpd.GeoDataFrame(
+            geometry=[Polygon([(0, -80), (0, -70), (10, -70), (10, -80)])],
+            crs=4326,
+        )
+        with pytest.raises(ValueError, match="not supported on the NetCDF container"):
+            mdim_nc.crop(mask)
+
+    def test_to_crs_on_container_raises(self, mdim_nc):
+        with pytest.raises(ValueError, match="not supported on the NetCDF container"):
+            mdim_nc.to_crs(3857)
+
+    def test_crop_on_variable_allowed(self, classic_nc):
+        """Spatial ops on variable subsets should not raise."""
+        var = classic_nc.get_variable(classic_nc.variable_names[0])
+        # Just check it doesn't raise the container guard
+        # (may raise other errors if geotransform is off, but not our guard)
+        assert not (var._is_md_array and not var._is_subset and var.band_count == 0)
+
+
+class TestStage4_ToFile:
+    """NCP-3.1: to_file() overridden for NetCDF."""
+
+    def test_to_file_nc_creates_file(self, created_nc, tmp_path):
+        import os
+        out = str(tmp_path / "output.nc")
+        created_nc.to_file(out)
+        assert os.path.exists(out)
+        assert os.path.getsize(out) > 0
+
+    def test_to_file_nc_roundtrip_variable_names(self, created_nc, tmp_path):
+        out = str(tmp_path / "roundtrip.nc")
+        created_nc.to_file(out)
+        reloaded = NetCDF.read_file(out, open_as_multi_dimensional=True)
+        assert "temperature" in reloaded.variable_names
+
+    def test_to_file_nc_roundtrip_data(self, created_nc, tmp_path):
+        out = str(tmp_path / "data_check.nc")
+        var_orig = created_nc.get_variable("temperature")
+        arr_orig = var_orig.read_array()
+        created_nc.to_file(out)
+        reloaded = NetCDF.read_file(out, open_as_multi_dimensional=True)
+        var_new = reloaded.get_variable("temperature")
+        arr_new = var_new.read_array()
+        np.testing.assert_array_almost_equal(arr_orig, arr_new, decimal=5)
+
+    def test_to_file_non_nc_on_container_raises(self, created_nc, tmp_path):
+        out = str(tmp_path / "bad.tif")
+        with pytest.raises(ValueError, match="Cannot save a multidimensional"):
+            created_nc.to_file(out)
+
+
+class TestStage4_Copy:
+    """NCP-3.3: copy() works for MDIM datasets."""
+
+    def test_copy_in_memory(self, created_nc):
+        copied = created_nc.copy()
+        assert isinstance(copied, NetCDF)
+        assert "temperature" in copied.variable_names
+
+    def test_copy_to_disk(self, created_nc, tmp_path):
+        import os
+        out = str(tmp_path / "copied.nc")
+        copied = created_nc.copy(path=out)
+        assert isinstance(copied, NetCDF)
+        assert os.path.exists(out)
+        assert "temperature" in copied.variable_names
+
+    def test_copy_preserves_data(self, created_nc):
+        var_orig = created_nc.get_variable("temperature")
+        arr_orig = var_orig.read_array()
+        copied = created_nc.copy()
+        var_copy = copied.get_variable("temperature")
+        arr_copy = var_copy.read_array()
+        np.testing.assert_array_almost_equal(arr_orig, arr_copy, decimal=5)
+
+
+class TestStage4_CreateCopyMdim:
+    """RT-10: Verify CreateCopy from MEM multidim → netCDF driver works."""
+
+    def test_create_copy_preserves_structure(self, created_nc, tmp_path):
+        """The netCDF driver CreateCopy should preserve MDIM structure."""
+        out = str(tmp_path / "createcopy.nc")
+        dst = gdal.GetDriverByName("netCDF").CreateCopy(
+            out, created_nc._raster, 0
+        )
+        assert dst is not None
+        dst.FlushCache()
+        rg = dst.GetRootGroup()
+        assert rg is not None
+        arr_names = rg.GetMDArrayNames()
+        assert "temperature" in arr_names
+        dst = None

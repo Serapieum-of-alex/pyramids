@@ -188,18 +188,35 @@ class NetCDF(Dataset):
         """Time stamp."""
         return self.get_time_variable()
 
+    def _check_not_container(self, operation: str):
+        """Raise ValueError if this is a root MDIM container (not a variable subset)."""
+        if self._is_md_array and not self._is_subset and self.band_count == 0:
+            raise ValueError(
+                f"Spatial operations are not supported on the NetCDF container. "
+                f"Use nc.get_variable('var_name').{operation}(...) instead."
+            )
+
     def read_array(self, band: int = None, window=None) -> np.ndarray:
         """Read array from the dataset.
 
         Raises a clear error when called on the root MDIM container
         (which has no raster bands).
         """
-        if self._is_md_array and not self._is_subset and self.band_count == 0:
-            raise ValueError(
-                "Cannot read array from NetCDF container. "
-                "Use .get_variable('name').read_array() instead."
-            )
+        self._check_not_container("read_array")
         return super().read_array(band=band, window=window)
+
+    def crop(self, mask, touch: bool = True, inplace: bool = False):
+        """Crop dataset. Blocked on root MDIM container."""
+        self._check_not_container("crop")
+        return super().crop(mask=mask, touch=touch, inplace=inplace)
+
+    def to_crs(self, to_epsg, method="nearest neighbor", maintain_alignment=False, inplace=False):
+        """Reproject dataset. Blocked on root MDIM container."""
+        self._check_not_container("to_crs")
+        return super().to_crs(
+            to_epsg=to_epsg, method=method,
+            maintain_alignment=maintain_alignment, inplace=inplace,
+        )
 
     @classmethod
     def read_file(
@@ -574,61 +591,51 @@ class NetCDF(Dataset):
         """
         return self._is_md_array
 
-    def copy(self, path: str = None) -> "Dataset":
-        """Deep copy.
+    def to_file(self, path: str, **kwargs) -> None:
+        """Save NetCDF to disk.
 
-        Args:
-            path (str, optional):
-                destination path to save the copied dataset, if None is passed, the copy dataset will be created in memory
+        For ``.nc`` files the multidimensional structure is preserved using
+        ``CreateCopy`` with the netCDF driver.  For other extensions (e.g.
+        ``.tif``) the parent ``Dataset.to_file`` is used.
 
-        Examples:
-            - First, we will create a dataset with 1 band, 3 rows and 5 columns.
-                ```python
-                >>> import numpy as np
-                >>> from pyramids.dataset import Dataset
-                >>> arr = np.random.rand(3, 5)
-                >>> top_left_corner = (0, 0)
-                >>> cell_size = 0.05
-                >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-                >>> print(dataset)
-                <BLANKLINE>
-                        Top Left Corner: (0.0, 0.0)
-                        Cell size: 0.05
-                        Dimension: 3 * 5
-                        EPSG: 4326
-                        Number of Bands: 1
-                        Band names: ['Band_1']
-                        Band colors: {0: 'undefined'}
-                        Band units: ['']
-                        Scale: [1.0]
-                        Offset: [0]
-                        Mask: -9999.0
-                        Data type: float64
-                        File:
-                <BLANKLINE>
+        Parameters
+        ----------
+        path : str
+            Destination file path.
+        **kwargs
+            Forwarded to ``Dataset.to_file`` for non-NetCDF extensions.
+        """
+        extension = path.rsplit(".", 1)[-1].lower()
+        if extension in ("nc", "nc4"):
+            dst = gdal.GetDriverByName("netCDF").CreateCopy(
+                path, self._raster, 0
+            )
+            if dst is None:
+                raise RuntimeError(
+                    f"Failed to save NetCDF to {path}"
+                )
+            dst.FlushCache()
+            dst = None
+        else:
+            if self._is_md_array and not self._is_subset:
+                raise ValueError(
+                    "Cannot save a multidimensional NetCDF container as "
+                    f"'{extension}'. Use .nc extension or extract a "
+                    "variable first with .get_variable()."
+                )
+            super().to_file(path, **kwargs)
 
-                ```
-            - Now, we will create a copy of the dataset.
-                ```python
-                >>> copied_dataset = dataset.copy(path="copy-dataset.tif")
-                >>> print(copied_dataset)
-                <BLANKLINE>
-                            Cell size: 0.05
-                            Dimension: 3 * 5
-                            EPSG: 4326
-                            Number of Bands: 1
-                            Band names: ['Band_1']
-                            Mask: -9999.0
-                            Data type: float64
-                            File: copy-dataset.tif
-                <BLANKLINE>
+    def copy(self, path: str = None) -> "NetCDF":
+        """Deep copy of this NetCDF dataset.
 
-                ```
-            - Now close the dataset.
-                ```python
-                >>> copied_dataset.close()
+        Parameters
+        ----------
+        path : str, optional
+            Destination path. If None, the copy is created in memory.
 
-                ```
+        Returns
+        -------
+        NetCDF
         """
         if path is None:
             path = ""
@@ -637,7 +644,10 @@ class NetCDF(Dataset):
             driver = "netCDF"
 
         src = gdal.GetDriverByName(driver).CreateCopy(path, self._raster)
-
+        if src is None:
+            raise RuntimeError(
+                f"Failed to copy NetCDF dataset to '{path}'"
+            )
         return NetCDF(src, access="write")
 
     @staticmethod
