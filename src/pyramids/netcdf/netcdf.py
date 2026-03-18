@@ -3,7 +3,7 @@ netcdf module.
 
 netcdf contains python functions to handle netcdf data. gdal class: https://gdal.org/api/index.html#python-api.
 """
-
+from __future__ import annotations
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union, Optional
 import numpy as np
