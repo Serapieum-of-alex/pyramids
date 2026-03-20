@@ -22,7 +22,7 @@
 
 - The main purpose of the `Dataset` object is to deal with raster objects, single or multi-bands, has variables/subsets
     like netcdf file or has one variable like most GeoTIFF files.
-  
+
 ![dataset](./../_images/dataset/dataset.png)
 
 - The `Dataset` object data model is as following

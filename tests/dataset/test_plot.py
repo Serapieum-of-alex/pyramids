@@ -4,13 +4,12 @@ import pandas as pd
 from pandas import DataFrame
 from osgeo import gdal
 from pyramids.dataset import Dataset
-from pyramids.datacube import Datacube
+from pyramids.multidataset import MultiDataset
 try:
     from cleopatra.array_glyph import ArrayGlyph
     from cleopatra.config import Config
 except ImportError:
     raise ImportError("Cleopatra is not installed")
-
 
 class TestPlotDataSet:
     Config.set_matplotlib_backend("agg")
@@ -50,7 +49,7 @@ class TestPlotDataSet:
         assert isinstance(array_glyph, ArrayGlyph)
 
 
-class TestPlotDataCube:
+class TestPlotMultiDataset:
     @pytest.mark.plot
     def test_geotiff(
         self,
@@ -60,8 +59,8 @@ class TestPlotDataCube:
     ):
         from cleopatra.array_glyph import ArrayGlyph
 
-        cube = Datacube.read_multiple_files(rasters_folder_path, with_order=False)
-        cube.open_datacube()
+        cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
+        cube.open_multi_dataset()
         cleo = cube.plot()
         assert isinstance(cleo, ArrayGlyph)
 
@@ -158,4 +157,3 @@ class TestColorRelief:
         color_table = Dataset._process_color_table(self.df)
         assert isinstance(color_table, DataFrame)
         assert all(color_table.columns == ["values", "red", "green", "blue", "alpha"])
-

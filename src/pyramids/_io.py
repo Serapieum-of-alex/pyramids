@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import zipfile
 import tarfile
@@ -198,7 +199,6 @@ def read_file(
     access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
     try:
         # get the file extension
-        # file_extension = path.split(".")[-1].lower()
         # Example criteria for using gdal.OpenEx with OF_MULTIDIM_RASTER for complex multi-dimensional formats
         if (
             open_as_multi_dimensional

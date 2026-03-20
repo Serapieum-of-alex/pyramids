@@ -1,13 +1,13 @@
 # Using the Dev Container
 
-This guide explains how to develop this project inside a reproducible Dev Container. The Dev Container is configured to 
+This guide explains how to develop this project inside a reproducible Dev Container. The Dev Container is configured to
 build from the repository Dockerfile (production stage) and provisions a complete GIS stack (GDAL/PROJ); development tools are available when `ENV_NAME=dev`.
 
 Key facts:
 - Image is built from the Dockerfile `production` stage with `ENV_NAME=default` so default (runtime) dependencies are included.
 - The Python environment lives at `/opt/venv`. VS Code is configured to use `/opt/venv/bin/python` automatically.
 - GDAL/PROJ environment variables are already set inside the container.
-- By default, the package is installed non-editably (production-like install). You can optionally enable editable installs 
+- By default, the package is installed non-editably (production-like install). You can optionally enable editable installs
 for live code reloading (see below).
 - Dev tools like `pytest` and `pre-commit` are part of the Pixi `dev` environment. To include them by default, change `ENV_NAME` to `dev` in `.devcontainer/devcontainer.json` and rebuild; otherwise you can install them manually inside the container (e.g., `pip install -U pytest pre-commit`).
 
@@ -121,9 +121,9 @@ Prerequisites:
 - Install the JetBrains plugin: "Dev Containers" (Settings → Plugins → Marketplace → search "Dev Containers" → Install)
 
 Option A — Open the project via the Dev Containers plugin (recommended):
-1. File → remote development → dev container → New dev container → select from local Project → then select the 
+1. File → remote development → dev container → New dev container → select from local Project → then select the
    devcontainer file .devcontainer/devcontainer.json).
-2. Once you select the devcontainer file, the plugin will build the image from the Dockerfile and the `Services` tab 
+2. Once you select the devcontainer file, the plugin will build the image from the Dockerfile and the `Services` tab
    will open and display the build progress.
 ![build-log](./../_images/development/dev-container-build-log.png)
 3. Once the build is done you can open the project in the container.

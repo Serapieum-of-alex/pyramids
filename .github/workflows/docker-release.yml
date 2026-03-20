@@ -7,7 +7,7 @@ permissions:
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: ["Automated release workflow"]
+    workflows: ["github-release"]
     types:
       - completed
     branches:

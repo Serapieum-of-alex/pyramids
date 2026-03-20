@@ -516,7 +516,7 @@ class TestNoDataValue:
     ):
         src = Dataset(src_update)
         src._set_no_data_value(5.0)
-        # check if the no_data_value in the Datacube object is set
+        # check if the no_data_value in the Dataset object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
         # check if the no_data_value of the Dataset object is set5
         assert src.no_data_value[0] == 5
@@ -530,7 +530,6 @@ class TestNoDataValue:
         arr = src.read_array()
         old_value = arr[0, 0]
         new_val = -6666
-        # inplace change
         src = src.change_no_data_value(new_val, old_value)
         # check if the no_data_value in the Datacube object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == new_val
@@ -554,7 +553,7 @@ class TestNoDataValue:
         dataset = Dataset(chang_no_data_dataset)
         new_val = -6666
         dataset.no_data_value = new_val
-        # check if the no_data_value in the Datacube object is set
+        # check if the no_data_value in the Dataset object is set
         assert dataset.raster.GetRasterBand(1).GetNoDataValue() == new_val
         # check if the no_data_value of the Dataset object is set
         assert dataset.no_data_value == [new_val]

@@ -1,0 +1,31 @@
+name: pypi-release
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['github-release']
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Build and publish to PyPI
+        uses: Serapieum-of-alex/github-actions/actions/release/pypi@pypi-release/v1
+        with:
+          pypi-username: __token__
+          pypi-password: ${{ secrets.PYPI_PUBLISH }}
+          package-manager: 'pixi'
+          install-groups: 'groups: dev'
+          verify-lock: 'false'

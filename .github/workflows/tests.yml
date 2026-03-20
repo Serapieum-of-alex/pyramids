@@ -1,9 +1,13 @@
-name: tests
-
-on: [push]
+name: Tests - Suite
 
 permissions:
   contents: read
+  id-token: write
+
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
   main-package:
@@ -11,17 +15,21 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        environment: [py311, py312, py313, py314]
+        environment: [py311, py312, py313]
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Environment ${{ matrix.environment }} ${{ matrix.os }}
-        uses: Serapieum-of-alex/github-actions/actions/python-setup/pixi@v1
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: Serapieum-of-alex/github-actions/actions/python-setup/pixi@pixi/v1
         with:
           environments: ${{ matrix.environment }}
           activate-environment: ${{ matrix.environment }}
+          cache: true
 
-      - name: Run main tests
+      - name: Run Tests
         run: |
           pixi run -e ${{ matrix.environment }} test-all
 

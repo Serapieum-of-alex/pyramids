@@ -1,4 +1,4 @@
-name: Automated release workflow
+name: github-release
 
 permissions:
   contents: write
@@ -39,13 +39,29 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release-branch }}
+
+      - name: Check actor is a repository admin
+        run: |
+          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission --jq '.permission')
+          echo "Permission level for ${{ github.actor }}: $PERMISSION"
+          if [ "$PERMISSION" != "admin" ]; then
+            echo "::error::${{ github.actor }} is not a repository admin. Only admins can trigger releases."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release with Commitizen
         uses: Serapieum-of-alex/github-actions/actions/release/github@github-release/v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          release-branch: ${{ github.event.inputs.release-branch }}
           increment: ${{ github.event.inputs.increment }}
           prerelease-type: ${{ github.event.inputs.prerelease_type }}
           draft: ${{ github.event.inputs.draft }}
           package-manager: pixi
-          install-groups: "dev"
+          install-groups: "groups: dev"

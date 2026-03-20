@@ -1,6 +1,9 @@
-# FeatureCollection Class
+# DataCube Class
 
-::: pyramids.featurecollection.FeatureCollection
+![Datacube diagram](./../_images/pyramids-multi-dataset.svg)
+
+
+::: pyramids.multidataset.MultiDataset
     options:
         show_root_heading: true
         show_source: true

@@ -10,19 +10,19 @@ on:
       - main
   pull_request:
     branches:
-      - '**'  # Match all branches for pull requests
+      - '**'
+  release:
+      types:
+        - published
   workflow_run:
-    workflows: ["Automated release workflow"]
-    types:
-      - completed
-    branches:
-      - main
+    workflows: ['github-release']
+    types: [completed]
 
 jobs:
   deploy-pr:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
+      if: github.event_name == 'pull_request'
+      runs-on: ubuntu-latest
+      steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -30,49 +30,37 @@ jobs:
       - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@mkdocs/v1
         with:
           trigger: 'pull_request'
-          package-manager: 'pip'
-          python-version: '3.12'
-          install-groups: 'groups: docs'
+          package-manager: 'pixi'
+          install-groups: 'docs'
           deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
 
   deploy-main:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@mkdocs/v1
-        with:
-          trigger: 'main'
-          package-manager: 'pip'
-          python-version: '3.12'
-          install-groups: 'groups: docs'
-          deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@mkdocs/v1
+      with:
+        trigger: 'main'
+        package-manager: 'pixi'
+        install-groups: 'docs'
+        deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
 
   deploy-release:
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Get latest release tag
-        id: get-release
-        run: |
-          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
-          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@mkdocs/v1
-        with:
-          trigger: 'release'
-          package-manager: 'pip'
-          python-version: '3.12'
-          install-groups: 'groups: docs'
-          deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
-          release-tag: ${{ steps.get-release.outputs.tag }}
-          mike-alias: 'latest'
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@mkdocs/v1
+      with:
+        trigger: 'release'
+        package-manager: 'pixi'
+        install-groups: "groups: docs"
+        deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
+        mike-alias: 'latest'
