@@ -121,7 +121,7 @@ class NetCDF(Dataset):
     @property
     def y(self) -> np.ndarray:
         """y-coordinate/latitude."""
-        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
+        # Y_coordinate = upper-left corner y - index * cell size - cell-size/2
         return self.lat
 
     @property
