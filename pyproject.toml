@@ -46,6 +46,7 @@ dev = [
     "pre-commit-hooks >=4.6.0",
     "pytest >=8.2.2",
     "pytest-cov >= 5.0.0",
+    "pytest-env>=1.6.0",
     "coverage",
     "build>=1.0.0",
     "twine>=5.0.0",
@@ -128,6 +129,7 @@ style = [
 ]
 
 [tool.pytest.ini_options]
+env = ["MPLBACKEND=Agg"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 markers = [
