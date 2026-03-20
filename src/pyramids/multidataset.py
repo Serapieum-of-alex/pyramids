@@ -4,7 +4,6 @@ import os
 import re
 import logging
 
-logger = logging.getLogger(__name__)
 import datetime as dt
 import pandas as pd
 from pathlib import Path
@@ -22,6 +21,9 @@ except ModuleNotFoundError:  # pragma: no cover
     logger.warning(  # pragma: no cover
         "osgeo_utils module does not exist try install pip install osgeo-utils "
     )
+
+
+logger = logging.getLogger(__name__)
 
 
 class MultiDataset:
