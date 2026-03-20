@@ -599,6 +599,8 @@ class NetCDF(Dataset):
 
         prefix = self.driver_type.upper()
         rg = self._raster.GetRootGroup()
+        md_arr_ref = None
+        rg_ref = None
 
         if prefix == "MEMORY" or rg is not None:
             src, md_arr_ref, rg_ref = self._read_md_array(variable_name)
