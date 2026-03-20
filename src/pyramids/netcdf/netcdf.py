@@ -638,6 +638,11 @@ class NetCDF(Dataset):
             cube._gdal_rg_ref = rg_ref
         else:
             src = gdal.Open(f"{prefix}:{self.file_name}:{variable_name}")
+            if src is None:
+                raise ValueError(
+                    f"Could not open variable '{variable_name}' via "
+                    f"'{prefix}:{self.file_name}:{variable_name}'"
+                )
             cube = NetCDF(src)
             cube._is_md_array = False
 
