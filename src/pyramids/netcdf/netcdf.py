@@ -523,11 +523,18 @@ class NetCDF(Dataset):
 
         return variable_names
 
-    def _read_md_array(self, variable_name: str) -> gdal.Dataset:
+    def _read_md_array(self, variable_name: str):
         """Convert an MDArray to a classic GDAL dataset via AsClassicDataset.
 
         The last two dimensions become X (columns) and Y (rows); all
         remaining dimensions are flattened into bands.
+
+        Returns a tuple ``(classic_dataset, md_array, root_group)`` so
+        callers can keep the GDAL objects alive.  ``AsClassicDataset``
+        returns a **view** whose C++ backing depends on the MDArray and
+        root group; if the Python SWIG wrappers for those are garbage-
+        collected the view becomes a dangling pointer (segfault on
+        Windows).
         """
         rg = self._raster.GetRootGroup()
         md_arr = rg.OpenMDArray(variable_name)
@@ -535,13 +542,66 @@ class NetCDF(Dataset):
         dims = md_arr.GetDimensions()
         if len(dims) == 1:
             if dtype.GetClass() == gdal.GEDTC_STRING:
-                src = md_arr
+                return md_arr, md_arr, rg
             else:
                 src = md_arr.AsClassicDataset(0, 1, rg)
         else:
             src = md_arr.AsClassicDataset(len(dims) - 1, len(dims) - 2, rg)
 
-        return src
+        return src, md_arr, rg
+
+    @staticmethod
+    def _fix_y_orientation(src: gdal.Dataset) -> gdal.Dataset:
+        """Flip a dataset vertically if its Y pixel size is positive.
+
+        NetCDF files commonly store latitude south-to-north (row 0 =
+        southernmost), producing a positive Y pixel size from
+        ``AsClassicDataset()``.  GDAL's raster convention is row 0 =
+        northernmost with a **negative** Y pixel size.  This helper
+        creates a new MEM dataset with the rows flipped and the
+        geotransform corrected so that downstream GIS operations
+        (crop, reproject, plot) work correctly.
+
+        If the Y pixel size is already negative (or zero), the dataset
+        is returned unchanged.
+        """
+        gt = src.GetGeoTransform()
+        if gt[5] <= 0:
+            return src
+
+        bands = src.RasterCount
+        cols = src.RasterXSize
+        rows = src.RasterYSize
+
+        # Corrected geotransform: origin moves to the north edge,
+        # Y pixel size becomes negative.
+        new_gt = (
+            gt[0],          # x origin unchanged
+            gt[1],          # x pixel size unchanged
+            gt[2],          # x rotation unchanged
+            gt[3] + gt[5] * rows,  # y origin = old_origin + rows * positive_pixel_size = north edge
+            gt[4],          # y rotation unchanged
+            -gt[5],         # y pixel size becomes negative
+        )
+
+        drv = gdal.GetDriverByName("MEM")
+        # Determine data type from the first band
+        dt = src.GetRasterBand(1).DataType if bands > 0 else gdal.GDT_Float64
+        dst = drv.Create("", cols, rows, bands, dt)
+        dst.SetGeoTransform(new_gt)
+        proj = src.GetProjection()
+        if proj:
+            dst.SetProjection(proj)
+
+        for b in range(1, bands + 1):
+            band_data = src.GetRasterBand(b).ReadAsArray()
+            flipped = np.flipud(band_data)
+            dst.GetRasterBand(b).WriteArray(flipped)
+            ndv = src.GetRasterBand(b).GetNoDataValue()
+            if ndv is not None:
+                dst.GetRasterBand(b).SetNoDataValue(ndv)
+
+        return dst
 
     def get_variable(self, variable_name: str) -> "NetCDF":
         """Extract a single variable as a classic-raster NetCDF object.
@@ -568,12 +628,22 @@ class NetCDF(Dataset):
         rg = self._raster.GetRootGroup()
 
         if prefix == "MEMORY" or rg is not None:
-            src = self._read_md_array(variable_name)
+            src, md_arr_ref, rg_ref = self._read_md_array(variable_name)
             if isinstance(src, gdal.Dataset):
+                # Fix south-to-north orientation: NetCDF stores row 0 =
+                # south, GDAL expects row 0 = north with negative Y pixel
+                # size.  _fix_y_orientation flips the array and corrects
+                # the geotransform when needed.
+                src = self._fix_y_orientation(src)
                 cube = NetCDF(src)
                 cube._is_md_array = True
             else:
                 cube = src
+            # Keep GDAL SWIG references alive — AsClassicDataset returns a
+            # view whose C++ backing is owned by the MDArray/root group.
+            # Without these the view becomes a dangling pointer on Windows.
+            cube._gdal_md_arr_ref = md_arr_ref
+            cube._gdal_rg_ref = rg_ref
         else:
             src = gdal.Open(f"{prefix}:{self.file_name}:{variable_name}")
             cube = NetCDF(src)
@@ -585,8 +655,8 @@ class NetCDF(Dataset):
         cube._parent_nc = self
         cube._source_var_name = variable_name
 
+        md_arr = md_arr_ref if rg is not None else None
         if rg is not None:
-            md_arr = rg.OpenMDArray(variable_name)
             if md_arr is not None:
                 dims = md_arr.GetDimensions()
                 cube._md_array_dims = [d.GetName() for d in dims]
@@ -600,9 +670,19 @@ class NetCDF(Dataset):
                     if len(band_dims) == 1:
                         cube._band_dim_name = band_dims[0].GetName()
                         iv = band_dims[0].GetIndexingVariable()
-                        cube._band_dim_values = (
-                            iv.ReadAsArray().tolist() if iv is not None else None
-                        )
+                        try:
+                            cube._band_dim_values = (
+                                iv.ReadAsArray().tolist()
+                                if iv is not None
+                                else None
+                            )
+                        except RuntimeError:
+                            # String-typed indexing variables (e.g. WRF
+                            # "Times") can't be read via ReadAsArray in
+                            # GDAL SWIG bindings — fall back to indices.
+                            cube._band_dim_values = list(
+                                range(band_dims[0].GetSize())
+                            )
                     else:
                         cube._band_dim_name = None
                         cube._band_dim_values = None

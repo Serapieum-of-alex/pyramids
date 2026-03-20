@@ -379,22 +379,25 @@ class TestReadMdArray:
     """Tests for NetCDF._read_md_array private method."""
 
     def test_returns_classic_dataset_for_2d_var(self, nc_2d):
-        """Verify _read_md_array returns a gdal.Dataset for 2D variables.
+        """Verify _read_md_array returns a classic dataset for 2D variables.
 
         Test scenario:
             A 2D variable should be converted to a classic dataset via
-            AsClassicDataset().
+            AsClassicDataset(). Returns a tuple (dataset, md_arr, rg).
         """
-        src = nc_2d._read_md_array("elevation")
+        src, md_arr, rg = nc_2d._read_md_array("elevation")
         assert isinstance(src, gdal.Dataset), f"Expected gdal.Dataset, got {type(src)}"
+        assert md_arr is not None, "MDArray reference should not be None"
+        assert rg is not None, "Root group reference should not be None"
 
     def test_returns_classic_dataset_for_3d_var(self, nc_3d):
-        """Verify _read_md_array returns a gdal.Dataset for 3D variables.
+        """Verify _read_md_array returns a classic dataset for 3D variables.
 
         Test scenario:
             A 3D variable's non-spatial dimensions should become bands.
+            Returns a tuple (dataset, md_arr, rg) for lifetime safety.
         """
-        src = nc_3d._read_md_array("temperature")
+        src, md_arr, rg = nc_3d._read_md_array("temperature")
         assert isinstance(src, gdal.Dataset), f"Expected gdal.Dataset, got {type(src)}"
         assert src.RasterCount == 3, (
             f"Expected 3 bands for 3D variable, got {src.RasterCount}"
