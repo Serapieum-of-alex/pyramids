@@ -24,18 +24,79 @@ from pyramids.netcdf.utils import (
 from pyramids.netcdf.dimensions import MetaData as SharedMetaData
 
 class MetadataBuilder:
-    """Class-based builder that constructs NetCDFMetadata from a NetCDF source.
+    """Construct a ``NetCDFMetadata`` from a GDAL dataset.
 
-    This refactors the previous function-centric approach into a small, cohesive
-    object with clearer responsibilities and smaller methods. Public module
-    functions delegate to this builder to preserve API compatibility.
+    ``MetadataBuilder`` encapsulates the logic for extracting
+    multidimensional metadata from a GDAL ``Dataset`` opened with
+    the NetCDF driver. It delegates group/array/dimension traversal
+    to ``GroupTraverser`` and assembles the result into a single
+    ``NetCDFMetadata`` dataclass.
+
+    Public module functions (``get_metadata``, ``to_dict``, etc.)
+    delegate to this builder to preserve API compatibility.
+
+    Args:
+        src: An already-opened ``gdal.Dataset`` pointing to a
+            NetCDF file.
+        open_options: Optional dictionary of GDAL open-options
+            that were used when opening the file. Stored as
+            informational metadata only.
+
+    Examples:
+        >>> import pyramids.netcdf.metadata as meta  # doctest: +SKIP
+        >>> from osgeo import gdal  # doctest: +SKIP
+        >>> ds = gdal.OpenEx(  # doctest: +SKIP
+        ...     "precip.nc", gdal.OF_MULTIDIM_RASTER
+        ... )
+        >>> builder = meta.MetadataBuilder(ds)  # doctest: +SKIP
+        >>> md = builder.build()  # doctest: +SKIP
+        >>> md.driver  # doctest: +SKIP
+        'netCDF'
     """
 
-    def __init__(self, src: gdal.Dataset, open_options: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        src: gdal.Dataset,
+        open_options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize MetadataBuilder.
+
+        Args:
+            src: An already-opened ``gdal.Dataset`` pointing
+                to a NetCDF file. Must not be ``None``.
+            open_options: Optional dictionary of GDAL
+                open-options recorded for provenance.
+        """
         self.gdal_dataset = src
         self.open_options = open_options or None
 
     def build(self) -> NetCDFMetadata:
+        """Build and return the ``NetCDFMetadata`` for the dataset.
+
+        Reads the driver name, root group, groups, arrays,
+        dimensions, global attributes, and structural information
+        from the underlying GDAL dataset and assembles them into
+        a ``NetCDFMetadata`` instance.
+
+        Returns:
+            NetCDFMetadata: Fully populated metadata for the
+                NetCDF file.
+
+        Raises:
+            Exception: Propagates any unhandled GDAL errors
+                encountered while reading the dataset.
+
+        Examples:
+            >>> import pyramids.netcdf.metadata as meta  # doctest: +SKIP
+            >>> from osgeo import gdal  # doctest: +SKIP
+            >>> ds = gdal.OpenEx(  # doctest: +SKIP
+            ...     "precip.nc", gdal.OF_MULTIDIM_RASTER
+            ... )
+            >>> builder = meta.MetadataBuilder(ds)  # doctest: +SKIP
+            >>> md = builder.build()  # doctest: +SKIP
+            >>> len(md.arrays) > 0  # doctest: +SKIP
+            True
+        """
         ds = self.gdal_dataset
 
         # Driver name and root group
@@ -81,10 +142,43 @@ class MetadataBuilder:
 
 
 class GroupTraverser:
-    """Iterative (BFS) traverser that collects MDIM groups, arrays, and dimensions.
+    """Iterative BFS traverser for MDIM groups, arrays, and dimensions.
 
-    Uses a deque for predictable, stack-safe traversal and sorts names for
-    deterministic ordering. Results are written into the provided maps.
+    Performs a breadth-first walk over the GDAL multidimensional
+    group hierarchy starting from a root ``gdal.Group``. At each
+    group it collects dimensions, arrays, and child-group
+    references, storing them in the caller-provided dictionaries.
+
+    A ``collections.deque`` is used instead of recursion to avoid
+    stack overflow on deeply nested files. Group and array names
+    are sorted for deterministic output ordering.
+
+    Args:
+        groups: Mutable dictionary that will be populated with
+            ``GroupInfo`` instances keyed by full name.
+        arrays: Mutable dictionary that will be populated with
+            ``ArrayInfo`` instances keyed by full name.
+        dimensions: Mutable dictionary that will be populated
+            with ``DimensionInfo`` instances keyed by full name.
+
+    Examples:
+        >>> from collections import deque  # doctest: +SKIP
+        >>> from osgeo import gdal  # doctest: +SKIP
+        >>> ds = gdal.OpenEx(  # doctest: +SKIP
+        ...     "precip.nc", gdal.OF_MULTIDIM_RASTER
+        ... )
+        >>> root = ds.GetRootGroup()  # doctest: +SKIP
+        >>> groups, arrays, dims = {}, {}, {}  # doctest: +SKIP
+        >>> t = GroupTraverser(  # doctest: +SKIP
+        ...     groups, arrays, dims
+        ... )
+        >>> t.walk(root)  # doctest: +SKIP
+        >>> list(groups.keys())  # doctest: +SKIP
+        ['/']
+
+    See Also:
+        MetadataBuilder: High-level builder that uses this
+            traverser internally.
     """
 
     def __init__(
@@ -93,11 +187,34 @@ class GroupTraverser:
         arrays: Dict[str, ArrayInfo],
         dimensions: Dict[str, DimensionInfo],
     ) -> None:
+        """Initialize GroupTraverser with output dictionaries.
+
+        Args:
+            groups: Dictionary to populate with ``GroupInfo``
+                objects. Keys are group full names (e.g. ``"/"``).
+            arrays: Dictionary to populate with ``ArrayInfo``
+                objects. Keys are array full names.
+            dimensions: Dictionary to populate with
+                ``DimensionInfo`` objects. Keys are dimension
+                full names.
+        """
         self.groups = groups
         self.arrays = arrays
         self.dimensions = dimensions
 
     def _collect_dimensions(self, group: gdal.Group, group_full_name: str) -> None:
+        """Collect all dimensions from *group* into ``self.dimensions``.
+
+        Dimensions are sorted by name for deterministic ordering.
+        Any GDAL errors when reading individual dimensions are
+        silently caught so the traversal can continue.
+
+        Args:
+            group: The GDAL group whose dimensions to read.
+            group_full_name: Full path of the group, used as a
+                fallback when the dimension cannot report its own
+                full name.
+        """
 
         try:
             dims = group.GetDimensions() or []
@@ -118,6 +235,22 @@ class GroupTraverser:
             self.dimensions[dim.full_name] = dim
 
     def _collect_arrays(self, group: gdal.Group, group_full_name: str) -> List[str]:
+        """Collect all arrays from *group* into ``self.arrays``.
+
+        Each array is opened via ``group.OpenMDArray`` and
+        converted to an ``ArrayInfo`` dataclass. Arrays that
+        cannot be opened are silently skipped.
+
+        Args:
+            group: The GDAL group whose arrays to read.
+            group_full_name: Full path of the parent group,
+                used as fallback context for full-name
+                resolution.
+
+        Returns:
+            list[str]: Full names of the arrays that were
+                successfully collected.
+        """
         array_full_names: List[str] = []
         for md_arr_name in _safe_array_names(group):
             try:
@@ -135,6 +268,31 @@ class GroupTraverser:
         return array_full_names
 
     def walk(self, root: gdal.Group) -> None:
+        """Traverse the group tree starting from *root* (BFS).
+
+        Visits every reachable group, collecting its dimensions,
+        arrays, child references, and attributes. All results are
+        written into the dictionaries supplied at construction
+        time.
+
+        Args:
+            root: The root ``gdal.Group`` returned by
+                ``gdal.Dataset.GetRootGroup()``.
+
+        Examples:
+            >>> from osgeo import gdal  # doctest: +SKIP
+            >>> ds = gdal.OpenEx(  # doctest: +SKIP
+            ...     "precip.nc", gdal.OF_MULTIDIM_RASTER
+            ... )
+            >>> root = ds.GetRootGroup()  # doctest: +SKIP
+            >>> groups, arrays, dims = {}, {}, {}  # doctest: +SKIP
+            >>> traverser = GroupTraverser(  # doctest: +SKIP
+            ...     groups, arrays, dims
+            ... )
+            >>> traverser.walk(root)  # doctest: +SKIP
+            >>> "/" in groups  # doctest: +SKIP
+            True
+        """
         q = deque([root])
 
         while q:
@@ -179,21 +337,45 @@ class GroupTraverser:
             self.groups[group_info.full_name] = group_info
 
 
-def get_metadata(source, open_options: Optional[Dict[str, Any]] = None) -> NetCDFMetadata:
+def get_metadata(
+    source,
+    open_options: Optional[Dict[str, Any]] = None,
+) -> NetCDFMetadata:
     """Read and normalize all NetCDF MDIM metadata.
 
-    Parameters
-    ----------
-    source : gdal.Dataset, str, or object with ``_raster`` attribute
-        The data source. Accepts a GDAL dataset directly, a file path
-        (opened with OF_MULTIDIM_RASTER), or a pyramids NetCDF/Dataset
-        instance (the internal ``_raster`` is extracted).
-    open_options : dict, optional
-        Passed through to the builder as informational metadata.
+    Accepts several source types and delegates to
+    ``MetadataBuilder`` to produce a ``NetCDFMetadata`` instance.
 
-    Returns
-    -------
-    NetCDFMetadata
+    Args:
+        source (gdal.Dataset | str | object): The data source.
+            Accepts a GDAL dataset directly, a file path (opened
+            internally with ``OF_MULTIDIM_RASTER``), or a pyramids
+            ``NetCDF``/``Dataset`` instance whose internal
+            ``_raster`` attribute is extracted automatically.
+        open_options: Optional dictionary of GDAL open-options.
+            Stored in the resulting metadata for provenance but
+            not used to open the file.
+
+    Returns:
+        NetCDFMetadata: Fully populated metadata dataclass.
+
+    Raises:
+        ValueError: If *source* is a string path that cannot be
+            opened as a multidimensional raster.
+
+    Examples:
+        Open from a file path:
+
+        >>> from osgeo import gdal  # doctest: +SKIP
+        >>> import pyramids.netcdf.metadata as meta  # doctest: +SKIP
+        >>> md = meta.get_metadata(  # doctest: +SKIP
+        ...     "precip.nc"
+        ... )
+        >>> md.driver  # doctest: +SKIP
+        'netCDF'
+
+    See Also:
+        MetadataBuilder: The builder class used internally.
     """
     if isinstance(source, str):
         ds = gdal.OpenEx(source, gdal.OF_MULTIDIM_RASTER)
@@ -212,7 +394,51 @@ def get_metadata(source, open_options: Optional[Dict[str, Any]] = None) -> NetCD
 
 
 def to_dict(metadata: NetCDFMetadata) -> Dict[str, Any]:
-    """Convert NetCDFMetadata dataclasses to plain dicts suitable for JSON."""
+    """Convert ``NetCDFMetadata`` to plain dicts suitable for JSON.
+
+    Recursively walks all dataclass fields and converts them to
+    plain ``dict`` / ``list`` / scalar types so the result can be
+    passed directly to ``json.dumps``.
+
+    Args:
+        metadata: A ``NetCDFMetadata`` instance to convert.
+
+    Returns:
+        dict: Nested dictionary with all dataclass fields
+            converted to plain dicts.
+
+    Examples:
+        Convert a minimal metadata object:
+
+        >>> from pyramids.netcdf.metadata import to_dict
+        >>> from pyramids.netcdf.models import (
+        ...     NetCDFMetadata, StructuralInfo,
+        ... )
+        >>> md = NetCDFMetadata(
+        ...     driver="netCDF",
+        ...     root_group="/",
+        ...     groups={},
+        ...     arrays={},
+        ...     dimensions={},
+        ...     global_attributes={"title": "test"},
+        ...     structural=StructuralInfo(
+        ...         driver_name="netCDF"
+        ...     ),
+        ...     created_with={"library": "GDAL"},
+        ... )
+        >>> d = to_dict(md)
+        >>> d["driver"]
+        'netCDF'
+        >>> d["global_attributes"]["title"]
+        'test'
+        >>> d["structural"]["driver_name"]
+        'netCDF'
+
+    See Also:
+        to_json: Serializes directly to a JSON string.
+        from_json: Deserializes a JSON string back to
+            ``NetCDFMetadata``.
+    """
     def convert(obj: Any) -> Any:
         if is_dataclass(obj):
             return {k: convert(v) for k, v in asdict(obj).items()}
@@ -226,14 +452,101 @@ def to_dict(metadata: NetCDFMetadata) -> Dict[str, Any]:
 
 
 def to_json(metadata: NetCDFMetadata) -> str:
-    """Serialize NetCDFMetadata to JSON string."""
+    """Serialize ``NetCDFMetadata`` to a compact JSON string.
+
+    Converts the dataclass tree to plain dicts via ``to_dict``
+    and then encodes to JSON with no extra whitespace.
+
+    Args:
+        metadata: A ``NetCDFMetadata`` instance to serialize.
+
+    Returns:
+        str: JSON-encoded string with no ASCII escaping and
+            compact separators (no spaces after ``,`` or ``:``).
+
+    Examples:
+        Round-trip a minimal metadata object:
+
+        >>> import json
+        >>> from pyramids.netcdf.metadata import to_json
+        >>> from pyramids.netcdf.models import (
+        ...     NetCDFMetadata, StructuralInfo,
+        ... )
+        >>> md = NetCDFMetadata(
+        ...     driver="netCDF",
+        ...     root_group="/",
+        ...     groups={},
+        ...     arrays={},
+        ...     dimensions={},
+        ...     global_attributes={},
+        ...     structural=StructuralInfo(
+        ...         driver_name="netCDF"
+        ...     ),
+        ...     created_with={"library": "GDAL"},
+        ... )
+        >>> s = to_json(md)
+        >>> json.loads(s)["driver"]
+        'netCDF'
+
+    See Also:
+        to_dict: Converts to plain dicts without JSON encoding.
+        from_json: Deserializes the string back to
+            ``NetCDFMetadata``.
+    """
     return json.dumps(to_dict(metadata), ensure_ascii=False, separators=(",", ":"))
 
 
 def from_json(s: str) -> NetCDFMetadata:
-    """Deserialize NetCDFMetadata from JSON string created by to_json().
+    """Deserialize ``NetCDFMetadata`` from a JSON string.
 
-    Note: We rebuild dataclasses manually from dicts; only supports the schema produced by to_dict().
+    Parses the JSON produced by ``to_json`` and manually
+    reconstructs the dataclass hierarchy (``GroupInfo``,
+    ``ArrayInfo``, ``DimensionInfo``, ``StructuralInfo``).
+
+    Only the schema produced by ``to_dict`` / ``to_json`` is
+    supported; arbitrary JSON will likely raise ``KeyError``.
+
+    Args:
+        s: A JSON string previously produced by ``to_json``.
+
+    Returns:
+        NetCDFMetadata: Reconstructed metadata instance.
+
+    Raises:
+        json.JSONDecodeError: If *s* is not valid JSON.
+        KeyError: If required fields are missing from the
+            JSON payload.
+
+    Examples:
+        Round-trip through JSON:
+
+        >>> from pyramids.netcdf.metadata import (
+        ...     to_json, from_json,
+        ... )
+        >>> from pyramids.netcdf.models import (
+        ...     NetCDFMetadata, StructuralInfo,
+        ... )
+        >>> md = NetCDFMetadata(
+        ...     driver="netCDF",
+        ...     root_group="/",
+        ...     groups={},
+        ...     arrays={},
+        ...     dimensions={},
+        ...     global_attributes={"history": "created"},
+        ...     structural=StructuralInfo(
+        ...         driver_name="netCDF"
+        ...     ),
+        ...     created_with={"library": "GDAL"},
+        ... )
+        >>> s = to_json(md)
+        >>> restored = from_json(s)
+        >>> restored.driver
+        'netCDF'
+        >>> restored.global_attributes["history"]
+        'created'
+
+    See Also:
+        to_json: The serialization counterpart.
     """
     d = json.loads(s)
 
@@ -305,7 +618,82 @@ def from_json(s: str) -> NetCDFMetadata:
 
 
 def flatten_for_index(metadata: NetCDFMetadata) -> Dict[str, Any]:
-    """Return a flat dict of key properties suitable for indexing/search."""
+    """Return a flat dict of key properties for indexing/search.
+
+    Extracts a small, searchable summary from a full
+    ``NetCDFMetadata`` instance. The result contains scalar
+    counts, the first 20 global attributes (prefixed with
+    ``global.``), and sorted lists of array and dimension names.
+
+    Args:
+        metadata: A ``NetCDFMetadata`` instance to flatten.
+
+    Returns:
+        dict: Flat dictionary containing:
+
+            - ``driver`` (str): Driver name.
+            - ``root_group`` (str | None): Root group path.
+            - ``group_count`` (int): Number of groups.
+            - ``array_count`` (int): Number of arrays.
+            - ``dimension_count`` (int): Number of dimensions.
+            - ``global.<key>`` entries for the first 20 global
+              attributes.
+            - ``arrays`` (list[str]): Sorted array full names.
+            - ``dimensions`` (list[str]): Sorted dimension full
+              names.
+
+    Examples:
+        Flatten a metadata object with one array and one
+        dimension:
+
+        >>> from pyramids.netcdf.metadata import flatten_for_index
+        >>> from pyramids.netcdf.models import (
+        ...     NetCDFMetadata, StructuralInfo,
+        ...     ArrayInfo, DimensionInfo,
+        ... )
+        >>> md = NetCDFMetadata(
+        ...     driver="netCDF",
+        ...     root_group="/",
+        ...     groups={},
+        ...     arrays={
+        ...         "/temperature": ArrayInfo(
+        ...             name="temperature",
+        ...             full_name="/temperature",
+        ...             dtype="float32",
+        ...             shape=[10, 20],
+        ...             dimensions=["/lat", "/lon"],
+        ...         ),
+        ...     },
+        ...     dimensions={
+        ...         "/time": DimensionInfo(
+        ...             name="time",
+        ...             full_name="/time",
+        ...             size=365,
+        ...         ),
+        ...     },
+        ...     global_attributes={"title": "Sample"},
+        ...     structural=StructuralInfo(
+        ...         driver_name="netCDF"
+        ...     ),
+        ...     created_with={"library": "GDAL"},
+        ... )
+        >>> flat = flatten_for_index(md)
+        >>> flat["driver"]
+        'netCDF'
+        >>> flat["array_count"]
+        1
+        >>> flat["dimension_count"]
+        1
+        >>> flat["global.title"]
+        'Sample'
+        >>> flat["arrays"]
+        ['/temperature']
+        >>> flat["dimensions"]
+        ['/time']
+
+    See Also:
+        to_dict: Full recursive conversion to plain dicts.
+    """
     d: Dict[str, Any] = {
         "driver": metadata.driver,
         "root_group": metadata.root_group,
