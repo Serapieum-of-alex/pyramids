@@ -183,8 +183,18 @@ class AbstractDataset(ABC):
 
     @staticmethod
     def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> np.ndarray:
-        """get_x_lon_dimension_array."""
-        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
+        """Build a 1-D array of x/longitude cell-centre coordinates.
+
+        Args:
+            pivot_x: X coordinate of the upper-left corner of
+                the raster (left edge of the first pixel).
+            cell_size: Pixel width in map units.
+            columns: Number of columns in the raster.
+
+        Returns:
+            np.ndarray: 1-D array of length *columns* with the
+                centre x coordinate of each column.
+        """
         x_coords = np.array(
             [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
         )
@@ -192,8 +202,20 @@ class AbstractDataset(ABC):
 
     @staticmethod
     def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> np.ndarray:
-        """get_y_lat_dimension_array."""
-        # Y_coordinate = upper-left corner y - index * cell size - cell-size/2
+        """Build a 1-D array of y/latitude cell-centre coordinates.
+
+        Coordinates decrease from north to south (top to bottom).
+
+        Args:
+            pivot_y: Y coordinate of the upper-left corner of
+                the raster (top edge of the first pixel).
+            cell_size: Pixel height in map units (positive).
+            rows: Number of rows in the raster.
+
+        Returns:
+            np.ndarray: 1-D array of length *rows* with the
+                centre y coordinate of each row.
+        """
         y_coords = np.array(
             [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
         )
