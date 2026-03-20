@@ -2040,7 +2040,7 @@
 <li>If you want to read the rasters with a certain order, then all raster file names should have a date that follows the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD), e.g. "MSWEP_1979.01.01.tif".</li>
 </ul>
 <p>Note:
-    — read_multiple_files only parses file names; to open each raster, read a specific band, and add it to the 
+    — read_multiple_files only parses file names; to open each raster, read a specific band, and add it to the
         DataCube you have to do one step further using the open_datacube method.</p>
 <h4 id="parameters"><a class="toclink" href="#parameters">Parameters</a><a class="headerlink" href="#parameters" title="Permanent link">#</a></h4>
 <ul>
@@ -2112,8 +2112,8 @@
 <p>After using read_multiple_files to parse the files in the directory, you can read the values of a specific band from each raster using open_datacube.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">rasters_folder_path</span> <span class="o">=</span> <span class="s2">&quot;examples/data/geotiff/raster-folder&quot;</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">datacube</span> <span class="o">=</span> <span class="n">MultiDataset</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="n">rasters_folder_path</span><span class="p">,</span> <span class="n">file_name_data_fmt</span><span class="o">=</span><span class="s2">&quot;%Y.%m.</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">separator</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">dataset</span><span class="o">.</span><span class="n">open_datacube</span><span class="p">()</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">datacube</span><span class="o">.</span><span class="n">open_multi_dataset</span><span class="p">()</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">datacube</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># &gt;&gt;&gt;     (6, 125, 93)</span>
 </code></pre></div>
 
