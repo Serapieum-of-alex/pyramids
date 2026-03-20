@@ -50,9 +50,12 @@ from pyramids.abstract_dataset import (
 
 
 class Dataset(AbstractDataset):
-    """Dataset.
+    """Single-band or multi-band raster dataset (GeoTIFF, etc.).
 
-    The Dataset class contains methods to deal with raster and netcdf files, change projection and coordinate systems.
+    Wraps a GDAL dataset with spatial operations (crop, reproject, align,
+    mosaic), band-level I/O, and no-data handling.  For NetCDF files use
+    the :class:`~pyramids.netcdf.NetCDF` subclass; for temporal stacks of
+    rasters use :class:`~pyramids.multidataset.MultiDataset`.
     """
 
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
