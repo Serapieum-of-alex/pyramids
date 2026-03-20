@@ -1197,10 +1197,10 @@ class NetCDF(Dataset):
 
         for var in variable_name:
             md_arr = var_rg.OpenMDArray(var)
-            # incase the variable name already exists in the destination dataset.
-            if var in self.variable_names:
-                var = f"{var}-new"
-            self._add_md_array_to_group(src_rg, var, md_arr)
+            # If the variable name already exists in the destination dataset,
+            # use a suffixed name to avoid overwriting the original.
+            target_name = f"{var}-new" if var in self.variable_names else var
+            self._add_md_array_to_group(src_rg, target_name, md_arr)
         self._invalidate_caches()
 
     def remove_variable(self, variable_name: str):
