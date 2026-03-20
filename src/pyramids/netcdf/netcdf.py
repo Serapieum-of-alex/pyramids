@@ -423,14 +423,15 @@ class NetCDF(Dataset):
             list[str] or None: Formatted time strings, or None if the
             time dimension is not found or lacks a ``units`` attribute.
         """
+        time_stamp = None
         time_dim = self.meta_data.get_dimension(var_name)
-        if time_dim:
-            units = time_dim.attrs["units"]
-            func = create_time_conversion_func(units, time_format)
-            time_vals = self._read_variable(var_name)
-            time_stamp = list(map(func, time_vals[0]))
-        else:
-            time_stamp = None
+        if time_dim is not None:
+            units = time_dim.attrs.get("units")
+            if units is not None:
+                time_vals = self._read_variable(var_name)
+                if time_vals is not None:
+                    func = create_time_conversion_func(units, time_format)
+                    time_stamp = list(map(func, time_vals.reshape(-1)))
         return time_stamp
 
     def _get_dimension_names(self) -> List[str]:
@@ -1090,7 +1091,10 @@ class NetCDF(Dataset):
         # Read data from the classic dataset
         arr = dataset.read_array()
         gt = dataset.geotransform
-        dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
+        data_dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
+        # Coordinate dimensions must always be float64 to avoid truncation
+        # when the data array is integer (e.g., classified rasters).
+        coord_dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
 
         # Build spatial dimensions from the geotransform
         x_values = np.array(
@@ -1100,10 +1104,10 @@ class NetCDF(Dataset):
             NetCDF.get_y_lat_dimension_array(gt[3], abs(gt[5]), dataset.rows)
         )
         dim_x = self._get_or_create_dimension(
-            rg, "x", x_values, dtype, gdal.DIM_TYPE_HORIZONTAL_X
+            rg, "x", x_values, coord_dtype, gdal.DIM_TYPE_HORIZONTAL_X
         )
         dim_y = self._get_or_create_dimension(
-            rg, "y", y_values, dtype, gdal.DIM_TYPE_HORIZONTAL_Y
+            rg, "y", y_values, coord_dtype, gdal.DIM_TYPE_HORIZONTAL_Y
         )
 
         # Build band dimension if the data is 3D
@@ -1116,14 +1120,16 @@ class NetCDF(Dataset):
                 rg,
                 band_dim_name,
                 np.array(band_dim_values, dtype=np.float64),
-                dtype,
+                coord_dtype,
                 gdal.DIM_TYPE_TEMPORAL,
             )
             md_arr = rg.CreateMDArray(
-                variable_name, [dim_band, dim_y, dim_x], dtype
+                variable_name, [dim_band, dim_y, dim_x], data_dtype
             )
         else:
-            md_arr = rg.CreateMDArray(variable_name, [dim_y, dim_x], dtype)
+            md_arr = rg.CreateMDArray(
+                variable_name, [dim_y, dim_x], data_dtype
+            )
 
         # Write array data
         md_arr.Write(arr)
