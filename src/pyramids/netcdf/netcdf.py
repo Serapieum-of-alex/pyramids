@@ -359,50 +359,47 @@ class NetCDF(Dataset):
             dict or None: Dictionary with ``names``, ``sizes``, ``attrs``,
                 and ``values`` keys, or None on failure.
         """
-        try:
-            md = metadata if metadata is not None else self.meta_data
-            names = list(md.names)
-            sizes = {
-                name: int(md.get_dimension(name).size)
-                for name in names
-                if md.get_dimension(name) is not None
-            }
-            attrs: Dict[str, Dict[str, Any]] = {}
-            values: Dict[str, List[Union[int, float, str]]] = {}
+        md = metadata if metadata is not None else self.meta_data
+        names = list(md.names)
+        sizes = {
+            name: int(md.get_dimension(name).size)
+            for name in names
+            if md.get_dimension(name) is not None
+        }
+        attrs: Dict[str, Dict[str, Any]] = {}
+        values: Dict[str, List[Union[int, float, str]]] = {}
 
-            for name in names:
-                dim = md.get_dimension(name)
-                if dim is not None and dim.attrs:
-                    attrs[name] = {
-                        str(k): (list(v) if isinstance(v, list) else v)
-                        for k, v in dim.attrs.items()
-                    }
+        for name in names:
+            dim = md.get_dimension(name)
+            if dim is not None and dim.attrs:
+                attrs[name] = {
+                    str(k): (list(v) if isinstance(v, list) else v)
+                    for k, v in dim.attrs.items()
+                }
 
-            for name in names:
+        for name in names:
+            try:
+                arr = self._read_variable(name)
+            except Exception:
+                arr = None
+            if arr is None:
+                continue
+            try:
+                values[name] = [
+                    _to_py_scalar(v) for v in arr.reshape(-1).tolist()
+                ]
+            except Exception:
                 try:
-                    arr = self._read_variable(name)
+                    values[name] = [_to_py_scalar(v) for v in list(arr)]
                 except Exception:
-                    arr = None
-                if arr is None:
-                    continue
-                try:
-                    values[name] = [
-                        _to_py_scalar(v) for v in arr.reshape(-1).tolist()
-                    ]
-                except Exception:
-                    try:
-                        values[name] = [_to_py_scalar(v) for v in list(arr)]
-                    except Exception:
-                        pass
+                    pass
 
-            return {
-                "names": names,
-                "sizes": sizes,
-                "attrs": attrs,
-                "values": values if values else None,
-            }
-        except Exception:
-            return None
+        return {
+            "names": names,
+            "sizes": sizes,
+            "attrs": attrs,
+            "values": values if values else None,
+        }
 
     def get_time_variable(
         self, var_name="time", time_format: str = "%Y-%m-%d"
