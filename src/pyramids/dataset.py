@@ -960,22 +960,6 @@ class Dataset(AbstractDataset):
         # X_coordinate = upper-left corner x + index * cell size + cell-size/2
         return self.lat
 
-    @staticmethod
-    def get_x_lon_dimension_array(pivot_x, cell_size, columns) -> np.ndarray:
-        """Get X/Lon coordinates."""
-        x_coords = np.array(
-            [pivot_x + i * cell_size + cell_size / 2 for i in range(columns)]
-        )
-        return x_coords
-
-    @staticmethod
-    def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> np.ndarray:
-        """Get Y/Lat coordinates."""
-        y_coords = np.array(
-            [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
-        )
-        return y_coords
-
     @property
     def gdal_dtype(self):
         """Data Type."""
