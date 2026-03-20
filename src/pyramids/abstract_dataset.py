@@ -193,7 +193,7 @@ class AbstractDataset(ABC):
     @staticmethod
     def get_y_lat_dimension_array(pivot_y, cell_size, rows) -> np.ndarray:
         """get_y_lat_dimension_array."""
-        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
+        # Y_coordinate = upper-left corner y - index * cell size - cell-size/2
         y_coords = np.array(
             [pivot_y - i * cell_size - cell_size / 2 for i in range(rows)]
         )

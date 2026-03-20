@@ -957,7 +957,7 @@ class Dataset(AbstractDataset):
             - Dataset.lat: Dataset latitude.
             - Dataset.lon: Dataset longitude.
         """
-        # X_coordinate = upper-left corner x + index * cell size + cell-size/2
+        # Y_coordinate = upper-left corner y - index * cell size - cell-size/2
         return self.lat
 
     @property
