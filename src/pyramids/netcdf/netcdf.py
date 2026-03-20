@@ -494,12 +494,15 @@ class NetCDF(Dataset):
             return None
 
         # Classic mode: open via subdataset string
+        result = None
         try:
-            return gdal.Open(
-                f"NETCDF:{self.file_name}:{var}"
-            ).ReadAsArray()
+            ds = gdal.Open(f"NETCDF:{self.file_name}:{var}")
+            if ds is not None:
+                result = ds.ReadAsArray()
+            ds = None
         except (RuntimeError, AttributeError):
-            return None
+            pass
+        return result
 
     def get_variable_names(self) -> List[str]:
         """Return names of data variables, excluding dimension coordinates.
