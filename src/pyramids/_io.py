@@ -3,7 +3,6 @@ import os
 import zipfile
 import tarfile
 import gzip
-from pathlib import Path
 import numpy as np
 import warnings
 from osgeo import gdal
