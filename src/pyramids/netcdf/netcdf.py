@@ -380,7 +380,10 @@ class NetCDF(Dataset):
         for name in names:
             try:
                 arr = self._read_variable(name)
-            except Exception:
+            except (RuntimeError, AttributeError) as e:
+                self.logger.debug(
+                    f"Could not read dimension variable '{name}': {e}"
+                )
                 arr = None
             if arr is None:
                 continue
@@ -388,11 +391,16 @@ class NetCDF(Dataset):
                 values[name] = [
                     _to_py_scalar(v) for v in arr.reshape(-1).tolist()
                 ]
-            except Exception:
+            except (ValueError, TypeError, AttributeError) as e:
+                self.logger.debug(
+                    f"Could not reshape dimension '{name}': {e}"
+                )
                 try:
                     values[name] = [_to_py_scalar(v) for v in list(arr)]
-                except Exception:
-                    pass
+                except (ValueError, TypeError) as e:
+                    self.logger.debug(
+                        f"Could not convert dimension '{name}': {e}"
+                    )
 
         return {
             "names": names,
