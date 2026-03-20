@@ -188,6 +188,7 @@ class NetCDF(Dataset):
             value: New no-data value. A single number applied to all
                 bands, or a list with one value per band.
         """
+        # PEP 563: super() property setter broken with deferred annotations.
         Dataset.no_data_value.fset(self, value)
 
     @property
