@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -826,7 +826,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/datacube/" class="md-nav__link">
+      <a href="../../reference/datacube.md" class="md-nav__link">
         
   
   
@@ -2136,13 +2136,13 @@
 
 
 <h1 id="using-the-dev-container"><a class="toclink" href="#using-the-dev-container">Using the Dev Container</a><a class="headerlink" href="#using-the-dev-container" title="Permanent link">#</a></h1>
-<p>This guide explains how to develop this project inside a reproducible Dev Container. The Dev Container is configured to 
+<p>This guide explains how to develop this project inside a reproducible Dev Container. The Dev Container is configured to
 build from the repository Dockerfile (production stage) and provisions a complete GIS stack (GDAL/PROJ); development tools are available when <code>ENV_NAME=dev</code>.</p>
 <p>Key facts:
 - Image is built from the Dockerfile <code>production</code> stage with <code>ENV_NAME=default</code> so default (runtime) dependencies are included.
 - The Python environment lives at <code>/opt/venv</code>. VS Code is configured to use <code>/opt/venv/bin/python</code> automatically.
 - GDAL/PROJ environment variables are already set inside the container.
-- By default, the package is installed non-editably (production-like install). You can optionally enable editable installs 
+- By default, the package is installed non-editably (production-like install). You can optionally enable editable installs
 for live code reloading (see below).
 - Dev tools like <code>pytest</code> and <code>pre-commit</code> are part of the Pixi <code>dev</code> environment. To include them by default, change <code>ENV_NAME</code> to <code>dev</code> in <code>.devcontainer/devcontainer.json</code> and rebuild; otherwise you can install them manually inside the container (e.g., <code>pip install -U pytest pre-commit</code>).</p>
 <h2 id="prerequisites"><a class="toclink" href="#prerequisites">Prerequisites</a><a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
@@ -2237,9 +2237,9 @@ for live code reloading (see below).
 - Docker Desktop running
 - Install the JetBrains plugin: "Dev Containers" (Settings → Plugins → Marketplace → search "Dev Containers" → Install)</p>
 <p>Option A — Open the project via the Dev Containers plugin (recommended):
-1. File → remote development → dev container → New dev container → select from local Project → then select the 
+1. File → remote development → dev container → New dev container → select from local Project → then select the
    devcontainer file .devcontainer/devcontainer.json).
-2. Once you select the devcontainer file, the plugin will build the image from the Dockerfile and the <code>Services</code> tab 
+2. Once you select the devcontainer file, the plugin will build the image from the Dockerfile and the <code>Services</code> tab
    will open and display the build progress.
 <img alt="build-log" src="../../_images/development/dev-container-build-log.png" />
 3. Once the build is done you can open the project in the container.

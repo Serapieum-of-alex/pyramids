@@ -10,24 +10,20 @@
       
       
       
-        <link rel="canonical" href="https://serapieum-of-alex.github.io/pyramids/main/reference/datacube/">
+        <link rel="canonical" href="https://serapieum-of-alex.github.io/pyramids/main/reference/multi_dataset/">
       
       
-        <link rel="prev" href="../dataset/">
-      
-      
-        <link rel="next" href="../featurecollection/">
       
       
         
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Datacube - pyramids</title>
+        <title>DataCube Class - pyramids</title>
       
     
     
@@ -64,7 +60,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -123,7 +119,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Datacube
+              DataCube Class
             
           </span>
         </div>
@@ -320,12 +316,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../dataset/" class="md-tabs__link">
           
   
@@ -731,10 +725,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -750,22 +742,21 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -783,7 +774,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -826,37 +817,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Datacube
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../datacube.md" class="md-nav__link">
         
   
   
@@ -872,384 +836,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Datacube
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Datacube">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.data" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        data
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.base" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        base
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        files
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.time_length" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        time_length
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.rows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        rows
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.shape" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        shape
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.columns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        columns
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.values" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        values
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__init__" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        __init__
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__str__" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        __str__
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__repr__" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        __repr__
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.create_cube" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        create_cube
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.read_multiple_files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        read_multiple_files
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.open_datacube" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        open_datacube
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__getitem__" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        __getitem__
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__setitem__" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        __setitem__
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__len__" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        __len__
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__iter__" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        __iter__
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.head" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        head
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.tail" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        tail
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.first" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        first
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.last" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        last
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.iloc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        iloc
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.plot" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        plot
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.to_file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        to_file
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.to_crs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        to_crs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.crop" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        crop
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.align" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        align
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.merge" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        merge
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.apply" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        apply
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.overlay" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        overlay
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2153,19 +1739,19 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Datacube
+        MultiDataset
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Datacube">
+    <nav class="md-nav" aria-label="MultiDataset">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.data" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.data" class="md-nav__link">
     <span class="md-ellipsis">
       
         data
@@ -2176,7 +1762,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.base" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.base" class="md-nav__link">
     <span class="md-ellipsis">
       
         base
@@ -2187,7 +1773,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.files" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.files" class="md-nav__link">
     <span class="md-ellipsis">
       
         files
@@ -2198,7 +1784,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.time_length" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.time_length" class="md-nav__link">
     <span class="md-ellipsis">
       
         time_length
@@ -2209,7 +1795,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.rows" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.rows" class="md-nav__link">
     <span class="md-ellipsis">
       
         rows
@@ -2220,7 +1806,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.shape" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.shape" class="md-nav__link">
     <span class="md-ellipsis">
       
         shape
@@ -2231,7 +1817,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.columns" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.columns" class="md-nav__link">
     <span class="md-ellipsis">
       
         columns
@@ -2242,7 +1828,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.values" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.values" class="md-nav__link">
     <span class="md-ellipsis">
       
         values
@@ -2253,7 +1839,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__init__" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.__init__" class="md-nav__link">
     <span class="md-ellipsis">
       
         __init__
@@ -2264,7 +1850,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__str__" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.__str__" class="md-nav__link">
     <span class="md-ellipsis">
       
         __str__
@@ -2275,7 +1861,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__repr__" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.__repr__" class="md-nav__link">
     <span class="md-ellipsis">
       
         __repr__
@@ -2286,7 +1872,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.create_cube" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.create_cube" class="md-nav__link">
     <span class="md-ellipsis">
       
         create_cube
@@ -2297,7 +1883,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.read_multiple_files" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.read_multiple_files" class="md-nav__link">
     <span class="md-ellipsis">
       
         read_multiple_files
@@ -2308,10 +1894,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.open_datacube" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.open_multi_dataset" class="md-nav__link">
     <span class="md-ellipsis">
       
-        open_datacube
+        open_multi_dataset
       
     </span>
   </a>
@@ -2319,7 +1905,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__getitem__" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.__getitem__" class="md-nav__link">
     <span class="md-ellipsis">
       
         __getitem__
@@ -2330,7 +1916,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__setitem__" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.__setitem__" class="md-nav__link">
     <span class="md-ellipsis">
       
         __setitem__
@@ -2341,7 +1927,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__len__" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.__len__" class="md-nav__link">
     <span class="md-ellipsis">
       
         __len__
@@ -2352,7 +1938,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.__iter__" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.__iter__" class="md-nav__link">
     <span class="md-ellipsis">
       
         __iter__
@@ -2363,7 +1949,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.head" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.head" class="md-nav__link">
     <span class="md-ellipsis">
       
         head
@@ -2374,7 +1960,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.tail" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.tail" class="md-nav__link">
     <span class="md-ellipsis">
       
         tail
@@ -2385,7 +1971,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.first" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.first" class="md-nav__link">
     <span class="md-ellipsis">
       
         first
@@ -2396,7 +1982,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.last" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.last" class="md-nav__link">
     <span class="md-ellipsis">
       
         last
@@ -2407,7 +1993,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.iloc" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.iloc" class="md-nav__link">
     <span class="md-ellipsis">
       
         iloc
@@ -2418,7 +2004,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.plot" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.plot" class="md-nav__link">
     <span class="md-ellipsis">
       
         plot
@@ -2429,7 +2015,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.to_file" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.to_file" class="md-nav__link">
     <span class="md-ellipsis">
       
         to_file
@@ -2440,7 +2026,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.to_crs" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.to_crs" class="md-nav__link">
     <span class="md-ellipsis">
       
         to_crs
@@ -2451,7 +2037,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.crop" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.crop" class="md-nav__link">
     <span class="md-ellipsis">
       
         crop
@@ -2462,7 +2048,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.align" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.align" class="md-nav__link">
     <span class="md-ellipsis">
       
         align
@@ -2473,7 +2059,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.merge" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.merge" class="md-nav__link">
     <span class="md-ellipsis">
       
         merge
@@ -2484,7 +2070,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.apply" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.apply" class="md-nav__link">
     <span class="md-ellipsis">
       
         apply
@@ -2495,7 +2081,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.datacube.Datacube.overlay" class="md-nav__link">
+  <a href="#pyramids.multidataset.MultiDataset.overlay" class="md-nav__link">
     <span class="md-ellipsis">
       
         overlay
@@ -2527,7 +2113,7 @@
 
 
   
-    <a href="https://github.com/Serapieum-of-alex/pyramids/edit/master/docs/reference/datacube.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/Serapieum-of-alex/pyramids/edit/master/docs/reference/multi_dataset.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2536,7 +2122,7 @@
     
       
     
-    <a href="https://github.com/Serapieum-of-alex/pyramids/raw/master/docs/reference/datacube.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/Serapieum-of-alex/pyramids/raw/master/docs/reference/multi_dataset.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
@@ -2544,25 +2130,25 @@
 
 
 <h1 id="datacube-class"><a class="toclink" href="#datacube-class">DataCube Class</a><a class="headerlink" href="#datacube-class" title="Permanent link">#</a></h1>
-<p><img alt="Datacube diagram" src="../../_images/pyramids-datacube.svg" /></p>
+<p><img alt="Datacube diagram" src="../../_images/pyramids-multi-dataset.svg" /></p>
 
 
 <div class="doc doc-object doc-class">
 
 
 
-<h3 id="pyramids.datacube.Datacube" class="doc doc-heading"><a href="#pyramids.datacube.Datacube" class="toclink">
-            <code>pyramids.datacube.Datacube</code>
+<h3 id="pyramids.multidataset.MultiDataset" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset" class="toclink">
+            <code>pyramids.multidataset.MultiDataset</code>
 
 
-</a><a href="#pyramids.datacube.Datacube" class="headerlink" title="Permanent link">#</a></h3>
+</a><a href="#pyramids.multidataset.MultiDataset" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents first">
 
 
 
-        <p>DataCube.</p>
+        <p>MultiDataset.</p>
 
 
 
@@ -2572,10 +2158,8 @@
 
 
               <details class="mkdocstrings-source">
-                <summary>Source code in <code>pyramids/datacube.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-27"> 27</a></span>
-<span class="normal"><a href="#__codelineno-0-28"> 28</a></span>
-<span class="normal"><a href="#__codelineno-0-29"> 29</a></span>
+                <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-29"> 29</a></span>
 <span class="normal"><a href="#__codelineno-0-30"> 30</a></span>
 <span class="normal"><a href="#__codelineno-0-31"> 31</a></span>
 <span class="normal"><a href="#__codelineno-0-32"> 32</a></span>
@@ -3487,29 +3071,27 @@
 <span class="normal"><a href="#__codelineno-0-938">938</a></span>
 <span class="normal"><a href="#__codelineno-0-939">939</a></span>
 <span class="normal"><a href="#__codelineno-0-940">940</a></span>
-<span class="normal"><a href="#__codelineno-0-941">941</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="k">class</span><span class="w"> </span><span class="nc">Datacube</span><span class="p">:</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;DataCube.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29"></a>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a>    <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">    files:</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">        list of geotiff files&#39; names</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a>        <span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a>        <span class="n">time_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a>        <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a>    <span class="p">):</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct Datacube object.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">=</span> <span class="n">src</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_files</span> <span class="o">=</span> <span class="n">files</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_time_length</span> <span class="o">=</span> <span class="n">time_length</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>        <span class="k">pass</span>
+<span class="normal"><a href="#__codelineno-0-941">941</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="k">class</span><span class="w"> </span><span class="nc">MultiDataset</span><span class="p">:</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;MultiDataset.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31"></a>
+<a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33"></a>    <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34"></a>
+<a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">    files:</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">        list of geotiff files&#39; names</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39"></a>
+<a id="__codelineno-0-40" name="__codelineno-0-40"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41"></a>        <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42"></a>        <span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43"></a>        <span class="n">time_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44"></a>        <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45"></a>    <span class="p">):</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct MultiDataset object.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">=</span> <span class="n">src</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_files</span> <span class="o">=</span> <span class="n">files</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_time_length</span> <span class="o">=</span> <span class="n">time_length</span>
 <a id="__codelineno-0-50" name="__codelineno-0-50"></a>
 <a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;__str__.&quot;&quot;&quot;</span>
@@ -3567,10 +3149,10 @@
 <a id="__codelineno-0-104" name="__codelineno-0-104"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span><span class="o">.</span><span class="n">columns</span>
 <a id="__codelineno-0-105" name="__codelineno-0-105"></a>
 <a id="__codelineno-0-106" name="__codelineno-0-106"></a>    <span class="nd">@classmethod</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">create_cube</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Datacube&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Create Datacube.</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">create_cube</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;MultiDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Create MultiDataset.</span>
 <a id="__codelineno-0-109" name="__codelineno-0-109"></a>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">            - Create a Datacube from a sample raster.</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">            - Create MultiDataset from a sample raster and</span>
 <a id="__codelineno-0-111" name="__codelineno-0-111"></a>
 <a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">            src (Dataset):</span>
@@ -3579,7 +3161,7 @@
 <a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">                Length of the dataset.</span>
 <a id="__codelineno-0-117" name="__codelineno-0-117"></a>
 <a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">            Datacube: Datacube object.</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">            MultiDataset: Datacube object.</span>
 <a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-121" name="__codelineno-0-121"></a>        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dataset_length</span><span class="p">)</span>
 <a id="__codelineno-0-122" name="__codelineno-0-122"></a>
@@ -3595,7 +3177,7 @@
 <a id="__codelineno-0-132" name="__codelineno-0-132"></a>        <span class="n">end</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-133" name="__codelineno-0-133"></a>        <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-134" name="__codelineno-0-134"></a>        <span class="n">extension</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;.tif&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Datacube&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;MultiDataset&quot;</span><span class="p">:</span>
 <a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;read_multiple_files.</span>
 <a id="__codelineno-0-137" name="__codelineno-0-137"></a>
 <a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="sd">            - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the</span>
@@ -3664,16 +3246,16 @@
 <a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">                The extension of the files you want to read from the given path. Default is &quot;.tif&quot;.</span>
 <a id="__codelineno-0-202" name="__codelineno-0-202"></a>
 <a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="sd">            Datacube:</span>
-<a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">                Instance of the Datacube class.</span>
+<a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="sd">            MultiDataset:</span>
+<a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">                Instance of the MultiDataset class.</span>
 <a id="__codelineno-0-206" name="__codelineno-0-206"></a>
 <a id="__codelineno-0-207" name="__codelineno-0-207"></a><span class="sd">        Examples:</span>
 <a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">            - Read all rasters in a folder:</span>
 <a id="__codelineno-0-209" name="__codelineno-0-209"></a>
 <a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">              ```python</span>
-<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">              &gt;&gt;&gt; from pyramids.datacube import Datacube</span>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">              &gt;&gt;&gt; from pyramids.multidataset import MultiDataset</span>
 <a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">              &gt;&gt;&gt; raster_folder = &quot;examples/GIS/data/raster-folder&quot;</span>
-<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">              &gt;&gt;&gt; prec = Datacube.read_multiple_files(raster_folder)</span>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">              &gt;&gt;&gt; prec = MultiDataset.read_multiple_files(raster_folder)</span>
 <a id="__codelineno-0-214" name="__codelineno-0-214"></a>
 <a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">              ```</span>
 <a id="__codelineno-0-216" name="__codelineno-0-216"></a>
@@ -3683,7 +3265,7 @@
 <a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">              &gt;&gt;&gt; import glob</span>
 <a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">              &gt;&gt;&gt; search_criteria = &quot;*.tif&quot;</span>
 <a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">              &gt;&gt;&gt; file_list = glob.glob(os.path.join(raster_folder, search_criteria))</span>
-<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">              &gt;&gt;&gt; prec = Datacube.read_multiple_files(file_list, with_order=False)</span>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">              &gt;&gt;&gt; prec = MultiDataset.read_multiple_files(file_list, with_order=False)</span>
 <a id="__codelineno-0-224" name="__codelineno-0-224"></a>
 <a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">              ```</span>
 <a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">        &quot;&quot;&quot;</span>
@@ -3756,8 +3338,8 @@
 <a id="__codelineno-0-293" name="__codelineno-0-293"></a>
 <a id="__codelineno-0-294" name="__codelineno-0-294"></a>        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">),</span> <span class="n">files</span><span class="p">)</span>
 <a id="__codelineno-0-295" name="__codelineno-0-295"></a>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">open_datacube</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Open the datacube.</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">open_multi_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;open_MultiDataset.</span>
 <a id="__codelineno-0-298" name="__codelineno-0-298"></a>
 <a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">        Read values from the given band as arrays for all files.</span>
 <a id="__codelineno-0-300" name="__codelineno-0-300"></a>
@@ -3836,11 +3418,11 @@
 <a id="__codelineno-0-373" name="__codelineno-0-373"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_values</span><span class="p">[</span><span class="n">key</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">value</span>
 <a id="__codelineno-0-374" name="__codelineno-0-374"></a>
 <a id="__codelineno-0-375" name="__codelineno-0-375"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Length of the Datacube.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Length of the MultiDataset.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-377" name="__codelineno-0-377"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <a id="__codelineno-0-378" name="__codelineno-0-378"></a>
 <a id="__codelineno-0-379" name="__codelineno-0-379"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterate over the Datacube.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterate over the MultiDataset.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-381" name="__codelineno-0-381"></a>        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_values</span><span class="p">[:])</span>
 <a id="__codelineno-0-382" name="__codelineno-0-382"></a>
 <a id="__codelineno-0-383" name="__codelineno-0-383"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">):</span>
@@ -3859,7 +3441,7 @@
 <a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Last Dataset.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-397" name="__codelineno-0-397"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
 <a id="__codelineno-0-398" name="__codelineno-0-398"></a>
-<a id="__codelineno-0-399" name="__codelineno-0-399"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">iloc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+<a id="__codelineno-0-399" name="__codelineno-0-399"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">iloc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
 <a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;iloc.</span>
 <a id="__codelineno-0-401" name="__codelineno-0-401"></a>
 <a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">            - Access dataset array using index.</span>
@@ -4005,7 +3587,7 @@
 <a id="__codelineno-0-542" name="__codelineno-0-542"></a><span class="sd">                Default is False.</span>
 <a id="__codelineno-0-543" name="__codelineno-0-543"></a>
 <a id="__codelineno-0-544" name="__codelineno-0-544"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="sd">            None: Updates the datacube values and base in place after reprojection.</span>
+<a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="sd">            None: Updates the multidataset values and base in place after reprojection.</span>
 <a id="__codelineno-0-546" name="__codelineno-0-546"></a>
 <a id="__codelineno-0-547" name="__codelineno-0-547"></a><span class="sd">        Examples:</span>
 <a id="__codelineno-0-548" name="__codelineno-0-548"></a><span class="sd">            - Reproject dataset to EPSG:3857:</span>
@@ -4072,7 +3654,7 @@
 <a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">              &gt;&gt;&gt; dem_path = &quot;examples/GIS/data/acc4000.tif&quot;</span>
 <a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">              &gt;&gt;&gt; src_path = &quot;examples/GIS/data/aligned_rasters/&quot;</span>
 <a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">              &gt;&gt;&gt; out_path = &quot;examples/GIS/data/crop_aligned_folder/&quot;</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">              &gt;&gt;&gt; Datacube.crop(dem_path, src_path, out_path)</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">              &gt;&gt;&gt; MultiDataset.crop(dem_path, src_path, out_path)</span>
 <a id="__codelineno-0-613" name="__codelineno-0-613"></a>
 <a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">              ```</span>
 <a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">        &quot;&quot;&quot;</span>
@@ -4096,7 +3678,7 @@
 <a id="__codelineno-0-633" name="__codelineno-0-633"></a>            <span class="c1"># use the last src as</span>
 <a id="__codelineno-0-634" name="__codelineno-0-634"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">=</span> <span class="n">dst</span>
 <a id="__codelineno-0-635" name="__codelineno-0-635"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a>            <span class="n">dataset</span> <span class="o">=</span> <span class="n">Datacube</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="n">time_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_length</span><span class="p">)</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a>            <span class="n">dataset</span> <span class="o">=</span> <span class="n">MultiDataset</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="n">time_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_length</span><span class="p">)</span>
 <a id="__codelineno-0-637" name="__codelineno-0-637"></a>            <span class="n">dataset</span><span class="o">.</span><span class="n">_values</span> <span class="o">=</span> <span class="n">array</span>
 <a id="__codelineno-0-638" name="__codelineno-0-638"></a>            <span class="k">return</span> <span class="n">dataset</span>
 <a id="__codelineno-0-639" name="__codelineno-0-639"></a>
@@ -4104,12 +3686,12 @@
 <a id="__codelineno-0-641" name="__codelineno-0-641"></a>    <span class="c1"># # TODO: still needs to be tested</span>
 <a id="__codelineno-0-642" name="__codelineno-0-642"></a>    <span class="c1"># @staticmethod</span>
 <a id="__codelineno-0-643" name="__codelineno-0-643"></a>    <span class="c1"># def to_epsg(</span>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a>    <span class="c1">#         src: gdal.Datacube,</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a>    <span class="c1">#         src: gdal.MultiDataset,</span>
 <a id="__codelineno-0-645" name="__codelineno-0-645"></a>    <span class="c1">#         to_epsg: int = 3857,</span>
 <a id="__codelineno-0-646" name="__codelineno-0-646"></a>    <span class="c1">#         cell_size: int = [],</span>
 <a id="__codelineno-0-647" name="__codelineno-0-647"></a>    <span class="c1">#         method: str = &quot;Nearest&quot;,</span>
 <a id="__codelineno-0-648" name="__codelineno-0-648"></a>    <span class="c1">#</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a>    <span class="c1"># ) -&gt; gdal.Datacube:</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a>    <span class="c1"># ) -&gt; gdal.MultiDataset:</span>
 <a id="__codelineno-0-650" name="__codelineno-0-650"></a>    <span class="c1">#     &quot;&quot;&quot;to_epsg.</span>
 <a id="__codelineno-0-651" name="__codelineno-0-651"></a>    <span class="c1">#</span>
 <a id="__codelineno-0-652" name="__codelineno-0-652"></a>    <span class="c1">#         - to_epsg reprojects and resamples a folder of rasters to any projection</span>
@@ -4133,10 +3715,10 @@
 <a id="__codelineno-0-670" name="__codelineno-0-670"></a>    <span class="c1">#</span>
 <a id="__codelineno-0-671" name="__codelineno-0-671"></a>    <span class="c1">#     Returns</span>
 <a id="__codelineno-0-672" name="__codelineno-0-672"></a>    <span class="c1">#     -------</span>
-<a id="__codelineno-0-673" name="__codelineno-0-673"></a>    <span class="c1">#     raster: [gdal Datacube]</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a>    <span class="c1">#     raster: [gdal MultiDataset]</span>
 <a id="__codelineno-0-674" name="__codelineno-0-674"></a>    <span class="c1">#          a GDAL in-memory file object, where you can ReadAsArray etc.</span>
 <a id="__codelineno-0-675" name="__codelineno-0-675"></a>    <span class="c1">#     &quot;&quot;&quot;</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a>    <span class="c1">#     if not isinstance(src, gdal.Datacube):</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a>    <span class="c1">#     if not isinstance(src, gdal.MultiDataset):</span>
 <a id="__codelineno-0-677" name="__codelineno-0-677"></a>    <span class="c1">#         raise TypeError(</span>
 <a id="__codelineno-0-678" name="__codelineno-0-678"></a>    <span class="c1">#             &quot;src should be read using gdal (gdal dataset please read it using gdal&quot;</span>
 <a id="__codelineno-0-679" name="__codelineno-0-679"></a>    <span class="c1">#             f&quot; library) given {type(src)}&quot;</span>
@@ -4248,10 +3830,10 @@
 <a id="__codelineno-0-785" name="__codelineno-0-785"></a>
 <a id="__codelineno-0-786" name="__codelineno-0-786"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-787" name="__codelineno-0-787"></a><span class="sd">            None:</span>
-<a id="__codelineno-0-788" name="__codelineno-0-788"></a><span class="sd">                Updates the datacube values in place to match the alignment of alignment_src.</span>
+<a id="__codelineno-0-788" name="__codelineno-0-788"></a><span class="sd">                Updates the multidataset values in place to match the alignment of alignment_src.</span>
 <a id="__codelineno-0-789" name="__codelineno-0-789"></a>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a><span class="sd">        Examples:</span>
-<a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">            - Align all rasters in the datacube to a DEM raster:</span>
+<a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">            - Align all rasters in the multidataset to a DEM raster:</span>
 <a id="__codelineno-0-792" name="__codelineno-0-792"></a>
 <a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">              ```python</span>
 <a id="__codelineno-0-794" name="__codelineno-0-794"></a><span class="sd">              &gt;&gt;&gt; dem_path = &quot;01GIS/inputs/4000/acc4000.tif&quot;</span>
@@ -4337,7 +3919,7 @@
 <a id="__codelineno-0-874" name="__codelineno-0-874"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ufunc</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-875" name="__codelineno-0-875"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;apply.</span>
 <a id="__codelineno-0-876" name="__codelineno-0-876"></a>
-<a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="sd">        Apply a function on each raster in the datacube.</span>
+<a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="sd">        apply a function on each raster in the MultiDataset.</span>
 <a id="__codelineno-0-878" name="__codelineno-0-878"></a>
 <a id="__codelineno-0-879" name="__codelineno-0-879"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-880" name="__codelineno-0-880"></a><span class="sd">            ufunc (Callable):</span>
@@ -4419,14 +4001,14 @@
 
 
 
-<h4 id="pyramids.datacube.Datacube.data" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.data" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.data" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.data" class="toclink">
             <code class="highlight language-python"><span class="n">data</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.data" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.data" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4445,14 +4027,14 @@
 
 
 
-<h4 id="pyramids.datacube.Datacube.base" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.base" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.base" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.base" class="toclink">
             <code class="highlight language-python"><span class="n">base</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.base" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.base" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4468,14 +4050,14 @@
 
 
 
-<h4 id="pyramids.datacube.Datacube.files" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.files" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.files" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.files" class="toclink">
             <code class="highlight language-python"><span class="n">files</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.files" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.files" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4490,14 +4072,14 @@
 
 
 
-<h4 id="pyramids.datacube.Datacube.time_length" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.time_length" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.time_length" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.time_length" class="toclink">
             <code class="highlight language-python"><span class="n">time_length</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.time_length" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.time_length" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4512,14 +4094,14 @@
 
 
 
-<h4 id="pyramids.datacube.Datacube.rows" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.rows" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.rows" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.rows" class="toclink">
             <code class="highlight language-python"><span class="n">rows</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.rows" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.rows" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4534,14 +4116,14 @@
 
 
 
-<h4 id="pyramids.datacube.Datacube.shape" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.shape" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.shape" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.shape" class="toclink">
             <code class="highlight language-python"><span class="n">shape</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.shape" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.shape" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4556,14 +4138,14 @@
 
 
 
-<h4 id="pyramids.datacube.Datacube.columns" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.columns" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.columns" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.columns" class="toclink">
             <code class="highlight language-python"><span class="n">columns</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.columns" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.columns" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4578,7 +4160,7 @@
 
 
 
-<h4 id="pyramids.datacube.Datacube.values" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.values" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.values" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.values" class="toclink">
             <code class="highlight language-python"><span class="n">values</span></code>
 
   <span class="doc doc-labels">
@@ -4587,7 +4169,7 @@
       <small class="doc doc-label doc-label-writable"><code>writable</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.values" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.values" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4608,22 +4190,20 @@
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.__init__" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.__init__" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.__init__" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.__init__" class="toclink">
             <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">time_length</span><span class="p">,</span> <span class="n">files</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.__init__" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.__init__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
-        <p>Construct Datacube object.</p>
+        <p>Construct MultiDataset object.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-38">38</a></span>
-<span class="normal"><a href="#__codelineno-0-39">39</a></span>
-<span class="normal"><a href="#__codelineno-0-40">40</a></span>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-40">40</a></span>
 <span class="normal"><a href="#__codelineno-0-41">41</a></span>
 <span class="normal"><a href="#__codelineno-0-42">42</a></span>
 <span class="normal"><a href="#__codelineno-0-43">43</a></span>
@@ -4632,18 +4212,16 @@
 <span class="normal"><a href="#__codelineno-0-46">46</a></span>
 <span class="normal"><a href="#__codelineno-0-47">47</a></span>
 <span class="normal"><a href="#__codelineno-0-48">48</a></span>
-<span class="normal"><a href="#__codelineno-0-49">49</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a>    <span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a>    <span class="n">time_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a>    <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="p">):</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Datacube object.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">=</span> <span class="n">src</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_files</span> <span class="o">=</span> <span class="n">files</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_time_length</span> <span class="o">=</span> <span class="n">time_length</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="k">pass</span>
+<span class="normal"><a href="#__codelineno-0-49">49</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42"></a>    <span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43"></a>    <span class="n">time_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44"></a>    <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="p">):</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct MultiDataset object.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">=</span> <span class="n">src</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_files</span> <span class="o">=</span> <span class="n">files</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_time_length</span> <span class="o">=</span> <span class="n">time_length</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4653,10 +4231,10 @@
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.__str__" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.__str__" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.__str__" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.__str__" class="toclink">
             <code class="highlight language-python"><span class="fm">__str__</span><span class="p">()</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.__str__" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.__str__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4665,7 +4243,7 @@
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-51">51</a></span>
 <span class="normal"><a href="#__codelineno-0-52">52</a></span>
 <span class="normal"><a href="#__codelineno-0-53">53</a></span>
@@ -4694,10 +4272,10 @@
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.__repr__" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.__repr__" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.__repr__" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.__repr__" class="toclink">
             <code class="highlight language-python"><span class="fm">__repr__</span><span class="p">()</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.__repr__" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.__repr__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -4706,7 +4284,7 @@
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-62">62</a></span>
 <span class="normal"><a href="#__codelineno-0-63">63</a></span>
 <span class="normal"><a href="#__codelineno-0-64">64</a></span>
@@ -4735,20 +4313,20 @@
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.create_cube" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.create_cube" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.create_cube" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.create_cube" class="toclink">
             <code class="highlight language-python"><span class="n">create_cube</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dataset_length</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.create_cube" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.create_cube" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
-        <p>Create Datacube.</p>
-<div class="highlight"><pre><span></span><code>- Create a Datacube from a sample raster.
+        <p>Create MultiDataset.</p>
+<div class="highlight"><pre><span></span><code>- Create MultiDataset from a sample raster and
 </code></pre></div>
 
 
@@ -4809,8 +4387,8 @@
       </thead>
       <tbody>
           <tr class="doc-section-item">
-<td><code>Datacube</code></td>            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.datacube.Datacube&lt;/code&gt;" href="#pyramids.datacube.Datacube">Datacube</a></code>
+<td><code>MultiDataset</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.multidataset.MultiDataset&lt;/code&gt;" href="#pyramids.multidataset.MultiDataset">MultiDataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4823,7 +4401,7 @@
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-106">106</a></span>
 <span class="normal"><a href="#__codelineno-0-107">107</a></span>
 <span class="normal"><a href="#__codelineno-0-108">108</a></span>
@@ -4840,10 +4418,10 @@
 <span class="normal"><a href="#__codelineno-0-119">119</a></span>
 <span class="normal"><a href="#__codelineno-0-120">120</a></span>
 <span class="normal"><a href="#__codelineno-0-121">121</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="nd">@classmethod</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_cube</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Datacube&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create Datacube.</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_cube</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;MultiDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create MultiDataset.</span>
 <a id="__codelineno-0-109" name="__codelineno-0-109"></a>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        - Create a Datacube from a sample raster.</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        - Create MultiDataset from a sample raster and</span>
 <a id="__codelineno-0-111" name="__codelineno-0-111"></a>
 <a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        src (Dataset):</span>
@@ -4852,7 +4430,7 @@
 <a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">            Length of the dataset.</span>
 <a id="__codelineno-0-117" name="__codelineno-0-117"></a>
 <a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">        Datacube: Datacube object.</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">        MultiDataset: Datacube object.</span>
 <a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-121" name="__codelineno-0-121"></a>    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dataset_length</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -4864,14 +4442,14 @@
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.read_multiple_files" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.read_multiple_files" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.read_multiple_files" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.read_multiple_files" class="toclink">
             <code class="highlight language-python"><span class="n">read_multiple_files</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">with_order</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">regex_string</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">d</span><span class="si">{4}</span><span class="s1">.</span><span class="se">\\</span><span class="s1">d</span><span class="si">{2}</span><span class="s1">.</span><span class="se">\\</span><span class="s1">d</span><span class="si">{2}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">file_name_data_fmt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">extension</span><span class="o">=</span><span class="s1">&#39;.tif&#39;</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.read_multiple_files" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.read_multiple_files" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -5081,12 +4659,12 @@ the given path will be read.</p>
       </thead>
       <tbody>
           <tr class="doc-section-item">
-<td><code>Datacube</code></td>            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.datacube.Datacube&lt;/code&gt;" href="#pyramids.datacube.Datacube">Datacube</a></code>
+<td><code>MultiDataset</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.multidataset.MultiDataset&lt;/code&gt;" href="#pyramids.multidataset.MultiDataset">MultiDataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Instance of the Datacube class.</p>
+                <p>Instance of the MultiDataset class.</p>
               </div>
             </td>
           </tr>
@@ -5098,9 +4676,9 @@ the given path will be read.</p>
     <ul>
 <li>Read all rasters in a folder:</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.datacube</span><span class="w"> </span><span class="kn">import</span> <span class="n">Datacube</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.multidataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiDataset</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">raster_folder</span> <span class="o">=</span> <span class="s2">&quot;examples/GIS/data/raster-folder&quot;</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">prec</span> <span class="o">=</span> <span class="n">Datacube</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="n">raster_folder</span><span class="p">)</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">prec</span> <span class="o">=</span> <span class="n">MultiDataset</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="n">raster_folder</span><span class="p">)</span>
 </code></pre></div>
 <ul>
 <li>Read from a pre-collected list without ordering:</li>
@@ -5108,12 +4686,12 @@ the given path will be read.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">search_criteria</span> <span class="o">=</span> <span class="s2">&quot;*.tif&quot;</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">raster_folder</span><span class="p">,</span> <span class="n">search_criteria</span><span class="p">))</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">prec</span> <span class="o">=</span> <span class="n">Datacube</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="n">file_list</span><span class="p">,</span> <span class="n">with_order</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">prec</span> <span class="o">=</span> <span class="n">MultiDataset</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="n">file_list</span><span class="p">,</span> <span class="n">with_order</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-123">123</a></span>
 <span class="normal"><a href="#__codelineno-0-124">124</a></span>
 <span class="normal"><a href="#__codelineno-0-125">125</a></span>
@@ -5297,7 +4875,7 @@ the given path will be read.</p>
 <a id="__codelineno-0-132" name="__codelineno-0-132"></a>    <span class="n">end</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-134" name="__codelineno-0-134"></a>    <span class="n">extension</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;.tif&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Datacube&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;MultiDataset&quot;</span><span class="p">:</span>
 <a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;read_multiple_files.</span>
 <a id="__codelineno-0-137" name="__codelineno-0-137"></a>
 <a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="sd">        - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the</span>
@@ -5366,16 +4944,16 @@ the given path will be read.</p>
 <a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">            The extension of the files you want to read from the given path. Default is &quot;.tif&quot;.</span>
 <a id="__codelineno-0-202" name="__codelineno-0-202"></a>
 <a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="sd">        Datacube:</span>
-<a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">            Instance of the Datacube class.</span>
+<a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="sd">        MultiDataset:</span>
+<a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">            Instance of the MultiDataset class.</span>
 <a id="__codelineno-0-206" name="__codelineno-0-206"></a>
 <a id="__codelineno-0-207" name="__codelineno-0-207"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">        - Read all rasters in a folder:</span>
 <a id="__codelineno-0-209" name="__codelineno-0-209"></a>
 <a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">          ```python</span>
-<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">          &gt;&gt;&gt; from pyramids.datacube import Datacube</span>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">          &gt;&gt;&gt; from pyramids.multidataset import MultiDataset</span>
 <a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">          &gt;&gt;&gt; raster_folder = &quot;examples/GIS/data/raster-folder&quot;</span>
-<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">          &gt;&gt;&gt; prec = Datacube.read_multiple_files(raster_folder)</span>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">          &gt;&gt;&gt; prec = MultiDataset.read_multiple_files(raster_folder)</span>
 <a id="__codelineno-0-214" name="__codelineno-0-214"></a>
 <a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">          ```</span>
 <a id="__codelineno-0-216" name="__codelineno-0-216"></a>
@@ -5385,7 +4963,7 @@ the given path will be read.</p>
 <a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">          &gt;&gt;&gt; import glob</span>
 <a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">          &gt;&gt;&gt; search_criteria = &quot;*.tif&quot;</span>
 <a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">          &gt;&gt;&gt; file_list = glob.glob(os.path.join(raster_folder, search_criteria))</span>
-<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">          &gt;&gt;&gt; prec = Datacube.read_multiple_files(file_list, with_order=False)</span>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">          &gt;&gt;&gt; prec = MultiDataset.read_multiple_files(file_list, with_order=False)</span>
 <a id="__codelineno-0-224" name="__codelineno-0-224"></a>
 <a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">          ```</span>
 <a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">    &quot;&quot;&quot;</span>
@@ -5466,15 +5044,15 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.open_datacube" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.open_datacube" class="toclink">
-            <code class="highlight language-python"><span class="n">open_datacube</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></code>
+<h4 id="pyramids.multidataset.MultiDataset.open_multi_dataset" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.open_multi_dataset" class="toclink">
+            <code class="highlight language-python"><span class="n">open_multi_dataset</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.open_datacube" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.open_multi_dataset" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
-        <p>Open the datacube.</p>
+        <p>open_MultiDataset.</p>
 <p>Read values from the given band as arrays for all files.</p>
 
 
@@ -5533,7 +5111,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-296">296</a></span>
 <span class="normal"><a href="#__codelineno-0-297">297</a></span>
 <span class="normal"><a href="#__codelineno-0-298">298</a></span>
@@ -5568,8 +5146,8 @@ the given path will be read.</p>
 <span class="normal"><a href="#__codelineno-0-327">327</a></span>
 <span class="normal"><a href="#__codelineno-0-328">328</a></span>
 <span class="normal"><a href="#__codelineno-0-329">329</a></span>
-<span class="normal"><a href="#__codelineno-0-330">330</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="k">def</span><span class="w"> </span><span class="nf">open_datacube</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Open the datacube.</span>
+<span class="normal"><a href="#__codelineno-0-330">330</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="k">def</span><span class="w"> </span><span class="nf">open_multi_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;open_MultiDataset.</span>
 <a id="__codelineno-0-298" name="__codelineno-0-298"></a>
 <a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">    Read values from the given band as arrays for all files.</span>
 <a id="__codelineno-0-300" name="__codelineno-0-300"></a>
@@ -5612,10 +5190,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.__getitem__" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.__getitem__" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.__getitem__" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.__getitem__" class="toclink">
             <code class="highlight language-python"><span class="fm">__getitem__</span><span class="p">(</span><span class="n">key</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.__getitem__" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.__getitem__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -5624,7 +5202,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-363">363</a></span>
 <span class="normal"><a href="#__codelineno-0-364">364</a></span>
 <span class="normal"><a href="#__codelineno-0-365">365</a></span>
@@ -5643,10 +5221,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.__setitem__" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.__setitem__" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.__setitem__" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.__setitem__" class="toclink">
             <code class="highlight language-python"><span class="fm">__setitem__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.__setitem__" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.__setitem__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -5655,7 +5233,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-369">369</a></span>
 <span class="normal"><a href="#__codelineno-0-370">370</a></span>
 <span class="normal"><a href="#__codelineno-0-371">371</a></span>
@@ -5674,23 +5252,23 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.__len__" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.__len__" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.__len__" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.__len__" class="toclink">
             <code class="highlight language-python"><span class="fm">__len__</span><span class="p">()</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.__len__" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.__len__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
-        <p>Length of the Datacube.</p>
+        <p>Length of the MultiDataset.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-375">375</a></span>
 <span class="normal"><a href="#__codelineno-0-376">376</a></span>
 <span class="normal"><a href="#__codelineno-0-377">377</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Length of the Datacube.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Length of the MultiDataset.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-377" name="__codelineno-0-377"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -5701,23 +5279,23 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.__iter__" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.__iter__" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.__iter__" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.__iter__" class="toclink">
             <code class="highlight language-python"><span class="fm">__iter__</span><span class="p">()</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.__iter__" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.__iter__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
-        <p>Iterate over the Datacube.</p>
+        <p>Iterate over the MultiDataset.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-379">379</a></span>
 <span class="normal"><a href="#__codelineno-0-380">380</a></span>
 <span class="normal"><a href="#__codelineno-0-381">381</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Iterate over the Datacube.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Iterate over the MultiDataset.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-381" name="__codelineno-0-381"></a>    <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_values</span><span class="p">[:])</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -5728,10 +5306,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.head" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.head" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.head" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.head" class="toclink">
             <code class="highlight language-python"><span class="n">head</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.head" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.head" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -5740,7 +5318,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-383">383</a></span>
 <span class="normal"><a href="#__codelineno-0-384">384</a></span>
 <span class="normal"><a href="#__codelineno-0-385">385</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-383" name="__codelineno-0-383"></a><span class="k">def</span><span class="w"> </span><span class="nf">head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">):</span>
@@ -5755,10 +5333,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.tail" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.tail" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.tail" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.tail" class="toclink">
             <code class="highlight language-python"><span class="n">tail</span><span class="p">(</span><span class="n">n</span><span class="o">=-</span><span class="mi">5</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.tail" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.tail" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -5767,7 +5345,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-387">387</a></span>
 <span class="normal"><a href="#__codelineno-0-388">388</a></span>
 <span class="normal"><a href="#__codelineno-0-389">389</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-387" name="__codelineno-0-387"></a><span class="k">def</span><span class="w"> </span><span class="nf">tail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">5</span><span class="p">):</span>
@@ -5782,10 +5360,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.first" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.first" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.first" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.first" class="toclink">
             <code class="highlight language-python"><span class="n">first</span><span class="p">()</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.first" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.first" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -5794,7 +5372,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-391">391</a></span>
 <span class="normal"><a href="#__codelineno-0-392">392</a></span>
 <span class="normal"><a href="#__codelineno-0-393">393</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="k">def</span><span class="w"> </span><span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -5809,10 +5387,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.last" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.last" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.last" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.last" class="toclink">
             <code class="highlight language-python"><span class="n">last</span><span class="p">()</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.last" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.last" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -5821,7 +5399,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-395">395</a></span>
 <span class="normal"><a href="#__codelineno-0-396">396</a></span>
 <span class="normal"><a href="#__codelineno-0-397">397</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="k">def</span><span class="w"> </span><span class="nf">last</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -5836,10 +5414,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.iloc" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.iloc" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.iloc" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.iloc" class="toclink">
             <code class="highlight language-python"><span class="n">iloc</span><span class="p">(</span><span class="n">i</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.iloc" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.iloc" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -5891,7 +5469,6 @@ the given path will be read.</p>
       <tbody>
           <tr class="doc-section-item">
 <td><code>Dataset</code></td>            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.dataset.Dataset&lt;/code&gt;" href="../dataset/#pyramids.dataset.Dataset">Dataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -5904,7 +5481,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-399">399</a></span>
 <span class="normal"><a href="#__codelineno-0-400">400</a></span>
 <span class="normal"><a href="#__codelineno-0-401">401</a></span>
@@ -5922,7 +5499,7 @@ the given path will be read.</p>
 <span class="normal"><a href="#__codelineno-0-413">413</a></span>
 <span class="normal"><a href="#__codelineno-0-414">414</a></span>
 <span class="normal"><a href="#__codelineno-0-415">415</a></span>
-<span class="normal"><a href="#__codelineno-0-416">416</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-399" name="__codelineno-0-399"></a><span class="k">def</span><span class="w"> </span><span class="nf">iloc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-416">416</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-399" name="__codelineno-0-399"></a><span class="k">def</span><span class="w"> </span><span class="nf">iloc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
 <a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;iloc.</span>
 <a id="__codelineno-0-401" name="__codelineno-0-401"></a>
 <a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">        - Access dataset array using index.</span>
@@ -5949,10 +5526,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.plot" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.plot" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.plot" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.plot" class="toclink">
             <code class="highlight language-python"><span class="n">plot</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">exclude_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.plot" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.plot" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -6179,7 +5756,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-418">418</a></span>
 <span class="normal"><a href="#__codelineno-0-419">419</a></span>
 <span class="normal"><a href="#__codelineno-0-420">420</a></span>
@@ -6308,10 +5885,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.to_file" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.to_file" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.to_file" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.to_file" class="toclink">
             <code class="highlight language-python"><span class="n">to_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s1">&#39;geotiff&#39;</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.to_file" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.to_file" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -6395,7 +5972,7 @@ the given path will be read.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-479">479</a></span>
 <span class="normal"><a href="#__codelineno-0-480">480</a></span>
 <span class="normal"><a href="#__codelineno-0-481">481</a></span>
@@ -6488,10 +6065,10 @@ the given path will be read.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.to_crs" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.to_crs" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.to_crs" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.to_crs" class="toclink">
             <code class="highlight language-python"><span class="n">to_crs</span><span class="p">(</span><span class="n">to_epsg</span><span class="o">=</span><span class="mi">3857</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest neighbor&#39;</span><span class="p">,</span> <span class="n">maintain_alignment</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.to_crs" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.to_crs" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -6583,7 +6160,7 @@ Default is False.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Updates the datacube values and base in place after reprojection.</p>
+                <p>Updates the multidataset values and base in place after reprojection.</p>
               </div>
             </td>
           </tr>
@@ -6602,7 +6179,7 @@ Default is False.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-522">522</a></span>
 <span class="normal"><a href="#__codelineno-0-523">523</a></span>
 <span class="normal"><a href="#__codelineno-0-524">524</a></span>
@@ -6683,7 +6260,7 @@ Default is False.</p>
 <a id="__codelineno-0-542" name="__codelineno-0-542"></a><span class="sd">            Default is False.</span>
 <a id="__codelineno-0-543" name="__codelineno-0-543"></a>
 <a id="__codelineno-0-544" name="__codelineno-0-544"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="sd">        None: Updates the datacube values and base in place after reprojection.</span>
+<a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="sd">        None: Updates the multidataset values and base in place after reprojection.</span>
 <a id="__codelineno-0-546" name="__codelineno-0-546"></a>
 <a id="__codelineno-0-547" name="__codelineno-0-547"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-548" name="__codelineno-0-548"></a><span class="sd">        - Reproject dataset to EPSG:3857:</span>
@@ -6727,10 +6304,10 @@ Default is False.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.crop" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.crop" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.crop" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.crop" class="toclink">
             <code class="highlight language-python"><span class="n">crop</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">touch</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.crop" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.crop" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -6848,12 +6425,12 @@ Default is True.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">dem_path</span> <span class="o">=</span> <span class="s2">&quot;examples/GIS/data/acc4000.tif&quot;</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">src_path</span> <span class="o">=</span> <span class="s2">&quot;examples/GIS/data/aligned_rasters/&quot;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">out_path</span> <span class="o">=</span> <span class="s2">&quot;examples/GIS/data/crop_aligned_folder/&quot;</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">Datacube</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">dem_path</span><span class="p">,</span> <span class="n">src_path</span><span class="p">,</span> <span class="n">out_path</span><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">MultiDataset</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">dem_path</span><span class="p">,</span> <span class="n">src_path</span><span class="p">,</span> <span class="n">out_path</span><span class="p">)</span>
 </code></pre></div>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-581">581</a></span>
 <span class="normal"><a href="#__codelineno-0-582">582</a></span>
 <span class="normal"><a href="#__codelineno-0-583">583</a></span>
@@ -6942,7 +6519,7 @@ Default is True.</p>
 <a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">          &gt;&gt;&gt; dem_path = &quot;examples/GIS/data/acc4000.tif&quot;</span>
 <a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">          &gt;&gt;&gt; src_path = &quot;examples/GIS/data/aligned_rasters/&quot;</span>
 <a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">          &gt;&gt;&gt; out_path = &quot;examples/GIS/data/crop_aligned_folder/&quot;</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">          &gt;&gt;&gt; Datacube.crop(dem_path, src_path, out_path)</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">          &gt;&gt;&gt; MultiDataset.crop(dem_path, src_path, out_path)</span>
 <a id="__codelineno-0-613" name="__codelineno-0-613"></a>
 <a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">          ```</span>
 <a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">    &quot;&quot;&quot;</span>
@@ -6966,7 +6543,7 @@ Default is True.</p>
 <a id="__codelineno-0-633" name="__codelineno-0-633"></a>        <span class="c1"># use the last src as</span>
 <a id="__codelineno-0-634" name="__codelineno-0-634"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">=</span> <span class="n">dst</span>
 <a id="__codelineno-0-635" name="__codelineno-0-635"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a>        <span class="n">dataset</span> <span class="o">=</span> <span class="n">Datacube</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="n">time_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_length</span><span class="p">)</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a>        <span class="n">dataset</span> <span class="o">=</span> <span class="n">MultiDataset</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="n">time_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_length</span><span class="p">)</span>
 <a id="__codelineno-0-637" name="__codelineno-0-637"></a>        <span class="n">dataset</span><span class="o">.</span><span class="n">_values</span> <span class="o">=</span> <span class="n">array</span>
 <a id="__codelineno-0-638" name="__codelineno-0-638"></a>        <span class="k">return</span> <span class="n">dataset</span>
 </code></pre></div></td></tr></table></div>
@@ -6978,10 +6555,10 @@ Default is True.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.align" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.align" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.align" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.align" class="toclink">
             <code class="highlight language-python"><span class="n">align</span><span class="p">(</span><span class="n">alignment_src</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.align" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.align" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -7038,7 +6615,7 @@ a raster with the same structure as Raster A but with values from Raster B using
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Updates the datacube values in place to match the alignment of alignment_src.</p>
+                <p>Updates the multidataset values in place to match the alignment of alignment_src.</p>
               </div>
             </td>
           </tr>
@@ -7048,7 +6625,7 @@ a raster with the same structure as Raster A but with values from Raster B using
 
 <p><span class="doc-section-title">Examples:</span></p>
     <ul>
-<li>Align all rasters in the datacube to a DEM raster:</li>
+<li>Align all rasters in the multidataset to a DEM raster:</li>
 </ul>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">dem_path</span> <span class="o">=</span> <span class="s2">&quot;01GIS/inputs/4000/acc4000.tif&quot;</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">prec_in_path</span> <span class="o">=</span> <span class="s2">&quot;02Precipitation/CHIRPS/Daily/&quot;</span>
@@ -7058,7 +6635,7 @@ a raster with the same structure as Raster A but with values from Raster B using
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-775">775</a></span>
 <span class="normal"><a href="#__codelineno-0-776">776</a></span>
 <span class="normal"><a href="#__codelineno-0-777">777</a></span>
@@ -7118,10 +6695,10 @@ a raster with the same structure as Raster A but with values from Raster B using
 <a id="__codelineno-0-785" name="__codelineno-0-785"></a>
 <a id="__codelineno-0-786" name="__codelineno-0-786"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-787" name="__codelineno-0-787"></a><span class="sd">        None:</span>
-<a id="__codelineno-0-788" name="__codelineno-0-788"></a><span class="sd">            Updates the datacube values in place to match the alignment of alignment_src.</span>
+<a id="__codelineno-0-788" name="__codelineno-0-788"></a><span class="sd">            Updates the multidataset values in place to match the alignment of alignment_src.</span>
 <a id="__codelineno-0-789" name="__codelineno-0-789"></a>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">        - Align all rasters in the datacube to a DEM raster:</span>
+<a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">        - Align all rasters in the multidataset to a DEM raster:</span>
 <a id="__codelineno-0-792" name="__codelineno-0-792"></a>
 <a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">          ```python</span>
 <a id="__codelineno-0-794" name="__codelineno-0-794"></a><span class="sd">          &gt;&gt;&gt; dem_path = &quot;01GIS/inputs/4000/acc4000.tif&quot;</span>
@@ -7161,14 +6738,14 @@ a raster with the same structure as Raster A but with values from Raster B using
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.merge" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.merge" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.merge" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.merge" class="toclink">
             <code class="highlight language-python"><span class="n">merge</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">no_data_value</span><span class="o">=</span><span class="s1">&#39;0&#39;</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="s1">&#39;nan&#39;</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
   </span>
 
-</a><a href="#pyramids.datacube.Datacube.merge" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.merge" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -7299,7 +6876,7 @@ in all the bands.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-823">823</a></span>
 <span class="normal"><a href="#__codelineno-0-824">824</a></span>
 <span class="normal"><a href="#__codelineno-0-825">825</a></span>
@@ -7408,16 +6985,16 @@ in all the bands.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.apply" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.apply" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.apply" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.apply" class="toclink">
             <code class="highlight language-python"><span class="n">apply</span><span class="p">(</span><span class="n">ufunc</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.apply" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.apply" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
         <p>apply.</p>
-<p>Apply a function on each raster in the datacube.</p>
+<p>apply a function on each raster in the MultiDataset.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -7488,7 +7065,7 @@ To create a ufunc from a normal function: https://numpy.org/doc/stable/reference
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-874">874</a></span>
 <span class="normal"><a href="#__codelineno-0-875">875</a></span>
 <span class="normal"><a href="#__codelineno-0-876">876</a></span>
@@ -7524,7 +7101,7 @@ To create a ufunc from a normal function: https://numpy.org/doc/stable/reference
 <span class="normal"><a href="#__codelineno-0-906">906</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-874" name="__codelineno-0-874"></a><span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ufunc</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-875" name="__codelineno-0-875"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;apply.</span>
 <a id="__codelineno-0-876" name="__codelineno-0-876"></a>
-<a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="sd">    Apply a function on each raster in the datacube.</span>
+<a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="sd">    apply a function on each raster in the MultiDataset.</span>
 <a id="__codelineno-0-878" name="__codelineno-0-878"></a>
 <a id="__codelineno-0-879" name="__codelineno-0-879"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-880" name="__codelineno-0-880"></a><span class="sd">        ufunc (Callable):</span>
@@ -7563,10 +7140,10 @@ To create a ufunc from a normal function: https://numpy.org/doc/stable/reference
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.datacube.Datacube.overlay" class="doc doc-heading"><a href="#pyramids.datacube.Datacube.overlay" class="toclink">
+<h4 id="pyramids.multidataset.MultiDataset.overlay" class="doc doc-heading"><a href="#pyramids.multidataset.MultiDataset.overlay" class="toclink">
             <code class="highlight language-python"><span class="n">overlay</span><span class="p">(</span><span class="n">classes_map</span><span class="p">,</span> <span class="n">exclude_value</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.datacube.Datacube.overlay" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.multidataset.MultiDataset.overlay" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -7647,7 +7224,7 @@ intersected values in the maps from the path.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>pyramids/datacube.py</code></summary>
+              <summary>Source code in <code>src/pyramids/multidataset.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-908">908</a></span>
 <span class="normal"><a href="#__codelineno-0-909">909</a></span>
 <span class="normal"><a href="#__codelineno-0-910">910</a></span>
@@ -7758,44 +7335,6 @@ intersected values in the maps from the path.</p>
       
         <footer class="md-footer">
   
-    
-      
-      <nav class="md-footer__inner md-grid" aria-label="Footer" >
-        
-          
-          <a href="../dataset/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Dataset">
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
-            </div>
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              <div class="md-ellipsis">
-                Dataset
-              </div>
-            </div>
-          </a>
-        
-        
-          
-          <a href="../featurecollection/" class="md-footer__link md-footer__link--next" aria-label="Next: Feature Collection">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                Feature Collection
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
-            </div>
-          </a>
-        
-      </nav>
     
   
   <div class="md-footer-meta md-typeset">
