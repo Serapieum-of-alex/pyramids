@@ -14,7 +14,8 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from geopandas.geodataframe import DataFrame, GeoDataFrame
+from geopandas.geodataframe import GeoDataFrame
+from pandas import DataFrame
 from osgeo import gdal, ogr, osr
 from osgeo.osr import SpatialReference
 
