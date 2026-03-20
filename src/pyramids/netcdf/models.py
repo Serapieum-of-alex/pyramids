@@ -24,6 +24,12 @@ class GroupInfo:
     (e.g. ``"/root/subgroup"``) for stable cross-references
     between groups, arrays, and dimensions.
 
+    Note:
+        ``frozen=True`` prevents field reassignment but container
+        fields (``attributes``, ``children``, ``arrays``) are
+        technically mutable.  Treat all contents as **read-only**
+        after construction.
+
     Args:
         name: Short name of the group (e.g. ``"root"``).
         full_name: Fully qualified name including the path
@@ -75,8 +81,8 @@ class GroupInfo:
     name: str
     full_name: str
     attributes: Dict[str, AttributeValue] = field(default_factory=dict)
-    children: List[str] = field(default_factory=list)  # full names of child groups
-    arrays: List[str] = field(default_factory=list)  # full names of arrays
+    children: List[str] = field(default_factory=list)
+    arrays: List[str] = field(default_factory=list)
 
     @classmethod
     def from_group(
@@ -137,6 +143,11 @@ class DimensionInfo:
     attributes inherited from the dimension's indexing
     variable (e.g. ``units`` and ``calendar`` for a time
     dimension).
+
+    Note:
+        ``frozen=True`` prevents field reassignment but the
+        ``attrs`` dict is technically mutable.  Treat its
+        contents as **read-only** after construction.
 
     Args:
         name: Short name of the dimension (e.g. ``"time"``).
@@ -203,7 +214,7 @@ class DimensionInfo:
     size: int
     type: Optional[str] = None
     direction: Optional[str] = None
-    indexing_variable: Optional[str] = None  # full name or short name
+    indexing_variable: Optional[str] = None
     attrs: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -291,6 +302,12 @@ class ArrayInfo:
     data type, shape, dimension links, CF attributes
     (scale, offset, nodata), spatial reference, and
     chunking information.
+
+    Note:
+        ``frozen=True`` prevents field reassignment but container
+        fields (``attributes``, ``dimensions``, etc.) are
+        technically mutable.  Treat all contents as **read-only**
+        after construction.
 
     Args:
         name: Short variable name (e.g. ``"temperature"``).
