@@ -121,7 +121,10 @@ class MetadataBuilder:
             # Fallback: use classic flattened metadata exposed by MetaData
             try:
                 md = SharedMetaData.from_metadata(ds.GetMetadata())
-                global_attrs = {str(k): str(v) for k, v in (md.to_metadata() if hasattr(md, 'to_metadata') else {}).items()}  # type: ignore[arg-type]
+                raw = md.to_metadata() if hasattr(md, "to_metadata") else {}
+                global_attrs = {
+                    str(k): str(v) for k, v in raw.items()  # type: ignore[arg-type]
+                }
             except Exception:
                 global_attrs = {}
 
