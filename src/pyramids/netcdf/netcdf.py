@@ -529,6 +529,11 @@ class NetCDF(Dataset):
         The last two dimensions become X (columns) and Y (rows); all
         remaining dimensions are flattened into bands.
 
+        If the Y dimension is stored south-to-north (positive Y pixel
+        size), it is reversed via ``MDArray.GetView()`` **before** the
+        conversion.  This is a lazy, zero-copy operation — GDAL handles
+        the reversed indexing internally without reading the whole array.
+
         Returns a tuple ``(classic_dataset, md_array, root_group)`` so
         callers can keep the GDAL objects alive.  ``AsClassicDataset``
         returns a **view** whose C++ backing depends on the MDArray and
@@ -540,68 +545,35 @@ class NetCDF(Dataset):
         md_arr = rg.OpenMDArray(variable_name)
         dtype = md_arr.GetDataType()
         dims = md_arr.GetDimensions()
+
         if len(dims) == 1:
             if dtype.GetClass() == gdal.GEDTC_STRING:
                 return md_arr, md_arr, rg
-            else:
-                src = md_arr.AsClassicDataset(0, 1, rg)
-        else:
-            src = md_arr.AsClassicDataset(len(dims) - 1, len(dims) - 2, rg)
+            src = md_arr.AsClassicDataset(0, 1, rg)
+            return src, md_arr, rg
+
+        iXDim = len(dims) - 1
+        iYDim = len(dims) - 2
+
+        # First pass: check if Y orientation needs flipping.
+        src = md_arr.AsClassicDataset(iXDim, iYDim, rg)
+
+        if src.GetGeoTransform()[5] > 0:
+            # Positive Y pixel size = south-to-north (NetCDF convention).
+            # Use GetView to reverse the Y dimension — this is lazy and
+            # zero-copy; GDAL handles reversed indexing internally.
+            slices = ",".join(
+                "::-1" if i == iYDim else ":" for i in range(len(dims))
+            )
+            md_arr = md_arr.GetView(f"[{slices}]")
+            src = md_arr.AsClassicDataset(iXDim, iYDim, rg)
 
         return src, md_arr, rg
 
     @staticmethod
-    def _fix_y_orientation(src: gdal.Dataset) -> gdal.Dataset:
-        """Flip a dataset vertically if its Y pixel size is positive.
-
-        NetCDF files commonly store latitude south-to-north (row 0 =
-        southernmost), producing a positive Y pixel size from
-        ``AsClassicDataset()``.  GDAL's raster convention is row 0 =
-        northernmost with a **negative** Y pixel size.  This helper
-        creates a new MEM dataset with the rows flipped and the
-        geotransform corrected so that downstream GIS operations
-        (crop, reproject, plot) work correctly.
-
-        If the Y pixel size is already negative (or zero), the dataset
-        is returned unchanged.
-        """
-        gt = src.GetGeoTransform()
-        if gt[5] <= 0:
-            return src
-
-        bands = src.RasterCount
-        cols = src.RasterXSize
-        rows = src.RasterYSize
-
-        # Corrected geotransform: origin moves to the north edge,
-        # Y pixel size becomes negative.
-        new_gt = (
-            gt[0],          # x origin unchanged
-            gt[1],          # x pixel size unchanged
-            gt[2],          # x rotation unchanged
-            gt[3] + gt[5] * rows,  # y origin = old_origin + rows * positive_pixel_size = north edge
-            gt[4],          # y rotation unchanged
-            -gt[5],         # y pixel size becomes negative
-        )
-
-        drv = gdal.GetDriverByName("MEM")
-        # Determine data type from the first band
-        dt = src.GetRasterBand(1).DataType if bands > 0 else gdal.GDT_Float64
-        dst = drv.Create("", cols, rows, bands, dt)
-        dst.SetGeoTransform(new_gt)
-        proj = src.GetProjection()
-        if proj:
-            dst.SetProjection(proj)
-
-        for b in range(1, bands + 1):
-            band_data = src.GetRasterBand(b).ReadAsArray()
-            flipped = np.flipud(band_data)
-            dst.GetRasterBand(b).WriteArray(flipped)
-            ndv = src.GetRasterBand(b).GetNoDataValue()
-            if ndv is not None:
-                dst.GetRasterBand(b).SetNoDataValue(ndv)
-
-        return dst
+    def _needs_y_flip(src: gdal.Dataset) -> bool:
+        """Check if a classic dataset has south-to-north Y orientation."""
+        return src.GetGeoTransform()[5] > 0
 
     def get_variable(self, variable_name: str) -> "NetCDF":
         """Extract a single variable as a classic-raster NetCDF object.
@@ -630,13 +602,21 @@ class NetCDF(Dataset):
         if prefix == "MEMORY" or rg is not None:
             src, md_arr_ref, rg_ref = self._read_md_array(variable_name)
             if isinstance(src, gdal.Dataset):
-                # Fix south-to-north orientation: NetCDF stores row 0 =
-                # south, GDAL expects row 0 = north with negative Y pixel
-                # size.  _fix_y_orientation flips the array and corrects
-                # the geotransform when needed.
-                src = self._fix_y_orientation(src)
                 cube = NetCDF(src)
                 cube._is_md_array = True
+                # _read_md_array uses GetView to flip the data lazily,
+                # and GDAL usually corrects the geotransform.  But when
+                # the Y dimension has no indexing variable (e.g. WRF
+                # "south_north"), the geotransform may still be wrong.
+                # Fix it on the wrapper object (no data copy).
+                gt = cube._geotransform
+                if gt[5] > 0:
+                    cube._geotransform = (
+                        gt[0], gt[1], gt[2],
+                        gt[3] + gt[5] * cube._rows,
+                        gt[4], -gt[5],
+                    )
+                    cube._cell_size = abs(gt[1])
             else:
                 cube = src
             # Keep GDAL SWIG references alive — AsClassicDataset returns a
