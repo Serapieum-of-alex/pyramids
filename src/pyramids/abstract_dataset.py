@@ -344,7 +344,7 @@ class AbstractDataset(ABC):
                 RGB band indices. Default is [3, 2, 1].
             surface_reflectance (int, optional):
                 Surface reflectance. Default is 10,000.
-            cutoff (List, optional): 
+            cutoff (List, optional):
                 Clip the range of pixel values for each band (take only the pixel values from 0 to the value of
                 the cutoff and scale them back to between 0 and 1). Default is None.
             overview (bool, optional):
@@ -376,7 +376,7 @@ class AbstractDataset(ABC):
                     Rotation of the color bar label. The default is -90.
                 cbar_length (float, optional):
                     Ratio to control the height of the color bar. The default is 0.75.
-                ticks_spacing (int, optional): 
+                ticks_spacing (int, optional):
                     Spacing in the color bar ticks. The default is 2.
                 cbar_label_size (int, optional):
                     Size of the color bar label. The default is 12.
@@ -393,7 +393,7 @@ class AbstractDataset(ABC):
                     Value needed for option 2. The default is 1./2.
                 line_threshold (float, optional):
                     Value needed for option 3. The default is 0.0001.
-                line_scale (float, optional): 
+                line_scale (float, optional):
                     Value needed for option 3. The default is 0.001.
                 bounds (List, optional):
                     A list of numbers to be used as discrete bounds for color scale 4. Default is None.
@@ -401,7 +401,7 @@ class AbstractDataset(ABC):
                     Value needed for option 5. The default is 0.
                 cmap (str, optional):
                     Color style. The default is 'coolwarm_r'.
-                display_cell_value (bool, optional): 
+                display_cell_value (bool, optional):
                     True if you want to display the values of the cells as text.
                 num_size (int, optional):
                     Size of the numbers plotted on top of each cell. The default is 8.
@@ -569,7 +569,7 @@ class AbstractDataset(ABC):
                     The no-data value to validate.
 
         Returns:
-            Any: 
+            Any:
                 Convert the no_data_value to comply with the dtype.
         """
         # convert the no_data_value based on the dtype of each raster band.
@@ -604,9 +604,9 @@ class AbstractDataset(ABC):
             - Change the no_data_value in the array in all bands.
 
         Args:
-            new_value (numeric): 
+            new_value (numeric):
                 No data value to set in the raster bands.
-            old_value (numeric, optional): 
+            old_value (numeric, optional):
                 Old no data value that is already in the raster bands.
         """
         pass

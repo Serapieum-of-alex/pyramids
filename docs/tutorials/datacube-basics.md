@@ -3,7 +3,7 @@
 This tutorial shows how to construct a simple datacube from a folder of rasters and compute a basic aggregation.
 
 ```python
-from pyramids.datacube import MultiDataset
+from pyramids.multidataset import MultiDataset
 
 
 # Prepare a folder with a few demo rasters (use repo tests or your own)

@@ -473,32 +473,32 @@ class NetCDF(Dataset):
             np.ndarray or None: The variable data, or None if the
                 variable is not found.
         """
+        result = None
         rg = self._raster.GetRootGroup()
         if rg is not None:
             # Try as an MDArray first
             try:
                 md_arr = rg.OpenMDArray(var)
                 if md_arr is not None:
-                    return md_arr.ReadAsArray()
+                    result = md_arr.ReadAsArray()
             except Exception:
                 pass
             # Fall back to dimension indexing variable
-            dim = self._get_dimension(var)
-            if dim is not None:
-                iv = dim.GetIndexingVariable()
-                if iv is not None:
-                    return iv.ReadAsArray()
-            return None
-
-        # Classic mode: open via subdataset string
-        result = None
-        try:
-            ds = gdal.Open(f"NETCDF:{self.file_name}:{var}")
-            if ds is not None:
-                result = ds.ReadAsArray()
-            ds = None
-        except (RuntimeError, AttributeError):
-            pass
+            if result is None:
+                dim = self._get_dimension(var)
+                if dim is not None:
+                    iv = dim.GetIndexingVariable()
+                    if iv is not None:
+                        result = iv.ReadAsArray()
+        else:
+            # Classic mode: open via subdataset string
+            try:
+                ds = gdal.Open(f"NETCDF:{self.file_name}:{var}")
+                if ds is not None:
+                    result = ds.ReadAsArray()
+                ds = None
+            except (RuntimeError, AttributeError):
+                pass
         return result
 
     def get_variable_names(self) -> List[str]:

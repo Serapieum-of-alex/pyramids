@@ -201,7 +201,7 @@ class TestMultiVariablesNC:
         assert var.shape == (1, 21, 21)
 
     def test_variables_x_lon_y_lat(self, two_variable_nc: str):
+        """Variable subsets have geotransform from AsClassicDataset."""
         cube = NetCDF.read_file(two_variable_nc)
         var = cube.get_variable("q")
-        print(var.x)
-        print(var.geotransform)
+        assert var.geotransform is not None

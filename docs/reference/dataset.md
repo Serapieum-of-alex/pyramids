@@ -96,7 +96,7 @@ classDiagram
     %% Driver catalog
     class _utils_Catalog {
     }
-    
+
     %% NetCDF
     class NetCDF {
     }

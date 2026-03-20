@@ -157,4 +157,3 @@ class TestColorRelief:
         color_table = Dataset._process_color_table(self.df)
         assert isinstance(color_table, DataFrame)
         assert all(color_table.columns == ["values", "red", "green", "blue", "alpha"])
-

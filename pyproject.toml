@@ -182,4 +182,3 @@ python = "3.14.*"
 gdal = ">=3.10.0,<4"
 libgdal-netcdf = ">=3.10.0,<4"
 libgdal-hdf4 = ">=3.10.0,<4"
-

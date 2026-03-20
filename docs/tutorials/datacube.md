@@ -39,7 +39,7 @@ The DataCube object has the following attributes:
 - If you want to read the rasters with a certain order, then all raster file names should have a date that follows the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD), e.g. "MSWEP_1979.01.01.tif".
 
 Note:
-    — read_multiple_files only parses file names; to open each raster, read a specific band, and add it to the 
+    — read_multiple_files only parses file names; to open each raster, read a specific band, and add it to the
         DataCube you have to do one step further using the open_datacube method.
 
 #### Parameters
@@ -131,7 +131,7 @@ After using read_multiple_files to parse the files in the directory, you can rea
 ```python
 rasters_folder_path = "examples/data/geotiff/raster-folder"
 datacube = MultiDataset.read_multiple_files(rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator=".")
-dataset.open_datacube()
-print(dataset.values.shape)
+datacube.open_multi_dataset()
+print(datacube.values.shape)
 # >>>     (6, 125, 93)
 ```

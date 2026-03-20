@@ -37,7 +37,7 @@ def _strip_braces(value: str) -> str:
             ```python
             >>> _strip_braces("  a, b  ")
             'a, b'
-    
+
             ```
         - Empty braces: yields empty string
             ```python
@@ -347,7 +347,7 @@ class DimensionsIndex:
             2
             >>> idx['level0'].values
             [1, 2, 3]
-    
+
             ```
         - Using a custom prefix
             ```python

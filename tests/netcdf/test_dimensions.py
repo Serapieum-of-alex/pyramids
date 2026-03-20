@@ -291,8 +291,8 @@ class TestFormatBracedList:
         Checks:
             The helper relies on Python iteration semantics and thus raises TypeError.
         """
-    with pytest.raises(TypeError):
-        _format_braced_list(None)  # type: ignore[arg-type]
+        with pytest.raises(TypeError):
+            _format_braced_list(None)  # type: ignore[arg-type]
 
 
 class TestDimMetaData:
@@ -356,14 +356,14 @@ class TestDimensionsIndex:
         Checks:
             Robustness to missing EXTRA list.
         """
-    md = {
-        'NETCDF_DIM_depth_DEF': '{4,99}',
-        'NETCDF_DIM_depth_VALUES': '{0, 10, 20, 30}',
-    }
-    idx = DimensionsIndex.from_metadata(md)
-    assert idx.names == ["depth"]
-    assert idx["depth"].size == 4
-    assert idx["depth"].values == [0, 10, 20, 30]
+        md = {
+            'NETCDF_DIM_depth_DEF': '{4,99}',
+            'NETCDF_DIM_depth_VALUES': '{0, 10, 20, 30}',
+        }
+        idx = DimensionsIndex.from_metadata(md)
+        assert idx.names == ["depth"]
+        assert idx["depth"].size == 4
+        assert idx["depth"].values == [0, 10, 20, 30]
 
     def test_values_define_size_when_def_missing(self):
         """Infer size from VALUES length when DEF is absent.
