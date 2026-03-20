@@ -443,7 +443,7 @@ class ArrayInfo:
         except Exception:
             dt = "unknown"
 
-            # shape
+        # shape
         try:
             shape = list(md_arr.GetShape())
         except Exception:
@@ -452,7 +452,7 @@ class ArrayInfo:
             except Exception:
                 shape = []
 
-            # dimension names
+        # dimension names
         try:
             dims2 = md_arr.GetDimensions() or []
             dim_names: List[str] = []
