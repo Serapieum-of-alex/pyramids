@@ -54,7 +54,9 @@ dev = [
     "jupyterlab",
     "notebook",
     "jupyter",
-    "commitizen>=4.8.4"
+    "commitizen>=4.8.4",
+    "mypy>=1.10.0",
+    "types-PyYAML>=6.0.0"
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -109,6 +111,24 @@ line_length = 88
 multi_line_output = 3
 
 
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+packages = ["pyramids"]
+explicit_package_bases = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "tests/",
+    "examples/",
+    "docs/",
+    "scripts/",
+    "planning/",
+]
+
 [tool.commitizen]
 name = "cz_conventional_commits"
 version_provider = "pep621"
@@ -156,6 +176,7 @@ build-dist = { cmd = "python -m build", description = "Build sdist and wheel for
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
 cz-changelog = { cmd = "cz changelog", description = "Generate changelog using Commitizen" }
 cz-bump = { cmd = "cz bump", description = "Bump version using Commitizen" }
+mypy = { cmd = "mypy", description = "Run mypy type checking" }
 
 
 [tool.pixi.environments]
