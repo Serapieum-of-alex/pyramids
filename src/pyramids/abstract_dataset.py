@@ -513,10 +513,12 @@ class AbstractDataset(ABC):
             if crs is not None:
                 self.raster.SetProjection(crs)
                 self._epsg = FeatureCollection.get_epsg_from_prj(crs)
-            else:
+            elif epsg is not None:
                 sr = AbstractDataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
                 self._epsg = epsg
+            else:
+                raise ValueError("Either crs or epsg must be provided.")
 
     @abstractmethod
     def to_crs(
