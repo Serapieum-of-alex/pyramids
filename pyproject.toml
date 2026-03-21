@@ -56,7 +56,8 @@ dev = [
     "jupyter",
     "commitizen>=4.8.4",
     "mypy>=1.10.0",
-    "types-PyYAML>=6.0.0"
+    "types-PyYAML>=6.0.0",
+    "pytest-mock>=3.12.0"
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -110,6 +111,14 @@ profile = "black"
 line_length = 88
 multi_line_output = 3
 
+
+[tool.coverage.run]
+branch = true
+source = ["src/pyramids"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
 
 [tool.mypy]
 python_version = "3.11"
