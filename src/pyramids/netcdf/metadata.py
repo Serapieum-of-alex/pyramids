@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
-from typing import Any
+from typing import Any, cast
 
 import json
 from osgeo import gdal
@@ -227,9 +227,10 @@ class GroupTraverser:
         # Sort by name for determinism
         def _dim_name(d: Any) -> str:
             try:
-                return d.GetName()
+                result = str(d.GetName())
             except Exception:
-                return ""
+                result = ""
+            return result
 
         dims_sorted = sorted(list(dims), key=_dim_name)
 
@@ -443,7 +444,7 @@ def to_dict(metadata: NetCDFMetadata) -> dict[str, Any]:
             ``NetCDFMetadata``.
     """
     def convert(obj: Any) -> Any:
-        if is_dataclass(obj):
+        if is_dataclass(obj) and not isinstance(obj, type):
             return {k: convert(v) for k, v in asdict(obj).items()}
         if isinstance(obj, dict):
             return {str(k): convert(v) for k, v in obj.items()}
@@ -451,7 +452,7 @@ def to_dict(metadata: NetCDFMetadata) -> dict[str, Any]:
             return [convert(v) for v in obj]
         return obj
 
-    return convert(metadata)
+    return cast(dict[str, Any], convert(metadata))
 
 
 def to_json(metadata: NetCDFMetadata) -> str:

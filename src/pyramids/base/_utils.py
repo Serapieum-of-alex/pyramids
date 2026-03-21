@@ -180,7 +180,7 @@ def gdal_constant_to_color_name(gdal_constant: int) -> str:
     color_name = COLOR_TABLE.loc[
         COLOR_TABLE["gdal_constant"] == gdal_constant, "name"
     ].values[0]
-    return color_name
+    return str(color_name)
 
 
 def numpy_to_gdal_dtype(arr: np.ndarray | np.dtype | str) -> int:
@@ -236,26 +236,27 @@ def ogr_to_numpy_dtype(dtype_code: int):
     """
     # since there are more than one numpy dtype for the ogr.OFTInteger (0), and the ogr.OFTInteger64 (12),
     # we will return int32 for 0 and int64 for 12.
+    result_dtype: type
     if dtype_code == 0:
-        numpy_dtype = np.int32
+        result_dtype = np.int32
     elif dtype_code == 12:
-        numpy_dtype = np.int64
+        result_dtype = np.int64
     elif dtype_code == 2:
-        numpy_dtype = np.float64
+        result_dtype = np.float64
     else:
-        numpy_dtype = DTYPE_CONVERSION_DF.loc[
+        matched = DTYPE_CONVERSION_DF.loc[
             DTYPE_CONVERSION_DF["ogr"] == dtype_code, "numpy"
         ]
 
-        if len(numpy_dtype) == 0:
+        if len(matched) == 0:
             raise ValueError(
                 f"The given OGR data type is not supported: {dtype_code}, available types are: "
                 f"{DTYPE_CONVERSION_DF['ogr'].unique().tolist()}"
             )
         else:
-            numpy_dtype = numpy_dtype.values[0]
+            result_dtype = matched.values[0]
 
-    return numpy_dtype
+    return result_dtype
 
 
 def gdal_to_numpy_dtype(dtype: int) -> str:
@@ -267,16 +268,14 @@ def gdal_to_numpy_dtype(dtype: int) -> str:
     Returns:
         str: Name of the corresponding numpy dtype.
     """
-    gdal_dtypes = DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == dtype, "numpy"]
-    if len(gdal_dtypes) == 0:
+    matched_dtypes = DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == dtype, "numpy"]
+    if len(matched_dtypes) == 0:
         raise ValueError(
             f"The given GDAL data type is not supported: {dtype}, available types are: "
             f"{DTYPE_CONVERSION_DF['gdal'].unique().tolist()}"
         )
-    else:
-        gdal_dtypes = gdal_dtypes.values[0].__name__
-
-    return gdal_dtypes
+    result_name = str(matched_dtypes.values[0].__name__)
+    return result_name
 
 
 def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
@@ -289,8 +288,8 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
     Returns:
         int: OGR data type code corresponding to the band GDAL dtype.
     """
-    band = src.GetRasterBand(band)
-    gdal_dtype = band.DataType
+    raster_band = src.GetRasterBand(band)
+    gdal_dtype = raster_band.DataType
     return int(
         DTYPE_CONVERSION_DF.loc[
             DTYPE_CONVERSION_DF["gdal"] == gdal_dtype, "ogr"
@@ -312,8 +311,8 @@ class Catalog:
 
     @staticmethod
     def _get_gdal_catalog(path: str):
-        path = Path(__path__[0]) / f"base/data/{path}"
-        with open(path, "r") as stream:
+        catalog_path = Path(__path__[0]) / f"base/data/{path}"
+        with open(catalog_path, "r") as stream:
             gdal_catalog = yaml.safe_load(stream)
 
         return gdal_catalog
@@ -324,8 +323,8 @@ class Catalog:
 
     def get_gdal_name(self, driver: str):
         """Get GDAL name."""
-        driver = self.get_driver(driver)
-        return driver.get("GDAL Name")
+        driver_data = self.get_driver(driver)
+        return driver_data.get("GDAL Name")
 
     def get_driver_name_by_extension(self, extension: str):
         """Get driver by extension.
@@ -371,16 +370,18 @@ class Catalog:
 
     def get_extension(self, driver: str):
         """Get driver extension."""
-        driver = self.get_driver(driver)
-        return driver.get("extension")
+        driver_data = self.get_driver(driver)
+        return driver_data.get("extension")
 
     def get_driver_name(self, gdal_name) -> str:
-        """Get drivern name."""
+        """Get driver name."""
+        result_key = ""
         for key, value in self.catalog.items():
             name = value.get("GDAL Name")
             if gdal_name == name:
+                result_key = str(key)
                 break
-        return key
+        return result_key
 
 
 def import_geopy(message: str):

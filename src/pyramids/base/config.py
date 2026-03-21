@@ -42,7 +42,7 @@ import yaml
 import logging
 import sys
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from osgeo import gdal, ogr
 from pyramids import __path__ as root_path
 
@@ -472,10 +472,10 @@ class Plugins:
     """
 
     site_packages_path: str | Path
-    plugins_path: Path | None = None
-    bin_path: Path | None = None
-    data_path: Path | None = None
-    proj_path: Path | None = None
+    plugins_path: Path = field(init=False)
+    bin_path: Path = field(init=False)
+    data_path: Path = field(init=False)
+    proj_path: Path = field(init=False)
 
     def __post_init__(self):
         """Initialize derived GDAL-related paths based on site_packages_path."""
