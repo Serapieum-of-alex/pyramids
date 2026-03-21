@@ -327,7 +327,7 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def _read_block(self, band: int, window=list[int]) -> np.ndarray:
+    def _read_block(self, band: int, window: list[int] | GeoDataFrame | None = None) -> np.ndarray:
         """Read block of data from the dataset.
 
         Args:
@@ -584,7 +584,8 @@ class AbstractDataset(ABC):
             SpatialReference: SpatialReference object.
         """
         sr = osr.SpatialReference()
-        sr.ImportFromEPSG(int(epsg))
+        if epsg is not None:
+            sr.ImportFromEPSG(int(epsg))
         return sr
 
     @abstractmethod
