@@ -7,7 +7,7 @@ import logging
 import datetime as dt
 import pandas as pd
 from pathlib import Path
-from typing import List, Union, Any, Callable, Dict
+from typing import Any, Callable
 import numpy as np
 from osgeo import gdal
 from pyramids.dataset import Dataset
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class MultiDataset:
     """MultiDataset."""
 
-    files: List[str]
+    files: list[str]
     data: np.ndarray
 
     """
@@ -41,7 +41,7 @@ class MultiDataset:
         self,
         src: Dataset,
         time_length: int,
-        files: List[str] = None,
+        files: list[str] = None,
     ):
         """Construct MultiDataset object."""
         self._base = src
@@ -123,7 +123,7 @@ class MultiDataset:
     @classmethod
     def read_multiple_files(
         cls,
-        path: Union[str, List[str]],
+        path: str | list[str],
         with_order: bool = False,
         regex_string: str = r"\d{4}.\d{2}.\d{2}",
         date: bool = True,
@@ -143,7 +143,7 @@ class MultiDataset:
               that follows a consistent format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD), e.g. "MSWEP_1979.01.01.tif".
 
         Args:
-            path (str | List[str]):
+            path (str | list[str]):
                 Path of the folder that contains all the rasters, or a list containing the paths of the rasters to read.
             with_order (bool):
                 True if the raster names follow a certain order. Then the raster names should have a date that follows
@@ -477,14 +477,14 @@ class MultiDataset:
         return cleo
 
     def to_file(
-        self, path: Union[str, List[str]], driver: str = "geotiff", band: int = 0
+        self, path: str | list[str], driver: str = "geotiff", band: int = 0
     ):
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
 
         Args:
-            path (Union[str, List[str]]):
+            path (str | list[str]):
                 a path includng the name of the raster and extention.
             driver (str):
                 driver = "geotiff".
@@ -579,8 +579,8 @@ class MultiDataset:
         self._base = dst
 
     def crop(
-        self, mask: Union[Dataset, str], inplace: bool = False, touch: bool = True
-    ) -> Union[None, Dataset]:
+        self, mask: Dataset | str, inplace: bool = False, touch: bool = True
+    ) -> None | Dataset:
         """crop.
 
             crop matches the location of nodata value from src raster to dst raster. Mask is where the NoDatavalue will
@@ -822,18 +822,18 @@ class MultiDataset:
 
     @staticmethod
     def merge(
-        src: List[str],
+        src: list[str],
         dst: str,
-        no_data_value: Union[float, int, str] = "0",
-        init: Union[float, int, str] = "nan",
-        n: Union[float, int, str] = "nan",
+        no_data_value: float | int | str = "0",
+        init: float | int | str = "nan",
+        n: float | int | str = "nan",
     ) -> None:
         """merge.
 
             Merges a group of rasters into one raster.
 
         Args:
-            src (List[str]):
+            src (list[str]):
                 List of paths to all input rasters.
             dst (str):
                 Path to the output raster.
@@ -908,8 +908,8 @@ class MultiDataset:
     def overlay(
         self,
         classes_map,
-        exclude_value: Union[float, int] = None,
-    ) -> Dict[List[float], List[float]]:
+        exclude_value: float | int = None,
+    ) -> dict[list[float], list[float]]:
         """Overlay.
 
         Args:
@@ -919,7 +919,7 @@ class MultiDataset:
                 Values to exclude from extracted values. Defaults to None.
 
         Returns:
-            Dict[List[float], List[float]]:
+            dict[list[float], list[float]]:
                 Dictionary with a list of values in the basemap as keys and for each key a list of all the
                 intersected values in the maps from the path.
         """

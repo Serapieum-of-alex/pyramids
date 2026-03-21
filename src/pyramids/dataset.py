@@ -5,11 +5,13 @@ raster contains python functions to handle raster data align them together based
 algebraic operation on cell's values.
 """
 
+from __future__ import annotations
+
 import os
 import warnings
 import logging
 from numbers import Number
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Generator
 
 import geopandas as gpd
 import numpy as np
@@ -136,12 +138,12 @@ class Dataset(AbstractDataset):
         return self._columns
 
     @property
-    def shape(self) -> Tuple[int, int, int]:
+    def shape(self) -> tuple[int, int, int]:
         """Shape (bands, rows, columns)."""
         return self.band_count, self.rows, self.columns
 
     @property
-    def geotransform(self) -> Tuple[float, float, float]:
+    def geotransform(self) -> tuple[float, float, float]:
         """WKT projection.
 
         (top left corner X/lon coordinate, cell_size, 0, top left corner y/lat coordinate, 0, -cell_size).
@@ -251,22 +253,22 @@ class Dataset(AbstractDataset):
         return self._band_count
 
     @property
-    def band_names(self) -> List[str]:
+    def band_names(self) -> list[str]:
         """Band names."""
         return self._get_band_names()
 
     @band_names.setter
-    def band_names(self, name_list: List):
+    def band_names(self, name_list: list):
         """Band names."""
         self._set_band_names(name_list)
 
     @property
-    def band_units(self) -> List[str]:
+    def band_units(self) -> list[str]:
         """Band units."""
         return self._band_units
 
     @band_units.setter
-    def band_units(self, value: List[str]):
+    def band_units(self, value: list[str]):
         """Band units setter."""
         self._band_units = value
         for i, val in enumerate(value):
@@ -278,7 +280,7 @@ class Dataset(AbstractDataset):
         return self._no_data_value
 
     @no_data_value.setter
-    def no_data_value(self, value: Union[List, Number]):
+    def no_data_value(self, value: list | Number):
         """no_data_value.
 
         No data value that marks the cells out of the domain
@@ -320,13 +322,13 @@ class Dataset(AbstractDataset):
         return super().meta_data
 
     @meta_data.setter
-    def meta_data(self, value: Dict[str, str]):
+    def meta_data(self, value: dict[str, str]):
         """Meta-data."""
         for key, value in value.items():
             self._raster.SetMetadataItem(key, value)
 
     @property
-    def block_size(self) -> List[Tuple[int, int]]:
+    def block_size(self) -> list[tuple[int, int]]:
         """Block Size.
 
         The block size is the size of the block that the raster is divided into, the block size is used to read and
@@ -354,7 +356,7 @@ class Dataset(AbstractDataset):
         return self._block_size
 
     @block_size.setter
-    def block_size(self, value: List[Tuple[int, int]]):
+    def block_size(self, value: list[tuple[int, int]]):
         """Block Size.
 
         Args:
@@ -378,7 +380,7 @@ class Dataset(AbstractDataset):
         return super().driver_type
 
     @property
-    def scale(self) -> List[float]:
+    def scale(self) -> list[float]:
         """Scale.
 
         The value of the scale is used to convert the pixel values to the real-world values.
@@ -409,7 +411,7 @@ class Dataset(AbstractDataset):
         return scale_list
 
     @scale.setter
-    def scale(self, value: List[float]):
+    def scale(self, value: list[float]):
         """Scale."""
         for i, val in enumerate(value):
             self._iloc(i).SetScale(val)
@@ -447,7 +449,7 @@ class Dataset(AbstractDataset):
         return offset_list
 
     @offset.setter
-    def offset(self, value: List[float]):
+    def offset(self, value: list[float]):
         """Offset."""
         for i, val in enumerate(value):
             self._iloc(i).SetOffset(val)
@@ -568,7 +570,7 @@ class Dataset(AbstractDataset):
         return cls(src, access="read_only" if read_only else "write")
 
     def read_array(
-        self, band: int = None, window: Union[GeoDataFrame, List[int]] = None
+        self, band: int = None, window: GeoDataFrame | list[int] = None
     ) -> np.ndarray:
         """Read the values stored in a given band.
 
@@ -696,7 +698,7 @@ class Dataset(AbstractDataset):
         return arr
 
     def _read_block(
-        self, band: int, window: Union[GeoDataFrame, List[int]]
+        self, band: int, window: GeoDataFrame | list[int]
     ) -> np.ndarray:
         """Read block of data from the dataset.
 
@@ -735,8 +737,8 @@ class Dataset(AbstractDataset):
         return block
 
     def _convert_polygon_to_window(
-        self, poly: Union[GeoDataFrame, "FeatureCollection"]
-    ) -> List[Any]:
+        self, poly: GeoDataFrame | FeatureCollection
+    ) -> list[Any]:
         poly = FeatureCollection(poly)
         bounds = poly.total_bounds
         df = pd.DataFrame(columns=["id", "x", "y"])
@@ -793,7 +795,7 @@ class Dataset(AbstractDataset):
         return self._calculate_bounds()
 
     @property
-    def bbox(self) -> List:
+    def bbox(self) -> list:
         """
         Bound box [xmin, ymin, xmax, ymax].
 
@@ -971,7 +973,7 @@ class Dataset(AbstractDataset):
         ]
 
     @property
-    def numpy_dtype(self) -> List[type]:
+    def numpy_dtype(self) -> list[type]:
         """List of the numpy data Type of each band, the data type is a numpy function."""
         return [
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "numpy"].values[0]
@@ -979,7 +981,7 @@ class Dataset(AbstractDataset):
         ]
 
     @property
-    def dtype(self) -> List[str]:
+    def dtype(self) -> list[str]:
         """List of the data Type of each band as strings."""
         return [
             DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == i, "name"].values[0]
@@ -1373,7 +1375,7 @@ class Dataset(AbstractDataset):
         unit: Any = None,
         attribute_table: DataFrame = None,
         inplace: bool = False,
-    ) -> Union[None, "Dataset"]:
+    ) -> None | Dataset:
         """Add a new band to the dataset.
 
         Args:
@@ -1610,7 +1612,7 @@ class Dataset(AbstractDataset):
 
         return df
 
-    def _get_stats(self, band: int = None) -> List[float]:
+    def _get_stats(self, band: int = None) -> list[float]:
         """_get_stats."""
         band_i = self._iloc(band)
         try:
@@ -1630,14 +1632,14 @@ class Dataset(AbstractDataset):
 
     def plot(
         self,
-        band: Optional[int] = None,
-        exclude_value: Optional[Any] = None,
-        rgb: Optional[List[int]] = None,
-        surface_reflectance: Optional[int] = None,
-        cutoff: Optional[List] = None,
-        overview: Optional[bool] = False,
-        overview_index: Optional[int] = 0,
-        percentile: Optional[int] = None,
+        band: int | None = None,
+        exclude_value: Any | None = None,
+        rgb: list[int] | None = None,
+        surface_reflectance: int | None = None,
+        cutoff: list | None = None,
+        overview: bool | None = False,
+        overview_index: int | None = 0,
+        percentile: int | None = None,
         **kwargs: Any,
     ) -> "ArrayGlyph":
         """Plot the values/overviews of a given band.
@@ -2127,12 +2129,12 @@ class Dataset(AbstractDataset):
     @classmethod
     def create(
         cls,
-        cell_size: Union[int, float],
+        cell_size: int | float,
         rows: int,
         columns: int,
         dtype: str,
         bands: int,
-        top_left_corner: Tuple,
+        top_left_corner: tuple,
         epsg: int,
         no_data_value: Any = None,
         path: str = None,
@@ -2241,11 +2243,11 @@ class Dataset(AbstractDataset):
     def create_from_array(
         cls,
         arr: np.ndarray,
-        top_left_corner: Tuple[float, float] = None,
-        cell_size: Union[int, float] = None,
-        geo: Tuple[float, float, float, float, float, float] = None,
-        epsg: Union[str, int] = 4326,
-        no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+        top_left_corner: tuple[float, float] = None,
+        cell_size: int | float = None,
+        geo: tuple[float, float, float, float, float, float] = None,
+        epsg: str | int = 4326,
+        no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
     ) -> "Dataset":
@@ -2365,9 +2367,9 @@ class Dataset(AbstractDataset):
         cols: int,
         rows: int,
         bands: int = None,
-        geo: Tuple[float, float, float, float, float, float] = None,
-        epsg: Union[str, int] = None,
-        no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+        geo: tuple[float, float, float, float, float, float] = None,
+        epsg: str | int = None,
+        no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
     ) -> "Dataset":
@@ -2486,7 +2488,7 @@ class Dataset(AbstractDataset):
 
         return dst_obj
 
-    def write_array(self, array: np.array, top_left_corner: List[Any] = None):
+    def write_array(self, array: np.array, top_left_corner: list[Any] = None):
         """Write an array to the dataset at the given xoff, yoff position.
 
         Args:
@@ -2547,7 +2549,7 @@ class Dataset(AbstractDataset):
         """Get coordinate reference system."""
         return self.raster.GetProjection()
 
-    def set_crs(self, crs: Optional = None, epsg: int = None):
+    def set_crs(self, crs: str | None = None, epsg: int = None):
         """Set the Coordinate Reference System (CRS).
 
             Set the Coordinate Reference System (CRS) of a
@@ -2585,7 +2587,7 @@ class Dataset(AbstractDataset):
         method: str = "nearest neighbor",
         maintain_alignment: int = False,
         inplace: bool = False,
-    ) -> Union["Dataset", None]:
+    ) -> Dataset | None:
         """Reproject the dataset to any projection.
 
             (default the WGS84 web mercator projection, without resampling)
@@ -2726,7 +2728,7 @@ class Dataset(AbstractDataset):
         sr.ImportFromEPSG(int(epsg))
         return sr
 
-    def _get_band_names(self) -> List[str]:
+    def _get_band_names(self) -> list[str]:
         """Get band names from band metadata if exists otherwise will return index [1,2, ...].
 
         Returns:
@@ -2753,7 +2755,7 @@ class Dataset(AbstractDataset):
 
         return names
 
-    def _set_band_names(self, name_list: List):
+    def _set_band_names(self, name_list: list):
         """Set band names from a given list of names.
 
         Returns:
@@ -2767,7 +2769,7 @@ class Dataset(AbstractDataset):
             # second, change the band names in the _band_names property.
             self._band_names[i] = name_list[i]
 
-    def _check_no_data_value(self, no_data_value: List):
+    def _check_no_data_value(self, no_data_value: list):
         """Validate the no_data_value with the dtype of the object.
 
         Args:
@@ -2807,7 +2809,7 @@ class Dataset(AbstractDataset):
         return no_data_value
 
     def _set_no_data_value(
-        self, no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE
+        self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE
     ):
         """setNoDataValue.
 
@@ -2854,7 +2856,7 @@ class Dataset(AbstractDataset):
                         f"no_data_value now is set to {DEFAULT_NO_DATA_VALUE} in the raster"
                     )
 
-    def _calculate_bbox(self) -> List:
+    def _calculate_bbox(self) -> list:
         """Calculate bounding box."""
         xmin, ymax = self.top_left_corner
         ymin = ymax - self.rows * self.cell_size
@@ -3298,8 +3300,8 @@ class Dataset(AbstractDataset):
         self,
         path: str,
         band: int = 0,
-        tile_length: Optional[int] = None,
-        creation_options: Optional[List[str]] = None,
+        tile_length: int | None = None,
+        creation_options: list[str] | None = None,
     ) -> None:
         """Save dataset to tiff file.
 
@@ -3381,7 +3383,7 @@ class Dataset(AbstractDataset):
                         f"Failed to save the {driver_name} raster to the path: {path}"
                     )
 
-    def convert_longitude(self, inplace: bool = False) -> Optional["Dataset"]:
+    def convert_longitude(self, inplace: bool = False) -> Dataset | None:
         """Convert Longitude.
 
         - convert the longitude from 0-360 to -180 - 180.
@@ -3456,7 +3458,7 @@ class Dataset(AbstractDataset):
         tile: bool = False,
         tile_size: int = 256,
         touch: bool = True,
-    ) -> Union[DataFrame, GeoDataFrame]:
+    ) -> DataFrame | GeoDataFrame:
         """Convert a dataset to a vector.
 
         The function does the following:
@@ -3726,8 +3728,8 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def fill(
-        self, value: Union[float, int], inplace: bool = False, path: str = None
-    ) -> Union["Dataset", None]:
+        self, value: float | int, inplace: bool = False, path: str = None
+    ) -> Dataset | None:
         """Fill the domain cells with a certain value.
 
             Fill takes a raster and fills it with one value
@@ -3787,7 +3789,7 @@ class Dataset(AbstractDataset):
             return dst
 
     def resample(
-        self, cell_size: Union[int, float], method: str = "nearest neighbor"
+        self, cell_size: int | float, method: str = "nearest neighbor"
     ) -> "Dataset":
         """resample.
 
@@ -4066,8 +4068,8 @@ class Dataset(AbstractDataset):
 
     def _crop_aligned(
         self,
-        mask: Union[gdal.Dataset, np.ndarray],
-        mask_noval: Union[int, float] = None,
+        mask: gdal.Dataset | np.ndarray,
+        mask_noval: int | float = None,
         fill_gaps: bool = False,
     ) -> "Dataset":
         """Clip/crop by matching the nodata layout from mask to the source raster.
@@ -4315,7 +4317,7 @@ class Dataset(AbstractDataset):
 
     def _crop_with_raster(
         self,
-        mask: Union[gdal.Dataset, str],
+        mask: gdal.Dataset | str,
     ) -> "Dataset":
         """Crop this raster using another raster as a mask.
 
@@ -4346,7 +4348,7 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def _crop_with_polygon_warp(
-        self, feature: Union[FeatureCollection, GeoDataFrame], touch: bool = True
+        self, feature: FeatureCollection | GeoDataFrame, touch: bool = True
     ) -> "Dataset":
         """Crop raster with polygon.
 
@@ -4428,10 +4430,10 @@ class Dataset(AbstractDataset):
 
     def crop(
         self,
-        mask: Union[GeoDataFrame, FeatureCollection],
+        mask: GeoDataFrame | FeatureCollection,
         touch: bool = True,
         inplace: bool = False,
-    ) -> Union["Dataset", None]:
+    ) -> Dataset | None:
         """Crop dataset using dataset/feature collection.
 
             Crop/Clip the Dataset object using a polygon/raster.
@@ -4548,7 +4550,7 @@ class Dataset(AbstractDataset):
 
     @staticmethod
     def _nearest_neighbour(
-        array: np.ndarray, no_data_value: Union[float, int], rows: list, cols: list
+        array: np.ndarray, no_data_value: float | int, rows: list, cols: list
     ) -> np.ndarray:
         """Fill specified cells with the value of the nearest neighbor.
 
@@ -4652,7 +4654,7 @@ class Dataset(AbstractDataset):
 
     def map_to_array_coordinates(
         self,
-        points: Union[GeoDataFrame, FeatureCollection, DataFrame],
+        points: GeoDataFrame | FeatureCollection | DataFrame,
     ) -> np.ndarray:
         """Convert coordinates of points to array indices.
 
@@ -4738,10 +4740,10 @@ class Dataset(AbstractDataset):
 
     def array_to_map_coordinates(
         self,
-        rows_index: Union[List[Number], np.ndarray],
-        column_index: Union[List[Number], np.ndarray],
+        rows_index: list[Number] | np.ndarray,
+        column_index: list[Number] | np.ndarray,
         center: bool = False,
-    ) -> Tuple[List[Number], List[Number]]:
+    ) -> tuple[list[Number], list[Number]]:
         """Convert array indices to map coordinates.
 
         array_to_map_coordinates converts the array indices (rows, cols) to real coordinates (x, y) or (lon, lat).
@@ -4801,7 +4803,7 @@ class Dataset(AbstractDataset):
         self,
         band: int = None,
         exclude_value: Any = None,
-        feature: Union[FeatureCollection, GeoDataFrame] = None,
+        feature: FeatureCollection | GeoDataFrame = None,
     ) -> np.ndarray:
         """Extract.
 
@@ -4918,8 +4920,8 @@ class Dataset(AbstractDataset):
         self,
         classes_map,
         band: int = 0,
-        exclude_value: Union[float, int] = None,
-    ) -> Dict[List[float], List[float]]:
+        exclude_value: float | int = None,
+    ) -> dict[list[float], list[float]]:
         """Overlay.
 
         Overlay method extracts all the values in the dataset for each class in the given class map.
@@ -5017,8 +5019,8 @@ class Dataset(AbstractDataset):
     def footprint(
         self,
         band: int = 0,
-        exclude_values: Optional[List[Any]] = None,
-    ) -> Union[GeoDataFrame, None]:
+        exclude_values: list[Any] | None = None,
+    ) -> GeoDataFrame | None:
         """Extract the real coverage of the values in a certain band.
 
         Args:
@@ -5430,7 +5432,7 @@ class Dataset(AbstractDataset):
 
     def cluster(
         self, lower_bound: Any, upper_bound: Any
-    ) -> Tuple[np.ndarray, int, list, list]:
+    ) -> tuple[np.ndarray, int, list, list]:
         """Group all the connected values between two bounds.
 
         Args:
@@ -5546,7 +5548,7 @@ class Dataset(AbstractDataset):
 
     def cluster2(
         self,
-        band: Union[int, List[int]] = None,
+        band: int | list[int] = None,
     ) -> GeoDataFrame:
         """Cluster the connected equal cells into polygons.
 
@@ -5616,7 +5618,7 @@ class Dataset(AbstractDataset):
         return gdf
 
     @property
-    def overview_count(self) -> List[int]:
+    def overview_count(self) -> list[int]:
         """Number of the overviews for each band."""
         overview_number = []
         for i in range(self.band_count):
@@ -5961,7 +5963,7 @@ class Dataset(AbstractDataset):
         return arr
 
     @property
-    def band_color(self) -> Dict[int, str]:
+    def band_color(self) -> dict[int, str]:
         """Band colors."""
         color_dict = {}
         for i in range(self.band_count):
@@ -5971,7 +5973,7 @@ class Dataset(AbstractDataset):
         return color_dict
 
     @band_color.setter
-    def band_color(self, values: Dict[int, str]):
+    def band_color(self, values: dict[int, str]):
         """Assign color interpretation to dataset bands.
 
         Args:
@@ -6451,8 +6453,8 @@ class Dataset(AbstractDataset):
     #     return percent
 
     def to_xyz(
-        self, bands: Optional[List[int]] = None, path: Optional[str] = None
-    ) -> Union[DataFrame, None]:
+        self, bands: list[int] | None = None, path: str | None = None
+    ) -> DataFrame | None:
         """Convert to XYZ.
 
         Args:

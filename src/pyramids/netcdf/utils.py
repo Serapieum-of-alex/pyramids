@@ -1,17 +1,17 @@
-from typing import Any, Dict, Union, List, TypeAlias, Optional, Tuple
+from typing import Any, TypeAlias
 import re
 from datetime import datetime, timedelta
 from osgeo import gdal, osr
 
 # Keep simple, JSON-serializable attribute values only
-AttributeScalar: TypeAlias = Union[bool, int, float, str]
-AttributeVector: TypeAlias = List[AttributeScalar]
-AttributeValue: TypeAlias = Union[AttributeScalar, AttributeVector]
+AttributeScalar: TypeAlias = bool | int | float | str
+AttributeVector: TypeAlias = list[AttributeScalar]
+AttributeValue: TypeAlias = AttributeScalar | AttributeVector
 _ORIGIN_RE = re.compile(r'^\s*([A-Za-z]+)\s+since\s+(.+?)\s*$', re.IGNORECASE)
 
 
 
-def _full_name_with_fallback(group: gdal.Group, default_name: Optional[str] = None) -> str:
+def _full_name_with_fallback(group: gdal.Group, default_name: str | None = None) -> str:
     """Get the full hierarchical name of a GDAL group with fallback.
 
     Attempts ``group.GetFullName()`` first, then falls back to
@@ -55,7 +55,7 @@ def _get_group_name(group: gdal.Group) -> str:
     return gname
 
 
-def _safe_array_names(group: gdal.Group) -> List[str]:
+def _safe_array_names(group: gdal.Group) -> list[str]:
     """List multidimensional array names in a group, sorted.
 
     Args:
@@ -72,7 +72,7 @@ def _safe_array_names(group: gdal.Group) -> List[str]:
     return sorted(list(names))
 
 
-def _safe_group_names(group: gdal.Group) -> List[str]:
+def _safe_group_names(group: gdal.Group) -> list[str]:
     """List sub-group names in a group, sorted.
 
     Args:
@@ -90,7 +90,7 @@ def _safe_group_names(group: gdal.Group) -> List[str]:
     return sorted(list(names))
 
 
-def _get_root_group(dataset: gdal.Dataset) -> Optional[gdal.Group]:
+def _get_root_group(dataset: gdal.Dataset) -> gdal.Group | None:
     """Get the root group of a GDAL multidimensional dataset.
 
     Args:
@@ -122,7 +122,7 @@ def _get_driver_name(dataset: gdal.Dataset) -> str:
         return "UNKNOWN"
 
 
-def _export_srs(srs: Optional[osr.SpatialReference]) -> Tuple[Optional[str], Optional[str]]:
+def _export_srs(srs: osr.SpatialReference | None) -> tuple[str | None, str | None]:
     """Export a spatial reference to WKT and PROJJSON strings.
 
     Args:
@@ -148,7 +148,9 @@ def _export_srs(srs: Optional[osr.SpatialReference]) -> Tuple[Optional[str], Opt
     return wkt, projjson
 
 
-def _get_array_nodata(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue]) -> Optional[Union[int, float, str]]:
+def _get_array_nodata(
+    mdarr: gdal.MDArray, attrs: dict[str, AttributeValue]
+) -> int | float | str | None:
     """Determine the no-data value for a multidimensional array.
 
     Checks CF-standard attributes (``_FillValue``,
@@ -186,7 +188,9 @@ def _get_array_nodata(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue]) -> 
     return None
 
 
-def _get_array_scale_offset(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue]) -> Tuple[Optional[float], Optional[float]]:
+def _get_array_scale_offset(
+    mdarr: gdal.MDArray, attrs: dict[str, AttributeValue]
+) -> tuple[float | None, float | None]:
     """Extract scale and offset for packed data.
 
     Reads CF ``scale_factor`` / ``add_offset`` attributes first,
@@ -226,7 +230,7 @@ def _get_array_scale_offset(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue
     return scale, offset
 
 
-def _get_block_size(mdarr: gdal.MDArray) -> Optional[List[int]]:
+def _get_block_size(mdarr: gdal.MDArray) -> list[int] | None:
     """Get the block (chunk) size of a multidimensional array.
 
     Args:
@@ -245,7 +249,7 @@ def _get_block_size(mdarr: gdal.MDArray) -> Optional[List[int]]:
     return None
 
 
-def _get_coord_variable_names(mdarr: gdal.MDArray) -> List[str]:
+def _get_coord_variable_names(mdarr: gdal.MDArray) -> list[str]:
     """Get the names of coordinate variables for an array.
 
     Retrieves the full or short names of each coordinate
@@ -259,7 +263,7 @@ def _get_coord_variable_names(mdarr: gdal.MDArray) -> List[str]:
         Returns an empty list if none are found or the
         query fails.
     """
-    names: List[str] = []
+    names: list[str] = []
     try:
         cvs = mdarr.GetCoordinateVariables()
     except Exception:
@@ -637,7 +641,7 @@ def _read_attribute_value(attr: gdal.Attribute) -> AttributeValue:
     return _normalize_attr_value(val)
 
 
-def _read_attributes(obj: Any) -> Dict[str, AttributeValue]:
+def _read_attributes(obj: Any) -> dict[str, AttributeValue]:
     """Read all attributes from a GDAL object into a dictionary.
 
     Iterates over attributes exposed by
@@ -654,7 +658,7 @@ def _read_attributes(obj: Any) -> Dict[str, AttributeValue]:
         A dictionary mapping attribute names to their
         normalized JSON-serializable values.
     """
-    attrs: Dict[str, AttributeValue] = {}
+    attrs: dict[str, AttributeValue] = {}
     try:
         att_list = obj.GetAttributes()
     except Exception:

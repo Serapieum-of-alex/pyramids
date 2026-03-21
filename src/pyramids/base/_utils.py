@@ -1,6 +1,5 @@
 """Utility module."""
 
-from typing import Union
 from pathlib import Path
 import yaml
 import numpy as np
@@ -184,7 +183,7 @@ def gdal_constant_to_color_name(gdal_constant: int) -> str:
     return color_name
 
 
-def numpy_to_gdal_dtype(arr: Union[np.ndarray, np.dtype, str]) -> int:
+def numpy_to_gdal_dtype(arr: np.ndarray | np.dtype | str) -> int:
     """Map function between numpy and GDAL data types.
 
     Args:

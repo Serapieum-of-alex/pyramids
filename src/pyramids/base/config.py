@@ -41,7 +41,6 @@ import os
 import yaml
 import logging
 import sys
-from typing import Union, Optional
 from pathlib import Path
 from dataclasses import dataclass
 from osgeo import gdal, ogr
@@ -154,8 +153,8 @@ class LoggerManager:
 
     def __init__(
         self,
-        level: Union[int, str] = logging.INFO,
-        log_file: Union[str, Path, None] = None,
+        level: int | str = logging.INFO,
+        log_file: str | Path | None = None,
     ):
         """Create a LoggerManager and configure logging.
 
@@ -184,8 +183,8 @@ class LoggerManager:
 
     def _setup_logging(
         self,
-        level: Union[int, str] = logging.INFO,
-        log_file: Union[str, Path, None] = None,
+        level: int | str = logging.INFO,
+        log_file: str | Path | None = None,
     ) -> None:
         """Configure application-wide logging for Pyramids.
 
@@ -391,7 +390,7 @@ class EnvironmentVariables:
         paths = path.split(os.pathsep) if path else []
         return paths
 
-    def if_exists(self, path: Union[str, Path]) -> bool:
+    def if_exists(self, path: str | Path) -> bool:
         """Check whether a directory exists in PATH.
 
         Args:
@@ -413,7 +412,7 @@ class EnvironmentVariables:
         """
         return str(path) in self.paths
 
-    def prepend(self, path: Union[str, Path]) -> None:
+    def prepend(self, path: str | Path) -> None:
         """Prepend a directory to PATH if not already present.
 
         Args:
@@ -473,10 +472,10 @@ class Plugins:
     """
 
     site_packages_path: str | Path
-    plugins_path: Optional[Path] = None
-    bin_path: Optional[Path] = None
-    data_path: Optional[Path] = None
-    proj_path: Optional[Path] = None
+    plugins_path: Path | None = None
+    bin_path: Path | None = None
+    data_path: Path | None = None
+    proj_path: Path | None = None
 
     def __post_init__(self):
         """Initialize derived GDAL-related paths based on site_packages_path."""
@@ -487,7 +486,7 @@ class Plugins:
         self.data_path = base_path / "share" / "gdal"
         self.proj_path = base_path / "share" / "proj"
 
-    def check_path(self) -> Optional[Path]:
+    def check_path(self) -> Path | None:
         """Probe known locations under site-packages and set GDAL env variables.
 
         This method checks for the presence of the GDAL plugins folder and, if
@@ -582,7 +581,7 @@ class Config:
     """
 
     def __init__(
-        self, level: Union[int, str] = logging.INFO, log_file: Union[str, Path, None] = None,
+        self, level: int | str = logging.INFO, log_file: str | Path | None = None,
         config_file="config.yaml"
     ):
         """Construct a Config, load YAML, configure logging, and initialize GDAL.
@@ -687,7 +686,7 @@ class Config:
             gdal.SetConfigOption("GDAL_DRIVER_PATH", str(gdal_plugins_path))
         gdal.AllRegister()
 
-    def set_env_conda(self) -> Optional[Path]:
+    def set_env_conda(self) -> Path | None:
         """Set GDAL-related environment variables in a Conda environment.
 
         This method looks up the active Conda environment (via CONDA_PREFIX) and
@@ -757,7 +756,7 @@ class Config:
 
         return gdal_plugins_path if gdal_plugins_path.exists() else None
 
-    def dynamic_env_variables(self) -> Optional[Path]:
+    def dynamic_env_variables(self) -> Path | None:
         """Locate GDAL plugin directories and export GDAL_DRIVER_PATH.
 
         The search proceeds in this order:
@@ -815,8 +814,8 @@ class Config:
 
     def setup_logging(
         self,
-        level: Union[int, str] = logging.INFO,
-        log_file: Union[str, Path, None] = None,
+        level: int | str = logging.INFO,
+        log_file: str | Path | None = None,
     ):
         """
         Configure application-wide logging for Pyramids by delegating to LoggerManager.

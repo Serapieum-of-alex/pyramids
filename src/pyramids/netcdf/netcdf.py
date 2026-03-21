@@ -5,7 +5,7 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 """
 from __future__ import annotations
 from numbers import Number
-from typing import Any, Dict, List, Tuple, Union, Optional
+from typing import Any
 import numpy as np
 from osgeo import gdal
 from pyramids.base._utils import numpy_to_gdal_dtype
@@ -143,7 +143,7 @@ class NetCDF(Dataset):
         return self._geotransform
 
     @property
-    def variable_names(self) -> List[str]:
+    def variable_names(self) -> list[str]:
         """Names of data variables (excluding dimension coordinate arrays).
 
         Returns:
@@ -154,7 +154,7 @@ class NetCDF(Dataset):
         return self.get_variable_names()
 
     @property
-    def variables(self) -> Dict[str, "NetCDF"]:
+    def variables(self) -> dict[str, "NetCDF"]:
         """All data variables as a dict of ``{name: NetCDF}`` subsets.
 
         Each value is a classic-raster NetCDF obtained via
@@ -176,7 +176,7 @@ class NetCDF(Dataset):
         return self._no_data_value
 
     @no_data_value.setter
-    def no_data_value(self, value: Union[List, Number]):
+    def no_data_value(self, value: list | Number):
         """Set the no-data value that marks cells outside the domain.
 
         The setter only changes the ``no_data_value`` attribute; it does
@@ -328,7 +328,7 @@ class NetCDF(Dataset):
             self._cached_meta_data = get_metadata(self._raster, open_options)
         return self._cached_meta_data
 
-    def get_all_metadata(self, open_options: Dict = None) -> "NetCDFMetadata":
+    def get_all_metadata(self, open_options: dict = None) -> "NetCDFMetadata":
         """Get full MDIM metadata with a dimension overview snapshot.
 
         Unlike ``meta_data`` (which is cached), this always re-traverses
@@ -348,7 +348,7 @@ class NetCDF(Dataset):
 
     def _build_dimension_overview(
         self, metadata: "NetCDFMetadata" = None
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Create a compact snapshot of dimensions.
 
         Args:
@@ -367,8 +367,8 @@ class NetCDF(Dataset):
             for name in names
             if md.get_dimension(name) is not None
         }
-        attrs: Dict[str, Dict[str, Any]] = {}
-        values: Dict[str, List[Union[int, float, str]]] = {}
+        attrs: dict[str, dict[str, Any]] = {}
+        values: dict[str, list[int | float | str]] = {}
 
         for name in names:
             dim = md.get_dimension(name)
@@ -440,7 +440,7 @@ class NetCDF(Dataset):
                     time_stamp = list(map(func, time_vals.reshape(-1)))
         return time_stamp
 
-    def _get_dimension_names(self) -> List[str]:
+    def _get_dimension_names(self) -> list[str]:
         rg = self._raster.GetRootGroup()
         if rg is not None:
             dims = rg.GetDimensions()
@@ -450,7 +450,7 @@ class NetCDF(Dataset):
         return dims_names
 
     @property
-    def dimension_names(self) -> List[str]:
+    def dimension_names(self) -> list[str]:
         """Names of all dimensions in the root group (e.g., ``["x", "y", "time"]``).
 
         Returns:
@@ -469,7 +469,7 @@ class NetCDF(Dataset):
             dim = None
         return dim
 
-    def _read_variable(self, var: str) -> Union[np.ndarray, None]:
+    def _read_variable(self, var: str) -> np.ndarray | None:
         """Read a variable's data as a numpy array.
 
         Uses the MDIM root group when available (avoids opening a new GDAL
@@ -510,7 +510,7 @@ class NetCDF(Dataset):
                 pass
         return result
 
-    def get_variable_names(self) -> List[str]:
+    def get_variable_names(self) -> list[str]:
         """Return names of data variables, excluding dimension coordinates.
 
         In MDIM mode, queries ``GetMDArrayNames()`` and filters out arrays
@@ -878,10 +878,10 @@ class NetCDF(Dataset):
     def create_from_array(
         cls,
         arr: np.ndarray,
-        geo: Tuple[float, float, float, float, float, float],
-        bands_values: List = None,
-        epsg: Union[str, int] = 4326,
-        no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+        geo: tuple[float, float, float, float, float, float],
+        bands_values: list = None,
+        epsg: str | int = 4326,
+        no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
         variable_name: str = None,
@@ -942,10 +942,10 @@ class NetCDF(Dataset):
         variable_name: str,
         cols: int,
         rows: int,
-        bands_values: List = None,
-        geo: Tuple[float, float, float, float, float, float] = None,
-        epsg: Union[str, int] = None,
-        no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+        bands_values: list = None,
+        geo: tuple[float, float, float, float, float, float] = None,
+        epsg: str | int = None,
+        no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
     ) -> gdal.Dataset:
@@ -1192,7 +1192,7 @@ class NetCDF(Dataset):
         self._invalidate_caches()
 
     def add_variable(
-        self, dataset: Union["Dataset", "NetCDF"], variable_name: str = None
+        self, dataset: "Dataset" | "NetCDF", variable_name: str = None
     ):
         """Copy MDArray variables from another NetCDF into this container.
 

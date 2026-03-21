@@ -15,7 +15,7 @@ import tempfile
 import uuid
 import warnings
 from numbers import Number
-from typing import Any, Dict, Iterable, List, Tuple, Union
+from typing import Any, Iterable
 
 import geopandas as gpd
 import numpy as np
@@ -55,7 +55,7 @@ class FeatureCollection:
     - Computing center points
     """
 
-    def __init__(self, gdf: Union[GeoDataFrame, DataSource]):
+    def __init__(self, gdf: GeoDataFrame | DataSource):
         """Create a FeatureCollection object."""
         # read the drivers catalog
         self._feature = gdf
@@ -75,7 +75,7 @@ class FeatureCollection:
         return message
 
     @property
-    def feature(self) -> Union[GeoDataFrame, DataSource]:
+    def feature(self) -> GeoDataFrame | DataSource:
         """Geodataframe or DataSource."""
         return self._feature
 
@@ -85,7 +85,7 @@ class FeatureCollection:
         return self._get_epsg()
 
     @property
-    def total_bounds(self) -> List[Number]:
+    def total_bounds(self) -> list[Number]:
         """Bounding coordinates `min-x`, `min-y`, `max-x`, `maxy`."""
         if isinstance(self.feature, GeoDataFrame):
             bounds = self.feature.total_bounds.tolist()
@@ -95,7 +95,7 @@ class FeatureCollection:
         return bounds
 
     @property
-    def top_left_corner(self) -> List[Number]:
+    def top_left_corner(self) -> list[Number]:
         """Top left corner coordinates."""
         if isinstance(self.feature, GeoDataFrame):
             bounds = self.feature.total_bounds.tolist()
@@ -106,7 +106,7 @@ class FeatureCollection:
         return bounds
 
     @property
-    def layers_count(self) -> Union[int, None]:
+    def layers_count(self) -> int | None:
         """layers_count.
 
         Number of layers in a datasource.
@@ -119,7 +119,7 @@ class FeatureCollection:
             return None
 
     @property
-    def layer_names(self) -> List[str]:
+    def layer_names(self) -> list[str]:
         """OGR object layers names'."""
         names = []
         if isinstance(self.feature, DataSource) or isinstance(
@@ -131,7 +131,7 @@ class FeatureCollection:
         return names
 
     @property
-    def column(self) -> List:
+    def column(self) -> list:
         """Column Names."""
         names = []
         if isinstance(self.feature, DataSource) or isinstance(
@@ -161,7 +161,7 @@ class FeatureCollection:
         return file_name
 
     @property
-    def dtypes(self) -> Dict[str, str]:
+    def dtypes(self) -> dict[str, str]:
         """Data Type.
 
             - Get the data types of the columns in the vector file.
@@ -206,7 +206,7 @@ class FeatureCollection:
         return cls(gdf)
 
     @staticmethod
-    def create_ds(driver: str = "geojson", path: str = None) -> Union[DataSource, None]:
+    def create_ds(driver: str = "geojson", path: str = None) -> DataSource | None:
         """Create OGR DataSource.
 
         Args:
@@ -269,7 +269,7 @@ class FeatureCollection:
 
     def _gdf_to_ds(
         self, inplace: bool = False, gdal_dataset=False
-    ) -> Union[DataSource, "FeatureCollection", None]:
+    ) -> DataSource | FeatureCollection | None:
         """Convert a GeoPandas GeoDataFrame into an OGR DataSource.
 
         Args:
@@ -394,7 +394,7 @@ class FeatureCollection:
         self,
         cell_size: Any = None,
         dataset=None,
-        column_name: Union[str, List[str]] = None,
+        column_name: str | list[str] = None,
     ) -> "Dataset":
         """Covert a vector into raster.
 
@@ -623,7 +623,7 @@ class FeatureCollection:
         return epsg
 
     @staticmethod
-    def _get_xy_coords(geometry, coord_type: str) -> List:
+    def _get_xy_coords(geometry, coord_type: str) -> list:
         """getXYCoords.
 
            Returns either x or y coordinates from geometry coordinate sequence.
@@ -648,7 +648,7 @@ class FeatureCollection:
         return coords
 
     @staticmethod
-    def _get_point_coords(geometry: Point, coord_type: str) -> Union[float, int]:
+    def _get_point_coords(geometry: Point, coord_type: str) -> float | int:
         """Get point coordinates for a Point geometry.
 
         Returns coordinates of a Point object.
@@ -688,7 +688,7 @@ class FeatureCollection:
         return FeatureCollection._get_xy_coords(geometry, coord_type)
 
     @staticmethod
-    def _get_poly_coords(geometry: Polygon, coord_type: str) -> List:
+    def _get_poly_coords(geometry: Polygon, coord_type: str) -> list:
         """Get coordinates of a Polygon's exterior.
 
         Args:
@@ -769,7 +769,7 @@ class FeatureCollection:
 
     @staticmethod
     def _multi_geom_handler(
-        multi_geometry: Union[MultiPolygon, MultiPoint, MultiLineString],
+        multi_geometry: MultiPolygon | MultiPoint | MultiLineString,
         coord_type: str,
         geom_type: str,
     ):
@@ -874,8 +874,8 @@ class FeatureCollection:
 
     @staticmethod
     def create_polygon(
-        coords: List[Tuple[float, float]], wkt: bool = False
-    ) -> Union[str, Polygon]:
+        coords: list[tuple[float, float]], wkt: bool = False
+    ) -> str | Polygon:
         """Create a polygon geometry from coordinates.
 
         Args:
@@ -915,8 +915,8 @@ class FeatureCollection:
 
     @staticmethod
     def create_point(
-        coords: Iterable[Tuple[float]], epsg: int = None
-    ) -> Union[List[Point], GeoDataFrame]:
+        coords: Iterable[tuple[float]], epsg: int = None
+    ) -> list[Point] | GeoDataFrame:
         """Create Shapely Point objects from coordinate tuples.
 
         Args:
@@ -948,7 +948,7 @@ class FeatureCollection:
 
         return points
 
-    def concate(self, gdf: GeoDataFrame, inplace: bool = False) -> Union[GeoDataFrame, None]:
+    def concate(self, gdf: GeoDataFrame, inplace: bool = False) -> GeoDataFrame | None:
         """Concatenate two shapefiles into one object.
 
         Args:
@@ -1021,7 +1021,7 @@ class FeatureCollection:
         from_epsg: int = 4326,
         to_epsg: int = 3857,
         precision: int = 6,
-    ) -> Tuple[List[float], List[float]]:
+    ) -> tuple[list[float], list[float]]:
         """reproject_points.
 
         This function changes the projection of coordinates from one coordinate system to another (default: from GCS to Web Mercator as used by Google Maps).
@@ -1075,7 +1075,7 @@ class FeatureCollection:
     @staticmethod
     def reproject_points2(
         lat: list, lng: list, from_epsg: int = 4326, to_epsg: int = 3857
-    ) -> Tuple[List[float], List[float]]:
+    ) -> tuple[list[float], list[float]]:
         """reproject_points.
 
         This function changes the projection of the coordinates from one coordinate system to another

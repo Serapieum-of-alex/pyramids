@@ -7,7 +7,7 @@ algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from numbers import Number
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
@@ -162,7 +162,7 @@ class AbstractDataset(ABC):
 
     @no_data_value.setter
     @abstractmethod
-    def no_data_value(self, value: Union[List, Number]):
+    def no_data_value(self, value: list | Number):
         """no_data_value.
 
         No data value that marks the cells out of the domain
@@ -222,7 +222,7 @@ class AbstractDataset(ABC):
         return y_coords
 
     @property
-    def block_size(self) -> List[Tuple[int, int]]:
+    def block_size(self) -> list[tuple[int, int]]:
         """Block Size.
 
         The block size is the size of the block that the raster is divided into, the block size is used to read and
@@ -242,7 +242,7 @@ class AbstractDataset(ABC):
         return self._block_size
 
     @block_size.setter
-    def block_size(self, value: List[Tuple[int, int]]):
+    def block_size(self, value: list[tuple[int, int]]):
         """Block Size.
 
         Args:
@@ -285,7 +285,7 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def read_array(self, band: int = None, window: List[int] = None) -> np.ndarray:
+    def read_array(self, band: int = None, window: list[int] = None) -> np.ndarray:
         """Read Array.
 
             - read the values stored in a given band.
@@ -324,7 +324,7 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def _read_block(self, band: int, window=List[int]) -> np.ndarray:
+    def _read_block(self, band: int, window=list[int]) -> np.ndarray:
         """Read block of data from the dataset.
 
         Args:
@@ -346,9 +346,9 @@ class AbstractDataset(ABC):
         self,
         band: int = None,
         exclude_value: Any = None,
-        rgb: List[int] = None,
+        rgb: list[int] = None,
         surface_reflectance: int = 10000,
-        cutoff: List = None,
+        cutoff: list = None,
         overview: bool = False,
         overview_index: int = 0,
         **kwargs,
@@ -442,10 +442,10 @@ class AbstractDataset(ABC):
     def create_from_array(
         cls,
         arr: np.ndarray,
-        geo: Tuple[float, float, float, float, float, float],
-        bands_values: List = None,
-        epsg: Union[str, int] = 4326,
-        no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE,
+        geo: tuple[float, float, float, float, float, float],
+        bands_values: list = None,
+        epsg: str | int = 4326,
+        no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
         variable_name: str = None,
@@ -484,7 +484,7 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def set_crs(self, crs: Optional = None, epsg: int = None):
+    def set_crs(self, crs: str | None = None, epsg: int = None):
         """Set Coordinates reference system.
 
             Set the Coordinate Reference System (CRS) of a
@@ -522,7 +522,7 @@ class AbstractDataset(ABC):
         method: str = "nearest neighbor",
         maintain_alignment: int = False,
         inplace: bool = False,
-    ) -> Union["AbstractDataset", None]:
+    ) -> AbstractDataset | None:
         """To EPSG.
 
         to_epsg reprojects a raster to any projection
@@ -583,7 +583,7 @@ class AbstractDataset(ABC):
         return sr
 
     @abstractmethod
-    def _check_no_data_value(self, no_data_value: List):
+    def _check_no_data_value(self, no_data_value: list):
         """Validate The no_data_value with the dtype of the object.
 
         Args:
@@ -599,7 +599,7 @@ class AbstractDataset(ABC):
 
     @abstractmethod
     def _set_no_data_value(
-        self, no_data_value: Union[Any, list] = DEFAULT_NO_DATA_VALUE
+        self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE
     ):
         """Set the NoDataValue.
 
@@ -663,10 +663,10 @@ class AbstractDataset(ABC):
     @abstractmethod
     def crop(
         self,
-        mask: Union[GeoDataFrame, FeatureCollection],
+        mask: GeoDataFrame | FeatureCollection,
         touch: bool = True,
         inplace: bool = False,
-    ) -> Union["AbstractDataset", None]:
+    ) -> AbstractDataset | None:
         """Crop.
 
             Crop/Clip the Dataset object using a polygon/raster.
@@ -688,7 +688,7 @@ class AbstractDataset(ABC):
     def extract(
         self,
         exclude_value: Any = None,
-        feature: Union[FeatureCollection, GeoDataFrame] = None,
+        feature: FeatureCollection | GeoDataFrame = None,
     ) -> np.ndarray:
         """Extract.
 
@@ -711,8 +711,8 @@ class AbstractDataset(ABC):
         self,
         classes_map,
         band: int = 0,
-        exclude_value: Union[float, int] = None,
-    ) -> Dict[List[float], List[float]]:
+        exclude_value: float | int = None,
+    ) -> dict[list[float], list[float]]:
         """Overlay.
 
             overlay extracts all the values in raster file if you have two maps one with classes, and the other map
