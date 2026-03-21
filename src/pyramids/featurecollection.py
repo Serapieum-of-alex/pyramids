@@ -8,6 +8,8 @@ drivers available in geopandas
 gpd.io.file._EXTENSION_TO_DRIVER
 """
 
+from __future__ import annotations
+
 import json
 import os
 import shutil
@@ -15,7 +17,10 @@ import tempfile
 import uuid
 import warnings
 from numbers import Number
-from typing import Any, Iterable
+from typing import Any, Iterable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyramids.dataset import Dataset
 
 import geopandas as gpd
 import numpy as np
@@ -88,10 +93,10 @@ class FeatureCollection:
     def total_bounds(self) -> list[Number]:
         """Bounding coordinates `min-x`, `min-y`, `max-x`, `maxy`."""
         if isinstance(self.feature, GeoDataFrame):
-            bounds = self.feature.total_bounds.tolist()
+            bounds: list[Number] = self.feature.total_bounds.tolist()
         else:
-            bounds = self.feature.GetLayer().GetExtent()
-            bounds = [bounds[0], bounds[2], bounds[1], bounds[3]]
+            ext = self.feature.GetLayer().GetExtent()
+            bounds = [ext[0], ext[2], ext[1], ext[3]]
         return bounds
 
     @property
@@ -111,38 +116,42 @@ class FeatureCollection:
 
         Number of layers in a datasource.
         """
+        result: int | None = None
         if isinstance(self.feature, DataSource) or isinstance(
             self.feature, gdal.Dataset
         ):
-            return self.feature.GetLayerCount()
-        else:
-            return None
+            result = int(self.feature.GetLayerCount())
+        return result
 
     @property
     def layer_names(self) -> list[str]:
         """OGR object layers names'."""
-        names = []
+        names: list[str] = []
+        layer_count = self.layers_count
         if isinstance(self.feature, DataSource) or isinstance(
             self.feature, gdal.Dataset
         ):
-            for i in range(self.layers_count):
-                names.append(self.feature.GetLayer(i).GetLayerDefn().GetName())
+            if layer_count is not None:
+                for i in range(layer_count):
+                    names.append(self.feature.GetLayer(i).GetLayerDefn().GetName())
 
         return names
 
     @property
     def column(self) -> list:
         """Column Names."""
-        names = []
+        names: list[str] = []
+        layer_count = self.layers_count
         if isinstance(self.feature, DataSource) or isinstance(
             self.feature, gdal.Dataset
         ):
-            for i in range(self.layers_count):
-                layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
-                cols = layer_dfn.GetFieldCount()
-                names = names + [
-                    layer_dfn.GetFieldDefn(j).GetName() for j in range(cols)
-                ]
+            if layer_count is not None:
+                for i in range(layer_count):
+                    layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
+                    cols = layer_dfn.GetFieldCount()
+                    names = names + [
+                        layer_dfn.GetFieldDefn(j).GetName() for j in range(cols)
+                    ]
             names = names + ["geometry"]
         else:
             names = self.feature.columns.tolist()
@@ -154,7 +163,7 @@ class FeatureCollection:
         if isinstance(self.feature, gdal.Dataset) or isinstance(
             self.feature, DataSource
         ):
-            file_name = self.feature.GetFileList()[0]
+            file_name = str(self.feature.GetFileList()[0])
         else:
             file_name = ""
 
@@ -171,20 +180,22 @@ class FeatureCollection:
             column.
         """
         if isinstance(self.feature, GeoDataFrame):
-            dtypes = self.feature.dtypes.to_dict()
+            dtypes: dict[str, str] = self.feature.dtypes.to_dict()
             # convert the dtype to string as it returns a dtype object in linux instead.
             dtypes = {key: str(value) for key, value in dtypes.items()}
         else:
-            dtypes = []
-            for i in range(self.layers_count):
-                layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
-                cols = layer_dfn.GetFieldCount()
-                dtypes = dtypes + [
-                    ogr_to_numpy_dtype(layer_dfn.GetFieldDefn(j).GetType()).__name__
-                    for j in range(cols)
-                ]
+            dtype_list: list[str] = []
+            layer_count = self.layers_count
+            if layer_count is not None:
+                for i in range(layer_count):
+                    layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
+                    cols = layer_dfn.GetFieldCount()
+                    dtype_list = dtype_list + [
+                        ogr_to_numpy_dtype(layer_dfn.GetFieldDefn(j).GetType()).__name__
+                        for j in range(cols)
+                    ]
             # the geometry column is not in the returned dictionary if the vector is DataSource
-            dtypes = {col_i: type_i for col_i, type_i in zip(self.column, dtypes)}
+            dtypes = {col_i: type_i for col_i, type_i in zip(self.column, dtype_list)}
 
         return dtypes
 
@@ -206,7 +217,7 @@ class FeatureCollection:
         return cls(gdf)
 
     @staticmethod
-    def create_ds(driver: str = "geojson", path: str = None) -> DataSource | None:
+    def create_ds(driver: str = "geojson", path: str | None = None) -> DataSource | None:
         """Create OGR DataSource.
 
         Args:
@@ -225,6 +236,9 @@ class FeatureCollection:
 
         if driver == "memory":
             path = "memData"
+
+        if path is None:
+            raise ValueError("path must be provided for non-memory drivers.")
 
         ds = FeatureCollection._create_driver(gdal_name, path)
         return ds
@@ -392,10 +406,10 @@ class FeatureCollection:
 
     def to_dataset(
         self,
-        cell_size: Any = None,
+        cell_size: Any | None = None,
         dataset=None,
-        column_name: str | list[str] = None,
-    ) -> "Dataset":
+        column_name: str | list[str] | None = None,
+    ) -> Dataset:
         """Covert a vector into raster.
 
             - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
@@ -469,12 +483,18 @@ class FeatureCollection:
         attribute = column_name
 
         # convert the vector to a gdal Dataset (vector but read by gdal.EX)
-        vector_gdal_ex = self._gdf_to_ds(gdal_dataset=True)
+        vector_gdal_ex_obj = self._gdf_to_ds(gdal_dataset=True)
+        if vector_gdal_ex_obj is None or not isinstance(vector_gdal_ex_obj, FeatureCollection):
+            raise ValueError("Failed to convert vector to GDAL dataset.")
+        vector_gdal_ex: FeatureCollection = vector_gdal_ex_obj
         top_left_corner = (xmin, ymax)
 
         bands_count = 1 if not isinstance(attribute, list) else len(attribute)
+        if cell_size is None:
+            raise ValueError("cell_size must be provided.")
+        cell_size_val: int | float = float(cell_size)
         dataset_n = Dataset.create(
-            cell_size,
+            cell_size_val,
             rows,
             columns,
             dtype,
@@ -505,7 +525,7 @@ class FeatureCollection:
         return dataset_n
 
     @staticmethod
-    def _get_ds_epsg(ds: DataSource):
+    def _get_ds_epsg(ds: DataSource) -> int:
         """Get EPSG for a given OGR DataSource.
 
         Args:
@@ -523,7 +543,7 @@ class FeatureCollection:
         return epsg
 
     @staticmethod
-    def _create_sr_from_proj(prj: str, string_type: str = None):
+    def _create_sr_from_proj(prj: str, string_type: str | None = None):
         r"""Create a spatial reference object from projection.
 
         Args:
@@ -592,7 +612,7 @@ class FeatureCollection:
         return epsg
 
     @staticmethod
-    def _get_gdf_epsg(gdf: GeoDataFrame):
+    def _get_gdf_epsg(gdf: GeoDataFrame) -> int:
         """Get epsg for a given geodataframe.
 
         Args:
@@ -602,7 +622,7 @@ class FeatureCollection:
         Returns:
             int: epsg number
         """
-        return gdf.crs.to_epsg()
+        return int(gdf.crs.to_epsg())
 
     def _get_epsg(self) -> int:
         """getEPSG.
@@ -639,9 +659,9 @@ class FeatureCollection:
             array: Contains x coordinates or y coordinates of all edges of the shapefile
         """
         if coord_type == "x":
-            coords = geometry.coords.xy[0].tolist()
+            coords: list[Any] = list(geometry.coords.xy[0].tolist())
         elif coord_type == "y":
-            coords = geometry.coords.xy[1].tolist()
+            coords = list(geometry.coords.xy[1].tolist())
         else:
             raise ValueError("coord_type can only have a value of 'x' or 'y' ")
 
@@ -664,9 +684,9 @@ class FeatureCollection:
                 The x or y coordinate of the Point according to coord_type.
         """
         if coord_type == "x":
-            coord = geometry.x
+            coord: float | int = float(geometry.x)
         elif coord_type == "y":
-            coord = geometry.y
+            coord = float(geometry.y)
         else:
             raise ValueError("coord_type can only have a value of 'x' or 'y' ")
 
@@ -790,21 +810,21 @@ class FeatureCollection:
         Returns:
             list: Contains x or y coordinates of all edges of the shapefile.
         """
-        coord_arrays = []
+        coord_arrays: list[Any] = []
         geom_type = geom_type.lower()
         if geom_type == "multipoint" or geom_type == "multilinestring":
             for i, part in enumerate(multi_geometry.geoms):
                 if geom_type == "multipoint":
-                    vals = FeatureCollection._get_point_coords(part, coord_type)
-                    coord_arrays.append(vals)
+                    point_vals = FeatureCollection._get_point_coords(part, coord_type)
+                    coord_arrays.append(point_vals)
                 elif geom_type == "multilinestring":
-                    vals = FeatureCollection._get_line_coords(part, coord_type)
-                    coord_arrays.append(vals)
+                    line_vals = FeatureCollection._get_line_coords(part, coord_type)
+                    coord_arrays.append(line_vals)
         elif geom_type == "multipolygon":
             for i, part in enumerate(multi_geometry.geoms):
                 # multi_2_single = FeatureCollection._explode(part) if part.type.startswith("MULTI") else part
-                vals = FeatureCollection._get_poly_coords(part, coord_type)
-                coord_arrays.append(vals)
+                poly_vals = FeatureCollection._get_poly_coords(part, coord_type)
+                coord_arrays.append(poly_vals)
 
         return coord_arrays
 
@@ -915,7 +935,7 @@ class FeatureCollection:
 
     @staticmethod
     def create_point(
-        coords: Iterable[tuple[float]], epsg: int = None
+        coords: Iterable[tuple[float, ...]], epsg: int | None = None
     ) -> list[Point] | GeoDataFrame:
         """Create Shapely Point objects from coordinate tuples.
 
@@ -1057,10 +1077,10 @@ class FeatureCollection:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=FutureWarning)
 
-            from_epsg = "epsg:" + str(from_epsg)
-            inproj = Proj(init=from_epsg)  # GCS geographic coordinate system
-            to_epsg = "epsg:" + str(to_epsg)
-            outproj = Proj(init=to_epsg)  # WGS84 web mercator
+            from_epsg_str = "epsg:" + str(from_epsg)
+            inproj = Proj(init=from_epsg_str)  # GCS geographic coordinate system
+            to_epsg_str = "epsg:" + str(to_epsg)
+            outproj = Proj(init=to_epsg_str)  # WGS84 web mercator
 
         x = np.ones(len(lat)) * np.nan
         y = np.ones(len(lat)) * np.nan
@@ -1070,7 +1090,7 @@ class FeatureCollection:
                 transform(inproj, outproj, lon[i], lat[i], always_xy=True), precision
             )
 
-        return y, x
+        return y.tolist(), x.tolist()
 
     @staticmethod
     def reproject_points2(

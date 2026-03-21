@@ -97,16 +97,19 @@ class AbstractDataset(ABC):
         self._raster = value
 
     @property
+    @abstractmethod
     def values(self) -> np.ndarray:
         """Values of all the bands."""
         pass
 
     @property
+    @abstractmethod
     def rows(self) -> int:
         """Number of rows in the raster array."""
         pass
 
     @property
+    @abstractmethod
     def columns(self) -> int:
         """Number of columns in the raster array."""
         pass
@@ -150,7 +153,7 @@ class AbstractDataset(ABC):
 
     @property
     @abstractmethod
-    def cell_size(self) -> int:
+    def cell_size(self) -> float:
         """Cell size."""
         pass
 
@@ -285,7 +288,7 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def read_array(self, band: int = None, window: list[int] = None) -> np.ndarray:
+    def read_array(self, band: int | None = None, window: list[int] | None = None) -> np.ndarray:
         """Read Array.
 
             - read the values stored in a given band.
@@ -344,11 +347,11 @@ class AbstractDataset(ABC):
     @abstractmethod
     def plot(
         self,
-        band: int = None,
-        exclude_value: Any = None,
-        rgb: list[int] = None,
+        band: int | None = None,
+        exclude_value: Any | None = None,
+        rgb: list[int] | None = None,
         surface_reflectance: int = 10000,
-        cutoff: list = None,
+        cutoff: list | None = None,
         overview: bool = False,
         overview_index: int = 0,
         **kwargs,
@@ -443,12 +446,12 @@ class AbstractDataset(ABC):
         cls,
         arr: np.ndarray,
         geo: tuple[float, float, float, float, float, float],
-        bands_values: list = None,
+        bands_values: list | None = None,
         epsg: str | int = 4326,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
-        path: str = None,
-        variable_name: str = None,
+        path: str | None = None,
+        variable_name: str | None = None,
     ):
         """Create dataset from array.
 
@@ -484,7 +487,7 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def set_crs(self, crs: str | None = None, epsg: int = None):
+    def set_crs(self, crs: str | None = None, epsg: int | None = None):
         """Set Coordinates reference system.
 
             Set the Coordinate Reference System (CRS) of a
@@ -567,7 +570,7 @@ class AbstractDataset(ABC):
 
     @staticmethod
     @abstractmethod
-    def _create_sr_from_epsg(epsg: int = None) -> SpatialReference:
+    def _create_sr_from_epsg(epsg: int | None = None) -> SpatialReference:
         """Create a spatial reference object from epsg number.
 
         https://gdal.org/tutorials/osr_api_tut.html
@@ -618,7 +621,7 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def change_no_data_value(self, new_value: Any, old_value: Any = None):
+    def change_no_data_value(self, new_value: Any, old_value: Any | None = None):
         """Change No Data Value.
 
             - Set the no data value in all raster bands.
@@ -687,8 +690,8 @@ class AbstractDataset(ABC):
     @abstractmethod
     def extract(
         self,
-        exclude_value: Any = None,
-        feature: FeatureCollection | GeoDataFrame = None,
+        exclude_value: Any | None = None,
+        feature: FeatureCollection | GeoDataFrame | None = None,
     ) -> np.ndarray:
         """Extract.
 
@@ -711,7 +714,7 @@ class AbstractDataset(ABC):
         self,
         classes_map,
         band: int = 0,
-        exclude_value: float | int = None,
+        exclude_value: float | int | None = None,
     ) -> dict[list[float], list[float]]:
         """Overlay.
 
@@ -734,7 +737,7 @@ class AbstractDataset(ABC):
 
     @abstractmethod
     def create_overviews(
-        self, resampling_method: str = "nearest", overview_levels: list = None
+        self, resampling_method: str = "nearest", overview_levels: list | None = None
     ):
         """Create overviews for the dataset.
 
@@ -798,7 +801,7 @@ class AbstractDataset(ABC):
 
     @abstractmethod
     def read_overview_array(
-        self, band: int = None, overview_index: int = 0
+        self, band: int | None = None, overview_index: int = 0
     ) -> np.ndarray:
         """Read an overview array.
 
