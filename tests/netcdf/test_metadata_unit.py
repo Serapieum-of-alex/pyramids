@@ -838,7 +838,9 @@ class TestFromJson:
         assert r.srs_wkt == 'GEOGCS["WGS 84"]', f"Expected WGS 84 WKT, got '{r.srs_wkt}'"
         assert r.block_size == [1, 20, 30]
         assert r.coordinate_variables == ["/lat", "/lon"]
-        assert r.structural_info == {"COMPRESS": "DEFLATE"}
+        assert r.structural_info == {"COMPRESS": "DEFLATE"}, (
+            f"Expected structural_info with COMPRESS, got {r.structural_info}"
+        )
 
     def test_round_trip_with_dimension_attrs(self):
         """Verify dimension attrs survive round-trip."""
@@ -854,9 +856,11 @@ class TestFromJson:
         assert r.attrs == dim.attrs, (
             f"Expected {dim.attrs}, got {r.attrs}"
         )
-        assert r.type == "TEMPORAL"
-        assert r.direction == "NORTH"
-        assert r.indexing_variable == "/time_idx"
+        assert r.type == "TEMPORAL", f"Expected 'TEMPORAL', got '{r.type}'"
+        assert r.direction == "NORTH", f"Expected 'NORTH', got '{r.direction}'"
+        assert r.indexing_variable == "/time_idx", (
+            f"Expected '/time_idx', got '{r.indexing_variable}'"
+        )
 
     def test_from_json_invalid_json(self):
         """Verify JSONDecodeError for invalid JSON input."""
@@ -966,11 +970,11 @@ class TestFlattenForIndex:
             global_attributes={},
         )
         flat = flatten_for_index(md)
-        assert flat["group_count"] == 0
-        assert flat["array_count"] == 0
-        assert flat["dimension_count"] == 0
-        assert flat["arrays"] == []
-        assert flat["dimensions"] == []
+        assert flat["group_count"] == 0, f"Expected 0, got {flat['group_count']}"
+        assert flat["array_count"] == 0, f"Expected 0, got {flat['array_count']}"
+        assert flat["dimension_count"] == 0, f"Expected 0, got {flat['dimension_count']}"
+        assert flat["arrays"] == [], f"Expected [], got {flat['arrays']}"
+        assert flat["dimensions"] == [], f"Expected [], got {flat['dimensions']}"
 
     def test_global_attributes_limited_to_20(self):
         """Verify only the first 20 global attributes are included."""
