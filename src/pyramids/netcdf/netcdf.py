@@ -15,6 +15,7 @@ from pyramids import _io
 from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 from pyramids.netcdf.metadata import get_metadata
+from pyramids.netcdf.models import NetCDFMetadata
 
 class NetCDF(Dataset):
     """NetCDF.
@@ -52,8 +53,17 @@ class NetCDF(Dataset):
             self._is_md_array = False
             self._is_subset = False
         # Caches (invalidated by _replace_raster, add_variable, remove_variable)
-        self._cached_variables = None
-        self._cached_meta_data = None
+        self._cached_variables: dict[str, NetCDF] | None = None
+        self._cached_meta_data: NetCDFMetadata | None = None
+        # Origin-tracking attributes set by get_variable (RT-4)
+        self._parent_nc: NetCDF | None = None
+        self._source_var_name: str | None = None
+        self._gdal_md_arr_ref: Any = None
+        self._gdal_rg_ref: Any = None
+        self._md_array_dims: list[str] = []
+        self._band_dim_name: str | None = None
+        self._band_dim_values: list[Any] | None = None
+        self._variable_attrs: dict[str, Any] = {}
 
     def __str__(self):
         """Return a human-readable summary of the NetCDF dataset."""
@@ -91,9 +101,13 @@ class NetCDF(Dataset):
         lon = self._read_variable("lon")
         if lon is None:
             lon = self._read_variable("x")
+
+        result: np.ndarray
         if lon is not None:
-            lon = lon.reshape(lon.size)
-        return lon
+            result = lon.reshape(lon.size)
+        else:
+            result = super().lon
+        return result
 
     @property
     def lat(self) -> np.ndarray:
@@ -108,9 +122,13 @@ class NetCDF(Dataset):
         lat = self._read_variable("lat")
         if lat is None:
             lat = self._read_variable("y")
+
+        result: np.ndarray
         if lat is not None:
-            lat = lat.reshape(lat.size)
-        return lat
+            result = lat.reshape(lat.size)
+        else:
+            result = super().lat
+        return result
 
     @property
     def x(self) -> np.ndarray:
@@ -222,7 +240,7 @@ class NetCDF(Dataset):
                 f"Use nc.get_variable('var_name').{operation}(...) instead."
             )
 
-    def read_array(self, band: int = None, window=None) -> np.ndarray:
+    def read_array(self, band: int | None = None, window=None) -> np.ndarray:
         """Read array from the dataset.
 
         Raises a clear error when called on the root MDIM container
@@ -282,8 +300,11 @@ class NetCDF(Dataset):
         )
 
     @classmethod
-    def read_file(
-        cls, path: str, read_only=True, open_as_multi_dimensional: bool = True
+    def read_file(  # type: ignore[override]
+        cls,
+        path: str,
+        read_only=True,
+        open_as_multi_dimensional: bool = True,
     ) -> "NetCDF":
         """Open a NetCDF file from disk.
 
@@ -347,7 +368,7 @@ class NetCDF(Dataset):
         return metadata
 
     def _build_dimension_overview(
-        self, metadata: "NetCDFMetadata" = None
+        self, metadata: NetCDFMetadata | None = None
     ) -> dict[str, Any] | None:
         """Create a compact snapshot of dimensions.
 
@@ -362,11 +383,12 @@ class NetCDF(Dataset):
         """
         md = metadata if metadata is not None else self.meta_data
         names = list(md.names)
-        sizes = {
-            name: int(md.get_dimension(name).size)
-            for name in names
-            if md.get_dimension(name) is not None
-        }
+        sizes: dict[str, int] = {}
+
+        for name in names:
+            dim_info = md.get_dimension(name)
+            if dim_info is not None:
+                sizes[name] = int(dim_info.size)
         attrs: dict[str, dict[str, Any]] = {}
         values: dict[str, list[int | float | str]] = {}
 
@@ -440,17 +462,17 @@ class NetCDF(Dataset):
                     time_stamp = list(map(func, time_vals.reshape(-1)))
         return time_stamp
 
-    def _get_dimension_names(self) -> list[str]:
+    def _get_dimension_names(self) -> list[str] | None:
         rg = self._raster.GetRootGroup()
         if rg is not None:
             dims = rg.GetDimensions()
-            dims_names = [dim.GetName() for dim in dims]
+            dims_names: list[str] | None = [dim.GetName() for dim in dims]
         else:
             dims_names = None
         return dims_names
 
     @property
-    def dimension_names(self) -> list[str]:
+    def dimension_names(self) -> list[str] | None:
         """Names of all dimensions in the root group (e.g., ``["x", "y", "time"]``).
 
         Returns:
@@ -583,7 +605,7 @@ class NetCDF(Dataset):
     @staticmethod
     def _needs_y_flip(src: gdal.Dataset) -> bool:
         """Check if a classic dataset has south-to-north Y orientation."""
-        return src.GetGeoTransform()[5] > 0
+        return bool(src.GetGeoTransform()[5] > 0)
 
     def get_variable(self, variable_name: str) -> "NetCDF":
         """Extract a single variable as a classic-raster NetCDF object.
@@ -810,7 +832,7 @@ class NetCDF(Dataset):
                 )
             super().to_file(path, **kwargs)
 
-    def copy(self, path: str = None) -> "NetCDF":
+    def copy(self, path: str | None = None) -> "NetCDF":
         """Create a deep copy of this NetCDF dataset.
 
         Args:
@@ -905,6 +927,12 @@ class NetCDF(Dataset):
                 ``"netcdf"``. Defaults to None.
             variable_name: Name of the data variable in the NetCDF
                 file. Defaults to None.
+            top_left_corner: ``(x, y)`` of the top-left corner. Used
+                together with ``cell_size`` to build ``geo`` when ``geo``
+                is not provided. Defaults to None.
+            cell_size: Pixel size. Used together with ``top_left_corner``
+                to build ``geo`` when ``geo`` is not provided.
+                Defaults to None.
 
         Returns:
             Dataset: The newly created NetCDF dataset.
@@ -942,12 +970,12 @@ class NetCDF(Dataset):
         variable_name: str,
         cols: int,
         rows: int,
-        bands_values: list = None,
-        geo: tuple[float, float, float, float, float, float] = None,
-        epsg: str | int = None,
+        bands_values: list | None = None,
+        geo: tuple[float, float, float, float, float, float] | None = None,
+        epsg: str | int | None = None,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
-        path: str = None,
+        path: str | None = None,
     ) -> gdal.Dataset:
         """Build an in-memory multidimensional GDAL dataset from an array.
 
@@ -1055,9 +1083,9 @@ class NetCDF(Dataset):
         self,
         variable_name: str,
         dataset: "Dataset",
-        band_dim_name: str = None,
-        band_dim_values: list = None,
-        attrs: dict = None,
+        band_dim_name: str | None = None,
+        band_dim_values: list | None = None,
+        attrs: dict | None = None,
     ):
         """Write a classic Dataset back as an MDArray variable in this container.
 
@@ -1106,7 +1134,9 @@ class NetCDF(Dataset):
 
         # Read data from the classic dataset
         arr = dataset.read_array()
-        gt = dataset.geotransform
+        gt: tuple[float, float, float, float, float, float] = (
+            dataset.geotransform
+        )
         data_dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
         # Coordinate dimensions must always be float64 to avoid truncation
         # when the data array is integer (e.g., classified rasters).
@@ -1192,7 +1222,7 @@ class NetCDF(Dataset):
         self._invalidate_caches()
 
     def add_variable(
-        self, dataset: "Dataset" | "NetCDF", variable_name: str = None
+        self, dataset: Dataset | NetCDF, variable_name: str | None = None
     ):
         """Copy MDArray variables from another NetCDF into this container.
 
