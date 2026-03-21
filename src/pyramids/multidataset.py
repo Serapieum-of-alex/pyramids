@@ -1,5 +1,7 @@
 """MultiDataset module."""
 
+from __future__ import annotations
+
 import os
 import re
 import logging
@@ -7,13 +9,18 @@ import logging
 import datetime as dt
 import pandas as pd
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 import numpy as np
 from osgeo import gdal
 from pyramids.dataset import Dataset
 from pyramids.base._errors import DatasetNoFoundError
 from pyramids.abstract_dataset import CATALOG
 from pyramids.base._utils import import_cleopatra
+
+if TYPE_CHECKING:
+    from cleopatra.array_glyph import ArrayGlyph
+
+logger = logging.getLogger(__name__)
 
 try:
     from osgeo_utils import gdal_merge
@@ -23,14 +30,8 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
-logger = logging.getLogger(__name__)
-
-
 class MultiDataset:
     """MultiDataset."""
-
-    files: list[str]
-    data: np.ndarray
 
     """
     files:
@@ -41,7 +42,7 @@ class MultiDataset:
         self,
         src: Dataset,
         time_length: int,
-        files: list[str] = None,
+        files: list[str] | None = None,
     ):
         """Construct MultiDataset object."""
         self._base = src
@@ -127,9 +128,9 @@ class MultiDataset:
         with_order: bool = False,
         regex_string: str = r"\d{4}.\d{2}.\d{2}",
         date: bool = True,
-        file_name_data_fmt: str = None,
-        start: str = None,
-        end: str = None,
+        file_name_data_fmt: str | None = None,
+        start: str | None = None,
+        end: str | None = None,
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
     ) -> "MultiDataset":
@@ -256,7 +257,9 @@ class MultiDataset:
                         f"To read the raster with a certain order (with_order = {with_order}, then you have to enter "
                         f"the value of the parameter file_name_data_fmt(given: {file_name_data_fmt})"
                     )
-                fn = lambda x: dt.datetime.strptime(x.group(), file_name_data_fmt)
+                fn: Callable[[Any], Any] = lambda x: dt.datetime.strptime(
+                    x.group(), file_name_data_fmt
+                )
             else:
                 fn = lambda x: int(x.group())
             list_dates = list(map(fn, list_dates))
@@ -269,12 +272,12 @@ class MultiDataset:
 
         if start is not None or end is not None:
             if date:
-                start = dt.datetime.strptime(start, fmt)
-                end = dt.datetime.strptime(end, fmt)
+                start_dt: Any = dt.datetime.strptime(str(start), fmt)
+                end_dt: Any = dt.datetime.strptime(str(end), fmt)
 
                 files = (
-                    df.loc[start <= df["date"], :]
-                    .loc[df["date"] <= end, "files"]
+                    df.loc[start_dt <= df["date"], :]
+                    .loc[df["date"] <= end_dt, "files"]
                     .values
                 )
             else:
@@ -415,7 +418,7 @@ class MultiDataset:
         dst.GetRasterBand(1).WriteArray(arr)
         return Dataset(dst)
 
-    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs: Any) -> "ArrayGlyph":
+    def plot(self, band: int = 0, exclude_value: Any | None = None, **kwargs: Any) -> "ArrayGlyph":
         r"""Read Array.
 
             - read the values stored in a given band.
@@ -580,7 +583,7 @@ class MultiDataset:
 
     def crop(
         self, mask: Dataset | str, inplace: bool = False, touch: bool = True
-    ) -> None | Dataset:
+    ) -> MultiDataset | None:
         """crop.
 
             crop matches the location of nodata value from src raster to dst raster. Mask is where the NoDatavalue will
@@ -628,14 +631,16 @@ class MultiDataset:
 
             array[i, :, :] = arr
 
+        result: MultiDataset | None = None
         if inplace:
             self._values = array
             # use the last src as
             self._base = dst
         else:
-            dataset = MultiDataset(dst, time_length=self.time_length)
-            dataset._values = array
-            return dataset
+            result = MultiDataset(dst, time_length=self.time_length)
+            result._values = array
+
+        return result
 
     # # TODO: merge ReprojectDataset and ProjectRaster they are almost the same
     # # TODO: still needs to be tested
@@ -908,7 +913,7 @@ class MultiDataset:
     def overlay(
         self,
         classes_map,
-        exclude_value: float | int = None,
+        exclude_value: float | int | None = None,
     ) -> dict[list[float], list[float]]:
         """Overlay.
 
@@ -923,7 +928,7 @@ class MultiDataset:
                 Dictionary with a list of values in the basemap as keys and for each key a list of all the
                 intersected values in the maps from the path.
         """
-        values = {}
+        values: dict[Any, list[float]] = {}
         for i in range(self.time_length):
             src = self.iloc(i)
             dict_i = src.overlay(classes_map, exclude_value)

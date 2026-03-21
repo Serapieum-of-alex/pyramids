@@ -1,4 +1,5 @@
-from typing import Any, TypeAlias
+from __future__ import annotations
+from typing import Any, TypeAlias, cast
 import re
 from datetime import datetime, timedelta
 from osgeo import gdal, osr
@@ -28,14 +29,15 @@ def _full_name_with_fallback(group: gdal.Group, default_name: str | None = None)
         or ``"/"`` for root / unnamed groups.
     """
     try:
-        return group.GetFullName()
+        result = str(group.GetFullName())
     except Exception:
         # Root or fallback to "/<name>"
         try:
-            gname = group.GetName()
+            gname = str(group.GetName())
         except Exception:
             gname = default_name or ""
-        return "/" if not gname else f"/{gname}"
+        result = "/" if not gname else f"/{gname}"
+    return result
 
 
 def _get_group_name(group: gdal.Group) -> str:
@@ -49,7 +51,7 @@ def _get_group_name(group: gdal.Group) -> str:
         cannot be retrieved.
     """
     try:
-        gname = group.GetName()
+        gname = str(group.GetName())
     except Exception:
         gname = ""
     return gname
@@ -117,9 +119,10 @@ def _get_driver_name(dataset: gdal.Dataset) -> str:
         or ``"UNKNOWN"`` if retrieval fails.
     """
     try:
-        return dataset.GetDriver().ShortName
+        result = str(dataset.GetDriver().ShortName)
     except Exception:
-        return "UNKNOWN"
+        result = "UNKNOWN"
+    return result
 
 
 def _export_srs(srs: osr.SpatialReference | None) -> tuple[str | None, str | None]:
@@ -180,9 +183,9 @@ def _get_array_nodata(
                 # Some GDAL versions return (value, hasval)
                 if isinstance(v, (list, tuple)) and len(v) == 2 and isinstance(v[1], (bool, int)):
                     if v[1]:
-                        return _to_py_scalar(v[0])
+                        return cast(int | float | str | None, _to_py_scalar(v[0]))
                     continue
-                return _to_py_scalar(v)
+                return cast(int | float | str | None, _to_py_scalar(v))
             except Exception:
                 continue
     return None
@@ -208,10 +211,12 @@ def _get_array_scale_offset(
     scale = None
     offset = None
     # CF attributes first
-    if isinstance(attrs.get("scale_factor"), (int, float)):
-        scale = float(attrs["scale_factor"])  # type: ignore[index]
-    if isinstance(attrs.get("add_offset"), (int, float)):
-        offset = float(attrs["add_offset"])  # type: ignore[index]
+    scale_raw = attrs.get("scale_factor")
+    if isinstance(scale_raw, (int, float)):
+        scale = float(scale_raw)
+    offset_raw = attrs.get("add_offset")
+    if isinstance(offset_raw, (int, float)):
+        offset = float(offset_raw)
     # GDAL API may also expose
     if hasattr(mdarr, "GetScale"):
         try:
@@ -599,7 +604,7 @@ def _normalize_attr_value(val: Any) -> AttributeValue:
         return [ _to_py_scalar(v) for v in val ]
 
     # Scalar
-    return _to_py_scalar(val)  # type: ignore[return-value]
+    return cast(AttributeValue, _to_py_scalar(val))
 
 
 def _read_attribute_value(attr: gdal.Attribute) -> AttributeValue:
