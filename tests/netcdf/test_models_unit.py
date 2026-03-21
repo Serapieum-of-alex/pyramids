@@ -22,10 +22,6 @@ from pyramids.netcdf.models import (
 )
 
 
-# ---------------------------------------------------------------------------
-# Helpers to build mock GDAL objects
-# ---------------------------------------------------------------------------
-
 
 def _mock_group(
     name: str = "root",
@@ -137,10 +133,6 @@ def _mock_md_array(
 
     return arr
 
-
-# ---------------------------------------------------------------------------
-# GroupInfo tests
-# ---------------------------------------------------------------------------
 
 
 class TestGroupInfoFromGroup:
@@ -277,10 +269,6 @@ class TestGroupInfoDataclass:
         with pytest.raises(AttributeError):
             info.name = "other"
 
-
-# ---------------------------------------------------------------------------
-# DimensionInfo tests
-# ---------------------------------------------------------------------------
 
 
 class TestDimensionInfoFromGdalDim:
@@ -444,10 +432,6 @@ class TestDimensionInfoDataclass:
         assert info.indexing_variable is None, "indexing_variable should default to None"
         assert info.attrs == {}, "attrs should default to {}"
 
-
-# ---------------------------------------------------------------------------
-# ArrayInfo tests
-# ---------------------------------------------------------------------------
 
 
 class TestArrayInfoFromMdArray:
@@ -632,10 +616,6 @@ class TestArrayInfoDataclass:
         assert info.block_size is None, "block_size should default to None"
 
 
-# ---------------------------------------------------------------------------
-# StructuralInfo tests
-# ---------------------------------------------------------------------------
-
 
 class TestStructuralInfoFromDataset:
     """Tests for StructuralInfo.from_dataset class method."""
@@ -699,10 +679,6 @@ class TestStructuralInfoDataclass:
         info = StructuralInfo(driver_name="GTiff")
         assert info.driver_metadata is None, "driver_metadata should default to None"
 
-
-# ---------------------------------------------------------------------------
-# NetCDFMetadata tests
-# ---------------------------------------------------------------------------
 
 
 def _make_metadata(

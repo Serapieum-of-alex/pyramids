@@ -32,10 +32,6 @@ from pyramids.netcdf.models import (
 )
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 
 def _mock_attribute(name: str, value):
     """Create a mock gdal.Attribute.
@@ -231,10 +227,6 @@ def _make_metadata(**kwargs) -> NetCDFMetadata:
     return NetCDFMetadata(**defaults)
 
 
-# ---------------------------------------------------------------------------
-# MetadataBuilder tests
-# ---------------------------------------------------------------------------
-
 
 class TestMetadataBuilder:
     """Tests for MetadataBuilder.build method."""
@@ -351,10 +343,6 @@ class TestMetadataBuilder:
             f"Expected 'version' key in created_with, got {md.created_with}"
         )
 
-
-# ---------------------------------------------------------------------------
-# GroupTraverser tests
-# ---------------------------------------------------------------------------
 
 
 class TestGroupTraverserWalk:
@@ -598,10 +586,6 @@ class TestGroupTraverserCollectArrays:
         assert result == [], f"Expected [], got {result}"
 
 
-# ---------------------------------------------------------------------------
-# get_metadata tests
-# ---------------------------------------------------------------------------
-
 
 class TestGetMetadata:
     """Tests for the get_metadata public function."""
@@ -646,10 +630,6 @@ class TestGetMetadata:
             f"Expected open_options to be stored, got {md.open_options_used}"
         )
 
-
-# ---------------------------------------------------------------------------
-# to_dict tests
-# ---------------------------------------------------------------------------
 
 
 class TestToDict:
@@ -711,10 +691,6 @@ class TestToDict:
         assert isinstance(arr_data["shape"], list), "shape should be a list"
         assert isinstance(arr_data["dimensions"], list), "dimensions should be a list"
 
-
-# ---------------------------------------------------------------------------
-# to_json / from_json round-trip tests
-# ---------------------------------------------------------------------------
 
 
 class TestToJson:
@@ -909,10 +885,6 @@ class TestToDictFromJsonConsistency:
         d2 = to_dict(from_json(to_json(md)))
         assert d1 == d2, "to_dict should produce identical output before and after JSON round-trip"
 
-
-# ---------------------------------------------------------------------------
-# flatten_for_index tests
-# ---------------------------------------------------------------------------
 
 
 class TestFlattenForIndex:

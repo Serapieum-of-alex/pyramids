@@ -25,10 +25,6 @@ from pyramids.dataset import Dataset
 from pyramids.multidataset import MultiDataset
 
 
-# ---------------------------------------------------------------------------
-# Helper: create a small in-memory Dataset
-# ---------------------------------------------------------------------------
-
 
 def _make_mem_dataset(
     rows: int = 5,
@@ -53,10 +49,6 @@ def _make_mem_dataset(
     return src
 
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture()
 def base_dataset() -> Dataset:
@@ -72,10 +64,6 @@ def cube_with_values(base_dataset: Dataset) -> MultiDataset:
     md.values = values
     return md
 
-
-# ---------------------------------------------------------------------------
-# create_cube
-# ---------------------------------------------------------------------------
 
 
 class TestCreateCube:
@@ -106,10 +94,6 @@ class TestCreateCube:
         assert md.files is None, "files should be None for create_cube"
 
 
-# ---------------------------------------------------------------------------
-# __str__ / __repr__
-# ---------------------------------------------------------------------------
-
 
 class TestStringRepresentation:
     """Tests for __str__ and __repr__."""
@@ -126,10 +110,6 @@ class TestStringRepresentation:
         text = repr(md)
         assert "Dimension" in text, "__repr__ should contain 'Dimension'"
 
-
-# ---------------------------------------------------------------------------
-# shape / rows / columns
-# ---------------------------------------------------------------------------
 
 
 class TestShapeProperties:
@@ -154,10 +134,6 @@ class TestShapeProperties:
             f"Expected columns=6, got {cube_with_values.columns}"
         )
 
-
-# ---------------------------------------------------------------------------
-# __iter__, head, tail, first, last
-# ---------------------------------------------------------------------------
 
 
 class TestIterationMethods:
@@ -219,10 +195,6 @@ class TestIterationMethods:
         np.testing.assert_array_equal(result, expected_last)
 
 
-# ---------------------------------------------------------------------------
-# __getitem__ / __setitem__ / __len__
-# ---------------------------------------------------------------------------
-
 
 class TestItemAccess:
     """Tests for __getitem__, __setitem__, __len__."""
@@ -250,10 +222,6 @@ class TestItemAccess:
         )
 
 
-# ---------------------------------------------------------------------------
-# values deleter
-# ---------------------------------------------------------------------------
-
 
 class TestValuesDeleter:
     """Tests for the values property deleter."""
@@ -271,10 +239,6 @@ class TestValuesDeleter:
         with pytest.raises(AttributeError):
             _ = cube_with_values.values
 
-
-# ---------------------------------------------------------------------------
-# values setter validation
-# ---------------------------------------------------------------------------
 
 
 class TestValuesSetter:
@@ -295,10 +259,6 @@ class TestValuesSetter:
         with pytest.raises(ValueError, match="differs from the dimension"):
             cube_with_values.values = wrong_arr
 
-
-# ---------------------------------------------------------------------------
-# apply
-# ---------------------------------------------------------------------------
 
 
 class TestApply:
@@ -335,10 +295,6 @@ class TestApply:
         with pytest.raises(TypeError, match="should be a function"):
             cube_with_values.apply("not_a_function")
 
-
-# ---------------------------------------------------------------------------
-# to_file
-# ---------------------------------------------------------------------------
 
 
 class TestToFile:
@@ -380,10 +336,6 @@ class TestToFile:
             cube_with_values.to_file(["a.tif", "b.tif"])
 
 
-# ---------------------------------------------------------------------------
-# iloc
-# ---------------------------------------------------------------------------
-
 
 class TestIloc:
     """Tests for iloc method."""
@@ -406,10 +358,6 @@ class TestIloc:
         )
 
 
-# ---------------------------------------------------------------------------
-# open_multi_dataset error paths
-# ---------------------------------------------------------------------------
-
 
 class TestOpenMultiDatasetErrors:
     """Tests for error handling in ``open_multi_dataset``."""
@@ -422,11 +370,6 @@ class TestOpenMultiDatasetErrors:
         with pytest.raises(ValueError, match="check the given band number"):
             md._files = ["dummy.tif"]
             md.open_multi_dataset(band=1)
-
-
-# ---------------------------------------------------------------------------
-# Additional tests to improve coverage for multidataset.py
-# ---------------------------------------------------------------------------
 
 import re
 import datetime as dt

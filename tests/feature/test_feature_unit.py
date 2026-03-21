@@ -37,10 +37,6 @@ from pyramids.base._errors import DriverNotExistError
 from pyramids.featurecollection import FeatureCollection
 
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture()
 def simple_polygon_gdf() -> GeoDataFrame:
@@ -116,10 +112,6 @@ def utm_proj4() -> str:
     return srs.ExportToProj4()
 
 
-# ---------------------------------------------------------------------------
-# _geometry_collection
-# ---------------------------------------------------------------------------
-
 
 class TestGeometryCollection:
     """Tests for the static ``_geometry_collection`` method."""
@@ -164,10 +156,6 @@ class TestGeometryCollection:
         assert result == [], "Empty GeometryCollection should yield empty list"
 
 
-# ---------------------------------------------------------------------------
-# _explode_gdf
-# ---------------------------------------------------------------------------
-
 
 class TestExplodeGdf:
     """Tests for ``_explode_gdf`` with multipolygon geometry."""
@@ -206,10 +194,6 @@ class TestExplodeGdf:
             "GDF without multipolygon should keep the same number of rows"
         )
 
-
-# ---------------------------------------------------------------------------
-# _multi_geom_handler
-# ---------------------------------------------------------------------------
 
 
 class TestMultiGeomHandler:
@@ -262,10 +246,6 @@ class TestMultiGeomHandler:
             assert isinstance(coords, list), "Each element should be a list"
 
 
-# ---------------------------------------------------------------------------
-# _get_ds_epsg
-# ---------------------------------------------------------------------------
-
 
 class TestGetDsEpsg:
     """Tests for ``_get_ds_epsg`` static method."""
@@ -275,10 +255,6 @@ class TestGetDsEpsg:
         epsg = FeatureCollection._get_ds_epsg(ogr_datasource)
         assert epsg == 4326, f"Expected EPSG 4326, got {epsg}"
 
-
-# ---------------------------------------------------------------------------
-# center_point
-# ---------------------------------------------------------------------------
 
 
 class TestCenterPoint:
@@ -297,10 +273,6 @@ class TestCenterPoint:
         assert abs(cp.x - 30.5) < 0.2, f"Center x should be ~30.5, got {cp.x}"
         assert abs(cp.y - 30.5) < 0.2, f"Center y should be ~30.5, got {cp.y}"
 
-
-# ---------------------------------------------------------------------------
-# _copy_driver_to_memory
-# ---------------------------------------------------------------------------
 
 
 class TestCopyDriverToMemory:
@@ -322,10 +294,6 @@ class TestCopyDriverToMemory:
             "Copy with custom name should return a DataSource"
         )
 
-
-# ---------------------------------------------------------------------------
-# create_ds
-# ---------------------------------------------------------------------------
 
 
 class TestCreateDs:
@@ -359,10 +327,6 @@ class TestCreateDs:
             FeatureCollection.create_ds(driver="geojson", path=None)
 
 
-# ---------------------------------------------------------------------------
-# dtypes property
-# ---------------------------------------------------------------------------
-
 
 class TestDtypes:
     """Tests for the ``dtypes`` property on GeoDataFrame and DataSource."""
@@ -385,10 +349,6 @@ class TestDtypes:
             "Geometry column should not be in DataSource dtypes"
         )
 
-
-# ---------------------------------------------------------------------------
-# reproject_points and reproject_points2
-# ---------------------------------------------------------------------------
 
 
 class TestReprojectPoints:
@@ -426,10 +386,6 @@ class TestReprojectPoints:
         assert len(y_out) == 2, "Should have 2 y values"
 
 
-# ---------------------------------------------------------------------------
-# _create_sr_from_proj
-# ---------------------------------------------------------------------------
-
 
 class TestCreateSrFromProj:
     """Tests for ``_create_sr_from_proj`` with different string types."""
@@ -460,10 +416,6 @@ class TestCreateSrFromProj:
         assert srs is not None, "Spatial reference should not be None"
 
 
-# ---------------------------------------------------------------------------
-# get_epsg_from_prj
-# ---------------------------------------------------------------------------
-
 
 class TestGetEpsgFromPrj:
     """Tests for ``get_epsg_from_prj``."""
@@ -478,10 +430,6 @@ class TestGetEpsgFromPrj:
         epsg = FeatureCollection.get_epsg_from_prj("")
         assert epsg == 4326, f"Empty prj should return 4326, got {epsg}"
 
-
-# ---------------------------------------------------------------------------
-# Coordinate extraction helpers
-# ---------------------------------------------------------------------------
 
 
 class TestGetCoords:
@@ -528,10 +476,6 @@ class TestGetCoords:
             "GeometryCollection point x=7 should be in result"
         )
 
-
-# ---------------------------------------------------------------------------
-# Additional tests to improve coverage for featurecollection.py
-# ---------------------------------------------------------------------------
 
 
 class TestFeatureCollectionStr:
