@@ -15,11 +15,6 @@ from pyramids.netcdf.netcdf import NetCDF
 from pyramids.netcdf.models import NetCDFMetadata, DimensionInfo
 from pyramids.netcdf.metadata import get_metadata, to_json, from_json, to_dict
 
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 @pytest.fixture(scope="module")
 def mdim_nc(noah_nc_path):
     """NetCDF opened in multidimensional mode."""
@@ -42,11 +37,6 @@ def created_nc():
         driver_type="netcdf", path=None,
         variable_name="temperature",
     )
-
-
-# ===========================================================================
-# Stage 1 validation — Bug fixes
-# ===========================================================================
 
 class TestStage1_IsSubsetLogic:
     """NCP-1.1: is_subset must be False for root containers."""
@@ -154,11 +144,6 @@ class TestStage1_GetMetadataTypeDispatch:
         with pytest.raises((ValueError, RuntimeError)):
             get_metadata("/nonexistent/file.nc")
 
-
-# ===========================================================================
-# Stage 2 validation — Core API
-# ===========================================================================
-
 class TestStage2_InitPyExports:
     """NCP-2.1: __init__.py exports key classes."""
 
@@ -263,11 +248,6 @@ class TestStage2_VariableNoDataValue:
         var = created_nc.get_variable("temperature")
         assert var.no_data_value is not None
         assert len(var.no_data_value) > 0
-
-
-# ===========================================================================
-# Stage 3 validation — Round-trip workflow
-# ===========================================================================
 
 class TestStage3_VariableOriginTracking:
     """RT-4: get_variable() must track parent context for round-trip."""
@@ -458,11 +438,6 @@ class TestStage3_RoundTripDecision:
         import inspect
         sig = inspect.signature(Dataset.crop)
         assert "mask" in sig.parameters
-
-
-# ===========================================================================
-# Stage 4 validation — Save to Disk
-# ===========================================================================
 
 class TestStage4_SpatialOpsGuard:
     """NCP-3.2: Spatial operations on root container raise ValueError."""

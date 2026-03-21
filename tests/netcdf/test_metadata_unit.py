@@ -702,7 +702,7 @@ class TestToJson:
         s = to_json(md)
         parsed = json.loads(s)
         assert isinstance(parsed, dict), "JSON should parse to a dict"
-        assert parsed["driver"] == "netCDF"
+        assert parsed["driver"] == "netCDF", f"Expected 'netCDF', got {parsed['driver']}"
 
     def test_compact_format(self):
         """Verify to_json uses compact separators (no spaces)."""
@@ -722,12 +722,24 @@ class TestFromJson:
         assert restored.driver == md.driver, (
             f"Expected driver='{md.driver}', got '{restored.driver}'"
         )
-        assert restored.root_group == md.root_group
-        assert set(restored.groups.keys()) == set(md.groups.keys())
-        assert set(restored.arrays.keys()) == set(md.arrays.keys())
-        assert set(restored.dimensions.keys()) == set(md.dimensions.keys())
-        assert restored.global_attributes == md.global_attributes
-        assert restored.created_with == md.created_with
+        assert restored.root_group == md.root_group, (
+            f"Expected root_group '{md.root_group}', got '{restored.root_group}'"
+        )
+        assert set(restored.groups.keys()) == set(md.groups.keys()), (
+            "Groups keys should match after round-trip"
+        )
+        assert set(restored.arrays.keys()) == set(md.arrays.keys()), (
+            "Arrays keys should match after round-trip"
+        )
+        assert set(restored.dimensions.keys()) == set(md.dimensions.keys()), (
+            "Dimensions keys should match after round-trip"
+        )
+        assert restored.global_attributes == md.global_attributes, (
+            "Global attributes should match after round-trip"
+        )
+        assert restored.created_with == md.created_with, (
+            "created_with should match after round-trip"
+        )
 
     def test_round_trip_groups(self):
         """Verify group metadata is preserved through round-trip."""
@@ -738,8 +750,12 @@ class TestFromJson:
         assert rest_group.name == orig_group.name, (
             f"Expected name='{orig_group.name}', got '{rest_group.name}'"
         )
-        assert rest_group.full_name == orig_group.full_name
-        assert rest_group.arrays == orig_group.arrays
+        assert rest_group.full_name == orig_group.full_name, (
+            f"Expected full_name '{orig_group.full_name}', got '{rest_group.full_name}'"
+        )
+        assert rest_group.arrays == orig_group.arrays, (
+            f"Expected arrays {orig_group.arrays}, got {rest_group.arrays}"
+        )
 
     def test_round_trip_arrays(self):
         """Verify array metadata is preserved through round-trip."""
@@ -747,10 +763,18 @@ class TestFromJson:
         restored = from_json(to_json(md))
         orig_arr = md.arrays["/temperature"]
         rest_arr = restored.arrays["/temperature"]
-        assert rest_arr.name == orig_arr.name
-        assert rest_arr.dtype == orig_arr.dtype
-        assert rest_arr.shape == orig_arr.shape
-        assert rest_arr.dimensions == orig_arr.dimensions
+        assert rest_arr.name == orig_arr.name, (
+            f"Expected name '{orig_arr.name}', got '{rest_arr.name}'"
+        )
+        assert rest_arr.dtype == orig_arr.dtype, (
+            f"Expected dtype '{orig_arr.dtype}', got '{rest_arr.dtype}'"
+        )
+        assert rest_arr.shape == orig_arr.shape, (
+            f"Expected shape {orig_arr.shape}, got {rest_arr.shape}"
+        )
+        assert rest_arr.dimensions == orig_arr.dimensions, (
+            f"Expected dimensions {orig_arr.dimensions}, got {rest_arr.dimensions}"
+        )
 
     def test_round_trip_dimensions(self):
         """Verify dimension metadata is preserved through round-trip."""
@@ -761,16 +785,24 @@ class TestFromJson:
             assert rest_dim.name == orig_dim.name, (
                 f"Expected name='{orig_dim.name}', got '{rest_dim.name}'"
             )
-            assert rest_dim.size == orig_dim.size
-            assert rest_dim.full_name == orig_dim.full_name
+            assert rest_dim.size == orig_dim.size, (
+                f"Expected size {orig_dim.size}, got {rest_dim.size}"
+            )
+            assert rest_dim.full_name == orig_dim.full_name, (
+                f"Expected full_name '{orig_dim.full_name}', got '{rest_dim.full_name}'"
+            )
 
     def test_round_trip_structural_info(self):
         """Verify structural info is preserved through round-trip."""
         md = _make_metadata()
         restored = from_json(to_json(md))
         assert restored.structural is not None, "Structural info should not be None"
-        assert restored.structural.driver_name == md.structural.driver_name
-        assert restored.structural.driver_metadata == md.structural.driver_metadata
+        assert restored.structural.driver_name == md.structural.driver_name, (
+            f"Expected driver_name '{md.structural.driver_name}', got '{restored.structural.driver_name}'"
+        )
+        assert restored.structural.driver_metadata == md.structural.driver_metadata, (
+            "driver_metadata should match after round-trip"
+        )
 
     def test_round_trip_none_structural(self):
         """Verify None structural info survives round-trip."""
@@ -803,7 +835,7 @@ class TestFromJson:
         assert r.scale == 0.01, f"Expected scale=0.01, got {r.scale}"
         assert r.offset == 0.5, f"Expected offset=0.5, got {r.offset}"
         assert r.nodata == -9999, f"Expected nodata=-9999, got {r.nodata}"
-        assert r.srs_wkt == 'GEOGCS["WGS 84"]'
+        assert r.srs_wkt == 'GEOGCS["WGS 84"]', f"Expected WGS 84 WKT, got '{r.srs_wkt}'"
         assert r.block_size == [1, 20, 30]
         assert r.coordinate_variables == ["/lat", "/lon"]
         assert r.structural_info == {"COMPRESS": "DEFLATE"}

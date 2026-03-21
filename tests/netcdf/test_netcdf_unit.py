@@ -22,9 +22,6 @@ from pyramids.netcdf.netcdf import NetCDF
 from pyramids.netcdf.models import NetCDFMetadata
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _make_3d_nc(
     rows=10, cols=12, bands=3, epsg=4326, variable_name="temperature",
@@ -85,9 +82,6 @@ def _make_dataset_3d(bands=3, rows=10, cols=12, no_data=-9999.0):
     )
 
 
-# ---------------------------------------------------------------------------
-# Line 161: geotransform fallback to _geotransform
-# ---------------------------------------------------------------------------
 
 class TestGeotransformFallback:
     """Tests for geotransform property when lon/lat are unavailable."""
@@ -112,9 +106,6 @@ class TestGeotransformFallback:
             )
 
 
-# ---------------------------------------------------------------------------
-# Lines 210-214: no_data_value setter
-# ---------------------------------------------------------------------------
 
 class TestNoDataValueSetter:
     """Tests for NetCDF.no_data_value setter."""
@@ -148,9 +139,6 @@ class TestNoDataValueSetter:
             )
 
 
-# ---------------------------------------------------------------------------
-# Line 237: time_stamp property
-# ---------------------------------------------------------------------------
 
 class TestTimeStamp:
     """Tests for NetCDF.time_stamp property."""
@@ -168,9 +156,6 @@ class TestTimeStamp:
         )
 
 
-# ---------------------------------------------------------------------------
-# Lines 467-476: get_time_variable
-# ---------------------------------------------------------------------------
 
 class TestGetTimeVariable:
     """Tests for NetCDF.get_time_variable method."""
@@ -220,10 +205,6 @@ class TestGetTimeVariable:
             )
 
 
-# ---------------------------------------------------------------------------
-# Line 276: crop delegate
-# Line 301: to_crs delegate
-# ---------------------------------------------------------------------------
 
 class TestSpatialOperationDelegates:
     """Tests for crop() and to_crs() delegation to parent class."""
@@ -258,9 +239,6 @@ class TestSpatialOperationDelegates:
         assert result is not None, "to_crs should return a reprojected Dataset"
 
 
-# ---------------------------------------------------------------------------
-# Line 332: read_file with read_only=False
-# ---------------------------------------------------------------------------
 
 class TestReadFileWriteMode:
     """Tests for NetCDF.read_file with read_only=False."""
@@ -282,9 +260,6 @@ class TestReadFileWriteMode:
         )
 
 
-# ---------------------------------------------------------------------------
-# Lines 359-363: meta_data setter
-# ---------------------------------------------------------------------------
 
 class TestMetaDataSetter:
     """Tests for NetCDF.meta_data setter."""
@@ -328,9 +303,6 @@ class TestMetaDataSetter:
         )
 
 
-# ---------------------------------------------------------------------------
-# Lines 419-425, 430-437: _build_dimension_overview error handling
-# ---------------------------------------------------------------------------
 
 class TestBuildDimensionOverviewErrors:
     """Tests for _build_dimension_overview error handling paths."""
@@ -411,10 +383,6 @@ class TestBuildDimensionOverviewErrors:
         assert "values" in result, "Overview should contain 'values' key"
 
 
-# ---------------------------------------------------------------------------
-# Lines 534-536: _read_variable dimension indexing variable fallback
-# Lines 541-543: _read_variable classic mode fallback
-# ---------------------------------------------------------------------------
 
 class TestReadVariable:
     """Tests for NetCDF._read_variable private method."""
@@ -472,9 +440,6 @@ class TestReadVariable:
         )
 
 
-# ---------------------------------------------------------------------------
-# Lines 595-598: _read_md_array for 1D arrays
-# ---------------------------------------------------------------------------
 
 class TestReadMdArray1D:
     """Tests for _read_md_array with 1D variables."""
@@ -500,9 +465,6 @@ class TestReadMdArray1D:
         assert result_rg is not None, "root group ref should not be None"
 
 
-# ---------------------------------------------------------------------------
-# Line 621: _needs_y_flip
-# ---------------------------------------------------------------------------
 
 class TestNeedsYFlip:
     """Tests for the _needs_y_flip static method."""
@@ -533,10 +495,6 @@ class TestNeedsYFlip:
         )
 
 
-# ---------------------------------------------------------------------------
-# Lines 661-668: get_variable Y-flip correction
-# Line 677: get_variable classic open failure
-# ---------------------------------------------------------------------------
 
 class TestGetVariableEdgeCases:
     """Tests for get_variable edge cases."""
@@ -614,10 +572,6 @@ class TestGetVariableEdgeCases:
         )
 
 
-# ---------------------------------------------------------------------------
-# Lines 711-720: get_variable RuntimeError for band dim values
-# Lines 730-736: get_variable when md_arr is None
-# ---------------------------------------------------------------------------
 
 class TestGetVariableBandDimErrors:
     """Tests for get_variable band dimension error paths."""
@@ -636,10 +590,6 @@ class TestGetVariableBandDimErrors:
         )
 
 
-# ---------------------------------------------------------------------------
-# Line 841: to_file RuntimeError
-# Line 853: to_file non-nc for subset
-# ---------------------------------------------------------------------------
 
 class TestToFile:
     """Tests for NetCDF.to_file edge cases."""
@@ -681,9 +631,6 @@ class TestToFile:
                 nc.to_file(out)
 
 
-# ---------------------------------------------------------------------------
-# Line 879: copy RuntimeError
-# ---------------------------------------------------------------------------
 
 class TestCopy:
     """Tests for NetCDF.copy edge cases."""
@@ -712,9 +659,6 @@ class TestCopy:
         assert os.path.exists(out), f"File should exist at {out}"
 
 
-# ---------------------------------------------------------------------------
-# Lines 966, 971, 988: create_from_array with top_left_corner / cell_size
-# ---------------------------------------------------------------------------
 
 class TestCreateFromArrayAlternatives:
     """Tests for create_from_array alternative parameter paths."""
@@ -796,9 +740,6 @@ class TestCreateFromArrayAlternatives:
         )
 
 
-# ---------------------------------------------------------------------------
-# Lines 1045, 1047: _create_netcdf_from_array validation
-# ---------------------------------------------------------------------------
 
 class TestCreateNetcdfFromArrayValidation:
     """Tests for _create_netcdf_from_array input validation."""
@@ -830,9 +771,6 @@ class TestCreateNetcdfFromArrayValidation:
             )
 
 
-# ---------------------------------------------------------------------------
-# Lines 1086-1087: _add_md_array_to_group exception fallback
-# ---------------------------------------------------------------------------
 
 class TestAddMdArrayToGroupFallback:
     """Tests for _add_md_array_to_group NoData exception path."""
@@ -872,9 +810,6 @@ class TestAddMdArrayToGroupFallback:
         assert ndv is not None, "NoData value should have been set"
 
 
-# ---------------------------------------------------------------------------
-# Lines 1233-1234, 1244-1258, 1260-1261: set_variable attribute writing
-# ---------------------------------------------------------------------------
 
 class TestSetVariableAttributes:
     """Tests for set_variable attribute writing paths."""
@@ -1028,9 +963,6 @@ class TestSetVariableAttributes:
             nc.set_variable("new_var", ds)
 
 
-# ---------------------------------------------------------------------------
-# Lines 1282, 1286: add_variable with specific name and non-NetCDF dataset
-# ---------------------------------------------------------------------------
 
 class TestAddVariable:
     """Tests for add_variable edge cases."""
@@ -1069,9 +1001,6 @@ class TestAddVariable:
         )
 
 
-# ---------------------------------------------------------------------------
-# Line 1310: remove_variable for non-memory driver
-# ---------------------------------------------------------------------------
 
 class TestRemoveVariable:
     """Tests for remove_variable on non-memory datasets."""
@@ -1111,9 +1040,6 @@ class TestRemoveVariable:
         )
 
 
-# ---------------------------------------------------------------------------
-# MSWEP file-based tests
-# ---------------------------------------------------------------------------
 
 class TestMSWEPFile:
     """Tests using the MSWEP test file for real-world coverage."""
@@ -1186,9 +1112,6 @@ class TestMSWEPFile:
         assert lat.ndim == 1, f"lat should be 1D, got {lat.ndim}D"
 
 
-# ---------------------------------------------------------------------------
-# Additional targeted tests for remaining uncovered lines
-# ---------------------------------------------------------------------------
 
 def _make_nc_with_time_units(
     rows=4, cols=5, n_times=3

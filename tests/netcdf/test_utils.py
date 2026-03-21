@@ -36,10 +36,6 @@ from pyramids.netcdf.utils import (
 )
 
 
-# ---------------------------------------------------------------------------
-#  Helpers to build mock GDAL objects
-# ---------------------------------------------------------------------------
-
 
 def _make_group(
     full_name: str | None = None,
@@ -98,10 +94,6 @@ def _make_attribute(name: str, value, fail_read: bool = False) -> MagicMock:
     return att
 
 
-# ===========================================================================
-#  _full_name_with_fallback
-# ===========================================================================
-
 
 class TestFullNameWithFallback:
     """Tests for _full_name_with_fallback."""
@@ -155,10 +147,6 @@ class TestFullNameWithFallback:
         )
 
 
-# ===========================================================================
-#  _get_group_name
-# ===========================================================================
-
 
 class TestGetGroupName:
     """Tests for _get_group_name."""
@@ -179,10 +167,6 @@ class TestGetGroupName:
             "Should return empty string on failure"
         )
 
-
-# ===========================================================================
-#  _safe_array_names
-# ===========================================================================
 
 
 class TestSafeArrayNames:
@@ -222,10 +206,6 @@ class TestSafeArrayNames:
         )
 
 
-# ===========================================================================
-#  _safe_group_names
-# ===========================================================================
-
 
 class TestSafeGroupNames:
     """Tests for _safe_group_names."""
@@ -256,10 +236,6 @@ class TestSafeGroupNames:
         )
 
 
-# ===========================================================================
-#  _get_root_group
-# ===========================================================================
-
 
 class TestGetRootGroup:
     """Tests for _get_root_group."""
@@ -283,10 +259,6 @@ class TestGetRootGroup:
             "Should return None when GetRootGroup fails"
         )
 
-
-# ===========================================================================
-#  _get_driver_name
-# ===========================================================================
 
 
 class TestGetDriverName:
@@ -312,10 +284,6 @@ class TestGetDriverName:
             "Should return 'UNKNOWN' on failure"
         )
 
-
-# ===========================================================================
-#  _export_srs
-# ===========================================================================
 
 
 class TestExportSrs:
@@ -375,10 +343,6 @@ class TestExportSrs:
             "Falsy SRS should yield (None, None)"
         )
 
-
-# ===========================================================================
-#  _get_array_nodata
-# ===========================================================================
 
 
 class TestGetArrayNodata:
@@ -494,10 +458,6 @@ class TestGetArrayNodata:
         )
 
 
-# ===========================================================================
-#  _get_array_scale_offset
-# ===========================================================================
-
 
 class TestGetArrayScaleOffset:
     """Tests for _get_array_scale_offset."""
@@ -589,10 +549,6 @@ class TestGetArrayScaleOffset:
         )
 
 
-# ===========================================================================
-#  _get_block_size
-# ===========================================================================
-
 
 class TestGetBlockSize:
     """Tests for _get_block_size."""
@@ -645,10 +601,6 @@ class TestGetBlockSize:
             "All elements should be int"
         )
 
-
-# ===========================================================================
-#  _get_coord_variable_names
-# ===========================================================================
 
 
 class TestGetCoordVariableNames:
@@ -727,10 +679,6 @@ class TestGetCoordVariableNames:
         )
 
 
-# ===========================================================================
-#  _normalize_origin_string
-# ===========================================================================
-
 
 class TestNormalizeOriginString:
     """Tests for _normalize_origin_string."""
@@ -802,10 +750,6 @@ class TestNormalizeOriginString:
             "Missing day should default to 01"
         )
 
-
-# ===========================================================================
-#  _parse_units_origin
-# ===========================================================================
 
 
 class TestParseUnitsOrigin:
@@ -899,10 +843,6 @@ class TestParseUnitsOrigin:
         )
 
 
-# ===========================================================================
-#  create_time_conversion_func
-# ===========================================================================
-
 
 class TestCreateTimeConversionFunc:
     """Tests for create_time_conversion_func."""
@@ -987,10 +927,6 @@ class TestCreateTimeConversionFunc:
             create_time_conversion_func("garbage")
 
 
-# ===========================================================================
-#  _dtype_to_str
-# ===========================================================================
-
 
 class TestDtypeToStr:
     """Tests for _dtype_to_str."""
@@ -1046,10 +982,6 @@ class TestDtypeToStr:
             "Non-string from GetName should fall through to str()"
         )
 
-
-# ===========================================================================
-#  _to_py_scalar
-# ===========================================================================
 
 
 class TestToPyScalar:
@@ -1137,10 +1069,6 @@ class TestToPyScalar:
         )
 
 
-# ===========================================================================
-#  _normalize_attr_value
-# ===========================================================================
-
 
 class TestNormalizeAttrValue:
     """Tests for _normalize_attr_value."""
@@ -1202,10 +1130,6 @@ class TestNormalizeAttrValue:
             "Empty list should stay empty"
         )
 
-
-# ===========================================================================
-#  _read_attribute_value
-# ===========================================================================
 
 
 class TestReadAttributeValue:
@@ -1277,10 +1201,6 @@ class TestReadAttributeValue:
             "Should not be None for numpy array"
         )
 
-
-# ===========================================================================
-#  _read_attributes
-# ===========================================================================
 
 
 class TestReadAttributes:

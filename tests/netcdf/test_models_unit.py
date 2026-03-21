@@ -812,11 +812,13 @@ class TestNetCDFMetadataDataclass:
     def test_all_fields_accessible(self):
         """Verify all expected fields are accessible."""
         meta = _make_metadata()
-        assert meta.driver == "netCDF"
-        assert meta.root_group == "/"
-        assert isinstance(meta.groups, dict)
-        assert isinstance(meta.arrays, dict)
-        assert isinstance(meta.dimensions, dict)
-        assert isinstance(meta.global_attributes, dict)
-        assert meta.structural is not None
-        assert isinstance(meta.created_with, dict)
+        assert meta.driver == "netCDF", f"Expected 'netCDF', got '{meta.driver}'"
+        assert meta.root_group == "/", f"Expected '/', got '{meta.root_group}'"
+        assert isinstance(meta.groups, dict), f"Expected dict, got {type(meta.groups)}"
+        assert isinstance(meta.arrays, dict), f"Expected dict, got {type(meta.arrays)}"
+        assert isinstance(meta.dimensions, dict), f"Expected dict, got {type(meta.dimensions)}"
+        assert isinstance(meta.global_attributes, dict), (
+            f"Expected dict, got {type(meta.global_attributes)}"
+        )
+        assert meta.structural is not None, "Expected not None for structural"
+        assert isinstance(meta.created_with, dict), f"Expected dict, got {type(meta.created_with)}"

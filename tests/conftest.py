@@ -1,8 +1,16 @@
 from typing import List, Tuple
 from pathlib import Path
+import random
 import pytest
 import os
 import numpy as np
+
+
+@pytest.fixture(scope="session", autouse=True)
+def seed_randomness():
+    """Fix random seeds for deterministic test runs."""
+    random.seed(1337)
+    np.random.seed(1337)
 from osgeo import gdal
 from osgeo.gdal import Dataset
 import pandas as pd

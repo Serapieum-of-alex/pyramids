@@ -24,10 +24,6 @@ from pyramids.featurecollection import FeatureCollection
 from pyramids.multidataset import MultiDataset
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 
 def _make_dataset(
     rows: int = 10,
@@ -53,10 +49,6 @@ def _make_dataset(
     src.raster.GetRasterBand(1).WriteArray(arr)
     return src
 
-
-# ===========================================================================
-# Workflow 1:  Create GeoTIFF -> crop with polygon -> extract values
-# ===========================================================================
 
 
 class TestCreateCropExtract:
@@ -109,10 +101,6 @@ class TestCreateCropExtract:
         )
 
 
-# ===========================================================================
-# Workflow 2:  Create MultiDataset -> save -> reload -> verify shapes
-# ===========================================================================
-
 
 class TestMultiDatasetRoundTrip:
     """Create a MultiDataset, save it, reload, and verify."""
@@ -148,10 +136,6 @@ class TestMultiDatasetRoundTrip:
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-
-# ===========================================================================
-# Workflow 3:  FeatureCollection -> rasterize -> extract -> verify
-# ===========================================================================
 
 
 class TestRasterizeRoundTrip:
@@ -217,10 +201,6 @@ class TestRasterizeRoundTrip:
         assert burned.size > 0, "Burned value 42 should appear in the raster"
 
 
-# ===========================================================================
-# Workflow 4:  Read GeoTIFF -> reproject -> align -> verify dimensions
-# ===========================================================================
-
 
 class TestReprojectAlignWorkflow:
     """Reproject a raster and then align another to its grid."""
@@ -264,10 +244,6 @@ class TestReprojectAlignWorkflow:
             f"Aligned columns should be {ref.columns}, got {aligned.columns}"
         )
 
-
-# ===========================================================================
-# Workflow 5:  MultiDataset create -> apply -> iterate -> verify
-# ===========================================================================
 
 
 class TestMultiDatasetProcessingPipeline:
@@ -329,10 +305,6 @@ class TestMultiDatasetProcessingPipeline:
         )
 
 
-# ===========================================================================
-# Workflow 6:  FeatureCollection property round-trip
-# ===========================================================================
-
 
 class TestFeatureCollectionPropertiesE2E:
     """End-to-end property checks for FeatureCollection."""
@@ -386,10 +358,6 @@ class TestFeatureCollectionPropertiesE2E:
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-
-# ===========================================================================
-# Workflow 7:  GeoTIFF to disk round-trip
-# ===========================================================================
 
 
 class TestGeoTiffRoundTrip:
