@@ -94,7 +94,7 @@ class Dataset(AbstractDataset):
 
     def __repr__(self) -> str:
         """__repr__."""
-        return gdal.Info(self.raster)
+        return str(gdal.Info(self.raster))
 
     @property
     def access(self) -> str:
@@ -105,7 +105,7 @@ class Dataset(AbstractDataset):
             str:
                 The access mode of the dataset (read_only/write).
         """
-        return super().access
+        return str(super().access)
 
     @property
     def raster(self) -> gdal.Dataset:
@@ -130,12 +130,12 @@ class Dataset(AbstractDataset):
     @property
     def rows(self) -> int:
         """Number of rows in the raster array."""
-        return self._rows
+        return int(self._rows)
 
     @property
     def columns(self) -> int:
         """Number of columns in the raster array."""
-        return self._columns
+        return int(self._columns)
 
     @property
     def shape(self) -> tuple[int, int, int]:
@@ -143,7 +143,7 @@ class Dataset(AbstractDataset):
         return self.band_count, self.rows, self.columns
 
     @property
-    def geotransform(self) -> tuple[float, float, float]:
+    def geotransform(self) -> tuple[float, float, float, float, float, float]:
         """WKT projection.
 
         (top left corner X/lon coordinate, cell_size, 0, top left corner y/lat coordinate, 0, -cell_size).
@@ -243,14 +243,14 @@ class Dataset(AbstractDataset):
         self.set_crs(value)
 
     @property
-    def cell_size(self) -> int:
+    def cell_size(self) -> float:
         """Cell size."""
-        return self._cell_size
+        return float(self._cell_size)
 
     @property
     def band_count(self) -> int:
         """Number of bands in the raster."""
-        return self._band_count
+        return int(self._band_count)
 
     @property
     def band_names(self) -> list[str]:
@@ -324,8 +324,8 @@ class Dataset(AbstractDataset):
     @meta_data.setter
     def meta_data(self, value: dict[str, str]):
         """Meta-data."""
-        for key, value in value.items():
-            self._raster.SetMetadataItem(key, value)
+        for key, val in value.items():
+            self._raster.SetMetadataItem(key, val)
 
     @property
     def block_size(self) -> list[tuple[int, int]]:
@@ -570,7 +570,7 @@ class Dataset(AbstractDataset):
         return cls(src, access="read_only" if read_only else "write")
 
     def read_array(
-        self, band: int = None, window: GeoDataFrame | list[int] = None
+        self, band: int | None = None, window: GeoDataFrame | list[int] | None = None
     ) -> np.ndarray:
         """Read the values stored in a given band.
 
@@ -698,7 +698,7 @@ class Dataset(AbstractDataset):
         return arr
 
     def _read_block(
-        self, band: int, window: GeoDataFrame | list[int]
+        self, band: int, window: Any = None
     ) -> np.ndarray:
         """Read block of data from the dataset.
 
@@ -989,7 +989,7 @@ class Dataset(AbstractDataset):
         ]
 
     def get_block_arrangement(
-        self, band: int = 0, x_block_size: int = None, y_block_size: int = None
+        self, band: int = 0, x_block_size: int | None = None, y_block_size: int | None = None
     ) -> DataFrame:
         """Get Block Arrangement.
 
@@ -1048,7 +1048,7 @@ class Dataset(AbstractDataset):
         )
         return df
 
-    def copy(self, path: str = None) -> "Dataset":
+    def copy(self, path: str | None = None) -> "Dataset":
         """Deep copy.
 
         Args:
@@ -1171,8 +1171,8 @@ class Dataset(AbstractDataset):
 
               ```
         """
-        band = self._iloc(band)
-        rat = band.GetDefaultRAT()
+        band_obj = self._iloc(band)
+        rat = band_obj.GetDefaultRAT()
         if rat is None:
             df = None
         else:
@@ -1180,7 +1180,7 @@ class Dataset(AbstractDataset):
 
         return df
 
-    def set_attribute_table(self, df: DataFrame, band: int = None) -> None:
+    def set_attribute_table(self, df: DataFrame, band: int | None = None) -> None:
         """Set the attribute table for a band.
 
         The attribute table can be used to associate tabular data with the values of a raster band.
@@ -1284,8 +1284,9 @@ class Dataset(AbstractDataset):
               ```
         """
         rat = self._df_to_attribute_table(df)
-        band = self._iloc(band)
-        band.SetDefaultRAT(rat)
+        band_index = band if band is not None else 0
+        band_obj = self._iloc(band_index)
+        band_obj.SetDefaultRAT(rat)
 
     @staticmethod
     def _df_to_attribute_table(df: DataFrame) -> gdal.RasterAttributeTable:
@@ -1341,8 +1342,8 @@ class Dataset(AbstractDataset):
         Returns:
             pd.DataFrame: The resulting DataFrame.
         """
-        columns = []
-        data = {}
+        columns: list[tuple[str, int]] = []
+        data: dict[str, list[Any]] = {}
 
         # Get the column names and create empty lists for data
         for col_index in range(rat.GetColumnCount()):
@@ -1372,8 +1373,8 @@ class Dataset(AbstractDataset):
     def add_band(
         self,
         array: np.ndarray,
-        unit: Any = None,
-        attribute_table: DataFrame = None,
+        unit: Any | None = None,
+        attribute_table: DataFrame | None = None,
         inplace: bool = False,
     ) -> None | Dataset:
         """Add a new band to the dataset.
@@ -1501,7 +1502,7 @@ class Dataset(AbstractDataset):
         else:
             return Dataset(src, self.access)
 
-    def stats(self, band: int = None, mask: GeoDataFrame = None) -> DataFrame:
+    def stats(self, band: int | None = None, mask: GeoDataFrame | None = None) -> DataFrame:
         """Get statistics of a band [Min, max, mean, std].
 
         Args:
@@ -1585,6 +1586,7 @@ class Dataset(AbstractDataset):
               ```
 
         """
+        dst: Dataset | None = None
         if mask is not None:
             dst = self.crop(mask, touch=True)
 
@@ -1595,7 +1597,7 @@ class Dataset(AbstractDataset):
                 dtype=np.float32,
             )
             for i in range(self.band_count):
-                if mask is not None:
+                if mask is not None and dst is not None:
                     df.iloc[i, :] = dst._get_stats(i)
                 else:
                     df.iloc[i, :] = self._get_stats(i)
@@ -1605,16 +1607,17 @@ class Dataset(AbstractDataset):
                 columns=["min", "max", "mean", "std"],
                 dtype=np.float32,
             )
-            if mask is not None:
+            if mask is not None and dst is not None:
                 df.iloc[0, :] = dst._get_stats(band)
             else:
                 df.iloc[0, :] = self._get_stats(band)
 
         return df
 
-    def _get_stats(self, band: int = None) -> list[float]:
+    def _get_stats(self, band: int | None = None) -> list[float]:
         """_get_stats."""
-        band_i = self._iloc(band)
+        band_index = band if band is not None else 0
+        band_i = self._iloc(band_index)
         try:
             vals = band_i.GetStatistics(True, True)
         except RuntimeError:
@@ -1628,7 +1631,7 @@ class Dataset(AbstractDataset):
             )
             vals = band_i.ComputeStatistics(False)
 
-        return vals
+        return list(vals)
 
     def plot(
         self,
@@ -1757,7 +1760,10 @@ class Dataset(AbstractDataset):
 
         no_data_value = [np.nan if i is None else i for i in self.no_data_value]
         if overview:
-            arr = self.read_overview_array(band=band, overview_index=overview_index)
+            arr = self.read_overview_array(
+                band=band,
+                overview_index=overview_index if overview_index is not None else 0,
+            )
         else:
             arr = self.read_array(band=band)
         # if the raster has three bands or more.
@@ -1798,7 +1804,7 @@ class Dataset(AbstractDataset):
         cleo.plot(**kwargs)
         return cleo
 
-    def translate(self, path: str = None, **kwargs):
+    def translate(self, path: str | None = None, **kwargs):
         """Translate.
 
         The translate function can be used to
@@ -2076,7 +2082,7 @@ class Dataset(AbstractDataset):
         bands: int,
         dtype: int,
         driver: str = "MEM",
-        path: str = None,
+        path: str | None = None,
     ) -> gdal.Dataset:
         """Create a GDAL driver.
 
@@ -2136,9 +2142,9 @@ class Dataset(AbstractDataset):
         bands: int,
         top_left_corner: tuple,
         epsg: int,
-        no_data_value: Any = None,
-        path: str = None,
-    ) -> "Dataset":
+        no_data_value: Any | None = None,
+        path: str | None = None,
+    ) -> Dataset:
         """Create a new dataset and fill it with the no_data_value.
 
         The new dataset will have an array filled with the no_data_value.
@@ -2218,8 +2224,8 @@ class Dataset(AbstractDataset):
               ```
         """
         # Create the driver.
-        dtype = numpy_to_gdal_dtype(dtype)
-        dst = Dataset._create_dataset(columns, rows, bands, dtype, path=path)
+        gdal_dtype = numpy_to_gdal_dtype(dtype)
+        dst = Dataset._create_dataset(columns, rows, bands, gdal_dtype, path=path)
         sr = Dataset._create_sr_from_epsg(epsg)
         geotransform = (
             top_left_corner[0],
