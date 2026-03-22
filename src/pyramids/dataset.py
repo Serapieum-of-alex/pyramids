@@ -1509,8 +1509,8 @@ class Dataset(AbstractDataset):
         band.WriteArray(array)
 
         if inplace:
-            self.__init__(src, self.access)
             self._update_inplace(src, self.access)
+            return None
         else:
             return Dataset(src, self.access)
 
@@ -2419,7 +2419,7 @@ class Dataset(AbstractDataset):
         cls,
         src: "Dataset",
         array: np.ndarray,
-        path: str = None,
+        path: str | None = None,
     ) -> "Dataset":
         """Create a new dataset like another dataset.
 
@@ -2565,9 +2565,9 @@ class Dataset(AbstractDataset):
 
     def _get_crs(self) -> str:
         """Get coordinate reference system."""
-        return self.raster.GetProjection()
+        return str(self.raster.GetProjection())
 
-    def set_crs(self, crs: str | None = None, epsg: int = None):
+    def set_crs(self, crs: str | None = None, epsg: int | None = None):
         """Set the Coordinate Reference System (CRS).
 
             Set the Coordinate Reference System (CRS) of a
@@ -2597,7 +2597,7 @@ class Dataset(AbstractDataset):
             else:
                 sr = Dataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
-                self._epsg = epsg
+                self._epsg = epsg if epsg is not None else self._epsg
 
     def to_crs(
         self,
@@ -2685,10 +2685,10 @@ class Dataset(AbstractDataset):
                 f"The given interpolation method: {method} does not exist, existing methods are {INTERPOLATION_METHODS.keys()}"
             )
 
-        method = INTERPOLATION_METHODS.get(method)
+        resampling_method: Any = INTERPOLATION_METHODS.get(method)
 
         if maintain_alignment:
-            dst_obj = self._reproject_with_ReprojectImage(to_epsg, method)
+            dst_obj = self._reproject_with_ReprojectImage(to_epsg, resampling_method)
         else:
             dst = gdal.Warp("", self.raster, dstSRS=f"EPSG:{to_epsg}", format="VRT")
             dst_obj = Dataset(dst)
@@ -2728,7 +2728,7 @@ class Dataset(AbstractDataset):
         domain_count = np.size(arr[:, :]) - np.count_nonzero(
             (arr[np.isclose(arr, self.no_data_value[band], rtol=0.001)])
         )
-        return domain_count
+        return int(domain_count)
 
     @staticmethod
     def _create_sr_from_epsg(epsg: int = None) -> SpatialReference:
@@ -3139,11 +3139,8 @@ class Dataset(AbstractDataset):
                 "mask will not be considered."
             )
 
-        if mask:
-            mask = [no_val]
-        else:
-            mask = None
-        indices = get_indices2(arr, mask=mask)
+        mask_values: list[Any] | None = [no_val] if mask else None
+        indices = get_indices2(arr, mask=mask_values)
 
         # exclude the no_data_values cells.
         f1 = [i[0] for i in indices]
@@ -3463,6 +3460,8 @@ class Dataset(AbstractDataset):
         srs = osr.SpatialReference(wkt=self.crs)
 
         dst_ds = FeatureCollection.create_ds("memory")
+        if dst_ds is None:
+            raise RuntimeError("Failed to create in-memory OGR DataSource")
         dst_layer = dst_ds.CreateLayer(col_name, srs=srs)
         dtype = gdal_to_ogr_dtype(self.raster)
         new_field = ogr.FieldDefn(col_name, dtype)
@@ -3750,7 +3749,7 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def fill(
-        self, value: float | int, inplace: bool = False, path: str = None
+        self, value: float | int, inplace: bool = False, path: str | None = None
     ) -> Dataset | None:
         """Fill the domain cells with a certain value.
 
@@ -3888,7 +3887,7 @@ class Dataset(AbstractDataset):
                 f"The given interpolation method does not exist, existing methods are {INTERPOLATION_METHODS.keys()}"
             )
 
-        method = INTERPOLATION_METHODS.get(method)
+        resampling_method: Any = INTERPOLATION_METHODS.get(method)
 
         sr_src = osr.SpatialReference(wkt=self.crs)
 
@@ -3927,7 +3926,7 @@ class Dataset(AbstractDataset):
             dst_obj.raster,
             sr_src.ExportToWkt(),
             sr_src.ExportToWkt(),
-            method,
+            resampling_method,
         )
 
         return dst_obj
@@ -4415,7 +4414,7 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     @staticmethod
-    def correct_wrap_cutline_error(src: "Dataset"):
+    def correct_wrap_cutline_error(src: Dataset) -> Dataset:
         """Correct wrap cutline error.
 
         https://github.com/Serapieum-of-alex/pyramids/issues/74
@@ -4762,7 +4761,7 @@ class Dataset(AbstractDataset):
         indices = locate_values(points, self.x, self.y)
         # rearrange the columns to make the row index first
         indices = indices[:, [1, 0]]
-        return indices
+        return np.asarray(indices)
 
     def array_to_map_coordinates(
         self,
@@ -4940,13 +4939,13 @@ class Dataset(AbstractDataset):
             else:
                 values = arr[indices[:, 0], indices[:, 1]]
 
-        return values
+        return np.asarray(values)
 
     def overlay(
         self,
         classes_map,
         band: int = 0,
-        exclude_value: float | int = None,
+        exclude_value: float | int | None = None,
     ) -> dict[list[float], list[float]]:
         """Overlay.
 
@@ -5013,7 +5012,7 @@ class Dataset(AbstractDataset):
         )
         ind = get_indices2(arr, mask)
         classes = classes_map.read_array()
-        values = dict()
+        values: dict[Any, list[Any]] = dict()
 
         # extract values
         for i, ind_i in enumerate(ind):
@@ -5039,7 +5038,7 @@ class Dataset(AbstractDataset):
         """
         # TODO: there is a CreateMaskBand method in the gdal.Dataset class, it creates a mask band for the dataset
         #   either internally or externally.
-        arr = self._iloc(band).GetMaskBand().ReadAsArray()
+        arr = np.asarray(self._iloc(band).GetMaskBand().ReadAsArray())
         return arr
 
     def footprint(
@@ -5052,7 +5051,7 @@ class Dataset(AbstractDataset):
         Args:
             band (int):
                 Band index. Default is 0.
-            exclude_values (Optional[List[Any]]):
+            exclude_values (List[Any] | None):
                 If you want to exclude a certain value in the raster with another value inter the two values as a
                 list of tuples a [(value_to_be_exclude_valuesd, new_value)].
 
@@ -5174,7 +5173,7 @@ class Dataset(AbstractDataset):
         array_min = array.min()
         array_max = array.max()
         val = (array - array_min) / (array_max - array_min)
-        return val
+        return np.asarray(val)
 
     @staticmethod
     def _rescale(array: np.ndarray, min_value: float, max_value: float) -> np.ndarray:
@@ -5545,8 +5544,8 @@ class Dataset(AbstractDataset):
 
         """
         data = self.read_array()
-        position = []
-        values = []
+        position: list[list[int]] = []
+        values: list[Any] = []
         count = 1
         cluster = np.zeros(shape=(data.shape[0], data.shape[1]))
 
@@ -5574,7 +5573,7 @@ class Dataset(AbstractDataset):
 
     def cluster2(
         self,
-        band: int | list[int] = None,
+        band: int | list[int] | None = None,
     ) -> GeoDataFrame:
         """Cluster the connected equal cells into polygons.
 
@@ -5865,8 +5864,8 @@ class Dataset(AbstractDataset):
             - Dataset.read_overview_array: Read overview values.
             - Dataset.plot: Plot a band.
         """
-        band = self._iloc(band)
-        n_views = band.GetOverviewCount()
+        band_obj = self._iloc(band)
+        n_views = band_obj.GetOverviewCount()
         if n_views == 0:
             raise ValueError(
                 "The band has no overviews, please use the `create_overviews` method to build the overviews"
@@ -5877,10 +5876,10 @@ class Dataset(AbstractDataset):
 
         # TODO:find away to create a Dataset object from the overview band and to return the Dataset object instead
         #  of the gdal band.
-        return band.GetOverview(overview_index)
+        return band_obj.GetOverview(overview_index)
 
     def read_overview_array(
-        self, band: int = None, overview_index: int = 0
+        self, band: int | None = None, overview_index: int = 0
     ) -> np.ndarray:
         """Read overview values.
 
@@ -5961,12 +5960,12 @@ class Dataset(AbstractDataset):
                     "Some bands do not have overviews, please create overviews first"
                 )
             # read the array from the first overview to get the size of the array.
-            arr = self.get_overview(0, 0).ReadAsArray()
-            arr = np.ones(
+            ovr_arr = np.asarray(self.get_overview(0, 0).ReadAsArray())
+            arr: np.ndarray = np.ones(
                 (
                     self.band_count,
-                    arr.shape[0],
-                    arr.shape[1],
+                    ovr_arr.shape[0],
+                    ovr_arr.shape[1],
                 ),
                 dtype=self.numpy_dtype[0],
             )
@@ -5984,7 +5983,7 @@ class Dataset(AbstractDataset):
                     raise ValueError(
                         f"band {band} has no overviews, please create overviews first"
                     )
-            arr = self.get_overview(band, overview_index).ReadAsArray()
+            arr = np.asarray(self.get_overview(band, overview_index).ReadAsArray())
 
         return arr
 
@@ -6049,7 +6048,7 @@ class Dataset(AbstractDataset):
             gdal_const = color_name_to_gdal_constant(val)
             self._iloc(key).SetColorInterpretation(gdal_const)
 
-    def get_band_by_color(self, color_name: str) -> int:
+    def get_band_by_color(self, color_name: str) -> int | None:
         """Get the band associated with a given color.
 
         Args:
@@ -6298,7 +6297,7 @@ class Dataset(AbstractDataset):
             band.SetColorTable(color_table)
             # band.SetRasterColorInterpretation(gdal.GCI_PaletteIndex)
 
-    def _get_color_table(self, band: int = None) -> DataFrame:
+    def _get_color_table(self, band: int | None = None) -> DataFrame:
         """Get color table.
 
         Args:
@@ -6327,8 +6326,8 @@ class Dataset(AbstractDataset):
         self,
         band: int = 0,
         bins: int = 6,
-        min_value: float = None,
-        max_value: float = None,
+        min_value: float | None = None,
+        max_value: float | None = None,
         include_out_of_range: bool = False,
         approx_ok: bool = False,
     ) -> tuple[list, list[tuple[Any, Any]]]:
@@ -6433,8 +6432,8 @@ class Dataset(AbstractDataset):
             - As you see for small datasets, the approximation of the histogram will be the same as without approximation.
 
         """
-        band = self._iloc(band)
-        min_val, max_val = band.ComputeRasterMinMax()
+        band_obj = self._iloc(band)
+        min_val, max_val = band_obj.ComputeRasterMinMax()
         if min_value is None:
             min_value = min_val
         if max_value is None:
@@ -6446,7 +6445,7 @@ class Dataset(AbstractDataset):
             for i in range(bins)
         ]
 
-        hist = band.GetHistogram(
+        hist = band_obj.GetHistogram(
             min=min_value,
             max=max_value,
             buckets=bins,
@@ -6565,4 +6564,7 @@ class Dataset(AbstractDataset):
             df["lon"] = arr[0]
             df["lat"] = arr[1]
             df[band_names] = arr[2].transpose()
-            return df
+            result = df
+        else:
+            result = None
+        return result
