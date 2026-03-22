@@ -206,8 +206,11 @@ class NetCDF(Dataset):
             value: New no-data value. A single number applied to all
                 bands, or a list with one value per band.
         """
-        # PEP 563: super() property setter broken with deferred annotations.
-        Dataset.no_data_value.fset(self, value)
+        if isinstance(value, list):
+            for i, val in enumerate(value):
+                self._change_no_data_value_attr(i, val)
+        else:
+            self._change_no_data_value_attr(0, value)
 
     @property
     def file_name(self):
