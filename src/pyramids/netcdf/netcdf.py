@@ -916,13 +916,15 @@ class NetCDF(Dataset):
     def create_from_array(
         cls,
         arr: np.ndarray,
-        geo: tuple[float, float, float, float, float, float],
-        bands_values: list = None,
+        geo: tuple[float, float, float, float, float, float] | None = None,
+        bands_values: list | None = None,
         epsg: str | int = 4326,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
-        path: str = None,
-        variable_name: str = None,
+        path: str | None = None,
+        variable_name: str | None = None,
+        top_left_corner: tuple[float, float] | None = None,
+        cell_size: int | float | None = None,
     ) -> "Dataset":
         """Create a NetCDF dataset from a NumPy array and geotransform.
 
@@ -953,6 +955,16 @@ class NetCDF(Dataset):
         Returns:
             Dataset: The newly created NetCDF dataset.
         """
+        if geo is None and top_left_corner is not None and cell_size is not None:
+            geo = (
+                top_left_corner[0], cell_size, 0,
+                top_left_corner[1], 0, -cell_size,
+            )
+        if geo is None:
+            raise ValueError(
+                "Either 'geo' or both 'top_left_corner' and 'cell_size' must be provided."
+            )
+
         if arr.ndim == 2:
             bands = 1
             rows = int(arr.shape[0])
