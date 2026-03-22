@@ -976,6 +976,10 @@ class NetCDF(Dataset):
 
         if bands_values is None:
             bands_values = list(range(1, bands + 1))
+
+        if variable_name is None:
+            variable_name = "data"
+
         dst_ds = cls._create_netcdf_from_array(
             arr,
             variable_name,
@@ -1032,6 +1036,8 @@ class NetCDF(Dataset):
         """
         if variable_name is None:
             raise ValueError("Variable_name cannot be None")
+        if geo is None:
+            raise ValueError("geo cannot be None")
 
         dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
         x_dim_values = NetCDF.get_x_lon_dimension_array(geo[0], geo[1], cols)
@@ -1055,7 +1061,7 @@ class NetCDF(Dataset):
 
         md_arr.Write(arr)
         md_arr.SetNoDataValueDouble(no_data_value)
-        srse = Dataset._create_sr_from_epsg(epsg=epsg)
+        srse = Dataset._create_sr_from_epsg(epsg=int(epsg) if epsg is not None else None)
         md_arr.SetSpatialRef(srse)
 
         return src
@@ -1264,10 +1270,15 @@ class NetCDF(Dataset):
         """
         src_rg = self._raster.GetRootGroup()
         var_rg = dataset._raster.GetRootGroup()
-        if variable_name is None:
-            variable_name = dataset.variable_names
+        names_to_copy: list[str]
+        if variable_name is not None:
+            names_to_copy = [variable_name]
+        elif isinstance(dataset, NetCDF):
+            names_to_copy = dataset.variable_names
+        else:
+            names_to_copy = []
 
-        for var in variable_name:
+        for var in names_to_copy:
             md_arr = var_rg.OpenMDArray(var)
             # If the variable name already exists in the destination dataset,
             # use a suffixed name to avoid overwriting the original.
