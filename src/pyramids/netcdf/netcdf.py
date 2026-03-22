@@ -804,7 +804,11 @@ class NetCDF(Dataset):
         """
         return self._is_md_array
 
-    def to_file(self, path: str, **kwargs) -> None:
+    def to_file(  # type: ignore[override]
+        self,
+        path: str,
+        **kwargs,
+    ) -> None:
         """Save the dataset to disk.
 
         For ``.nc`` / ``.nc4`` files the full multidimensional structure
