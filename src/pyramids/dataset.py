@@ -73,6 +73,17 @@ class Dataset(AbstractDataset):
             src.GetRasterBand(i).GetUnitType() for i in range(1, self.band_count + 1)
         ]
 
+    def _update_inplace(
+        self, src: gdal.Dataset, access: str | None = None
+    ) -> None:
+        """Swap internal state from a new GDAL dataset.
+
+        Creates a fresh Dataset and copies its internal data
+        into this instance, similar to pandas' _update_inplace.
+        """
+        new = Dataset(src, access=access or self._access)
+        self.__dict__.update(new.__dict__)
+
     def __str__(self) -> str:
         """__str__."""
         message = f"""
@@ -185,7 +196,7 @@ class Dataset(AbstractDataset):
         """EPSG number."""
         sr = Dataset._create_sr_from_epsg(value)
         self.raster.SetProjection(sr.ExportToWkt())
-        self.__init__(self._raster)
+        self._update_inplace(self._raster)
 
     @property
     def crs(self) -> str:
@@ -1499,6 +1510,7 @@ class Dataset(AbstractDataset):
 
         if inplace:
             self.__init__(src, self.access)
+            self._update_inplace(src, self.access)
         else:
             return Dataset(src, self.access)
 
@@ -2681,10 +2693,12 @@ class Dataset(AbstractDataset):
             dst = gdal.Warp("", self.raster, dstSRS=f"EPSG:{to_epsg}", format="VRT")
             dst_obj = Dataset(dst)
 
+        result: Dataset | None = None
         if inplace:
-            self.__init__(dst_obj.raster)
+            self._update_inplace(dst_obj.raster)
         else:
-            return dst_obj
+            result = dst_obj
+        return result
 
     def _get_epsg(self) -> int:
         """Get the EPSG number.
@@ -3380,7 +3394,7 @@ class Dataset(AbstractDataset):
                 dst = gdal.GetDriverByName(driver_name).CreateCopy(
                     path, self.raster, 0, options=options
                 )
-                self.__init__(dst, "write")
+                self._update_inplace(dst, "write")
                 # flush the data to the dataset on disk.
                 dst.FlushCache()
             except RuntimeError:
@@ -3437,10 +3451,12 @@ class Dataset(AbstractDataset):
             gt[0] = new_gt
 
         dst.SetGeoTransform(gt)
+        result: Dataset | None = None
         if not inplace:
-            return Dataset(dst)
+            result = Dataset(dst)
         else:
-            self.__init__(dst)
+            self._update_inplace(dst)
+        return result
 
     def _band_to_polygon(self, band: int, col_name: str):
         band = self.raster.GetRasterBand(band + 1)
@@ -3789,10 +3805,12 @@ class Dataset(AbstractDataset):
             src_array[~np.isnan(src_array)] = value
 
         dst = Dataset.dataset_like(self, src_array, path=path)
+        result: Dataset | None = None
         if inplace:
-            self.__init__(dst.raster)
+            self._update_inplace(dst.raster)
         else:
-            return dst
+            result = dst
+        return result
 
     def resample(
         self, cell_size: int | float, method: str = "nearest neighbor"
@@ -4549,10 +4567,12 @@ class Dataset(AbstractDataset):
                 "The second parameter: mask could be either GeoDataFrame or Dataset object"
             )
 
+        result: Dataset | None = None
         if inplace:
-            self.__init__(dst.raster)
+            self._update_inplace(dst.raster)
         else:
-            return dst
+            result = dst
+        return result
 
     @staticmethod
     def _nearest_neighbour(
