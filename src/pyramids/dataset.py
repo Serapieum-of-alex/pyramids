@@ -1784,13 +1784,15 @@ class Dataset(AbstractDataset):
         if self.band_count >= 3:
             if band is None:
                 if rgb is None:
-                    rgb = [
+                    rgb_candidate: list[int | None] = [
                         self.get_band_by_color("red"),
                         self.get_band_by_color("green"),
                         self.get_band_by_color("blue"),
                     ]
-                    if None in rgb:
+                    if None in rgb_candidate:
                         rgb = [2, 1, 0]
+                    else:
+                        rgb = [int(v) for v in rgb_candidate if v is not None]
                 # first make the band index the first band in the rgb list (red band)
                 band = rgb[0]
         # elif self.band_count == 1:
@@ -3476,8 +3478,8 @@ class Dataset(AbstractDataset):
 
     def to_feature_collection(
         self,
-        vector_mask: GeoDataFrame = None,
-        add_geometry: str = None,
+        vector_mask: GeoDataFrame | None = None,
+        add_geometry: str | None = None,
         tile: bool = False,
         tile_size: int = 256,
         touch: bool = True,
@@ -4089,14 +4091,14 @@ class Dataset(AbstractDataset):
                 src_array = Dataset._nearest_neighbour(
                     src_array, self.no_data_value[0], rows, cols
                 )
-            return src_array
+        return src_array
 
     def _crop_aligned(
         self,
         mask: gdal.Dataset | np.ndarray,
-        mask_noval: int | float = None,
+        mask_noval: int | float | None = None,
         fill_gaps: bool = False,
-    ) -> "Dataset":
+    ) -> Dataset:
         """Clip/crop by matching the nodata layout from mask to the source raster.
 
         Both rasters must have the same dimensions (rows and columns). Use MatchRasterAlignment prior to this
@@ -5654,7 +5656,7 @@ class Dataset(AbstractDataset):
         return overview_number
 
     def create_overviews(
-        self, resampling_method: str = "nearest", overview_levels: list = None
+        self, resampling_method: str = "nearest", overview_levels: list | None = None
     ) -> None:
         """Create overviews for the dataset.
 
