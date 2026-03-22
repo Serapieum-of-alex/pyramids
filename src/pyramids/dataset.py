@@ -709,7 +709,7 @@ class Dataset(AbstractDataset):
         return arr
 
     def _read_block(
-        self, band: int, window: Any = None
+        self, band: int, window: list[int] | GeoDataFrame | None = None
     ) -> np.ndarray:
         """Read block of data from the dataset.
 
@@ -734,6 +734,8 @@ class Dataset(AbstractDataset):
         """
         if isinstance(window, GeoDataFrame):
             window = self._convert_polygon_to_window(window)
+        if not isinstance(window, list):
+            raise ValueError(f"window must be a list of 4 integers, got {type(window)}")
         try:
             block = self._iloc(band).ReadAsArray(
                 window[0], window[1], window[2], window[3]
@@ -745,7 +747,7 @@ class Dataset(AbstractDataset):
                 )
             else:
                 raise e
-        return block
+        return np.asarray(block)
 
     def _convert_polygon_to_window(
         self, poly: GeoDataFrame | FeatureCollection
