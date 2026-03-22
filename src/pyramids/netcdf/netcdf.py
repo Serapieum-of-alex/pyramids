@@ -352,7 +352,16 @@ class NetCDF(Dataset):
             self._cached_meta_data = get_metadata(self._raster, open_options)
         return self._cached_meta_data
 
-    def get_all_metadata(self, open_options: dict = None) -> "NetCDFMetadata":
+    @meta_data.setter
+    def meta_data(self, value: dict[str, str] | NetCDFMetadata) -> None:
+        """Set metadata on this NetCDF dataset."""
+        if isinstance(value, dict):
+            for key, val in value.items():
+                self._raster.SetMetadataItem(key, val)
+        else:
+            self._cached_meta_data = value
+
+    def get_all_metadata(self, open_options: dict | None = None) -> "NetCDFMetadata":
         """Get full MDIM metadata with a dimension overview snapshot.
 
         Unlike ``meta_data`` (which is cached), this always re-traverses
