@@ -16,6 +16,7 @@ from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
+from pyramids.netcdf.dimensions import DimMetaData
 
 class NetCDF(Dataset):
     """NetCDF.
@@ -917,40 +918,49 @@ class NetCDF(Dataset):
         cls,
         arr: np.ndarray,
         geo: tuple[float, float, float, float, float, float] | None = None,
-        bands_values: list | None = None,
         epsg: str | int = 4326,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str | None = None,
         variable_name: str | None = None,
+        extra_dim_name: str = "time",
+        extra_dim_values: list | None = None,
         top_left_corner: tuple[float, float] | None = None,
         cell_size: int | float | None = None,
-    ) -> "Dataset":
+    ) -> NetCDF:
         """Create a NetCDF dataset from a NumPy array and geotransform.
 
+        For 3-D arrays the first axis is treated as a non-spatial
+        dimension (time, level, depth, etc.) whose name and coordinate
+        values are controlled by ``extra_dim_name`` and
+        ``extra_dim_values``.
+
         Args:
-            arr: 2-D ``(rows, cols)`` or 3-D ``(bands, rows, cols)``
-                NumPy array.
+            arr: 2-D ``(rows, cols)`` or 3-D
+                ``(extra_dim, rows, cols)`` NumPy array.
             geo: Geotransform tuple ``(x_min, pixel_size, rotation,
                 y_max, rotation, pixel_size)``.
-            bands_values: Coordinate values for the band/time
-                dimension. Defaults to None (auto-numbered 1..N).
             epsg: EPSG code for the spatial reference.
                 Defaults to 4326.
-            no_data_value: Sentinel value for cells outside the domain.
-                Defaults to DEFAULT_NO_DATA_VALUE.
+            no_data_value: Sentinel value for cells outside the
+                domain. Defaults to DEFAULT_NO_DATA_VALUE.
             driver_type: GDAL driver name (``"MEM"``, ``"netcdf"``).
                 Defaults to ``"MEM"``.
             path: Output file path. Required when ``driver_type`` is
                 ``"netcdf"``. Defaults to None.
             variable_name: Name of the data variable in the NetCDF
-                file. Defaults to None.
+                file. Defaults to ``"data"``.
+            extra_dim_name: Name of the non-spatial dimension for 3-D
+                arrays (e.g. ``"time"``, ``"level"``, ``"depth"``).
+                Ignored for 2-D arrays. Defaults to ``"time"``.
+            extra_dim_values: Coordinate values for the non-spatial
+                dimension. Must have length ``arr.shape[0]`` for 3-D
+                arrays. Defaults to ``[0, 1, 2, ..., N-1]``.
             top_left_corner: ``(x, y)`` of the top-left corner. Used
-                together with ``cell_size`` to build ``geo`` when ``geo``
-                is not provided. Defaults to None.
-            cell_size: Pixel size. Used together with ``top_left_corner``
-                to build ``geo`` when ``geo`` is not provided.
-                Defaults to None.
+                with ``cell_size`` to build ``geo`` when ``geo`` is
+                not provided. Defaults to None.
+            cell_size: Pixel size. Used with ``top_left_corner`` to
+                build ``geo``. Defaults to None.
 
         Returns:
             Dataset: The newly created NetCDF dataset.
@@ -962,20 +972,26 @@ class NetCDF(Dataset):
             )
         if geo is None:
             raise ValueError(
-                "Either 'geo' or both 'top_left_corner' and 'cell_size' must be provided."
+                "Either 'geo' or both 'top_left_corner' and "
+                "'cell_size' must be provided."
             )
 
         if arr.ndim == 2:
-            bands = 1
             rows = int(arr.shape[0])
             cols = int(arr.shape[1])
         else:
-            bands = arr.shape[0]
             rows = int(arr.shape[1])
             cols = int(arr.shape[2])
 
-        if bands_values is None:
-            bands_values = list(range(1, bands + 1))
+        if extra_dim_values is None and arr.ndim == 3:
+            extra_dim_values = list(range(arr.shape[0]))
+
+        if arr.ndim == 3:
+            DimMetaData(
+                name=extra_dim_name,
+                size=arr.shape[0],
+                values=extra_dim_values,
+            )
 
         if variable_name is None:
             variable_name = "data"
@@ -985,16 +1001,17 @@ class NetCDF(Dataset):
             variable_name,
             cols,
             rows,
-            bands_values,
+            extra_dim_name,
+            extra_dim_values,
             geo,
             epsg,
             no_data_value,
             driver_type=driver_type,
             path=path,
         )
-        dst_obj = cls(dst_ds)
+        result = cls(dst_ds)
 
-        return dst_obj
+        return result
 
     @staticmethod
     def _create_netcdf_from_array(
@@ -1002,7 +1019,8 @@ class NetCDF(Dataset):
         variable_name: str,
         cols: int,
         rows: int,
-        bands_values: list | None = None,
+        extra_dim_name: str = "time",
+        extra_dim_values: list | None = None,
         geo: tuple[float, float, float, float, float, float] | None = None,
         epsg: str | int | None = None,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
@@ -1012,27 +1030,24 @@ class NetCDF(Dataset):
         """Build an in-memory multidimensional GDAL dataset from an array.
 
         Args:
-            arr: 2-D ``(rows, cols)`` or 3-D ``(bands, rows, cols)``
-                NumPy array.
+            arr: 2-D ``(rows, cols)`` or 3-D
+                ``(extra_dim, rows, cols)`` NumPy array.
             variable_name: Name of the data variable.
             cols: Number of columns.
             rows: Number of rows.
-            bands_values: Coordinate values for the band dimension.
-                Defaults to None.
-            geo: Geotransform tuple ``(x_min, pixel_size, rotation,
-                y_max, rotation, pixel_size)``. Defaults to None.
-            epsg: EPSG code for the spatial reference.
-                Defaults to None.
-            no_data_value: Sentinel value for cells outside the domain.
-                Defaults to DEFAULT_NO_DATA_VALUE.
+            extra_dim_name: Name of the non-spatial dimension
+                (e.g. ``"time"``, ``"level"``). Defaults to ``"time"``.
+            extra_dim_values: Coordinate values for the non-spatial
+                dimension. Defaults to None.
+            geo: Geotransform tuple. Defaults to None.
+            epsg: EPSG code. Defaults to None.
+            no_data_value: No-data sentinel. Defaults to
+                DEFAULT_NO_DATA_VALUE.
             driver_type: GDAL driver name. Defaults to ``"MEM"``.
             path: Output file path. Defaults to None.
 
         Returns:
             gdal.Dataset: The created multidimensional GDAL dataset.
-
-        Raises:
-            ValueError: If ``variable_name`` is None.
         """
         if variable_name is None:
             raise ValueError("Variable_name cannot be None")
@@ -1052,10 +1067,12 @@ class NetCDF(Dataset):
         dim_x = NetCDF.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))
         dim_y = NetCDF.create_main_dimension(rg, "y", dtype, np.array(y_dim_values))
         if arr.ndim == 3:
-            dim_bands = NetCDF.create_main_dimension(
-                rg, "bands", dtype, np.array(bands_values)
+            extra_dim = NetCDF.create_main_dimension(
+                rg, extra_dim_name, dtype, np.array(extra_dim_values)
             )
-            md_arr = rg.CreateMDArray(variable_name, [dim_bands, dim_y, dim_x], dtype)
+            md_arr = rg.CreateMDArray(
+                variable_name, [extra_dim, dim_y, dim_x], dtype
+            )
         else:
             md_arr = rg.CreateMDArray(variable_name, [dim_y, dim_x], dtype)
 

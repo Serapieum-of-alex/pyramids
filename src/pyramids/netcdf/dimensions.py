@@ -304,6 +304,23 @@ class DimMetaData:
     raw: dict[str, str] = field(default_factory=dict)
     attrs: dict[str, str] = field(default_factory=dict)
 
+    def __post_init__(self):
+        """Validate dimension fields for consistency."""
+        if not self.name:
+            raise ValueError("Dimension name cannot be empty.")
+        if self.size is not None and self.size < 0:
+            raise ValueError(
+                f"Dimension '{self.name}': size cannot be negative, "
+                f"got {self.size}."
+            )
+        if self.values is not None and self.size is not None:
+            if len(self.values) != self.size:
+                raise ValueError(
+                    f"Dimension '{self.name}': values length "
+                    f"({len(self.values)}) does not match size "
+                    f"({self.size})."
+                )
+
 
 
 @dataclass
