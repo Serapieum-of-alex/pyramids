@@ -33,8 +33,12 @@ def created_nc():
     arr = np.random.rand(3, 10, 12).astype(np.float64)
     geo = (0.0, 1.0, 0, 10.0, 0, -1.0)
     return NetCDF.create_from_array(
-        arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-        driver_type="netcdf", path=None,
+        arr=arr,
+        geo=geo,
+        epsg=4326,
+        no_data_value=-9999.0,
+        driver_type="netcdf",
+        path=None,
         variable_name="temperature",
     )
 
@@ -200,8 +204,12 @@ class TestStage2_VariablesCaching:
         arr = np.random.rand(3, 5, 5).astype(np.float64)
         geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            driver_type="netcdf",
+            path=None,
             variable_name="var1",
         )
         _ = nc.variables  # populate cache
@@ -283,8 +291,12 @@ class TestStage3_VariableOriginTracking:
         arr = np.random.rand(10, 12).astype(np.float64)
         geo = (0.0, 1.0, 0, 10.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            driver_type="netcdf",
+            path=None,
             variable_name="elevation",
         )
         var = nc.get_variable("elevation")
@@ -336,8 +348,12 @@ class TestStage3_SetVariable:
         arr = np.ones((5, 5), dtype=np.float64)
         geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            driver_type="netcdf",
+            path=None,
             variable_name="data",
         )
         arr2 = np.ones((5, 5), dtype=np.float64) * 42
@@ -370,8 +386,12 @@ class TestStage3_SetVariable:
         arr = np.random.rand(5, 5).astype(np.float64)
         geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            driver_type="netcdf",
+            path=None,
             variable_name="original",
         )
         _ = nc.variables  # populate cache
@@ -401,8 +421,12 @@ class TestStage3_DimensionReuse:
         arr = np.random.rand(5, 8).astype(np.float64)
         geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            driver_type="netcdf",
+            path=None,
             variable_name="var1",
         )
         from pyramids.dataset import Dataset

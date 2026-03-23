@@ -35,8 +35,12 @@ def _make_3d_nc(
     arr = np.random.RandomState(42).rand(bands, rows, cols).astype(np.float64)
     geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
     return NetCDF.create_from_array(
-        arr=arr, geo=geo, epsg=epsg, no_data_value=no_data_value,
-        driver_type="netcdf", path=None,
+        arr=arr,
+        geo=geo,
+        epsg=epsg,
+        no_data_value=no_data_value,
+        driver_type="netcdf",
+        path=None,
         variable_name=variable_name,
     )
 
@@ -50,8 +54,12 @@ def _make_2d_nc(rows=10, cols=12, variable_name="elevation"):
     arr = np.random.RandomState(99).rand(rows, cols).astype(np.float64)
     geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
     return NetCDF.create_from_array(
-        arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-        driver_type="netcdf", path=None,
+        arr=arr,
+        geo=geo,
+        epsg=4326,
+        no_data_value=-9999.0,
+        driver_type="netcdf",
+        path=None,
         variable_name=variable_name,
     )
 
@@ -718,10 +726,10 @@ class TestCreateFromArrayAlternatives:
             f"Expected 'data' in variable_names, got {nc.variable_names}"
         )
 
-    def test_create_from_array_default_bands_values(self):
-        """Verify create_from_array defaults bands_values to 1..N.
+    def test_create_from_array_default_extra_dim_values(self):
+        """Verify create_from_array defaults extra_dim_values to 0..N-1.
 
-        Covers line 984-985: bands_values = list(range(1, bands + 1)).
+        Covers the default extra_dim_values generation for 3D arrays.
         """
         arr = np.random.rand(4, 5, 10).astype(np.float64)
         geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
@@ -753,7 +761,6 @@ class TestCreateNetcdfFromArrayValidation:
         with pytest.raises(ValueError, match="Variable_name cannot be None"):
             NetCDF._create_netcdf_from_array(
                 arr, None, 10, 5,
-                bands_values=None,
                 geo=(0.0, 1.0, 0, 5.0, 0, -1.0),
             )
 
@@ -766,7 +773,6 @@ class TestCreateNetcdfFromArrayValidation:
         with pytest.raises(ValueError, match="geo cannot be None"):
             NetCDF._create_netcdf_from_array(
                 arr, "var", 10, 5,
-                bands_values=None,
                 geo=None,
             )
 
