@@ -920,7 +920,6 @@ class NetCDF(Dataset):
         geo: tuple[float, float, float, float, float, float] | None = None,
         epsg: str | int = 4326,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
-        driver_type: str = "MEM",
         path: str | None = None,
         variable_name: str | None = None,
         extra_dim_name: str = "time",
@@ -935,6 +934,10 @@ class NetCDF(Dataset):
         values are controlled by ``extra_dim_name`` and
         ``extra_dim_values``.
 
+        The driver is inferred from ``path``: if ``path`` is ``None``
+        the dataset is created in memory (MEM driver); if a path is
+        provided the netCDF driver writes to disk.
+
         Args:
             arr: 2-D ``(rows, cols)`` or 3-D
                 ``(extra_dim, rows, cols)`` NumPy array.
@@ -944,10 +947,8 @@ class NetCDF(Dataset):
                 Defaults to 4326.
             no_data_value: Sentinel value for cells outside the
                 domain. Defaults to DEFAULT_NO_DATA_VALUE.
-            driver_type: GDAL driver name (``"MEM"``, ``"netcdf"``).
-                Defaults to ``"MEM"``.
-            path: Output file path. Required when ``driver_type`` is
-                ``"netcdf"``. Defaults to None.
+            path: Output file path. If ``None``, the dataset is
+                created in memory. Defaults to None.
             variable_name: Name of the data variable in the NetCDF
                 file. Defaults to ``"data"``.
             extra_dim_name: Name of the non-spatial dimension for 3-D
@@ -963,7 +964,7 @@ class NetCDF(Dataset):
                 build ``geo``. Defaults to None.
 
         Returns:
-            Dataset: The newly created NetCDF dataset.
+            NetCDF: The newly created NetCDF dataset.
         """
         if geo is None and top_left_corner is not None and cell_size is not None:
             geo = (
@@ -1006,7 +1007,6 @@ class NetCDF(Dataset):
             geo,
             epsg,
             no_data_value,
-            driver_type=driver_type,
             path=path,
         )
         result = cls(dst_ds)
@@ -1024,10 +1024,12 @@ class NetCDF(Dataset):
         geo: tuple[float, float, float, float, float, float] | None = None,
         epsg: str | int | None = None,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
-        driver_type: str = "MEM",
         path: str | None = None,
     ) -> gdal.Dataset:
-        """Build an in-memory multidimensional GDAL dataset from an array.
+        """Build a multidimensional GDAL dataset from an array.
+
+        The driver is inferred from ``path``: ``None`` → MEM (in-memory),
+        otherwise the netCDF driver writes to disk.
 
         Args:
             arr: 2-D ``(rows, cols)`` or 3-D
@@ -1043,8 +1045,8 @@ class NetCDF(Dataset):
             epsg: EPSG code. Defaults to None.
             no_data_value: No-data sentinel. Defaults to
                 DEFAULT_NO_DATA_VALUE.
-            driver_type: GDAL driver name. Defaults to ``"MEM"``.
-            path: Output file path. Defaults to None.
+            path: Output file path. If None, created in memory.
+                Defaults to None.
 
         Returns:
             gdal.Dataset: The created multidimensional GDAL dataset.
@@ -1058,9 +1060,11 @@ class NetCDF(Dataset):
         x_dim_values = NetCDF.get_x_lon_dimension_array(geo[0], geo[1], cols)
         y_dim_values = NetCDF.get_y_lat_dimension_array(geo[3], geo[1], rows)
 
-        if path is None and driver_type == "netcdf":
-            path = "netcdf"
+        if path is not None:
+            driver_type = "netCDF"
+        else:
             driver_type = "MEM"
+            path = "netcdf"
         src = gdal.GetDriverByName(driver_type).CreateMultiDimensional(path)
         rg = src.GetRootGroup()
 
