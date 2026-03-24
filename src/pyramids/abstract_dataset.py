@@ -572,7 +572,7 @@ class AbstractDataset(ABC):
 
     @staticmethod
     @abstractmethod
-    def _create_sr_from_epsg(epsg: int | None = None) -> SpatialReference:
+    def _create_sr_from_epsg(epsg: int) -> SpatialReference:
         """Create a spatial reference object from epsg number.
 
         https://gdal.org/tutorials/osr_api_tut.html
@@ -584,8 +584,7 @@ class AbstractDataset(ABC):
             SpatialReference: SpatialReference object.
         """
         sr = osr.SpatialReference()
-        if epsg is not None:
-            sr.ImportFromEPSG(int(epsg))
+        sr.ImportFromEPSG(int(epsg))
         return sr
 
     @abstractmethod
