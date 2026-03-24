@@ -4835,7 +4835,7 @@ class Dataset(AbstractDataset):
 
         return x_coords, y_coords
 
-    def extract(
+    def extract(  # type: ignore[override]
         self,
         band: int | None = None,
         exclude_value: Any | None = None,
@@ -5624,7 +5624,6 @@ class Dataset(AbstractDataset):
               ```
 
             - Now, let's cluster the connected equal cells into polygons.
-
               ```python
               >>> gdf = dataset.cluster2()
               >>> print(gdf)  # doctest: +SKIP
