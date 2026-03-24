@@ -62,7 +62,6 @@ class FeatureCollection:
 
     def __init__(self, gdf: GeoDataFrame | DataSource):
         """Create a FeatureCollection object."""
-        # read the drivers catalog
         self._feature = gdf
 
     def _update_inplace(self, gdf: GeoDataFrame | DataSource) -> None:
