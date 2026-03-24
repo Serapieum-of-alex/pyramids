@@ -183,7 +183,8 @@ class Dataset(AbstractDataset):
             - Dataset.top_left_corner: Coordinate of the top left corner of the dataset.
             - Dataset.epsg: EPSG number of the dataset coordinate reference system.
         """
-        return super().geotransform
+        gt: tuple[float, float, float, float, float, float] = self._geotransform
+        return gt
 
     @property
     def epsg(self) -> int:
