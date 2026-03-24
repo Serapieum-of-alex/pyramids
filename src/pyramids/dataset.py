@@ -11,7 +11,10 @@ import os
 import warnings
 import logging
 from numbers import Number
-from typing import Any, Generator
+from typing import Any, Generator, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cleopatra.array_glyph import ArrayGlyph
 
 import geopandas as gpd
 import numpy as np
@@ -1659,7 +1662,7 @@ class Dataset(AbstractDataset):
         overview_index: int | None = 0,
         percentile: int | None = None,
         **kwargs: Any,
-    ) -> "ArrayGlyph":
+    ) -> ArrayGlyph:
         """Plot the values/overviews of a given band.
 
         The plot function uses the `cleopatra` as a backend to plot the raster data, for more information check
