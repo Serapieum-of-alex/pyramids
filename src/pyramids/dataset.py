@@ -2404,8 +2404,10 @@ class Dataset(AbstractDataset):
             cols, rows, bands, dtype, driver=driver_type, path=path
         )
 
-        epsg_int = int(epsg) if epsg is not None else None
-        srse = Dataset._create_sr_from_epsg(epsg=epsg_int)
+        if epsg is None:
+            raise ValueError("epsg must be provided")
+
+        srse = Dataset._create_sr_from_epsg(epsg=int(epsg))
         dst_ds.SetProjection(srse.ExportToWkt())
         dst_ds.SetGeoTransform(geo)
 
@@ -2603,10 +2605,12 @@ class Dataset(AbstractDataset):
             if crs is not None:
                 self.raster.SetProjection(crs)
                 self._epsg = FeatureCollection.get_epsg_from_prj(crs)
-            else:
+            elif epsg is not None:
                 sr = Dataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
-                self._epsg = epsg if epsg is not None else self._epsg
+                self._epsg = epsg
+            else:
+                raise ValueError("Either crs or epsg must be provided.")
 
     def to_crs(
         self,
@@ -2740,7 +2744,7 @@ class Dataset(AbstractDataset):
         return int(domain_count)
 
     @staticmethod
-    def _create_sr_from_epsg(epsg: int = None) -> SpatialReference:
+    def _create_sr_from_epsg(epsg: int) -> SpatialReference:
         """Create a spatial reference object from EPSG number.
 
         https://gdal.org/tutorials/osr_api_tut.html
