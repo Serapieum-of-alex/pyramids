@@ -4837,9 +4837,9 @@ class Dataset(AbstractDataset):
 
     def extract(
         self,
-        band: int = None,
-        exclude_value: Any = None,
-        feature: FeatureCollection | GeoDataFrame = None,
+        band: int | None = None,
+        exclude_value: Any | None = None,
+        feature: FeatureCollection | GeoDataFrame | None = None,
     ) -> np.ndarray:
         """Extract.
 
