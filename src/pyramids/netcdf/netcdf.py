@@ -914,7 +914,7 @@ class NetCDF(Dataset):
         return dim
 
     @classmethod
-    def create_from_array(
+    def create_from_array(  # type: ignore[override]
         cls,
         arr: np.ndarray,
         geo: tuple[float, float, float, float, float, float] | None = None,
@@ -1082,7 +1082,9 @@ class NetCDF(Dataset):
 
         md_arr.Write(arr)
         md_arr.SetNoDataValueDouble(no_data_value)
-        srse = Dataset._create_sr_from_epsg(epsg=int(epsg) if epsg is not None else None)
+        if epsg is None:
+            raise ValueError("epsg cannot be None")
+        srse = Dataset._create_sr_from_epsg(epsg=int(epsg))
         md_arr.SetSpatialRef(srse)
 
         return src
