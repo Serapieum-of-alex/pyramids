@@ -360,8 +360,8 @@ class MultiDataset:
         self._values = val
 
     @values.deleter
-    def values(self):
-        self._values = None
+    def values(self) -> None:
+        self._values = None  # type: ignore[assignment]
 
     def __getitem__(self, key):
         """Getitem."""
