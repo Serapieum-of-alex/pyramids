@@ -838,6 +838,28 @@ class FeatureCollection:
         return coord_arrays
 
     @staticmethod
+    def _geometry_collection(geom: Any, coord_type: str) -> list[Any]:
+        """Get coordinates from a GeometryCollection.
+
+        Args:
+            geom: A GeometryCollection geometry.
+            coord_type (str): Either "x" or "y".
+
+        Returns:
+            list[Any]: Merged list of coordinates from all sub-geometries.
+        """
+        coords: list[Any] = []
+        for sub_geom in geom.geoms:
+            gtype = sub_geom.geom_type.lower()
+            if gtype == "point":
+                coords.append(FeatureCollection._get_point_coords(sub_geom, coord_type))
+            elif gtype == "linestring":
+                coords.extend(FeatureCollection._get_line_coords(sub_geom, coord_type))
+            elif gtype == "polygon":
+                coords.extend(FeatureCollection._get_poly_coords(sub_geom, coord_type))
+        return coords
+
+    @staticmethod
     def _get_coords(row, geom_col: str, coord_type: str):
         """Get coordinates ('x' or 'y') of a geometry row.
 
