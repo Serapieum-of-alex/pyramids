@@ -2517,15 +2517,14 @@ class Dataset(AbstractDataset):
 
         return dst_obj
 
-    def write_array(self, array: np.ndarray, top_left_corner: list[Any] | None = None):
+    def write_array(self, array: np.ndarray, top_left_corner: list[int]):
         """Write an array to the dataset at the given xoff, yoff position.
 
         Args:
             array (np.ndarray):
                 The array to write
-            top_left_corner (List[float, float]):
-                indices [row, column]/[y_offset, x_offset] of the cell to write the array to. If None, the array will
-                be written to the top left corner of the dataset.
+            top_left_corner (list[int]):
+                indices [row, column]/[y_offset, x_offset] of the cell to write the array to.
 
         Raises:
             Exception: If the array is not written successfully.

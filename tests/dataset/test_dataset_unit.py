@@ -1424,7 +1424,7 @@ class TestWriteArrayErrors:
             epsg=4326,
         )
         new_data = np.full((3, 3), 77.0, dtype=np.float32)
-        ds.write_array(new_data, top_left_corner=None)
+        ds.write_array(new_data, top_left_corner=[0, 0])
         result = ds.read_array()
         assert np.all(result == 77.0), (
             "All cells should be 77 after writing with None top_left"
@@ -3414,7 +3414,7 @@ class TestWriteArrayException:
         )
         bad_arr = np.ones((10, 10), dtype=np.float32)
         with pytest.raises(Exception):
-            ds.write_array(bad_arr)
+            ds.write_array(bad_arr, top_left_corner=[0, 0])
 
 
 
