@@ -2276,7 +2276,7 @@ class Dataset(AbstractDataset):
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
         path: str = None,
-    ) -> "Dataset":
+    ) -> Dataset:
         """Create a new dataset from an array.
 
         Args:
@@ -2392,19 +2392,20 @@ class Dataset(AbstractDataset):
         arr: np.ndarray,
         cols: int,
         rows: int,
-        bands: int = None,
-        geo: tuple[float, float, float, float, float, float] = None,
-        epsg: str | int = None,
+        bands: int = 1,
+        geo: tuple[float, float, float, float, float, float] | None = None,
+        epsg: str | int | None = None,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
-        path: str = None,
-    ) -> "Dataset":
+        path: str | None = None,
+    ) -> Dataset:
         dtype = numpy_to_gdal_dtype(arr)
         dst_ds = Dataset._create_dataset(
             cols, rows, bands, dtype, driver=driver_type, path=path
         )
 
-        srse = Dataset._create_sr_from_epsg(epsg=epsg)
+        epsg_int = int(epsg) if epsg is not None else None
+        srse = Dataset._create_sr_from_epsg(epsg=epsg_int)
         dst_ds.SetProjection(srse.ExportToWkt())
         dst_ds.SetGeoTransform(geo)
 
@@ -2514,7 +2515,7 @@ class Dataset(AbstractDataset):
 
         return dst_obj
 
-    def write_array(self, array: np.array, top_left_corner: list[Any] = None):
+    def write_array(self, array: np.ndarray, top_left_corner: list[Any] | None = None):
         """Write an array to the dataset at the given xoff, yoff position.
 
         Args:
