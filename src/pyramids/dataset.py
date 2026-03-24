@@ -2266,16 +2266,16 @@ class Dataset(AbstractDataset):
         return dst
 
     @classmethod
-    def create_from_array(
+    def create_from_array(  # type: ignore[override]
         cls,
         arr: np.ndarray,
-        top_left_corner: tuple[float, float] = None,
-        cell_size: int | float = None,
-        geo: tuple[float, float, float, float, float, float] = None,
+        top_left_corner: tuple[float, float] | None = None,
+        cell_size: int | float | None = None,
+        geo: tuple[float, float, float, float, float, float] | None = None,
         epsg: str | int = 4326,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
-        path: str = None,
+        path: str | None = None,
     ) -> Dataset:
         """Create a new dataset from an array.
 
@@ -2970,7 +2970,7 @@ class Dataset(AbstractDataset):
 
         self._no_data_value[band] = no_data_value
 
-    def change_no_data_value(self, new_value: Any, old_value: Any = None):
+    def change_no_data_value(self, new_value: Any, old_value: Any | None = None):
         """Change No Data Value.
 
             - Set the no data value in all raster bands.
