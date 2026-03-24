@@ -4322,10 +4322,9 @@ class Dataset(AbstractDataset):
             )
 
         # reproject the raster to match the projection of alignment_src
-        if not self.epsg == src.epsg:
-            reprojected_RasterB = self.to_crs(src.epsg)
-        else:
-            reprojected_RasterB = self
+        reprojected_raster_b: Dataset = self
+        if self.epsg != src.epsg:
+            reprojected_raster_b = self.to_crs(src.epsg)  # type: ignore[assignment]
         # create a new raster
         dst = Dataset._create_dataset(
             src.columns, src.rows, self.band_count, src.gdal_dtype[0], driver="MEM"
@@ -4341,7 +4340,7 @@ class Dataset(AbstractDataset):
         method = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
         gdal.ReprojectImage(
-            reprojected_RasterB.raster,
+            reprojected_raster_b.raster,
             dst_obj.raster,
             src.crs,
             src.crs,
