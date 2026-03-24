@@ -6319,15 +6319,15 @@ class Dataset(AbstractDataset):
                 A DataFrame with columns ["band", "values", "red", "green", "blue", "alpha"] describing the color table.
         """
         df = pd.DataFrame(columns=["band", "values", "red", "green", "blue", "alpha"])
-        bands = range(self.band_count) if band is None else band
+        band_iter: Iterable[int] = range(self.band_count) if band is None else [band]
         row = 0
-        for band in bands:
-            color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
+        for band_i in band_iter:
+            color_table = self.raster.GetRasterBand(band_i + 1).GetRasterColorTable()
             for i in range(color_table.GetCount()):
                 df.loc[row, ["red", "green", "blue", "alpha"]] = (
                     color_table.GetColorEntry(i)
                 )
-                df.loc[row, ["band", "values"]] = band + 1, i
+                df.loc[row, ["band", "values"]] = band_i + 1, i
                 row += 1
 
         return df
