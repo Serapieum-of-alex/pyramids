@@ -5648,8 +5648,15 @@ class Dataset(AbstractDataset):
         if band is None:
             band = 0
 
-        name = self.band_names[band]
-        gdf = self._band_to_polygon(band, name)
+        if isinstance(band, int):
+            name = self.band_names[band]
+            gdf = self._band_to_polygon(band, name)
+        else:
+            gdfs = []
+            for b in band:
+                name = self.band_names[b]
+                gdfs.append(self._band_to_polygon(b, name))
+            gdf = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True))
 
         return gdf
 
