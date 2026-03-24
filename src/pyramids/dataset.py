@@ -11,6 +11,7 @@ import os
 import warnings
 import logging
 from numbers import Number
+from collections.abc import Iterable
 from typing import Any, Generator, TYPE_CHECKING
 
 if TYPE_CHECKING:
