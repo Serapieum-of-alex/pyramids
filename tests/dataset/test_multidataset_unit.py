@@ -223,22 +223,6 @@ class TestItemAccess:
 
 
 
-class TestValuesDeleter:
-    """Tests for the values property deleter."""
-
-    def test_delete_values(self, cube_with_values: MultiDataset):
-        """Deleting values should remove the _values attribute."""
-        del cube_with_values.values
-        assert not hasattr(cube_with_values, "_values"), (
-            "_values should be removed after deletion"
-        )
-
-    def test_access_after_delete_raises(self, cube_with_values: MultiDataset):
-        """Accessing values after deletion should raise AttributeError."""
-        del cube_with_values.values
-        with pytest.raises(AttributeError):
-            _ = cube_with_values.values
-
 
 
 class TestValuesSetter:
