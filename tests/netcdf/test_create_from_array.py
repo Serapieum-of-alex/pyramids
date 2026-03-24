@@ -34,7 +34,6 @@ class TestCreateFromArray2D:
             arr=arr,
             geo=GEO,
             variable_name="elevation",
-            driver_type="netcdf",
             path=None,
         )
         assert (
@@ -52,7 +51,6 @@ class TestCreateFromArray2D:
             arr=arr,
             geo=GEO,
             variable_name="dem",
-            driver_type="netcdf",
             path=None,
         )
         dims = nc.dimension_names
@@ -71,7 +69,6 @@ class TestCreateFromArray2D:
             arr=arr,
             geo=GEO,
             variable_name="sst",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("sst")
@@ -88,7 +85,6 @@ class TestCreateFromArray2D:
             arr=arr,
             geo=GEO,
             variable_name="precip",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("precip")
@@ -113,7 +109,6 @@ class TestCreateFromArray2D:
             geo=GEO,
             no_data_value=-999.0,
             variable_name="ndv_test",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("ndv_test")
@@ -136,7 +131,6 @@ class TestCreateFromArray2D:
             geo=GEO,
             epsg=32637,
             variable_name="utm_var",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("utm_var")
@@ -158,7 +152,6 @@ class TestCreateFromArray3D:
             geo=GEO,
             variable_name="temp",
             extra_dim_name="time",
-            driver_type="netcdf",
             path=None,
         )
         dims = nc.dimension_names
@@ -177,7 +170,6 @@ class TestCreateFromArray3D:
             geo=GEO,
             variable_name="salinity",
             extra_dim_name="depth",
-            driver_type="netcdf",
             path=None,
         )
         assert (
@@ -198,7 +190,6 @@ class TestCreateFromArray3D:
             variable_name="pressure",
             extra_dim_name="level",
             extra_dim_values=[100, 200, 300],
-            driver_type="netcdf",
             path=None,
         )
         rg = nc._raster.GetRootGroup()
@@ -223,7 +214,6 @@ class TestCreateFromArray3D:
             geo=GEO,
             variable_name="wind",
             extra_dim_name="time",
-            driver_type="netcdf",
             path=None,
         )
         rg = nc._raster.GetRootGroup()
@@ -242,7 +232,6 @@ class TestCreateFromArray3D:
             arr=arr,
             geo=GEO,
             variable_name="temp",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("temp")
@@ -259,7 +248,6 @@ class TestCreateFromArray3D:
             arr=arr,
             geo=GEO,
             variable_name="rain",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("rain")
@@ -287,7 +275,6 @@ class TestCreateFromArrayGeoParams:
             arr=arr,
             geo=GEO,
             variable_name="v",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("v")
@@ -308,7 +295,6 @@ class TestCreateFromArrayGeoParams:
             top_left_corner=(30.0, 35.0),
             cell_size=0.5,
             variable_name="v",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("v")
@@ -327,7 +313,6 @@ class TestCreateFromArrayGeoParams:
             NetCDF.create_from_array(
                 arr=arr,
                 variable_name="v",
-                driver_type="netcdf",
                 path=None,
             )
 
@@ -349,7 +334,6 @@ class TestCreateFromArrayValidation:
                 variable_name="v",
                 extra_dim_name="time",
                 extra_dim_values=[0, 6],
-                driver_type="netcdf",
                 path=None,
             )
 
@@ -366,7 +350,6 @@ class TestCreateFromArrayValidation:
                 geo=GEO,
                 variable_name="v",
                 extra_dim_name="",
-                driver_type="netcdf",
                 path=None,
             )
 
@@ -383,7 +366,6 @@ class TestCreateFromArrayValidation:
             variable_name="v",
             extra_dim_name="time",
             extra_dim_values=[0, 6, 12],
-            driver_type="netcdf",
             path=None,
         )
         assert (
@@ -404,7 +386,6 @@ class TestCreateFromArrayDefaults:
         nc = NetCDF.create_from_array(
             arr=arr,
             geo=GEO,
-            driver_type="netcdf",
             path=None,
         )
         assert "data" in nc.variable_names, f"Expected 'data' in {nc.variable_names}"
@@ -420,7 +401,6 @@ class TestCreateFromArrayDefaults:
             arr=arr,
             geo=GEO,
             variable_name="v",
-            driver_type="netcdf",
             path=None,
         )
         assert "time" in nc.dimension_names, f"Expected 'time' in {nc.dimension_names}"
@@ -436,7 +416,6 @@ class TestCreateFromArrayDefaults:
             arr=arr,
             geo=GEO,
             variable_name="v",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("v")
@@ -458,7 +437,6 @@ class TestCreateFromArrayDiskRoundTrip:
             arr=arr,
             geo=GEO,
             variable_name="elev",
-            driver_type="netcdf",
             path=None,
         )
         out = str(tmp_path / "test_2d.nc")
@@ -489,7 +467,6 @@ class TestCreateFromArrayDiskRoundTrip:
             variable_name="temperature",
             extra_dim_name="level",
             extra_dim_values=[1000, 850, 500, 200],
-            driver_type="netcdf",
             path=None,
         )
         out = str(tmp_path / "test_3d.nc")
@@ -521,7 +498,6 @@ class TestCreateFromArrayDiskRoundTrip:
             variable_name="p",
             extra_dim_name="level",
             extra_dim_values=[100, 200, 300],
-            driver_type="netcdf",
             path=None,
         )
         out = str(tmp_path / "dim_values.nc")
@@ -565,7 +541,6 @@ class TestCreateFromArrayDtypes:
             arr=arr,
             geo=GEO,
             variable_name="typed",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("typed")
@@ -592,7 +567,6 @@ class TestCreateFromArraySetVariableRoundTrip:
             variable_name="original",
             extra_dim_name="time",
             extra_dim_values=[0, 6, 12],
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("original")
@@ -632,7 +606,6 @@ class TestCreateFromArraySetVariableRoundTrip:
             variable_name="precip",
             extra_dim_name="time",
             extra_dim_values=[0, 12],
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("precip")

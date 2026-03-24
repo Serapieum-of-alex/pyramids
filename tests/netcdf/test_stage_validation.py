@@ -37,7 +37,6 @@ def created_nc():
         geo=geo,
         epsg=4326,
         no_data_value=-9999.0,
-        driver_type="netcdf",
         path=None,
         variable_name="temperature",
     )
@@ -208,7 +207,6 @@ class TestStage2_VariablesCaching:
             geo=geo,
             epsg=4326,
             no_data_value=-9999.0,
-            driver_type="netcdf",
             path=None,
             variable_name="var1",
         )
@@ -295,7 +293,6 @@ class TestStage3_VariableOriginTracking:
             geo=geo,
             epsg=4326,
             no_data_value=-9999.0,
-            driver_type="netcdf",
             path=None,
             variable_name="elevation",
         )
@@ -352,7 +349,6 @@ class TestStage3_SetVariable:
             geo=geo,
             epsg=4326,
             no_data_value=-9999.0,
-            driver_type="netcdf",
             path=None,
             variable_name="data",
         )
@@ -390,7 +386,6 @@ class TestStage3_SetVariable:
             geo=geo,
             epsg=4326,
             no_data_value=-9999.0,
-            driver_type="netcdf",
             path=None,
             variable_name="original",
         )
@@ -425,7 +420,6 @@ class TestStage3_DimensionReuse:
             geo=geo,
             epsg=4326,
             no_data_value=-9999.0,
-            driver_type="netcdf",
             path=None,
             variable_name="var1",
         )

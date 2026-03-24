@@ -179,11 +179,11 @@ class TestSetCrsAbstract:
         ), "CRS WKT should take precedence over epsg arg"
 
 
-class TestReinitFromRaster:
-    """Tests for the _reinit_from_raster method."""
+class TestUpdateInplace:
+    """Tests for the _update_inplace method."""
 
-    def test_reinit_updates_state(self, single_band_dataset):
-        """After _reinit_from_raster the dimensions should reflect the new source."""
+    def test_update_inplace_updates_state(self, single_band_dataset):
+        """After _update_inplace the dimensions should reflect the new source."""
         new_arr = np.ones((5, 7), dtype=np.float32)
         new_ds = Dataset.create_from_array(
             new_arr,
@@ -192,7 +192,7 @@ class TestReinitFromRaster:
             epsg=4326,
         )
         old_rows = single_band_dataset.rows
-        single_band_dataset._reinit_from_raster(new_ds.raster)
+        single_band_dataset._update_inplace(new_ds.raster)
         assert single_band_dataset.rows == 5, (
             f"Expected 5 rows after reinit, got {single_band_dataset.rows}"
         )

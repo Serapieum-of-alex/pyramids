@@ -39,7 +39,6 @@ def _make_3d_nc(
         geo=geo,
         epsg=epsg,
         no_data_value=no_data_value,
-        driver_type="netcdf",
         path=None,
         variable_name=variable_name,
     )
@@ -58,7 +57,6 @@ def _make_2d_nc(rows=10, cols=12, variable_name="elevation"):
         geo=geo,
         epsg=4326,
         no_data_value=-9999.0,
-        driver_type="netcdf",
         path=None,
         variable_name=variable_name,
     )
@@ -684,7 +682,6 @@ class TestCreateFromArrayAlternatives:
             cell_size=0.5,
             epsg=4326,
             no_data_value=-9999.0,
-            driver_type="netcdf",
             path=None,
         )
         assert nc is not None, "NetCDF should be created"
@@ -719,7 +716,6 @@ class TestCreateFromArrayAlternatives:
             geo=geo,
             epsg=4326,
             no_data_value=-9999.0,
-            driver_type="netcdf",
             path=None,
         )
         assert "data" in nc.variable_names, (
@@ -739,7 +735,6 @@ class TestCreateFromArrayAlternatives:
             epsg=4326,
             no_data_value=-9999.0,
             variable_name="test_var",
-            driver_type="netcdf",
             path=None,
         )
         var = nc.get_variable("test_var")

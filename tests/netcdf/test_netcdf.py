@@ -40,7 +40,6 @@ def test_netcdf_create_from_array(
         geo=src_geotransform,
         epsg=src_epsg,
         no_data_value=src_no_data_value,
-        driver_type="netcdf",
         path=None,
         variable_name=variable_name,
     )
@@ -120,7 +119,6 @@ class TestCreateNetCDF:
             geo=geo,
             epsg=epsg,
             no_data_value=no_data_value,
-            driver_type="netcdf",
         )
         rg = src.GetRootGroup()
         assert rg.GetMDArrayNames() == ["values", "x", "y"]
