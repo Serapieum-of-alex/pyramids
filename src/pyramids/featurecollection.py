@@ -65,6 +65,15 @@ class FeatureCollection:
         # read the drivers catalog
         self._feature = gdf
 
+    def _update_inplace(self, gdf: GeoDataFrame | DataSource) -> None:
+        """Swap internal state from a new feature source.
+
+        Creates a fresh FeatureCollection and copies its internal data
+        into this instance, similar to pandas' _update_inplace.
+        """
+        new = FeatureCollection(gdf)
+        self.__dict__.update(new.__dict__)
+
     def __str__(self):
         """__str__."""
         message = f"""
@@ -311,7 +320,7 @@ class FeatureCollection:
             ds = self.feature
 
         if inplace:
-            self.__init__(ds)
+            self._update_inplace(ds)
             ds = None
         else:
             ds = FeatureCollection(ds)
@@ -355,7 +364,7 @@ class FeatureCollection:
 
         shutil.rmtree(temp_dir, ignore_errors=True)
         if inplace:
-            self.__init__(gdf)
+            self._update_inplace(gdf)
             gdf = None
 
         return gdf
@@ -384,7 +393,7 @@ class FeatureCollection:
         gdf = gpd.read_file(MEMORY_FILE, layer=layer_name, driver="geojson")
 
         if inplace:
-            self.__init__(gdf)
+            self._update_inplace(gdf)
             gdf = None
 
         return gdf
@@ -998,7 +1007,7 @@ class FeatureCollection:
         # take the spatial reference of the first geodataframe
         new_gdf.crs = self.feature.crs
         if inplace:
-            self.__init__(new_gdf)
+            self._update_inplace(new_gdf)
             new_gdf = None
 
         return new_gdf
