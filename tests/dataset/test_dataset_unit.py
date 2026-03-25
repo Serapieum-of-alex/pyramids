@@ -6,7 +6,7 @@ Covers untested methods and edge cases using in-memory GDAL datasets
 
 import warnings
 from unittest.mock import MagicMock, patch
-
+import os
 import numpy as np
 import pandas as pd
 import pytest
@@ -979,20 +979,21 @@ class TestCreateSrFromEpsg:
 class TestToFile:
     """Tests for the to_file method."""
 
-    def test_to_file_geotiff(self, single_band_dataset, tmp_path):
+    def test_to_file_geotiff(self, tmp_path):
         """to_file should save to a .tif file."""
-        import os
-
+        arr = np.array(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
+            dtype=np.float32,
+        )
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326,
+        )
         path = str(tmp_path / "output.tif")
-        single_band_dataset.to_file(path)
+        ds.to_file(path)
         assert os.path.exists(path), "File should exist after to_file"
         reopened = Dataset.read_file(path)
         np.testing.assert_array_almost_equal(
-            reopened.read_array(),
-            np.array(
-                [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
-                dtype=np.float32,
-            ),
+            reopened.read_array(), arr,
             err_msg="File data differs from original",
         )
 

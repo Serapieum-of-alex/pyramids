@@ -47,6 +47,7 @@ def _make_dataset(
     )
     arr = np.full((rows, cols), fill_value, dtype=np.float32)
     src.raster.GetRasterBand(1).WriteArray(arr)
+    src.raster.FlushCache()
     return src
 
 

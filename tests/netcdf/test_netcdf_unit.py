@@ -1015,6 +1015,13 @@ class TestRemoveVariable:
         ), "Variable should be removed from in-memory dataset"
 
 
+MSWEP_PATH = "tests/data/netcdf/MSWEP_1979010100.nc"
+
+
+@pytest.mark.skipif(
+    not os.path.exists(MSWEP_PATH),
+    reason=f"{MSWEP_PATH} not available (untracked test data)",
+)
 class TestMSWEPFile:
     """Tests using the MSWEP test file for real-world coverage."""
 
