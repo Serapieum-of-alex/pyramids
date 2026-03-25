@@ -1,7 +1,8 @@
 import numpy as np
-from pyramids.dataset import Dataset
 from digitalearth.static import StaticGlyph
 from osgeo import gdal
+
+from pyramids.dataset import Dataset
 
 datapath = "examples/data"
 # path = rf"{datapath}/asci_example.asc"
@@ -28,7 +29,7 @@ fig, ax = StaticGlyph.plot(
     ticks_spacing=0.01,
     nodataval=None,
 )
-#%% write ascii
+# %% write ascii
 # arr = src_obj.raster.ReadAsArray()
 # arr[~np.isclose(arr, geotransform[-1], rtol=0.001)] = 0.03
 path2 = rf"{datapath}/roughness0.asc"

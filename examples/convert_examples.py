@@ -3,7 +3,7 @@ from osgeo import gdal
 
 from pyramids.convert import Convert
 
-#%%
+# %%
 """
 RasterToPolygon takes a gdal Datacube object and group neighboring cells with the same value into one
 polygon, the resulted vector will be saved to disk as a geojson file
@@ -17,7 +17,7 @@ polygonized_raster_path = "examples/data/convert_data/polygonized.geojson"
 return the result polygon
 """
 gdf = Convert.raster_to_polygon(src_path)
-#%%
+# %%
 """
 test convert polygon into raster
 
@@ -45,7 +45,7 @@ Convert.polygonToRaster(gdf, src_raster_path, output_raster)
 ## case 3 there is no given path to save the output raster to disk to it will be returned as an output.
 src = Convert.polygonToRaster(gdf, src_raster_path)
 type(src)
-#%%
+# %%
 """
 Dataset To DataFrame
 
@@ -106,4 +106,4 @@ df = Convert.rasterToGeoDataFrame(src_raster_path, gdf)
 # 14      45    1
 # 15      46    1
 
-#%%
+# %%
