@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Iterable, Mapping
-import re
 
 Number = int | float
 
@@ -322,7 +322,6 @@ class DimMetaData:
                 )
 
 
-
 @dataclass
 class DimensionsIndex:
     """Index of netCDF dimensions parsed from GDAL metadata.
@@ -388,7 +387,7 @@ class DimensionsIndex:
         metadata: Mapping[str, str],
         *,
         prefix: str = "NETCDF_DIM_",
-    ) -> "DimensionsIndex":
+    ) -> DimensionsIndex:
         """Parse dimensions from a GDAL metadata dictionary.
 
         Args:
@@ -440,7 +439,9 @@ class DimensionsIndex:
 
         # Build a regex that respects the provided prefix
         # Example: ^NETCDF_DIM_(<name>)(?:_(DEF|VALUES))?$ when prefix is default
-        _DIM_KEY_RE = re.compile(rf"^{re.escape(prefix)}([A-Za-z0-9_.-]+?)(?:_(DEF|VALUES))?$")
+        _DIM_KEY_RE = re.compile(
+            rf"^{re.escape(prefix)}([A-Za-z0-9_.-]+?)(?:_(DEF|VALUES))?$"
+        )
 
         for key, value in metadata.items():
             if not key.startswith(prefix):
@@ -872,7 +873,7 @@ class MetaData:
         prefix: str = "NETCDF_DIM_",
         normalize_attr_keys: bool = True,
         names: Iterable[str] | None = None,
-    ) -> "MetaData":
+    ) -> MetaData:
         """Build a MetaData object by parsing a GDAL metadata mapping.
 
         Args:

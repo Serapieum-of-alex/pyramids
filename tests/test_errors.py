@@ -3,6 +3,7 @@
 Ensures every exception class can be instantiated and that its
 constructor logs the error message via the module logger.
 """
+
 import logging
 
 import pytest
@@ -28,9 +29,9 @@ class TestReadOnlyError:
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
             with pytest.raises(ReadOnlyError):
                 raise ReadOnlyError("read-only test message")
-        assert "read-only test message" in caplog.text, (
-            "ReadOnlyError should log its message"
-        )
+        assert (
+            "read-only test message" in caplog.text
+        ), "ReadOnlyError should log its message"
 
 
 class TestDatasetNoFoundError:
@@ -41,9 +42,9 @@ class TestDatasetNoFoundError:
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
             with pytest.raises(DatasetNoFoundError):
                 raise DatasetNoFoundError("dataset not found")
-        assert "dataset not found" in caplog.text, (
-            "DatasetNoFoundError should log its message"
-        )
+        assert (
+            "dataset not found" in caplog.text
+        ), "DatasetNoFoundError should log its message"
 
 
 class TestNoDataValueError:
@@ -54,9 +55,9 @@ class TestNoDataValueError:
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
             with pytest.raises(NoDataValueError):
                 raise NoDataValueError("no data value error")
-        assert "no data value error" in caplog.text, (
-            "NoDataValueError should log its message"
-        )
+        assert (
+            "no data value error" in caplog.text
+        ), "NoDataValueError should log its message"
 
 
 class TestAlignmentError:
@@ -67,9 +68,9 @@ class TestAlignmentError:
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
             with pytest.raises(AlignmentError):
                 raise AlignmentError("alignment error message")
-        assert "alignment error message" in caplog.text, (
-            "AlignmentError should log its message"
-        )
+        assert (
+            "alignment error message" in caplog.text
+        ), "AlignmentError should log its message"
 
 
 class TestDriverNotExistError:
@@ -80,9 +81,9 @@ class TestDriverNotExistError:
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
             with pytest.raises(DriverNotExistError):
                 raise DriverNotExistError("driver does not exist")
-        assert "driver does not exist" in caplog.text, (
-            "DriverNotExistError should log its message"
-        )
+        assert (
+            "driver does not exist" in caplog.text
+        ), "DriverNotExistError should log its message"
 
 
 class TestFileFormatNotSupported:
@@ -93,9 +94,9 @@ class TestFileFormatNotSupported:
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
             with pytest.raises(FileFormatNotSupported):
                 raise FileFormatNotSupported("format not supported")
-        assert "format not supported" in caplog.text, (
-            "FileFormatNotSupported should log its message"
-        )
+        assert (
+            "format not supported" in caplog.text
+        ), "FileFormatNotSupported should log its message"
 
 
 class TestOptionalPackageDoesNotExist:
@@ -106,9 +107,9 @@ class TestOptionalPackageDoesNotExist:
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
             with pytest.raises(OptionalPackageDoesNotExist):
                 raise OptionalPackageDoesNotExist("optional package missing")
-        assert "optional package missing" in caplog.text, (
-            "OptionalPackageDoesNotExist should log its message"
-        )
+        assert (
+            "optional package missing" in caplog.text
+        ), "OptionalPackageDoesNotExist should log its message"
 
 
 class TestFailedToSaveError:
@@ -119,9 +120,9 @@ class TestFailedToSaveError:
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
             with pytest.raises(FailedToSaveError):
                 raise FailedToSaveError("failed to save")
-        assert "failed to save" in caplog.text, (
-            "FailedToSaveError should log its message"
-        )
+        assert (
+            "failed to save" in caplog.text
+        ), "FailedToSaveError should log its message"
 
 
 class TestOutOfBoundsError:
@@ -132,6 +133,4 @@ class TestOutOfBoundsError:
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
             with pytest.raises(OutOfBoundsError):
                 raise OutOfBoundsError("out of bounds")
-        assert "out of bounds" in caplog.text, (
-            "OutOfBoundsError should log its message"
-        )
+        assert "out of bounds" in caplog.text, "OutOfBoundsError should log its message"

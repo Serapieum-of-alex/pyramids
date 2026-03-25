@@ -1,8 +1,10 @@
 import os
-import pytest
-from osgeo import gdal
+
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose, assert_array_equal
+from osgeo import gdal
+
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
 
@@ -50,9 +52,7 @@ def test_netcdf_create_from_array(
     assert_array_equal(var.read_array(), src_arr)
     assert var.cell_size == 4000
     assert var.read_array(0, [3, 3, 1, 1]) == 0
-    assert_allclose(
-        var.no_data_value, [-3.402823e38, -3.402823e38, -3.402823e38]
-    )
+    assert_allclose(var.no_data_value, [-3.402823e38, -3.402823e38, -3.402823e38])
     # assert_allclose(var.geotransform, src_geotransform)
     path = "save_created_netcdf_file.nc"
     assert cube.to_file(path) is None
@@ -82,7 +82,9 @@ class TestReadNetCDF:
         assert var.cell_size == 0.5
 
     def test_read_netcdf_file_created_by_pyramids(self, pyramids_created_nc_3d: str):
-        dataset = NetCDF.read_file(pyramids_created_nc_3d, open_as_multi_dimensional=False)
+        dataset = NetCDF.read_file(
+            pyramids_created_nc_3d, open_as_multi_dimensional=False
+        )
         # arr = dataset.read_array()
         assert dataset.variable_names == []
         dataset = NetCDF.read_file(

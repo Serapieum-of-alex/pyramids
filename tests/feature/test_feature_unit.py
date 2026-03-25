@@ -13,6 +13,7 @@ Targets untested / low-coverage code paths in
 - ``reproject_points`` and ``reproject_points2``
 - ``_create_sr_from_proj`` with different string types
 """
+
 import os
 import tempfile
 
@@ -35,7 +36,6 @@ from shapely.geometry.collection import GeometryCollection
 
 from pyramids.base._errors import DriverNotExistError
 from pyramids.featurecollection import FeatureCollection
-
 
 
 @pytest.fixture()
@@ -65,9 +65,7 @@ def multipoint_geom() -> MultiPoint:
 @pytest.fixture()
 def multilinestring_geom() -> MultiLineString:
     """A MultiLineString geometry."""
-    return MultiLineString(
-        [LineString([(0, 0), (1, 1)]), LineString([(2, 2), (3, 3)])]
-    )
+    return MultiLineString([LineString([(0, 0), (1, 1)]), LineString([(2, 2), (3, 3)])])
 
 
 @pytest.fixture()
@@ -79,11 +77,13 @@ def multipolygon_geom() -> MultiPolygon:
 @pytest.fixture()
 def geometry_collection_geom() -> GeometryCollection:
     """A GeometryCollection with a Point, LineString, and Polygon."""
-    return GeometryCollection([
-        Point(10, 20),
-        LineString([(0, 0), (1, 1), (2, 0)]),
-        box(5, 5, 6, 6),
-    ])
+    return GeometryCollection(
+        [
+            Point(10, 20),
+            LineString([(0, 0), (1, 1), (2, 0)]),
+            box(5, 5, 6, 6),
+        ]
+    )
 
 
 @pytest.fixture()
@@ -112,29 +112,22 @@ def utm_proj4() -> str:
     return srs.ExportToProj4()
 
 
-
 class TestGeometryCollection:
     """Tests for the static ``_geometry_collection`` method."""
 
     def test_extracts_point_x(self, geometry_collection_geom):
         """Verify x coordinate is extracted from the point sub-geometry."""
-        result = FeatureCollection._geometry_collection(
-            geometry_collection_geom, "x"
-        )
+        result = FeatureCollection._geometry_collection(geometry_collection_geom, "x")
         assert 10.0 in result, "Point x coordinate should be in the result"
 
     def test_extracts_point_y(self, geometry_collection_geom):
         """Verify y coordinate is extracted from the point sub-geometry."""
-        result = FeatureCollection._geometry_collection(
-            geometry_collection_geom, "y"
-        )
+        result = FeatureCollection._geometry_collection(geometry_collection_geom, "y")
         assert 20.0 in result, "Point y coordinate should be in the result"
 
     def test_extracts_linestring_coords(self, geometry_collection_geom):
         """Verify linestring coordinates appear in the result."""
-        result = FeatureCollection._geometry_collection(
-            geometry_collection_geom, "x"
-        )
+        result = FeatureCollection._geometry_collection(geometry_collection_geom, "x")
         # linestring has x coords 0, 1, 2
         assert 0.0 in result, "LineString x=0 should be present"
         assert 1.0 in result, "LineString x=1 should be present"
@@ -142,9 +135,7 @@ class TestGeometryCollection:
 
     def test_extracts_polygon_coords(self, geometry_collection_geom):
         """Verify polygon exterior coordinates appear in the result."""
-        result = FeatureCollection._geometry_collection(
-            geometry_collection_geom, "x"
-        )
+        result = FeatureCollection._geometry_collection(geometry_collection_geom, "x")
         # The polygon is box(5,5,6,6), so x should contain 5 and 6
         assert 5.0 in result, "Polygon x=5 should be present"
         assert 6.0 in result, "Polygon x=6 should be present"
@@ -154,7 +145,6 @@ class TestGeometryCollection:
         gc = GeometryCollection()
         result = FeatureCollection._geometry_collection(gc, "x")
         assert result == [], "Empty GeometryCollection should yield empty list"
-
 
 
 class TestExplodeGdf:
@@ -181,19 +171,18 @@ class TestExplodeGdf:
         # All geometries should now be Polygon (exploded)
         for idx in range(len(fc.feature)):
             geom_type = fc.feature.iloc[idx].geometry.geom_type
-            assert geom_type == "Polygon", (
-                f"Row {idx} should be Polygon after explode, got {geom_type}"
-            )
+            assert (
+                geom_type == "Polygon"
+            ), f"Row {idx} should be Polygon after explode, got {geom_type}"
 
     def test_no_multipolygon_unchanged(self, simple_polygon_gdf: GeoDataFrame):
         """A GDF without multi-geometries should be returned as-is."""
         result = FeatureCollection._explode_gdf(
             simple_polygon_gdf.copy(), geometry="multipolygon"
         )
-        assert len(result) == len(simple_polygon_gdf), (
-            "GDF without multipolygon should keep the same number of rows"
-        )
-
+        assert len(result) == len(
+            simple_polygon_gdf
+        ), "GDF without multipolygon should keep the same number of rows"
 
 
 class TestMultiGeomHandler:
@@ -204,36 +193,34 @@ class TestMultiGeomHandler:
         result = FeatureCollection._multi_geom_handler(
             multipoint_geom, "x", "multipoint"
         )
-        assert result == [1.0, 3.0, 5.0], (
-            f"Expected [1.0, 3.0, 5.0], got {result}"
-        )
+        assert result == [1.0, 3.0, 5.0], f"Expected [1.0, 3.0, 5.0], got {result}"
 
     def test_multipoint_y(self, multipoint_geom: MultiPoint):
         """Extract y coordinates from MultiPoint."""
         result = FeatureCollection._multi_geom_handler(
             multipoint_geom, "y", "multipoint"
         )
-        assert result == [2.0, 4.0, 6.0], (
-            f"Expected [2.0, 4.0, 6.0], got {result}"
-        )
+        assert result == [2.0, 4.0, 6.0], f"Expected [2.0, 4.0, 6.0], got {result}"
 
     def test_multilinestring_x(self, multilinestring_geom: MultiLineString):
         """Extract x coordinates from MultiLineString."""
         result = FeatureCollection._multi_geom_handler(
             multilinestring_geom, "x", "multilinestring"
         )
-        assert result == [[0.0, 1.0], [2.0, 3.0]], (
-            f"Unexpected MultiLineString x coords: {result}"
-        )
+        assert result == [
+            [0.0, 1.0],
+            [2.0, 3.0],
+        ], f"Unexpected MultiLineString x coords: {result}"
 
     def test_multilinestring_y(self, multilinestring_geom: MultiLineString):
         """Extract y coordinates from MultiLineString."""
         result = FeatureCollection._multi_geom_handler(
             multilinestring_geom, "y", "multilinestring"
         )
-        assert result == [[0.0, 1.0], [2.0, 3.0]], (
-            f"Unexpected MultiLineString y coords: {result}"
-        )
+        assert result == [
+            [0.0, 1.0],
+            [2.0, 3.0],
+        ], f"Unexpected MultiLineString y coords: {result}"
 
     def test_multipolygon_x(self, multipolygon_geom: MultiPolygon):
         """Extract x coordinates from MultiPolygon."""
@@ -246,7 +233,6 @@ class TestMultiGeomHandler:
             assert isinstance(coords, list), "Each element should be a list"
 
 
-
 class TestGetDsEpsg:
     """Tests for ``_get_ds_epsg`` static method."""
 
@@ -256,7 +242,6 @@ class TestGetDsEpsg:
         assert epsg == 4326, f"Expected EPSG 4326, got {epsg}"
 
 
-
 class TestCenterPoint:
     """Tests for ``center_point`` method."""
 
@@ -264,15 +249,14 @@ class TestCenterPoint:
         """Center point of a square should be at its centroid."""
         fc = FeatureCollection(simple_polygon_gdf)
         result_gdf = fc.center_point()
-        assert "center_point" in result_gdf.columns, (
-            "Result should have a 'center_point' column"
-        )
+        assert (
+            "center_point" in result_gdf.columns
+        ), "Result should have a 'center_point' column"
         cp = result_gdf.loc[0, "center_point"]
         assert isinstance(cp, Point), "center_point should be a shapely Point"
         # box(30,30,31,31) centroid is (30.5, 30.5)
         assert abs(cp.x - 30.5) < 0.2, f"Center x should be ~30.5, got {cp.x}"
         assert abs(cp.y - 30.5) < 0.2, f"Center y should be ~30.5, got {cp.y}"
-
 
 
 class TestCopyDriverToMemory:
@@ -281,19 +265,16 @@ class TestCopyDriverToMemory:
     def test_returns_datasource(self, ogr_datasource: DataSource):
         """Copying a DataSource to memory should return a DataSource."""
         mem_ds = FeatureCollection._copy_driver_to_memory(ogr_datasource)
-        assert isinstance(mem_ds, DataSource), (
-            f"Expected DataSource, got {type(mem_ds)}"
-        )
+        assert isinstance(
+            mem_ds, DataSource
+        ), f"Expected DataSource, got {type(mem_ds)}"
 
     def test_custom_name(self, ogr_datasource: DataSource):
         """Copying with a custom name should succeed."""
-        mem_ds = FeatureCollection._copy_driver_to_memory(
-            ogr_datasource, name="my_ds"
-        )
-        assert isinstance(mem_ds, DataSource), (
-            "Copy with custom name should return a DataSource"
-        )
-
+        mem_ds = FeatureCollection._copy_driver_to_memory(ogr_datasource, name="my_ds")
+        assert isinstance(
+            mem_ds, DataSource
+        ), "Copy with custom name should return a DataSource"
 
 
 class TestCreateDs:
@@ -303,29 +284,22 @@ class TestCreateDs:
         """Create a GeoJSON DataSource on disk."""
         path = str(tmp_path / "out.geojson")
         ds = FeatureCollection.create_ds(driver="geojson", path=path)
-        assert isinstance(ds, DataSource), (
-            f"Expected DataSource, got {type(ds)}"
-        )
+        assert isinstance(ds, DataSource), f"Expected DataSource, got {type(ds)}"
 
     def test_memory_driver(self):
         """Create an in-memory DataSource without providing a path."""
         ds = FeatureCollection.create_ds(driver="memory")
-        assert isinstance(ds, DataSource), (
-            "Memory driver should create a DataSource"
-        )
+        assert isinstance(ds, DataSource), "Memory driver should create a DataSource"
 
     def test_invalid_driver_raises(self):
         """An unsupported driver should raise an error (AttributeError from catalog lookup)."""
         with pytest.raises((DriverNotExistError, AttributeError)):
-            FeatureCollection.create_ds(
-                driver="totally_fake_driver_xyz", path="foo"
-            )
+            FeatureCollection.create_ds(driver="totally_fake_driver_xyz", path="foo")
 
     def test_geojson_no_path_raises(self):
         """A non-memory driver without a path should raise ValueError."""
         with pytest.raises(ValueError, match="path must be provided"):
             FeatureCollection.create_ds(driver="geojson", path=None)
-
 
 
 class TestDtypes:
@@ -345,10 +319,9 @@ class TestDtypes:
         result = fc.dtypes
         assert isinstance(result, dict), "dtypes should return a dict"
         # geometry column is NOT included when the vector is DataSource
-        assert "geometry" not in result, (
-            "Geometry column should not be in DataSource dtypes"
-        )
-
+        assert (
+            "geometry" not in result
+        ), "Geometry column should not be in DataSource dtypes"
 
 
 class TestReprojectPoints:
@@ -368,12 +341,8 @@ class TestReprojectPoints:
         x_back, y_back = FeatureCollection.reproject_points2(
             y_utm, x_utm, from_epsg=32636, to_epsg=4326
         )
-        assert abs(x_back[0] - 31.0) < 0.01, (
-            f"Longitude round-trip failed: {x_back[0]}"
-        )
-        assert abs(y_back[0] - 30.0) < 0.01, (
-            f"Latitude round-trip failed: {y_back[0]}"
-        )
+        assert abs(x_back[0] - 31.0) < 0.01, f"Longitude round-trip failed: {x_back[0]}"
+        assert abs(y_back[0] - 30.0) < 0.01, f"Latitude round-trip failed: {y_back[0]}"
 
     def test_reproject_points2_multiple(self):
         """Verify reprojection works with multiple points."""
@@ -384,7 +353,6 @@ class TestReprojectPoints:
         )
         assert len(x_out) == 2, "Should have 2 x values"
         assert len(y_out) == 2, "Should have 2 y values"
-
 
 
 class TestCreateSrFromProj:
@@ -399,9 +367,7 @@ class TestCreateSrFromProj:
 
     def test_proj4_string(self, utm_proj4: str):
         """A Proj4 string with a non-WKT header should be imported via ImportFromProj4."""
-        srs = FeatureCollection._create_sr_from_proj(
-            utm_proj4, string_type="PROJ4"
-        )
+        srs = FeatureCollection._create_sr_from_proj(utm_proj4, string_type="PROJ4")
         assert srs is not None, "Spatial reference should not be None"
 
     def test_esri_wkt_string(self):
@@ -410,11 +376,8 @@ class TestCreateSrFromProj:
         srs_orig.ImportFromEPSG(4326)
         wkt_str = srs_orig.ExportToWkt()
         # The WKT starts with GEOGCS so should trigger the ESRI branch
-        srs = FeatureCollection._create_sr_from_proj(
-            wkt_str, string_type="ESRI wkt"
-        )
+        srs = FeatureCollection._create_sr_from_proj(wkt_str, string_type="ESRI wkt")
         assert srs is not None, "Spatial reference should not be None"
-
 
 
 class TestGetEpsgFromPrj:
@@ -429,7 +392,6 @@ class TestGetEpsgFromPrj:
         """An empty projection string should default to 4326."""
         epsg = FeatureCollection.get_epsg_from_prj("")
         assert epsg == 4326, f"Empty prj should return 4326, got {epsg}"
-
 
 
 class TestGetCoords:
@@ -450,9 +412,9 @@ class TestGetCoords:
 
         row = pd.Series({"geometry": geom})
         result = FeatureCollection._get_coords(row, "geometry", "x")
-        assert isinstance(result, expected_type), (
-            f"Expected {expected_type}, got {type(result)}"
-        )
+        assert isinstance(
+            result, expected_type
+        ), f"Expected {expected_type}, got {type(result)}"
 
     def test_multipolygon_returns_sentinel(self):
         """MultiPolygon geometries should return -9999 (sentinel for removal)."""
@@ -461,9 +423,7 @@ class TestGetCoords:
         mp = MultiPolygon([box(0, 0, 1, 1)])
         row = pd.Series({"geometry": mp})
         result = FeatureCollection._get_coords(row, "geometry", "x")
-        assert result == -9999, (
-            "MultiPolygon should return -9999 sentinel value"
-        )
+        assert result == -9999, "MultiPolygon should return -9999 sentinel value"
 
     def test_geometry_collection(self):
         """GeometryCollection should delegate to _geometry_collection."""
@@ -472,10 +432,7 @@ class TestGetCoords:
         gc = GeometryCollection([Point(7, 8)])
         row = pd.Series({"geometry": gc})
         result = FeatureCollection._get_coords(row, "geometry", "x")
-        assert 7.0 in result, (
-            "GeometryCollection point x=7 should be in result"
-        )
-
+        assert 7.0 in result, "GeometryCollection point x=7 should be in result"
 
 
 class TestFeatureCollectionStr:
@@ -485,12 +442,8 @@ class TestFeatureCollectionStr:
         """__str__ should return a string containing feature info."""
         fc = FeatureCollection(simple_polygon_gdf)
         result = str(fc)
-        assert isinstance(result, str), (
-            "__str__ should return a string"
-        )
-        assert "Feature" in result, (
-            "__str__ output should contain 'Feature'"
-        )
+        assert isinstance(result, str), "__str__ should return a string"
+        assert "Feature" in result, "__str__ output should contain 'Feature'"
 
 
 class TestCreateDsDriverNotExist:
@@ -498,9 +451,7 @@ class TestCreateDsDriverNotExist:
 
     def test_driver_not_exist_raises(self):
         """A driver that returns None from catalog should raise DriverNotExistError."""
-        with pytest.raises(
-            (DriverNotExistError, AttributeError)
-        ):
+        with pytest.raises((DriverNotExistError, AttributeError)):
             FeatureCollection.create_ds(
                 driver="zzz_nonexistent_driver_zzz", path="dummy"
             )
@@ -509,36 +460,26 @@ class TestCreateDsDriverNotExist:
 class TestDsToGdfInplaceAndMethods:
     """Tests for _ds_to_gdf with inplace=True."""
 
-    def test_ds_to_gdf_inplace_sets_feature(
-        self, ogr_datasource: DataSource
-    ):
+    def test_ds_to_gdf_inplace_sets_feature(self, ogr_datasource: DataSource):
         """Calling _ds_to_gdf with inplace=True should replace feature with GeoDataFrame."""
         fc = FeatureCollection(ogr_datasource)
         result = fc._ds_to_gdf(inplace=True)
-        assert result is None, (
-            "inplace=True should return None"
-        )
-        assert isinstance(fc.feature, GeoDataFrame), (
-            "feature should now be a GeoDataFrame after inplace conversion"
-        )
+        assert result is None, "inplace=True should return None"
+        assert isinstance(
+            fc.feature, GeoDataFrame
+        ), "feature should now be a GeoDataFrame after inplace conversion"
 
 
 class TestToDatasetErrors:
     """Tests for to_dataset error paths."""
 
-    def test_no_cell_size_no_dataset_raises(
-        self, simple_polygon_gdf: GeoDataFrame
-    ):
+    def test_no_cell_size_no_dataset_raises(self, simple_polygon_gdf: GeoDataFrame):
         """Calling to_dataset with neither cell_size nor dataset raises ValueError."""
         fc = FeatureCollection(simple_polygon_gdf)
-        with pytest.raises(
-            ValueError, match="cell size"
-        ):
+        with pytest.raises(ValueError, match="cell size"):
             fc.to_dataset(cell_size=None, dataset=None)
 
-    def test_mismatched_epsg_raises(
-        self, simple_polygon_gdf: GeoDataFrame
-    ):
+    def test_mismatched_epsg_raises(self, simple_polygon_gdf: GeoDataFrame):
         """When dataset and vector have different EPSG, ValueError is raised."""
         from pyramids.dataset import Dataset
 
@@ -557,9 +498,7 @@ class TestToDatasetErrors:
         with pytest.raises(ValueError, match="not the same EPSG"):
             fc.to_dataset(dataset=ds)
 
-    def test_non_dataset_object_raises(
-        self, simple_polygon_gdf: GeoDataFrame
-    ):
+    def test_non_dataset_object_raises(self, simple_polygon_gdf: GeoDataFrame):
         """Passing a non-Dataset object as dataset raises an error."""
         fc = FeatureCollection(simple_polygon_gdf)
         with pytest.raises((TypeError, AttributeError)):
@@ -616,10 +555,8 @@ class TestExplodeMultiGeometry:
         poly2 = box(2, 2, 3, 3)
         mpoly = MultiPolygon([poly1, poly2])
         result = FeatureCollection._explode_multi_geometry(mpoly.geoms)
-        assert len(result) == 2, (
-            f"Expected 2 polygons, got {len(result)}"
-        )
+        assert len(result) == 2, f"Expected 2 polygons, got {len(result)}"
         for geom in result:
-            assert geom.geom_type == "Polygon", (
-                f"Each element should be a Polygon, got {geom.geom_type}"
-            )
+            assert (
+                geom.geom_type == "Polygon"
+            ), f"Each element should be a Polygon, got {geom.geom_type}"

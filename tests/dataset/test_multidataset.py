@@ -1,4 +1,4 @@
-""" Tests for the MultiDataset class. """
+"""Tests for the MultiDataset class."""
 
 import os
 import shutil

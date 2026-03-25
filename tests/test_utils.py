@@ -4,14 +4,14 @@ from osgeo import gdal, ogr
 
 from pyramids.base._errors import DriverNotExistError
 from pyramids.base._utils import (
-    numpy_to_gdal_dtype,
-    gdal_to_numpy_dtype,
-    gdal_to_ogr_dtype,
     Catalog,
-    ogr_ds_to_gdal_dataset,
-    ogr_to_numpy_dtype,
     color_name_to_gdal_constant,
     gdal_constant_to_color_name,
+    gdal_to_numpy_dtype,
+    gdal_to_ogr_dtype,
+    numpy_to_gdal_dtype,
+    ogr_ds_to_gdal_dataset,
+    ogr_to_numpy_dtype,
 )
 
 
@@ -110,6 +110,7 @@ def test_gdal_constant_to_color_name():
     with pytest.raises(ValueError):
         gdal_constant_to_color_name(17)
 
+
 class TestNumpyToGdalDtypeInvalidInput:
     """Tests for numpy_to_gdal_dtype with invalid input types."""
 
@@ -133,16 +134,12 @@ class TestOgrToNumpyDtypeCoverage:
     def test_code_12_returns_int64(self):
         """OGR code 12 (OFTInteger64) should map to np.int64."""
         result = ogr_to_numpy_dtype(12)
-        assert result == np.int64, (
-            f"Expected np.int64 for OGR code 12, got {result}"
-        )
+        assert result == np.int64, f"Expected np.int64 for OGR code 12, got {result}"
 
     def test_code_2_returns_float64(self):
         """OGR code 2 (OFTReal) should map to np.float64."""
         result = ogr_to_numpy_dtype(2)
-        assert result == np.float64, (
-            f"Expected np.float64 for OGR code 2, got {result}"
-        )
+        assert result == np.float64, f"Expected np.float64 for OGR code 2, got {result}"
 
     def test_unsupported_code_raises_value_error(self):
         """An OGR code with no matching numpy dtype should raise ValueError."""
@@ -159,6 +156,7 @@ class TestImportGeopy:
 
         try:
             import geopy  # noqa: F401
+
             # geopy is installed, so this should not raise
             import_geopy("geopy is required")
         except Exception:
@@ -167,6 +165,7 @@ class TestImportGeopy:
     def test_import_geopy_raises_when_missing(self, monkeypatch):
         """If geopy import fails, OptionalPackageDoesNotExist is raised."""
         import builtins
+
         from pyramids.base._errors import OptionalPackageDoesNotExist
 
         real_import = builtins.__import__
@@ -190,6 +189,7 @@ class TestImportCleopatra:
     def test_import_cleopatra_raises_when_missing(self, monkeypatch):
         """If cleopatra import fails, OptionalPackageDoesNotExist is raised."""
         import builtins
+
         from pyramids.base._errors import OptionalPackageDoesNotExist
 
         real_import = builtins.__import__

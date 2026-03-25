@@ -1,8 +1,8 @@
 from pyramids.netcdf.dimensions import (
-    parse_dimension_attributes,
-    MetaData,
     DimensionsIndex,
     DimMetaData,
+    MetaData,
+    parse_dimension_attributes,
 )
 
 
@@ -32,8 +32,16 @@ class TestParseDimensionAttributes:
         }
         out = parse_dimension_attributes(md)
         assert out == {
-            "lat": {"bounds": "bounds_lat", "long_name": "latitude", "units": "degrees_north"},
-            "time": {"axis": "T", "long_name": "time", "units": "days since 1-1-1 0:0:0"},
+            "lat": {
+                "bounds": "bounds_lat",
+                "long_name": "latitude",
+                "units": "degrees_north",
+            },
+            "time": {
+                "axis": "T",
+                "long_name": "time",
+                "units": "days since 1-1-1 0:0:0",
+            },
         }
 
     def test_filter_by_names(self):
@@ -97,7 +105,10 @@ class TestParseDimensionAttributes:
             "lat#units": "degrees_north",
         }
         out = parse_dimension_attributes(md)
-        assert out == {"lat": {"units": "degrees_north"}, "time": {"key1": "val1", "key2": "val2"}}
+        assert out == {
+            "lat": {"units": "degrees_north"},
+            "time": {"key1": "val1", "key2": "val2"},
+        }
 
     def test_empty_input_returns_empty_mapping(self):
         """Return an empty mapping when no attribute-like keys are present.
@@ -300,7 +311,9 @@ class TestMetaDataToMetadata:
         # Name ordering is deterministic: level0 before time
         assert out["NETCDF_DIM_EXTRA"] == "{level0,time}"
         # Attribute keys are sorted per-name (axis before units)
-        assert list(k for k in out.keys() if k.endswith("#axis") or k.endswith("#units")) == [
+        assert list(
+            k for k in out.keys() if k.endswith("#axis") or k.endswith("#units")
+        ) == [
             "level0#axis",
             "level0#units",
             "time#axis",
@@ -338,10 +351,12 @@ class TestMetaDataToMetadata:
             sort_names flag affects both names and attribute emission ordering.
         """
         meta = MetaData(
-            dims=DimensionsIndex({
-                "b": DimMetaData(name="b", size=1, values=[2]),
-                "a": DimMetaData(name="a", size=1, values=[1]),
-            }),
+            dims=DimensionsIndex(
+                {
+                    "b": DimMetaData(name="b", size=1, values=[2]),
+                    "a": DimMetaData(name="a", size=1, values=[1]),
+                }
+            ),
             attrs={
                 "b": {"axis": "Y"},
                 "a": {"axis": "X"},
@@ -367,9 +382,11 @@ class TestMetaDataToMetadata:
             Prefix passthrough and stable attribute key ordering.
         """
         meta = MetaData(
-            dims=DimensionsIndex({
-                "x": DimMetaData(name="x", def_fields=(2, 6), size=2),
-            }),
+            dims=DimensionsIndex(
+                {
+                    "x": DimMetaData(name="x", def_fields=(2, 6), size=2),
+                }
+            ),
             attrs={
                 "x": {"units": "m", "axis": "X"},
             },
@@ -396,10 +413,14 @@ class TestMetaDataStr:
             Presence of expected substrings and proper counts.
         """
         meta = MetaData(
-            dims=DimensionsIndex({
-                "time": DimMetaData(name="time", size=2, values=[0, 31], def_fields=(2, 6)),
-                "level": DimMetaData(name="level", size=3, def_fields=(3, 6)),
-            }),
+            dims=DimensionsIndex(
+                {
+                    "time": DimMetaData(
+                        name="time", size=2, values=[0, 31], def_fields=(2, 6)
+                    ),
+                    "level": DimMetaData(name="level", size=3, def_fields=(3, 6)),
+                }
+            ),
             attrs={
                 "time": {"axis": "T", "units": "days"},
             },
@@ -408,6 +429,14 @@ class TestMetaDataStr:
         # Header
         assert s.splitlines()[0].startswith("MetaData(2 dims, attrs for 1 names)")
         # time details
-        assert any(line.startswith("- time:") and "size=2" in line and "values=2 items" in line and "attrs=2" in line for line in s.splitlines())
+        assert any(
+            line.startswith("- time:")
+            and "size=2" in line
+            and "values=2 items" in line
+            and "attrs=2" in line
+            for line in s.splitlines()
+        )
         # level details
-        assert any(line.startswith("- level:") and "size=3" in line for line in s.splitlines())
+        assert any(
+            line.startswith("- level:") and "size=3" in line for line in s.splitlines()
+        )

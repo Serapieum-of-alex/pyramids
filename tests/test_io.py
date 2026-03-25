@@ -3,8 +3,9 @@ from typing import List
 
 import pytest
 from osgeo import gdal
-from pyramids.base._errors import FileFormatNotSupported
+
 from pyramids._io import _parse_path, extract_from_gz, read_file
+from pyramids.base._errors import FileFormatNotSupported
 
 
 class TestZipFiles:
@@ -148,18 +149,21 @@ class TestHttpsrequest:
         assert src.RasterYSize == 1830
         assert isinstance(src, gdal.Dataset)
 
+
 import gzip
 import shutil
 import tempfile
+
 import numpy as np
+
 from pyramids._io import (
-    extract_from_gz,
-    to_ascii,
-    _is_zip,
+    _get_tar_path,
     _is_gzip,
     _is_tar,
-    _get_tar_path,
+    _is_zip,
+    extract_from_gz,
     insert_space,
+    to_ascii,
 )
 
 
@@ -177,9 +181,7 @@ class TestExtractFromGzDelete:
         assert os.path.exists(gz_path), "gz file should exist before extraction"
         extract_from_gz(gz_path, out_path, delete=True)
         assert os.path.exists(out_path), "output file should exist after extraction"
-        assert not os.path.exists(gz_path), (
-            "gz file should be deleted when delete=True"
-        )
+        assert not os.path.exists(gz_path), "gz file should be deleted when delete=True"
         # verify content
         with open(out_path, "rb") as f:
             assert f.read() == content, "extracted content should match original"
@@ -233,18 +235,14 @@ class TestReadFileExceptionBranches:
 
         def mock_open_shared(path, access):
             """Simulate GDAL raising 'not recognized' for a compressed file."""
-            raise RuntimeError(
-                f"'{path}' not recognized as a supported file format."
-            )
+            raise RuntimeError(f"'{path}' not recognized as a supported file format.")
 
         monkeypatch.setattr(io_mod, "_parse_path", mock_parse_path)
         monkeypatch.setattr(gdal, "OpenShared", mock_open_shared)
         with pytest.raises(FileFormatNotSupported):
             read_file("some_file.tif")
 
-    def test_not_recognized_format_non_compressed_reraises(
-        self, monkeypatch
-    ):
+    def test_not_recognized_format_non_compressed_reraises(self, monkeypatch):
         """When GDAL raises 'not recognized' for a non-compressed file, the original error is re-raised."""
         import pyramids._io as io_mod
 
@@ -254,9 +252,7 @@ class TestReadFileExceptionBranches:
 
         def mock_open_shared(path, access):
             """Simulate GDAL raising 'not recognized' for a regular file."""
-            raise RuntimeError(
-                f"'{path}' not recognized as a supported file format."
-            )
+            raise RuntimeError(f"'{path}' not recognized as a supported file format.")
 
         monkeypatch.setattr(io_mod, "_parse_path", mock_parse_path)
         monkeypatch.setattr(gdal, "OpenShared", mock_open_shared)
@@ -273,9 +269,7 @@ class TestReadFileExceptionBranches:
 
         def mock_open_shared(path, access):
             """Simulate GDAL raising 'No such file or directory'."""
-            raise RuntimeError(
-                f"'{path}': No such file or directory"
-            )
+            raise RuntimeError(f"'{path}': No such file or directory")
 
         monkeypatch.setattr(io_mod, "_parse_path", mock_parse_path)
         monkeypatch.setattr(gdal, "OpenShared", mock_open_shared)
@@ -326,16 +320,16 @@ class TestGetTarPath:
     def test_tar_path_with_internal_path(self):
         """A path containing .tar with an internal path should get /vsitar/ prefix."""
         result = _get_tar_path("archive.tar/internal_file.asc")
-        assert result == "/vsitar/archive.tar/internal_file.asc", (
-            f"Expected /vsitar/ prefix with internal path, got {result}"
-        )
+        assert (
+            result == "/vsitar/archive.tar/internal_file.asc"
+        ), f"Expected /vsitar/ prefix with internal path, got {result}"
 
     def test_tar_path_without_internal_path(self):
         """A .tar path without internal path should still get /vsitar/ prefix."""
         result = _get_tar_path("archive.tar")
-        assert result == "/vsitar/archive.tar", (
-            f"Expected /vsitar/ prefix, got {result}"
-        )
+        assert (
+            result == "/vsitar/archive.tar"
+        ), f"Expected /vsitar/ prefix, got {result}"
 
 
 class TestInsertSpace:
@@ -361,9 +355,9 @@ class TestHelperFunctions:
 
     def test_is_zip_with_internal_path(self):
         """_is_zip should return True for paths containing .zip."""
-        assert _is_zip("file.zip/internal.asc") is True, (
-            "path containing .zip should be identified"
-        )
+        assert (
+            _is_zip("file.zip/internal.asc") is True
+        ), "path containing .zip should be identified"
 
     def test_is_zip_non_zip(self):
         """_is_zip should return False for non-zip files."""
@@ -383,9 +377,7 @@ class TestHelperFunctions:
 
     def test_is_tar_with_tar_gz_extension(self):
         """_is_tar should return True for .tar.gz files."""
-        assert _is_tar("file.tar.gz") is True, (
-            "file.tar.gz should be identified as tar"
-        )
+        assert _is_tar("file.tar.gz") is True, "file.tar.gz should be identified as tar"
 
     def test_is_tar_non_tar(self):
         """_is_tar should return False for non-tar files."""

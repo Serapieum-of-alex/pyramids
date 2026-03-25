@@ -37,13 +37,15 @@ See Also:
 - ColorFormatter: Adds ANSI colors to console logs.
 """
 
-import os
-import yaml
 import logging
+import os
 import sys
-from pathlib import Path
 from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
 from osgeo import gdal, ogr
+
 from pyramids import __path__ as root_path
 
 
@@ -512,9 +514,7 @@ class Plugins:
         """
         if self.plugins_path.exists():
             os.environ["GDAL_DRIVER_PATH"] = str(self.plugins_path)
-            self.logger.debug(
-                f"GDAL_DRIVER_PATH set to: {self.plugins_path}"
-            )
+            self.logger.debug(f"GDAL_DRIVER_PATH set to: {self.plugins_path}")
             if self.bin_path.exists():
                 env_vars = EnvironmentVariables()
                 bin_str = str(self.bin_path)
@@ -523,10 +523,14 @@ class Plugins:
                     env_vars.prepend(bin_str)
 
             # Optionally set GDAL_DATA and PROJ_LIB
-            if self.data_path.exists() and os.environ.get("GDAL_DATA") != str(self.data_path):
+            if self.data_path.exists() and os.environ.get("GDAL_DATA") != str(
+                self.data_path
+            ):
                 os.environ["GDAL_DATA"] = str(self.data_path)
                 self.logger.debug(f"GDAL_DATA set to: {self.data_path}")
-            if self.proj_path.exists() and os.environ.get("PROJ_LIB") != str(self.proj_path):
+            if self.proj_path.exists() and os.environ.get("PROJ_LIB") != str(
+                self.proj_path
+            ):
                 os.environ["PROJ_LIB"] = str(self.proj_path)
                 self.logger.debug(f"PROJ_LIB set to: {self.proj_path}")
 
@@ -581,8 +585,10 @@ class Config:
     """
 
     def __init__(
-        self, level: int | str = logging.INFO, log_file: str | Path | None = None,
-        config_file="config.yaml"
+        self,
+        level: int | str = logging.INFO,
+        log_file: str | Path | None = None,
+        config_file="config.yaml",
     ):
         """Construct a Config, load YAML, configure logging, and initialize GDAL.
 
@@ -643,7 +649,7 @@ class Config:
                 ```
         """
         config_file = Path(root_path[0]) / "base/data" / self.config_file
-        with open(config_file, "r") as file:
+        with open(config_file) as file:
             return yaml.safe_load(file)
 
     def initialize_gdal(self):
@@ -734,7 +740,9 @@ class Config:
             bin_str = str(library_bin_path)
             path_parts = current_path.split(os.pathsep) if current_path else []
             if bin_str not in path_parts:
-                os.environ["PATH"] = bin_str + (os.pathsep + current_path if current_path else "")
+                os.environ["PATH"] = bin_str + (
+                    os.pathsep + current_path if current_path else ""
+                )
                 self.logger.debug(f"Prepended to PATH: {bin_str}")
         else:
             self.logger.debug(f"Library bin path not found at: {library_bin_path}")

@@ -1,14 +1,15 @@
 """Utility module."""
 
 from pathlib import Path
-import yaml
-import numpy as np
-from pandas import DataFrame
-from osgeo import gdal, ogr, gdalconst  # gdal_array,
-from osgeo.gdal import Dataset
-from pyramids.base._errors import OptionalPackageDoesNotExist, DriverNotExistError
-from pyramids import __path__
 
+import numpy as np
+import yaml
+from osgeo import gdal, gdalconst, ogr  # gdal_array,
+from osgeo.gdal import Dataset
+from pandas import DataFrame
+
+from pyramids import __path__
+from pyramids.base._errors import DriverNotExistError, OptionalPackageDoesNotExist
 
 DTYPE_NAMES = [
     None,
@@ -268,7 +269,9 @@ def gdal_to_numpy_dtype(dtype: int) -> str:
     Returns:
         str: Name of the corresponding numpy dtype.
     """
-    matched_dtypes = DTYPE_CONVERSION_DF.loc[DTYPE_CONVERSION_DF["gdal"] == dtype, "numpy"]
+    matched_dtypes = DTYPE_CONVERSION_DF.loc[
+        DTYPE_CONVERSION_DF["gdal"] == dtype, "numpy"
+    ]
     if len(matched_dtypes) == 0:
         raise ValueError(
             f"The given GDAL data type is not supported: {dtype}, available types are: "
@@ -297,7 +300,6 @@ def gdal_to_ogr_dtype(src: Dataset, band: int = 1):
     )
 
 
-
 class Catalog:
     """Data Catalog."""
 
@@ -312,7 +314,7 @@ class Catalog:
     @staticmethod
     def _get_gdal_catalog(path: str):
         catalog_path = Path(__path__[0]) / f"base/data/{path}"
-        with open(catalog_path, "r") as stream:
+        with open(catalog_path) as stream:
             gdal_catalog = yaml.safe_load(stream)
 
         return gdal_catalog

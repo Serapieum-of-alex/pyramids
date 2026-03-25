@@ -8,23 +8,27 @@ Covers lines: 161, 210-214, 237, 276, 301, 332, 359-363, 419-425,
 Style: Google-style docstrings, <=120 char lines, no inline imports,
 descriptive assertion error messages.
 """
+
 from __future__ import annotations
 
 import os
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import numpy as np
 import pytest
 from osgeo import gdal
 
 from pyramids.dataset import Dataset
-from pyramids.netcdf.netcdf import NetCDF
 from pyramids.netcdf.models import NetCDFMetadata
-
+from pyramids.netcdf.netcdf import NetCDF
 
 
 def _make_3d_nc(
-    rows=10, cols=12, bands=3, epsg=4326, variable_name="temperature",
+    rows=10,
+    cols=12,
+    bands=3,
+    epsg=4326,
+    variable_name="temperature",
     no_data_value=-9999.0,
 ):
     """Create a 3D in-memory NetCDF for testing.
@@ -71,7 +75,10 @@ def _make_dataset_2d(rows=10, cols=12, no_data=-9999.0):
     arr = np.random.RandomState(77).rand(rows, cols).astype(np.float64)
     geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
     return Dataset.create_from_array(
-        arr, geo=geo, epsg=4326, no_data_value=no_data,
+        arr,
+        geo=geo,
+        epsg=4326,
+        no_data_value=no_data,
     )
 
 
@@ -84,9 +91,11 @@ def _make_dataset_3d(bands=3, rows=10, cols=12, no_data=-9999.0):
     arr = np.random.RandomState(77).rand(bands, rows, cols).astype(np.float64)
     geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
     return Dataset.create_from_array(
-        arr, geo=geo, epsg=4326, no_data_value=no_data,
+        arr,
+        geo=geo,
+        epsg=4326,
+        no_data_value=no_data,
     )
-
 
 
 class TestGeotransformFallback:
@@ -102,15 +111,18 @@ class TestGeotransformFallback:
         var = nc.get_variable("temperature")
         # Patch lon and lat to return None to force fallback
         with (
-            patch.object(type(var), "lon", new_callable=PropertyMock, return_value=None),
-            patch.object(type(var), "lat", new_callable=PropertyMock, return_value=None),
+            patch.object(
+                type(var), "lon", new_callable=PropertyMock, return_value=None
+            ),
+            patch.object(
+                type(var), "lat", new_callable=PropertyMock, return_value=None
+            ),
         ):
             gt = var.geotransform
             assert gt is not None, "geotransform should not be None"
-            assert gt == var._geotransform, (
-                f"Expected _geotransform fallback {var._geotransform}, got {gt}"
-            )
-
+            assert (
+                gt == var._geotransform
+            ), f"Expected _geotransform fallback {var._geotransform}, got {gt}"
 
 
 class TestNoDataValueSetter:
@@ -125,9 +137,9 @@ class TestNoDataValueSetter:
         nc = _make_2d_nc()
         var = nc.get_variable("elevation")
         var.no_data_value = -1.0
-        assert var.no_data_value[0] == -1.0, (
-            f"Expected -1.0, got {var.no_data_value[0]}"
-        )
+        assert (
+            var.no_data_value[0] == -1.0
+        ), f"Expected -1.0, got {var.no_data_value[0]}"
 
     def test_setter_with_list_value(self):
         """Verify no_data_value setter handles a list of values.
@@ -140,10 +152,9 @@ class TestNoDataValueSetter:
         new_values = [-1.0, -2.0, -3.0]
         var.no_data_value = new_values
         for i, expected in enumerate(new_values):
-            assert var.no_data_value[i] == expected, (
-                f"Band {i}: expected {expected}, got {var.no_data_value[i]}"
-            )
-
+            assert (
+                var.no_data_value[i] == expected
+            ), f"Band {i}: expected {expected}, got {var.no_data_value[i]}"
 
 
 class TestTimeStamp:
@@ -157,10 +168,9 @@ class TestTimeStamp:
         """
         nc = _make_3d_nc()
         result = nc.time_stamp
-        assert result is None, (
-            f"Expected None (no time units in created NC), got {result}"
-        )
-
+        assert (
+            result is None
+        ), f"Expected None (no time units in created NC), got {result}"
 
 
 class TestGetTimeVariable:
@@ -178,9 +188,7 @@ class TestGetTimeVariable:
         )
         result = nc.get_time_variable()
         if result is not None:
-            assert isinstance(result, list), (
-                f"Expected list, got {type(result)}"
-            )
+            assert isinstance(result, list), f"Expected list, got {type(result)}"
             assert len(result) > 0, "Expected non-empty time list"
         # If no time units in this file, it will be None and that's OK
 
@@ -191,9 +199,9 @@ class TestGetTimeVariable:
         """
         nc = _make_2d_nc()
         result = nc.get_time_variable()
-        assert result is None, (
-            f"Expected None for NC without time dimension, got {result}"
-        )
+        assert (
+            result is None
+        ), f"Expected None for NC without time dimension, got {result}"
 
     def test_get_time_variable_custom_format(self):
         """Verify get_time_variable respects custom time_format.
@@ -206,10 +214,7 @@ class TestGetTimeVariable:
         )
         result = nc.get_time_variable(time_format="%Y/%m/%d")
         if result is not None:
-            assert "/" in result[0], (
-                f"Expected '/' in date format, got {result[0]}"
-            )
-
+            assert "/" in result[0], f"Expected '/' in date format, got {result[0]}"
 
 
 class TestSpatialOperationDelegates:
@@ -224,15 +229,16 @@ class TestSpatialOperationDelegates:
         var = nc.get_variable("temperature")
         import geopandas as gpd
         from shapely.geometry import box
+
         mask = gpd.GeoDataFrame(
             geometry=[box(1.0, 1.0, 5.0, 5.0)],
             crs="EPSG:4326",
         )
         result = var.crop(mask, touch=True, inplace=False)
         assert result is not None, "crop should return a new Dataset"
-        assert result.rows <= var.rows, (
-            f"Cropped rows {result.rows} should be <= original {var.rows}"
-        )
+        assert (
+            result.rows <= var.rows
+        ), f"Cropped rows {result.rows} should be <= original {var.rows}"
 
     def test_to_crs_delegates_to_super(self):
         """Verify to_crs() passes through to Dataset.to_crs for subsets.
@@ -243,7 +249,6 @@ class TestSpatialOperationDelegates:
         var = nc.get_variable("temperature")
         result = var.to_crs(to_epsg=32637, inplace=False)
         assert result is not None, "to_crs should return a reprojected Dataset"
-
 
 
 class TestReadFileWriteMode:
@@ -258,13 +263,14 @@ class TestReadFileWriteMode:
         out = str(tmp_path / "writable.nc")
         nc.to_file(out)
         writable_nc = NetCDF.read_file(
-            out, read_only=False, open_as_multi_dimensional=True,
+            out,
+            read_only=False,
+            open_as_multi_dimensional=True,
         )
         assert writable_nc is not None, "Should open file for writing"
-        assert writable_nc._access == "write", (
-            f"Expected 'write' access, got {writable_nc._access}"
-        )
-
+        assert (
+            writable_nc._access == "write"
+        ), f"Expected 'write' access, got {writable_nc._access}"
 
 
 class TestMetaDataSetter:
@@ -279,9 +285,9 @@ class TestMetaDataSetter:
         nc = _make_2d_nc()
         nc.meta_data = {"source": "test", "version": "1.0"}
         gdal_meta = nc._raster.GetMetadata()
-        assert gdal_meta.get("source") == "test", (
-            f"Expected 'test', got {gdal_meta.get('source')}"
-        )
+        assert (
+            gdal_meta.get("source") == "test"
+        ), f"Expected 'test', got {gdal_meta.get('source')}"
 
     def test_setter_with_netcdf_metadata(self):
         """Verify meta_data setter accepts a NetCDFMetadata object.
@@ -290,6 +296,7 @@ class TestMetaDataSetter:
         _cached_meta_data.
         """
         from pyramids.netcdf.models import DimensionInfo
+
         nc = _make_2d_nc()
         custom_meta = NetCDFMetadata(
             driver="netCDF",
@@ -304,10 +311,9 @@ class TestMetaDataSetter:
             created_with={"gdal": "3.12"},
         )
         nc.meta_data = custom_meta
-        assert nc._cached_meta_data is custom_meta, (
-            "Expected _cached_meta_data to be the assigned object"
-        )
-
+        assert (
+            nc._cached_meta_data is custom_meta
+        ), "Expected _cached_meta_data to be the assigned object"
 
 
 class TestBuildDimensionOverviewErrors:
@@ -352,9 +358,7 @@ class TestBuildDimensionOverviewErrors:
                 mock_arr = MagicMock()
                 mock_arr.reshape.side_effect = ValueError("bad reshape")
                 # Also make list() on the mock raise to hit inner except
-                mock_arr.__iter__ = MagicMock(
-                    side_effect=TypeError("not iterable")
-                )
+                mock_arr.__iter__ = MagicMock(side_effect=TypeError("not iterable"))
                 return mock_arr
             return arr
 
@@ -377,9 +381,7 @@ class TestBuildDimensionOverviewErrors:
             if arr is not None:
                 mock_arr = MagicMock()
                 mock_arr.reshape.side_effect = ValueError("bad reshape")
-                mock_arr.__iter__ = MagicMock(
-                    return_value=iter([1.0, 2.0, 3.0])
-                )
+                mock_arr.__iter__ = MagicMock(return_value=iter([1.0, 2.0, 3.0]))
                 return mock_arr
             return arr
 
@@ -387,7 +389,6 @@ class TestBuildDimensionOverviewErrors:
             result = nc._build_dimension_overview()
         assert result is not None, "Overview should still be built"
         assert "values" in result, "Overview should contain 'values' key"
-
 
 
 class TestReadVariable:
@@ -402,9 +403,9 @@ class TestReadVariable:
         nc = _make_2d_nc()
         result = nc._read_variable("x")
         assert result is not None, "Should read 'x' dimension values"
-        assert isinstance(result, np.ndarray), (
-            f"Expected np.ndarray, got {type(result)}"
-        )
+        assert isinstance(
+            result, np.ndarray
+        ), f"Expected np.ndarray, got {type(result)}"
 
     def test_read_variable_classic_mode(self):
         """Verify _read_variable works in classic mode via subdataset string.
@@ -419,17 +420,15 @@ class TestReadVariable:
         var_names = nc.variable_names
         if var_names:
             result = nc._read_variable(var_names[0])
-            assert result is not None, (
-                f"Should read variable '{var_names[0]}' in classic mode"
-            )
+            assert (
+                result is not None
+            ), f"Should read variable '{var_names[0]}' in classic mode"
 
     def test_read_variable_nonexistent_returns_none(self):
         """Verify _read_variable returns None for nonexistent variables."""
         nc = _make_2d_nc()
         result = nc._read_variable("nonexistent_variable_xyz")
-        assert result is None, (
-            f"Expected None for nonexistent variable, got {result}"
-        )
+        assert result is None, f"Expected None for nonexistent variable, got {result}"
 
     def test_read_variable_classic_mode_nonexistent(self):
         """Verify _read_variable returns None in classic mode for bad var name.
@@ -441,10 +440,7 @@ class TestReadVariable:
             open_as_multi_dimensional=False,
         )
         result = nc._read_variable("totally_fake_var")
-        assert result is None, (
-            "Expected None for nonexistent var in classic mode"
-        )
-
+        assert result is None, "Expected None for nonexistent var in classic mode"
 
 
 class TestReadMdArray1D:
@@ -465,11 +461,10 @@ class TestReadMdArray1D:
         nc = NetCDF(src_ds)
         result_src, result_md, result_rg = nc._read_md_array("label_data")
         # For string type, src should be the md_arr itself (not a Dataset)
-        assert result_src is result_md, (
-            "For string 1D arrays, src and md_arr should be the same object"
-        )
+        assert (
+            result_src is result_md
+        ), "For string 1D arrays, src and md_arr should be the same object"
         assert result_rg is not None, "root group ref should not be None"
-
 
 
 class TestNeedsYFlip:
@@ -484,9 +479,9 @@ class TestNeedsYFlip:
         nc = _make_2d_nc()
         var = nc.get_variable("elevation")
         result = NetCDF._needs_y_flip(var._raster)
-        assert result is False, (
-            f"Expected False for negative Y pixel size, got {result}"
-        )
+        assert (
+            result is False
+        ), f"Expected False for negative Y pixel size, got {result}"
 
     def test_returns_true_for_positive_y_pixel_size(self):
         """Verify _needs_y_flip returns True when gt[5] is positive.
@@ -496,10 +491,7 @@ class TestNeedsYFlip:
         mock_ds = MagicMock(spec=gdal.Dataset)
         mock_ds.GetGeoTransform.return_value = (0, 1, 0, 0, 0, 1.0)
         result = NetCDF._needs_y_flip(mock_ds)
-        assert result is True, (
-            f"Expected True for positive Y pixel size, got {result}"
-        )
-
+        assert result is True, f"Expected True for positive Y pixel size, got {result}"
 
 
 class TestGetVariableEdgeCases:
@@ -528,9 +520,9 @@ class TestGetVariableEdgeCases:
         if var_names:
             var = nc.get_variable(var_names[0])
             assert var.is_subset is True, "Variable should be a subset"
-            assert var._is_md_array is False, (
-                "Classic-mode variable should not be md_array"
-            )
+            assert (
+                var._is_md_array is False
+            ), "Classic-mode variable should not be md_array"
 
     def test_get_variable_sets_md_array_dims(self):
         """Verify get_variable populates _md_array_dims.
@@ -539,12 +531,12 @@ class TestGetVariableEdgeCases:
         """
         nc = _make_3d_nc()
         var = nc.get_variable("temperature")
-        assert isinstance(var._md_array_dims, list), (
-            f"Expected list, got {type(var._md_array_dims)}"
-        )
-        assert len(var._md_array_dims) == 3, (
-            f"Expected 3 dims, got {len(var._md_array_dims)}"
-        )
+        assert isinstance(
+            var._md_array_dims, list
+        ), f"Expected list, got {type(var._md_array_dims)}"
+        assert (
+            len(var._md_array_dims) == 3
+        ), f"Expected 3 dims, got {len(var._md_array_dims)}"
 
     def test_get_variable_sets_band_dim_info(self):
         """Verify get_variable populates _band_dim_name and _band_dim_values.
@@ -553,15 +545,15 @@ class TestGetVariableEdgeCases:
         """
         nc = _make_3d_nc()
         var = nc.get_variable("temperature")
-        assert var._band_dim_name is not None, (
-            "Expected a band dim name for 3D variable"
-        )
-        assert var._band_dim_values is not None, (
-            "Expected band dim values for 3D variable"
-        )
-        assert len(var._band_dim_values) == 3, (
-            f"Expected 3 band values, got {len(var._band_dim_values)}"
-        )
+        assert (
+            var._band_dim_name is not None
+        ), "Expected a band dim name for 3D variable"
+        assert (
+            var._band_dim_values is not None
+        ), "Expected band dim values for 3D variable"
+        assert (
+            len(var._band_dim_values) == 3
+        ), f"Expected 3 band values, got {len(var._band_dim_values)}"
 
     def test_get_variable_2d_has_no_band_dim(self):
         """Verify get_variable sets _band_dim_name=None for 2D variables.
@@ -570,13 +562,12 @@ class TestGetVariableEdgeCases:
         """
         nc = _make_2d_nc()
         var = nc.get_variable("elevation")
-        assert var._band_dim_name is None, (
-            f"Expected None band_dim_name for 2D var, got {var._band_dim_name}"
-        )
-        assert var._band_dim_values is None, (
-            f"Expected None band_dim_values for 2D var, got {var._band_dim_values}"
-        )
-
+        assert (
+            var._band_dim_name is None
+        ), f"Expected None band_dim_name for 2D var, got {var._band_dim_name}"
+        assert (
+            var._band_dim_values is None
+        ), f"Expected None band_dim_values for 2D var, got {var._band_dim_values}"
 
 
 class TestGetVariableBandDimErrors:
@@ -591,10 +582,7 @@ class TestGetVariableBandDimErrors:
         nc = _make_3d_nc()
         var = nc.get_variable("temperature")
         # The band dim values should be populated even in normal case
-        assert var._band_dim_values is not None, (
-            "Band dim values should not be None"
-        )
-
+        assert var._band_dim_values is not None, "Band dim values should not be None"
 
 
 class TestToFile:
@@ -629,13 +617,10 @@ class TestToFile:
         Covers line 841: the RuntimeError branch.
         """
         nc = _make_2d_nc()
-        with patch.object(
-            gdal.Driver, "CreateCopy", return_value=None
-        ):
+        with patch.object(gdal.Driver, "CreateCopy", return_value=None):
             out = str(tmp_path / "bad_output.nc")
             with pytest.raises(RuntimeError, match="Failed to save NetCDF"):
                 nc.to_file(out)
-
 
 
 class TestCopy:
@@ -647,9 +632,7 @@ class TestCopy:
         Covers line 879: the RuntimeError branch.
         """
         nc = _make_2d_nc()
-        with patch.object(
-            gdal.Driver, "CreateCopy", return_value=None
-        ):
+        with patch.object(gdal.Driver, "CreateCopy", return_value=None):
             with pytest.raises(RuntimeError, match="Failed to copy"):
                 nc.copy()
 
@@ -663,7 +646,6 @@ class TestCopy:
         copied = nc.copy(path=out)
         assert copied is not None, "Copy should return a valid NetCDF"
         assert os.path.exists(out), f"File should exist at {out}"
-
 
 
 class TestCreateFromArrayAlternatives:
@@ -686,9 +668,7 @@ class TestCreateFromArrayAlternatives:
         )
         assert nc is not None, "NetCDF should be created"
         var = nc.get_variable("data")
-        assert var.cell_size == 0.5, (
-            f"Expected cell_size 0.5, got {var.cell_size}"
-        )
+        assert var.cell_size == 0.5, f"Expected cell_size 0.5, got {var.cell_size}"
 
     def test_create_from_array_no_geo_raises(self):
         """Verify create_from_array raises ValueError without geo information.
@@ -718,9 +698,9 @@ class TestCreateFromArrayAlternatives:
             no_data_value=-9999.0,
             path=None,
         )
-        assert "data" in nc.variable_names, (
-            f"Expected 'data' in variable_names, got {nc.variable_names}"
-        )
+        assert (
+            "data" in nc.variable_names
+        ), f"Expected 'data' in variable_names, got {nc.variable_names}"
 
     def test_create_from_array_default_extra_dim_values(self):
         """Verify create_from_array defaults extra_dim_values to 0..N-1.
@@ -738,10 +718,7 @@ class TestCreateFromArrayAlternatives:
             path=None,
         )
         var = nc.get_variable("test_var")
-        assert var.band_count == 4, (
-            f"Expected 4 bands, got {var.band_count}"
-        )
-
+        assert var.band_count == 4, f"Expected 4 bands, got {var.band_count}"
 
 
 class TestCreateNetcdfFromArrayValidation:
@@ -755,7 +732,10 @@ class TestCreateNetcdfFromArrayValidation:
         arr = np.random.rand(5, 10).astype(np.float64)
         with pytest.raises(ValueError, match="Variable_name cannot be None"):
             NetCDF._create_netcdf_from_array(
-                arr, None, 10, 5,
+                arr,
+                None,
+                10,
+                5,
                 geo=(0.0, 1.0, 0, 5.0, 0, -1.0),
             )
 
@@ -767,10 +747,12 @@ class TestCreateNetcdfFromArrayValidation:
         arr = np.random.rand(5, 10).astype(np.float64)
         with pytest.raises(ValueError, match="geo cannot be None"):
             NetCDF._create_netcdf_from_array(
-                arr, "var", 10, 5,
+                arr,
+                "var",
+                10,
+                5,
                 geo=None,
             )
-
 
 
 class TestAddMdArrayToGroupFallback:
@@ -791,9 +773,7 @@ class TestAddMdArrayToGroupFallback:
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
         for d in src_arr.GetDimensions():
             iv = d.GetIndexingVariable()
-            NetCDF.create_main_dimension(
-                dst_rg, d.GetName(), dtype, iv.ReadAsArray()
-            )
+            NetCDF.create_main_dimension(dst_rg, d.GetName(), dtype, iv.ReadAsArray())
 
         # Patch GetNoDataValue to return a value that triggers failure
         original_get_ndv = src_arr.GetNoDataValue
@@ -811,7 +791,6 @@ class TestAddMdArrayToGroupFallback:
         assert ndv is not None, "NoData value should have been set"
 
 
-
 class TestSetVariableAttributes:
     """Tests for set_variable attribute writing paths."""
 
@@ -823,15 +802,16 @@ class TestSetVariableAttributes:
         nc = _make_2d_nc()
         ds = _make_dataset_2d()
         nc.set_variable(
-            "pressure", ds,
+            "pressure",
+            ds,
             attrs={"scale_factor": 1.5},
         )
         rg = nc._raster.GetRootGroup()
         md_arr = rg.OpenMDArray("pressure")
         attr_names = [a.GetName() for a in md_arr.GetAttributes()]
-        assert "scale_factor" in attr_names, (
-            f"Expected 'scale_factor' attribute, got {attr_names}"
-        )
+        assert (
+            "scale_factor" in attr_names
+        ), f"Expected 'scale_factor' attribute, got {attr_names}"
 
     def test_set_variable_with_int_attr(self):
         """Verify set_variable writes integer attributes.
@@ -841,15 +821,14 @@ class TestSetVariableAttributes:
         nc = _make_2d_nc()
         ds = _make_dataset_2d()
         nc.set_variable(
-            "pressure", ds,
+            "pressure",
+            ds,
             attrs={"flag": 42},
         )
         rg = nc._raster.GetRootGroup()
         md_arr = rg.OpenMDArray("pressure")
         attr_names = [a.GetName() for a in md_arr.GetAttributes()]
-        assert "flag" in attr_names, (
-            f"Expected 'flag' attribute, got {attr_names}"
-        )
+        assert "flag" in attr_names, f"Expected 'flag' attribute, got {attr_names}"
 
     def test_set_variable_with_non_string_non_numeric_attr(self):
         """Verify set_variable converts unknown types to string.
@@ -860,7 +839,8 @@ class TestSetVariableAttributes:
         nc = _make_2d_nc()
         ds = _make_dataset_2d()
         nc.set_variable(
-            "pressure", ds,
+            "pressure",
+            ds,
             attrs={"metadata": [1, 2, 3]},
         )
         rg = nc._raster.GetRootGroup()
@@ -875,15 +855,14 @@ class TestSetVariableAttributes:
         nc = _make_2d_nc()
         ds = _make_dataset_2d()
         nc.set_variable(
-            "wind", ds,
+            "wind",
+            ds,
             attrs={"units": "m/s"},
         )
         rg = nc._raster.GetRootGroup()
         md_arr = rg.OpenMDArray("wind")
         attr_names = [a.GetName() for a in md_arr.GetAttributes()]
-        assert "units" in attr_names, (
-            f"Expected 'units' attribute, got {attr_names}"
-        )
+        assert "units" in attr_names, f"Expected 'units' attribute, got {attr_names}"
 
     def test_set_variable_no_data_exception_path(self):
         """Verify set_variable handles exception when SetNoDataValueDouble fails.
@@ -907,13 +886,13 @@ class TestSetVariableAttributes:
         ds1 = _make_dataset_2d()
         ds2 = _make_dataset_2d(rows=10, cols=12)
         nc.set_variable("replace_me", ds1)
-        assert "replace_me" in nc.variable_names, (
-            "Variable should exist before replacement"
-        )
+        assert (
+            "replace_me" in nc.variable_names
+        ), "Variable should exist before replacement"
         nc.set_variable("replace_me", ds2)
-        assert "replace_me" in nc.variable_names, (
-            "Variable should still exist after replacement"
-        )
+        assert (
+            "replace_me" in nc.variable_names
+        ), "Variable should still exist after replacement"
 
     def test_set_variable_3d_with_no_band_dim(self):
         """Verify set_variable auto-names band dim as 'bands'.
@@ -926,13 +905,11 @@ class TestSetVariableAttributes:
         rg = nc._raster.GetRootGroup()
         md_arr = rg.OpenMDArray("multi_band")
         dims = md_arr.GetDimensions()
-        assert len(dims) == 3, (
-            f"Expected 3 dims for 3D var, got {len(dims)}"
-        )
+        assert len(dims) == 3, f"Expected 3 dims for 3D var, got {len(dims)}"
         dim_names = [d.GetName() for d in dims]
-        assert "bands" in dim_names or any("band" in n for n in dim_names), (
-            f"Expected a 'bands' dimension, got {dim_names}"
-        )
+        assert "bands" in dim_names or any(
+            "band" in n for n in dim_names
+        ), f"Expected a 'bands' dimension, got {dim_names}"
 
     def test_set_variable_attr_exception_silenced(self):
         """Verify set_variable silences exceptions when writing attributes.
@@ -943,7 +920,8 @@ class TestSetVariableAttributes:
         ds = _make_dataset_2d()
         # This should not raise even if CreateAttribute fails internally
         nc.set_variable(
-            "safe_var", ds,
+            "safe_var",
+            ds,
             attrs={"units": "K", "count": 5, "ratio": 3.14, "complex": [1, 2]},
         )
         rg = nc._raster.GetRootGroup()
@@ -964,7 +942,6 @@ class TestSetVariableAttributes:
             nc.set_variable("new_var", ds)
 
 
-
 class TestAddVariable:
     """Tests for add_variable edge cases."""
 
@@ -976,9 +953,9 @@ class TestAddVariable:
         nc = _make_3d_nc(variable_name="temp")
         nc2 = _make_3d_nc(variable_name="precip")
         nc.add_variable(nc2, variable_name="precip")
-        assert "precip" in nc.variable_names, (
-            f"Expected 'precip' in {nc.variable_names}"
-        )
+        assert (
+            "precip" in nc.variable_names
+        ), f"Expected 'precip' in {nc.variable_names}"
 
     def test_add_variable_non_netcdf_dataset(self):
         """Verify add_variable with a plain Dataset gives empty names_to_copy.
@@ -997,10 +974,9 @@ class TestAddVariable:
         ds._raster.GetRootGroup.return_value = mock_rg
         nc.add_variable(ds)
         # Variable names should not change since names_to_copy is empty
-        assert nc.variable_names == original_names, (
-            f"Variable names should not change, got {nc.variable_names}"
-        )
-
+        assert (
+            nc.variable_names == original_names
+        ), f"Variable names should not change, got {nc.variable_names}"
 
 
 class TestRemoveVariable:
@@ -1016,15 +992,15 @@ class TestRemoveVariable:
         out = str(tmp_path / "to_remove.nc")
         nc.to_file(out)
         file_nc = NetCDF.read_file(
-            out, read_only=False, open_as_multi_dimensional=True,
+            out,
+            read_only=False,
+            open_as_multi_dimensional=True,
         )
-        assert "temp" in file_nc.variable_names, (
-            "Variable 'temp' should exist before removal"
-        )
+        assert (
+            "temp" in file_nc.variable_names
+        ), "Variable 'temp' should exist before removal"
         file_nc.remove_variable("temp")
-        assert "temp" not in file_nc.variable_names, (
-            "Variable 'temp' should be removed"
-        )
+        assert "temp" not in file_nc.variable_names, "Variable 'temp' should be removed"
 
     def test_remove_variable_in_memory(self):
         """Verify remove_variable works directly for in-memory datasets.
@@ -1032,14 +1008,11 @@ class TestRemoveVariable:
         Covers line 1308: the if driver_type == 'memory' branch.
         """
         nc = _make_3d_nc(variable_name="temp")
-        assert "temp" in nc.variable_names, (
-            "Variable should exist before removal"
-        )
+        assert "temp" in nc.variable_names, "Variable should exist before removal"
         nc.remove_variable("temp")
-        assert "temp" not in nc.variable_names, (
-            "Variable should be removed from in-memory dataset"
-        )
-
+        assert (
+            "temp" not in nc.variable_names
+        ), "Variable should be removed from in-memory dataset"
 
 
 class TestMSWEPFile:
@@ -1054,9 +1027,9 @@ class TestMSWEPFile:
             "tests/data/netcdf/MSWEP_1979010100.nc",
             open_as_multi_dimensional=True,
         )
-        assert "precipitation" in nc.variable_names, (
-            f"Expected 'precipitation' in {nc.variable_names}"
-        )
+        assert (
+            "precipitation" in nc.variable_names
+        ), f"Expected 'precipitation' in {nc.variable_names}"
         var = nc.get_variable("precipitation")
         assert var.is_subset is True, "Variable should be a subset"
         arr = var.read_array()
@@ -1081,9 +1054,9 @@ class TestMSWEPFile:
             open_as_multi_dimensional=True,
         )
         md = nc.meta_data
-        assert isinstance(md, NetCDFMetadata), (
-            f"Expected NetCDFMetadata, got {type(md)}"
-        )
+        assert isinstance(
+            md, NetCDFMetadata
+        ), f"Expected NetCDFMetadata, got {type(md)}"
 
     def test_mswep_get_all_metadata(self):
         """Verify get_all_metadata populates dimension overview."""
@@ -1092,12 +1065,10 @@ class TestMSWEPFile:
             open_as_multi_dimensional=True,
         )
         md = nc.get_all_metadata()
-        assert md.dimension_overview is not None, (
-            "dimension_overview should be populated"
-        )
-        assert "names" in md.dimension_overview, (
-            "Overview should have 'names' key"
-        )
+        assert (
+            md.dimension_overview is not None
+        ), "dimension_overview should be populated"
+        assert "names" in md.dimension_overview, "Overview should have 'names' key"
 
     def test_mswep_lon_lat(self):
         """Verify lon/lat are readable from MSWEP file."""
@@ -1113,10 +1084,7 @@ class TestMSWEPFile:
         assert lat.ndim == 1, f"lat should be 1D, got {lat.ndim}D"
 
 
-
-def _make_nc_with_time_units(
-    rows=4, cols=5, n_times=3
-):
+def _make_nc_with_time_units(rows=4, cols=5, n_times=3):
     """Create an MDIM NetCDF with a time dimension that has a 'units' attr.
 
     This is needed to exercise get_time_variable lines 470-475.
@@ -1153,12 +1121,8 @@ def _make_nc_with_time_units(
     units_attr.Write("days since 1979-01-01")
 
     # Create a data variable
-    data_arr = rg.CreateMDArray(
-        "temperature", [dim_t, dim_y, dim_x], dtype
-    )
-    data_arr.Write(
-        np.random.RandomState(55).rand(n_times, rows, cols)
-    )
+    data_arr = rg.CreateMDArray("temperature", [dim_t, dim_y, dim_x], dtype)
+    data_arr.Write(np.random.RandomState(55).rand(n_times, rows, cols))
     data_arr.SetNoDataValueDouble(-9999.0)
 
     return NetCDF(src)
@@ -1175,21 +1139,17 @@ class TestGetTimeVariableWithUnits:
         """
         nc = _make_nc_with_time_units(n_times=3)
         result = nc.get_time_variable()
-        assert result is not None, (
-            "get_time_variable should return dates when units exist"
-        )
-        assert isinstance(result, list), (
-            f"Expected list, got {type(result)}"
-        )
-        assert len(result) == 3, (
-            f"Expected 3 time stamps, got {len(result)}"
-        )
-        assert "1979-01-01" in result[0], (
-            f"Expected '1979-01-01' in first timestamp, got {result[0]}"
-        )
-        assert "1979-01-02" in result[1], (
-            f"Expected '1979-01-02' in second timestamp, got {result[1]}"
-        )
+        assert (
+            result is not None
+        ), "get_time_variable should return dates when units exist"
+        assert isinstance(result, list), f"Expected list, got {type(result)}"
+        assert len(result) == 3, f"Expected 3 time stamps, got {len(result)}"
+        assert (
+            "1979-01-01" in result[0]
+        ), f"Expected '1979-01-01' in first timestamp, got {result[0]}"
+        assert (
+            "1979-01-02" in result[1]
+        ), f"Expected '1979-01-02' in second timestamp, got {result[1]}"
 
     def test_get_time_variable_custom_format(self):
         """Verify get_time_variable uses a custom format string.
@@ -1200,9 +1160,9 @@ class TestGetTimeVariableWithUnits:
         nc = _make_nc_with_time_units(n_times=2)
         result = nc.get_time_variable(time_format="%Y/%m/%d")
         assert result is not None, "Should return formatted timestamps"
-        assert "/" in result[0], (
-            f"Expected '/' separator in custom format, got {result[0]}"
-        )
+        assert (
+            "/" in result[0]
+        ), f"Expected '/' separator in custom format, got {result[0]}"
 
     def test_time_stamp_property_with_units(self):
         """Verify time_stamp property returns dates when time has units.
@@ -1211,12 +1171,10 @@ class TestGetTimeVariableWithUnits:
         """
         nc = _make_nc_with_time_units(n_times=2)
         result = nc.time_stamp
-        assert result is not None, (
-            "time_stamp should return dates when time units exist"
-        )
-        assert len(result) == 2, (
-            f"Expected 2 timestamps, got {len(result)}"
-        )
+        assert (
+            result is not None
+        ), "time_stamp should return dates when time units exist"
+        assert len(result) == 2, f"Expected 2 timestamps, got {len(result)}"
 
 
 class TestReadVariableFallbackPaths:
@@ -1252,16 +1210,15 @@ class TestReadVariableFallbackPaths:
                 return self._real_rg.OpenMDArray(var_name)
 
         with patch.object(
-            nc._raster, "GetRootGroup",
+            nc._raster,
+            "GetRootGroup",
             return_value=PatchedRG(original_rg),
         ):
             result = nc._read_variable("x")
-        assert result is not None, (
-            "Should read 'x' via dimension indexing variable"
-        )
-        assert isinstance(result, np.ndarray), (
-            f"Expected np.ndarray, got {type(result)}"
-        )
+        assert result is not None, "Should read 'x' via dimension indexing variable"
+        assert isinstance(
+            result, np.ndarray
+        ), f"Expected np.ndarray, got {type(result)}"
 
     def test_read_variable_classic_mode_success(self):
         """Verify _read_variable reads data in classic mode.
@@ -1276,12 +1233,10 @@ class TestReadVariableFallbackPaths:
         # In classic mode, variables are Band1, Band2, etc.
         # Try reading lon/lat which exist in the file
         result = nc._read_variable("Band1")
-        assert result is not None, (
-            "Should read 'Band1' variable in classic mode"
-        )
-        assert isinstance(result, np.ndarray), (
-            f"Expected np.ndarray, got {type(result)}"
-        )
+        assert result is not None, "Should read 'Band1' variable in classic mode"
+        assert isinstance(
+            result, np.ndarray
+        ), f"Expected np.ndarray, got {type(result)}"
 
 
 class TestGetVariableYFlipAndErrors:
@@ -1294,9 +1249,7 @@ class TestGetVariableYFlipAndErrors:
         in get_variable.
         """
         # Create an MDIM dataset where lat is stored south-to-north
-        src = gdal.GetDriverByName("MEM").CreateMultiDimensional(
-            "yflip_test"
-        )
+        src = gdal.GetDriverByName("MEM").CreateMultiDimensional("yflip_test")
         rg = src.GetRootGroup()
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
 
@@ -1314,18 +1267,14 @@ class TestGetVariableYFlipAndErrors:
 
         # Create data variable
         data_arr = rg.CreateMDArray("temp", [dim_y, dim_x], dtype)
-        data_arr.Write(
-            np.random.RandomState(88).rand(4, 5).astype(np.float64)
-        )
+        data_arr.Write(np.random.RandomState(88).rand(4, 5).astype(np.float64))
         data_arr.SetNoDataValueDouble(-9999.0)
 
         nc = NetCDF(src)
         var = nc.get_variable("temp")
         # The Y-flip correction should have been applied
         gt = var._geotransform
-        assert gt[5] <= 0, (
-            f"After Y-flip, gt[5] should be <= 0, got {gt[5]}"
-        )
+        assert gt[5] <= 0, f"After Y-flip, gt[5] should be <= 0, got {gt[5]}"
 
     def test_get_variable_classic_open_returns_none(self):
         """Verify get_variable raises ValueError when gdal.Open returns None.
@@ -1341,7 +1290,8 @@ class TestGetVariableYFlipAndErrors:
         nc._cached_variables = None
         with (
             patch.object(
-                nc, "get_variable_names",
+                nc,
+                "get_variable_names",
                 return_value=original_names + ["fake_var"],
             ),
             patch("pyramids.netcdf.netcdf.gdal.Open", return_value=None),
@@ -1419,12 +1369,14 @@ class TestGetVariableYFlipAndErrors:
         with patch.object(nc, "_read_md_array", side_effect=patched_read_md):
             var = nc.get_variable("temperature")
         # Should have fallen back to range-based values
-        assert var._band_dim_values is not None, (
-            "band_dim_values should be set (fallback to range)"
-        )
-        assert var._band_dim_values == [0, 1, 2], (
-            f"Expected [0, 1, 2] as range fallback, got {var._band_dim_values}"
-        )
+        assert (
+            var._band_dim_values is not None
+        ), "band_dim_values should be set (fallback to range)"
+        assert var._band_dim_values == [
+            0,
+            1,
+            2,
+        ], f"Expected [0, 1, 2] as range fallback, got {var._band_dim_values}"
 
     def test_get_variable_md_arr_none(self):
         """Verify get_variable handles case when md_arr is None.
@@ -1445,18 +1397,18 @@ class TestGetVariableYFlipAndErrors:
         with patch.object(nc, "_read_md_array", side_effect=patched_read):
             var = nc.get_variable("temperature")
 
-        assert var._md_array_dims == [], (
-            f"Expected empty md_array_dims, got {var._md_array_dims}"
-        )
-        assert var._band_dim_name is None, (
-            f"Expected None band_dim_name, got {var._band_dim_name}"
-        )
-        assert var._band_dim_values is None, (
-            f"Expected None band_dim_values, got {var._band_dim_values}"
-        )
-        assert var._variable_attrs == {}, (
-            f"Expected empty variable_attrs, got {var._variable_attrs}"
-        )
+        assert (
+            var._md_array_dims == []
+        ), f"Expected empty md_array_dims, got {var._md_array_dims}"
+        assert (
+            var._band_dim_name is None
+        ), f"Expected None band_dim_name, got {var._band_dim_name}"
+        assert (
+            var._band_dim_values is None
+        ), f"Expected None band_dim_values, got {var._band_dim_values}"
+        assert (
+            var._variable_attrs == {}
+        ), f"Expected empty variable_attrs, got {var._variable_attrs}"
 
 
 class TestGetVariableNonDataset:
@@ -1470,9 +1422,7 @@ class TestGetVariableNonDataset:
         and cube is set to src directly.
         """
         # Create a dataset with a 1D string variable as a "data variable"
-        src = gdal.GetDriverByName("MEM").CreateMultiDimensional(
-            "str_var_test"
-        )
+        src = gdal.GetDriverByName("MEM").CreateMultiDimensional("str_var_test")
         rg = src.GetRootGroup()
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
 
@@ -1493,9 +1443,9 @@ class TestGetVariableNonDataset:
         str_arr = rg.CreateMDArray("labels", [str_dim], str_dtype)
 
         nc = NetCDF(src)
-        assert "labels" in nc.variable_names, (
-            f"'labels' should be a variable, got {nc.variable_names}"
-        )
+        assert (
+            "labels" in nc.variable_names
+        ), f"'labels' should be a variable, got {nc.variable_names}"
         var = nc.get_variable("labels")
         # The result should be the MDArray itself (not a Dataset)
         assert var is not None, "Variable should not be None"
@@ -1511,9 +1461,7 @@ class TestGetVariableMultipleBandDims:
         Covers lines 719-720: the else branch where len(band_dims) != 1
         (e.g. a 4D array with two non-spatial dimensions).
         """
-        src = gdal.GetDriverByName("MEM").CreateMultiDimensional(
-            "multi_band_dims"
-        )
+        src = gdal.GetDriverByName("MEM").CreateMultiDimensional("multi_band_dims")
         rg = src.GetRootGroup()
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
 
@@ -1537,20 +1485,18 @@ class TestGetVariableMultipleBandDims:
         e_v.Write(np.array([1.0, 2.0]))
         dim_e.SetIndexingVariable(e_v)
 
-        data = rg.CreateMDArray(
-            "temp", [dim_t, dim_e, dim_y, dim_x], dtype
-        )
+        data = rg.CreateMDArray("temp", [dim_t, dim_e, dim_y, dim_x], dtype)
         data.Write(np.random.rand(2, 2, 3, 3).astype(np.float64))
         data.SetNoDataValueDouble(-9999.0)
 
         nc = NetCDF(src)
         var = nc.get_variable("temp")
-        assert var._band_dim_name is None, (
-            f"Expected None band_dim_name for 4D var, got {var._band_dim_name}"
-        )
-        assert var._band_dim_values is None, (
-            f"Expected None band_dim_values for 4D var, got {var._band_dim_values}"
-        )
+        assert (
+            var._band_dim_name is None
+        ), f"Expected None band_dim_name for 4D var, got {var._band_dim_name}"
+        assert (
+            var._band_dim_values is None
+        ), f"Expected None band_dim_values for 4D var, got {var._band_dim_values}"
 
 
 class TestGetVariableAttrException:
@@ -1588,9 +1534,9 @@ class TestGetVariableAttrException:
 
         with patch.object(nc, "_read_md_array", side_effect=patched_read):
             var = nc.get_variable("temperature")
-        assert var._variable_attrs == {}, (
-            f"Expected empty attrs after exception, got {var._variable_attrs}"
-        )
+        assert (
+            var._variable_attrs == {}
+        ), f"Expected empty attrs after exception, got {var._variable_attrs}"
 
 
 class TestSetVariableAttrWriteException:
@@ -1620,7 +1566,8 @@ class TestSetVariableAttrWriteException:
         # else branch. The Write may or may not fail, but the test
         # verifies no exception escapes.
         nc.set_variable(
-            "fail_attr_var", ds,
+            "fail_attr_var",
+            ds,
             attrs={"key": object()},
         )
         rg = nc._raster.GetRootGroup()
@@ -1668,11 +1615,16 @@ class TestSetVariableAttrException:
 
         def open_and_patch(name, *args, **kwargs):
             """Open the array and patch CreateAttribute to fail."""
-            arr = original_open(name, *args, **kwargs) if not args else original_open(name, *args, **kwargs)
+            arr = (
+                original_open(name, *args, **kwargs)
+                if not args
+                else original_open(name, *args, **kwargs)
+            )
             return arr
 
         nc.set_variable(
-            "attr_err_var", ds,
+            "attr_err_var",
+            ds,
             attrs={"units": "K", "scale": 1.0, "flag": 1, "blob": [1, 2]},
         )
         rg = nc._raster.GetRootGroup()
@@ -1691,9 +1643,7 @@ class TestReadMdArray1DNumeric:
         Note: AsClassicDataset(0, 1, rg) may fail on some GDAL versions
         for truly 1D arrays. We test the code path is reached.
         """
-        src = gdal.GetDriverByName("MEM").CreateMultiDimensional(
-            "test_1d"
-        )
+        src = gdal.GetDriverByName("MEM").CreateMultiDimensional("test_1d")
         rg = src.GetRootGroup()
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
         dim = rg.CreateDimension("z", None, None, 5)
@@ -1709,9 +1659,7 @@ class TestReadMdArray1DNumeric:
         try:
             result = nc._read_md_array("profile")
             # If it succeeds, verify we got data back
-            assert result is not None, (
-                "Should return result for 1D numeric array"
-            )
+            assert result is not None, "Should return result for 1D numeric array"
         except RuntimeError:
             # AsClassicDataset(0, 1) may raise on some GDAL versions
             # for 1D arrays -- that's expected behavior on this path

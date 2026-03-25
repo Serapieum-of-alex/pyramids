@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import Any, TypeAlias, cast
+
 import re
 from datetime import datetime, timedelta
+from typing import Any, TypeAlias, cast
+
 from osgeo import gdal, osr
 
 # Keep simple, JSON-serializable attribute values only
@@ -9,7 +11,6 @@ AttributeScalar: TypeAlias = bool | int | float | str
 AttributeVector: TypeAlias = list[AttributeScalar]
 AttributeValue: TypeAlias = AttributeScalar | AttributeVector
 _ORIGIN_RE = re.compile(r'^\s*([A-Za-z]+)\s+since\s+(.+?)\s*$', re.IGNORECASE)
-
 
 
 def _full_name_with_fallback(group: gdal.Group, default_name: str | None = None) -> str:
@@ -108,6 +109,7 @@ def _get_root_group(dataset: gdal.Dataset) -> gdal.Group | None:
     except Exception:
         return None
 
+
 def _get_driver_name(dataset: gdal.Dataset) -> str:
     """Get the short driver name for a GDAL dataset.
 
@@ -176,12 +178,20 @@ def _get_array_nodata(
                 return v[0] if v else None
             return v  # type: ignore[return-value]
     # Try driver API
-    for meth in ("GetNoDataValueAsDouble", "GetNoDataValueAsInt64", "GetNoDataValueAsString"):
+    for meth in (
+        "GetNoDataValueAsDouble",
+        "GetNoDataValueAsInt64",
+        "GetNoDataValueAsString",
+    ):
         if hasattr(mdarr, meth):
             try:
                 v = getattr(mdarr, meth)()
                 # Some GDAL versions return (value, hasval)
-                if isinstance(v, (list, tuple)) and len(v) == 2 and isinstance(v[1], (bool, int)):
+                if (
+                    isinstance(v, (list, tuple))
+                    and len(v) == 2
+                    and isinstance(v[1], (bool, int))
+                ):
                     if v[1]:
                         return cast(int | float | str | None, _to_py_scalar(v[0]))
                     continue
@@ -289,6 +299,7 @@ def _get_coord_variable_names(mdarr: gdal.MDArray) -> list[str]:
             names.append(str(cv))
     return names
 
+
 def _normalize_origin_string(origin: str) -> str:
     """Normalize a CF time origin into a zero-padded datetime string.
 
@@ -359,6 +370,7 @@ def _normalize_origin_string(origin: str) -> str:
     else:
         return f"{y}-{m}-{d} {H}:{M}:{S}"
 
+
 def _parse_units_origin(units: str) -> tuple[str, datetime]:
     """Parse a CF time-units string into unit name and origin.
 
@@ -425,6 +437,7 @@ def _parse_units_origin(units: str) -> tuple[str, datetime]:
         origin_dt = datetime.strptime(origin_norm, "%Y-%m-%d %H:%M:%S")
 
     return unit.lower(), origin_dt
+
 
 def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S"):
     """Create a converter that maps numeric CF time offsets to date strings.
@@ -601,7 +614,7 @@ def _normalize_attr_value(val: Any) -> AttributeValue:
     """
     # Vector
     if isinstance(val, (list, tuple)):
-        return [ _to_py_scalar(v) for v in val ]
+        return [_to_py_scalar(v) for v in val]
 
     # Scalar
     return cast(AttributeValue, _to_py_scalar(val))
@@ -628,12 +641,12 @@ def _read_attribute_value(attr: gdal.Attribute) -> AttributeValue:
     except Exception:
         # try type-specifics
         for meth in (
-                "ReadAsInt64",
-                "ReadAsInt64Array",
-                "ReadAsDouble",
-                "ReadAsDoubleArray",
-                "ReadAsString",
-                "ReadAsStringArray",
+            "ReadAsInt64",
+            "ReadAsInt64Array",
+            "ReadAsDouble",
+            "ReadAsDoubleArray",
+            "ReadAsString",
+            "ReadAsStringArray",
         ):
             if hasattr(attr, meth):
                 try:

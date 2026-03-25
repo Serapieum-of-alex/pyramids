@@ -13,6 +13,7 @@ Targets untested / low-coverage code paths in
 - ``shape`` property
 - Error paths for ``__getitem__``, ``__setitem__``, ``open_multi_dataset``
 """
+
 import os
 import shutil
 import tempfile
@@ -23,7 +24,6 @@ from osgeo import gdal
 
 from pyramids.dataset import Dataset
 from pyramids.multidataset import MultiDataset
-
 
 
 def _make_mem_dataset(
@@ -49,7 +49,6 @@ def _make_mem_dataset(
     return src
 
 
-
 @pytest.fixture()
 def base_dataset() -> Dataset:
     """A small 5x6 in-memory Dataset."""
@@ -65,23 +64,18 @@ def cube_with_values(base_dataset: Dataset) -> MultiDataset:
     return md
 
 
-
 class TestCreateCube:
     """Tests for the ``create_cube`` classmethod."""
 
     def test_returns_multidataset(self, base_dataset: Dataset):
         """create_cube should return a MultiDataset instance."""
         md = MultiDataset.create_cube(base_dataset, dataset_length=4)
-        assert isinstance(md, MultiDataset), (
-            f"Expected MultiDataset, got {type(md)}"
-        )
+        assert isinstance(md, MultiDataset), f"Expected MultiDataset, got {type(md)}"
 
     def test_time_length_matches(self, base_dataset: Dataset):
         """The time_length should match the given dataset_length."""
         md = MultiDataset.create_cube(base_dataset, dataset_length=7)
-        assert md.time_length == 7, (
-            f"Expected time_length=7, got {md.time_length}"
-        )
+        assert md.time_length == 7, f"Expected time_length=7, got {md.time_length}"
 
     def test_base_is_same_dataset(self, base_dataset: Dataset):
         """The base property should reference the provided Dataset."""
@@ -92,7 +86,6 @@ class TestCreateCube:
         """create_cube does not set files so it should be None."""
         md = MultiDataset.create_cube(base_dataset, dataset_length=2)
         assert md.files is None, "files should be None for create_cube"
-
 
 
 class TestStringRepresentation:
@@ -111,29 +104,27 @@ class TestStringRepresentation:
         assert "Dimension" in text, "__repr__ should contain 'Dimension'"
 
 
-
 class TestShapeProperties:
     """Tests for shape, rows, columns."""
 
     def test_shape(self, cube_with_values: MultiDataset):
         """shape should be (time_length, rows, columns)."""
         expected = (3, 5, 6)
-        assert cube_with_values.shape == expected, (
-            f"Expected shape {expected}, got {cube_with_values.shape}"
-        )
+        assert (
+            cube_with_values.shape == expected
+        ), f"Expected shape {expected}, got {cube_with_values.shape}"
 
     def test_rows(self, cube_with_values: MultiDataset):
         """rows should match the base dataset."""
-        assert cube_with_values.rows == 5, (
-            f"Expected rows=5, got {cube_with_values.rows}"
-        )
+        assert (
+            cube_with_values.rows == 5
+        ), f"Expected rows=5, got {cube_with_values.rows}"
 
     def test_columns(self, cube_with_values: MultiDataset):
         """columns should match the base dataset."""
-        assert cube_with_values.columns == 6, (
-            f"Expected columns=6, got {cube_with_values.columns}"
-        )
-
+        assert (
+            cube_with_values.columns == 6
+        ), f"Expected columns=6, got {cube_with_values.columns}"
 
 
 class TestIterationMethods:
@@ -144,56 +135,44 @@ class TestIterationMethods:
         items = list(cube_with_values)
         assert len(items) == 3, f"Expected 3 items, got {len(items)}"
         for item in items:
-            assert item.shape == (5, 6), (
-                f"Each iterated slice should be (5,6), got {item.shape}"
-            )
+            assert item.shape == (
+                5,
+                6,
+            ), f"Each iterated slice should be (5,6), got {item.shape}"
 
     def test_head_default(self, cube_with_values: MultiDataset):
         """head() with default n=5 should clamp to available time steps."""
         result = cube_with_values.head()
-        assert result.shape[0] == 3, (
-            "head(5) on a cube with 3 steps should return 3"
-        )
+        assert result.shape[0] == 3, "head(5) on a cube with 3 steps should return 3"
 
     def test_head_custom(self, cube_with_values: MultiDataset):
         """head(2) should return the first 2 time steps."""
         result = cube_with_values.head(n=2)
-        assert result.shape == (2, 5, 6), (
-            f"Expected (2,5,6), got {result.shape}"
-        )
+        assert result.shape == (2, 5, 6), f"Expected (2,5,6), got {result.shape}"
 
     def test_tail_default(self, cube_with_values: MultiDataset):
         """tail() with default n=-5 should clamp to available time steps."""
         result = cube_with_values.tail()
-        assert result.shape[0] == 3, (
-            "tail(-5) on a cube with 3 steps should return 3"
-        )
+        assert result.shape[0] == 3, "tail(-5) on a cube with 3 steps should return 3"
 
     def test_tail_custom(self, cube_with_values: MultiDataset):
         """tail(-1) should return the last time step only."""
         result = cube_with_values.tail(n=-1)
-        assert result.shape == (1, 5, 6), (
-            f"Expected (1,5,6), got {result.shape}"
-        )
+        assert result.shape == (1, 5, 6), f"Expected (1,5,6), got {result.shape}"
 
     def test_first(self, cube_with_values: MultiDataset):
         """first() should return the first time slice (2D array)."""
         result = cube_with_values.first()
-        assert result.shape == (5, 6), (
-            f"Expected (5,6), got {result.shape}"
-        )
+        assert result.shape == (5, 6), f"Expected (5,6), got {result.shape}"
         expected_first = np.arange(3 * 5 * 6, dtype=np.float64).reshape(3, 5, 6)[0]
         np.testing.assert_array_equal(result, expected_first)
 
     def test_last(self, cube_with_values: MultiDataset):
         """last() should return the final time slice (2D array)."""
         result = cube_with_values.last()
-        assert result.shape == (5, 6), (
-            f"Expected (5,6), got {result.shape}"
-        )
+        assert result.shape == (5, 6), f"Expected (5,6), got {result.shape}"
         expected_last = np.arange(3 * 5 * 6, dtype=np.float64).reshape(3, 5, 6)[-1]
         np.testing.assert_array_equal(result, expected_last)
-
 
 
 class TestItemAccess:
@@ -201,28 +180,22 @@ class TestItemAccess:
 
     def test_len(self, cube_with_values: MultiDataset):
         """len() should return the number of time steps."""
-        assert len(cube_with_values) == 3, (
-            f"Expected len=3, got {len(cube_with_values)}"
-        )
+        assert (
+            len(cube_with_values) == 3
+        ), f"Expected len=3, got {len(cube_with_values)}"
 
     def test_getitem(self, cube_with_values: MultiDataset):
         """Indexing should return a 2D slice."""
         result = cube_with_values[1]
-        assert result.shape == (5, 6), (
-            f"Expected (5,6), got {result.shape}"
-        )
+        assert result.shape == (5, 6), f"Expected (5,6), got {result.shape}"
 
     def test_setitem(self, cube_with_values: MultiDataset):
         """Setting a slice should update the values."""
         new_arr = np.ones((5, 6), dtype=np.float64) * 999
         cube_with_values[0] = new_arr
         np.testing.assert_array_equal(
-            cube_with_values[0], new_arr,
-            err_msg="__setitem__ did not update the array"
+            cube_with_values[0], new_arr, err_msg="__setitem__ did not update the array"
         )
-
-
-
 
 
 class TestValuesSetter:
@@ -233,8 +206,9 @@ class TestValuesSetter:
         new_arr = np.zeros((3, 5, 6), dtype=np.float64)
         cube_with_values.values = new_arr
         np.testing.assert_array_equal(
-            cube_with_values.values, new_arr,
-            err_msg="Values setter should accept same-shape array"
+            cube_with_values.values,
+            new_arr,
+            err_msg="Values setter should accept same-shape array",
         )
 
     def test_wrong_dimensions_raises(self, cube_with_values: MultiDataset):
@@ -242,7 +216,6 @@ class TestValuesSetter:
         wrong_arr = np.zeros((2, 5, 6), dtype=np.float64)
         with pytest.raises(ValueError, match="differs from the dimension"):
             cube_with_values.values = wrong_arr
-
 
 
 class TestApply:
@@ -259,7 +232,9 @@ class TestApply:
         md.apply(np.abs)
         # Non-nodata cells should now be positive
         non_nodata = md.values[:, :, :-1]
-        assert np.all(non_nodata >= 0), "All non-nodata values should be positive after np.abs"
+        assert np.all(
+            non_nodata >= 0
+        ), "All non-nodata values should be positive after np.abs"
 
     def test_apply_custom_ufunc(self, base_dataset: Dataset):
         """apply with a custom function via np.frompyfunc."""
@@ -270,15 +245,14 @@ class TestApply:
         double_fn = np.frompyfunc(lambda x: x * 2, 1, 1)
         md.apply(double_fn)
         # Non-nodata cells should be doubled
-        assert md.values[0, 1, 0] == 20.0, (
-            f"Expected 20.0 after doubling, got {md.values[0, 1, 0]}"
-        )
+        assert (
+            md.values[0, 1, 0] == 20.0
+        ), f"Expected 20.0 after doubling, got {md.values[0, 1, 0]}"
 
     def test_apply_non_callable_raises(self, cube_with_values: MultiDataset):
         """apply with a non-callable argument should raise TypeError."""
         with pytest.raises(TypeError, match="should be a function"):
             cube_with_values.apply("not_a_function")
-
 
 
 class TestToFile:
@@ -291,9 +265,7 @@ class TestToFile:
         try:
             cube_with_values.to_file(out_dir)
             files = os.listdir(out_dir)
-            assert len(files) == 3, (
-                f"Expected 3 files, got {len(files)}"
-            )
+            assert len(files) == 3, f"Expected 3 files, got {len(files)}"
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -301,10 +273,7 @@ class TestToFile:
         """to_file with a list of paths should write to each path."""
         tmp_dir = tempfile.mkdtemp()
         os.makedirs(os.path.join(tmp_dir, "sub"), exist_ok=True)
-        paths = [
-            os.path.join(tmp_dir, "sub", f"raster_{i}.tif")
-            for i in range(3)
-        ]
+        paths = [os.path.join(tmp_dir, "sub", f"raster_{i}.tif") for i in range(3)]
         try:
             cube_with_values.to_file(paths)
             for p in paths:
@@ -312,13 +281,10 @@ class TestToFile:
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    def test_to_file_wrong_list_length_raises(
-        self, cube_with_values: MultiDataset
-    ):
+    def test_to_file_wrong_list_length_raises(self, cube_with_values: MultiDataset):
         """to_file with a list whose length != time_length should raise ValueError."""
         with pytest.raises(ValueError, match="does not equal"):
             cube_with_values.to_file(["a.tif", "b.tif"])
-
 
 
 class TestIloc:
@@ -327,9 +293,7 @@ class TestIloc:
     def test_returns_dataset(self, cube_with_values: MultiDataset):
         """iloc should return a Dataset."""
         ds = cube_with_values.iloc(0)
-        assert isinstance(ds, Dataset), (
-            f"Expected Dataset, got {type(ds)}"
-        )
+        assert isinstance(ds, Dataset), f"Expected Dataset, got {type(ds)}"
 
     def test_iloc_array_matches_values(self, cube_with_values: MultiDataset):
         """The array from iloc should match the corresponding slice."""
@@ -337,10 +301,8 @@ class TestIloc:
         arr = ds.read_array()
         expected = cube_with_values.values[1, :, :]
         np.testing.assert_array_almost_equal(
-            arr, expected, decimal=4,
-            err_msg="iloc array should match values slice"
+            arr, expected, decimal=4, err_msg="iloc array should match values slice"
         )
-
 
 
 class TestOpenMultiDatasetErrors:
@@ -355,8 +317,10 @@ class TestOpenMultiDatasetErrors:
             md._files = ["dummy.tif"]
             md.open_multi_dataset(band=1)
 
-import re
+
 import datetime as dt
+import re
+
 from pyramids.base._errors import DatasetNoFoundError
 
 
@@ -370,12 +334,8 @@ class TestReadMultipleFilesErrors:
 
     def test_nonexistent_path_raises_file_not_found(self, tmp_path):
         """Passing a non-existent directory should raise FileNotFoundError."""
-        with pytest.raises(
-            FileNotFoundError, match="does not exist"
-        ):
-            MultiDataset.read_multiple_files(
-                str(tmp_path / "nonexistent_dir")
-            )
+        with pytest.raises(FileNotFoundError, match="does not exist"):
+            MultiDataset.read_multiple_files(str(tmp_path / "nonexistent_dir"))
 
     def test_empty_directory_raises_file_not_found(self, tmp_path):
         """A directory with no .tif files should raise FileNotFoundError."""
@@ -394,9 +354,7 @@ class TestReadMultipleFilesErrors:
             src.to_file(p)
             paths.append(p)
         md = MultiDataset.read_multiple_files(paths)
-        assert md.time_length == 2, (
-            f"Expected time_length=2, got {md.time_length}"
-        )
+        assert md.time_length == 2, f"Expected time_length=2, got {md.time_length}"
         assert md.files == paths, "files should match the input list"
 
     def test_with_order_date_mismatch_raises(self, tmp_path):
@@ -445,9 +403,7 @@ class TestReadMultipleFilesErrors:
             date=False,
             regex_string=r"\d+",
         )
-        assert md.time_length == 3, (
-            f"Expected time_length=3, got {md.time_length}"
-        )
+        assert md.time_length == 3, f"Expected time_length=3, got {md.time_length}"
 
     def test_with_order_numeric_start_end_filter(self, tmp_path):
         """Numeric ordering with start/end should filter files."""
@@ -455,8 +411,10 @@ class TestReadMultipleFilesErrors:
         dir_path = str(tmp_path / "filter_rasters")
         os.makedirs(dir_path, exist_ok=True)
         for name in [
-            "1_raster.tif", "2_raster.tif",
-            "3_raster.tif", "4_raster.tif",
+            "1_raster.tif",
+            "2_raster.tif",
+            "3_raster.tif",
+            "4_raster.tif",
         ]:
             p = os.path.join(dir_path, name)
             src.to_file(p)
@@ -468,9 +426,9 @@ class TestReadMultipleFilesErrors:
             start=2,
             end=3,
         )
-        assert md.time_length == 2, (
-            f"Expected time_length=2 after filtering, got {md.time_length}"
-        )
+        assert (
+            md.time_length == 2
+        ), f"Expected time_length=2 after filtering, got {md.time_length}"
 
 
 class TestGetSetItemWithoutValues:
@@ -505,9 +463,7 @@ class TestIlocWithoutValues:
 class TestAlignErrors:
     """Tests for align method error path."""
 
-    def test_non_dataset_alignment_src_raises(
-        self, cube_with_values: MultiDataset
-    ):
+    def test_non_dataset_alignment_src_raises(self, cube_with_values: MultiDataset):
         """Passing a non-Dataset as alignment_src should raise TypeError."""
         with pytest.raises(TypeError, match="Dataset object"):
             cube_with_values.align("not_a_dataset")

@@ -1,12 +1,13 @@
-import logging
-from pathlib import Path
-from contextlib import contextmanager, redirect_stdout
-
-from unittest.mock import patch
 import io
-from osgeo import gdal
-from pyramids.base.config import LoggerManager, Config
+import logging
+from contextlib import contextmanager, redirect_stdout
+from pathlib import Path
+from unittest.mock import patch
+
 import pytest
+from osgeo import gdal
+
+from pyramids.base.config import Config, LoggerManager
 
 
 @contextmanager
@@ -174,7 +175,7 @@ def test_dynamic_env_variables_returns_early_when_conda_provides_path(mock_set_e
 @patch("osgeo.gdal.AllRegister")
 @patch("pyramids.base.config.Config.dynamic_env_variables")
 def test_initialize_gdal_sets_options_and_conditional_driver_path(
-        mock_dyn, mock_register, mock_setopt
+    mock_dyn, mock_register, mock_setopt
 ):
     # Create instance without running __init__ side-effects
     cfg = object.__new__(Config)

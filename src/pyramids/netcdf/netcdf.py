@@ -3,20 +3,24 @@ netcdf module.
 
 netcdf contains python functions to handle netcdf data. gdal class: https://gdal.org/api/index.html#python-api.
 """
+
 from __future__ import annotations
+
 from numbers import Number
 from typing import Any
+
 import numpy as np
 from osgeo import gdal
-from pyramids.base._utils import numpy_to_gdal_dtype
-from pyramids.netcdf.utils import create_time_conversion_func, _to_py_scalar
 
 from pyramids import _io
-from pyramids.dataset import Dataset
 from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
+from pyramids.base._utils import numpy_to_gdal_dtype
+from pyramids.dataset import Dataset
+from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
-from pyramids.netcdf.dimensions import DimMetaData
+from pyramids.netcdf.utils import _to_py_scalar, create_time_conversion_func
+
 
 class NetCDF(Dataset):
     """NetCDF.
@@ -173,7 +177,7 @@ class NetCDF(Dataset):
         return self.get_variable_names()
 
     @property
-    def variables(self) -> dict[str, "NetCDF"]:
+    def variables(self) -> dict[str, NetCDF]:
         """All data variables as a dict of ``{name: NetCDF}`` subsets.
 
         Each value is a classic-raster NetCDF obtained via
@@ -276,8 +280,11 @@ class NetCDF(Dataset):
         return super().crop(mask=mask, touch=touch, inplace=inplace)
 
     def to_crs(
-        self, to_epsg, method="nearest neighbor",
-        maintain_alignment=False, inplace=False,
+        self,
+        to_epsg,
+        method="nearest neighbor",
+        maintain_alignment=False,
+        inplace=False,
     ):
         """Reproject the dataset to a different coordinate reference system.
 
@@ -299,8 +306,10 @@ class NetCDF(Dataset):
         """
         self._check_not_container("to_crs")
         return super().to_crs(
-            to_epsg=to_epsg, method=method,
-            maintain_alignment=maintain_alignment, inplace=inplace,
+            to_epsg=to_epsg,
+            method=method,
+            maintain_alignment=maintain_alignment,
+            inplace=inplace,
         )
 
     @classmethod
@@ -309,7 +318,7 @@ class NetCDF(Dataset):
         path: str,
         read_only=True,
         open_as_multi_dimensional: bool = True,
-    ) -> "NetCDF":
+    ) -> NetCDF:
         """Open a NetCDF file from disk.
 
         Args:
@@ -330,10 +339,12 @@ class NetCDF(Dataset):
             read_only = "read_only"
         else:
             read_only = "write"
-        return cls(src, access=read_only, open_as_multi_dimensional=open_as_multi_dimensional)
+        return cls(
+            src, access=read_only, open_as_multi_dimensional=open_as_multi_dimensional
+        )
 
     @property
-    def meta_data(self) -> "NetCDFMetadata":
+    def meta_data(self) -> NetCDFMetadata:
         """Structured metadata for this NetCDF.
 
         Uses the GDAL Multidimensional API (groups, arrays, dimensions) when
@@ -362,7 +373,7 @@ class NetCDF(Dataset):
         else:
             self._cached_meta_data = value
 
-    def get_all_metadata(self, open_options: dict | None = None) -> "NetCDFMetadata":
+    def get_all_metadata(self, open_options: dict | None = None) -> NetCDFMetadata:
         """Get full MDIM metadata with a dimension overview snapshot.
 
         Unlike ``meta_data`` (which is cached), this always re-traverses
@@ -417,26 +428,18 @@ class NetCDF(Dataset):
             try:
                 arr = self._read_variable(name)
             except (RuntimeError, AttributeError) as e:
-                self.logger.debug(
-                    f"Could not read dimension variable '{name}': {e}"
-                )
+                self.logger.debug(f"Could not read dimension variable '{name}': {e}")
                 arr = None
             if arr is None:
                 continue
             try:
-                values[name] = [
-                    _to_py_scalar(v) for v in arr.reshape(-1).tolist()
-                ]
+                values[name] = [_to_py_scalar(v) for v in arr.reshape(-1).tolist()]
             except (ValueError, TypeError, AttributeError) as e:
-                self.logger.debug(
-                    f"Could not reshape dimension '{name}': {e}"
-                )
+                self.logger.debug(f"Could not reshape dimension '{name}': {e}")
                 try:
                     values[name] = [_to_py_scalar(v) for v in list(arr)]
                 except (ValueError, TypeError) as e:
-                    self.logger.debug(
-                        f"Could not convert dimension '{name}': {e}"
-                    )
+                    self.logger.debug(f"Could not convert dimension '{name}': {e}")
 
         return {
             "names": names,
@@ -445,9 +448,7 @@ class NetCDF(Dataset):
             "values": values if values else None,
         }
 
-    def get_time_variable(
-        self, var_name="time", time_format: str = "%Y-%m-%d"
-    ):
+    def get_time_variable(self, var_name="time", time_format: str = "%Y-%m-%d"):
         """Parse the time coordinate variable into formatted date strings.
 
         Reads the ``units`` attribute (e.g., ``"days since 1979-01-01"``)
@@ -607,9 +608,7 @@ class NetCDF(Dataset):
             # Positive Y pixel size = south-to-north (NetCDF convention).
             # Use GetView to reverse the Y dimension — this is lazy and
             # zero-copy; GDAL handles reversed indexing internally.
-            slices = ",".join(
-                "::-1" if i == iYDim else ":" for i in range(len(dims))
-            )
+            slices = ",".join("::-1" if i == iYDim else ":" for i in range(len(dims)))
             md_arr = md_arr.GetView(f"[{slices}]")
             src = md_arr.AsClassicDataset(iXDim, iYDim, rg)
 
@@ -620,7 +619,7 @@ class NetCDF(Dataset):
         """Check if a classic dataset has south-to-north Y orientation."""
         return bool(src.GetGeoTransform()[5] > 0)
 
-    def get_variable(self, variable_name: str) -> "NetCDF":
+    def get_variable(self, variable_name: str) -> NetCDF:
         """Extract a single variable as a classic-raster NetCDF object.
 
         The returned object carries origin metadata so that modified data
@@ -659,9 +658,12 @@ class NetCDF(Dataset):
                 gt = cube._geotransform
                 if gt[5] > 0:
                     cube._geotransform = (
-                        gt[0], gt[1], gt[2],
+                        gt[0],
+                        gt[1],
+                        gt[2],
                         gt[3] + gt[5] * cube._rows,
-                        gt[4], -gt[5],
+                        gt[4],
+                        -gt[5],
                     )
                     cube._cell_size = abs(gt[1])
             else:
@@ -704,17 +706,13 @@ class NetCDF(Dataset):
                         iv = band_dims[0].GetIndexingVariable()
                         try:
                             cube._band_dim_values = (
-                                iv.ReadAsArray().tolist()
-                                if iv is not None
-                                else None
+                                iv.ReadAsArray().tolist() if iv is not None else None
                             )
                         except RuntimeError:
                             # String-typed indexing variables (e.g. WRF
                             # "Times") can't be read via ReadAsArray in
                             # GDAL SWIG bindings — fall back to indices.
-                            cube._band_dim_values = list(
-                                range(band_dims[0].GetSize())
-                            )
+                            cube._band_dim_values = list(range(band_dims[0].GetSize()))
                     else:
                         cube._band_dim_name = None
                         cube._band_dim_values = None
@@ -831,13 +829,9 @@ class NetCDF(Dataset):
         """
         extension = path.rsplit(".", 1)[-1].lower()
         if extension in ("nc", "nc4"):
-            dst = gdal.GetDriverByName("netCDF").CreateCopy(
-                path, self._raster, 0
-            )
+            dst = gdal.GetDriverByName("netCDF").CreateCopy(path, self._raster, 0)
             if dst is None:
-                raise RuntimeError(
-                    f"Failed to save NetCDF to {path}"
-                )
+                raise RuntimeError(f"Failed to save NetCDF to {path}")
             dst.FlushCache()
             dst = None
         else:
@@ -849,7 +843,7 @@ class NetCDF(Dataset):
                 )
             super().to_file(path, **kwargs)
 
-    def copy(self, path: str | None = None) -> "NetCDF":
+    def copy(self, path: str | None = None) -> NetCDF:
         """Create a deep copy of this NetCDF dataset.
 
         Args:
@@ -870,9 +864,7 @@ class NetCDF(Dataset):
 
         src = gdal.GetDriverByName(driver).CreateCopy(path, self._raster)
         if src is None:
-            raise RuntimeError(
-                f"Failed to copy NetCDF dataset to '{path}'"
-            )
+            raise RuntimeError(f"Failed to copy NetCDF dataset to '{path}'")
         return NetCDF(src, access="write")
 
     @staticmethod
@@ -968,8 +960,12 @@ class NetCDF(Dataset):
         """
         if geo is None and top_left_corner is not None and cell_size is not None:
             geo = (
-                top_left_corner[0], cell_size, 0,
-                top_left_corner[1], 0, -cell_size,
+                top_left_corner[0],
+                cell_size,
+                0,
+                top_left_corner[1],
+                0,
+                -cell_size,
             )
         if geo is None:
             raise ValueError(
@@ -1074,9 +1070,7 @@ class NetCDF(Dataset):
             extra_dim = NetCDF.create_main_dimension(
                 rg, extra_dim_name, dtype, np.array(extra_dim_values)
             )
-            md_arr = rg.CreateMDArray(
-                variable_name, [extra_dim, dim_y, dim_x], dtype
-            )
+            md_arr = rg.CreateMDArray(variable_name, [extra_dim, dim_y, dim_x], dtype)
         else:
             md_arr = rg.CreateMDArray(variable_name, [dim_y, dim_x], dtype)
 
@@ -1126,7 +1120,7 @@ class NetCDF(Dataset):
         Returns:
             gdal.Dimension: The reused or newly created dimension.
         """
-        for existing_dim in (rg.GetDimensions() or []):
+        for existing_dim in rg.GetDimensions() or []:
             if existing_dim.GetName() == dim_name:
                 if existing_dim.GetSize() == len(values):
                     return existing_dim
@@ -1139,7 +1133,7 @@ class NetCDF(Dataset):
     def set_variable(
         self,
         variable_name: str,
-        dataset: "Dataset",
+        dataset: Dataset,
         band_dim_name: str | None = None,
         band_dim_values: list | None = None,
         attrs: dict | None = None,
@@ -1191,9 +1185,7 @@ class NetCDF(Dataset):
 
         # Read data from the classic dataset
         arr = dataset.read_array()
-        gt: tuple[float, float, float, float, float, float] = (
-            dataset.geotransform
-        )
+        gt: tuple[float, float, float, float, float, float] = dataset.geotransform
         data_dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
         # Coordinate dimensions must always be float64 to avoid truncation
         # when the data array is integer (e.g., classified rasters).
@@ -1230,9 +1222,7 @@ class NetCDF(Dataset):
                 variable_name, [dim_band, dim_y, dim_x], data_dtype
             )
         else:
-            md_arr = rg.CreateMDArray(
-                variable_name, [dim_y, dim_x], data_dtype
-            )
+            md_arr = rg.CreateMDArray(variable_name, [dim_y, dim_x], data_dtype)
 
         # Write array data
         md_arr.Write(arr)
@@ -1259,12 +1249,14 @@ class NetCDF(Dataset):
                         )
                     elif isinstance(value, float):
                         attr = md_arr.CreateAttribute(
-                            key, [],
+                            key,
+                            [],
                             gdal.ExtendedDataType.Create(gdal.GDT_Float64),
                         )
                     elif isinstance(value, int):
                         attr = md_arr.CreateAttribute(
-                            key, [],
+                            key,
+                            [],
                             gdal.ExtendedDataType.Create(gdal.GDT_Int32),
                         )
                     else:
@@ -1278,9 +1270,7 @@ class NetCDF(Dataset):
 
         self._invalidate_caches()
 
-    def add_variable(
-        self, dataset: Dataset | NetCDF, variable_name: str | None = None
-    ):
+    def add_variable(self, dataset: Dataset | NetCDF, variable_name: str | None = None):
         """Copy MDArray variables from another NetCDF into this container.
 
         Args:

@@ -2,19 +2,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
+
 from osgeo import gdal
+
 from pyramids.netcdf.utils import (
-    _dtype_to_str,
     AttributeValue,
-    _read_attributes,
+    _dtype_to_str,
+    _export_srs,
+    _full_name_with_fallback,
     _get_array_nodata,
     _get_array_scale_offset,
-    _export_srs,
     _get_block_size,
     _get_coord_variable_names,
     _get_group_name,
-    _full_name_with_fallback
+    _read_attributes,
 )
+
 
 @dataclass(frozen=True)
 class GroupInfo:
@@ -92,7 +95,7 @@ class GroupInfo:
         arrays: list[str],
         children: list[str],
         attributes: dict[str, AttributeValue] | None = None,
-    ) -> "GroupInfo":
+    ) -> GroupInfo:
         """Build a GroupInfo from a live GDAL Group object.
 
         Extracts the group name, full name, and attributes
@@ -132,7 +135,6 @@ class GroupInfo:
             children=list(children) if children else [],
             arrays=list(arrays) if arrays else [],
         )
-
 
 
 @dataclass(frozen=True)
@@ -218,7 +220,7 @@ class DimensionInfo:
     attrs: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_gdal_dim(cls, d: gdal.Dimension, group_full_name: str) -> "DimensionInfo":
+    def from_gdal_dim(cls, d: gdal.Dimension, group_full_name: str) -> DimensionInfo:
         """Build a DimensionInfo from a live GDAL Dimension.
 
         Reads name, size, type, direction, and indexing
@@ -249,7 +251,11 @@ class DimensionInfo:
         try:
             dim_full_name = d.GetFullName()
         except Exception:
-            dim_full_name = f"{group_full_name}/{dim_name}" if group_full_name != "/" else f"/{dim_name}"
+            dim_full_name = (
+                f"{group_full_name}/{dim_name}"
+                if group_full_name != "/"
+                else f"/{dim_name}"
+            )
 
         try:
             dim_size = int(d.GetSize())
@@ -269,7 +275,9 @@ class DimensionInfo:
         try:
             iv = d.GetIndexingVariable()
             if iv is not None:
-                ivname = iv.GetFullName() if hasattr(iv, "GetFullName") else iv.GetName()
+                ivname = (
+                    iv.GetFullName() if hasattr(iv, "GetFullName") else iv.GetName()
+                )
             else:
                 ivname = None
         except Exception:
@@ -403,7 +411,9 @@ class ArrayInfo:
     block_size: list[int] | None = None
 
     @classmethod
-    def from_md_array(cls, md_arr: gdal.MDArray, md_arr_name: str, group_full_name: str) -> "ArrayInfo":
+    def from_md_array(
+        cls, md_arr: gdal.MDArray, md_arr_name: str, group_full_name: str
+    ) -> ArrayInfo:
         """Build an ArrayInfo from a live GDAL MDArray.
 
         Extracts name, data type, shape, dimension links,
@@ -435,7 +445,11 @@ class ArrayInfo:
         try:
             md_arr_full_name = md_arr.GetFullName()
         except Exception:
-            md_arr_full_name = f"{group_full_name}/{md_arr_name}" if group_full_name != "/" else f"/{md_arr_name}"
+            md_arr_full_name = (
+                f"{group_full_name}/{md_arr_name}"
+                if group_full_name != "/"
+                else f"/{md_arr_name}"
+            )
 
         # dtype
         try:
@@ -582,6 +596,7 @@ class StructuralInfo:
         except Exception:
             dmd = None
         return cls(driver_name=driver_name, driver_metadata=dmd)
+
 
 @dataclass
 class NetCDFMetadata:

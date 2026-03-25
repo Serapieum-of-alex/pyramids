@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
+from collections import deque
 from dataclasses import asdict, is_dataclass
 from typing import Any, cast
 
-import json
 from osgeo import gdal
-from collections import deque
+
+from pyramids.netcdf.dimensions import MetaData as SharedMetaData
 from pyramids.netcdf.models import (
     ArrayInfo,
     DimensionInfo,
@@ -14,14 +16,13 @@ from pyramids.netcdf.models import (
     StructuralInfo,
 )
 from pyramids.netcdf.utils import (
-    _read_attributes,
     _get_driver_name,
     _get_root_group,
-    _safe_group_names,
+    _read_attributes,
     _safe_array_names,
+    _safe_group_names,
 )
 
-from pyramids.netcdf.dimensions import MetaData as SharedMetaData
 
 class MetadataBuilder:
     """Construct a ``NetCDFMetadata`` from a GDAL dataset.
@@ -129,7 +130,10 @@ class MetadataBuilder:
                 global_attrs = {}
 
         structural_info = StructuralInfo.from_dataset(ds, driver_name)
-        created_with = {"library": "GDAL", "version": getattr(gdal, "__version__", "unknown")}
+        created_with = {
+            "library": "GDAL",
+            "version": getattr(gdal, "__version__", "unknown"),
+        }
 
         return NetCDFMetadata(
             driver=driver_name,
@@ -303,7 +307,9 @@ class GroupTraverser:
             group = q.popleft()
 
             # Compute group identity (name/full_name) via GroupInfo for separation of concerns
-            base_group = GroupInfo.from_group(group, arrays=[], children=[], attributes={})
+            base_group = GroupInfo.from_group(
+                group, arrays=[], children=[], attributes={}
+            )
             group_full_name = base_group.full_name
 
             # Dimensions and arrays for this group
@@ -323,11 +329,17 @@ class GroupTraverser:
 
                 # Delegate child full-name resolution to GroupInfo
                 try:
-                    child_info = GroupInfo.from_group(current_group, arrays=[], children=[], attributes={})
+                    child_info = GroupInfo.from_group(
+                        current_group, arrays=[], children=[], attributes={}
+                    )
                     current_group_full_name = child_info.full_name
                 except Exception:
                     # As a last resort, fall back to simple path concatenation
-                    current_group_full_name = f"{group_full_name}/{cn}" if group_full_name != "/" else f"/{cn}"
+                    current_group_full_name = (
+                        f"{group_full_name}/{cn}"
+                        if group_full_name != "/"
+                        else f"/{cn}"
+                    )
 
                 children_full.append(current_group_full_name)
                 q.append(current_group)
@@ -443,6 +455,7 @@ def to_dict(metadata: NetCDFMetadata) -> dict[str, Any]:
         from_json: Deserializes a JSON string back to
             ``NetCDFMetadata``.
     """
+
     def convert(obj: Any) -> Any:
         if is_dataclass(obj) and not isinstance(obj, type):
             return {k: convert(v) for k, v in asdict(obj).items()}
@@ -590,7 +603,11 @@ def from_json(s: str) -> NetCDFMetadata:
             srs_projjson=ad.get("srs_projjson"),
             coordinate_variables=[str(x) for x in ad.get("coordinate_variables", [])],
             structural_info=ad.get("structural_info"),
-            block_size=[int(x) for x in ad.get("block_size", [])] if ad.get("block_size") is not None else None,
+            block_size=(
+                [int(x) for x in ad.get("block_size", [])]
+                if ad.get("block_size") is not None
+                else None
+            ),
         )
 
     groups = {k: build_group(v) for k, v in d.get("groups", {}).items()}

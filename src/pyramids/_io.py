@@ -1,10 +1,12 @@
 from __future__ import annotations
-import os
-import zipfile
-import tarfile
+
 import gzip
-import numpy as np
+import os
+import tarfile
 import warnings
+import zipfile
+
+import numpy as np
 from osgeo import gdal
 
 from pyramids.base._errors import FileFormatNotSupported

@@ -7,12 +7,12 @@ algebraic operation on cell's values.
 
 from __future__ import annotations
 
+import logging
 import os
 import warnings
-import logging
-from numbers import Number
 from collections.abc import Iterable
-from typing import Any, Generator, TYPE_CHECKING
+from numbers import Number
+from typing import TYPE_CHECKING, Any, Generator
 
 if TYPE_CHECKING:
     from cleopatra.array_glyph import ArrayGlyph
@@ -21,38 +21,37 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
-from pandas import DataFrame
+from hpc.indexing import get_indices2, get_pixels, get_pixels2, locate_values
 from osgeo import gdal, ogr, osr
 from osgeo.osr import SpatialReference
+from pandas import DataFrame
 
+from pyramids import _io
+from pyramids.abstract_dataset import (
+    CATALOG,
+    DEFAULT_NO_DATA_VALUE,
+    OVERVIEW_LEVELS,
+    RESAMPLING_METHODS,
+    AbstractDataset,
+)
 from pyramids.base._errors import (
     AlignmentError,
     FailedToSaveError,
     NoDataValueError,
-    ReadOnlyError,
     OutOfBoundsError,
+    ReadOnlyError,
 )
 from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     INTERPOLATION_METHODS,
+    color_name_to_gdal_constant,
+    gdal_constant_to_color_name,
     gdal_to_numpy_dtype,
     gdal_to_ogr_dtype,
     import_cleopatra,
     numpy_to_gdal_dtype,
-    color_name_to_gdal_constant,
-    gdal_constant_to_color_name,
 )
-
-from hpc.indexing import get_pixels, get_indices2, get_pixels2, locate_values
 from pyramids.featurecollection import FeatureCollection
-from pyramids import _io
-from pyramids.abstract_dataset import AbstractDataset
-from pyramids.abstract_dataset import (
-    DEFAULT_NO_DATA_VALUE,
-    CATALOG,
-    OVERVIEW_LEVELS,
-    RESAMPLING_METHODS,
-)
 
 
 class Dataset(AbstractDataset):
@@ -77,9 +76,7 @@ class Dataset(AbstractDataset):
             src.GetRasterBand(i).GetUnitType() for i in range(1, self.band_count + 1)
         ]
 
-    def _update_inplace(
-        self, src: gdal.Dataset, access: str | None = None
-    ) -> None:
+    def _update_inplace(self, src: gdal.Dataset, access: str | None = None) -> None:
         """Swap internal state from a new GDAL dataset.
 
         Creates a fresh Dataset and copies its internal data
@@ -476,7 +473,7 @@ class Dataset(AbstractDataset):
         path: str,
         read_only=True,
         file_i: int = 0,
-    ) -> "Dataset":
+    ) -> Dataset:
         """read_file.
 
         Args:
@@ -1007,7 +1004,10 @@ class Dataset(AbstractDataset):
         ]
 
     def get_block_arrangement(
-        self, band: int = 0, x_block_size: int | None = None, y_block_size: int | None = None
+        self,
+        band: int = 0,
+        x_block_size: int | None = None,
+        y_block_size: int | None = None,
     ) -> DataFrame:
         """Get Block Arrangement.
 
@@ -1066,7 +1066,7 @@ class Dataset(AbstractDataset):
         )
         return df
 
-    def copy(self, path: str | None = None) -> "Dataset":
+    def copy(self, path: str | None = None) -> Dataset:
         """Deep copy.
 
         Args:
@@ -1521,7 +1521,9 @@ class Dataset(AbstractDataset):
         else:
             return Dataset(src, self.access)
 
-    def stats(self, band: int | None = None, mask: GeoDataFrame | None = None) -> DataFrame:
+    def stats(
+        self, band: int | None = None, mask: GeoDataFrame | None = None
+    ) -> DataFrame:
         """Get statistics of a band [Min, max, mean, std].
 
         Args:
@@ -2429,10 +2431,10 @@ class Dataset(AbstractDataset):
     @classmethod
     def dataset_like(
         cls,
-        src: "Dataset",
+        src: Dataset,
         array: np.ndarray,
         path: str | None = None,
-    ) -> "Dataset":
+    ) -> Dataset:
         """Create a new dataset like another dataset.
 
         dataset_like method creates a Dataset from an array like another source dataset. The new dataset
@@ -2739,7 +2741,7 @@ class Dataset(AbstractDataset):
         """
         arr = self.read_array(band=band)
         domain_count = np.size(arr[:, :]) - np.count_nonzero(
-            (arr[np.isclose(arr, self.no_data_value[band], rtol=0.001)])
+            arr[np.isclose(arr, self.no_data_value[band], rtol=0.001)]
         )
         return int(domain_count)
 
@@ -2841,9 +2843,7 @@ class Dataset(AbstractDataset):
                 no_data_value[i] = self.numpy_dtype[i](DEFAULT_NO_DATA_VALUE)
         return no_data_value
 
-    def _set_no_data_value(
-        self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE
-    ):
+    def _set_no_data_value(self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE):
         """setNoDataValue.
 
             - Set the no data value in all raster bands.
@@ -2926,8 +2926,10 @@ class Dataset(AbstractDataset):
             if str(e).__contains__(" argument 2 of type 'double'"):
                 self.raster.GetRasterBand(band_i + 1).Fill(np.float64(no_data_value))
             elif str(e).__contains__(
-                    "Attempt to write to read only dataset in GDALRasterBand::Fill()."
-            ) or str(e).__contains__("attempt to write to dataset opened in read-only mode."):
+                "Attempt to write to read only dataset in GDALRasterBand::Fill()."
+            ) or str(e).__contains__(
+                "attempt to write to dataset opened in read-only mode."
+            ):
                 raise ReadOnlyError(
                     "The Dataset is open with a read only, please read the raster using update access mode"
                 )
@@ -3686,7 +3688,7 @@ class Dataset(AbstractDataset):
 
         return df
 
-    def apply(self, func, band: int = 0) -> "Dataset":
+    def apply(self, func, band: int = 0) -> Dataset:
         """Apply a function to all domain cells.
 
         - apply method executes a mathematical operation on the raster array.
@@ -3826,7 +3828,7 @@ class Dataset(AbstractDataset):
 
     def resample(
         self, cell_size: int | float, method: str = "nearest neighbor"
-    ) -> "Dataset":
+    ) -> Dataset:
         """resample.
 
         resample method reprojects a raster to any projection (default the WGS84 web mercator projection,
@@ -3946,7 +3948,7 @@ class Dataset(AbstractDataset):
 
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neighbor"
-    ) -> "Dataset":
+    ) -> Dataset:
         src_gt = self.geotransform
         src_x = self.columns
         src_y = self.rows
@@ -3965,9 +3967,9 @@ class Dataset(AbstractDataset):
                 # transformation factors
                 tx = osr.CoordinateTransformation(src_sr, dst_sr)
                 # transform the right upper corner point
-                (ulx, uly, ulz) = tx.TransformPoint(lng_new, src_gt[3])
+                ulx, uly, ulz = tx.TransformPoint(lng_new, src_gt[3])
                 # transform the right lower corner point
-                (lrx, lry, lrz) = tx.TransformPoint(
+                lrx, lry, lrz = tx.TransformPoint(
                     lng_new + src_gt[1] * src_x, src_gt[3] + src_gt[5] * src_y
                 )
             else:
@@ -4072,11 +4074,11 @@ class Dataset(AbstractDataset):
             # src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)] = mask_noval
             # then count them (out of domain cells) in the src_array
             elem_src = src_array.size - np.count_nonzero(
-                (src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)])
+                src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)]
             )
             # count the out of domain cells in the mask
             elem_mask = mask_array.size - np.count_nonzero(
-                (mask_array[np.isclose(mask_array, mask_noval, rtol=0.001)])
+                mask_array[np.isclose(mask_array, mask_noval, rtol=0.001)]
             )
 
             # if not equal, then store indices of those cells that don't match
@@ -4228,8 +4230,8 @@ class Dataset(AbstractDataset):
 
     def align(
         self,
-        alignment_src: "Dataset",
-    ) -> "Dataset":
+        alignment_src: Dataset,
+    ) -> Dataset:
         """Align the current dataset (rows and columns) to match a given dataset.
 
         Copies spatial properties from alignment_src to the current raster:
@@ -4353,7 +4355,7 @@ class Dataset(AbstractDataset):
     def _crop_with_raster(
         self,
         mask: gdal.Dataset | str,
-    ) -> "Dataset":
+    ) -> Dataset:
         """Crop this raster using another raster as a mask.
 
         Args:
@@ -4384,7 +4386,7 @@ class Dataset(AbstractDataset):
 
     def _crop_with_polygon_warp(
         self, feature: FeatureCollection | GeoDataFrame, touch: bool = True
-    ) -> "Dataset":
+    ) -> Dataset:
         """Crop raster with polygon.
 
             - Do not convert the polygon into a raster but rather use it directly to crop the raster using the
@@ -5227,7 +5229,7 @@ class Dataset(AbstractDataset):
                 xsize = size if size + xoff <= cols else cols - xoff
                 yield xoff, yoff, xsize, ysize
 
-    def get_tile(self, size=256) -> Generator[np.ndarray, None, None]:
+    def get_tile(self, size=256) -> Generator[np.ndarray]:
         """Get tile.
 
         Args:

@@ -4,7 +4,9 @@ Abstract Dataset.
 raster contains python functions to handle raster data align them together based on a source raster, perform any
 algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
 """
+
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from numbers import Number
 from typing import Any
@@ -18,7 +20,6 @@ from pyramids.base._utils import (
     Catalog,
 )
 from pyramids.featurecollection import FeatureCollection
-
 
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog()
@@ -273,7 +274,7 @@ class AbstractDataset(ABC):
 
     @classmethod
     @abstractmethod
-    def read_file(cls, path: str, read_only=True) -> "AbstractDataset":
+    def read_file(cls, path: str, read_only=True) -> AbstractDataset:
         """Read file.
 
         Args:
@@ -288,7 +289,9 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def read_array(self, band: int | None = None, window: list[int] | None = None) -> np.ndarray:
+    def read_array(
+        self, band: int | None = None, window: list[int] | None = None
+    ) -> np.ndarray:
         """Read Array.
 
             - read the values stored in a given band.
@@ -327,7 +330,9 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def _read_block(self, band: int, window: list[int] | GeoDataFrame | None = None) -> np.ndarray:
+    def _read_block(
+        self, band: int, window: list[int] | GeoDataFrame | None = None
+    ) -> np.ndarray:
         """Read block of data from the dataset.
 
         Args:
@@ -603,9 +608,7 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def _set_no_data_value(
-        self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE
-    ):
+    def _set_no_data_value(self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE):
         """Set the NoDataValue.
 
             - Set the no data value in all raster bands.

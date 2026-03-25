@@ -17,7 +17,7 @@ import tempfile
 import uuid
 import warnings
 from numbers import Number
-from typing import Any, Iterable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
     from pyramids.dataset import Dataset
@@ -40,7 +40,6 @@ from pyramids.base._utils import (
     ogr_ds_to_gdal_dataset,
     ogr_to_numpy_dtype,
 )
-
 
 CATALOG = Catalog(raster_driver=False)
 MEMORY_FILE = "/vsimem/myjson.geojson"
@@ -208,7 +207,7 @@ class FeatureCollection:
         return dtypes
 
     @classmethod
-    def read_file(cls, path: str) -> "FeatureCollection":
+    def read_file(cls, path: str) -> FeatureCollection:
         """Open a vector dataset using OGR or GeoPandas.
 
         Args:
@@ -225,7 +224,9 @@ class FeatureCollection:
         return cls(gdf)
 
     @staticmethod
-    def create_ds(driver: str = "geojson", path: str | None = None) -> DataSource | None:
+    def create_ds(
+        driver: str = "geojson", path: str | None = None
+    ) -> DataSource | None:
         """Create OGR DataSource.
 
         Args:
@@ -492,7 +493,9 @@ class FeatureCollection:
 
         # convert the vector to a gdal Dataset (vector but read by gdal.EX)
         vector_gdal_ex_obj = self._gdf_to_ds(gdal_dataset=True)
-        if vector_gdal_ex_obj is None or not isinstance(vector_gdal_ex_obj, FeatureCollection):
+        if vector_gdal_ex_obj is None or not isinstance(
+            vector_gdal_ex_obj, FeatureCollection
+        ):
             raise ValueError("Failed to convert vector to GDAL dataset.")
         vector_gdal_ex: FeatureCollection = vector_gdal_ex_obj
         top_left_corner = (xmin, ymax)

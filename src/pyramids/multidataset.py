@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
+import datetime as dt
+import logging
 import os
 import re
-import logging
-
-import datetime as dt
-import pandas as pd
 from pathlib import Path
-from typing import Any, Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
+
 import numpy as np
+import pandas as pd
 from osgeo import gdal
-from pyramids.dataset import Dataset
-from pyramids.base._errors import DatasetNoFoundError
+
 from pyramids.abstract_dataset import CATALOG
+from pyramids.base._errors import DatasetNoFoundError
 from pyramids.base._utils import import_cleopatra
+from pyramids.dataset import Dataset
 
 if TYPE_CHECKING:
     from cleopatra.array_glyph import ArrayGlyph
@@ -105,7 +106,7 @@ class MultiDataset:
         return self._base.columns
 
     @classmethod
-    def create_cube(cls, src: Dataset, dataset_length: int) -> "MultiDataset":
+    def create_cube(cls, src: Dataset, dataset_length: int) -> MultiDataset:
         """Create MultiDataset.
 
             - Create MultiDataset from a sample raster and
@@ -133,7 +134,7 @@ class MultiDataset:
         end: str | None = None,
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
-    ) -> "MultiDataset":
+    ) -> MultiDataset:
         r"""read_multiple_files.
 
             - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the
@@ -414,7 +415,9 @@ class MultiDataset:
         dst.GetRasterBand(1).WriteArray(arr)
         return Dataset(dst)
 
-    def plot(self, band: int = 0, exclude_value: Any | None = None, **kwargs: Any) -> "ArrayGlyph":
+    def plot(
+        self, band: int = 0, exclude_value: Any | None = None, **kwargs: Any
+    ) -> ArrayGlyph:
         r"""Read Array.
 
             - read the values stored in a given band.
@@ -475,9 +478,7 @@ class MultiDataset:
         cleo.animate(time, **kwargs)
         return cleo
 
-    def to_file(
-        self, path: str | list[str], driver: str = "geotiff", band: int = 0
-    ):
+    def to_file(self, path: str | list[str], driver: str = "geotiff", band: int = 0):
         """Save to geotiff format.
 
             saveRaster saves a raster to a path

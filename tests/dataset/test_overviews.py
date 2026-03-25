@@ -1,11 +1,13 @@
 """Tests for the Dataset class overview methods."""
 
 from pathlib import Path
+
+import numpy as np
 import pytest
 from osgeo import gdal
-import numpy as np
-from pyramids.dataset import Dataset
+
 from pyramids.base._errors import ReadOnlyError
+from pyramids.dataset import Dataset
 
 
 def test_get_overview_error(era5_image: gdal.Dataset):

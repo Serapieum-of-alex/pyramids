@@ -8,10 +8,11 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pytest
-from shapely.geometry import Polygon
 from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal, osr
-from pyramids.base._errors import NoDataValueError, ReadOnlyError, OutOfBoundsError
+from shapely.geometry import Polygon
+
+from pyramids.base._errors import NoDataValueError, OutOfBoundsError, ReadOnlyError
 from pyramids.dataset import Dataset
 
 

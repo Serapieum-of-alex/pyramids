@@ -40,6 +40,7 @@ repos:
         name: "[reqs - format] fix requirements.txt"
       - id: check-yaml
         name: "[yaml -  check] validate yaml"
+        exclude: mkdocs\.yml
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.21.2
     hooks:

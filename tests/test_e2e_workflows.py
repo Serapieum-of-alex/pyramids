@@ -9,6 +9,7 @@ Workflows covered:
 3. FeatureCollection -> to_dataset (rasterize) -> extract -> verify round-trip
 4. Read GeoTIFF -> reproject -> align with another -> verify dimensions match
 """
+
 import os
 import shutil
 import tempfile
@@ -22,7 +23,6 @@ from shapely.geometry import box
 from pyramids.dataset import Dataset
 from pyramids.featurecollection import FeatureCollection
 from pyramids.multidataset import MultiDataset
-
 
 
 def _make_dataset(
@@ -48,7 +48,6 @@ def _make_dataset(
     arr = np.full((rows, cols), fill_value, dtype=np.float32)
     src.raster.GetRasterBand(1).WriteArray(arr)
     return src
-
 
 
 class TestCreateCropExtract:
@@ -86,20 +85,13 @@ class TestCreateCropExtract:
         # Step 4 - Verify
         assert cropped is not None, "crop should return a new Dataset"
         cropped_arr = cropped.read_array()
-        assert cropped_arr.shape[0] <= rows, (
-            "Cropped rows should be <= original"
-        )
-        assert cropped_arr.shape[1] <= cols, (
-            "Cropped cols should be <= original"
-        )
+        assert cropped_arr.shape[0] <= rows, "Cropped rows should be <= original"
+        assert cropped_arr.shape[1] <= cols, "Cropped cols should be <= original"
         # The cropped area (top-left 5x5) should contain values 0-4, 20-24 etc.
         non_nodata = cropped_arr[
             ~np.isclose(cropped_arr, cropped.no_data_value[0], rtol=0.001)
         ]
-        assert non_nodata.size > 0, (
-            "Cropped raster should contain some valid data"
-        )
-
+        assert non_nodata.size > 0, "Cropped raster should contain some valid data"
 
 
 class TestMultiDatasetRoundTrip:
@@ -121,21 +113,18 @@ class TestMultiDatasetRoundTrip:
             md.to_file(out_dir)
 
             # Reload
-            reloaded = MultiDataset.read_multiple_files(
-                out_dir, with_order=False
-            )
-            assert reloaded.time_length == time_steps, (
-                f"Expected {time_steps} files, got {reloaded.time_length}"
-            )
-            assert reloaded.base.rows == rows, (
-                f"Reloaded rows mismatch: expected {rows}"
-            )
-            assert reloaded.base.columns == cols, (
-                f"Reloaded columns mismatch: expected {cols}"
-            )
+            reloaded = MultiDataset.read_multiple_files(out_dir, with_order=False)
+            assert (
+                reloaded.time_length == time_steps
+            ), f"Expected {time_steps} files, got {reloaded.time_length}"
+            assert (
+                reloaded.base.rows == rows
+            ), f"Reloaded rows mismatch: expected {rows}"
+            assert (
+                reloaded.base.columns == cols
+            ), f"Reloaded columns mismatch: expected {cols}"
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
-
 
 
 class TestRasterizeRoundTrip:
@@ -150,9 +139,7 @@ class TestRasterizeRoundTrip:
         # Create a polygon covering a 5x5 area
         x0, y0 = top_left
         poly = box(x0, y0 - 5 * cell_size, x0 + 5 * cell_size, y0)
-        gdf = gpd.GeoDataFrame(
-            {"burn_val": [7]}, geometry=[poly], crs=f"EPSG:{epsg}"
-        )
+        gdf = gpd.GeoDataFrame({"burn_val": [7]}, geometry=[poly], crs=f"EPSG:{epsg}")
         fc = FeatureCollection(gdf)
 
         # Rasterize: use cell_size (no reference dataset)
@@ -161,12 +148,10 @@ class TestRasterizeRoundTrip:
 
         # Verify burned value
         burned = arr[arr == 7.0]
-        assert burned.size > 0, (
-            "At least some cells should contain the burned value 7"
-        )
-        assert raster.epsg == epsg, (
-            f"Rasterized EPSG should be {epsg}, got {raster.epsg}"
-        )
+        assert burned.size > 0, "At least some cells should contain the burned value 7"
+        assert (
+            raster.epsg == epsg
+        ), f"Rasterized EPSG should be {epsg}, got {raster.epsg}"
 
     def test_rasterize_with_reference_dataset(self):
         """Burn using a reference Dataset for geotransform."""
@@ -177,29 +162,26 @@ class TestRasterizeRoundTrip:
 
         # Reference raster
         ref = _make_dataset(
-            rows=rows, cols=cols, cell_size=cell_size,
-            top_left=top_left, epsg=epsg
+            rows=rows, cols=cols, cell_size=cell_size, top_left=top_left, epsg=epsg
         )
 
         # Create a polygon inside the raster extent
         x0, y0 = top_left
         poly = box(x0, y0 - 3 * cell_size, x0 + 3 * cell_size, y0)
-        gdf = gpd.GeoDataFrame(
-            {"class_id": [42]}, geometry=[poly], crs=f"EPSG:{epsg}"
-        )
+        gdf = gpd.GeoDataFrame({"class_id": [42]}, geometry=[poly], crs=f"EPSG:{epsg}")
         fc = FeatureCollection(gdf)
 
         raster = fc.to_dataset(dataset=ref, column_name="class_id")
         arr = raster.read_array()
 
         # Same dimensions as reference
-        assert arr.shape == (rows, cols), (
-            f"Rasterized shape should match reference ({rows},{cols}), got {arr.shape}"
-        )
+        assert arr.shape == (
+            rows,
+            cols,
+        ), f"Rasterized shape should match reference ({rows},{cols}), got {arr.shape}"
         # Burned value should appear
         burned = arr[arr == 42.0]
         assert burned.size > 0, "Burned value 42 should appear in the raster"
-
 
 
 class TestReprojectAlignWorkflow:
@@ -215,9 +197,9 @@ class TestReprojectAlignWorkflow:
         assert original_epsg == 32636, "Starting EPSG should be 32636"
 
         reprojected = src.to_crs(to_epsg=4326)
-        assert reprojected.epsg == 4326, (
-            f"Reprojected EPSG should be 4326, got {reprojected.epsg}"
-        )
+        assert (
+            reprojected.epsg == 4326
+        ), f"Reprojected EPSG should be 4326, got {reprojected.epsg}"
         repr_arr = reprojected.read_array()
         assert repr_arr.shape[0] > 0, "Reprojected raster should have rows"
         assert repr_arr.shape[1] > 0, "Reprojected raster should have cols"
@@ -226,24 +208,31 @@ class TestReprojectAlignWorkflow:
         """Align one raster to match another's grid."""
         # Reference raster (smaller)
         ref = _make_dataset(
-            rows=5, cols=5, epsg=32636, cell_size=2000.0,
-            top_left=(500000.0, 3400000.0), fill_value=0.0,
+            rows=5,
+            cols=5,
+            epsg=32636,
+            cell_size=2000.0,
+            top_left=(500000.0, 3400000.0),
+            fill_value=0.0,
         )
 
         # Source raster (different grid)
         src = _make_dataset(
-            rows=10, cols=10, epsg=32636, cell_size=1000.0,
-            top_left=(500000.0, 3400000.0), fill_value=7.0,
+            rows=10,
+            cols=10,
+            epsg=32636,
+            cell_size=1000.0,
+            top_left=(500000.0, 3400000.0),
+            fill_value=7.0,
         )
 
         aligned = src.align(ref)
-        assert aligned.rows == ref.rows, (
-            f"Aligned rows should be {ref.rows}, got {aligned.rows}"
-        )
-        assert aligned.columns == ref.columns, (
-            f"Aligned columns should be {ref.columns}, got {aligned.columns}"
-        )
-
+        assert (
+            aligned.rows == ref.rows
+        ), f"Aligned rows should be {ref.rows}, got {aligned.rows}"
+        assert (
+            aligned.columns == ref.columns
+        ), f"Aligned columns should be {ref.columns}, got {aligned.columns}"
 
 
 class TestMultiDatasetProcessingPipeline:
@@ -269,13 +258,11 @@ class TestMultiDatasetProcessingPipeline:
         # Verify each time step via iteration
         for i, slice_arr in enumerate(md):
             expected_val = np.sqrt(float(i + 1))
-            non_nodata = slice_arr[
-                ~np.isclose(slice_arr, -9999.0, rtol=0.001)
-            ]
+            non_nodata = slice_arr[~np.isclose(slice_arr, -9999.0, rtol=0.001)]
             if non_nodata.size > 0:
-                assert np.allclose(non_nodata, expected_val, atol=0.01), (
-                    f"Time step {i}: expected ~{expected_val}, got {non_nodata[0]}"
-                )
+                assert np.allclose(
+                    non_nodata, expected_val, atol=0.01
+                ), f"Time step {i}: expected ~{expected_val}, got {non_nodata[0]}"
 
     def test_head_tail_first_last(self):
         """Verify head/tail/first/last return correct shapes."""
@@ -287,12 +274,8 @@ class TestMultiDatasetProcessingPipeline:
         values = np.random.rand(time_steps, rows, cols)
         md.values = values
 
-        assert md.head(3).shape == (3, rows, cols), (
-            "head(3) shape mismatch"
-        )
-        assert md.tail(-2).shape == (2, rows, cols), (
-            "tail(-2) shape mismatch"
-        )
+        assert md.head(3).shape == (3, rows, cols), "head(3) shape mismatch"
+        assert md.tail(-2).shape == (2, rows, cols), "tail(-2) shape mismatch"
         assert md.first().shape == (rows, cols), "first() shape mismatch"
         assert md.last().shape == (rows, cols), "last() shape mismatch"
 
@@ -305,39 +288,32 @@ class TestMultiDatasetProcessingPipeline:
         )
 
 
-
 class TestFeatureCollectionPropertiesE2E:
     """End-to-end property checks for FeatureCollection."""
 
     def test_gdf_roundtrip_ds_conversion(self):
         """Convert GDF -> DataSource -> GDF and compare EPSG."""
         poly = box(30.0, 30.0, 31.0, 31.0)
-        gdf = gpd.GeoDataFrame(
-            {"val": [1]}, geometry=[poly], crs="EPSG:4326"
-        )
+        gdf = gpd.GeoDataFrame({"val": [1]}, geometry=[poly], crs="EPSG:4326")
         fc = FeatureCollection(gdf)
         original_epsg = fc.epsg
 
         # Convert to DataSource
         ds_fc = fc._gdf_to_ds()
         assert ds_fc is not None, "Conversion to DS should not return None"
-        assert isinstance(ds_fc, FeatureCollection), (
-            "Should return a FeatureCollection"
-        )
+        assert isinstance(ds_fc, FeatureCollection), "Should return a FeatureCollection"
 
         # Convert back
         ds_fc_obj = ds_fc
         back_gdf = ds_fc_obj._ds_to_gdf()
-        assert isinstance(back_gdf, gpd.GeoDataFrame), (
-            "Converting back should produce a GeoDataFrame"
-        )
+        assert isinstance(
+            back_gdf, gpd.GeoDataFrame
+        ), "Converting back should produce a GeoDataFrame"
 
     def test_save_and_reload_vector(self):
         """Save a FeatureCollection to disk and read it back."""
         poly = box(30.0, 30.0, 31.0, 31.0)
-        gdf = gpd.GeoDataFrame(
-            {"score": [99.5]}, geometry=[poly], crs="EPSG:4326"
-        )
+        gdf = gpd.GeoDataFrame({"score": [99.5]}, geometry=[poly], crs="EPSG:4326")
         fc = FeatureCollection(gdf)
 
         tmp_dir = tempfile.mkdtemp()
@@ -346,18 +322,15 @@ class TestFeatureCollectionPropertiesE2E:
             fc.to_file(path)
             assert os.path.exists(path), "File should exist after to_file"
             reloaded = FeatureCollection.read_file(path)
-            assert isinstance(reloaded.feature, gpd.GeoDataFrame), (
-                "Reloaded feature should be a GeoDataFrame"
-            )
-            assert len(reloaded.feature) == 1, (
-                "Reloaded GDF should have 1 row"
-            )
-            assert abs(reloaded.feature["score"].iloc[0] - 99.5) < 0.01, (
-                "Reloaded score value should be ~99.5"
-            )
+            assert isinstance(
+                reloaded.feature, gpd.GeoDataFrame
+            ), "Reloaded feature should be a GeoDataFrame"
+            assert len(reloaded.feature) == 1, "Reloaded GDF should have 1 row"
+            assert (
+                abs(reloaded.feature["score"].iloc[0] - 99.5) < 0.01
+            ), "Reloaded score value should be ~99.5"
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
-
 
 
 class TestGeoTiffRoundTrip:
@@ -367,7 +340,11 @@ class TestGeoTiffRoundTrip:
         """Create an in-memory raster, save to disk, reload and verify array."""
         rows, cols = 12, 15
         src = _make_dataset(
-            rows=rows, cols=cols, fill_value=42.0, epsg=4326, cell_size=0.1,
+            rows=rows,
+            cols=cols,
+            fill_value=42.0,
+            epsg=4326,
+            cell_size=0.1,
             top_left=(10.0, 50.0),
         )
         arr_original = src.read_array()
@@ -380,12 +357,15 @@ class TestGeoTiffRoundTrip:
 
             reloaded = Dataset.read_file(path)
             arr_reloaded = reloaded.read_array()
-            assert arr_reloaded.shape == (rows, cols), (
-                f"Reloaded shape mismatch: {arr_reloaded.shape}"
-            )
+            assert arr_reloaded.shape == (
+                rows,
+                cols,
+            ), f"Reloaded shape mismatch: {arr_reloaded.shape}"
             np.testing.assert_array_almost_equal(
-                arr_reloaded, arr_original, decimal=2,
-                err_msg="Reloaded array values differ from original"
+                arr_reloaded,
+                arr_original,
+                decimal=2,
+                err_msg="Reloaded array values differ from original",
             )
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
