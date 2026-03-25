@@ -746,7 +746,7 @@ class TestCopyEdgeCases:
 
 
 class TestEndToEndRoundTrip:
-    """End-to-end round-trip: open → extract → modify → set_variable → save → reload."""
+    """End-to-end round-trip: open -> extract -> modify -> set_variable -> save -> reload."""
 
     def test_full_round_trip_in_memory(self):
         """Verify the complete in-memory round-trip workflow.

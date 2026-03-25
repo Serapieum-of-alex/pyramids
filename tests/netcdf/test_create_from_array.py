@@ -20,7 +20,7 @@ SEED = 42
 
 
 class TestCreateFromArray2D:
-    """2-D array (rows, cols) → single-variable NetCDF with x/y dims only."""
+    """2-D array (rows, cols) -> single-variable NetCDF with x/y dims only."""
 
     def test_variable_exists(self):
         """A 2-D array should produce a container with one named variable.
@@ -75,7 +75,7 @@ class TestCreateFromArray2D:
         assert var.shape == (1, 10, 20), f"Expected (1, 10, 20), got {var.shape}"
 
     def test_data_preserved(self):
-        """Array values should survive the create → get_variable round-trip.
+        """Array values should survive the create -> get_variable round-trip.
 
         Test scenario:
             Read the variable back and compare to the original array.
@@ -138,7 +138,7 @@ class TestCreateFromArray2D:
 
 
 class TestCreateFromArray3D:
-    """3-D array (extra_dim, rows, cols) → variable with time/level dim."""
+    """3-D array (extra_dim, rows, cols) -> variable with time/level dim."""
 
     def test_extra_dim_created(self):
         """The extra dimension should appear in ``dimension_names``.
@@ -225,7 +225,7 @@ class TestCreateFromArray3D:
         """Classic view should have one band per extra-dim slice.
 
         Test scenario:
-            A (5, 10, 20) array → variable with 5 bands.
+            A (5, 10, 20) array -> variable with 5 bands.
         """
         arr = np.random.RandomState(SEED).rand(5, 10, 20).astype(np.float64)
         nc = NetCDF.create_from_array(
@@ -241,7 +241,7 @@ class TestCreateFromArray3D:
         """All slices should survive the round-trip.
 
         Test scenario:
-            Create 3-D → extract variable → read all bands → compare.
+            Create 3-D -> extract variable -> read all bands -> compare.
         """
         arr = np.random.RandomState(SEED).rand(3, 8, 10).astype(np.float64)
         nc = NetCDF.create_from_array(
@@ -306,7 +306,7 @@ class TestCreateFromArrayGeoParams:
         """Omitting both ``geo`` and ``top_left_corner`` should raise.
 
         Test scenario:
-            Call without any spatial reference → ``ValueError``.
+            Call without any spatial reference -> ``ValueError``.
         """
         arr = np.random.RandomState(SEED).rand(5, 5).astype(np.float64)
         with pytest.raises(ValueError, match="top_left_corner"):
@@ -324,7 +324,7 @@ class TestCreateFromArrayValidation:
         """``extra_dim_values`` length must match ``arr.shape[0]``.
 
         Test scenario:
-            Pass 2 values for a 3-slice array → ``ValueError``.
+            Pass 2 values for a 3-slice array -> ``ValueError``.
         """
         arr = np.random.RandomState(SEED).rand(3, 5, 5).astype(np.float64)
         with pytest.raises(ValueError, match="values length.*does not match size"):
@@ -341,7 +341,7 @@ class TestCreateFromArrayValidation:
         """An empty ``extra_dim_name`` should raise.
 
         Test scenario:
-            Pass ``extra_dim_name=""`` for a 3-D array → ``ValueError``.
+            Pass ``extra_dim_name=""`` for a 3-D array -> ``ValueError``.
         """
         arr = np.random.RandomState(SEED).rand(3, 5, 5).astype(np.float64)
         with pytest.raises(ValueError, match="name cannot be empty"):
@@ -357,7 +357,7 @@ class TestCreateFromArrayValidation:
         """Matching length should not raise.
 
         Test scenario:
-            Pass 3 values for a 3-slice array → no error.
+            Pass 3 values for a 3-slice array -> no error.
         """
         arr = np.random.RandomState(SEED).rand(3, 5, 5).astype(np.float64)
         nc = NetCDF.create_from_array(
@@ -426,7 +426,7 @@ class TestCreateFromArrayDiskRoundTrip:
     """Save to disk and reload — full end-to-end round-trip."""
 
     def test_2d_disk_roundtrip(self, tmp_path):
-        """2-D array → save → reload → verify variable and data.
+        """2-D array -> save -> reload -> verify variable and data.
 
         Test scenario:
             Create, save to .nc, reload, compare variable names and
@@ -454,7 +454,7 @@ class TestCreateFromArrayDiskRoundTrip:
         )
 
     def test_3d_disk_roundtrip(self, tmp_path):
-        """3-D array → save → reload → verify dimensions and data.
+        """3-D array -> save -> reload -> verify dimensions and data.
 
         Test scenario:
             Create with ``extra_dim_name="level"``, save, reload, verify
@@ -527,7 +527,7 @@ class TestCreateFromArrayDtypes:
         ],
     )
     def test_dtype_roundtrip(self, dtype):
-        """Array dtype should be preserved through create → read.
+        """Array dtype should be preserved through create -> read.
 
         Args:
             dtype: NumPy dtype to test.
@@ -551,7 +551,7 @@ class TestCreateFromArrayDtypes:
 
 
 class TestCreateFromArraySetVariableRoundTrip:
-    """Full workflow: create → get_variable → modify → set_variable → verify."""
+    """Full workflow: create -> get_variable -> modify -> set_variable -> verify."""
 
     def test_modify_and_set_back(self):
         """Modified data written via ``set_variable`` should be readable.
@@ -593,7 +593,7 @@ class TestCreateFromArraySetVariableRoundTrip:
         )
 
     def test_full_disk_workflow(self, tmp_path):
-        """Create → extract → modify → set_variable → save → reload → verify.
+        """Create -> extract -> modify -> set_variable -> save -> reload -> verify.
 
         Test scenario:
             The complete end-to-end workflow saving to disk and

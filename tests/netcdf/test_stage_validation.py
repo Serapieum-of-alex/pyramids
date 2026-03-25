@@ -281,7 +281,7 @@ class TestStage3_VariableOriginTracking:
 
     def test_band_dim_tracked_for_3d(self, created_nc):
         var = created_nc.get_variable("temperature")
-        # 3D array → bands dimension should be tracked
+        # 3D array -> bands dimension should be tracked
         assert var._band_dim_name is not None
         assert var._band_dim_values is not None
         assert len(var._band_dim_values) == 3  # 3 bands
@@ -570,7 +570,7 @@ class TestStage4_Copy:
 
 
 class TestStage4_CreateCopyMdim:
-    """RT-10: Verify CreateCopy from MEM multidim → netCDF driver works."""
+    """RT-10: Verify CreateCopy from MEM multidim -> netCDF driver works."""
 
     def test_create_copy_preserves_structure(self, created_nc, tmp_path):
         """The netCDF driver CreateCopy should preserve MDIM structure."""
