@@ -377,9 +377,9 @@ class Catalog:
         driver_data = self.get_driver(driver)
         return driver_data.get("extension")
 
-    def get_driver_name(self, gdal_name) -> str:
+    def get_driver_name(self, gdal_name) -> str | None:
         """Get driver name."""
-        result_key = ""
+        result_key = None
         for key, value in self.catalog.items():
             name = value.get("GDAL Name")
             if gdal_name == name:
