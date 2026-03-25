@@ -3403,6 +3403,7 @@ class Dataset(AbstractDataset):
                 options += creation_options
 
             try:
+                self.raster.FlushCache()
                 dst = gdal.GetDriverByName(driver_name).CreateCopy(
                     path, self.raster, 0, options=options
                 )
