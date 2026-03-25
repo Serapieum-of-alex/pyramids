@@ -1,5 +1,7 @@
 """NetCDF subpackage for pyramids."""
 
+from __future__ import annotations
+
 from pyramids.netcdf.metadata import from_json, get_metadata, to_dict, to_json
 from pyramids.netcdf.models import (
     ArrayInfo,

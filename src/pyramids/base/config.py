@@ -37,6 +37,8 @@ See Also:
 - ColorFormatter: Adds ANSI colors to console logs.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import sys

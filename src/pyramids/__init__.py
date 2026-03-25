@@ -1,5 +1,7 @@
 """pyramids - GIS utility package"""
 
+from __future__ import annotations
+
 from pyramids.base.config import Config
 
 __all__ = ["dataset", "multidataset", "netcdf", "featurecollection"]
