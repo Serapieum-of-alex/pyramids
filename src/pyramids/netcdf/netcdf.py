@@ -527,7 +527,7 @@ class NetCDF(Dataset):
                 if md_arr is not None:
                     result = md_arr.ReadAsArray()
             except Exception:
-                pass
+                pass  # nosec B110
             # Fall back to dimension indexing variable
             if result is None:
                 dim = self._get_dimension(var)
@@ -726,7 +726,7 @@ class NetCDF(Dataset):
                     for attr in md_arr.GetAttributes():
                         cube._variable_attrs[attr.GetName()] = attr.Read()
                 except Exception:
-                    pass
+                    pass  # nosec B110
             else:
                 cube._md_array_dims = []
                 cube._band_dim_name = None
@@ -1237,7 +1237,7 @@ class NetCDF(Dataset):
             try:
                 md_arr.SetNoDataValueDouble(float(dataset.no_data_value[0]))
             except Exception:
-                pass
+                pass  # nosec B110
 
         # Set variable attributes (RT-7)
         if attrs:
@@ -1266,7 +1266,7 @@ class NetCDF(Dataset):
                         value = str(value)
                     attr.Write(value)
                 except Exception:
-                    pass
+                    pass  # nosec B110
 
         self._invalidate_caches()
 

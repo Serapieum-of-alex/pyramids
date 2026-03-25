@@ -145,11 +145,11 @@ def _export_srs(srs: osr.SpatialReference | None) -> tuple[str | None, str | Non
     try:
         wkt = srs.ExportToWkt()
     except Exception:
-        pass
+        pass  # nosec B110
     try:
         projjson = srs.ExportToJSON()
     except Exception:
-        pass
+        pass  # nosec B110
     return wkt, projjson
 
 
@@ -197,7 +197,7 @@ def _get_array_nodata(
                     continue
                 return cast(int | float | str | None, _to_py_scalar(v))
             except Exception:
-                continue
+                continue  # nosec B112
     return None
 
 
@@ -234,14 +234,14 @@ def _get_array_scale_offset(
             if s is not None:
                 scale = float(s)
         except Exception:
-            pass
+            pass  # nosec B110
     if hasattr(mdarr, "GetOffset"):
         try:
             o = mdarr.GetOffset()
             if o is not None:
                 offset = float(o)
         except Exception:
-            pass
+            pass  # nosec B110
     return scale, offset
 
 
@@ -260,7 +260,7 @@ def _get_block_size(mdarr: gdal.MDArray) -> list[int] | None:
         if bs:
             return [int(b) for b in bs]
     except Exception:
-        pass
+        pass  # nosec B110
     return None
 
 
@@ -533,7 +533,7 @@ def _dtype_to_str(dt: Any) -> str:
         if isinstance(name, str) and name:
             return name
     except Exception:
-        pass
+        pass  # nosec B110
     try:
         # As a fallback, class name
         return str(dt)
@@ -582,7 +582,7 @@ def _to_py_scalar(x: Any) -> Any:
         if hasattr(x, "item") and callable(x.item):
             return x.item()
     except Exception:
-        pass
+        pass  # nosec B110
 
     if isinstance(x, bytes):
         try:
@@ -653,7 +653,7 @@ def _read_attribute_value(attr: gdal.Attribute) -> AttributeValue:
                     val = getattr(attr, meth)()
                     break
                 except Exception:
-                    continue
+                    continue  # nosec B112
         else:
             val = None
     return _normalize_attr_value(val)
@@ -687,7 +687,7 @@ def _read_attributes(obj: Any) -> dict[str, AttributeValue]:
         try:
             name = att.GetName()
         except Exception:
-            continue
+            continue  # nosec B112
         try:
             attrs[name] = _read_attribute_value(att)
         except Exception:

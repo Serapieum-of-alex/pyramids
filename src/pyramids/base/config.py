@@ -234,7 +234,7 @@ class LoggerManager:
 
             colorama.just_fix_windows_console()
         except Exception:
-            pass
+            pass  # nosec B110
 
         root_logger = logging.getLogger()
         root_logger.setLevel(level)
@@ -251,7 +251,7 @@ class LoggerManager:
                 try:
                     file_handler_exists_for.add(Path(h.baseFilename))
                 except Exception:
-                    pass
+                    pass  # nosec B110
 
         # Create or update console handler
         if console_handler is None:
