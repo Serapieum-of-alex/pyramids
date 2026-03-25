@@ -1077,7 +1077,8 @@ class FeatureCollection:
     ) -> tuple[list[float], list[float]]:
         """reproject_points.
 
-        This function changes the projection of coordinates from one coordinate system to another (default: from GCS to Web Mercator as used by Google Maps).
+        reproject_points changes the projection of coordinates from one coordinate system to another
+        (default: from GCS to Web Mercator as used by Google Maps).
 
         Args:
             lat (list):
@@ -1111,16 +1112,16 @@ class FeatureCollection:
             warnings.filterwarnings("ignore", category=FutureWarning)
 
             from_epsg_str = "epsg:" + str(from_epsg)
-            inproj = Proj(init=from_epsg_str)  # GCS geographic coordinate system
+            in_proj = Proj(init=from_epsg_str)  # GCS geographic coordinate system
             to_epsg_str = "epsg:" + str(to_epsg)
-            outproj = Proj(init=to_epsg_str)  # WGS84 web mercator
+            out_proj = Proj(init=to_epsg_str)  # WGS84 web mercator
 
         x = np.ones(len(lat)) * np.nan
         y = np.ones(len(lat)) * np.nan
 
         for i in range(len(lat)):
             x[i], y[i] = np.round(
-                transform(inproj, outproj, lon[i], lat[i], always_xy=True), precision
+                transform(in_proj, out_proj, lon[i], lat[i], always_xy=True), precision
             )
 
         return y.tolist(), x.tolist()
