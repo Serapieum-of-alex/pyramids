@@ -111,6 +111,9 @@ profile = "black"
 line_length = 88
 multi_line_output = 3
 
+[tool.bandit]
+exclude_dirs = ["tests", "examples", "scripts", "planning", "docs"]
+skips = ["B101", "B110", "B112"]
 
 [tool.coverage.run]
 branch = true

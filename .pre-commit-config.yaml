@@ -109,6 +109,7 @@ repos:
     rev: 1.9.4
     hooks:
       - id: bandit
+        args: ["-c", "pyproject.toml"]
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0

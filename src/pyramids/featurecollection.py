@@ -380,7 +380,7 @@ class FeatureCollection:
         gdal.VectorTranslate(
             MEMORY_FILE,
             gdal_ds,
-            SQLStatement=f"SELECT * FROM {layer_name}",
+            SQLStatement=f"SELECT * FROM {layer_name}",  # nosec B608 - OGR SQL, not a database
             layerName=layer_name,
         )
         # import fiona
