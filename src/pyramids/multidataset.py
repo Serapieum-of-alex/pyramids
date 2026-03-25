@@ -453,7 +453,7 @@ class MultiDataset:
                 | cmap                       | str, optional         | Color map style. Default is `'coolwarm_r'`. |
                 | display_cell_value         | bool                  | Whether to display the values of the cells as text. |
                 | num_size                   | int, optional         | Size of the numbers plotted on top of each cell. Default is `8`. |
-                | background_color_threshold | float \| int, optional| Threshold for deciding number color: if value > threshold → black; else white. If `None`, uses `max_value/2`. Default is `None`. |
+                | background_color_threshold | float \| int, optional| Threshold for deciding number color: if value > threshold -> black; else white. If `None`, uses `max_value/2`. Default is `None`. |
 
 
         Returns:

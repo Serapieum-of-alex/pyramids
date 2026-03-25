@@ -818,7 +818,7 @@ class NetCDF(Dataset):
 
         Args:
             path: Destination file path. The extension determines the
-                output driver (``.nc`` → netCDF, ``.tif`` → GeoTIFF, etc.).
+                output driver (``.nc`` -> netCDF, ``.tif`` -> GeoTIFF, etc.).
             **kwargs: Forwarded to ``Dataset.to_file`` for non-NetCDF
                 extensions (e.g. ``tile_length``, ``creation_options``).
 
@@ -874,9 +874,9 @@ class NetCDF(Dataset):
         """Create a NetCDF dimension with an indexing variable.
 
         The dimension type is inferred from ``dim_name``:
-        ``y``/``lat``/``latitude`` → horizontal Y,
-        ``x``/``lon``/``longitude`` → horizontal X,
-        ``bands``/``time`` → temporal.
+        ``y``/``lat``/``latitude`` -> horizontal Y,
+        ``x``/``lon``/``longitude`` -> horizontal X,
+        ``bands``/``time`` -> temporal.
 
         The dimension is registered in the group together with a
         matching MDArray that stores the coordinate values.
@@ -1024,7 +1024,7 @@ class NetCDF(Dataset):
     ) -> gdal.Dataset:
         """Build a multidimensional GDAL dataset from an array.
 
-        The driver is inferred from ``path``: ``None`` → MEM (in-memory),
+        The driver is inferred from ``path``: ``None`` -> MEM (in-memory),
         otherwise the netCDF driver writes to disk.
 
         Args:

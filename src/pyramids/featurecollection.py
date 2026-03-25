@@ -241,7 +241,7 @@ class FeatureCollection:
         gdal_name = CATALOG.get_gdal_name(driver)
 
         if gdal_name is None:
-            raise DriverNotExistError(f"The given driver:{driver} is not suported.")
+            raise DriverNotExistError(f"The given driver:{driver} is not supported.")
 
         if driver == "memory":
             path = "memData"

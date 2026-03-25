@@ -1720,7 +1720,7 @@ class Dataset(AbstractDataset):
                 | `cmap`                      | str, optional       | Color map style. Default is `'coolwarm_r'`. |
                 | `display_cell_value`        | bool, optional      | Whether to display cell values as text. |
                 | `num_size`                  | int, optional       | Size of numbers plotted on top of each cell. Default is `8`. |
-                | `background_color_threshold`| float or int, optional | Threshold for deciding text color over cells: if value > threshold → black text; else white text. If `None`, max value / 2 is used. Default is `None`. |
+                | `background_color_threshold`| float or int, optional | Threshold for deciding text color over cells: if value > threshold -> black text; else white text. If `None`, max value / 2 is used. Default is `None`. |
 
         Returns:
             ArrayGlyph:
