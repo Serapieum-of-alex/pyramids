@@ -736,7 +736,7 @@ class Dataset(AbstractDataset):
         """
         if isinstance(window, GeoDataFrame):
             window = self._convert_polygon_to_window(window)
-        if not isinstance(window, list):
+        if not isinstance(window, (list, tuple)):
             raise ValueError(f"window must be a list of 4 integers, got {type(window)}")
         try:
             block = self._iloc(band).ReadAsArray(
