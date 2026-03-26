@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, List, Optional
-
 import json
-from osgeo import gdal
 from collections import deque
+from dataclasses import asdict, is_dataclass
+from typing import Any, cast
+
+from osgeo import gdal
+
+from pyramids.netcdf.dimensions import MetaData as SharedMetaData
 from pyramids.netcdf.models import (
     ArrayInfo,
     DimensionInfo,
@@ -14,14 +16,13 @@ from pyramids.netcdf.models import (
     StructuralInfo,
 )
 from pyramids.netcdf.utils import (
-    _read_attributes,
     _get_driver_name,
     _get_root_group,
-    _safe_group_names,
+    _read_attributes,
     _safe_array_names,
+    _safe_group_names,
 )
 
-from pyramids.netcdf.dimensions import MetaData as SharedMetaData
 
 class MetadataBuilder:
     """Construct a ``NetCDFMetadata`` from a GDAL dataset.
@@ -57,7 +58,7 @@ class MetadataBuilder:
     def __init__(
         self,
         src: gdal.Dataset,
-        open_options: Optional[Dict[str, Any]] = None,
+        open_options: dict[str, Any] | None = None,
     ) -> None:
         """Initialize MetadataBuilder.
 
@@ -103,9 +104,9 @@ class MetadataBuilder:
         driver_name = _get_driver_name(ds)
         root_group = _get_root_group(ds)
 
-        groups_map: Dict[str, GroupInfo] = {}
-        arrays_map: Dict[str, ArrayInfo] = {}
-        dimensions_map: Dict[str, DimensionInfo] = {}
+        groups_map: dict[str, GroupInfo] = {}
+        arrays_map: dict[str, ArrayInfo] = {}
+        dimensions_map: dict[str, DimensionInfo] = {}
 
         if root_group is not None:
             traverser = GroupTraverser(groups_map, arrays_map, dimensions_map)
@@ -129,7 +130,10 @@ class MetadataBuilder:
                 global_attrs = {}
 
         structural_info = StructuralInfo.from_dataset(ds, driver_name)
-        created_with = {"library": "GDAL", "version": getattr(gdal, "__version__", "unknown")}
+        created_with = {
+            "library": "GDAL",
+            "version": getattr(gdal, "__version__", "unknown"),
+        }
 
         return NetCDFMetadata(
             driver=driver_name,
@@ -186,9 +190,9 @@ class GroupTraverser:
 
     def __init__(
         self,
-        groups: Dict[str, GroupInfo],
-        arrays: Dict[str, ArrayInfo],
-        dimensions: Dict[str, DimensionInfo],
+        groups: dict[str, GroupInfo],
+        arrays: dict[str, ArrayInfo],
+        dimensions: dict[str, DimensionInfo],
     ) -> None:
         """Initialize GroupTraverser with output dictionaries.
 
@@ -227,9 +231,10 @@ class GroupTraverser:
         # Sort by name for determinism
         def _dim_name(d: Any) -> str:
             try:
-                return d.GetName()
+                result = str(d.GetName())
             except Exception:
-                return ""
+                result = ""
+            return result
 
         dims_sorted = sorted(list(dims), key=_dim_name)
 
@@ -237,7 +242,7 @@ class GroupTraverser:
             dim = DimensionInfo.from_gdal_dim(d, group_full_name)
             self.dimensions[dim.full_name] = dim
 
-    def _collect_arrays(self, group: gdal.Group, group_full_name: str) -> List[str]:
+    def _collect_arrays(self, group: gdal.Group, group_full_name: str) -> list[str]:
         """Collect all arrays from *group* into ``self.arrays``.
 
         Each array is opened via ``group.OpenMDArray`` and
@@ -254,7 +259,7 @@ class GroupTraverser:
             list[str]: Full names of the arrays that were
                 successfully collected.
         """
-        array_full_names: List[str] = []
+        array_full_names: list[str] = []
         for md_arr_name in _safe_array_names(group):
             try:
                 md_arr = group.OpenMDArray(md_arr_name)
@@ -302,7 +307,9 @@ class GroupTraverser:
             group = q.popleft()
 
             # Compute group identity (name/full_name) via GroupInfo for separation of concerns
-            base_group = GroupInfo.from_group(group, arrays=[], children=[], attributes={})
+            base_group = GroupInfo.from_group(
+                group, arrays=[], children=[], attributes={}
+            )
             group_full_name = base_group.full_name
 
             # Dimensions and arrays for this group
@@ -310,7 +317,7 @@ class GroupTraverser:
             group_arrays = self._collect_arrays(group, group_full_name)
 
             # Children
-            children_full: List[str] = []
+            children_full: list[str] = []
             for cn in _safe_group_names(group):
                 try:
                     current_group = group.OpenGroup(cn)
@@ -322,11 +329,17 @@ class GroupTraverser:
 
                 # Delegate child full-name resolution to GroupInfo
                 try:
-                    child_info = GroupInfo.from_group(current_group, arrays=[], children=[], attributes={})
+                    child_info = GroupInfo.from_group(
+                        current_group, arrays=[], children=[], attributes={}
+                    )
                     current_group_full_name = child_info.full_name
                 except Exception:
                     # As a last resort, fall back to simple path concatenation
-                    current_group_full_name = f"{group_full_name}/{cn}" if group_full_name != "/" else f"/{cn}"
+                    current_group_full_name = (
+                        f"{group_full_name}/{cn}"
+                        if group_full_name != "/"
+                        else f"/{cn}"
+                    )
 
                 children_full.append(current_group_full_name)
                 q.append(current_group)
@@ -342,7 +355,7 @@ class GroupTraverser:
 
 def get_metadata(
     source,
-    open_options: Optional[Dict[str, Any]] = None,
+    open_options: dict[str, Any] | None = None,
 ) -> NetCDFMetadata:
     """Read and normalize all NetCDF MDIM metadata.
 
@@ -396,7 +409,7 @@ def get_metadata(
         return builder.build()
 
 
-def to_dict(metadata: NetCDFMetadata) -> Dict[str, Any]:
+def to_dict(metadata: NetCDFMetadata) -> dict[str, Any]:
     """Convert ``NetCDFMetadata`` to plain dicts suitable for JSON.
 
     Recursively walks all dataclass fields and converts them to
@@ -442,8 +455,9 @@ def to_dict(metadata: NetCDFMetadata) -> Dict[str, Any]:
         from_json: Deserializes a JSON string back to
             ``NetCDFMetadata``.
     """
+
     def convert(obj: Any) -> Any:
-        if is_dataclass(obj):
+        if is_dataclass(obj) and not isinstance(obj, type):
             return {k: convert(v) for k, v in asdict(obj).items()}
         if isinstance(obj, dict):
             return {str(k): convert(v) for k, v in obj.items()}
@@ -451,7 +465,7 @@ def to_dict(metadata: NetCDFMetadata) -> Dict[str, Any]:
             return [convert(v) for v in obj]
         return obj
 
-    return convert(metadata)
+    return cast(dict[str, Any], convert(metadata))
 
 
 def to_json(metadata: NetCDFMetadata) -> str:
@@ -553,7 +567,7 @@ def from_json(s: str) -> NetCDFMetadata:
     """
     d = json.loads(s)
 
-    def build_group(gd: Dict[str, Any]) -> GroupInfo:
+    def build_group(gd: dict[str, Any]) -> GroupInfo:
         return GroupInfo(
             name=gd["name"],
             full_name=gd["full_name"],
@@ -562,7 +576,7 @@ def from_json(s: str) -> NetCDFMetadata:
             arrays=gd.get("arrays", []),
         )
 
-    def build_dim(dd: Dict[str, Any]) -> DimensionInfo:
+    def build_dim(dd: dict[str, Any]) -> DimensionInfo:
         return DimensionInfo(
             name=dd["name"],
             full_name=dd["full_name"],
@@ -573,7 +587,7 @@ def from_json(s: str) -> NetCDFMetadata:
             attrs=dd.get("attrs", {}),
         )
 
-    def build_array(ad: Dict[str, Any]) -> ArrayInfo:
+    def build_array(ad: dict[str, Any]) -> ArrayInfo:
         return ArrayInfo(
             name=ad["name"],
             full_name=ad["full_name"],
@@ -589,7 +603,11 @@ def from_json(s: str) -> NetCDFMetadata:
             srs_projjson=ad.get("srs_projjson"),
             coordinate_variables=[str(x) for x in ad.get("coordinate_variables", [])],
             structural_info=ad.get("structural_info"),
-            block_size=[int(x) for x in ad.get("block_size", [])] if ad.get("block_size") is not None else None,
+            block_size=(
+                [int(x) for x in ad.get("block_size", [])]
+                if ad.get("block_size") is not None
+                else None
+            ),
         )
 
     groups = {k: build_group(v) for k, v in d.get("groups", {}).items()}
@@ -620,7 +638,7 @@ def from_json(s: str) -> NetCDFMetadata:
     )
 
 
-def flatten_for_index(metadata: NetCDFMetadata) -> Dict[str, Any]:
+def flatten_for_index(metadata: NetCDFMetadata) -> dict[str, Any]:
     """Return a flat dict of key properties for indexing/search.
 
     Extracts a small, searchable summary from a full
@@ -697,7 +715,7 @@ def flatten_for_index(metadata: NetCDFMetadata) -> Dict[str, Any]:
     See Also:
         to_dict: Full recursive conversion to plain dicts.
     """
-    d: Dict[str, Any] = {
+    d: dict[str, Any] = {
         "driver": metadata.driver,
         "root_group": metadata.root_group,
         "group_count": len(metadata.groups),

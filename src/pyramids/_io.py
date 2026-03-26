@@ -1,10 +1,12 @@
 from __future__ import annotations
-import os
-import zipfile
-import tarfile
+
 import gzip
-import numpy as np
+import os
+import tarfile
 import warnings
+import zipfile
+
+import numpy as np
 from osgeo import gdal
 
 from pyramids.base._errors import FileFormatNotSupported
@@ -146,7 +148,7 @@ def _parse_path(path: str, file_i: int = 0) -> str:
         new_path = _get_gzip_path(path, file_i=file_i)
     else:
         new_path = path
-    return new_path
+    return str(new_path)
 
 
 def extract_from_gz(input_file: str, output_file: str, delete=False):
@@ -245,7 +247,7 @@ def insert_space(inp):
 
 
 def to_ascii(
-    arr: np.ndarray, cell_size: int, xmin, ymin, no_data_value, path: str
+    arr: np.ndarray, cell_size: float, xmin, ymin, no_data_value, path: str
 ) -> None:
     """Write raster into ASCII file.
 

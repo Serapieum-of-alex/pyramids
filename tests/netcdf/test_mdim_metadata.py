@@ -1,18 +1,21 @@
 import pytest
 
-from pyramids.netcdf.netcdf import NetCDF
 from pyramids.netcdf.metadata import (
-    get_metadata,
-    to_json,
-    from_json,
-    to_dict,
     flatten_for_index,
+    from_json,
+    get_metadata,
+    to_dict,
+    to_json,
 )
+from pyramids.netcdf.netcdf import NetCDF
 
 
-@pytest.mark.parametrize("fixture_name", [
-    "pyramids_created_nc_3d",
-])
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "pyramids_created_nc_3d",
+    ],
+)
 def test_mdim_metadata_basic(request, fixture_name: str):
     """Open a small NetCDF in MDIM mode and ensure traversal returns content.
 
@@ -35,7 +38,11 @@ def test_mdim_metadata_basic(request, fixture_name: str):
     # dimension_overview should mirror nc.meta_data
     dov = md1.dimension_overview
     assert isinstance(dov, dict)
-    assert set(["names", "sizes", "attrs", "values"]).issuperset(dov.keys()) or set(["names", "sizes", "attrs"]).issuperset(dov.keys())
+    assert {"names", "sizes", "attrs", "values"}.issuperset(dov.keys()) or {
+        "names",
+        "sizes",
+        "attrs",
+    }.issuperset(dov.keys())
     names = dov.get("names", [])
     sizes = dov.get("sizes", {})
     assert isinstance(names, list)

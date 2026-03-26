@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Mapping, Optional, Tuple, Union
 import re
+from dataclasses import dataclass, field
+from typing import Iterable, Mapping
 
-Number = Union[int, float]
+Number = int | float
 
 
 def _strip_braces(value: str) -> str:
@@ -57,7 +57,7 @@ def _strip_braces(value: str) -> str:
     return s
 
 
-def _smart_split_csv(text: str) -> List[str]:
+def _smart_split_csv(text: str) -> list[str]:
     """Split a comma-separated string, honoring optional outer braces.
 
     The function trims whitespace, removes a single pair of surrounding braces
@@ -69,7 +69,7 @@ def _smart_split_csv(text: str) -> List[str]:
             (e.g., "a, b, c").
 
     Returns:
-        List[str]: A list of non-empty, trimmed tokens. Returns an empty list
+        list[str]: A list of non-empty, trimmed tokens. Returns an empty list
         if the content is empty.
 
     Raises:
@@ -110,7 +110,7 @@ def _smart_split_csv(text: str) -> List[str]:
     return vals
 
 
-def _coerce_scalar(token: str) -> Union[str, Number]:
+def _coerce_scalar(token: str) -> str | Number:
     """Convert a string token to int or float when possible.
 
     The conversion strategy is conservative:
@@ -123,7 +123,7 @@ def _coerce_scalar(token: str) -> Union[str, Number]:
         token (str): The input string token.
 
     Returns:
-        Union[str, Number]: The coerced scalar (``int`` or ``float``) or the
+        str | Number: The coerced scalar (``int`` or ``float``) or the
         original string if not numeric.
 
     Raises:
@@ -166,7 +166,7 @@ def _coerce_scalar(token: str) -> Union[str, Number]:
         return token
 
 
-def _parse_values_list(text: str) -> List[Union[str, Number]]:
+def _parse_values_list(text: str) -> list[str | Number]:
     """Parse a CSV/braced list into typed scalars.
 
     This helper combines :func:`_smart_split_csv` and :func:`_coerce_scalar` to
@@ -176,7 +176,7 @@ def _parse_values_list(text: str) -> List[Union[str, Number]]:
         text (str): The metadata text containing values (e.g., "{0,31}").
 
     Returns:
-        List[Union[str, Number]]: A list of numbers and/or strings depending on
+        list[str | Number]: A list of numbers and/or strings depending on
         the input tokens.
 
     Raises:
@@ -202,11 +202,11 @@ def _parse_values_list(text: str) -> List[Union[str, Number]]:
     return [_coerce_scalar(t) for t in _smart_split_csv(text)]
 
 
-def _format_braced_list(values: Iterable[Union[str, Number]]) -> str:
+def _format_braced_list(values: Iterable[str | Number]) -> str:
     """Format a sequence as a GDAL-style braced list without spaces.
 
     Args:
-        values (Iterable[Union[str, Number]]):
+        values (Iterable[str | Number]):
             Iterable of scalars to format. Each element is converted with ``str``.
 
     Returns:
@@ -255,19 +255,19 @@ class DimMetaData:
     Args:
         name (str):
             Dimension name (e.g., "time", "level0").
-        size (Optional[int]):
+        size (int | None):
             Dimension length (if known). Often derived from the first integer
             in ``*_DEF`` or the length of ``*_VALUES``.
-        values (Optional[List[Union[str, Number]]]):
+        values (list[str | Number] | None):
             Parsed scalar values from the ``*_VALUES`` entry, if provided by the
             GDAL netCDF driver.
-        def_fields (Optional[Tuple[int, ...]]):
+        def_fields (tuple[int, ...] | None):
             Parsed integers from the ``*_DEF`` entry. The meaning is driver-
             specific; commonly the first value corresponds to the dimension size.
-        raw (Dict[str, str]):
+        raw (dict[str, str]):
             Raw strings captured from metadata for this dimension (e.g., the
             original ``DEF`` and ``VALUES`` content).
-        attrs (Dict[str, str]):
+        attrs (dict[str, str]):
             Optional attribute dictionary associated with the same dimension
             name (e.g., ``{"axis": "T", "units": "days since ..."}``).
 
@@ -298,12 +298,28 @@ class DimMetaData:
     """
 
     name: str
-    size: Optional[int] = None
-    values: Optional[List[Union[str, Number]]] = None
-    def_fields: Optional[Tuple[int, ...]] = None
-    raw: Dict[str, str] = field(default_factory=dict)
-    attrs: Dict[str, str] = field(default_factory=dict)
+    size: int | None = None
+    values: list[str | Number] | None = None
+    def_fields: tuple[int, ...] | None = None
+    raw: dict[str, str] = field(default_factory=dict)
+    attrs: dict[str, str] = field(default_factory=dict)
 
+    def __post_init__(self):
+        """Validate dimension fields for consistency."""
+        if not self.name:
+            raise ValueError("Dimension name cannot be empty.")
+        if self.size is not None and self.size < 0:
+            raise ValueError(
+                f"Dimension '{self.name}': size cannot be negative, "
+                f"got {self.size}."
+            )
+        if self.values is not None and self.size is not None:
+            if len(self.values) != self.size:
+                raise ValueError(
+                    f"Dimension '{self.name}': values length "
+                    f"({len(self.values)}) does not match size "
+                    f"({self.size})."
+                )
 
 
 @dataclass
@@ -363,7 +379,7 @@ class DimensionsIndex:
             ```
     """
 
-    _dims: Dict[str, DimMetaData] = field(default_factory=dict)
+    _dims: dict[str, DimMetaData] = field(default_factory=dict)
 
     @classmethod
     def from_metadata(
@@ -371,7 +387,7 @@ class DimensionsIndex:
         metadata: Mapping[str, str],
         *,
         prefix: str = "NETCDF_DIM_",
-    ) -> "DimensionsIndex":
+    ) -> DimensionsIndex:
         """Parse dimensions from a GDAL metadata dictionary.
 
         Args:
@@ -419,11 +435,13 @@ class DimensionsIndex:
         """
         # Gather candidate keys first
         dim_names: set[str] = set()
-        buckets: Dict[str, Dict[str, str]] = {}
+        buckets: dict[str, dict[str, str]] = {}
 
         # Build a regex that respects the provided prefix
         # Example: ^NETCDF_DIM_(<name>)(?:_(DEF|VALUES))?$ when prefix is default
-        _DIM_KEY_RE = re.compile(rf"^{re.escape(prefix)}([A-Za-z0-9_.-]+?)(?:_(DEF|VALUES))?$")
+        _DIM_KEY_RE = re.compile(
+            rf"^{re.escape(prefix)}([A-Za-z0-9_.-]+?)(?:_(DEF|VALUES))?$"
+        )
 
         for key, value in metadata.items():
             if not key.startswith(prefix):
@@ -446,12 +464,12 @@ class DimensionsIndex:
             buckets.setdefault(name, {})[suffix or "_root"] = value
             dim_names.add(name)
 
-        dims: Dict[str, DimMetaData] = {}
+        dims: dict[str, DimMetaData] = {}
         for name in sorted(dim_names):
             raw_bucket = buckets.get(name, {})
             # DEF may contain integers, often first item is size
-            def_fields: Optional[Tuple[int, ...]] = None
-            size: Optional[int] = None
+            def_fields: tuple[int, ...] | None = None
+            size: int | None = None
             if "DEF" in raw_bucket:
                 def_list = _parse_values_list(raw_bucket["DEF"])
                 # Only keep integers in def_fields; ignore non-ints gracefully
@@ -461,7 +479,7 @@ class DimensionsIndex:
                     size = ints[0]
 
             # VALUES: keep as numbers/strings
-            values: Optional[List[Union[str, Number]]] = None
+            values: list[str | Number] | None = None
             if "VALUES" in raw_bucket:
                 values = _parse_values_list(raw_bucket["VALUES"]) or None
                 # If size wasn't in DEF, infer from VALUES length
@@ -479,11 +497,11 @@ class DimensionsIndex:
         return cls(dims)
 
     @property
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         """Return the list of dimension names.
 
         Returns:
-            List[str]: Names in insertion order (or sorted order, depending on
+            list[str]: Names in insertion order (or sorted order, depending on
             construction) matching the keys of the index.
 
         Examples:
@@ -596,10 +614,10 @@ class DimensionsIndex:
 
                 ```
         """
-        lines: List[str] = [f"DimensionsIndex({len(self)} dims)"]
+        lines: list[str] = [f"DimensionsIndex({len(self)} dims)"]
         for name in sorted(self._dims):
             d = self._dims[name]
-            parts: List[str] = []
+            parts: list[str] = []
             if d.size is not None:
                 parts.append(f"size={d.size}")
             if d.values is not None:
@@ -611,13 +629,13 @@ class DimensionsIndex:
             lines.append(f"- {name}: {detail}")
         return "\n".join(lines)
 
-    def to_dict(self) -> Dict[str, Dict[str, object]]:
+    def to_dict(self) -> dict[str, dict[str, object]]:
         """Serialize the index to a plain dictionary.
 
         Useful for logging, debugging, or JSON/YAML output.
 
         Returns:
-            Dict[str, Dict[str, object]]: Mapping from dimension name to a
+            dict[str, dict[str, object]]: Mapping from dimension name to a
             structure with ``size``, ``values`` and ``def_fields`` fields.
 
         Examples:
@@ -631,7 +649,7 @@ class DimensionsIndex:
 
                 ```
         """
-        out: Dict[str, Dict[str, object]] = {}
+        out: dict[str, dict[str, object]] = {}
         for k, d in self._dims.items():
             out[k] = {
                 "size": d.size,
@@ -646,7 +664,7 @@ class DimensionsIndex:
         prefix: str = "NETCDF_DIM_",
         include_extra: bool = True,
         sort_names: bool = True,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Serialize the index back to GDAL netCDF metadata keys.
 
         This produces keys compatible with the netCDF GDAL driver such as
@@ -660,7 +678,7 @@ class DimensionsIndex:
                 outputs.
 
         Returns:
-            Dict[str, str]: A dictionary suitable for use with GDAL's metadata API.
+            dict[str, str]: A dictionary suitable for use with GDAL's metadata API.
 
         Examples:
             - Round-trip a simple index
@@ -674,7 +692,7 @@ class DimensionsIndex:
 
                 ```
         """
-        md: Dict[str, str] = {}
+        md: dict[str, str] = {}
         names = list(self._dims.keys())
         if sort_names:
             names.sort()
@@ -731,10 +749,10 @@ def parse_gdal_netcdf_dimensions(metadata: Mapping[str, str]) -> DimensionsIndex
 
 def parse_dimension_attributes(
     metadata: Mapping[str, str],
-    names: Optional[Iterable[str]] = None,
+    names: Iterable[str] | None = None,
     *,
     normalize_attr_keys: bool = True,
-) -> Dict[str, Dict[str, str]]:
+) -> dict[str, dict[str, str]]:
     """Extract per-dimension attributes from GDAL netCDF metadata.
 
     This helper scans metadata entries whose keys look like "<name>#<attr>"
@@ -744,7 +762,7 @@ def parse_dimension_attributes(
     Args:
         metadata (Mapping[str, str]):
             Mapping of metadata keys to values (e.g., from GDAL).
-        names (Optional[Iterable[str]]):
+        names (Iterable[str] | None):
             Optional iterable of dimension names to include. If provided, only
             attributes for these names are captured.
         normalize_attr_keys (bool):
@@ -752,7 +770,7 @@ def parse_dimension_attributes(
             the output. If False, original case is preserved.
 
     Returns:
-        Dict[str, Dict[str, str]]: A mapping from dimension name to a dictionary
+        dict[str, dict[str, str]]: A mapping from dimension name to a dictionary
         of attributes for that dimension.
 
     Raises:
@@ -785,7 +803,7 @@ def parse_dimension_attributes(
     """
     # Build a quick lookup for allowed names if provided
     allowed = set(names) if names is not None else None
-    out: Dict[str, Dict[str, str]] = {}
+    out: dict[str, dict[str, str]] = {}
 
     # Simple pattern: everything before first '#' is the dimension name; after is attribute
     # Keep it permissive but avoid empty parts.
@@ -845,7 +863,7 @@ class MetaData:
     """
 
     dims: DimensionsIndex
-    attrs: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    attrs: dict[str, dict[str, str]] = field(default_factory=dict)
 
     @classmethod
     def from_metadata(
@@ -854,8 +872,8 @@ class MetaData:
         *,
         prefix: str = "NETCDF_DIM_",
         normalize_attr_keys: bool = True,
-        names: Optional[Iterable[str]] = None,
-    ) -> "MetaData":
+        names: Iterable[str] | None = None,
+    ) -> MetaData:
         """Build a MetaData object by parsing a GDAL metadata mapping.
 
         Args:
@@ -865,7 +883,7 @@ class MetaData:
                 Prefix used for dimension entries (defaults to ``NETCDF_DIM_``).
             normalize_attr_keys (bool):
                 Normalize attribute keys (the part after ``#``) to lowercase.
-            names (Optional[Iterable[str]]):
+            names (Iterable[str] | None):
                 If provided, limit attribute parsing to these names. By default
                 uses the dimension names discovered under the prefix.
 
@@ -899,11 +917,11 @@ class MetaData:
         return cls(dims=dims, attrs=attrs)
 
     @property
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         """Return the list of dimension names represented in this metadata.
 
         Returns:
-            List[str]: Names present in the underlying :class:`DimensionsIndex`.
+            list[str]: Names present in the underlying :class:`DimensionsIndex`.
 
         Examples:
           - Inspect names
@@ -917,14 +935,14 @@ class MetaData:
         """
         return self.dims.names
 
-    def get_attrs(self, name: str) -> Dict[str, str]:
+    def get_attrs(self, name: str) -> dict[str, str]:
         """Return attributes for a given dimension name.
 
         Args:
             name (str): Dimension name.
 
         Returns:
-            Dict[str, str]: Attribute dictionary; empty if the name is unknown
+            dict[str, str]: Attribute dictionary; empty if the name is unknown
             or has no attributes.
 
         Examples:
@@ -942,7 +960,7 @@ class MetaData:
         """
         return self.attrs.get(name, {})
 
-    def get_dimension(self, name: str) -> Optional[DimMetaData]:
+    def get_dimension(self, name: str) -> DimMetaData | None:
         """Return a DimMetaData with merged attributes for a given name, if present.
 
         Combines structural info from :class:`DimensionsIndex` with the
@@ -953,7 +971,7 @@ class MetaData:
             name (str): Dimension name.
 
         Returns:
-            Optional[DimMetaData]: The merged view if available, else ``None``.
+            DimMetaData | None: The merged view if available, else ``None``.
 
         Examples:
             - Get a merged DimMetaData and inspect attributes
@@ -1015,7 +1033,7 @@ class MetaData:
         include_extra: bool = True,
         sort_names: bool = True,
         include_attrs: bool = True,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Serialize back to a GDAL metadata mapping.
 
         Combines the dimension keys produced by :meth:`DimensionsIndex.to_metadata`
@@ -1032,7 +1050,7 @@ class MetaData:
                 for known attributes.
 
         Returns:
-            Dict[str, str]: A single flattened mapping suitable for GDAL.
+            dict[str, str]: A single flattened mapping suitable for GDAL.
 
         Examples:
             - Merge structure and attributes
@@ -1079,13 +1097,13 @@ class MetaData:
 
                 ```
         """
-        lines: List[str] = [
+        lines: list[str] = [
             f"MetaData({len(self.dims)} dims, attrs for {len(self.attrs)} names)"
         ]
         # Show a compact, aligned summary for each dimension
         for name in sorted(self.dims.names):
             d = self.dims[name]
-            parts: List[str] = []
+            parts: list[str] = []
             if d.size is not None:
                 parts.append(f"size={d.size}")
             if d.values is not None:

@@ -54,7 +54,10 @@ dev = [
     "jupyterlab",
     "notebook",
     "jupyter",
-    "commitizen>=4.8.4"
+    "commitizen>=4.8.4",
+    "mypy>=1.10.0",
+    "types-PyYAML>=6.0.0",
+    "pytest-mock>=3.12.0"
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -71,6 +74,14 @@ docs = [
     "mkdocs-panzoom-plugin",
     "notebook<7.0",
 ]
+notebook = [
+    "pip",
+    "jupyterlab",
+    "notebook",
+    "jupyter",
+    "ipykernel"
+]
+
 
 [project.urls]
 homepage = "https://github.com/Serapieum-of-alex/pyramids"
@@ -108,6 +119,35 @@ profile = "black"
 line_length = 88
 multi_line_output = 3
 
+[tool.bandit]
+exclude_dirs = ["tests", "examples", "scripts", "planning", "docs"]
+skips = ["B101"]
+
+[tool.coverage.run]
+branch = true
+source = ["src/pyramids"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+packages = ["pyramids"]
+explicit_package_bases = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "tests/",
+    "examples/",
+    "docs/",
+    "scripts/",
+    "planning/",
+]
 
 [tool.commitizen]
 name = "cz_conventional_commits"
@@ -156,11 +196,13 @@ build-dist = { cmd = "python -m build", description = "Build sdist and wheel for
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
 cz-changelog = { cmd = "cz changelog", description = "Generate changelog using Commitizen" }
 cz-bump = { cmd = "cz bump", description = "Bump version using Commitizen" }
+mypy = { cmd = "mypy", description = "Run mypy type checking" }
 
 
 [tool.pixi.environments]
 default = {features = ["viz"], solve-group = "default" }
 dev = { features = ["viz", "dev"], solve-group = "default" }
+notebook = { features = ["viz", "notebook"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "docs" }
 py311 = { features = ["py311", "viz", "dev"], solve-group = "py311" }
 py312 = { features = ["py312", "viz", "dev"], solve-group = "py312" }

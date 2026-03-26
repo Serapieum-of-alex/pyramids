@@ -1,7 +1,7 @@
-from pyramids.dataset import Dataset
-
 # %%
 import numpy as np
+
+from pyramids.dataset import Dataset
 
 rng = np.random.default_rng(0)
 arr = rng.integers(1, 10, size=(2, 5, 5))

@@ -1,6 +1,7 @@
-from pyramids.dataset import Dataset
-from pyramids.convert import Convert
 import geopandas as gpd
+
+from pyramids.convert import Convert
+from pyramids.dataset import Dataset
 
 # rpath = "C:/gdrive/01Algorithms/gis/rastertodataframe/tests/data/"
 raster_path = f"tests/mo/raster_to_df/raster.tif"
@@ -8,7 +9,7 @@ vector_path = f"tests/mo/raster_to_df/vector.geojson"
 rasterized_vector_path = f"tests/mo/raster_to_df/resulted_rasterized_vector.tif"
 raster_wgs84_path = f"tests/mo/raster_to_df/raster_epsg4326.tif"
 single_band_raster = f"tests/mo/raster_to_df/oneband.tif"
-#%%
+# %%
 
 vector_mask = Convert.polygonToRaster(
     raster_wgs84_path, vector_path, rasterized_vector_path, vector_field="value"

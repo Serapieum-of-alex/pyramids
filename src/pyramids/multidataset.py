@@ -1,19 +1,27 @@
 """MultiDataset module."""
 
-import os
-import re
-import logging
+from __future__ import annotations
 
 import datetime as dt
-import pandas as pd
+import logging
+import os
+import re
 from pathlib import Path
-from typing import List, Union, Any, Callable, Dict
+from typing import TYPE_CHECKING, Any, Callable
+
 import numpy as np
+import pandas as pd
 from osgeo import gdal
-from pyramids.dataset import Dataset
-from pyramids.base._errors import DatasetNoFoundError
+
 from pyramids.abstract_dataset import CATALOG
+from pyramids.base._errors import DatasetNoFoundError
 from pyramids.base._utils import import_cleopatra
+from pyramids.dataset import Dataset
+
+if TYPE_CHECKING:
+    from cleopatra.array_glyph import ArrayGlyph
+
+logger = logging.getLogger(__name__)
 
 try:
     from osgeo_utils import gdal_merge
@@ -23,14 +31,8 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
-logger = logging.getLogger(__name__)
-
-
 class MultiDataset:
     """MultiDataset."""
-
-    files: List[str]
-    data: np.ndarray
 
     """
     files:
@@ -41,7 +43,7 @@ class MultiDataset:
         self,
         src: Dataset,
         time_length: int,
-        files: List[str] = None,
+        files: list[str] | None = None,
     ):
         """Construct MultiDataset object."""
         self._base = src
@@ -104,7 +106,7 @@ class MultiDataset:
         return self._base.columns
 
     @classmethod
-    def create_cube(cls, src: Dataset, dataset_length: int) -> "MultiDataset":
+    def create_cube(cls, src: Dataset, dataset_length: int) -> MultiDataset:
         """Create MultiDataset.
 
             - Create MultiDataset from a sample raster and
@@ -123,16 +125,16 @@ class MultiDataset:
     @classmethod
     def read_multiple_files(
         cls,
-        path: Union[str, List[str]],
+        path: str | list[str],
         with_order: bool = False,
         regex_string: str = r"\d{4}.\d{2}.\d{2}",
         date: bool = True,
-        file_name_data_fmt: str = None,
-        start: str = None,
-        end: str = None,
+        file_name_data_fmt: str | None = None,
+        start: str | None = None,
+        end: str | None = None,
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
-    ) -> "MultiDataset":
+    ) -> MultiDataset:
         r"""read_multiple_files.
 
             - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the
@@ -143,7 +145,7 @@ class MultiDataset:
               that follows a consistent format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD), e.g. "MSWEP_1979.01.01.tif".
 
         Args:
-            path (str | List[str]):
+            path (str | list[str]):
                 Path of the folder that contains all the rasters, or a list containing the paths of the rasters to read.
             with_order (bool):
                 True if the raster names follow a certain order. Then the raster names should have a date that follows
@@ -256,7 +258,9 @@ class MultiDataset:
                         f"To read the raster with a certain order (with_order = {with_order}, then you have to enter "
                         f"the value of the parameter file_name_data_fmt(given: {file_name_data_fmt})"
                     )
-                fn = lambda x: dt.datetime.strptime(x.group(), file_name_data_fmt)
+                fn: Callable[[Any], Any] = lambda x: dt.datetime.strptime(
+                    x.group(), file_name_data_fmt
+                )
             else:
                 fn = lambda x: int(x.group())
             list_dates = list(map(fn, list_dates))
@@ -269,12 +273,12 @@ class MultiDataset:
 
         if start is not None or end is not None:
             if date:
-                start = dt.datetime.strptime(start, fmt)
-                end = dt.datetime.strptime(end, fmt)
+                start_dt: Any = dt.datetime.strptime(str(start), fmt)
+                end_dt: Any = dt.datetime.strptime(str(end), fmt)
 
                 files = (
-                    df.loc[start <= df["date"], :]
-                    .loc[df["date"] <= end, "files"]
+                    df.loc[start_dt <= df["date"], :]
+                    .loc[df["date"] <= end_dt, "files"]
                     .values
                 )
             else:
@@ -356,10 +360,6 @@ class MultiDataset:
 
         self._values = val
 
-    @values.deleter
-    def values(self):
-        self._values = None
-
     def __getitem__(self, key):
         """Getitem."""
         if not hasattr(self, "values"):
@@ -415,7 +415,9 @@ class MultiDataset:
         dst.GetRasterBand(1).WriteArray(arr)
         return Dataset(dst)
 
-    def plot(self, band: int = 0, exclude_value: Any = None, **kwargs: Any) -> "ArrayGlyph":
+    def plot(
+        self, band: int = 0, exclude_value: Any | None = None, **kwargs: Any
+    ) -> ArrayGlyph:
         r"""Read Array.
 
             - read the values stored in a given band.
@@ -451,7 +453,7 @@ class MultiDataset:
                 | cmap                       | str, optional         | Color map style. Default is `'coolwarm_r'`. |
                 | display_cell_value         | bool                  | Whether to display the values of the cells as text. |
                 | num_size                   | int, optional         | Size of the numbers plotted on top of each cell. Default is `8`. |
-                | background_color_threshold | float \| int, optional| Threshold for deciding number color: if value > threshold → black; else white. If `None`, uses `max_value/2`. Default is `None`. |
+                | background_color_threshold | float \| int, optional| Threshold for deciding number color: if value > threshold -> black; else white. If `None`, uses `max_value/2`. Default is `None`. |
 
 
         Returns:
@@ -476,15 +478,13 @@ class MultiDataset:
         cleo.animate(time, **kwargs)
         return cleo
 
-    def to_file(
-        self, path: Union[str, List[str]], driver: str = "geotiff", band: int = 0
-    ):
+    def to_file(self, path: str | list[str], driver: str = "geotiff", band: int = 0):
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
 
         Args:
-            path (Union[str, List[str]]):
+            path (str | list[str]):
                 a path includng the name of the raster and extention.
             driver (str):
                 driver = "geotiff".
@@ -579,8 +579,8 @@ class MultiDataset:
         self._base = dst
 
     def crop(
-        self, mask: Union[Dataset, str], inplace: bool = False, touch: bool = True
-    ) -> Union[None, Dataset]:
+        self, mask: Dataset | str, inplace: bool = False, touch: bool = True
+    ) -> MultiDataset | None:
         """crop.
 
             crop matches the location of nodata value from src raster to dst raster. Mask is where the NoDatavalue will
@@ -628,14 +628,16 @@ class MultiDataset:
 
             array[i, :, :] = arr
 
+        result: MultiDataset | None = None
         if inplace:
             self._values = array
             # use the last src as
             self._base = dst
         else:
-            dataset = MultiDataset(dst, time_length=self.time_length)
-            dataset._values = array
-            return dataset
+            result = MultiDataset(dst, time_length=self.time_length)
+            result._values = array
+
+        return result
 
     # # TODO: merge ReprojectDataset and ProjectRaster they are almost the same
     # # TODO: still needs to be tested
@@ -822,18 +824,18 @@ class MultiDataset:
 
     @staticmethod
     def merge(
-        src: List[str],
+        src: list[str],
         dst: str,
-        no_data_value: Union[float, int, str] = "0",
-        init: Union[float, int, str] = "nan",
-        n: Union[float, int, str] = "nan",
+        no_data_value: float | int | str = "0",
+        init: float | int | str = "nan",
+        n: float | int | str = "nan",
     ) -> None:
         """merge.
 
             Merges a group of rasters into one raster.
 
         Args:
-            src (List[str]):
+            src (list[str]):
                 List of paths to all input rasters.
             dst (str):
                 Path to the output raster.
@@ -908,8 +910,8 @@ class MultiDataset:
     def overlay(
         self,
         classes_map,
-        exclude_value: Union[float, int] = None,
-    ) -> Dict[List[float], List[float]]:
+        exclude_value: float | int | None = None,
+    ) -> dict[list[float], list[float]]:
         """Overlay.
 
         Args:
@@ -919,11 +921,11 @@ class MultiDataset:
                 Values to exclude from extracted values. Defaults to None.
 
         Returns:
-            Dict[List[float], List[float]]:
+            dict[list[float], list[float]]:
                 Dictionary with a list of values in the basemap as keys and for each key a list of all the
                 intersected values in the maps from the path.
         """
-        values = {}
+        values: dict[Any, list[float]] = {}
         for i in range(self.time_length):
             src = self.iloc(i)
             dict_i = src.overlay(classes_map, exclude_value)

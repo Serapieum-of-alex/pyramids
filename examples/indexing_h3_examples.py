@@ -3,7 +3,7 @@ from shapely import wkt
 
 from pyramids.indexing import H3
 
-#%% geometryToIndex
+# %% geometryToIndex
 """
 get the index of the hexagon that the coordinates lie inside at a certain resolution level.
 
@@ -26,7 +26,7 @@ h3_resolution = 5
 hex = H3.geometryToIndex(lat_lon[0], lat_lon[1], h3_resolution)
 print(hex)
 
-#%% getIndex
+# %% getIndex
 """
 Get Hexagon index.
 
@@ -82,7 +82,7 @@ print(gdf["h3"])
 2   POINT (90.00000 -1.00000)  8087fffffffffff
 3   POINT (42.00000 14.00000)  8053fffffffffff
 """
-#%% indexToPolygon
+# %% indexToPolygon
 """indexToPolygon.
 
     return the polygon corresponding to the given hexagon index
@@ -98,7 +98,7 @@ Shapely Polygon
 """
 hex_index = "854c91cffffffff"
 geom = H3.indexToPolygon(hex_index)
-#%% getGeometry
+# %% getGeometry
 """Get the Hexagon polygon geometry form a hexagon index.
 
 Parameters

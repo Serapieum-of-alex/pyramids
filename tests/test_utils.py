@@ -4,14 +4,14 @@ from osgeo import gdal, ogr
 
 from pyramids.base._errors import DriverNotExistError
 from pyramids.base._utils import (
-    numpy_to_gdal_dtype,
-    gdal_to_numpy_dtype,
-    gdal_to_ogr_dtype,
     Catalog,
-    ogr_ds_to_gdal_dataset,
-    ogr_to_numpy_dtype,
     color_name_to_gdal_constant,
     gdal_constant_to_color_name,
+    gdal_to_numpy_dtype,
+    gdal_to_ogr_dtype,
+    numpy_to_gdal_dtype,
+    ogr_ds_to_gdal_dataset,
+    ogr_to_numpy_dtype,
 )
 
 
@@ -109,3 +109,99 @@ def test_gdal_constant_to_color_name():
     assert gdal_constant_to_color_name(5) == "blue"
     with pytest.raises(ValueError):
         gdal_constant_to_color_name(17)
+
+
+class TestNumpyToGdalDtypeInvalidInput:
+    """Tests for numpy_to_gdal_dtype with invalid input types."""
+
+    def test_invalid_input_raises_value_error(self):
+        """Passing a non-array, non-dtype, non-string raises ValueError."""
+        with pytest.raises(
+            ValueError,
+            match="not a numpy array",
+        ):
+            numpy_to_gdal_dtype(12345)
+
+    def test_invalid_list_raises_value_error(self):
+        """Passing a list instead of an array raises ValueError."""
+        with pytest.raises(ValueError, match="not a numpy array"):
+            numpy_to_gdal_dtype([1, 2, 3])
+
+
+class TestOgrToNumpyDtypeCoverage:
+    """Tests for ogr_to_numpy_dtype covering codes 12 and generic matched branch."""
+
+    def test_code_12_returns_int64(self):
+        """OGR code 12 (OFTInteger64) should map to np.int64."""
+        result = ogr_to_numpy_dtype(12)
+        assert result == np.int64, f"Expected np.int64 for OGR code 12, got {result}"
+
+    def test_code_2_returns_float64(self):
+        """OGR code 2 (OFTReal) should map to np.float64."""
+        result = ogr_to_numpy_dtype(2)
+        assert result == np.float64, f"Expected np.float64 for OGR code 2, got {result}"
+
+    def test_unsupported_code_raises_value_error(self):
+        """An OGR code with no matching numpy dtype should raise ValueError."""
+        with pytest.raises(ValueError, match="not supported"):
+            ogr_to_numpy_dtype(99)
+
+
+class TestImportGeopy:
+    """Tests for import_geopy utility function."""
+
+    def test_import_geopy_does_not_raise_when_installed(self):
+        """If geopy is installed, import_geopy should succeed silently."""
+        from pyramids.base._utils import import_geopy
+
+        try:
+            import geopy  # noqa: F401
+
+            # geopy is installed, so this should not raise
+            import_geopy("geopy is required")
+        except Exception:
+            pytest.skip("geopy not installed, skipping positive test")
+
+    def test_import_geopy_raises_when_missing(self, monkeypatch):
+        """If geopy import fails, OptionalPackageDoesNotExist is raised."""
+        import builtins
+
+        from pyramids.base._errors import OptionalPackageDoesNotExist
+
+        real_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            """Block geopy from being imported."""
+            if name == "geopy":
+                raise ImportError("mocked")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", mock_import)
+        from pyramids.base._utils import import_geopy
+
+        with pytest.raises(OptionalPackageDoesNotExist):
+            import_geopy("geopy is required for this test")
+
+
+class TestImportCleopatra:
+    """Tests for import_cleopatra utility function."""
+
+    def test_import_cleopatra_raises_when_missing(self, monkeypatch):
+        """If cleopatra import fails, OptionalPackageDoesNotExist is raised."""
+        import builtins
+
+        from pyramids.base._errors import OptionalPackageDoesNotExist
+
+        real_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            """Block cleopatra from being imported."""
+            if name == "cleopatra":
+                raise ImportError("mocked")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", mock_import)
+        from pyramids.base._utils import import_cleopatra
+
+        with pytest.raises(OptionalPackageDoesNotExist):
+            import_cleopatra("cleopatra is required")

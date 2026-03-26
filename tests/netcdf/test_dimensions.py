@@ -1,13 +1,14 @@
 import pytest
+
 from pyramids.netcdf.dimensions import (
-    _strip_braces,
-    _smart_split_csv,
-    _coerce_scalar,
-    _parse_values_list,
-    _format_braced_list,
     DimensionsIndex,
     DimMetaData,
-    parse_gdal_netcdf_dimensions
+    _coerce_scalar,
+    _format_braced_list,
+    _parse_values_list,
+    _smart_split_csv,
+    _strip_braces,
+    parse_gdal_netcdf_dimensions,
 )
 
 
@@ -68,7 +69,6 @@ class TestStripBraces:
         """
         with pytest.raises(TypeError):
             _strip_braces(None)  # type: ignore[arg-type]
-
 
 
 class TestSmartSplitCsv:
@@ -408,33 +408,25 @@ class TestDimensionsIndex:
 
     def test_missing_values_size_from_def(self):
         """If VALUES missing, size comes from DEF first value."""
-        md = {
-            'NETCDF_DIM_var_DEF': '{5,100}'
-        }
+        md = {'NETCDF_DIM_var_DEF': '{5,100}'}
         idx = DimensionsIndex.from_metadata(md)
         assert idx["var"].size == 5
 
     def test_non_prefixed_keys_ignored(self):
         """Keys without NETCDF_DIM_ prefix are ignored."""
-        md = {
-            'OTHER_KEY': 'abc'
-        }
+        md = {'OTHER_KEY': 'abc'}
         idx = DimensionsIndex.from_metadata(md)
         assert idx.names == []
 
     def test_extra_key_only(self):
         """EXTRA entry with list of dimensions -> dimensions created."""
-        md = {
-            'NETCDF_DIM_EXTRA': '{dim1,dim2}'
-        }
+        md = {'NETCDF_DIM_EXTRA': '{dim1,dim2}'}
         idx = DimensionsIndex.from_metadata(md)
         assert set(idx.names) == {"dim1", "dim2"}
 
     def test_def_with_non_ints(self):
         """DEF entry with non-integer tokens -> ignored in def_fields."""
-        md = {
-            'NETCDF_DIM_var_DEF': '{a,2}'
-        }
+        md = {'NETCDF_DIM_var_DEF': '{a,2}'}
         idx = DimensionsIndex.from_metadata(md)
         assert idx["var"].def_fields == (2,)
         assert idx["var"].size == 2
@@ -601,7 +593,12 @@ class TestStrMethod:
         idx = DimensionsIndex.from_metadata(md)
         s = str(idx)
         assert s.splitlines()[0].startswith("DimensionsIndex(2 dims)")
-        assert "- level0:" in s and "size=3" in s and "values=[1, 2, 3]" in s and "def=(3, 6)" in s
+        assert (
+            "- level0:" in s
+            and "size=3" in s
+            and "values=[1, 2, 3]" in s
+            and "def=(3, 6)" in s
+        )
         assert "- time:" in s and "values=[0, 31]" in s
 
 
@@ -692,10 +689,12 @@ class TestToMetadataMethod:
         # Insertion order is whatever dict kept; since we parsed sorted(dim_names)
         # inside from_metadata, the internal order is sorted. To truly test
         # sort_names=False we create an index manually.
-        idx2 = DimensionsIndex({
-            "b": DimMetaData(name="b", values=[2], size=1),
-            "a": DimMetaData(name="a", values=[1], size=1),
-        })
+        idx2 = DimensionsIndex(
+            {
+                "b": DimMetaData(name="b", values=[2], size=1),
+                "a": DimMetaData(name="a", values=[1], size=1),
+            }
+        )
         out_manual = idx2.to_metadata(sort_names=False)
         assert out_manual["NETCDF_DIM_EXTRA"] == "{b,a}"
 
@@ -711,10 +710,12 @@ class TestToMetadataMethod:
         Checks:
             Conditional emission for each field.
         """
-        idx = DimensionsIndex({
-            "onlydef": DimMetaData(name="onlydef", def_fields=(5, 1), size=5),
-            "onlyvals": DimMetaData(name="onlyvals", values=[10, 20]),
-        })
+        idx = DimensionsIndex(
+            {
+                "onlydef": DimMetaData(name="onlydef", def_fields=(5, 1), size=5),
+                "onlyvals": DimMetaData(name="onlyvals", values=[10, 20]),
+            }
+        )
         out = idx.to_metadata()
         assert out["NETCDF_DIM_EXTRA"] in ("{onlydef,onlyvals}", "{onlyvals,onlydef}")
         assert out["NETCDF_DIM_onlydef_DEF"] == "{5,1}"
@@ -759,11 +760,10 @@ class TestDimensionsIndexAdditionalEdgeCases:
         assert idx.names == ["x.y-1_2"]
         assert idx["x.y-1_2"].values == [1, 2]
 
+
 class TestParseGdalNetcdfDimensions:
     def test_wrapper_function(self):
         """Convenience wrapper delegates to from_metadata."""
-        md = {
-            'NETCDF_DIM_var_VALUES': '{4,5}'
-        }
+        md = {'NETCDF_DIM_var_VALUES': '{4,5}'}
         idx = parse_gdal_netcdf_dimensions(md)
         assert idx["var"].values == [4, 5]

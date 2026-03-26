@@ -7,19 +7,20 @@ test_stage_validation.py.
 Style: Google-style docstrings, ≤120 char lines, no inline imports,
 no primitive AAA comments, descriptive assertion messages.
 """
+
 from __future__ import annotations
+
 import os
+
 import numpy as np
 import pytest
 from osgeo import gdal
-from pyramids.netcdf.netcdf import NetCDF
 
 from pyramids.dataset import Dataset
+from pyramids.netcdf.netcdf import NetCDF
 
 
-def _make_3d_nc(
-    rows=10, cols=12, bands=3, epsg=4326, variable_name="temperature"
-):
+def _make_3d_nc(rows=10, cols=12, bands=3, epsg=4326, variable_name="temperature"):
     """Create a 3D in-memory NetCDF for testing.
 
     Returns:
@@ -28,8 +29,11 @@ def _make_3d_nc(
     arr = np.random.RandomState(42).rand(bands, rows, cols).astype(np.float64)
     geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
     return NetCDF.create_from_array(
-        arr=arr, geo=geo, epsg=epsg, no_data_value=-9999.0,
-        driver_type="netcdf", path=None,
+        arr=arr,
+        geo=geo,
+        epsg=epsg,
+        no_data_value=-9999.0,
+        path=None,
         variable_name=variable_name,
     )
 
@@ -43,8 +47,11 @@ def _make_2d_nc(rows=10, cols=12, variable_name="elevation"):
     arr = np.random.RandomState(99).rand(rows, cols).astype(np.float64)
     geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
     return NetCDF.create_from_array(
-        arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-        driver_type="netcdf", path=None,
+        arr=arr,
+        geo=geo,
+        epsg=4326,
+        no_data_value=-9999.0,
+        path=None,
         variable_name=variable_name,
     )
 
@@ -82,12 +89,12 @@ class TestInit:
         Test scenario:
             MDIM mode should set _is_md_array=True and _is_subset=False.
         """
-        assert nc_3d._is_md_array is True, (
-            f"Expected _is_md_array=True, got {nc_3d._is_md_array}"
-        )
-        assert nc_3d._is_subset is False, (
-            f"Expected _is_subset=False, got {nc_3d._is_subset}"
-        )
+        assert (
+            nc_3d._is_md_array is True
+        ), f"Expected _is_md_array=True, got {nc_3d._is_md_array}"
+        assert (
+            nc_3d._is_subset is False
+        ), f"Expected _is_subset=False, got {nc_3d._is_subset}"
 
     def test_classic_mode_sets_flags(self, noah_classic):
         """Verify __init__ with open_as_multi_dimensional=False sets correct flags.
@@ -95,12 +102,12 @@ class TestInit:
         Test scenario:
             Classic mode should set _is_md_array=False and _is_subset=False.
         """
-        assert noah_classic._is_md_array is False, (
-            f"Expected _is_md_array=False, got {noah_classic._is_md_array}"
-        )
-        assert noah_classic._is_subset is False, (
-            f"Expected _is_subset=False, got {noah_classic._is_subset}"
-        )
+        assert (
+            noah_classic._is_md_array is False
+        ), f"Expected _is_md_array=False, got {noah_classic._is_md_array}"
+        assert (
+            noah_classic._is_subset is False
+        ), f"Expected _is_subset=False, got {noah_classic._is_subset}"
 
     def test_caches_initialized_to_none(self, nc_3d):
         """Verify caches are None after construction (before first access).
@@ -235,9 +242,9 @@ class TestGeotransform:
             gt[1] should equal the cell_size property.
         """
         gt = nc_3d.geotransform
-        assert gt[1] == nc_3d.cell_size, (
-            f"Expected cell_size={nc_3d.cell_size}, got gt[1]={gt[1]}"
-        )
+        assert (
+            gt[1] == nc_3d.cell_size
+        ), f"Expected cell_size={nc_3d.cell_size}, got gt[1]={gt[1]}"
 
     def test_fallback_when_no_lon(self):
         """Verify geotransform falls back to GDAL's GetGeoTransform().
@@ -264,9 +271,9 @@ class TestFileName:
         """
         var = noah_classic.get_variable(noah_classic.variable_names[0])
         name = var.file_name
-        assert not name.startswith("NETCDF"), (
-            f"file_name should strip NETCDF prefix, got: {name}"
-        )
+        assert not name.startswith(
+            "NETCDF"
+        ), f"file_name should strip NETCDF prefix, got: {name}"
 
     def test_plain_name_unchanged(self, nc_3d):
         """Verify file_name returns unmodified name when no NETCDF prefix.
@@ -303,9 +310,7 @@ class TestNoDataValue:
         var = nc.get_variable("elevation")
         original = var.no_data_value[:]
         var._no_data_value = [-1.0]
-        assert var.no_data_value == [-1.0], (
-            f"Expected [-1.0], got {var.no_data_value}"
-        )
+        assert var.no_data_value == [-1.0], f"Expected [-1.0], got {var.no_data_value}"
         assert var.no_data_value != original, "no_data_value should have changed"
 
 
@@ -348,9 +353,9 @@ class TestDimensionNames:
             Classic-mode may return None if no root group is available.
         """
         dims = noah_classic.dimension_names
-        assert dims is None or isinstance(dims, list), (
-            f"Expected None or list, got {type(dims)}"
-        )
+        assert dims is None or isinstance(
+            dims, list
+        ), f"Expected None or list, got {type(dims)}"
 
 
 class TestGetDimension:
@@ -399,9 +404,9 @@ class TestReadMdArray:
         """
         src, md_arr, rg = nc_3d._read_md_array("temperature")
         assert isinstance(src, gdal.Dataset), f"Expected gdal.Dataset, got {type(src)}"
-        assert src.RasterCount == 3, (
-            f"Expected 3 bands for 3D variable, got {src.RasterCount}"
-        )
+        assert (
+            src.RasterCount == 3
+        ), f"Expected 3 bands for 3D variable, got {src.RasterCount}"
 
 
 class TestCheckNotContainer:
@@ -505,9 +510,7 @@ class TestGetOrCreateDimension:
         dim2 = NetCDF._get_or_create_dimension(rg, "x", values, dtype)
         dims = rg.GetDimensions()
         x_dims = [d for d in dims if d.GetName().startswith("x")]
-        assert len(x_dims) == 1, (
-            f"Expected 1 x-dimension (reused), got {len(x_dims)}"
-        )
+        assert len(x_dims) == 1, f"Expected 1 x-dimension (reused), got {len(x_dims)}"
 
     def test_creates_renamed_dim_on_size_mismatch(self):
         """Verify _get_or_create_dimension creates a renamed dim on size mismatch.
@@ -519,9 +522,7 @@ class TestGetOrCreateDimension:
         src = gdal.GetDriverByName("MEM").CreateMultiDimensional("test")
         rg = src.GetRootGroup()
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
-        NetCDF._get_or_create_dimension(
-            rg, "x", np.array([1.0, 2.0, 3.0]), dtype
-        )
+        NetCDF._get_or_create_dimension(rg, "x", np.array([1.0, 2.0, 3.0]), dtype)
         dim2 = NetCDF._get_or_create_dimension(
             rg, "x", np.array([1.0, 2.0, 3.0, 4.0, 5.0]), dtype
         )
@@ -545,9 +546,7 @@ class TestAddMdArrayToGroup:
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
         for d in src_arr.GetDimensions():
             iv = d.GetIndexingVariable()
-            NetCDF.create_main_dimension(
-                dst_rg, d.GetName(), dtype, iv.ReadAsArray()
-            )
+            NetCDF.create_main_dimension(dst_rg, d.GetName(), dtype, iv.ReadAsArray())
         NetCDF._add_md_array_to_group(dst_rg, "temp_copy", src_arr)
         copied = dst_rg.OpenMDArray("temp_copy")
         assert copied is not None, "Copied array should exist"
@@ -570,19 +569,19 @@ class TestSetVariableEdgeCases:
         ds = Dataset.create_from_array(
             np.random.rand(10, 12),
             geo=(0.0, 1.0, 0, 10.0, 0, -1.0),
-            epsg=4326, no_data_value=-9999.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         nc.set_variable(
-            "pressure", ds,
+            "pressure",
+            ds,
             attrs={"units": "hPa", "long_name": "Surface Pressure"},
         )
         rg = nc._raster.GetRootGroup()
         md_arr = rg.OpenMDArray("pressure")
         assert md_arr is not None, "pressure variable should exist"
         attr_names = [a.GetName() for a in md_arr.GetAttributes()]
-        assert "units" in attr_names, (
-            f"Expected 'units' attribute, got {attr_names}"
-        )
+        assert "units" in attr_names, f"Expected 'units' attribute, got {attr_names}"
 
     def test_set_variable_2d_array(self):
         """Verify set_variable works with 2D arrays (no band dimension).
@@ -594,7 +593,8 @@ class TestSetVariableEdgeCases:
         ds = Dataset.create_from_array(
             np.ones((10, 12)),
             geo=(0.0, 1.0, 0, 10.0, 0, -1.0),
-            epsg=4326, no_data_value=-9999.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         nc.set_variable("flat_var", ds)
         rg = nc._raster.GetRootGroup()
@@ -612,11 +612,14 @@ class TestSetVariableEdgeCases:
         nc = _make_3d_nc()
         arr = np.random.rand(3, 10, 12)
         ds = Dataset.create_from_array(
-            arr, geo=(0.0, 1.0, 0, 10.0, 0, -1.0),
-            epsg=4326, no_data_value=-9999.0,
+            arr,
+            geo=(0.0, 1.0, 0, 10.0, 0, -1.0),
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         nc.set_variable(
-            "timed_var", ds,
+            "timed_var",
+            ds,
             band_dim_name="time",
             band_dim_values=[100, 200, 300],
         )
@@ -625,9 +628,7 @@ class TestSetVariableEdgeCases:
         assert md_arr is not None, "timed_var should exist"
         dims = md_arr.GetDimensions()
         dim_names = [d.GetName() for d in dims]
-        assert "time" in dim_names, (
-            f"Expected 'time' dimension, got {dim_names}"
-        )
+        assert "time" in dim_names, f"Expected 'time' dimension, got {dim_names}"
 
 
 class TestReplaceRaster:
@@ -647,7 +648,10 @@ class TestReplaceRaster:
         new_arr = np.random.rand(4, 8, 10)
         new_geo = (0.0, 0.5, 0, 4.0, 0, -0.5)
         new_ds = Dataset.create_from_array(
-            new_arr, geo=new_geo, epsg=4326, no_data_value=-9999.0,
+            new_arr,
+            geo=new_geo,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         var._replace_raster(new_ds._raster)
         assert var.rows == 8, f"Expected 8 rows, got {var.rows}"
@@ -667,7 +671,8 @@ class TestReplaceRaster:
         new_ds = Dataset.create_from_array(
             np.random.rand(3, 5, 5),
             geo=(0.0, 1.0, 0, 5.0, 0, -1.0),
-            epsg=4326, no_data_value=-9999.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         var._replace_raster(new_ds._raster)
         assert var._is_subset is True, "_is_subset should be preserved"
@@ -735,13 +740,13 @@ class TestCopyEdgeCases:
         """
         nc = _make_3d_nc()
         copied = nc.copy()
-        assert copied.variable_names == nc.variable_names, (
-            f"Expected {nc.variable_names}, got {copied.variable_names}"
-        )
+        assert (
+            copied.variable_names == nc.variable_names
+        ), f"Expected {nc.variable_names}, got {copied.variable_names}"
 
 
 class TestEndToEndRoundTrip:
-    """End-to-end round-trip: open → extract → modify → set_variable → save → reload."""
+    """End-to-end round-trip: open -> extract -> modify -> set_variable -> save -> reload."""
 
     def test_full_round_trip_in_memory(self):
         """Verify the complete in-memory round-trip workflow.
@@ -758,20 +763,20 @@ class TestEndToEndRoundTrip:
         arr_orig = var.read_array()
         arr_modified = arr_orig * 2.0
         ds_modified = Dataset.create_from_array(
-            arr_modified, geo=var.geotransform, epsg=var.epsg,
+            arr_modified,
+            geo=var.geotransform,
+            epsg=var.epsg,
             no_data_value=var.no_data_value,
         )
         ds_modified._band_dim_name = var._band_dim_name
         ds_modified._band_dim_values = var._band_dim_values
         nc.set_variable("precip_doubled", ds_modified)
-        assert "precip_doubled" in nc.variable_names, (
-            "precip_doubled should be in variable_names"
-        )
+        assert (
+            "precip_doubled" in nc.variable_names
+        ), "precip_doubled should be in variable_names"
         rg = nc._raster.GetRootGroup()
         stored = rg.OpenMDArray("precip_doubled").ReadAsArray()
-        np.testing.assert_array_almost_equal(
-            stored, arr_modified, decimal=5
-        )
+        np.testing.assert_array_almost_equal(stored, arr_modified, decimal=5)
 
     def test_full_round_trip_to_disk(self, tmp_path):
         """Verify the complete disk round-trip workflow.
@@ -788,14 +793,12 @@ class TestEndToEndRoundTrip:
         out = str(tmp_path / "roundtrip_e2e.nc")
         nc.to_file(out)
         reloaded = NetCDF.read_file(out, open_as_multi_dimensional=True)
-        assert "wind" in reloaded.variable_names, (
-            f"Expected 'wind' in {reloaded.variable_names}"
-        )
+        assert (
+            "wind" in reloaded.variable_names
+        ), f"Expected 'wind' in {reloaded.variable_names}"
         var_reloaded = reloaded.get_variable("wind")
         arr_reloaded = var_reloaded.read_array()
-        np.testing.assert_array_almost_equal(
-            arr_orig, arr_reloaded, decimal=5
-        )
+        np.testing.assert_array_almost_equal(arr_orig, arr_reloaded, decimal=5)
 
     def test_round_trip_with_set_variable_and_disk(self, tmp_path):
         """Verify set_variable + to_file + reload preserves modified data.
@@ -811,15 +814,17 @@ class TestEndToEndRoundTrip:
         arr = var.read_array()
         arr_plus = arr + 100.0
         ds = Dataset.create_from_array(
-            arr_plus, geo=var.geotransform, epsg=var.epsg,
+            arr_plus,
+            geo=var.geotransform,
+            epsg=var.epsg,
             no_data_value=var.no_data_value,
         )
         nc.set_variable("temp_plus100", ds)
         out = str(tmp_path / "modified_roundtrip.nc")
         nc.to_file(out)
         reloaded = NetCDF.read_file(out, open_as_multi_dimensional=True)
-        assert "temp_plus100" in reloaded.variable_names, (
-            f"Modified variable not found in {reloaded.variable_names}"
-        )
+        assert (
+            "temp_plus100" in reloaded.variable_names
+        ), f"Modified variable not found in {reloaded.variable_names}"
         stored = reloaded.get_variable("temp_plus100").read_array()
         np.testing.assert_array_almost_equal(stored, arr_plus, decimal=5)

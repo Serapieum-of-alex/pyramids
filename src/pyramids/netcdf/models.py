@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
+
 from osgeo import gdal
+
 from pyramids.netcdf.utils import (
-    _dtype_to_str,
     AttributeValue,
-    _read_attributes,
+    _dtype_to_str,
+    _export_srs,
+    _full_name_with_fallback,
     _get_array_nodata,
     _get_array_scale_offset,
-    _export_srs,
     _get_block_size,
     _get_coord_variable_names,
     _get_group_name,
-    _full_name_with_fallback
+    _read_attributes,
 )
+
 
 @dataclass(frozen=True)
 class GroupInfo:
@@ -80,19 +83,19 @@ class GroupInfo:
 
     name: str
     full_name: str
-    attributes: Dict[str, AttributeValue] = field(default_factory=dict)
-    children: List[str] = field(default_factory=list)
-    arrays: List[str] = field(default_factory=list)
+    attributes: dict[str, AttributeValue] = field(default_factory=dict)
+    children: list[str] = field(default_factory=list)
+    arrays: list[str] = field(default_factory=list)
 
     @classmethod
     def from_group(
         cls,
         group: gdal.Group,
         *,
-        arrays: List[str],
-        children: List[str],
-        attributes: Optional[Dict[str, AttributeValue]] = None,
-    ) -> "GroupInfo":
+        arrays: list[str],
+        children: list[str],
+        attributes: dict[str, AttributeValue] | None = None,
+    ) -> GroupInfo:
         """Build a GroupInfo from a live GDAL Group object.
 
         Extracts the group name, full name, and attributes
@@ -132,7 +135,6 @@ class GroupInfo:
             children=list(children) if children else [],
             arrays=list(arrays) if arrays else [],
         )
-
 
 
 @dataclass(frozen=True)
@@ -212,13 +214,13 @@ class DimensionInfo:
     name: str
     full_name: str
     size: int
-    type: Optional[str] = None
-    direction: Optional[str] = None
-    indexing_variable: Optional[str] = None
-    attrs: Dict[str, Any] = field(default_factory=dict)
+    type: str | None = None
+    direction: str | None = None
+    indexing_variable: str | None = None
+    attrs: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_gdal_dim(cls, d: gdal.Dimension, group_full_name: str) -> "DimensionInfo":
+    def from_gdal_dim(cls, d: gdal.Dimension, group_full_name: str) -> DimensionInfo:
         """Build a DimensionInfo from a live GDAL Dimension.
 
         Reads name, size, type, direction, and indexing
@@ -249,7 +251,11 @@ class DimensionInfo:
         try:
             dim_full_name = d.GetFullName()
         except Exception:
-            dim_full_name = f"{group_full_name}/{dim_name}" if group_full_name != "/" else f"/{dim_name}"
+            dim_full_name = (
+                f"{group_full_name}/{dim_name}"
+                if group_full_name != "/"
+                else f"/{dim_name}"
+            )
 
         try:
             dim_size = int(d.GetSize())
@@ -269,7 +275,9 @@ class DimensionInfo:
         try:
             iv = d.GetIndexingVariable()
             if iv is not None:
-                ivname = iv.GetFullName() if hasattr(iv, "GetFullName") else iv.GetName()
+                ivname = (
+                    iv.GetFullName() if hasattr(iv, "GetFullName") else iv.GetName()
+                )
             else:
                 ivname = None
         except Exception:
@@ -389,21 +397,23 @@ class ArrayInfo:
     name: str
     full_name: str
     dtype: str
-    shape: List[int]
-    dimensions: List[str]
-    attributes: Dict[str, AttributeValue] = field(default_factory=dict)
-    unit: Optional[str] = None
-    nodata: Optional[Union[int, float, str]] = None
-    scale: Optional[float] = None
-    offset: Optional[float] = None
-    srs_wkt: Optional[str] = None
-    srs_projjson: Optional[str] = None
-    coordinate_variables: List[str] = field(default_factory=list)
-    structural_info: Optional[Dict[str, str]] = None
-    block_size: Optional[List[int]] = None
+    shape: list[int]
+    dimensions: list[str]
+    attributes: dict[str, AttributeValue] = field(default_factory=dict)
+    unit: str | None = None
+    nodata: int | float | str | None = None
+    scale: float | None = None
+    offset: float | None = None
+    srs_wkt: str | None = None
+    srs_projjson: str | None = None
+    coordinate_variables: list[str] = field(default_factory=list)
+    structural_info: dict[str, str] | None = None
+    block_size: list[int] | None = None
 
     @classmethod
-    def from_md_array(cls, md_arr: gdal.MDArray, md_arr_name: str, group_full_name: str) -> "ArrayInfo":
+    def from_md_array(
+        cls, md_arr: gdal.MDArray, md_arr_name: str, group_full_name: str
+    ) -> ArrayInfo:
         """Build an ArrayInfo from a live GDAL MDArray.
 
         Extracts name, data type, shape, dimension links,
@@ -435,7 +445,11 @@ class ArrayInfo:
         try:
             md_arr_full_name = md_arr.GetFullName()
         except Exception:
-            md_arr_full_name = f"{group_full_name}/{md_arr_name}" if group_full_name != "/" else f"/{md_arr_name}"
+            md_arr_full_name = (
+                f"{group_full_name}/{md_arr_name}"
+                if group_full_name != "/"
+                else f"/{md_arr_name}"
+            )
 
         # dtype
         try:
@@ -455,7 +469,7 @@ class ArrayInfo:
         # dimension names
         try:
             dims2 = md_arr.GetDimensions() or []
-            dim_names: List[str] = []
+            dim_names: list[str] = []
             for d in dims2:
                 try:
                     dn = d.GetFullName()
@@ -552,7 +566,7 @@ class StructuralInfo:
     """
 
     driver_name: str
-    driver_metadata: Optional[Dict[str, str]] = None
+    driver_metadata: dict[str, str] | None = None
 
     @classmethod
     def from_dataset(cls, dataset: gdal.Dataset, driver_name: str) -> StructuralInfo:
@@ -582,6 +596,7 @@ class StructuralInfo:
         except Exception:
             dmd = None
         return cls(driver_name=driver_name, driver_metadata=dmd)
+
 
 @dataclass
 class NetCDFMetadata:
@@ -676,18 +691,18 @@ class NetCDFMetadata:
     """
 
     driver: str
-    root_group: Optional[str]
-    groups: Dict[str, GroupInfo]
-    arrays: Dict[str, ArrayInfo]
-    dimensions: Dict[str, DimensionInfo]
-    global_attributes: Dict[str, AttributeValue]
-    structural: Optional[StructuralInfo]
-    created_with: Dict[str, str]
-    open_options_used: Optional[Dict[str, str]] = None
-    dimension_overview: Optional[Dict[str, Any]] = None
+    root_group: str | None
+    groups: dict[str, GroupInfo]
+    arrays: dict[str, ArrayInfo]
+    dimensions: dict[str, DimensionInfo]
+    global_attributes: dict[str, AttributeValue]
+    structural: StructuralInfo | None
+    created_with: dict[str, str]
+    open_options_used: dict[str, str] | None = None
+    dimension_overview: dict[str, Any] | None = None
 
     @property
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         """Short names of all dimensions in the dataset.
 
         Returns a list of dimension short names (e.g.
@@ -732,7 +747,7 @@ class NetCDFMetadata:
         """
         return [dim.name for dim in self.dimensions.values()]
 
-    def get_dimension(self, name: str) -> Optional[DimensionInfo]:
+    def get_dimension(self, name: str) -> DimensionInfo | None:
         """Look up a dimension by short name or full name.
 
         Tries an exact key match against the ``dimensions``
@@ -745,7 +760,7 @@ class NetCDFMetadata:
                 or full name (e.g. ``"/time"``).
 
         Returns:
-            Optional[DimensionInfo]: The matching dimension
+            DimensionInfo | None: The matching dimension
                 metadata, or ``None`` if no dimension
                 matches.
 

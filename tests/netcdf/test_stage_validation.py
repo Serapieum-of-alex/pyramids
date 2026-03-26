@@ -5,20 +5,16 @@ Stage 3 tests are marked xfail — they document the expected behavior for the
 round-trip workflow before it is implemented.
 """
 
+import geopandas as gpd
 import numpy as np
 import pytest
 from osgeo import gdal
 from shapely.geometry import Polygon
-import geopandas as gpd
 
+from pyramids.netcdf.metadata import from_json, get_metadata, to_dict, to_json
+from pyramids.netcdf.models import DimensionInfo, NetCDFMetadata
 from pyramids.netcdf.netcdf import NetCDF
-from pyramids.netcdf.models import NetCDFMetadata, DimensionInfo
-from pyramids.netcdf.metadata import get_metadata, to_json, from_json, to_dict
 
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
 def mdim_nc(noah_nc_path):
@@ -38,15 +34,14 @@ def created_nc():
     arr = np.random.rand(3, 10, 12).astype(np.float64)
     geo = (0.0, 1.0, 0, 10.0, 0, -1.0)
     return NetCDF.create_from_array(
-        arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-        driver_type="netcdf", path=None,
+        arr=arr,
+        geo=geo,
+        epsg=4326,
+        no_data_value=-9999.0,
+        path=None,
         variable_name="temperature",
     )
 
-
-# ===========================================================================
-# Stage 1 validation — Bug fixes
-# ===========================================================================
 
 class TestStage1_IsSubsetLogic:
     """NCP-1.1: is_subset must be False for root containers."""
@@ -107,15 +102,14 @@ class TestStage1_BareExceptFixed:
 
     def test_add_md_array_no_bare_except(self):
         import inspect
+
         src = inspect.getsource(NetCDF._add_md_array_to_group)
         # Should not contain bare "except:" (only "except Exception:")
         lines = src.split("\n")
         for line in lines:
             stripped = line.strip()
             if stripped.startswith("except") and stripped.endswith(":"):
-                assert "Exception" in stripped, (
-                    f"Found bare except clause: {stripped}"
-                )
+                assert "Exception" in stripped, f"Found bare except clause: {stripped}"
 
 
 class TestStage1_NoSelfInitCalls:
@@ -123,11 +117,13 @@ class TestStage1_NoSelfInitCalls:
 
     def test_add_variable_no_self_init(self):
         import inspect
+
         src = inspect.getsource(NetCDF.add_variable)
         assert "self.__init__" not in src
 
     def test_remove_variable_no_self_init(self):
         import inspect
+
         src = inspect.getsource(NetCDF.remove_variable)
         assert "self.__init__" not in src
 
@@ -155,10 +151,6 @@ class TestStage1_GetMetadataTypeDispatch:
             get_metadata("/nonexistent/file.nc")
 
 
-# ===========================================================================
-# Stage 2 validation — Core API
-# ===========================================================================
-
 class TestStage2_InitPyExports:
     """NCP-2.1: __init__.py exports key classes."""
 
@@ -166,6 +158,7 @@ class TestStage2_InitPyExports:
         from pyramids.netcdf import NetCDF as NC
         from pyramids.netcdf import NetCDFMetadata as MD
         from pyramids.netcdf import get_metadata as gm
+
         assert NC is NetCDF
         assert MD is NetCDFMetadata
         assert gm is get_metadata
@@ -215,8 +208,11 @@ class TestStage2_VariablesCaching:
         arr = np.random.rand(3, 5, 5).astype(np.float64)
         geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            path=None,
             variable_name="var1",
         )
         _ = nc.variables  # populate cache
@@ -265,10 +261,6 @@ class TestStage2_VariableNoDataValue:
         assert len(var.no_data_value) > 0
 
 
-# ===========================================================================
-# Stage 3 validation — Round-trip workflow
-# ===========================================================================
-
 class TestStage3_VariableOriginTracking:
     """RT-4: get_variable() must track parent context for round-trip."""
 
@@ -289,7 +281,7 @@ class TestStage3_VariableOriginTracking:
 
     def test_band_dim_tracked_for_3d(self, created_nc):
         var = created_nc.get_variable("temperature")
-        # 3D array → bands dimension should be tracked
+        # 3D array -> bands dimension should be tracked
         assert var._band_dim_name is not None
         assert var._band_dim_values is not None
         assert len(var._band_dim_values) == 3  # 3 bands
@@ -303,8 +295,11 @@ class TestStage3_VariableOriginTracking:
         arr = np.random.rand(10, 12).astype(np.float64)
         geo = (0.0, 1.0, 0, 10.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            path=None,
             variable_name="elevation",
         )
         var = nc.get_variable("elevation")
@@ -327,8 +322,11 @@ class TestStage3_SetVariable:
         var = created_nc.get_variable("temperature")
         arr = var.read_array() * 2
         from pyramids.dataset import Dataset
+
         modified = Dataset.create_from_array(
-            arr, geo=var.geotransform, epsg=var.epsg,
+            arr,
+            geo=var.geotransform,
+            epsg=var.epsg,
             no_data_value=var.no_data_value,
         )
         created_nc.set_variable("temp_doubled", modified)
@@ -340,8 +338,11 @@ class TestStage3_SetVariable:
         arr_orig = var.read_array()
         arr_doubled = arr_orig * 2
         from pyramids.dataset import Dataset
+
         modified = Dataset.create_from_array(
-            arr_doubled, geo=var.geotransform, epsg=var.epsg,
+            arr_doubled,
+            geo=var.geotransform,
+            epsg=var.epsg,
             no_data_value=var.no_data_value,
         )
         created_nc.set_variable("temp_check", modified)
@@ -356,12 +357,16 @@ class TestStage3_SetVariable:
         arr = np.ones((5, 5), dtype=np.float64)
         geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            path=None,
             variable_name="data",
         )
         arr2 = np.ones((5, 5), dtype=np.float64) * 42
         from pyramids.dataset import Dataset
+
         ds2 = Dataset.create_from_array(arr2, geo=geo, epsg=4326, no_data_value=-9999.0)
         nc.set_variable("data", ds2)
         assert "data" in nc.variable_names
@@ -374,8 +379,11 @@ class TestStage3_SetVariable:
         var = created_nc.get_variable("temperature")
         arr = var.read_array()
         from pyramids.dataset import Dataset
+
         ds = Dataset.create_from_array(
-            arr, geo=var.geotransform, epsg=var.epsg,
+            arr,
+            geo=var.geotransform,
+            epsg=var.epsg,
             no_data_value=var.no_data_value,
         )
         # Transfer origin metadata
@@ -390,14 +398,21 @@ class TestStage3_SetVariable:
         arr = np.random.rand(5, 5).astype(np.float64)
         geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            path=None,
             variable_name="original",
         )
         _ = nc.variables  # populate cache
         from pyramids.dataset import Dataset
+
         ds = Dataset.create_from_array(
-            np.random.rand(5, 5), geo=geo, epsg=4326, no_data_value=-9999.0,
+            np.random.rand(5, 5),
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         nc.set_variable("new_var", ds)
         assert "new_var" in nc.variables
@@ -405,9 +420,12 @@ class TestStage3_SetVariable:
     def test_set_variable_requires_mdim_container(self, classic_nc):
         """set_variable on a classic-mode container should raise."""
         from pyramids.dataset import Dataset
+
         ds = Dataset.create_from_array(
             np.random.rand(5, 5),
-            geo=(0, 1, 0, 5, 0, -1), epsg=4326, no_data_value=-9999.0,
+            geo=(0, 1, 0, 5, 0, -1),
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         with pytest.raises(ValueError, match="multidimensional container"):
             classic_nc.set_variable("test", ds)
@@ -421,13 +439,20 @@ class TestStage3_DimensionReuse:
         arr = np.random.rand(5, 8).astype(np.float64)
         geo = (0.0, 1.0, 0, 5.0, 0, -1.0)
         nc = NetCDF.create_from_array(
-            arr=arr, geo=geo, epsg=4326, no_data_value=-9999.0,
-            driver_type="netcdf", path=None,
+            arr=arr,
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
+            path=None,
             variable_name="var1",
         )
         from pyramids.dataset import Dataset
+
         ds2 = Dataset.create_from_array(
-            np.random.rand(5, 8), geo=geo, epsg=4326, no_data_value=-9999.0,
+            np.random.rand(5, 8),
+            geo=geo,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         nc.set_variable("var2", ds2)
         rg = nc._raster.GetRootGroup()
@@ -451,18 +476,16 @@ class TestStage3_RoundTripDecision:
         rather than trying to make crop/to_crs return NetCDF.
         """
         from pyramids.dataset import Dataset
+
         # Verify the workflow exists
         assert hasattr(NetCDF, "set_variable")
         assert hasattr(NetCDF, "get_variable")
         # The crop method is on Dataset, returns Dataset — by design
         import inspect
+
         sig = inspect.signature(Dataset.crop)
         assert "mask" in sig.parameters
 
-
-# ===========================================================================
-# Stage 4 validation — Save to Disk
-# ===========================================================================
 
 class TestStage4_SpatialOpsGuard:
     """NCP-3.2: Spatial operations on root container raise ValueError."""
@@ -492,6 +515,7 @@ class TestStage4_ToFile:
 
     def test_to_file_nc_creates_file(self, created_nc, tmp_path):
         import os
+
         out = str(tmp_path / "output.nc")
         created_nc.to_file(out)
         assert os.path.exists(out)
@@ -529,6 +553,7 @@ class TestStage4_Copy:
 
     def test_copy_to_disk(self, created_nc, tmp_path):
         import os
+
         out = str(tmp_path / "copied.nc")
         copied = created_nc.copy(path=out)
         assert isinstance(copied, NetCDF)
@@ -545,14 +570,12 @@ class TestStage4_Copy:
 
 
 class TestStage4_CreateCopyMdim:
-    """RT-10: Verify CreateCopy from MEM multidim → netCDF driver works."""
+    """RT-10: Verify CreateCopy from MEM multidim -> netCDF driver works."""
 
     def test_create_copy_preserves_structure(self, created_nc, tmp_path):
         """The netCDF driver CreateCopy should preserve MDIM structure."""
         out = str(tmp_path / "createcopy.nc")
-        dst = gdal.GetDriverByName("netCDF").CreateCopy(
-            out, created_nc._raster, 0
-        )
+        dst = gdal.GetDriverByName("netCDF").CreateCopy(out, created_nc._raster, 0)
         assert dst is not None
         dst.FlushCache()
         rg = dst.GetRootGroup()

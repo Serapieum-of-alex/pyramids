@@ -1,7 +1,10 @@
 import os
-import pytest
-from osgeo import gdal
+
 import numpy as np
+import pytest
+from numpy.testing import assert_allclose, assert_array_equal
+from osgeo import gdal
+
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
 
@@ -17,8 +20,8 @@ class TestProperties:
 
     def test_x_lon_y_lat(self, noah_nc_path: str):
         cube = NetCDF.read_file(noah_nc_path)
-        np.testing.assert_array_equal(cube.x, cube.lon)
-        np.testing.assert_array_equal(cube.y, cube.lat)
+        assert_array_equal(cube.x, cube.lon)
+        assert_array_equal(cube.y, cube.lat)
 
     def test_geotransform(self, noah_nc_path: str):
         cube = NetCDF.read_file(noah_nc_path)
@@ -39,7 +42,6 @@ def test_netcdf_create_from_array(
         geo=src_geotransform,
         epsg=src_epsg,
         no_data_value=src_no_data_value,
-        driver_type="netcdf",
         path=None,
         variable_name=variable_name,
     )
@@ -47,13 +49,11 @@ def test_netcdf_create_from_array(
     assert cube.variable_names == [variable_name]
     var = cube.get_variable(variable_name)
     assert var.shape == (3, 13, 14)
-    np.testing.assert_array_equal(var.read_array(), src_arr)
+    assert_array_equal(var.read_array(), src_arr)
     assert var.cell_size == 4000
     assert var.read_array(0, [3, 3, 1, 1]) == 0
-    np.testing.assert_allclose(
-        var.no_data_value, [-3.402823e38, -3.402823e38, -3.402823e38]
-    )
-    # np.testing.assert_allclose(var.geotransform, src_geotransform)
+    assert_allclose(var.no_data_value, [-3.402823e38, -3.402823e38, -3.402823e38])
+    # assert_allclose(var.geotransform, src_geotransform)
     path = "save_created_netcdf_file.nc"
     assert cube.to_file(path) is None
     new_cube = cube.copy()
@@ -82,7 +82,9 @@ class TestReadNetCDF:
         assert var.cell_size == 0.5
 
     def test_read_netcdf_file_created_by_pyramids(self, pyramids_created_nc_3d: str):
-        dataset = NetCDF.read_file(pyramids_created_nc_3d, open_as_multi_dimensional=False)
+        dataset = NetCDF.read_file(
+            pyramids_created_nc_3d, open_as_multi_dimensional=False
+        )
         # arr = dataset.read_array()
         assert dataset.variable_names == []
         dataset = NetCDF.read_file(
@@ -110,25 +112,22 @@ class TestCreateNetCDF:
         epsg = dataset.epsg
         geo = dataset.geotransform
         no_data_value = dataset.no_data_value[0]
-        band_values = [1]
         variable_name = "values"
         src = NetCDF._create_netcdf_from_array(
             arr,
             variable_name,
             cols,
             rows,
-            band_values,
-            geo,
-            epsg,
-            no_data_value,
-            driver_type="netcdf",
+            geo=geo,
+            epsg=epsg,
+            no_data_value=no_data_value,
         )
         rg = src.GetRootGroup()
         assert rg.GetMDArrayNames() == ["values", "x", "y"]
         dims = rg.GetDimensions()
         assert [dim.GetName() for dim in dims] == ["x", "y"]
         dim_x = rg.OpenMDArray("x")
-        np.testing.assert_allclose(
+        assert_allclose(
             dim_x.ReadAsArray(),
             [
                 434968.12,
@@ -183,10 +182,10 @@ class TestMultiVariablesNC:
     def test_x_lon_y_lat(self, two_variable_nc: str):
         """test getting the lat/lon/x/y values from the outer group"""
         cube = NetCDF.read_file(two_variable_nc)
-        np.testing.assert_array_equal(cube.x, np.array(range(-10, 11), dtype=float))
-        np.testing.assert_array_equal(cube.lon, np.array(range(-10, 11), dtype=float))
-        np.testing.assert_array_equal(cube.y, np.array(range(-10, 11), dtype=float))
-        np.testing.assert_array_equal(cube.lat, np.array(range(-10, 11), dtype=float))
+        assert_array_equal(cube.x, np.array(range(-10, 11), dtype=float))
+        assert_array_equal(cube.lon, np.array(range(-10, 11), dtype=float))
+        assert_array_equal(cube.y, np.array(range(-10, 11), dtype=float))
+        assert_array_equal(cube.lat, np.array(range(-10, 11), dtype=float))
 
     def test_geotransform(self, two_variable_nc: str):
         cube = NetCDF.read_file(two_variable_nc)

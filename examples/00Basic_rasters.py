@@ -10,13 +10,14 @@ from digitalearth.static import Map
 from osgeo import gdal, ogr, osr
 
 gdal.UseExceptions()
-from pyramids.dem import DEM as GC
+# %% vsimem
+from osgeo.gdal import VSIFReadL
+
 from pyramids.dataset import Dataset
+from pyramids.dem import DEM as GC
 
 # %%
 
-# %% vsimem
-from osgeo.gdal import VSIFReadL
 
 # %% Paths
 datapath = "examples/data"

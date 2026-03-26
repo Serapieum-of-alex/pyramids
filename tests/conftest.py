@@ -1,18 +1,28 @@
-from typing import List, Tuple
-from pathlib import Path
-import pytest
 import os
+import random
+from pathlib import Path
+from typing import List, Tuple
+
+import geopandas as gpd
 import numpy as np
+import pandas as pd
+import pytest
+from geopandas import GeoDataFrame
 from osgeo import gdal
 from osgeo.gdal import Dataset
-import pandas as pd
 from pandas import DataFrame
-from geopandas import GeoDataFrame
-import geopandas as gpd
-from shapely.geometry import Polygon
 from shapely import wkt
+from shapely.geometry import Polygon
+
 from tests.dataset.conftest import *
 from tests.feature.conftest import *
+
+
+@pytest.fixture(scope="session", autouse=True)
+def seed_randomness():
+    """Fix random seeds for deterministic test runs."""
+    random.seed(1337)
+    np.random.seed(1337)
 
 
 @pytest.fixture(scope="session")

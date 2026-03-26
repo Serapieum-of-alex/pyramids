@@ -3,10 +3,10 @@ import os
 from typing import List
 
 import geopandas as gpd
-import pandas as pd
-from geopandas.geodataframe import GeoDataFrame, DataFrame
 import numpy as np
+import pandas as pd
 import pytest
+from geopandas.geodataframe import DataFrame, GeoDataFrame
 from osgeo import gdal
 from osgeo.gdal import Dataset
 from shapely import wkt

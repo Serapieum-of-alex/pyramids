@@ -28,9 +28,6 @@ repos:
         name: "[py   -  check] debug statements"
       - id: detect-private-key
         name: "[cred -  check] private keys"
-      - id: fix-encoding-pragma
-        name: "[file - format] coding pragma"
-        args: [ --remove ]
       - id: mixed-line-ending
         name: "[file - format] mixed line ending"
         args: [ --fix=auto ]
@@ -43,6 +40,11 @@ repos:
         name: "[reqs - format] fix requirements.txt"
       - id: check-yaml
         name: "[yaml -  check] validate yaml"
+        exclude: mkdocs\.yml
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
+    hooks:
+      -   id: pyupgrade
   - repo: https://github.com/pycqa/flake8
     rev: 7.3.0
     hooks:
@@ -107,9 +109,10 @@ repos:
     rev: 1.9.4
     hooks:
       - id: bandit
+        args: ["-c", "pyproject.toml"]
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.1
+    rev: v8.30.0
     hooks:
       - id: gitleaks
 
@@ -135,6 +138,16 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: "[py   -  type] mypy"
+        entry: pixi run -e dev mypy
+        language: system
+        pass_filenames: false
+        always_run: true
+        types: [python]
 
   - repo: local
     hooks:

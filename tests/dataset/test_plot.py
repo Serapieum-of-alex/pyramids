@@ -1,15 +1,18 @@
-import pytest
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
+import pytest
 from osgeo import gdal
+from pandas import DataFrame
+
 from pyramids.dataset import Dataset
 from pyramids.multidataset import MultiDataset
+
 try:
     from cleopatra.array_glyph import ArrayGlyph
     from cleopatra.config import Config
 except ImportError:
     raise ImportError("Cleopatra is not installed")
+
 
 class TestPlotDataSet:
     Config.set_matplotlib_backend("agg")

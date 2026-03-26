@@ -1,17 +1,19 @@
-from typing import Any, Dict, Union, List, TypeAlias, Optional, Tuple
+from __future__ import annotations
+
 import re
 from datetime import datetime, timedelta
+from typing import Any, TypeAlias, cast
+
 from osgeo import gdal, osr
 
 # Keep simple, JSON-serializable attribute values only
-AttributeScalar: TypeAlias = Union[bool, int, float, str]
-AttributeVector: TypeAlias = List[AttributeScalar]
-AttributeValue: TypeAlias = Union[AttributeScalar, AttributeVector]
+AttributeScalar: TypeAlias = bool | int | float | str
+AttributeVector: TypeAlias = list[AttributeScalar]
+AttributeValue: TypeAlias = AttributeScalar | AttributeVector
 _ORIGIN_RE = re.compile(r'^\s*([A-Za-z]+)\s+since\s+(.+?)\s*$', re.IGNORECASE)
 
 
-
-def _full_name_with_fallback(group: gdal.Group, default_name: Optional[str] = None) -> str:
+def _full_name_with_fallback(group: gdal.Group, default_name: str | None = None) -> str:
     """Get the full hierarchical name of a GDAL group with fallback.
 
     Attempts ``group.GetFullName()`` first, then falls back to
@@ -28,14 +30,15 @@ def _full_name_with_fallback(group: gdal.Group, default_name: Optional[str] = No
         or ``"/"`` for root / unnamed groups.
     """
     try:
-        return group.GetFullName()
+        result = str(group.GetFullName())
     except Exception:
         # Root or fallback to "/<name>"
         try:
-            gname = group.GetName()
+            gname = str(group.GetName())
         except Exception:
             gname = default_name or ""
-        return "/" if not gname else f"/{gname}"
+        result = "/" if not gname else f"/{gname}"
+    return result
 
 
 def _get_group_name(group: gdal.Group) -> str:
@@ -49,13 +52,13 @@ def _get_group_name(group: gdal.Group) -> str:
         cannot be retrieved.
     """
     try:
-        gname = group.GetName()
+        gname = str(group.GetName())
     except Exception:
         gname = ""
     return gname
 
 
-def _safe_array_names(group: gdal.Group) -> List[str]:
+def _safe_array_names(group: gdal.Group) -> list[str]:
     """List multidimensional array names in a group, sorted.
 
     Args:
@@ -72,7 +75,7 @@ def _safe_array_names(group: gdal.Group) -> List[str]:
     return sorted(list(names))
 
 
-def _safe_group_names(group: gdal.Group) -> List[str]:
+def _safe_group_names(group: gdal.Group) -> list[str]:
     """List sub-group names in a group, sorted.
 
     Args:
@@ -90,7 +93,7 @@ def _safe_group_names(group: gdal.Group) -> List[str]:
     return sorted(list(names))
 
 
-def _get_root_group(dataset: gdal.Dataset) -> Optional[gdal.Group]:
+def _get_root_group(dataset: gdal.Dataset) -> gdal.Group | None:
     """Get the root group of a GDAL multidimensional dataset.
 
     Args:
@@ -106,6 +109,7 @@ def _get_root_group(dataset: gdal.Dataset) -> Optional[gdal.Group]:
     except Exception:
         return None
 
+
 def _get_driver_name(dataset: gdal.Dataset) -> str:
     """Get the short driver name for a GDAL dataset.
 
@@ -117,12 +121,13 @@ def _get_driver_name(dataset: gdal.Dataset) -> str:
         or ``"UNKNOWN"`` if retrieval fails.
     """
     try:
-        return dataset.GetDriver().ShortName
+        result = str(dataset.GetDriver().ShortName)
     except Exception:
-        return "UNKNOWN"
+        result = "UNKNOWN"
+    return result
 
 
-def _export_srs(srs: Optional[osr.SpatialReference]) -> Tuple[Optional[str], Optional[str]]:
+def _export_srs(srs: osr.SpatialReference | None) -> tuple[str | None, str | None]:
     """Export a spatial reference to WKT and PROJJSON strings.
 
     Args:
@@ -140,15 +145,17 @@ def _export_srs(srs: Optional[osr.SpatialReference]) -> Tuple[Optional[str], Opt
     try:
         wkt = srs.ExportToWkt()
     except Exception:
-        pass
+        pass  # nosec B110
     try:
         projjson = srs.ExportToJSON()
     except Exception:
-        pass
+        pass  # nosec B110
     return wkt, projjson
 
 
-def _get_array_nodata(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue]) -> Optional[Union[int, float, str]]:
+def _get_array_nodata(
+    mdarr: gdal.MDArray, attrs: dict[str, AttributeValue]
+) -> int | float | str | None:
     """Determine the no-data value for a multidimensional array.
 
     Checks CF-standard attributes (``_FillValue``,
@@ -171,22 +178,32 @@ def _get_array_nodata(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue]) -> 
                 return v[0] if v else None
             return v  # type: ignore[return-value]
     # Try driver API
-    for meth in ("GetNoDataValueAsDouble", "GetNoDataValueAsInt64", "GetNoDataValueAsString"):
+    for meth in (
+        "GetNoDataValueAsDouble",
+        "GetNoDataValueAsInt64",
+        "GetNoDataValueAsString",
+    ):
         if hasattr(mdarr, meth):
             try:
                 v = getattr(mdarr, meth)()
                 # Some GDAL versions return (value, hasval)
-                if isinstance(v, (list, tuple)) and len(v) == 2 and isinstance(v[1], (bool, int)):
+                if (
+                    isinstance(v, (list, tuple))
+                    and len(v) == 2
+                    and isinstance(v[1], (bool, int))
+                ):
                     if v[1]:
-                        return _to_py_scalar(v[0])
+                        return cast(int | float | str | None, _to_py_scalar(v[0]))
                     continue
-                return _to_py_scalar(v)
+                return cast(int | float | str | None, _to_py_scalar(v))
             except Exception:
-                continue
+                continue  # nosec B112
     return None
 
 
-def _get_array_scale_offset(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue]) -> Tuple[Optional[float], Optional[float]]:
+def _get_array_scale_offset(
+    mdarr: gdal.MDArray, attrs: dict[str, AttributeValue]
+) -> tuple[float | None, float | None]:
     """Extract scale and offset for packed data.
 
     Reads CF ``scale_factor`` / ``add_offset`` attributes first,
@@ -204,10 +221,12 @@ def _get_array_scale_offset(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue
     scale = None
     offset = None
     # CF attributes first
-    if isinstance(attrs.get("scale_factor"), (int, float)):
-        scale = float(attrs["scale_factor"])  # type: ignore[index]
-    if isinstance(attrs.get("add_offset"), (int, float)):
-        offset = float(attrs["add_offset"])  # type: ignore[index]
+    scale_raw = attrs.get("scale_factor")
+    if isinstance(scale_raw, (int, float)):
+        scale = float(scale_raw)
+    offset_raw = attrs.get("add_offset")
+    if isinstance(offset_raw, (int, float)):
+        offset = float(offset_raw)
     # GDAL API may also expose
     if hasattr(mdarr, "GetScale"):
         try:
@@ -215,18 +234,18 @@ def _get_array_scale_offset(mdarr: gdal.MDArray, attrs: Dict[str, AttributeValue
             if s is not None:
                 scale = float(s)
         except Exception:
-            pass
+            pass  # nosec B110
     if hasattr(mdarr, "GetOffset"):
         try:
             o = mdarr.GetOffset()
             if o is not None:
                 offset = float(o)
         except Exception:
-            pass
+            pass  # nosec B110
     return scale, offset
 
 
-def _get_block_size(mdarr: gdal.MDArray) -> Optional[List[int]]:
+def _get_block_size(mdarr: gdal.MDArray) -> list[int] | None:
     """Get the block (chunk) size of a multidimensional array.
 
     Args:
@@ -241,11 +260,11 @@ def _get_block_size(mdarr: gdal.MDArray) -> Optional[List[int]]:
         if bs:
             return [int(b) for b in bs]
     except Exception:
-        pass
+        pass  # nosec B110
     return None
 
 
-def _get_coord_variable_names(mdarr: gdal.MDArray) -> List[str]:
+def _get_coord_variable_names(mdarr: gdal.MDArray) -> list[str]:
     """Get the names of coordinate variables for an array.
 
     Retrieves the full or short names of each coordinate
@@ -259,7 +278,7 @@ def _get_coord_variable_names(mdarr: gdal.MDArray) -> List[str]:
         Returns an empty list if none are found or the
         query fails.
     """
-    names: List[str] = []
+    names: list[str] = []
     try:
         cvs = mdarr.GetCoordinateVariables()
     except Exception:
@@ -279,6 +298,7 @@ def _get_coord_variable_names(mdarr: gdal.MDArray) -> List[str]:
             # Fallback
             names.append(str(cv))
     return names
+
 
 def _normalize_origin_string(origin: str) -> str:
     """Normalize a CF time origin into a zero-padded datetime string.
@@ -350,6 +370,7 @@ def _normalize_origin_string(origin: str) -> str:
     else:
         return f"{y}-{m}-{d} {H}:{M}:{S}"
 
+
 def _parse_units_origin(units: str) -> tuple[str, datetime]:
     """Parse a CF time-units string into unit name and origin.
 
@@ -416,6 +437,7 @@ def _parse_units_origin(units: str) -> tuple[str, datetime]:
         origin_dt = datetime.strptime(origin_norm, "%Y-%m-%d %H:%M:%S")
 
     return unit.lower(), origin_dt
+
 
 def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S"):
     """Create a converter that maps numeric CF time offsets to date strings.
@@ -511,7 +533,7 @@ def _dtype_to_str(dt: Any) -> str:
         if isinstance(name, str) and name:
             return name
     except Exception:
-        pass
+        pass  # nosec B110
     try:
         # As a fallback, class name
         return str(dt)
@@ -560,7 +582,7 @@ def _to_py_scalar(x: Any) -> Any:
         if hasattr(x, "item") and callable(x.item):
             return x.item()
     except Exception:
-        pass
+        pass  # nosec B110
 
     if isinstance(x, bytes):
         try:
@@ -592,10 +614,10 @@ def _normalize_attr_value(val: Any) -> AttributeValue:
     """
     # Vector
     if isinstance(val, (list, tuple)):
-        return [ _to_py_scalar(v) for v in val ]
+        return [_to_py_scalar(v) for v in val]
 
     # Scalar
-    return _to_py_scalar(val)  # type: ignore[return-value]
+    return cast(AttributeValue, _to_py_scalar(val))
 
 
 def _read_attribute_value(attr: gdal.Attribute) -> AttributeValue:
@@ -619,25 +641,25 @@ def _read_attribute_value(attr: gdal.Attribute) -> AttributeValue:
     except Exception:
         # try type-specifics
         for meth in (
-                "ReadAsInt64",
-                "ReadAsInt64Array",
-                "ReadAsDouble",
-                "ReadAsDoubleArray",
-                "ReadAsString",
-                "ReadAsStringArray",
+            "ReadAsInt64",
+            "ReadAsInt64Array",
+            "ReadAsDouble",
+            "ReadAsDoubleArray",
+            "ReadAsString",
+            "ReadAsStringArray",
         ):
             if hasattr(attr, meth):
                 try:
                     val = getattr(attr, meth)()
                     break
                 except Exception:
-                    continue
+                    continue  # nosec B112
         else:
             val = None
     return _normalize_attr_value(val)
 
 
-def _read_attributes(obj: Any) -> Dict[str, AttributeValue]:
+def _read_attributes(obj: Any) -> dict[str, AttributeValue]:
     """Read all attributes from a GDAL object into a dictionary.
 
     Iterates over attributes exposed by
@@ -654,7 +676,7 @@ def _read_attributes(obj: Any) -> Dict[str, AttributeValue]:
         A dictionary mapping attribute names to their
         normalized JSON-serializable values.
     """
-    attrs: Dict[str, AttributeValue] = {}
+    attrs: dict[str, AttributeValue] = {}
     try:
         att_list = obj.GetAttributes()
     except Exception:
@@ -665,7 +687,7 @@ def _read_attributes(obj: Any) -> Dict[str, AttributeValue]:
         try:
             name = att.GetName()
         except Exception:
-            continue
+            continue  # nosec B112
         try:
             attrs[name] = _read_attribute_value(att)
         except Exception:

@@ -5,8 +5,10 @@
 Make sure the working directory is set to the examples folder in the Hapi repo"
 currunt_work_directory = Hapi/Example
 """
+
 # import os
 import numpy as np
+
 from pyramids.dataset import Dataset as R
 
 rpath = r"C:\MyComputer\01Algorithms\gis\pyramids"
@@ -18,7 +20,7 @@ BaseMapF = f"{Path}/classes.tif"
 ExcludedValue = 0
 Compressed = True
 OccupiedCellsOnly = False
-#%% one map
+# %% one map
 ExtractedValues, NonZeroCells = R.overlay(
     f"{Path}/maps/Map1.zip", BaseMapF, ExcludedValue, Compressed, OccupiedCellsOnly
 )

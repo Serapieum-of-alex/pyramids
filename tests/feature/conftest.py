@@ -5,8 +5,8 @@ import geopandas as gpd
 import pytest
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import ogr
-from shapely import wkt
 from osgeo.gdal import Dataset
+from shapely import wkt
 
 
 @pytest.fixture(scope="module")
