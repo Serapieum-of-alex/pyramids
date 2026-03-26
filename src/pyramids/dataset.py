@@ -3393,11 +3393,11 @@ class Dataset(AbstractDataset):
                     "TILED=YES",
                     f"TILE_LENGTH={tile_length}",
                 ]
-            if self._block_size is not None and self._block_size != []:
-                options += [
-                    "BLOCKXSIZE={}".format(self._block_size[0][0]),
-                    "BLOCKYSIZE={}".format(self._block_size[0][1]),
-                ]
+                if self._block_size is not None and self._block_size != []:
+                    options += [
+                        "BLOCKXSIZE={}".format(self._block_size[0][0]),
+                        "BLOCKYSIZE={}".format(self._block_size[0][1]),
+                    ]
             if creation_options is not None:
                 options += creation_options
 
