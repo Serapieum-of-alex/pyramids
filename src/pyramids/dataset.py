@@ -2416,6 +2416,7 @@ class Dataset(AbstractDataset):
 
         dst_obj = Dataset(dst_ds, access="write")
         dst_obj._set_no_data_value(no_data_value=no_data_value)
+        dst_obj._raster.FlushCache()
 
         if bands == 1:
             dst_obj.raster.GetRasterBand(1).WriteArray(arr)
@@ -2423,9 +2424,7 @@ class Dataset(AbstractDataset):
             for i in range(bands):
                 dst_obj.raster.GetRasterBand(i + 1).WriteArray(arr[i, :, :])
 
-        # flush data to disk
-        if path is not None:
-            dst_obj._raster.FlushCache()
+        dst_obj._raster.FlushCache()
         return dst_obj
 
     @classmethod
