@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -11310,7 +11310,7 @@ rasters use :class:<code>~pyramids.multidataset.MultiDataset</code>.</p>
 <a id="__codelineno-0-736" name="__codelineno-0-736"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-737" name="__codelineno-0-737"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="n">GeoDataFrame</span><span class="p">):</span>
 <a id="__codelineno-0-738" name="__codelineno-0-738"></a>            <span class="n">window</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_polygon_to_window</span><span class="p">(</span><span class="n">window</span><span class="p">)</span>
-<a id="__codelineno-0-739" name="__codelineno-0-739"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+<a id="__codelineno-0-739" name="__codelineno-0-739"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
 <a id="__codelineno-0-740" name="__codelineno-0-740"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;window must be a list of 4 integers, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-741" name="__codelineno-0-741"></a>        <span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-0-742" name="__codelineno-0-742"></a>            <span class="n">block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iloc</span><span class="p">(</span><span class="n">band</span><span class="p">)</span><span class="o">.</span><span class="n">ReadAsArray</span><span class="p">(</span>
