@@ -62,6 +62,6 @@ jobs:
       with:
         trigger: 'release'
         package-manager: 'pixi'
-        install-groups: "groups: docs"
+        install-groups: "docs"
         deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
         mike-alias: 'latest'
