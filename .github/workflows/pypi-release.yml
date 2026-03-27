@@ -28,5 +28,5 @@ jobs:
           pypi-username: __token__
           pypi-password: ${{ secrets.PYPI_PUBLISH }}
           package-manager: 'pixi'
-          install-groups: 'groups: dev'
+          install-groups: 'dev'
           verify-lock: 'false'
