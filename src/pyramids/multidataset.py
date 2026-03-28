@@ -824,7 +824,7 @@ class MultiDataset:
     @staticmethod
     def merge(
         src: list[str],
-        dst: str,
+        dst: str | Path,
         no_data_value: float | int | str = "0",
         init: float | int | str = "nan",
         n: float | int | str = "nan",
@@ -857,7 +857,7 @@ class MultiDataset:
         # src = gdal.Translate("merged_image.tif", vrt)
 
         parameters = (
-            ["", "-o", dst]
+            ["", "-o", str(dst)]
             + src
             + [
                 "-co",
