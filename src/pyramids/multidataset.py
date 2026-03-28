@@ -478,7 +478,10 @@ class MultiDataset:
         return cleo
 
     def to_file(
-        self, path: str | Path | list[str | Path], driver: str = "geotiff", band: int = 0
+        self,
+        path: str | Path | list[str | Path],
+        driver: str = "geotiff",
+        band: int = 0,
     ):
         """Save to geotiff format.
 

@@ -286,7 +286,9 @@ class FeatureCollection:
         """
         driver_gdal_name = CATALOG.get_gdal_name(driver)
         if isinstance(self.feature, DataSource):
-            ogr.GetDriverByName(driver_gdal_name).CopyDataSource(self.feature, str(path))
+            ogr.GetDriverByName(driver_gdal_name).CopyDataSource(
+                self.feature, str(path)
+            )
         else:
             self.feature.to_file(path, driver=driver_gdal_name)
 
