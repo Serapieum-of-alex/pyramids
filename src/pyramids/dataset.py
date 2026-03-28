@@ -1066,7 +1066,7 @@ class Dataset(AbstractDataset):
         )
         return df
 
-    def copy(self, path: str | None = None) -> Dataset:
+    def copy(self, path: str | Path | None = None) -> Dataset:
         """Deep copy.
 
         Args:
@@ -1128,7 +1128,7 @@ class Dataset(AbstractDataset):
         else:
             driver = "GTiff"
 
-        src = gdal.GetDriverByName(driver).CreateCopy(path, self._raster)
+        src = gdal.GetDriverByName(driver).CreateCopy(str(path), self._raster)
 
         return Dataset(src, access="write")
 
@@ -1827,7 +1827,7 @@ class Dataset(AbstractDataset):
         cleo.plot(**kwargs)
         return cleo
 
-    def translate(self, path: str | None = None, **kwargs):
+    def translate(self, path: str | Path | None = None, **kwargs):
         """Translate.
 
         The translate function can be used to
@@ -2064,7 +2064,7 @@ class Dataset(AbstractDataset):
             driver = "GTiff"
 
         options = gdal.TranslateOptions(format=driver, **kwargs)
-        dst = gdal.Translate(path, self.raster, options=options)
+        dst = gdal.Translate(str(path), self.raster, options=options)
         return Dataset(dst, access="write")
 
     @staticmethod
@@ -2105,7 +2105,7 @@ class Dataset(AbstractDataset):
         bands: int,
         dtype: int,
         driver: str = "MEM",
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> gdal.Dataset:
         """Create a GDAL driver.
 
@@ -2169,7 +2169,7 @@ class Dataset(AbstractDataset):
         top_left_corner: tuple,
         epsg: int,
         no_data_value: Any | None = None,
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> Dataset:
         """Create a new dataset and fill it with the no_data_value.
 
@@ -2281,7 +2281,7 @@ class Dataset(AbstractDataset):
         epsg: str | int = 4326,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> Dataset:
         """Create a new dataset from an array.
 
@@ -2403,7 +2403,7 @@ class Dataset(AbstractDataset):
         epsg: str | int | None = None,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> Dataset:
         dtype = numpy_to_gdal_dtype(arr)
         dst_ds = Dataset._create_dataset(
@@ -2435,7 +2435,7 @@ class Dataset(AbstractDataset):
         cls,
         src: Dataset,
         array: np.ndarray,
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> Dataset:
         """Create a new dataset like another dataset.
 
@@ -3770,7 +3770,7 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def fill(
-        self, value: float | int, inplace: bool = False, path: str | None = None
+        self, value: float | int, inplace: bool = False, path: str | Path | None = None
     ) -> Dataset | None:
         """Fill the domain cells with a certain value.
 
@@ -6504,7 +6504,7 @@ class Dataset(AbstractDataset):
     #     return percent
 
     def to_xyz(
-        self, bands: list[int] | None = None, path: str | None = None
+        self, bands: list[int] | None = None, path: str | Path | None = None
     ) -> DataFrame | None:
         """Convert to XYZ.
 
@@ -6573,7 +6573,7 @@ class Dataset(AbstractDataset):
         band_nums = bands
         arr = gdal2xyz.gdal2xyz(
             self.raster,
-            path,
+            str(path) if path is not None else None,
             skip_nodata=True,
             return_np_arrays=True,
             band_nums=band_nums,

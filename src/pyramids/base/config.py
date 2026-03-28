@@ -228,14 +228,6 @@ class LoggerManager:
                 raise ValueError(f"Invalid log level: {level}")
             level = getattr(logging, level.upper(), logging.INFO)
 
-        # Enable ANSI colors on Windows terminals when possible
-        try:  # pragma: no cover - best effort without hard dependency
-            import colorama
-
-            colorama.just_fix_windows_console()
-        except Exception:
-            pass  # nosec B110
-
         root_logger = logging.getLogger()
         root_logger.setLevel(level)
 
