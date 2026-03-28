@@ -4373,7 +4373,7 @@ class Dataset(AbstractDataset):
                 The cropped raster.
         """
         # get information from the mask raster
-        if isinstance(mask, str):
+        if isinstance(mask, (str, Path)):
             mask = Dataset.read_file(mask)
         elif isinstance(mask, Dataset):
             mask = mask

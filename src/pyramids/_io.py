@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import gzip
-import os
 import tarfile
 from pathlib import Path
 import warnings

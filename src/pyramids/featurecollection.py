@@ -11,8 +11,8 @@ gpd.io.file._EXTENSION_TO_DRIVER
 from __future__ import annotations
 
 import json
-import os
 import shutil
+from pathlib import Path
 import tempfile
 import uuid
 import warnings
