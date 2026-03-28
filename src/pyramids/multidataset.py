@@ -124,7 +124,7 @@ class MultiDataset:
     @classmethod
     def read_multiple_files(
         cls,
-        path: str | Path | list[str],
+        path: str | Path | list[str | Path],
         with_order: bool = False,
         regex_string: str = r"\d{4}.\d{2}.\d{2}",
         date: bool = True,
@@ -240,7 +240,7 @@ class MultiDataset:
             if len(files) < 1:
                 raise FileNotFoundError("The path you have provided is empty")
         else:
-            files = path[:]
+            files = [str(p) for p in path]
 
         # to sort the files in the same order as the first number in the name
         if with_order:
@@ -508,7 +508,7 @@ class MultiDataset:
             path = Path(path)
             if not path.exists():
                 path.mkdir(parents=True, exist_ok=True)
-            path = [f"{path}/{i}.{ext}" for i in range(self.time_length)]
+            path = [str(path / f"{i}.{ext}") for i in range(self.time_length)]
         else:
             if not len(path) == self.time_length:
                 raise ValueError(
