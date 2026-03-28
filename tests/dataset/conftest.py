@@ -406,7 +406,7 @@ def merge_output() -> Path:
 
 
 @pytest.fixture(scope="module")
-def match_alignment_MultiDataset() -> Path:
+def match_alignment_multi_dataset() -> Path:
     return Path("tests/data/match-align-dataset")
 
 

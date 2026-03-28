@@ -202,11 +202,11 @@ class TestReproject:
 class TestAlign:
     def test_match_alignment(
         self,
-        match_alignment_MultiDataset,
+        match_alignment_multi_dataset,
         src: MultiDataset,
     ):
         cube = MultiDataset.read_multiple_files(
-            match_alignment_MultiDataset, with_order=False
+            match_alignment_multi_dataset, with_order=False
         )
         cube.open_multi_dataset()
         mask_obj = Dataset(src)
