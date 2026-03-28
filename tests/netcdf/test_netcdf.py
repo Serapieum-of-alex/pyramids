@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -54,11 +54,11 @@ def test_netcdf_create_from_array(
     assert var.read_array(0, [3, 3, 1, 1]) == 0
     assert_allclose(var.no_data_value, [-3.402823e38, -3.402823e38, -3.402823e38])
     # assert_allclose(var.geotransform, src_geotransform)
-    path = "save_created_netcdf_file.nc"
+    path = Path("save_created_netcdf_file.nc")
     assert cube.to_file(path) is None
     new_cube = cube.copy()
     cube.close()
-    os.remove(path)
+    path.unlink()
     return new_cube
 
 

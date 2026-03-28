@@ -10,8 +10,6 @@ no primitive AAA comments, descriptive assertion messages.
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 import pytest
 from osgeo import gdal
@@ -723,10 +721,10 @@ class TestToFileEdgeCases:
             The .nc4 extension should be treated the same as .nc.
         """
         nc = _make_2d_nc()
-        out = str(tmp_path / "output.nc4")
+        out = tmp_path / "output.nc4"
         nc.to_file(out)
-        assert os.path.exists(out), f"File should exist at {out}"
-        assert os.path.getsize(out) > 0, "File should not be empty"
+        assert out.exists(), f"File should exist at {out}"
+        assert out.stat().st_size > 0, "File should not be empty"
 
 
 class TestCopyEdgeCases:
