@@ -4,11 +4,11 @@ from typing import List
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
 import pytest
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
 from osgeo.gdal import Dataset
+from pandas import DataFrame
 from shapely import wkt
 
 

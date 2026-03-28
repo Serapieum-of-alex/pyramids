@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import logging
 import warnings
-from pathlib import Path
 from collections.abc import Iterable
 from numbers import Number
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generator
 
 if TYPE_CHECKING:

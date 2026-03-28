@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 from collections import deque
-from pathlib import Path
 from dataclasses import asdict, is_dataclass
+from pathlib import Path
 from typing import Any, cast
 
 from osgeo import gdal

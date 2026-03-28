@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import gzip
 import tarfile
-from pathlib import Path
 import warnings
 import zipfile
+from pathlib import Path
 
 import numpy as np
 from osgeo import gdal

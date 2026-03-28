@@ -120,7 +120,8 @@ class TestCreateDataSource:
         ds = FeatureCollection.create_ds(driver="geojson", path=create_vector_path)
         assert isinstance(ds, DataSource)
         ds = None
-        assert create_vector_path.exists(
+        assert (
+            create_vector_path.exists()
         ), "the geojson vector driver was not created in the given path"
         # clean created files
         create_vector_path.unlink()

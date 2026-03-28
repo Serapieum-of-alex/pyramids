@@ -7,10 +7,10 @@ from typing import List, Tuple
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
 import pytest
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr
+from pandas import DataFrame
 from shapely.geometry import Polygon
 
 from pyramids.base._errors import NoDataValueError, OutOfBoundsError, ReadOnlyError
@@ -696,7 +696,7 @@ class TestSave:
             save_raster_path.unlink()
         src = Dataset(src)
         src.to_file(save_raster_path)
-        assert src.file_name == str(save_raster_path)
+        assert Path(src.file_name) == save_raster_path
         assert save_raster_path.exists()
         src = None
         save_raster_path.unlink()
@@ -732,10 +732,7 @@ class TestMathOperations:
 
 class TestFillRaster:
     def test_memory_raster(
-        self,
-        src: gdal.Dataset,
-        fill_raster_path: Path,
-        fill_raster_value: int
+        self, src: gdal.Dataset, fill_raster_path: Path, fill_raster_value: int
     ):
         src = Dataset(src)
         dst = src.fill(fill_raster_value)
@@ -752,10 +749,7 @@ class TestFillRaster:
         assert vals[0] == fill_raster_value
 
     def test_disk_raster(
-        self,
-        src: gdal.Dataset,
-        fill_raster_path: Path,
-        fill_raster_value: int
+        self, src: gdal.Dataset, fill_raster_path: Path, fill_raster_value: int
     ):
         if fill_raster_path.exists():
             fill_raster_path.unlink()

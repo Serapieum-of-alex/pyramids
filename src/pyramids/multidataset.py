@@ -225,7 +225,9 @@ class MultiDataset:
               ```
         """
         if not isinstance(path, (str, Path, list)):
-            raise TypeError(f"path input should be string/Path/list type, given: {type(path)}")
+            raise TypeError(
+                f"path input should be string/Path/list type, given: {type(path)}"
+            )
 
         if isinstance(path, (str, Path)):
             path = Path(path)
@@ -475,7 +477,9 @@ class MultiDataset:
         cleo.animate(time, **kwargs)
         return cleo
 
-    def to_file(self, path: str | Path | list[str], driver: str = "geotiff", band: int = 0):
+    def to_file(
+        self, path: str | Path | list[str], driver: str = "geotiff", band: int = 0
+    ):
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
