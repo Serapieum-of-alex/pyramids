@@ -1,14 +1,15 @@
 """Test the Dataset class."""
 
-import os
+from pathlib import Path
 from types import GeneratorType
 from typing import List, Tuple
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
 import pytest
-from geopandas.geodataframe import DataFrame, GeoDataFrame
+from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr
 from shapely.geometry import Polygon
 
@@ -126,11 +127,11 @@ class TestCreateRasterObject:
             src_arr, dst_arr, err_msg="arrays are not equal", strict=True
         )
         # copy the dataset to disk
-        path = "tests/data/geotiff/test-copy-dataset-to-disk-delete.tif"
+        path = Path("tests/data/geotiff/test-copy-dataset-to-disk-delete.tif")
         src.copy(path=path)
         src.close()
-        assert os.path.exists(path)
-        os.remove(path)
+        assert path.exists()
+        path.unlink()
 
     class TestRasterLike:
         def test_to_disk(
@@ -138,17 +139,17 @@ class TestCreateRasterObject:
             src: gdal.Dataset,
             src_arr: np.ndarray,
             src_no_data_value: float,
-            raster_like_path: str,
+            raster_like_path: Path,
         ):
             # remove the file if it exists
-            if os.path.exists(raster_like_path):
-                os.remove(raster_like_path)
+            if raster_like_path.exists():
+                raster_like_path.unlink()
 
             arr2 = np.ones(shape=src_arr.shape, dtype=np.float64) * src_no_data_value
             arr2[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
             src_obj = Dataset(src)
             dst_obj = Dataset.dataset_like(src_obj, arr2, path=raster_like_path)
-            assert os.path.exists(raster_like_path)
+            assert raster_like_path.exists()
             assert dst_obj.access == "write"
 
             arr = dst_obj.raster.ReadAsArray()
@@ -266,7 +267,7 @@ class TestAddBand:
         band = new_dataset._iloc(1)
         assert band.GetDefaultRAT() is not None
         # new_dataset.to_file("test_add_band_with_attribute_table.tif")
-        # assert os.path.exists("test_add_band_with_attribute_table.tif.aux.xml")
+        # assert Path("test_add_band_with_attribute_table.tif.aux.xml")
         # os.remove("dataset_with_attribute_table.tif.aux.xml")
 
     def test_wrong_dims_array(self, src: gdal.Dataset):
@@ -589,7 +590,7 @@ class TestSetCRS:
 
     def test_ascii(
         self,
-        ascii_without_projection: str,
+        ascii_without_projection: Path,
     ):
         proj = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]'
         dataset = Dataset.read_file(ascii_without_projection)
@@ -689,29 +690,29 @@ class TestSave:
     def test_save_rasters(
         self,
         src: gdal.Dataset,
-        save_raster_path: str,
+        save_raster_path: Path,
     ):
-        if os.path.exists(save_raster_path):
-            os.remove(save_raster_path)
+        if save_raster_path.exists():
+            save_raster_path.unlink()
         src = Dataset(src)
         src.to_file(save_raster_path)
-        assert src.file_name == save_raster_path
-        assert os.path.exists(save_raster_path)
+        assert src.file_name == str(save_raster_path)
+        assert save_raster_path.exists()
         src = None
-        os.remove(save_raster_path)
+        save_raster_path.unlink()
 
     def test_save_ascii(
         self,
         src: gdal.Dataset,
-        ascii_file_save_to: str,
+        ascii_file_save_to: Path,
     ):
-        if os.path.exists(ascii_file_save_to):
-            os.remove(ascii_file_save_to)
+        if ascii_file_save_to.exists():
+            ascii_file_save_to.unlink()
 
         src = Dataset(src)
         src.to_file(ascii_file_save_to)
-        assert os.path.exists(ascii_file_save_to)
-        os.remove(ascii_file_save_to)
+        assert ascii_file_save_to.exists()
+        ascii_file_save_to.unlink()
 
 
 class TestMathOperations:
@@ -731,7 +732,10 @@ class TestMathOperations:
 
 class TestFillRaster:
     def test_memory_raster(
-        self, src: gdal.Dataset, fill_raster_path: str, fill_raster_value: int
+        self,
+        src: gdal.Dataset,
+        fill_raster_path: Path,
+        fill_raster_value: int
     ):
         src = Dataset(src)
         dst = src.fill(fill_raster_value)
@@ -748,14 +752,17 @@ class TestFillRaster:
         assert vals[0] == fill_raster_value
 
     def test_disk_raster(
-        self, src: gdal.Dataset, fill_raster_path: str, fill_raster_value: int
+        self,
+        src: gdal.Dataset,
+        fill_raster_path: Path,
+        fill_raster_value: int
     ):
-        if os.path.exists(fill_raster_path):
-            os.remove(fill_raster_path)
+        if fill_raster_path.exists():
+            fill_raster_path.unlink()
         src = Dataset(src)
         src.fill(fill_raster_value, path=fill_raster_path)
         "now the resulted raster is saved to disk"
-        dst = gdal.Open(fill_raster_path)
+        dst = gdal.Open(str(fill_raster_path))
         arr = dst.ReadAsArray()
         no_data_val = dst.GetRasterBand(1).GetNoDataValue()
         vals = arr[~np.isclose(arr, no_data_val, rtol=0.00000000000001)]

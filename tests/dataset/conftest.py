@@ -195,13 +195,13 @@ def soil_raster() -> Dataset:
 
 
 @pytest.fixture(scope="module")
-def save_raster_path() -> str:
-    return "examples/data/save_raster_test.tif"
+def save_raster_path() -> Path:
+    return Path("examples/data/save_raster_test.tif")
 
 
 @pytest.fixture(scope="module")
-def raster_like_path() -> str:
-    return "examples/data/raster_like_saved.tif"
+def raster_like_path() -> Path:
+    return Path("examples/data/raster_like_saved.tif")
 
 
 def func1(val):
@@ -226,8 +226,8 @@ def mapalgebra_function():
 
 
 @pytest.fixture(scope="module")
-def fill_raster_path() -> str:
-    return "examples/data/fill_raster_saved.tif"
+def fill_raster_path() -> Path:
+    return Path("examples/data/fill_raster_saved.tif")
 
 
 @pytest.fixture(scope="module")
@@ -370,18 +370,18 @@ def basin_polygon() -> gpd.GeoDataFrame:
 
 
 @pytest.fixture(scope="module")
-def ascii_file_path() -> str:
-    return "tests/data/ascii/asci_example.asc"
+def ascii_file_path() -> Path:
+    return Path("tests/data/ascii/asci_example.asc")
 
 
 @pytest.fixture(scope="module")
-def ascii_without_projection() -> str:
-    return "tests/data/ascii/asci_without_projection.asc"
+def ascii_without_projection() -> Path:
+    return Path("tests/data/ascii/asci_without_projection.asc")
 
 
 @pytest.fixture(scope="module")
-def ascii_file_save_to() -> str:
-    return "tests/data/asci_write_test.asc"
+def ascii_file_save_to() -> Path:
+    return Path("tests/data/asci_write_test.asc")
 
 
 @pytest.fixture(scope="module")
