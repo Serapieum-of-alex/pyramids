@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import os
 import tarfile
+from pathlib import Path
 import warnings
 import zipfile
 
@@ -130,16 +131,19 @@ def _get_tar_path(path: str):
     return vsi_path
 
 
-def _parse_path(path: str, file_i: int = 0) -> str:
+def _parse_path(path: str | Path, file_i: int = 0) -> str:
     """Parse Path.
 
     Args:
-        path (str): Path to the file.
+        path (str | Path): Path to the file.
         file_i (int): Index to the file inside the compressed file you want to read. If the compressed file has only one file inside, it will read this file; if multiple files are compressed, it will return the first file.
 
     Returns:
         str: Path to the file to read.
     """
+    # Convert to str because the helpers build GDAL virtual filesystem strings
+    # (/vsizip/, /vsigzip/, /vsitar/) which are not real filesystem paths.
+    path = str(path)
     if _is_zip(path):
         new_path = _get_zip_path(path, file_i=file_i)
     elif _is_tar(path):
@@ -151,7 +155,7 @@ def _parse_path(path: str, file_i: int = 0) -> str:
     return str(new_path)
 
 
-def extract_from_gz(input_file: str, output_file: str, delete=False):
+def extract_from_gz(input_file: str | Path, output_file: str | Path, delete=False):
     """Extract data from zip/.gz files and save the data.
 
     Args:
@@ -162,6 +166,8 @@ def extract_from_gz(input_file: str, output_file: str, delete=False):
     Returns:
         None
     """
+    input_file = Path(input_file)
+    output_file = Path(output_file)
     with gzip.GzipFile(input_file, "rb") as zf:
         content = zf.read()
         save_file_content = open(output_file, "wb")
@@ -171,11 +177,11 @@ def extract_from_gz(input_file: str, output_file: str, delete=False):
     zf.close()
 
     if delete:
-        os.remove(input_file)
+        input_file.unlink()
 
 
 def read_file(
-    path: str,
+    path: str | Path,
     read_only: bool = True,
     open_as_multi_dimensional: bool = False,
     file_i: int = 0,
@@ -193,9 +199,9 @@ def read_file(
     Returns:
         gdal.Dataset: Opened dataset.
     """
-    if not isinstance(path, str):
+    if not isinstance(path, (str, Path)):
         raise TypeError(
-            f"the path parameter should be of string type, given: {type(path)}"
+            f"the path parameter should be of string or Path type, given: {type(path)}"
         )
     path = _parse_path(path, file_i=file_i)
     access = gdal.GA_ReadOnly if read_only else gdal.GA_Update
@@ -247,7 +253,7 @@ def insert_space(inp):
 
 
 def to_ascii(
-    arr: np.ndarray, cell_size: float, xmin, ymin, no_data_value, path: str
+    arr: np.ndarray, cell_size: float, xmin, ymin, no_data_value, path: str | Path
 ) -> None:
     """Write raster into ASCII file.
 
@@ -264,10 +270,13 @@ def to_ascii(
     Returns:
         None
     """
-    if not isinstance(path, str):
-        raise TypeError("path input should be string type")
+    if not isinstance(path, (str, Path)):
+        raise TypeError(
+            f"path input should be string or Path type, given: {type(path)}"
+        )
 
-    if os.path.exists(path):
+    path = Path(path)
+    if path.exists():
         raise FileExistsError(
             f"There is a file with the same path you have provided: {path}"
         )

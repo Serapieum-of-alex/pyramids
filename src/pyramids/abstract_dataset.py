@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from numbers import Number
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -274,7 +275,7 @@ class AbstractDataset(ABC):
 
     @classmethod
     @abstractmethod
-    def read_file(cls, path: str, read_only=True) -> AbstractDataset:
+    def read_file(cls, path: str | Path, read_only=True) -> AbstractDataset:
         """Read file.
 
         Args:

@@ -8,8 +8,8 @@ algebraic operation on cell's values.
 from __future__ import annotations
 
 import logging
-import os
 import warnings
+from pathlib import Path
 from collections.abc import Iterable
 from numbers import Number
 from typing import TYPE_CHECKING, Any, Generator
@@ -470,7 +470,7 @@ class Dataset(AbstractDataset):
     @classmethod
     def read_file(
         cls,
-        path: str,
+        path: str | Path,
         read_only=True,
         file_i: int = 0,
     ) -> Dataset:
@@ -2138,16 +2138,19 @@ class Dataset(AbstractDataset):
         """
         if path:
             driver = "GTiff" if driver == "MEM" else driver
-            if not isinstance(path, str):
-                raise TypeError("The path input should be string")
+            if not isinstance(path, (str, Path)):
+                raise TypeError(
+                    f"The path input should be string or Path type, given: {type(path)}"
+                )
+            path = Path(path)
             if driver == "GTiff":
-                if not path.endswith(".tif"):
+                if path.suffix != ".tif":
                     raise TypeError(
                         "The path to save the created raster should end with .tif"
                     )
             # LZW is a lossless compression method achieve the highest compression but with a lot of computations.
             src = gdal.GetDriverByName(driver).Create(
-                path, cols, rows, bands, dtype, ["COMPRESS=LZW"]
+                str(path), cols, rows, bands, dtype, ["COMPRESS=LZW"]
             )
         else:
             # for memory drivers
@@ -3329,7 +3332,7 @@ class Dataset(AbstractDataset):
 
     def to_file(
         self,
-        path: str,
+        path: str | Path,
         band: int = 0,
         tile_length: int | None = None,
         creation_options: list[str] | None = None,
@@ -3373,10 +3376,13 @@ class Dataset(AbstractDataset):
 
               ```
         """
-        if not isinstance(path, str):
-            raise TypeError("path input should be string type")
+        if not isinstance(path, (str, Path)):
+            raise TypeError(
+                f"path input should be string or Path type, given: {type(path)}"
+            )
 
-        extension = path.split(".")[-1]
+        path = Path(path)
+        extension = path.suffix[1:]
         driver = CATALOG.get_driver_name_by_extension(extension)
         driver_name = CATALOG.get_gdal_name(driver)
 
@@ -3404,13 +3410,13 @@ class Dataset(AbstractDataset):
             try:
                 self.raster.FlushCache()
                 dst = gdal.GetDriverByName(driver_name).CreateCopy(
-                    path, self.raster, 0, options=options
+                    str(path), self.raster, 0, options=options
                 )
                 self._update_inplace(dst, "write")
                 # flush the data to the dataset on disk.
                 dst.FlushCache()
             except RuntimeError:
-                if not os.path.exists(path):
+                if not path.exists():
                     raise FailedToSaveError(
                         f"Failed to save the {driver_name} raster to the path: {path}"
                     )
