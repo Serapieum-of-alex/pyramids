@@ -1,7 +1,7 @@
 """Tests for the MultiDataset class."""
 
-import os
 import shutil
+from pathlib import Path
 from typing import List
 
 import geopandas as gpd
@@ -202,11 +202,11 @@ class TestReproject:
 class TestAlign:
     def test_match_alignment(
         self,
-        match_alignment_MultiDataset,
+        match_alignment_multi_dataset,
         src: MultiDataset,
     ):
         cube = MultiDataset.read_multiple_files(
-            match_alignment_MultiDataset, with_order=False
+            match_alignment_multi_dataset, with_order=False
         )
         cube.open_multi_dataset()
         mask_obj = Dataset(src)
@@ -222,14 +222,14 @@ class TestSaveMultiDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        path = "tests/data/dataset/save_geotiff"
-        if os.path.exists(path):
+        path = Path("tests/data/dataset/save_geotiff")
+        if path.exists():
             shutil.rmtree(path)
 
         cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
         cube.open_multi_dataset()
         cube.to_file(path)
-        files = os.listdir(path)
+        files = list(path.iterdir())
         assert len(files) == 6
         shutil.rmtree(path)
 
@@ -239,15 +239,15 @@ class TestSaveMultiDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        rpath = "tests/data/dataset/save_geotiff"
-        if os.path.exists(rpath):
+        rpath = Path("tests/data/dataset/save_geotiff")
+        if rpath.exists():
             shutil.rmtree(rpath)
 
         cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
         cube.open_multi_dataset()
-        path = [f"{rpath}/{i}.tif" for i in range(cube.time_length)]
-        cube.to_file(path)
-        files = os.listdir(rpath)
+        file_paths = [f"{rpath}/{i}.tif" for i in range(cube.time_length)]
+        cube.to_file(file_paths)
+        files = list(rpath.iterdir())
         assert len(files) == 6
         shutil.rmtree(rpath)
 
@@ -257,14 +257,14 @@ class TestSaveMultiDataset:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        path = "tests/data/dataset/save_ascii"
-        if os.path.exists(path):
+        path = Path("tests/data/dataset/save_ascii")
+        if path.exists():
             shutil.rmtree(path)
 
         cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
         cube.open_multi_dataset()
         cube.to_file(path, driver="ascii", band=0)
-        files = os.listdir(path)
+        files = list(path.iterdir())
         assert len(files) == 6
         shutil.rmtree(path)
 
@@ -341,11 +341,11 @@ class TestCrop:
 
 def test_merge(
     merge_input_raster: List[str],
-    merge_output: str,
+    merge_output: Path,
 ):
     MultiDataset.merge(merge_input_raster, merge_output)
-    assert os.path.exists(merge_output)
-    src = gdal.Open(merge_output)
+    assert merge_output.exists()
+    src = gdal.Open(str(merge_output))
     assert src.GetRasterBand(1).GetNoDataValue() == 0
 
 
@@ -360,7 +360,7 @@ class TestApply:
         cube.apply(func)
 
 
-def test_overlay(rasters_folder_path: str, germany_classes: str):
+def test_overlay(rasters_folder_path: str, germany_classes: Path):
     cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
     cube.open_multi_dataset()
 

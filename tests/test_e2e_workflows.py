@@ -10,9 +10,9 @@ Workflows covered:
 4. Read GeoTIFF -> reproject -> align with another -> verify dimensions match
 """
 
-import os
 import shutil
 import tempfile
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -108,8 +108,8 @@ class TestMultiDatasetRoundTrip:
         values = np.random.rand(time_steps, rows, cols).astype(np.float64)
         md.values = values
 
-        tmp_dir = tempfile.mkdtemp()
-        out_dir = os.path.join(tmp_dir, "multidataset_output")
+        tmp_dir = Path(tempfile.mkdtemp())
+        out_dir = tmp_dir / "multidataset_output"
         try:
             md.to_file(out_dir)
 
@@ -317,11 +317,11 @@ class TestFeatureCollectionPropertiesE2E:
         gdf = gpd.GeoDataFrame({"score": [99.5]}, geometry=[poly], crs="EPSG:4326")
         fc = FeatureCollection(gdf)
 
-        tmp_dir = tempfile.mkdtemp()
-        path = os.path.join(tmp_dir, "test_output.geojson")
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "test_output.geojson"
         try:
             fc.to_file(path)
-            assert os.path.exists(path), "File should exist after to_file"
+            assert path.exists(), "File should exist after to_file"
             reloaded = FeatureCollection.read_file(path)
             assert isinstance(
                 reloaded.feature, gpd.GeoDataFrame
@@ -350,11 +350,11 @@ class TestGeoTiffRoundTrip:
         )
         arr_original = src.read_array()
 
-        tmp_dir = tempfile.mkdtemp()
-        path = os.path.join(tmp_dir, "test_raster.tif")
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "test_raster.tif"
         try:
             src.to_file(path)
-            assert os.path.exists(path), "GeoTIFF should be written"
+            assert path.exists(), "GeoTIFF should be written"
 
             reloaded = Dataset.read_file(path)
             arr_reloaded = reloaded.read_array()

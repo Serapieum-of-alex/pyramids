@@ -7,6 +7,7 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 from __future__ import annotations
 
 from numbers import Number
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -315,7 +316,7 @@ class NetCDF(Dataset):
     @classmethod
     def read_file(  # type: ignore[override]
         cls,
-        path: str,
+        path: str | Path,
         read_only=True,
         open_as_multi_dimensional: bool = True,
     ) -> NetCDF:
@@ -805,7 +806,7 @@ class NetCDF(Dataset):
 
     def to_file(  # type: ignore[override]
         self,
-        path: str,
+        path: str | Path,
         **kwargs,
     ) -> None:
         """Save the dataset to disk.
@@ -827,9 +828,10 @@ class NetCDF(Dataset):
             ValueError: If a root MDIM container is saved to a non-NC
                 extension (use ``.nc`` or extract a variable first).
         """
-        extension = path.rsplit(".", 1)[-1].lower()
+        path = Path(path)
+        extension = path.suffix[1:].lower()
         if extension in ("nc", "nc4"):
-            dst = gdal.GetDriverByName("netCDF").CreateCopy(path, self._raster, 0)
+            dst = gdal.GetDriverByName("netCDF").CreateCopy(str(path), self._raster, 0)
             if dst is None:
                 raise RuntimeError(f"Failed to save NetCDF to {path}")
             dst.FlushCache()
@@ -843,7 +845,7 @@ class NetCDF(Dataset):
                 )
             super().to_file(path, **kwargs)
 
-    def copy(self, path: str | None = None) -> NetCDF:
+    def copy(self, path: str | Path | None = None) -> NetCDF:
         """Create a deep copy of this NetCDF dataset.
 
         Args:
@@ -862,7 +864,7 @@ class NetCDF(Dataset):
         else:
             driver = "netCDF"
 
-        src = gdal.GetDriverByName(driver).CreateCopy(path, self._raster)
+        src = gdal.GetDriverByName(driver).CreateCopy(str(path), self._raster)
         if src is None:
             raise RuntimeError(f"Failed to copy NetCDF dataset to '{path}'")
         return NetCDF(src, access="write")
@@ -912,7 +914,7 @@ class NetCDF(Dataset):
         geo: tuple[float, float, float, float, float, float] | None = None,
         epsg: str | int = 4326,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
-        path: str | None = None,
+        path: str | Path | None = None,
         variable_name: str | None = None,
         extra_dim_name: str = "time",
         extra_dim_values: list | None = None,
@@ -1020,7 +1022,7 @@ class NetCDF(Dataset):
         geo: tuple[float, float, float, float, float, float] | None = None,
         epsg: str | int | None = None,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> gdal.Dataset:
         """Build a multidimensional GDAL dataset from an array.
 
@@ -1061,7 +1063,7 @@ class NetCDF(Dataset):
         else:
             driver_type = "MEM"
             path = "netcdf"
-        src = gdal.GetDriverByName(driver_type).CreateMultiDimensional(path)
+        src = gdal.GetDriverByName(driver_type).CreateMultiDimensional(str(path))
         rg = src.GetRootGroup()
 
         dim_x = NetCDF.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))

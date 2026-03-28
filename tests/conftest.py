@@ -1,4 +1,3 @@
-import os
 import random
 from pathlib import Path
 from typing import List, Tuple
@@ -268,17 +267,19 @@ def era5_image_internal_overviews_read_only_true() -> Dataset:
 
 @pytest.fixture(scope="session", autouse=True)
 def clean_overview_before_test(era5_raster_path: str) -> None:
+    ovr_path = Path(f"{era5_raster_path}.ovr")
     try:
-        os.remove(f"{era5_raster_path}.ovr")
+        ovr_path.unlink()
     except OSError as e:
         print(f"Error: {e.strerror}")
 
 
 @pytest.fixture
 def clean_overview_after_test(era5_raster_path: str) -> None:
+    ovr_path = Path(f"{era5_raster_path}.ovr")
     yield
     try:
-        os.remove(f"{era5_raster_path}.ovr")
+        ovr_path.unlink()
     except OSError as e:
         print(f"Error: {e.strerror}")
 

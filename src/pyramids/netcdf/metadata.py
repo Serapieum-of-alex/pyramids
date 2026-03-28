@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections import deque
 from dataclasses import asdict, is_dataclass
+from pathlib import Path
 from typing import Any, cast
 
 from osgeo import gdal
@@ -393,8 +394,8 @@ def get_metadata(
     See Also:
         MetadataBuilder: The builder class used internally.
     """
-    if isinstance(source, str):
-        ds = gdal.OpenEx(source, gdal.OF_MULTIDIM_RASTER)
+    if isinstance(source, (str, Path)):
+        ds = gdal.OpenEx(str(source), gdal.OF_MULTIDIM_RASTER)
         if ds is None:
             raise ValueError(f"Could not open '{source}' as multidimensional raster")
         builder = MetadataBuilder(ds, open_options)

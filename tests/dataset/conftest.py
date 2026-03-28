@@ -1,14 +1,14 @@
-import glob
-import os
+from pathlib import Path
 from typing import List
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pytest
-from geopandas.geodataframe import DataFrame, GeoDataFrame
+from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
 from osgeo.gdal import Dataset
+from pandas import DataFrame
 from shapely import wkt
 
 
@@ -195,13 +195,13 @@ def soil_raster() -> Dataset:
 
 
 @pytest.fixture(scope="module")
-def save_raster_path() -> str:
-    return "examples/data/save_raster_test.tif"
+def save_raster_path() -> Path:
+    return Path("examples/data/save_raster_test.tif")
 
 
 @pytest.fixture(scope="module")
-def raster_like_path() -> str:
-    return "examples/data/raster_like_saved.tif"
+def raster_like_path() -> Path:
+    return Path("examples/data/raster_like_saved.tif")
 
 
 def func1(val):
@@ -226,8 +226,8 @@ def mapalgebra_function():
 
 
 @pytest.fixture(scope="module")
-def fill_raster_path() -> str:
-    return "examples/data/fill_raster_saved.tif"
+def fill_raster_path() -> Path:
+    return Path("examples/data/fill_raster_saved.tif")
 
 
 @pytest.fixture(scope="module")
@@ -370,18 +370,18 @@ def basin_polygon() -> gpd.GeoDataFrame:
 
 
 @pytest.fixture(scope="module")
-def ascii_file_path() -> str:
-    return "tests/data/ascii/asci_example.asc"
+def ascii_file_path() -> Path:
+    return Path("tests/data/ascii/asci_example.asc")
 
 
 @pytest.fixture(scope="module")
-def ascii_without_projection() -> str:
-    return "tests/data/ascii/asci_without_projection.asc"
+def ascii_without_projection() -> Path:
+    return Path("tests/data/ascii/asci_without_projection.asc")
 
 
 @pytest.fixture(scope="module")
-def ascii_file_save_to() -> str:
-    return "tests/data/asci_write_test.asc"
+def ascii_file_save_to() -> Path:
+    return Path("tests/data/asci_write_test.asc")
 
 
 @pytest.fixture(scope="module")
@@ -396,24 +396,23 @@ def ascii_geotransform() -> tuple:
 
 @pytest.fixture(scope="module")
 def merge_input_raster() -> List[str]:
-    search_criteria = "splitted-raster*.tif"
-    path = "tests/data/geotiff/merge"
-    return glob.glob(os.path.join(path, search_criteria))
+    path = Path("tests/data/geotiff/merge")
+    return [str(p) for p in sorted(path.glob("splitted-raster*.tif"))]
 
 
 @pytest.fixture(scope="module")
-def merge_output() -> str:
-    return r"tests/data/geotiff/merge/merged_raster.tif"
+def merge_output() -> Path:
+    return Path("tests/data/geotiff/merge/merged_raster.tif")
 
 
 @pytest.fixture(scope="module")
-def match_alignment_MultiDataset() -> str:
-    return "tests/data/match-align-dataset"
+def match_alignment_multi_dataset() -> Path:
+    return Path("tests/data/match-align-dataset")
 
 
 @pytest.fixture(scope="module")
-def germany_classes() -> str:
-    return "tests/data/germany-classes.tif"
+def germany_classes() -> Path:
+    return Path("tests/data/germany-classes.tif")
 
 
 @pytest.fixture(scope="module")

@@ -33,7 +33,6 @@ dependencies = [
     "pyproj >=3.7.0",
     "PyYAML >=6.0.0",
     "Shapely >=2.0.0",
-    "colorama >=0.4.6,<0.5"
 ]
 
 [project.optional-dependencies]
@@ -101,7 +100,7 @@ where = ["src"]
 include = ["pyramids", "pyramids.*"]
 
 [tool.setuptools.package-data]
-pyramids = ["*.yaml"]
+pyramids = ["**/*.yaml"]
 
 [tool.flake8]
 ignore = ["E203", "E266", "E501", "W503", "E722", "C901", "E741", "E731"]

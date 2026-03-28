@@ -14,9 +14,9 @@ Targets untested / low-coverage code paths in
 - Error paths for ``__getitem__``, ``__setitem__``, ``open_multi_dataset``
 """
 
-import os
 import shutil
 import tempfile
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -260,24 +260,25 @@ class TestToFile:
 
     def test_to_file_with_directory_path(self, cube_with_values: MultiDataset):
         """to_file with a directory path should create one file per time step."""
-        tmp_dir = tempfile.mkdtemp()
-        out_dir = os.path.join(tmp_dir, "output_rasters")
+        tmp_dir = Path(tempfile.mkdtemp())
+        out_dir = tmp_dir / "output_rasters"
         try:
             cube_with_values.to_file(out_dir)
-            files = os.listdir(out_dir)
+            files = list(out_dir.iterdir())
             assert len(files) == 3, f"Expected 3 files, got {len(files)}"
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
     def test_to_file_with_list_of_paths(self, cube_with_values: MultiDataset):
         """to_file with a list of paths should write to each path."""
-        tmp_dir = tempfile.mkdtemp()
-        os.makedirs(os.path.join(tmp_dir, "sub"), exist_ok=True)
-        paths = [os.path.join(tmp_dir, "sub", f"raster_{i}.tif") for i in range(3)]
+        tmp_dir = Path(tempfile.mkdtemp())
+        sub_dir = tmp_dir / "sub"
+        sub_dir.mkdir(exist_ok=True)
+        paths = [sub_dir / f"raster_{i}.tif" for i in range(3)]
         try:
             cube_with_values.to_file(paths)
             for p in paths:
-                assert os.path.exists(p), f"Expected file at {p}"
+                assert p.exists(), f"Expected file at {p}"
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -329,18 +330,18 @@ class TestReadMultipleFilesErrors:
 
     def test_invalid_path_type_raises_type_error(self):
         """Passing a non-string/non-list path should raise TypeError."""
-        with pytest.raises(TypeError, match="string/list type"):
+        with pytest.raises(TypeError, match="string/Path/list type"):
             MultiDataset.read_multiple_files(12345)
 
     def test_nonexistent_path_raises_file_not_found(self, tmp_path):
         """Passing a non-existent directory should raise FileNotFoundError."""
         with pytest.raises(FileNotFoundError, match="does not exist"):
-            MultiDataset.read_multiple_files(str(tmp_path / "nonexistent_dir"))
+            MultiDataset.read_multiple_files(tmp_path / "nonexistent_dir")
 
     def test_empty_directory_raises_file_not_found(self, tmp_path):
         """A directory with no .tif files should raise FileNotFoundError."""
-        empty_dir = str(tmp_path / "empty")
-        os.makedirs(empty_dir, exist_ok=True)
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir(exist_ok=True)
         with pytest.raises(FileNotFoundError, match="empty"):
             MultiDataset.read_multiple_files(empty_dir)
 
@@ -375,11 +376,10 @@ class TestReadMultipleFilesErrors:
     def test_with_order_missing_fmt_raises(self, tmp_path):
         """Setting with_order=True and date=True without file_name_data_fmt raises."""
         src = _make_mem_dataset(rows=3, cols=3)
-        dir_path = str(tmp_path / "ordered_rasters")
-        os.makedirs(dir_path, exist_ok=True)
+        dir_path = tmp_path / "ordered_rasters"
+        dir_path.mkdir(exist_ok=True)
         for name in ["2020.01.01.tif", "2020.01.02.tif"]:
-            p = os.path.join(dir_path, name)
-            src.to_file(p)
+            src.to_file(dir_path / name)
         with pytest.raises(ValueError, match="file_name_data_fmt"):
             MultiDataset.read_multiple_files(
                 dir_path,
@@ -392,11 +392,10 @@ class TestReadMultipleFilesErrors:
     def test_with_order_numeric_no_date(self, tmp_path):
         """Reading with_order=True and date=False sorts by numeric match."""
         src = _make_mem_dataset(rows=3, cols=3)
-        dir_path = str(tmp_path / "numeric_rasters")
-        os.makedirs(dir_path, exist_ok=True)
+        dir_path = tmp_path / "numeric_rasters"
+        dir_path.mkdir(exist_ok=True)
         for name in ["3_raster.tif", "1_raster.tif", "2_raster.tif"]:
-            p = os.path.join(dir_path, name)
-            src.to_file(p)
+            src.to_file(dir_path / name)
         md = MultiDataset.read_multiple_files(
             dir_path,
             with_order=True,
@@ -408,16 +407,15 @@ class TestReadMultipleFilesErrors:
     def test_with_order_numeric_start_end_filter(self, tmp_path):
         """Numeric ordering with start/end should filter files."""
         src = _make_mem_dataset(rows=3, cols=3)
-        dir_path = str(tmp_path / "filter_rasters")
-        os.makedirs(dir_path, exist_ok=True)
+        dir_path = tmp_path / "filter_rasters"
+        dir_path.mkdir(exist_ok=True)
         for name in [
             "1_raster.tif",
             "2_raster.tif",
             "3_raster.tif",
             "4_raster.tif",
         ]:
-            p = os.path.join(dir_path, name)
-            src.to_file(p)
+            src.to_file(dir_path / name)
         md = MultiDataset.read_multiple_files(
             dir_path,
             with_order=True,

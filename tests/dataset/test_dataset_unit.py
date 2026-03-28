@@ -5,8 +5,9 @@ Covers untested methods and edge cases using in-memory GDAL datasets
 """
 
 import warnings
+from pathlib import Path
 from unittest.mock import MagicMock, patch
-import os
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -954,11 +955,9 @@ class TestCopy:
 
     def test_copy_to_disk(self, single_band_dataset, tmp_path):
         """copy(path=...) should create a file on disk."""
-        path = str(tmp_path / "test_copy.tif")
-        import os
-
+        path = tmp_path / "test_copy.tif"
         copied = single_band_dataset.copy(path=path)
-        assert os.path.exists(path), "File should exist on disk"
+        assert path.exists(), "File should exist on disk"
         assert isinstance(copied, Dataset), "Should return Dataset"
         copied.close()
 
@@ -986,14 +985,18 @@ class TestToFile:
             dtype=np.float32,
         )
         ds = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=0.05,
+            epsg=4326,
         )
-        path = str(tmp_path / "output.tif")
+        path = tmp_path / "output.tif"
         ds.to_file(path)
-        assert os.path.exists(path), "File should exist after to_file"
+        assert path.exists(), "File should exist after to_file"
         reopened = Dataset.read_file(path)
         np.testing.assert_array_almost_equal(
-            reopened.read_array(), arr,
+            reopened.read_array(),
+            arr,
             err_msg="File data differs from original",
         )
 
@@ -1091,16 +1094,14 @@ class TestCreateDataset:
 
     def test_create_on_disk(self, tmp_path):
         """_create_dataset with a .tif path creates a file on disk."""
-        import os
-
-        path = str(tmp_path / "test_create.tif")
+        path = tmp_path / "test_create.tif"
         ds = Dataset._create_dataset(
             4, 4, 1, gdal.GDT_Float32, driver="GTiff", path=path
         )
         assert ds is not None, "Disk dataset should not be None"
         ds.FlushCache()
         ds = None
-        assert os.path.exists(path), "File should exist on disk"
+        assert path.exists(), "File should exist on disk"
 
     def test_create_non_string_path_raises(self):
         """_create_dataset with a non-string path should raise TypeError."""
@@ -1308,12 +1309,10 @@ class TestTranslateWithPath:
 
     def test_translate_to_path(self, single_band_dataset, tmp_path):
         """translate with a path should save to a GTiff file."""
-        import os
-
-        path = str(tmp_path / "translated.tif")
+        path = tmp_path / "translated.tif"
         result = single_band_dataset.translate(path=path)
         assert isinstance(result, Dataset), "translate with path should return Dataset"
-        assert os.path.exists(path), "Translated file should exist on disk"
+        assert path.exists(), "Translated file should exist on disk"
 
 
 class TestWriteArrayErrors:
@@ -1487,11 +1486,9 @@ class TestToFileOptions:
 
     def test_to_file_with_creation_options(self, single_band_dataset, tmp_path):
         """to_file with creation_options should pass them to GDAL."""
-        import os
-
-        path = str(tmp_path / "opts.tif")
+        path = tmp_path / "opts.tif"
         single_band_dataset.to_file(path, creation_options=["BIGTIFF=YES"])
-        assert os.path.exists(path), "Output file with creation options should exist"
+        assert path.exists(), "Output file with creation options should exist"
 
     def test_to_file_runtime_error_raises(self, single_band_dataset):
         """to_file to an invalid path should raise FailedToSaveError."""
@@ -2309,12 +2306,10 @@ class TestToXyzPath:
 
     def test_to_xyz_to_file(self, single_band_dataset, tmp_path):
         """to_xyz with a path should write to file and return None."""
-        import os
-
-        path = str(tmp_path / "output.xyz")
+        path = tmp_path / "output.xyz"
         result = single_band_dataset.to_xyz(path=path)
         assert result is None, "to_xyz with path should return None"
-        assert os.path.exists(path), "XYZ output file should exist"
+        assert path.exists(), "XYZ output file should exist"
 
     def test_to_xyz_all_bands_default(self):
         """to_xyz with bands=None should include all bands."""
@@ -2849,12 +2844,10 @@ class TestToXyzEdgeCases:
 
     def test_to_xyz_to_file_returns_none(self, single_band_dataset, tmp_path):
         """to_xyz with path outputs to file and returns None."""
-        import os
-
-        path = str(tmp_path / "xyz_out.xyz")
+        path = tmp_path / "xyz_out.xyz"
         result = single_band_dataset.to_xyz(path=path)
         assert result is None, "to_xyz with path returns None"
-        assert os.path.exists(path), "XYZ output file should exist on disk"
+        assert path.exists(), "XYZ output file should exist on disk"
 
 
 class TestCreateNoDataNone:
@@ -3393,9 +3386,9 @@ class TestToFileBlockSize:
             no_data_value=-9999.0,
         )
         ds._block_size = [(256, 256)]
-        path = str(tmp_path / "block.tif")
+        path = tmp_path / "block.tif"
         ds.to_file(path)
-        assert os.path.exists(path), "File should exist after saving with block_size"
+        assert path.exists(), "File should exist after saving with block_size"
 
 
 class TestFillGapsLessNodata:

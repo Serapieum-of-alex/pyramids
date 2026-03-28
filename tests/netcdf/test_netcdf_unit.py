@@ -11,7 +11,7 @@ descriptive assertion error messages.
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import numpy as np
@@ -595,10 +595,10 @@ class TestToFile:
         """
         nc = _make_2d_nc()
         var = nc.get_variable("elevation")
-        out = str(tmp_path / "output.tif")
+        out = tmp_path / "output.tif"
         var.to_file(out)
-        assert os.path.exists(out), f"File should exist at {out}"
-        assert os.path.getsize(out) > 0, "File should not be empty"
+        assert out.exists(), f"File should exist at {out}"
+        assert out.stat().st_size > 0, "File should not be empty"
 
     def test_to_file_non_nc_on_container_raises(self, tmp_path):
         """Verify to_file raises ValueError for non-.nc on root containers.
@@ -607,7 +607,7 @@ class TestToFile:
         container + non-nc extension.
         """
         nc = _make_2d_nc()
-        out = str(tmp_path / "output.tif")
+        out = tmp_path / "output.tif"
         with pytest.raises(ValueError, match="Cannot save a multidimensional"):
             nc.to_file(out)
 
@@ -642,10 +642,10 @@ class TestCopy:
         Covers lines 874-876: the else branch setting driver='netCDF'.
         """
         nc = _make_2d_nc()
-        out = str(tmp_path / "copy_output.nc")
+        out = tmp_path / "copy_output.nc"
         copied = nc.copy(path=out)
         assert copied is not None, "Copy should return a valid NetCDF"
-        assert os.path.exists(out), f"File should exist at {out}"
+        assert out.exists(), f"File should exist at {out}"
 
 
 class TestCreateFromArrayAlternatives:
@@ -1015,11 +1015,11 @@ class TestRemoveVariable:
         ), "Variable should be removed from in-memory dataset"
 
 
-MSWEP_PATH = "tests/data/netcdf/MSWEP_1979010100.nc"
+MSWEP_PATH = Path("tests/data/netcdf/MSWEP_1979010100.nc")
 
 
 @pytest.mark.skipif(
-    not os.path.exists(MSWEP_PATH),
+    not MSWEP_PATH.exists(),
     reason=f"{MSWEP_PATH} not available (untracked test data)",
 )
 class TestMSWEPFile:

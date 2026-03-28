@@ -514,15 +514,13 @@ class TestStage4_ToFile:
     """NCP-3.1: to_file() overridden for NetCDF."""
 
     def test_to_file_nc_creates_file(self, created_nc, tmp_path):
-        import os
-
-        out = str(tmp_path / "output.nc")
+        out = tmp_path / "output.nc"
         created_nc.to_file(out)
-        assert os.path.exists(out)
-        assert os.path.getsize(out) > 0
+        assert out.exists()
+        assert out.stat().st_size > 0
 
     def test_to_file_nc_roundtrip_variable_names(self, created_nc, tmp_path):
-        out = str(tmp_path / "roundtrip.nc")
+        out = tmp_path / "roundtrip.nc"
         created_nc.to_file(out)
         reloaded = NetCDF.read_file(out, open_as_multi_dimensional=True)
         assert "temperature" in reloaded.variable_names
@@ -552,12 +550,10 @@ class TestStage4_Copy:
         assert "temperature" in copied.variable_names
 
     def test_copy_to_disk(self, created_nc, tmp_path):
-        import os
-
-        out = str(tmp_path / "copied.nc")
+        out = tmp_path / "copied.nc"
         copied = created_nc.copy(path=out)
         assert isinstance(copied, NetCDF)
-        assert os.path.exists(out)
+        assert out.exists()
         assert "temperature" in copied.variable_names
 
     def test_copy_preserves_data(self, created_nc):

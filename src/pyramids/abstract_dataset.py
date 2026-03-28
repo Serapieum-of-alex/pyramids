@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from numbers import Number
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -274,7 +275,7 @@ class AbstractDataset(ABC):
 
     @classmethod
     @abstractmethod
-    def read_file(cls, path: str, read_only=True) -> AbstractDataset:
+    def read_file(cls, path: str | Path, read_only=True) -> AbstractDataset:
         """Read file.
 
         Args:
@@ -642,7 +643,7 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def to_file(self, path: str, band: int = 0) -> None:
+    def to_file(self, path: str | Path, band: int = 0) -> None:
         """Save dataset to disk.
 
             to_file a raster to a path, the type of the driver (georiff/netcdf/ascii) will be implied from the

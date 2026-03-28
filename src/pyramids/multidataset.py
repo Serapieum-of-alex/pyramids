@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
-import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
@@ -125,7 +124,7 @@ class MultiDataset:
     @classmethod
     def read_multiple_files(
         cls,
-        path: str | list[str],
+        path: str | Path | list[str | Path],
         with_order: bool = False,
         regex_string: str = r"\d{4}.\d{2}.\d{2}",
         date: bool = True,
@@ -219,29 +218,29 @@ class MultiDataset:
             - Read from a pre-collected list without ordering:
 
               ```python
-              >>> import glob
-              >>> search_criteria = "*.tif"
-              >>> file_list = glob.glob(os.path.join(raster_folder, search_criteria))
+              >>> raster_folder = Path("examples/GIS/data/raster-folder")
+              >>> file_list = list(raster_folder.glob("*.tif"))
               >>> prec = MultiDataset.read_multiple_files(file_list, with_order=False)
 
               ```
         """
-        if not isinstance(path, str) and not isinstance(path, list):
-            raise TypeError(f"path input should be string/list type, given{type(path)}")
+        if not isinstance(path, (str, Path, list)):
+            raise TypeError(
+                f"path input should be string/Path/list type, given: {type(path)}"
+            )
 
-        if isinstance(path, str):
+        if isinstance(path, (str, Path)):
+            path = Path(path)
             # check whither the path exists or not
-            if not os.path.exists(path):
+            if not path.exists():
                 raise FileNotFoundError("The path you have provided does not exist")
             # get a list of all files
-            files = os.listdir(path)
-            files = [i for i in files if i.endswith(extension)]
-            # files = glob.glob(os.path.join(path, "*.tif"))
+            files = [f.name for f in path.iterdir() if f.name.endswith(extension)]
             # check whether there are files or not inside the folder
             if len(files) < 1:
                 raise FileNotFoundError("The path you have provided is empty")
         else:
-            files = path[:]
+            files = [str(p) for p in path]
 
         # to sort the files in the same order as the first number in the name
         if with_order:
@@ -478,7 +477,12 @@ class MultiDataset:
         cleo.animate(time, **kwargs)
         return cleo
 
-    def to_file(self, path: str | list[str], driver: str = "geotiff", band: int = 0):
+    def to_file(
+        self,
+        path: str | Path | list[str | Path],
+        driver: str = "geotiff",
+        band: int = 0,
+    ):
         """Save to geotiff format.
 
             saveRaster saves a raster to a path
@@ -503,17 +507,20 @@ class MultiDataset:
         """
         ext = CATALOG.get_extension(driver)
 
-        if isinstance(path, str):
-            if not Path(path).exists():
-                Path(path).mkdir(parents=True, exist_ok=True)
-            path = [f"{path}/{i}.{ext}" for i in range(self.time_length)]
+        if isinstance(path, (str, Path)):
+            path = Path(path)
+            if not path.exists():
+                path.mkdir(parents=True, exist_ok=True)
+            path = [str(path / f"{i}.{ext}") for i in range(self.time_length)]
         else:
             if not len(path) == self.time_length:
                 raise ValueError(
                     f"Length of the given paths: {len(path)} does not equal number of rasters in the data cube: {self.time_length}"
                 )
-            if not Path(path[0]).parent.exists():
-                Path(path[0]).parent.mkdir(parents=True, exist_ok=True)
+            path = [Path(p) for p in path]
+            parent = path[0].parent
+            if not parent.exists():
+                parent.mkdir(parents=True, exist_ok=True)
 
         for i in range(self.time_length):
             src = self.iloc(i)
@@ -825,7 +832,7 @@ class MultiDataset:
     @staticmethod
     def merge(
         src: list[str],
-        dst: str,
+        dst: str | Path,
         no_data_value: float | int | str = "0",
         init: float | int | str = "nan",
         n: float | int | str = "nan",
@@ -858,7 +865,7 @@ class MultiDataset:
         # src = gdal.Translate("merged_image.tif", vrt)
 
         parameters = (
-            ["", "-o", dst]
+            ["", "-o", str(dst)]
             + src
             + [
                 "-co",

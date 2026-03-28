@@ -8,10 +8,10 @@ algebraic operation on cell's values.
 from __future__ import annotations
 
 import logging
-import os
 import warnings
 from collections.abc import Iterable
 from numbers import Number
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generator
 
 if TYPE_CHECKING:
@@ -470,7 +470,7 @@ class Dataset(AbstractDataset):
     @classmethod
     def read_file(
         cls,
-        path: str,
+        path: str | Path,
         read_only=True,
         file_i: int = 0,
     ) -> Dataset:
@@ -1066,7 +1066,7 @@ class Dataset(AbstractDataset):
         )
         return df
 
-    def copy(self, path: str | None = None) -> Dataset:
+    def copy(self, path: str | Path | None = None) -> Dataset:
         """Deep copy.
 
         Args:
@@ -1128,7 +1128,7 @@ class Dataset(AbstractDataset):
         else:
             driver = "GTiff"
 
-        src = gdal.GetDriverByName(driver).CreateCopy(path, self._raster)
+        src = gdal.GetDriverByName(driver).CreateCopy(str(path), self._raster)
 
         return Dataset(src, access="write")
 
@@ -1827,7 +1827,7 @@ class Dataset(AbstractDataset):
         cleo.plot(**kwargs)
         return cleo
 
-    def translate(self, path: str | None = None, **kwargs):
+    def translate(self, path: str | Path | None = None, **kwargs):
         """Translate.
 
         The translate function can be used to
@@ -2064,7 +2064,7 @@ class Dataset(AbstractDataset):
             driver = "GTiff"
 
         options = gdal.TranslateOptions(format=driver, **kwargs)
-        dst = gdal.Translate(path, self.raster, options=options)
+        dst = gdal.Translate(str(path), self.raster, options=options)
         return Dataset(dst, access="write")
 
     @staticmethod
@@ -2105,7 +2105,7 @@ class Dataset(AbstractDataset):
         bands: int,
         dtype: int,
         driver: str = "MEM",
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> gdal.Dataset:
         """Create a GDAL driver.
 
@@ -2138,16 +2138,18 @@ class Dataset(AbstractDataset):
         """
         if path:
             driver = "GTiff" if driver == "MEM" else driver
-            if not isinstance(path, str):
-                raise TypeError("The path input should be string")
-            if driver == "GTiff":
-                if not path.endswith(".tif"):
-                    raise TypeError(
-                        "The path to save the created raster should end with .tif"
-                    )
+            if not isinstance(path, (str, Path)):
+                raise TypeError(
+                    f"The path input should be string or Path type, given: {type(path)}"
+                )
+            path = Path(path)
+            if driver == "GTiff" and path.suffix != ".tif":
+                raise TypeError(
+                    "The path to save the created raster should end with .tif"
+                )
             # LZW is a lossless compression method achieve the highest compression but with a lot of computations.
             src = gdal.GetDriverByName(driver).Create(
-                path, cols, rows, bands, dtype, ["COMPRESS=LZW"]
+                str(path), cols, rows, bands, dtype, ["COMPRESS=LZW"]
             )
         else:
             # for memory drivers
@@ -2166,7 +2168,7 @@ class Dataset(AbstractDataset):
         top_left_corner: tuple,
         epsg: int,
         no_data_value: Any | None = None,
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> Dataset:
         """Create a new dataset and fill it with the no_data_value.
 
@@ -2278,7 +2280,7 @@ class Dataset(AbstractDataset):
         epsg: str | int = 4326,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> Dataset:
         """Create a new dataset from an array.
 
@@ -2400,7 +2402,7 @@ class Dataset(AbstractDataset):
         epsg: str | int | None = None,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         driver_type: str = "MEM",
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> Dataset:
         dtype = numpy_to_gdal_dtype(arr)
         dst_ds = Dataset._create_dataset(
@@ -2432,7 +2434,7 @@ class Dataset(AbstractDataset):
         cls,
         src: Dataset,
         array: np.ndarray,
-        path: str | None = None,
+        path: str | Path | None = None,
     ) -> Dataset:
         """Create a new dataset like another dataset.
 
@@ -3329,7 +3331,7 @@ class Dataset(AbstractDataset):
 
     def to_file(
         self,
-        path: str,
+        path: str | Path,
         band: int = 0,
         tile_length: int | None = None,
         creation_options: list[str] | None = None,
@@ -3373,10 +3375,13 @@ class Dataset(AbstractDataset):
 
               ```
         """
-        if not isinstance(path, str):
-            raise TypeError("path input should be string type")
+        if not isinstance(path, (str, Path)):
+            raise TypeError(
+                f"path input should be string or Path type, given: {type(path)}"
+            )
 
-        extension = path.split(".")[-1]
+        path = Path(path)
+        extension = path.suffix[1:]
         driver = CATALOG.get_driver_name_by_extension(extension)
         driver_name = CATALOG.get_gdal_name(driver)
 
@@ -3404,13 +3409,13 @@ class Dataset(AbstractDataset):
             try:
                 self.raster.FlushCache()
                 dst = gdal.GetDriverByName(driver_name).CreateCopy(
-                    path, self.raster, 0, options=options
+                    str(path), self.raster, 0, options=options
                 )
                 self._update_inplace(dst, "write")
                 # flush the data to the dataset on disk.
                 dst.FlushCache()
             except RuntimeError:
-                if not os.path.exists(path):
+                if not path.exists():
                     raise FailedToSaveError(
                         f"Failed to save the {driver_name} raster to the path: {path}"
                     )
@@ -3764,7 +3769,7 @@ class Dataset(AbstractDataset):
         return dst_obj
 
     def fill(
-        self, value: float | int, inplace: bool = False, path: str | None = None
+        self, value: float | int, inplace: bool = False, path: str | Path | None = None
     ) -> Dataset | None:
         """Fill the domain cells with a certain value.
 
@@ -4367,7 +4372,7 @@ class Dataset(AbstractDataset):
                 The cropped raster.
         """
         # get information from the mask raster
-        if isinstance(mask, str):
+        if isinstance(mask, (str, Path)):
             mask = Dataset.read_file(mask)
         elif isinstance(mask, Dataset):
             mask = mask
@@ -6498,7 +6503,7 @@ class Dataset(AbstractDataset):
     #     return percent
 
     def to_xyz(
-        self, bands: list[int] | None = None, path: str | None = None
+        self, bands: list[int] | None = None, path: str | Path | None = None
     ) -> DataFrame | None:
         """Convert to XYZ.
 
@@ -6567,7 +6572,7 @@ class Dataset(AbstractDataset):
         band_nums = bands
         arr = gdal2xyz.gdal2xyz(
             self.raster,
-            path,
+            str(path) if path is not None else None,
             skip_nodata=True,
             return_np_arrays=True,
             band_nums=band_nums,

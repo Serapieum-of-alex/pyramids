@@ -14,8 +14,8 @@ Targets untested / low-coverage code paths in
 - ``_create_sr_from_proj`` with different string types
 """
 
-import os
 import tempfile
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -89,10 +89,10 @@ def geometry_collection_geom() -> GeometryCollection:
 @pytest.fixture()
 def ogr_datasource(simple_polygon_gdf: GeoDataFrame) -> DataSource:
     """Create an OGR DataSource in memory from a simple GeoDataFrame."""
-    temp_dir = tempfile.mkdtemp()
-    path = os.path.join(temp_dir, "test.geojson")
+    temp_dir = Path(tempfile.mkdtemp())
+    path = temp_dir / "test.geojson"
     simple_polygon_gdf.to_file(path, driver="GeoJSON")
-    ds = ogr.Open(path)
+    ds = ogr.Open(str(path))
     return ds
 
 

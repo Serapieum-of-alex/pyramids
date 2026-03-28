@@ -11,12 +11,12 @@ gpd.io.file._EXTENSION_TO_DRIVER
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import tempfile
 import uuid
 import warnings
 from numbers import Number
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
@@ -207,7 +207,7 @@ class FeatureCollection:
         return dtypes
 
     @classmethod
-    def read_file(cls, path: str) -> FeatureCollection:
+    def read_file(cls, path: str | Path) -> FeatureCollection:
         """Open a vector dataset using OGR or GeoPandas.
 
         Args:
@@ -225,7 +225,7 @@ class FeatureCollection:
 
     @staticmethod
     def create_ds(
-        driver: str = "geojson", path: str | None = None
+        driver: str = "geojson", path: str | Path | None = None
     ) -> DataSource | None:
         """Create OGR DataSource.
 
@@ -255,7 +255,7 @@ class FeatureCollection:
     @staticmethod
     def _create_driver(driver: str, path: str):
         """Create Driver."""
-        return ogr.GetDriverByName(driver).CreateDataSource(path)
+        return ogr.GetDriverByName(driver).CreateDataSource(str(path))
 
     @staticmethod
     def _copy_driver_to_memory(ds: DataSource, name: str = "memory") -> DataSource:
@@ -270,7 +270,7 @@ class FeatureCollection:
         """
         return ogr.GetDriverByName("Memory").CopyDataSource(ds, name)
 
-    def to_file(self, path: str, driver: str = "geojson") -> None:
+    def to_file(self, path: str | Path, driver: str = "geojson") -> None:
         """Save FeatureCollection to disk.
 
             Currently, saves OGR DataSource to disk.
@@ -286,7 +286,9 @@ class FeatureCollection:
         """
         driver_gdal_name = CATALOG.get_gdal_name(driver)
         if isinstance(self.feature, DataSource):
-            ogr.GetDriverByName(driver_gdal_name).CopyDataSource(self.feature, path)
+            ogr.GetDriverByName(driver_gdal_name).CopyDataSource(
+                self.feature, str(path)
+            )
         else:
             self.feature.to_file(path, driver=driver_gdal_name)
 
@@ -357,8 +359,8 @@ class FeatureCollection:
             GeoDataFrame
         """
         # Create a temporary directory for files.
-        temp_dir = tempfile.mkdtemp()
-        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        temp_dir = Path(tempfile.mkdtemp())
+        new_vector_path = temp_dir / f"{uuid.uuid1()}.geojson"
         self.to_file(new_vector_path, driver="geojson")
         gdf = gpd.read_file(new_vector_path)
 
