@@ -225,7 +225,7 @@ class FeatureCollection:
 
     @staticmethod
     def create_ds(
-        driver: str = "geojson", path: str | None = None
+        driver: str = "geojson", path: str | Path | None = None
     ) -> DataSource | None:
         """Create OGR DataSource.
 
@@ -255,7 +255,7 @@ class FeatureCollection:
     @staticmethod
     def _create_driver(driver: str, path: str):
         """Create Driver."""
-        return ogr.GetDriverByName(driver).CreateDataSource(path)
+        return ogr.GetDriverByName(driver).CreateDataSource(str(path))
 
     @staticmethod
     def _copy_driver_to_memory(ds: DataSource, name: str = "memory") -> DataSource:
