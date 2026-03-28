@@ -1495,7 +1495,7 @@ class TestExtract:
 
 
 class TestOverlay:
-    def test_single_band(self, rhine_raster: gdal.Dataset, germany_classes: str):
+    def test_single_band(self, rhine_raster: gdal.Dataset, germany_classes: Path):
         src_obj = Dataset(rhine_raster)
         classes_src = Dataset.read_file(germany_classes)
         class_dict = src_obj.overlay(classes_src)

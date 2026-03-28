@@ -401,18 +401,18 @@ def merge_input_raster() -> List[str]:
 
 
 @pytest.fixture(scope="module")
-def merge_output() -> str:
-    return r"tests/data/geotiff/merge/merged_raster.tif"
+def merge_output() -> Path:
+    return Path("tests/data/geotiff/merge/merged_raster.tif")
 
 
 @pytest.fixture(scope="module")
-def match_alignment_MultiDataset() -> str:
-    return "tests/data/match-align-dataset"
+def match_alignment_MultiDataset() -> Path:
+    return Path("tests/data/match-align-dataset")
 
 
 @pytest.fixture(scope="module")
-def germany_classes() -> str:
-    return "tests/data/germany-classes.tif"
+def germany_classes() -> Path:
+    return Path("tests/data/germany-classes.tif")
 
 
 @pytest.fixture(scope="module")
