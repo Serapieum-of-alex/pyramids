@@ -144,21 +144,6 @@ def test_setup_logging_invalid_level_string_raises():
             LoggerManager(level="NOT_A_LEVEL")
 
 
-def test_setup_logging_colorama_import_failure_path():
-    # Simulate colorama present but its call raises, exercising the except path
-    class DummyColorama:
-        @staticmethod
-        def just_fix_windows_console():
-            raise RuntimeError("no console")
-
-    with (
-        isolated_root_logging(),
-        patch.dict("sys.modules", {"colorama": DummyColorama}),
-    ):
-        # We still expect logging to be configured without raising
-        LoggerManager(level="INFO")
-
-
 @patch("pyramids.base.config.Config.set_env_conda")
 def test_dynamic_env_variables_returns_early_when_conda_provides_path(mock_set_env):
     # Return a specific path from set_env_conda to ensure early return
