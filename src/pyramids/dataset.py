@@ -2143,11 +2143,10 @@ class Dataset(AbstractDataset):
                     f"The path input should be string or Path type, given: {type(path)}"
                 )
             path = Path(path)
-            if driver == "GTiff":
-                if path.suffix != ".tif":
-                    raise TypeError(
-                        "The path to save the created raster should end with .tif"
-                    )
+            if driver == "GTiff" and path.suffix != ".tif":
+                raise TypeError(
+                    "The path to save the created raster should end with .tif"
+                )
             # LZW is a lossless compression method achieve the highest compression but with a lot of computations.
             src = gdal.GetDriverByName(driver).Create(
                 str(path), cols, rows, bands, dtype, ["COMPRESS=LZW"]
