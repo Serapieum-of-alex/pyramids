@@ -1,12 +1,12 @@
-import glob
-import os
+from pathlib import Path
 from typing import List
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
 import pytest
-from geopandas.geodataframe import DataFrame, GeoDataFrame
+from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
 from osgeo.gdal import Dataset
 from shapely import wkt
@@ -396,9 +396,8 @@ def ascii_geotransform() -> tuple:
 
 @pytest.fixture(scope="module")
 def merge_input_raster() -> List[str]:
-    search_criteria = "splitted-raster*.tif"
-    path = "tests/data/geotiff/merge"
-    return glob.glob(os.path.join(path, search_criteria))
+    path = Path("tests/data/geotiff/merge")
+    return [str(p) for p in path.glob("splitted-raster*.tif")]
 
 
 @pytest.fixture(scope="module")

@@ -207,7 +207,7 @@ class FeatureCollection:
         return dtypes
 
     @classmethod
-    def read_file(cls, path: str) -> FeatureCollection:
+    def read_file(cls, path: str | Path) -> FeatureCollection:
         """Open a vector dataset using OGR or GeoPandas.
 
         Args:
@@ -270,7 +270,7 @@ class FeatureCollection:
         """
         return ogr.GetDriverByName("Memory").CopyDataSource(ds, name)
 
-    def to_file(self, path: str, driver: str = "geojson") -> None:
+    def to_file(self, path: str | Path, driver: str = "geojson") -> None:
         """Save FeatureCollection to disk.
 
             Currently, saves OGR DataSource to disk.
@@ -357,8 +357,8 @@ class FeatureCollection:
             GeoDataFrame
         """
         # Create a temporary directory for files.
-        temp_dir = tempfile.mkdtemp()
-        new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
+        temp_dir = Path(tempfile.mkdtemp())
+        new_vector_path = temp_dir / f"{uuid.uuid1()}.geojson"
         self.to_file(new_vector_path, driver="geojson")
         gdf = gpd.read_file(new_vector_path)
 

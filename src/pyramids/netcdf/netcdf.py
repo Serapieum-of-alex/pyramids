@@ -7,6 +7,7 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 from __future__ import annotations
 
 from numbers import Number
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -315,7 +316,7 @@ class NetCDF(Dataset):
     @classmethod
     def read_file(  # type: ignore[override]
         cls,
-        path: str,
+        path: str | Path,
         read_only=True,
         open_as_multi_dimensional: bool = True,
     ) -> NetCDF:
@@ -805,7 +806,7 @@ class NetCDF(Dataset):
 
     def to_file(  # type: ignore[override]
         self,
-        path: str,
+        path: str | Path,
         **kwargs,
     ) -> None:
         """Save the dataset to disk.
