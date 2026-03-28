@@ -276,7 +276,7 @@ class TestToFile:
         sub_dir.mkdir(exist_ok=True)
         paths = [sub_dir / f"raster_{i}.tif" for i in range(3)]
         try:
-            cube_with_values.to_file([str(p) for p in paths])
+            cube_with_values.to_file(paths)
             for p in paths:
                 assert p.exists(), f"Expected file at {p}"
         finally:

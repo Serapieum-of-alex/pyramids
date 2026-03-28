@@ -478,7 +478,7 @@ class MultiDataset:
         return cleo
 
     def to_file(
-        self, path: str | Path | list[str], driver: str = "geotiff", band: int = 0
+        self, path: str | Path | list[str | Path], driver: str = "geotiff", band: int = 0
     ):
         """Save to geotiff format.
 
@@ -514,7 +514,8 @@ class MultiDataset:
                 raise ValueError(
                     f"Length of the given paths: {len(path)} does not equal number of rasters in the data cube: {self.time_length}"
                 )
-            parent = Path(path[0]).parent
+            path = [Path(p) for p in path]
+            parent = path[0].parent
             if not parent.exists():
                 parent.mkdir(parents=True, exist_ok=True)
 
