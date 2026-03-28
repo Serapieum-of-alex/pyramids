@@ -1,4 +1,4 @@
-# import numpy as np
+from pathlib import Path
 from typing import List, Tuple
 
 import geopandas as gpd
@@ -20,8 +20,8 @@ def coordinates_wkt() -> str:
 
 
 @pytest.fixture(scope="module")
-def create_vector_path() -> str:
-    return "tests/data/create_geojson_datasource.geojson"
+def create_vector_path() -> Path:
+    return Path("tests/data/create_geojson_datasource.geojson")
 
 
 @pytest.fixture(scope="module")
@@ -65,8 +65,8 @@ def gdf_bound() -> list:
 
 
 @pytest.fixture(scope="module")
-def test_save_vector_path() -> str:
-    return "tests/data/test_save_vector.geojson"
+def test_save_vector_path() -> Path:
+    return Path("tests/data/test_save_vector.geojson")
 
 
 @pytest.fixture(scope="module")

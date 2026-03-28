@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
@@ -96,35 +96,34 @@ class TestReadFile:
 
 
 class TestToFile:
-    def test_save_ds(self, data_source: DataSource, test_save_vector_path: str):
+    def test_save_ds(self, data_source: DataSource, test_save_vector_path: Path):
         vector = FeatureCollection(data_source)
         vector.to_file(test_save_vector_path)
-        assert os.path.exists(test_save_vector_path), "The vector file does not exist"
+        assert test_save_vector_path.exists(), "The vector file does not exist"
         # read the vector to check it
-        assert ogr.GetDriverByName("GeoJSON").Open(test_save_vector_path)
+        assert ogr.GetDriverByName("GeoJSON").Open(str(test_save_vector_path))
         # clean
-        os.remove(test_save_vector_path)
+        test_save_vector_path.unlink()
 
-    def test_save_gdf(self, gdf: GeoDataFrame, test_save_vector_path: str):
+    def test_save_gdf(self, gdf: GeoDataFrame, test_save_vector_path: Path):
         vector = FeatureCollection(gdf)
         vector.to_file(test_save_vector_path)
-        assert os.path.exists(test_save_vector_path), "The vector file does not exist"
+        assert test_save_vector_path.exists(), "The vector file does not exist"
         # clean
-        os.remove(test_save_vector_path)
+        test_save_vector_path.unlink()
 
 
 class TestCreateDataSource:
-    def test_create_geojson_data_source(self, create_vector_path: str):
-        if os.path.exists(create_vector_path):
-            os.remove(create_vector_path)
+    def test_create_geojson_data_source(self, create_vector_path: Path):
+        if create_vector_path.exists():
+            create_vector_path.unlink()
         ds = FeatureCollection.create_ds(driver="geojson", path=create_vector_path)
         assert isinstance(ds, DataSource)
         ds = None
-        assert os.path.exists(
-            create_vector_path
+        assert create_vector_path.exists(
         ), "the geojson vector driver was not created in the given path"
         # clean created files
-        os.remove(create_vector_path)
+        create_vector_path.unlink()
 
     def test_create_memory_data_source(
         self,

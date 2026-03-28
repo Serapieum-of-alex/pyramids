@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from typing import List
 
 import pytest
@@ -80,10 +80,11 @@ def test_extract_from_gz(
     one_compressed_file_gzip,
     unzip_gzip_file_name,
 ):
+    unzip_gzip_file_name = Path(unzip_gzip_file_name)
     extract_from_gz(one_compressed_file_gzip, unzip_gzip_file_name, delete=False)
-    assert os.path.exists(unzip_gzip_file_name)
+    assert unzip_gzip_file_name.exists()
     # deleting the uncompressed file
-    os.remove(unzip_gzip_file_name)
+    unzip_gzip_file_name.unlink()
 
 
 class TestReadZip:
@@ -174,14 +175,14 @@ class TestExtractFromGzDelete:
         """Extracting with delete=True should remove the original .gz file."""
         # create a temporary gzip file
         content = b"Hello World compressed content"
-        gz_path = str(tmp_path / "test_delete.gz")
-        out_path = str(tmp_path / "test_delete_output.txt")
+        gz_path = tmp_path / "test_delete.gz"
+        out_path = tmp_path / "test_delete_output.txt"
         with gzip.open(gz_path, "wb") as f:
             f.write(content)
-        assert os.path.exists(gz_path), "gz file should exist before extraction"
+        assert gz_path.exists(), "gz file should exist before extraction"
         extract_from_gz(gz_path, out_path, delete=True)
-        assert os.path.exists(out_path), "output file should exist after extraction"
-        assert not os.path.exists(gz_path), "gz file should be deleted when delete=True"
+        assert out_path.exists(), "output file should exist after extraction"
+        assert not gz_path.exists(), "gz file should be deleted when delete=True"
         # verify content
         with open(out_path, "rb") as f:
             assert f.read() == content, "extracted content should match original"
@@ -191,13 +192,13 @@ class TestReadFileTypeError:
     """Tests for read_file with non-string path."""
 
     def test_non_string_path_raises_type_error(self):
-        """Passing a non-string path to read_file should raise TypeError."""
-        with pytest.raises(TypeError, match="string type"):
+        """Passing a non-string/non-Path path to read_file should raise TypeError."""
+        with pytest.raises(TypeError, match="string or Path type"):
             read_file(12345)
 
     def test_list_path_raises_type_error(self):
         """Passing a list as path to read_file should raise TypeError."""
-        with pytest.raises(TypeError, match="string type"):
+        with pytest.raises(TypeError, match="string or Path type"):
             read_file(["file1.tif", "file2.tif"])
 
 
@@ -298,9 +299,9 @@ class TestToAscii:
     """Tests for to_ascii function."""
 
     def test_non_string_path_raises_type_error(self):
-        """Passing a non-string path to to_ascii should raise TypeError."""
+        """Passing a non-string/non-Path path to to_ascii should raise TypeError."""
         arr = np.ones((3, 3), dtype=np.float32)
-        with pytest.raises(TypeError, match="string type"):
+        with pytest.raises(TypeError, match="string or Path type"):
             to_ascii(arr, 1.0, 0.0, 0.0, -9999.0, 12345)
 
     def test_existing_file_raises_file_exists_error(self, tmp_path):
