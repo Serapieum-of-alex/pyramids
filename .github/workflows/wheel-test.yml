@@ -27,6 +27,10 @@ jobs:
       - name: Build wheel
         run: pixi run -e dev python -m build --wheel --outdir dist/
 
+      - name: Verify package data in wheel
+        run: |
+          pixi run -e dev python -m zipfile -l dist/*.whl | grep "base/data/config.yaml"
+
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
@@ -84,4 +88,12 @@ jobs:
 
       - name: Run tests against installed wheel
         shell: bash -el {0}
-        run: pytest -vvv -sv -m "not plot" tests/
+        run: pytest -vvv -sv -m "not plot" --ignore=tests/dataset/test_plot.py tests/
+
+      - name: Install viz extra
+        shell: bash -el {0}
+        run: pip install "pyramids-gis[viz]"
+
+      - name: Run plot tests
+        shell: bash -el {0}
+        run: pytest -vvv -sv -m "plot" tests/
