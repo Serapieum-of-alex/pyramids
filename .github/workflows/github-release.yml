@@ -36,7 +36,11 @@ on:
         default: false
 
 jobs:
+  wheel-test:
+    uses: ./.github/workflows/wheel-test.yml
+
   release:
+    needs: wheel-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
