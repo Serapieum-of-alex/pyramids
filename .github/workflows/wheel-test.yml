@@ -92,7 +92,7 @@ jobs:
 
       - name: Install viz extra
         shell: bash -el {0}
-        run: pip install "cleopatra>=0.6.0"
+        run: pip install "pyramids-gis[viz]"
 
       - name: Run plot tests
         shell: bash -el {0}
