@@ -27,6 +27,10 @@ jobs:
       - name: Build wheel
         run: pixi run -e dev python -m build --wheel --outdir dist/
 
+      - name: Verify package data in wheel
+        run: |
+          pixi run -e dev python -m zipfile -l dist/*.whl | grep "base/data/config.yaml"
+
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
