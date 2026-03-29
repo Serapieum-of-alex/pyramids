@@ -2812,7 +2812,7 @@ class TestBandToPolygon:
         assert gdf is not None, "_band_to_polygon should return GeoDataFrame"
         assert len(gdf) > 0, "Should have polygon features"
 
-
+@pytest.mark.plot
 class TestColorTableSetterValid:
     """Tests for color_table setter validation."""
 
@@ -2835,7 +2835,7 @@ class TestColorTableSetterValid:
         )
         try:
             ds.color_table = df
-        except ImportError:
+        except (ImportError, OptionalPackageDoesNotExist):
             pass  # cleopatra not installed, acceptable
 
 
