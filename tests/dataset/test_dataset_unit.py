@@ -3,9 +3,6 @@
 Covers untested methods and edge cases using in-memory GDAL datasets
 (via Dataset.create_from_array) for fast, isolated execution.
 """
-
-import warnings
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -2833,10 +2830,7 @@ class TestColorTableSetterValid:
                 "color": ["#000000", "#FF0000", "#00FF00", "#0000FF"],
             }
         )
-        try:
-            ds.color_table = df
-        except (ImportError, OptionalPackageDoesNotExist):
-            pass  # cleopatra not installed, acceptable
+        ds.color_table = df
 
 
 class TestToXyzEdgeCases:
