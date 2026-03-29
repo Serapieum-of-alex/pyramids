@@ -63,7 +63,7 @@ Create and activate an environment (example with Python 3.12):
 
 ```console
 mamba create -n pyramids -c conda-forge python=3.12 gdal libgdal-netcdf libgdal-hdf4
-mamba activate pyramids-gis
+mamba activate pyramids
 ```
 
 Then install the package from PyPI (release):
