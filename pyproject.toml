@@ -26,6 +26,7 @@ classifiers = [
 requires-python = ">= 3.11, <4"
 
 dependencies = [
+    "GDAL >=3.10.0,<4",
     "geopandas >=1.0.0",
     "hpc-utils >=0.1.5",
     "numpy >=2.0.0",
@@ -100,7 +101,7 @@ where = ["src"]
 include = ["pyramids", "pyramids.*"]
 
 [tool.setuptools.package-data]
-pyramids = ["**/*.yaml"]
+pyramids = ["base/data/*.yaml"]
 
 [tool.flake8]
 ignore = ["E203", "E266", "E501", "W503", "E722", "C901", "E741", "E731"]
@@ -181,7 +182,7 @@ markers = [
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64"]
+platforms = ["win-64", "linux-64", "osx-arm64"]
 
 [tool.pixi.pypi-dependencies]
 pyramids-gis = { path = ".", editable = true }

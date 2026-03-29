@@ -1,7 +1,7 @@
 name: github-release
 
 permissions:
-  contents: write
+  contents: read
 
 on:
   workflow_dispatch:
@@ -36,8 +36,14 @@ on:
         default: false
 
 jobs:
+  wheel-test:
+    uses: ./.github/workflows/wheel-test.yml
+
   release:
+    needs: wheel-test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
