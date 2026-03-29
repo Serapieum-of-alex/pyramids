@@ -58,10 +58,18 @@ jobs:
       with:
         fetch-depth: 0
         ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+
+    - name: Extract version from pyproject.toml
+      id: version
+      run: |
+        VERSION=$(grep -m1 '^version' pyproject.toml | sed 's/.*"\(.*\)"/\1/')
+        echo "tag=$VERSION" >> $GITHUB_OUTPUT
+
     - uses: Serapieum-of-alex/github-actions/actions/mkdocs-deploy@mkdocs/v1
       with:
         trigger: 'release'
         package-manager: 'pixi'
         install-groups: "docs"
         deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
+        release-tag: ${{ github.event.release.tag_name || steps.version.outputs.tag }}
         mike-alias: 'latest'
