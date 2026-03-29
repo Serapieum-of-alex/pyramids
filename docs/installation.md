@@ -30,7 +30,7 @@ Supported Python versions: 3.11+ (requires Python >=3.11,<4)
     section below for platform-specific instructions.
 
 ### Optional extras
-- viz: cleopatra >=0.5.1
+- viz: cleopatra >=0.6.0
 - dev: nbval, pre-commit, pytest, coverage, build, twine, etc.
 - docs: mkdocs, mkdocs-material, mkdocstrings, mike, etc.
 
