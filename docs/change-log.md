@@ -1,6 +1,16 @@
 ﻿# Change log
 
 
+## 0.9.1 (2026-03-29)
+
+### Fix
+
+- **packaging**: add GDAL to PyPI deps and fix missing YAML files in wheel (#162)
+
+### Refactor
+
+- **api**: replace os module with pathlib across all public APIs (#157)
+
 ## 0.9.0 (2026-03-27)
 
 ### Feat
