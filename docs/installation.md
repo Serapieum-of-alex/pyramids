@@ -3,25 +3,31 @@
 This page explains how to install pyramids-gis and its dependencies using Pixi/conda or pip. The instructions and versions below are aligned with the project’s pyproject.toml.
 
 Package name: pyramids-gis
-Current version: 0.7.3
-Supported Python versions: 3.11 – 3.13 (requires Python >=3.11,<4)
+Supported Python versions: 3.11+ (requires Python >=3.11,<4)
 
 ## Dependencies
 
 ### Core runtime (PyPI)
+- GDAL >=3.10.0,<4
 - numpy >=2.0.0
 - pandas >=2.0.0
 - geopandas >=1.0.0
 - Shapely >=2.0.0
 - pyproj >=3.7.0
 - PyYAML >=6.0.0
-- loguru >=0.7.2
 - hpc-utils >=0.1.5
 
-### GIS stack (recommended via conda-forge)
-- GDAL >=3.10,<4
+### Native GDAL libraries (conda-forge only)
 - libgdal-netcdf >=3.10,<4
 - libgdal-hdf4 >=3.10,<4
+
+!!! warning "GDAL requires the native C/C++ library"
+    GDAL is listed as a PyPI dependency, but the GDAL Python bindings
+    **require the native GDAL library to be installed on your system first**.
+    If you install via `pip install pyramids-gis` without the native library,
+    the installation will fail when pip tries to build the GDAL wheel.
+    See the [Installing GDAL for pip users](#installing-gdal-for-pip-users)
+    section below for platform-specific instructions.
 
 ### Optional extras
 - viz: cleopatra >=0.5.1
@@ -44,7 +50,7 @@ pixi shell             # enter the Pixi environment
 Pixi environments provided:
 - default: includes dev + viz extras
 - docs: documentation toolchain
-- py311 / py312 / py313: pinned Python versions
+- py3XX: pinned Python versions (one per supported minor version)
 
 To install the package in editable mode inside the Pixi environment:
 
@@ -63,7 +69,7 @@ mamba activate pyramids-gis
 Then install the package from PyPI (release):
 
 ```console
-pip install pyramids-gis==0.7.3
+pip install pyramids-gis
 ```
 
 Optionally include extras (examples):
@@ -74,15 +80,94 @@ pip install "pyramids-gis[dev]"        # developer tools
 pip install "pyramids-gis[docs]"       # docs toolchain
 ```
 
-## Installing with pip only (advanced)
-Installing GDAL wheels via pip can be platform-specific. We strongly recommend installing GDAL from conda-forge first, then using pip for pyramids-gis:
+## Installing with pip
+
+GDAL is declared as a PyPI dependency. When you run `pip install pyramids-gis`,
+pip will automatically try to install the GDAL Python bindings. However, the
+GDAL Python package **compiles against the native GDAL C/C++ library**, which
+must already be present on your system.
+
+If the native library is missing, pip will fail with errors like
+`gdal-config: command not found` or missing header files.
+
+### Installing GDAL for pip users
+
+Install the native GDAL library for your platform **before** running
+`pip install pyramids-gis`.
+
+#### Linux (Debian/Ubuntu)
+
+```console
+sudo apt update
+sudo apt install gdal-bin libgdal-dev
+```
+
+Verify the installed version:
+
+```console
+gdal-config --version
+```
+
+Then install pyramids-gis (pip will build the GDAL Python bindings against
+the system library):
+
+```console
+pip install pyramids-gis
+```
+
+!!! tip
+    If `pip install` fails with a version mismatch, pin the GDAL Python
+    package to match your system version:
+    `pip install GDAL==$(gdal-config --version)`
+    then `pip install pyramids-gis`.
+
+#### Linux (Fedora/RHEL)
+
+```console
+sudo dnf install gdal gdal-devel
+```
+
+#### macOS (Homebrew)
+
+```console
+brew install gdal
+```
+
+After installation, verify with `gdal-config --version`, then:
+
+```console
+pip install pyramids-gis
+```
+
+#### macOS (MacPorts)
+
+```console
+sudo port install gdal
+```
+
+#### Windows
+
+On Windows, installing GDAL natively is more involved. The recommended
+approaches in order of preference:
+
+1. **Use conda/pixi** (strongly recommended, see above sections).
+2. **OSGeo4W installer**: Download from https://trac.osgeo.org/osgeo4w/ and
+   install the GDAL package. Then run pip from within the OSGeo4W shell.
+3. **Pre-built wheels**: Christoph Gohlke historically provided pre-built
+   Windows wheels. Check if a compatible wheel is available for your Python
+   version and install it manually before installing pyramids-gis.
+
+#### Using conda for GDAL only (hybrid approach)
+
+If you prefer pip for everything else but want a reliable GDAL installation,
+you can install only GDAL from conda-forge:
 
 ```console
 conda install -c conda-forge gdal libgdal-netcdf libgdal-hdf4
 pip install pyramids-gis
 ```
 
-If you insist on a pip-only approach, consult the GDAL wheel guidance for your platform and ensure gdal is available at runtime before installing pyramids-gis.
+This gives you conda-managed native libraries with pip-managed Python packages.
 
 ## Install from source
 Clone the repository and install:
@@ -110,7 +195,7 @@ pip install "git+https://github.com/Serapieum-of-alex/pyramids.git"
 Install a specific tagged release from GitHub:
 
 ```console
-pip install "git+https://github.com/Serapieum-of-alex/pyramids.git@v0.7.3"
+pip install "git+https://github.com/Serapieum-of-alex/pyramids.git@<version>"
 ```
 
 ## Quick check
@@ -132,7 +217,7 @@ pixi run -e dev pytest tests/netcdf/test_dimensions.py
 ```
 
 ## Notes
-- Supported Python versions are 3.11–3.13.
+- Supported Python versions are 3.11+.
 - Prefer conda-forge for GDAL and related libraries.
 - Documentation: https://serapieum-of-alex.github.io/pyramids/latest
 - Source repository: https://github.com/Serapieum-of-alex/pyramids
