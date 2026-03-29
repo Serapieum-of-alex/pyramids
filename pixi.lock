@@ -10157,8 +10157,9 @@ packages:
 - pypi: ./
   name: pyramids-gis
   version: 0.9.0
-  sha256: 9e5694cd5cf7c992d34bb0efdcdecd67578b0f8d07582fab2669cf8d7570bb6e
+  sha256: a9a4292833a2cf852d71d2f6bf7f70fb90beb33423af338f0c2d706f3e2beaa8
   requires_dist:
+  - gdal>=3.10.0,<4
   - geopandas>=1.0.0
   - hpc-utils>=0.1.5
   - numpy>=2.0.0
