@@ -101,7 +101,7 @@ where = ["src"]
 include = ["pyramids", "pyramids.*"]
 
 [tool.setuptools.package-data]
-pyramids = ["**/*.yaml"]
+pyramids = ["base/data/*.yaml"]
 
 [tool.flake8]
 ignore = ["E203", "E266", "E501", "W503", "E722", "C901", "E741", "E731"]
