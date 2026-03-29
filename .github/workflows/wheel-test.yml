@@ -89,3 +89,11 @@ jobs:
       - name: Run tests against installed wheel
         shell: bash -el {0}
         run: pytest -vvv -sv -m "not plot" tests/
+
+      - name: Install viz extra
+        shell: bash -el {0}
+        run: pip install "cleopatra>=0.6.0"
+
+      - name: Run plot tests
+        shell: bash -el {0}
+        run: pytest -vvv -sv -m "plot" tests/
