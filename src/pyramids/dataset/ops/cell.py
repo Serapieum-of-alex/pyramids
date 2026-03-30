@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
-class CellOpsMixin:
+class CellOps:
     """Mixin providing cell coordinate and geometry utilities for Dataset."""
 
     def get_cell_coords(

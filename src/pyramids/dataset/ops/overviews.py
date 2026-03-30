@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
-class OverviewsMixin:
+class Overviews:
     """Mixin providing overview-related methods for Dataset."""
 
     @property

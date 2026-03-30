@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
-class NoDataMixin:
+class NoData:
 
     def _check_no_data_value(self, no_data_value: list):
         """Validate the no_data_value with the dtype of the object.

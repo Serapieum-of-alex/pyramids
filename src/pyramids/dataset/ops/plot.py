@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from cleopatra.array_glyph import ArrayGlyph
 
 
-class PlotMixin:
+class Plot:
 
     def plot(
         self,

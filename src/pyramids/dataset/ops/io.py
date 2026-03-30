@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
-class IOOpsMixin:
+class IOOps:
 
     def read_array(
         self: Dataset, band: int | None = None, window: GeoDataFrame | list[int] | None = None

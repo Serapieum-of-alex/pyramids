@@ -18,7 +18,7 @@ from pyramids.base._utils import (
 )
 
 
-class BandMetadataMixin:
+class BandMetadata:
     """Mixin providing band metadata, attribute table, and color table operations."""
 
     def _iloc(self, i: int) -> gdal.Band:

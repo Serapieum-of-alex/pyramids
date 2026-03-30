@@ -28,28 +28,28 @@ from pyramids.base._utils import (
 from pyramids.feature import FeatureCollection
 
 from pyramids.dataset.ops import (
-    AnalysisMixin,
-    BandMetadataMixin,
-    CellOpsMixin,
-    IOOpsMixin,
-    NoDataMixin,
-    OverviewsMixin,
-    PlotMixin,
-    SpatialOpsMixin,
-    VectorizeMixin,
+    Analysis,
+    BandMetadata,
+    CellOps,
+    IOOps,
+    NoData,
+    Overviews,
+    Plot,
+    SpatialOps,
+    Vectorize,
 )
 
 
 class Dataset(
-    OverviewsMixin,
-    PlotMixin,
-    NoDataMixin,
-    CellOpsMixin,
-    BandMetadataMixin,
-    IOOpsMixin,
-    SpatialOpsMixin,
-    AnalysisMixin,
-    VectorizeMixin,
+    Overviews,
+    Plot,
+    NoData,
+    CellOps,
+    BandMetadata,
+    IOOps,
+    SpatialOps,
+    Analysis,
+    Vectorize,
     AbstractDataset,
 ):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).

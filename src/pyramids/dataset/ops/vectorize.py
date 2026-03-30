@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
-class VectorizeMixin:
+class Vectorize:
     """Mixin providing vectorization, clustering, and translate methods for Dataset."""
 
     def _band_to_polygon(self, band: int, col_name: str):
@@ -610,7 +610,7 @@ class VectorizeMixin:
                 position.append([i + 1, j])
                 values.append(array[i + 1, j])
                 cluster[i + 1, j] = count
-                VectorizeMixin._group_neighbours(
+                Vectorize._group_neighbours(
                     array,
                     i + 1,
                     j,
@@ -632,7 +632,7 @@ class VectorizeMixin:
                     position.append([i + 1, j + 1])
                     values.append(array[i + 1, j + 1])
                     cluster[i + 1, j + 1] = count
-                    VectorizeMixin._group_neighbours(
+                    Vectorize._group_neighbours(
                         array,
                         i + 1,
                         j + 1,
@@ -650,7 +650,7 @@ class VectorizeMixin:
                 position.append([i, j + 1])
                 values.append(array[i, j + 1])
                 cluster[i, j + 1] = count
-                VectorizeMixin._group_neighbours(
+                Vectorize._group_neighbours(
                     array,
                     i,
                     j + 1,
@@ -672,7 +672,7 @@ class VectorizeMixin:
                     position.append([i - 1, j + 1])
                     values.append(array[i - 1, j + 1])
                     cluster[i - 1, j + 1] = count
-                    VectorizeMixin._group_neighbours(
+                    Vectorize._group_neighbours(
                         array,
                         i - 1,
                         j + 1,
@@ -689,7 +689,7 @@ class VectorizeMixin:
                 position.append([i - 1, j])
                 values.append(array[i - 1, j])
                 cluster[i - 1, j] = count
-                VectorizeMixin._group_neighbours(
+                Vectorize._group_neighbours(
                     array,
                     i - 1,
                     j,
@@ -711,7 +711,7 @@ class VectorizeMixin:
                     position.append([i - 1, j - 1])
                     values.append(array[i - 1, j - 1])
                     cluster[i - 1, j - 1] = count
-                    VectorizeMixin._group_neighbours(
+                    Vectorize._group_neighbours(
                         array,
                         i - 1,
                         j - 1,
@@ -728,7 +728,7 @@ class VectorizeMixin:
                 position.append([i, j - 1])
                 values.append(array[i, j - 1])
                 cluster[i, j - 1] = count
-                VectorizeMixin._group_neighbours(
+                Vectorize._group_neighbours(
                     array,
                     i,
                     j - 1,
@@ -750,7 +750,7 @@ class VectorizeMixin:
                     position.append([i + 1, j - 1])
                     values.append(array[i + 1, j - 1])
                     cluster[i + 1, j - 1] = count
-                    VectorizeMixin._group_neighbours(
+                    Vectorize._group_neighbours(
                         array,
                         i + 1,
                         j - 1,

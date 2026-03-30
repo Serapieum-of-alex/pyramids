@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
-class AnalysisMixin:
+class Analysis:
     """Mixin providing analysis, statistics, and data extraction operations for Dataset."""
 
     def stats(
