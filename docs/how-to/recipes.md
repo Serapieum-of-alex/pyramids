@@ -49,7 +49,7 @@ print(dc)
 
 ```python
 from pyramids.dataset import Dataset
-from pyramids.featurecollection import FeatureCollection
+from pyramids.feature import FeatureCollection
 
 raster = Dataset.read_file("tests\\data\\geotiff\\dem.tif")
 polys = FeatureCollection.read_file("tests\\data\\geometries\\polygons.geojson")

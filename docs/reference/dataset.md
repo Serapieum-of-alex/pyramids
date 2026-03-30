@@ -107,7 +107,7 @@ classDiagram
     class _errors_NoDataValueError
     class _errors_AlignmentError
     class _errors_DriverNotExistError
-    class _errors_FileFormatNotSupported
+    class _errors_FileFormatNotSupportedError
     class _errors_OptionalPackageDoesNotExist
     class _errors_FailedToSaveError
     class _errors_OutOfBoundsError
@@ -118,8 +118,8 @@ classDiagram
 
     %% composition/usage relations
     AbstractDataset ..> _utils_Catalog : "uses Catalog constant"
-    AbstractDataset ..> featurecollection_FeatureCollection : "vector ops"
-    Dataset ..> featurecollection_FeatureCollection : "vector ops"
+    AbstractDataset ..> feature_FeatureCollection : "vector ops"
+    Dataset ..> feature_FeatureCollection : "vector ops"
     Dataset ..> _errors_ReadOnlyError : "raises"
     Dataset ..> _errors_AlignmentError : "raises"
     Dataset ..> _errors_NoDataValueError : "raises"

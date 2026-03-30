@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pyramids.base.config import Config
 
-__all__ = ["dataset", "multidataset", "netcdf", "featurecollection"]
+__all__ = ["dataset", "multidataset", "netcdf", "feature"]
 
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _get_version

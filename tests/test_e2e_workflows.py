@@ -21,7 +21,7 @@ from osgeo import gdal
 from shapely.geometry import box
 
 from pyramids.dataset import Dataset
-from pyramids.featurecollection import FeatureCollection
+from pyramids.feature import FeatureCollection
 from pyramids.multidataset import MultiDataset
 
 

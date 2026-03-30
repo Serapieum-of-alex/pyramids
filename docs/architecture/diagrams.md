@@ -214,7 +214,7 @@ classDiagram
     }
 
     %% FeatureCollection for vector data
-    class featurecollection_FeatureCollection {
+    class feature_FeatureCollection {
         +__init__(gdf)
         +GetXYCoords()
         +GetPointCoords()
@@ -244,7 +244,7 @@ classDiagram
     class _errors_NoDataValueError
     class _errors_AlignmentError
     class _errors_DriverNotExistError
-    class _errors_FileFormatNotSupported
+    class _errors_FileFormatNotSupportedError
     class _errors_OptionalPackageDoesNotExist
     class _errors_FailedToSaveError
     class _errors_OutOfBoundsError
@@ -256,16 +256,16 @@ classDiagram
     %% composition/usage relations
     datacube_Datacube --> dataset_Dataset : "base raster"
     abstract_dataset_AbstractDataset ..> _utils_Catalog : "uses Catalog constant"
-    abstract_dataset_AbstractDataset ..> featurecollection_FeatureCollection : "vector ops"
-    dataset_Dataset ..> featurecollection_FeatureCollection : "vector ops"
-    featurecollection_FeatureCollection ..> _utils_Catalog : "uses drivers"
+    abstract_dataset_AbstractDataset ..> feature_FeatureCollection : "vector ops"
+    dataset_Dataset ..> feature_FeatureCollection : "vector ops"
+    feature_FeatureCollection ..> _utils_Catalog : "uses drivers"
     dataset_Dataset ..> _errors_ReadOnlyError : "raises"
     dataset_Dataset ..> _errors_AlignmentError : "raises"
     dataset_Dataset ..> _errors_NoDataValueError : "raises"
     dataset_Dataset ..> _errors_FailedToSaveError : "raises"
     dataset_Dataset ..> _errors_OutOfBoundsError : "raises"
     datacube_Datacube ..> _errors_DatasetNotFoundError : "raises"
-    featurecollection_FeatureCollection ..> _errors_DriverNotExistError : "raises"
+    feature_FeatureCollection ..> _errors_DriverNotExistError : "raises"
     netcdf_NetCDF ..> _errors_OptionalPackageDoesNotExist : "raises"
     config_Config ..> dataset_Dataset : "initialises raster settings"
 
@@ -438,7 +438,7 @@ classDiagram
     }
 
     %% FeatureCollection for vector data
-    class featurecollection_FeatureCollection {
+    class feature_FeatureCollection {
         +__init__(gdf)
         +__str__()
         +feature()
@@ -493,7 +493,7 @@ classDiagram
     class _errors_NoDataValueError
     class _errors_AlignmentError
     class _errors_DriverNotExistError
-    class _errors_FileFormatNotSupported
+    class _errors_FileFormatNotSupportedError
     class _errors_OptionalPackageDoesNotExist
     class _errors_FailedToSaveError
     class _errors_OutOfBoundsError
@@ -505,16 +505,16 @@ classDiagram
     %% composition/usage relations
     datacube_Datacube --> dataset_Dataset : "base raster"
     abstract_dataset_AbstractDataset ..> _utils_Catalog : "uses Catalog constant"
-    abstract_dataset_AbstractDataset ..> featurecollection_FeatureCollection : "vector ops"
-    dataset_Dataset ..> featurecollection_FeatureCollection : "vector ops"
-    featurecollection_FeatureCollection ..> _utils_Catalog : "uses drivers"
+    abstract_dataset_AbstractDataset ..> feature_FeatureCollection : "vector ops"
+    dataset_Dataset ..> feature_FeatureCollection : "vector ops"
+    feature_FeatureCollection ..> _utils_Catalog : "uses drivers"
     dataset_Dataset ..> _errors_ReadOnlyError : "raises"
     dataset_Dataset ..> _errors_AlignmentError : "raises"
     dataset_Dataset ..> _errors_NoDataValueError : "raises"
     dataset_Dataset ..> _errors_FailedToSaveError : "raises"
     dataset_Dataset ..> _errors_OutOfBoundsError : "raises"
     datacube_Datacube ..> _errors_DatasetNotFoundError : "raises"
-    featurecollection_FeatureCollection ..> _errors_DriverNotExistError : "raises"
+    feature_FeatureCollection ..> _errors_DriverNotExistError : "raises"
     netcdf_NetCDF ..> _errors_OptionalPackageDoesNotExist : "raises"
     config_Config ..> dataset_Dataset : "initialises raster settings"
 

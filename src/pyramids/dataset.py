@@ -51,7 +51,7 @@ from pyramids.base._utils import (
     import_cleopatra,
     numpy_to_gdal_dtype,
 )
-from pyramids.featurecollection import FeatureCollection
+from pyramids.feature import FeatureCollection
 
 
 class Dataset(AbstractDataset):

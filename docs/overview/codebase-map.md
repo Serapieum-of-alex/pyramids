@@ -10,7 +10,7 @@ This page summarizes the main modules, key classes, and the public API surface o
   - Concrete raster dataset implementation with rich I/O, transformations, tiling, pyramid operations, and export utilities.
 - pyramids.datacube
   - Temporal/spatial multi-band or multi-file orchestration (data cube), aggregations, slicing, alignment.
-- pyramids.featurecollection
+- pyramids.feature
   - Vector data abstraction for feature collections built on GeoPandas; read/write, selection, join, spatial ops.
 - pyramids._io
   - Internal helpers for reading/serializing data and archives (zip/gzip/tar parsing, ASCII export), and file path parsing.
@@ -23,7 +23,7 @@ This page summarizes the main modules, key classes, and the public API surface o
 
 - pyramids.dataset.Dataset
 - pyramids.datacube.Datacube
-- pyramids.featurecollection.FeatureCollection
+- pyramids.feature.FeatureCollection
 
 ## Representative Public Methods
 

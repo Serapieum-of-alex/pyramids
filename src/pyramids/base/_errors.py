@@ -47,7 +47,7 @@ class DriverNotExistError(Exception):
         logger.error(error_message)
 
 
-class FileFormatNotSupported(Exception):
+class FileFormatNotSupportedError(Exception):
     """File Format Not Supported."""
 
     def __init__(self, error_message: str):

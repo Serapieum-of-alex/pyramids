@@ -13,7 +13,7 @@ from pyramids.base._errors import (
     DatasetNotFoundError,
     DriverNotExistError,
     FailedToSaveError,
-    FileFormatNotSupported,
+    FileFormatNotSupportedError,
     NoDataValueError,
     OptionalPackageDoesNotExist,
     OutOfBoundsError,
@@ -86,17 +86,17 @@ class TestDriverNotExistError:
         ), "DriverNotExistError should log its message"
 
 
-class TestFileFormatNotSupported:
-    """Tests for FileFormatNotSupported."""
+class TestFileFormatNotSupportedError:
+    """Tests for FileFormatNotSupportedError."""
 
     def test_instantiation_logs_message(self, caplog):
-        """FileFormatNotSupported should log the provided message at ERROR level."""
+        """FileFormatNotSupportedError should log the provided message at ERROR level."""
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
-            with pytest.raises(FileFormatNotSupported):
-                raise FileFormatNotSupported("format not supported")
+            with pytest.raises(FileFormatNotSupportedError):
+                raise FileFormatNotSupportedError("format not supported")
         assert (
             "format not supported" in caplog.text
-        ), "FileFormatNotSupported should log its message"
+        ), "FileFormatNotSupportedError should log its message"
 
 
 class TestOptionalPackageDoesNotExist:

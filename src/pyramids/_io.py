@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from osgeo import gdal
 
-from pyramids.base._errors import FileFormatNotSupported
+from pyramids.base._errors import FileFormatNotSupportedError
 
 gdal.UseExceptions()
 
@@ -219,7 +219,7 @@ def read_file(
     except Exception as e:
         if str(e).__contains__(" not recognized as a supported file format."):
             if any(path.endswith(i) for i in COMPRESSED_FILES_EXTENSIONS):
-                raise FileFormatNotSupported(
+                raise FileFormatNotSupportedError(
                     "File format is not supported if you provided a gzip compressed file with multiple internal "
                     "files. Currently, it is not supported to read gzip files with multiple compressed internal "
                     "files"
@@ -229,7 +229,7 @@ def read_file(
         elif any(path.__contains__(i) for i in DOES_NOT_SUPPORT_INTERNAL) and not any(
             path.endswith(i) for i in DOES_NOT_SUPPORT_INTERNAL
         ):
-            raise FileFormatNotSupported(
+            raise FileFormatNotSupportedError(
                 "File format is not supported, if you provided a gzip/7z compressed file with multiple internal "
                 "files. Currently it is not supported to read gzip/7z files with multiple compressed internal "
                 "files"

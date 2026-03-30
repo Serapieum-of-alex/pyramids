@@ -10,7 +10,7 @@ from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
 from pyramids.dataset import Dataset
-from pyramids.featurecollection import FeatureCollection
+from pyramids.feature import FeatureCollection
 
 
 class TestAttributes:

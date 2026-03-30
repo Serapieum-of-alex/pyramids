@@ -20,7 +20,7 @@ from osgeo.osr import SpatialReference
 from pyramids.base._utils import (
     Catalog,
 )
-from pyramids.featurecollection import FeatureCollection
+from pyramids.feature import FeatureCollection
 
 DEFAULT_NO_DATA_VALUE = -9999
 CATALOG = Catalog()

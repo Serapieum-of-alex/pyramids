@@ -1,6 +1,6 @@
 # FeatureCollection Class
 
-::: pyramids.featurecollection.FeatureCollection
+::: pyramids.feature.FeatureCollection
     options:
         show_root_heading: true
         show_source: true
