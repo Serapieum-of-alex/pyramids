@@ -8,8 +8,7 @@ import geopandas as gpd
 import numpy as np
 from osgeo import gdal
 
-from pyramids.dataset import Dataset
-from pyramids.dataset_collection import DatasetCollection
+from pyramids.dataset import Dataset, DatasetCollection
 
 
 class TestCreateDatasetCollection:

@@ -4,7 +4,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 from pyramids.dataset import Dataset
-from pyramids.dataset_collection import DatasetCollection
+from pyramids.dataset import DatasetCollection
 
 path = "tests/data/raster-folder/1_MSWEP_1979.01.02.tif"
 # %%

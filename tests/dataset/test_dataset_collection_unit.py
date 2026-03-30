@@ -1,7 +1,7 @@
 """Unit tests for DatasetCollection methods that lack coverage.
 
 Targets untested / low-coverage code paths in
-``pyramids.dataset_collection``, including:
+``pyramids.dataset.collection``, including:
 - ``create_cube`` classmethod
 - ``merge`` static method (via a temp-file round-trip)
 - ``apply`` method with ufunc
@@ -22,8 +22,7 @@ import numpy as np
 import pytest
 from osgeo import gdal
 
-from pyramids.dataset import Dataset
-from pyramids.dataset_collection import DatasetCollection
+from pyramids.dataset import Dataset, DatasetCollection
 
 
 def _make_mem_dataset(

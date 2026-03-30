@@ -10,7 +10,7 @@ The datacube object has attributes and methods to help working with multiple ras
 - To import the Datacube class:
 
 ```python
-from pyramids.dataset_collection import DatasetCollection
+from pyramids.dataset import DatasetCollection
 ```
 
 - The detailed module attributes and methods are summarized in the following figure.

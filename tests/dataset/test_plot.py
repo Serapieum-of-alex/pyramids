@@ -5,7 +5,7 @@ from osgeo import gdal
 from pandas import DataFrame
 
 from pyramids.dataset import Dataset
-from pyramids.dataset_collection import DatasetCollection
+from pyramids.dataset import DatasetCollection
 
 try:
     from cleopatra.array_glyph import ArrayGlyph

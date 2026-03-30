@@ -22,7 +22,7 @@ from shapely.geometry import box
 
 from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
-from pyramids.dataset_collection import DatasetCollection
+from pyramids.dataset import DatasetCollection
 
 
 def _make_dataset(

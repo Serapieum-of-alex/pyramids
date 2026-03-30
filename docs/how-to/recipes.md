@@ -39,7 +39,7 @@ ds = Dataset.read_file(src)
 ## Read multiple rasters into a datacube
 
 ```python
-from pyramids.dataset_collection import DatasetCollection
+from pyramids.dataset import DatasetCollection
 
 dc = DatasetCollection.read_multiple_files("tests\\data\\geotiff\\rhine", with_order=True, regex_string=r"\\d+", date=False)
 print(dc)

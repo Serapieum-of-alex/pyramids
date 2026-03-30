@@ -15,7 +15,7 @@ from osgeo import gdal
 from pyramids.abstract_dataset import CATALOG
 from pyramids.base._errors import DatasetNotFoundError
 from pyramids.base._utils import import_cleopatra
-from pyramids.dataset import Dataset
+from pyramids.dataset.dataset import Dataset
 
 if TYPE_CHECKING:
     from cleopatra.array_glyph import ArrayGlyph
@@ -209,7 +209,7 @@ class DatasetCollection:
             - Read all rasters in a folder:
 
               ```python
-              >>> from pyramids.dataset_collection import DatasetCollection
+              >>> from pyramids.dataset import DatasetCollection
               >>> raster_folder = "examples/GIS/data/raster-folder"
               >>> prec = DatasetCollection.read_multiple_files(raster_folder)
 
