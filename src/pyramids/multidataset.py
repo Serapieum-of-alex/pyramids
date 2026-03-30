@@ -13,7 +13,7 @@ import pandas as pd
 from osgeo import gdal
 
 from pyramids.abstract_dataset import CATALOG
-from pyramids.base._errors import DatasetNoFoundError
+from pyramids.base._errors import DatasetNotFoundError
 from pyramids.base._utils import import_cleopatra
 from pyramids.dataset import Dataset
 
@@ -408,7 +408,7 @@ class MultiDataset:
             Dataset: Dataset object.
         """
         if not hasattr(self, "values"):
-            raise DatasetNoFoundError("please read the dataset first")
+            raise DatasetNotFoundError("please read the dataset first")
         arr = self._values[i, :, :]
         dst = gdal.GetDriverByName("MEM").CreateCopy("", self.base.raster, 0)
         dst.GetRasterBand(1).WriteArray(arr)

@@ -10,7 +10,7 @@ import pytest
 
 from pyramids.base._errors import (
     AlignmentError,
-    DatasetNoFoundError,
+    DatasetNotFoundError,
     DriverNotExistError,
     FailedToSaveError,
     FileFormatNotSupported,
@@ -34,17 +34,17 @@ class TestReadOnlyError:
         ), "ReadOnlyError should log its message"
 
 
-class TestDatasetNoFoundError:
-    """Tests for DatasetNoFoundError."""
+class TestDatasetNotFoundError:
+    """Tests for DatasetNotFoundError."""
 
     def test_instantiation_logs_message(self, caplog):
-        """DatasetNoFoundError should log the provided message at ERROR level."""
+        """DatasetNotFoundError should log the provided message at ERROR level."""
         with caplog.at_level(logging.ERROR, logger="pyramids.base._errors"):
-            with pytest.raises(DatasetNoFoundError):
-                raise DatasetNoFoundError("dataset not found")
+            with pytest.raises(DatasetNotFoundError):
+                raise DatasetNotFoundError("dataset not found")
         assert (
             "dataset not found" in caplog.text
-        ), "DatasetNoFoundError should log its message"
+        ), "DatasetNotFoundError should log its message"
 
 
 class TestNoDataValueError:

@@ -15,8 +15,8 @@ class ReadOnlyError(Exception):
         logger.error(error_message)
 
 
-class DatasetNoFoundError(Exception):
-    """DatasetNoFoundError."""
+class DatasetNotFoundError(Exception):
+    """DatasetNotFoundError."""
 
     def __init__(self, error_message: str):
         """__init__."""

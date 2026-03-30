@@ -322,7 +322,7 @@ class TestOpenMultiDatasetErrors:
 import datetime as dt
 import re
 
-from pyramids.base._errors import DatasetNoFoundError
+from pyramids.base._errors import DatasetNotFoundError
 
 
 class TestReadMultipleFilesErrors:
@@ -451,10 +451,10 @@ class TestIlocWithoutValues:
     """Tests for iloc when values are not set."""
 
     def test_iloc_without_values_raises(self):
-        """Calling iloc before reading data should raise DatasetNoFoundError."""
+        """Calling iloc before reading data should raise DatasetNotFoundError."""
         src = _make_mem_dataset()
         md = MultiDataset.create_cube(src, dataset_length=2)
-        with pytest.raises(DatasetNoFoundError):
+        with pytest.raises(DatasetNotFoundError):
             md.iloc(0)
 
 

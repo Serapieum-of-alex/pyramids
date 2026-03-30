@@ -103,7 +103,7 @@ classDiagram
 
     %% error classes
     class _errors_ReadOnlyError
-    class _errors_DatasetNoFoundError
+    class _errors_DatasetNotFoundError
     class _errors_NoDataValueError
     class _errors_AlignmentError
     class _errors_DriverNotExistError
