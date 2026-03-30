@@ -14,7 +14,7 @@ import numpy as np
 from osgeo import gdal
 
 from pyramids import _io
-from pyramids.abstract_dataset import DEFAULT_NO_DATA_VALUE
+from pyramids.dataset import DEFAULT_NO_DATA_VALUE
 from pyramids.base._utils import numpy_to_gdal_dtype
 from pyramids.dataset import Dataset
 from pyramids.netcdf.dimensions import DimMetaData

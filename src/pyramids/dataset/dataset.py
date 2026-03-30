@@ -27,7 +27,7 @@ from osgeo.osr import SpatialReference
 from pandas import DataFrame
 
 from pyramids import _io
-from pyramids.abstract_dataset import (
+from pyramids.dataset.abstract_dataset import (
     CATALOG,
     DEFAULT_NO_DATA_VALUE,
     OVERVIEW_LEVELS,

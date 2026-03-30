@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from osgeo import gdal
 
-from pyramids.abstract_dataset import CATALOG
+from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.base._errors import DatasetNotFoundError
 from pyramids.base._utils import import_cleopatra
 from pyramids.dataset.dataset import Dataset
