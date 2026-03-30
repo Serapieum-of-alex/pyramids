@@ -5,7 +5,7 @@ from osgeo import gdal
 from pandas import DataFrame
 
 from pyramids.dataset import Dataset
-from pyramids.multidataset import MultiDataset
+from pyramids.dataset_collection import DatasetCollection
 
 try:
     from cleopatra.array_glyph import ArrayGlyph
@@ -52,7 +52,7 @@ class TestPlotDataSet:
         assert isinstance(array_glyph, ArrayGlyph)
 
 
-class TestPlotMultiDataset:
+class TestPlotDatasetCollection:
     @pytest.mark.plot
     def test_geotiff(
         self,
@@ -62,7 +62,7 @@ class TestPlotMultiDataset:
     ):
         from cleopatra.array_glyph import ArrayGlyph
 
-        cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
         cube.open_multi_dataset()
         cleo = cube.plot()
         assert isinstance(cleo, ArrayGlyph)

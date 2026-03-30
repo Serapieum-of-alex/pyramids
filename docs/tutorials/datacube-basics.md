@@ -3,14 +3,14 @@
 This tutorial shows how to construct a simple datacube from a folder of rasters and compute a basic aggregation.
 
 ```python
-from pyramids.multidataset import MultiDataset
+from pyramids.dataset_collection import DatasetCollection
 
 
 # Prepare a folder with a few demo rasters (use repo tests or your own)
 folder = "tests\\data\\geotiff\\rhine"  # adjust as needed
 
 # Parse files and build cube (order: numeric part in filenames)
-dc = MultiDataset.read_multiple_files(folder, with_order=True, regex_string=r"\d+", date=False)
+dc = DatasetCollection.read_multiple_files(folder, with_order=True, regex_string=r"\d+", date=False)
 print(dc)
 
 # Open bands into the cube's memory structure (if required by API)

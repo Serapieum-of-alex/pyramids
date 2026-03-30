@@ -3,7 +3,7 @@
 ![Datacube diagram](./../_images/pyramids-multi-dataset.svg)
 
 
-::: pyramids.multidataset.MultiDataset
+::: pyramids.dataset_collection.DatasetCollection
     options:
         show_root_heading: true
         show_source: true

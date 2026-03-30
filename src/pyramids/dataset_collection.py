@@ -1,4 +1,4 @@
-"""MultiDataset module."""
+"""DatasetCollection module."""
 
 from __future__ import annotations
 
@@ -30,8 +30,8 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
-class MultiDataset:
-    """MultiDataset."""
+class DatasetCollection:
+    """DatasetCollection."""
 
     """
     files:
@@ -44,7 +44,7 @@ class MultiDataset:
         time_length: int,
         files: list[str] | None = None,
     ):
-        """Construct MultiDataset object."""
+        """Construct DatasetCollection object."""
         self._base = src
         self._files = files
         self._time_length = time_length
@@ -105,10 +105,10 @@ class MultiDataset:
         return self._base.columns
 
     @classmethod
-    def create_cube(cls, src: Dataset, dataset_length: int) -> MultiDataset:
-        """Create MultiDataset.
+    def create_cube(cls, src: Dataset, dataset_length: int) -> DatasetCollection:
+        """Create DatasetCollection.
 
-            - Create MultiDataset from a sample raster and
+            - Create DatasetCollection from a sample raster and
 
         Args:
             src (Dataset):
@@ -117,7 +117,7 @@ class MultiDataset:
                 Length of the dataset.
 
         Returns:
-            MultiDataset: Datacube object.
+            DatasetCollection: Datacube object.
         """
         return cls(src, dataset_length)
 
@@ -133,7 +133,7 @@ class MultiDataset:
         end: str | None = None,
         fmt: str = "%Y-%m-%d",
         extension: str = ".tif",
-    ) -> MultiDataset:
+    ) -> DatasetCollection:
         r"""read_multiple_files.
 
             - Read rasters from a folder (or list of files) and create a 3D array with the same 2D dimensions as the
@@ -202,16 +202,16 @@ class MultiDataset:
                 The extension of the files you want to read from the given path. Default is ".tif".
 
         Returns:
-            MultiDataset:
-                Instance of the MultiDataset class.
+            DatasetCollection:
+                Instance of the DatasetCollection class.
 
         Examples:
             - Read all rasters in a folder:
 
               ```python
-              >>> from pyramids.multidataset import MultiDataset
+              >>> from pyramids.dataset_collection import DatasetCollection
               >>> raster_folder = "examples/GIS/data/raster-folder"
-              >>> prec = MultiDataset.read_multiple_files(raster_folder)
+              >>> prec = DatasetCollection.read_multiple_files(raster_folder)
 
               ```
 
@@ -220,7 +220,7 @@ class MultiDataset:
               ```python
               >>> raster_folder = Path("examples/GIS/data/raster-folder")
               >>> file_list = list(raster_folder.glob("*.tif"))
-              >>> prec = MultiDataset.read_multiple_files(file_list, with_order=False)
+              >>> prec = DatasetCollection.read_multiple_files(file_list, with_order=False)
 
               ```
         """
@@ -297,7 +297,7 @@ class MultiDataset:
         return cls(sample, len(files), files)
 
     def open_multi_dataset(self, band: int = 0) -> None:
-        """open_MultiDataset.
+        """open_DatasetCollection.
 
         Read values from the given band as arrays for all files.
 
@@ -372,11 +372,11 @@ class MultiDataset:
         self._values[key, :, :] = value
 
     def __len__(self):
-        """Length of the MultiDataset."""
+        """Length of the DatasetCollection."""
         return self._values.shape[0]
 
     def __iter__(self):
-        """Iterate over the MultiDataset."""
+        """Iterate over the DatasetCollection."""
         return iter(self._values[:])
 
     def head(self, n: int = 5):
@@ -549,7 +549,7 @@ class MultiDataset:
                 Default is False.
 
         Returns:
-            None: Updates the multidataset values and base in place after reprojection.
+            None: Updates the dataset_collection values and base in place after reprojection.
 
         Examples:
             - Reproject dataset to EPSG:3857:
@@ -587,7 +587,7 @@ class MultiDataset:
 
     def crop(
         self, mask: Dataset | str, inplace: bool = False, touch: bool = True
-    ) -> MultiDataset | None:
+    ) -> DatasetCollection | None:
         """crop.
 
             crop matches the location of nodata value from src raster to dst raster. Mask is where the NoDatavalue will
@@ -616,7 +616,7 @@ class MultiDataset:
               >>> dem_path = "examples/GIS/data/acc4000.tif"
               >>> src_path = "examples/GIS/data/aligned_rasters/"
               >>> out_path = "examples/GIS/data/crop_aligned_folder/"
-              >>> MultiDataset.crop(dem_path, src_path, out_path)
+              >>> DatasetCollection.crop(dem_path, src_path, out_path)
 
               ```
         """
@@ -635,13 +635,13 @@ class MultiDataset:
 
             array[i, :, :] = arr
 
-        result: MultiDataset | None = None
+        result: DatasetCollection | None = None
         if inplace:
             self._values = array
             # use the last src as
             self._base = dst
         else:
-            result = MultiDataset(dst, time_length=self.time_length)
+            result = DatasetCollection(dst, time_length=self.time_length)
             result._values = array
 
         return result
@@ -650,12 +650,12 @@ class MultiDataset:
     # # TODO: still needs to be tested
     # @staticmethod
     # def to_epsg(
-    #         src: gdal.MultiDataset,
+    #         src: gdal.DatasetCollection,
     #         to_epsg: int = 3857,
     #         cell_size: int = [],
     #         method: str = "Nearest",
     #
-    # ) -> gdal.MultiDataset:
+    # ) -> gdal.DatasetCollection:
     #     """to_epsg.
     #
     #         - to_epsg reprojects and resamples a folder of rasters to any projection
@@ -679,10 +679,10 @@ class MultiDataset:
     #
     #     Returns
     #     -------
-    #     raster: [gdal MultiDataset]
+    #     raster: [gdal DatasetCollection]
     #          a GDAL in-memory file object, where you can ReadAsArray etc.
     #     """
-    #     if not isinstance(src, gdal.MultiDataset):
+    #     if not isinstance(src, gdal.DatasetCollection):
     #         raise TypeError(
     #             "src should be read using gdal (gdal dataset please read it using gdal"
     #             f" library) given {type(src)}"
@@ -794,10 +794,10 @@ class MultiDataset:
 
         Returns:
             None:
-                Updates the multidataset values in place to match the alignment of alignment_src.
+                Updates the dataset_collection values in place to match the alignment of alignment_src.
 
         Examples:
-            - Align all rasters in the multidataset to a DEM raster:
+            - Align all rasters in the dataset_collection to a DEM raster:
 
               ```python
               >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
@@ -883,7 +883,7 @@ class MultiDataset:
     def apply(self, ufunc: Callable) -> None:
         """apply.
 
-        apply a function on each raster in the MultiDataset.
+        apply a function on each raster in the DatasetCollection.
 
         Args:
             ufunc (Callable):

@@ -5,7 +5,7 @@ cropping, reprojecting, aligning, and round-tripping raster and vector data.
 
 Workflows covered:
 1. Create GeoTIFF from array -> crop with polygon -> extract values -> verify
-2. Create MultiDataset -> save -> reload -> verify shapes
+2. Create DatasetCollection -> save -> reload -> verify shapes
 3. FeatureCollection -> to_dataset (rasterize) -> extract -> verify round-trip
 4. Read GeoTIFF -> reproject -> align with another -> verify dimensions match
 """
@@ -22,7 +22,7 @@ from shapely.geometry import box
 
 from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
-from pyramids.multidataset import MultiDataset
+from pyramids.dataset_collection import DatasetCollection
 
 
 def _make_dataset(
@@ -95,16 +95,16 @@ class TestCreateCropExtract:
         assert non_nodata.size > 0, "Cropped raster should contain some valid data"
 
 
-class TestMultiDatasetRoundTrip:
-    """Create a MultiDataset, save it, reload, and verify."""
+class TestDatasetCollectionRoundTrip:
+    """Create a DatasetCollection, save it, reload, and verify."""
 
     def test_save_and_reload(self):
-        """Write MultiDataset to disk, read back, compare shapes."""
+        """Write DatasetCollection to disk, read back, compare shapes."""
         rows, cols = 8, 10
         time_steps = 3
 
         base = _make_dataset(rows=rows, cols=cols, fill_value=1.0)
-        md = MultiDataset.create_cube(base, dataset_length=time_steps)
+        md = DatasetCollection.create_cube(base, dataset_length=time_steps)
         values = np.random.rand(time_steps, rows, cols).astype(np.float64)
         md.values = values
 
@@ -114,7 +114,7 @@ class TestMultiDatasetRoundTrip:
             md.to_file(out_dir)
 
             # Reload
-            reloaded = MultiDataset.read_multiple_files(out_dir, with_order=False)
+            reloaded = DatasetCollection.read_multiple_files(out_dir, with_order=False)
             assert (
                 reloaded.time_length == time_steps
             ), f"Expected {time_steps} files, got {reloaded.time_length}"
@@ -236,8 +236,8 @@ class TestReprojectAlignWorkflow:
         ), f"Aligned columns should be {ref.columns}, got {aligned.columns}"
 
 
-class TestMultiDatasetProcessingPipeline:
-    """Create a MultiDataset, apply a function, then iterate and verify."""
+class TestDatasetCollectionProcessingPipeline:
+    """Create a DatasetCollection, apply a function, then iterate and verify."""
 
     def test_apply_then_iterate(self):
         """Apply a transformation and iterate to check every time step."""
@@ -245,7 +245,7 @@ class TestMultiDatasetProcessingPipeline:
         time_steps = 4
 
         base = _make_dataset(rows=rows, cols=cols, fill_value=10.0)
-        md = MultiDataset.create_cube(base, dataset_length=time_steps)
+        md = DatasetCollection.create_cube(base, dataset_length=time_steps)
 
         # Fill with known values: each time step has value = step_index + 1
         values = np.zeros((time_steps, rows, cols), dtype=np.float64)
@@ -271,7 +271,7 @@ class TestMultiDatasetProcessingPipeline:
         time_steps = 6
 
         base = _make_dataset(rows=rows, cols=cols)
-        md = MultiDataset.create_cube(base, dataset_length=time_steps)
+        md = DatasetCollection.create_cube(base, dataset_length=time_steps)
         values = np.random.rand(time_steps, rows, cols)
         md.values = values
 
