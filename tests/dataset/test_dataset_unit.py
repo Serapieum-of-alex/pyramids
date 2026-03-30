@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from osgeo import gdal, osr
 
-from pyramids.abstract_dataset import AbstractDataset
+from pyramids.dataset.abstract_dataset import AbstractDataset
 from pyramids.base._errors import (
     AlignmentError,
     FailedToSaveError,
