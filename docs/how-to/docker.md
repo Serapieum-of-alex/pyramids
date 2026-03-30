@@ -148,7 +148,7 @@ ghcr.io/serapieum-of-alex/pyramids
 Example (adjust owner/repo):
 
 ```bash
-OWNER="Serapieum-of-alex"
+OWNER="serapieum-org"
 REPO="pyramids"
 IMAGE="ghcr.io/${OWNER,,}/${REPO,,}"
 VERSION="<your-version-here>"
@@ -189,12 +189,12 @@ A) Web UI
 
 B) GitHub CLI (`gh`)
 
-The API endpoints differ for user vs organization. Examples below assume the image name is `pyramids` under organization `Serapieum-of-alex`.
+The API endpoints differ for user vs organization. Examples below assume the image name is `pyramids` under organization `serapieum-org`.
 
 List versions (organization):
 
 ```bash
-ORG="Serapieum-of-alex"
+ORG="serapieum-org"
 PKG="pyramids"  # package name in GHCR equals the lowercased repo name by default
 
 gh api -H "Accept: application/vnd.github+json" \

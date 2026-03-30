@@ -173,7 +173,7 @@ This gives you conda-managed native libraries with pip-managed Python packages.
 Clone the repository and install:
 
 ```console
-git clone https://github.com/Serapieum-of-alex/pyramids.git
+git clone https://github.com/serapieum-org/pyramids.git
 cd pyramids
 python -m pip install .
 ```
@@ -181,7 +181,7 @@ python -m pip install .
 Editable (development) install:
 
 ```console
-git clone https://github.com/Serapieum-of-alex/pyramids.git
+git clone https://github.com/serapieum-org/pyramids.git
 cd pyramids
 pip install -e .[dev]
 ```
@@ -189,13 +189,13 @@ pip install -e .[dev]
 Install directly from GitHub (latest main):
 
 ```console
-pip install "git+https://github.com/Serapieum-of-alex/pyramids.git"
+pip install "git+https://github.com/serapieum-org/pyramids.git"
 ```
 
 Install a specific tagged release from GitHub:
 
 ```console
-pip install "git+https://github.com/Serapieum-of-alex/pyramids.git@<version>"
+pip install "git+https://github.com/serapieum-org/pyramids.git@<version>"
 ```
 
 ## Quick check
@@ -220,4 +220,4 @@ pixi run -e dev pytest tests/netcdf/test_dimensions.py
 - Supported Python versions are 3.11+.
 - Prefer conda-forge for GDAL and related libraries.
 - Documentation: https://serapieum-of-alex.github.io/pyramids/latest
-- Source repository: https://github.com/Serapieum-of-alex/pyramids
+- Source repository: https://github.com/serapieum-org/pyramids

@@ -84,10 +84,10 @@ notebook = [
 
 
 [project.urls]
-homepage = "https://github.com/Serapieum-of-alex/pyramids"
-repository = "https://github.com/Serapieum-of-alex/pyramids"
+homepage = "https://github.com/serapieum-org/pyramids"
+repository = "https://github.com/serapieum-org/pyramids"
 documentation = "https://serapieum-of-alex.github.io/pyramids"
-Changelog = "https://github.com/Serapieum-of-alex/pyramids/docs/change-log.md"
+Changelog = "https://github.com/serapieum-org/pyramids/docs/change-log.md"
 
 
 [build-system]
