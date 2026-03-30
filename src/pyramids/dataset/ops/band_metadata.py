@@ -757,7 +757,7 @@ class BandMetadata:
         import_cleopatra(
             "The current function uses cleopatra package to for plotting,"
             " please install it manually, for more info"
-            " check https://github.com/serapieum-org/cleopatra"
+            " check https://github.com/serapeum-org/cleopatra"
         )
         from cleopatra.colors import Colors
 

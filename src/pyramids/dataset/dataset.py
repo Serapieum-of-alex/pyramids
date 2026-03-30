@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from numbers import Number
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import numpy as np
 from osgeo import gdal, osr
@@ -38,6 +38,9 @@ from pyramids.dataset.ops import (
     SpatialOps,
     Vectorize,
 )
+
+if TYPE_CHECKING:
+    from geopandas import GeoDataFrame
 
 
 class Dataset(
@@ -359,7 +362,7 @@ class Dataset(
         return super().top_left_corner
 
     @property
-    def bounds(self) -> "GeoDataFrame":
+    def bounds(self) -> GeoDataFrame:
         """Bounds - the bbox as a geodataframe with a polygon geometry.
 
         See Also:

@@ -460,7 +460,7 @@ class DatasetCollection:
         """
         import_cleopatra(
             "The current funcrion uses cleopatra package to for plotting, please install it manually, for more info "
-            "check https://github.com/serapieum-org/cleopatra"
+            "check https://github.com/serapeum-org/cleopatra"
         )
         from cleopatra.array_glyph import ArrayGlyph
 

@@ -867,7 +867,7 @@ class SpatialOps:
     def correct_wrap_cutline_error(src: Dataset) -> Dataset:
         """Correct wrap cutline error.
 
-        https://github.com/serapieum-org/pyramids/issues/74
+        https://github.com/serapeum-org/pyramids/issues/74
         """
         big_array = src.read_array()
         value_to_remove = src.no_data_value[0]
