@@ -283,16 +283,16 @@ def to_ascii(
     columns = arr.shape[1]
     # y_lower_side = geotransform[3] - rows * cell_size
     # write the the ASCII file details
-    File = open(path, "w")
-    File.write("ncols         " + str(columns) + "\n")
-    File.write("nrows         " + str(rows) + "\n")
-    File.write("xllcorner     " + str(xmin) + "\n")
-    File.write("yllcorner     " + str(ymin) + "\n")
-    File.write("cellsize      " + str(cell_size) + "\n")
-    File.write("NODATA_value  " + str(no_data_value) + "\n")
+    file = open(path, "w")
+    file.write("ncols         " + str(columns) + "\n")
+    file.write("nrows         " + str(rows) + "\n")
+    file.write("xllcorner     " + str(xmin) + "\n")
+    file.write("yllcorner     " + str(ymin) + "\n")
+    file.write("cellsize      " + str(cell_size) + "\n")
+    file.write("NODATA_value  " + str(no_data_value) + "\n")
     # write the array
     for i in range(rows):
-        File.writelines(list(map(insert_space, arr[i, :])))
-        File.write("\n")
+        file.writelines(list(map(insert_space, arr[i, :])))
+        file.write("\n")
 
-    File.close()
+    file.close()
