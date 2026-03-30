@@ -27,15 +27,17 @@ from pyramids.base._utils import (
 )
 from pyramids.feature import FeatureCollection
 
-from pyramids.dataset._overviews import OverviewsMixin
-from pyramids.dataset._plot import PlotMixin
-from pyramids.dataset._nodata import NoDataMixin
-from pyramids.dataset._cell_ops import CellOpsMixin
-from pyramids.dataset._band_metadata import BandMetadataMixin
-from pyramids.dataset._io_ops import IOOpsMixin
-from pyramids.dataset._spatial_ops import SpatialOpsMixin
-from pyramids.dataset._analysis import AnalysisMixin
-from pyramids.dataset._vectorize import VectorizeMixin
+from pyramids.dataset.ops import (
+    AnalysisMixin,
+    BandMetadataMixin,
+    CellOpsMixin,
+    IOOpsMixin,
+    NoDataMixin,
+    OverviewsMixin,
+    PlotMixin,
+    SpatialOpsMixin,
+    VectorizeMixin,
+)
 
 
 class Dataset(
