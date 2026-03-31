@@ -117,7 +117,7 @@ class DatasetCollection:
                 Length of the dataset.
 
         Returns:
-            DatasetCollection: Datacube object.
+            DatasetCollection: DatasetCollection object.
         """
         return cls(src, dataset_length)
 
@@ -606,7 +606,7 @@ class DatasetCollection:
                 Default is True.
 
         Returns:
-            Union[None, "Datacube"]: New rasters have the values from rasters in B_input_path with the NoDataValue in
+            Union[None, "DatasetCollection"]: New rasters have the values from rasters in B_input_path with the NoDataValue in
             the same locations as raster A.
 
         Examples:
