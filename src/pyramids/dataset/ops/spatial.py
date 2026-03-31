@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
-class SpatialOps:
+class Spatial:
 
     def _get_crs(self) -> str:
         """Get coordinate reference system."""
