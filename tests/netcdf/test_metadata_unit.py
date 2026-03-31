@@ -25,7 +25,7 @@ from pyramids.netcdf.metadata import (
     to_json,
 )
 from pyramids.netcdf.models import (
-    ArrayInfo,
+    VariableInfo,
     DimensionInfo,
     GroupInfo,
     NetCDFMetadata,
@@ -202,11 +202,11 @@ def _make_metadata(**kwargs) -> NetCDFMetadata:
             "/": GroupInfo(
                 name="root",
                 full_name="/",
-                arrays=["/temperature"],
+                variables=["/temperature"],
             ),
         },
-        arrays={
-            "/temperature": ArrayInfo(
+        variables={
+            "/temperature": VariableInfo(
                 name="temperature",
                 full_name="/temperature",
                 dtype="float32",
@@ -259,8 +259,8 @@ class TestMetadataBuilder:
         assert md.root_group == "/", f"Expected '/', got '{md.root_group}'"
         assert len(md.groups) >= 1, "Should have at least one group"
         assert "/" in md.groups, "Root group '/' should be in groups"
-        assert len(md.arrays) >= 1, "Should have at least one array"
-        assert "/temp" in md.arrays, "'/temp' should be in arrays"
+        assert len(md.variables) >= 1, "Should have at least one array"
+        assert "/temp" in md.variables, "'/temp' should be in arrays"
         assert len(md.dimensions) >= 1, "Should have at least one dimension"
         assert md.structural is not None, "Structural info should be populated"
         assert (
@@ -281,7 +281,7 @@ class TestMetadataBuilder:
         md = builder.build()
         assert md.root_group is None, f"Expected root_group=None, got '{md.root_group}'"
         assert md.groups == {}, "Groups should be empty without root group"
-        assert md.arrays == {}, "Arrays should be empty without root group"
+        assert md.variables == {}, "Arrays should be empty without root group"
         assert md.dimensions == {}, "Dimensions should be empty without root group"
 
     def test_build_without_root_group_metadata_failure(self):
@@ -649,11 +649,11 @@ class TestToDict:
         assert isinstance(d, dict), f"Expected dict, got {type(d)}"
         assert d["driver"] == "netCDF", f"Expected 'netCDF', got {d['driver']}"
         assert isinstance(d["groups"], dict), "groups should be dict"
-        assert isinstance(d["arrays"], dict), "arrays should be dict"
+        assert isinstance(d["variables"], dict), "arrays should be dict"
         assert isinstance(d["dimensions"], dict), "dimensions should be dict"
 
     def test_nested_dataclass_conversion(self):
-        """Verify nested GroupInfo/ArrayInfo/DimensionInfo are converted to dicts."""
+        """Verify nested GroupInfo/VariableInfo/DimensionInfo are converted to dicts."""
         md = _make_metadata()
         d = to_dict(md)
         group_data = d["groups"]["/"]
@@ -683,20 +683,20 @@ class TestToDict:
         """Verify to_dict handles metadata with empty collections."""
         md = _make_metadata(
             groups={},
-            arrays={},
+            variables={},
             dimensions={},
             global_attributes={},
         )
         d = to_dict(md)
         assert d["groups"] == {}, "Empty groups should stay {}"
-        assert d["arrays"] == {}, "Empty arrays should stay {}"
+        assert d["variables"] == {}, "Empty arrays should stay {}"
         assert d["dimensions"] == {}, "Empty dimensions should stay {}"
 
     def test_list_conversion(self):
         """Verify lists inside dataclasses are preserved."""
         md = _make_metadata()
         d = to_dict(md)
-        arr_data = d["arrays"]["/temperature"]
+        arr_data = d["variables"]["/temperature"]
         assert isinstance(arr_data["shape"], list), "shape should be a list"
         assert isinstance(arr_data["dimensions"], list), "dimensions should be a list"
 
@@ -738,8 +738,8 @@ class TestFromJson:
         assert set(restored.groups.keys()) == set(
             md.groups.keys()
         ), "Groups keys should match after round-trip"
-        assert set(restored.arrays.keys()) == set(
-            md.arrays.keys()
+        assert set(restored.variables.keys()) == set(
+            md.variables.keys()
         ), "Arrays keys should match after round-trip"
         assert set(restored.dimensions.keys()) == set(
             md.dimensions.keys()
@@ -764,15 +764,15 @@ class TestFromJson:
             rest_group.full_name == orig_group.full_name
         ), f"Expected full_name '{orig_group.full_name}', got '{rest_group.full_name}'"
         assert (
-            rest_group.arrays == orig_group.arrays
-        ), f"Expected arrays {orig_group.arrays}, got {rest_group.arrays}"
+            rest_group.variables == orig_group.variables
+        ), f"Expected arrays {orig_group.variables}, got {rest_group.variables}"
 
     def test_round_trip_arrays(self):
         """Verify array metadata is preserved through round-trip."""
         md = _make_metadata()
         restored = from_json(to_json(md))
-        orig_arr = md.arrays["/temperature"]
-        rest_arr = restored.arrays["/temperature"]
+        orig_arr = md.variables["/temperature"]
+        rest_arr = restored.variables["/temperature"]
         assert (
             rest_arr.name == orig_arr.name
         ), f"Expected name '{orig_arr.name}', got '{rest_arr.name}'"
@@ -823,8 +823,8 @@ class TestFromJson:
         ), f"Expected None structural, got {restored.structural}"
 
     def test_round_trip_with_all_array_fields(self):
-        """Verify all ArrayInfo optional fields survive round-trip."""
-        full_arr = ArrayInfo(
+        """Verify all VariableInfo optional fields survive round-trip."""
+        full_arr = VariableInfo(
             name="full",
             full_name="/full",
             dtype="int16",
@@ -841,9 +841,9 @@ class TestFromJson:
             structural_info={"COMPRESS": "DEFLATE"},
             block_size=[1, 20, 30],
         )
-        md = _make_metadata(arrays={"/full": full_arr})
+        md = _make_metadata(variables={"/full": full_arr})
         restored = from_json(to_json(md))
-        r = restored.arrays["/full"]
+        r = restored.variables["/full"]
         assert r.scale == 0.01, f"Expected scale=0.01, got {r.scale}"
         assert r.offset == 0.5, f"Expected offset=0.5, got {r.offset}"
         assert r.nodata == -9999, f"Expected nodata=-9999, got {r.nodata}"
@@ -888,7 +888,7 @@ class TestFromJson:
             {
                 "root_group": "/",
                 "groups": {},
-                "arrays": {},
+                "variables": {},
                 "dimensions": {},
                 "global_attributes": {},
                 "created_with": {},
@@ -920,7 +920,7 @@ class TestFromJson:
 
     def test_from_json_block_size_none(self):
         """Verify block_size=None survives round-trip (not converted to [])."""
-        arr = ArrayInfo(
+        arr = VariableInfo(
             name="v",
             full_name="/v",
             dtype="float32",
@@ -928,11 +928,11 @@ class TestFromJson:
             dimensions=["/x"],
             block_size=None,
         )
-        md = _make_metadata(arrays={"/v": arr})
+        md = _make_metadata(variables={"/v": arr})
         restored = from_json(to_json(md))
         assert (
-            restored.arrays["/v"].block_size is None
-        ), f"Expected None block_size, got {restored.arrays['/v'].block_size}"
+            restored.variables["/v"].block_size is None
+        ), f"Expected None block_size, got {restored.variables['/v'].block_size}"
 
 
 class TestToDictFromJsonConsistency:
@@ -958,7 +958,7 @@ class TestFlattenForIndex:
         assert flat["driver"] == "netCDF", f"Expected 'netCDF', got {flat['driver']}"
         assert flat["root_group"] == "/", f"Expected '/', got {flat['root_group']}"
         assert flat["group_count"] == 1, f"Expected 1, got {flat['group_count']}"
-        assert flat["array_count"] == 1, f"Expected 1, got {flat['array_count']}"
+        assert flat["variable_count"] == 1, f"Expected 1, got {flat['variable_count']}"
         assert (
             flat["dimension_count"] == 3
         ), f"Expected 3, got {flat['dimension_count']}"
@@ -978,9 +978,9 @@ class TestFlattenForIndex:
         """Verify arrays list is sorted."""
         md = _make_metadata()
         flat = flatten_for_index(md)
-        assert flat["arrays"] == [
+        assert flat["variables"] == [
             "/temperature"
-        ], f"Expected ['/temperature'], got {flat['arrays']}"
+        ], f"Expected ['/temperature'], got {flat['variables']}"
 
     def test_dimensions_sorted(self):
         """Verify dimensions list is sorted."""
@@ -994,17 +994,17 @@ class TestFlattenForIndex:
         """Verify flatten_for_index handles empty metadata gracefully."""
         md = _make_metadata(
             groups={},
-            arrays={},
+            variables={},
             dimensions={},
             global_attributes={},
         )
         flat = flatten_for_index(md)
         assert flat["group_count"] == 0, f"Expected 0, got {flat['group_count']}"
-        assert flat["array_count"] == 0, f"Expected 0, got {flat['array_count']}"
+        assert flat["variable_count"] == 0, f"Expected 0, got {flat['variable_count']}"
         assert (
             flat["dimension_count"] == 0
         ), f"Expected 0, got {flat['dimension_count']}"
-        assert flat["arrays"] == [], f"Expected [], got {flat['arrays']}"
+        assert flat["variables"] == [], f"Expected [], got {flat['variables']}"
         assert flat["dimensions"] == [], f"Expected [], got {flat['dimensions']}"
 
     def test_global_attributes_limited_to_20(self):
@@ -1020,21 +1020,21 @@ class TestFlattenForIndex:
     def test_multiple_arrays_sorted(self):
         """Verify multiple arrays are sorted alphabetically."""
         arrays = {
-            "/z": ArrayInfo(
+            "/z": VariableInfo(
                 name="z",
                 full_name="/z",
                 dtype="f32",
                 shape=[1],
                 dimensions=["/x"],
             ),
-            "/a": ArrayInfo(
+            "/a": VariableInfo(
                 name="a",
                 full_name="/a",
                 dtype="f32",
                 shape=[1],
                 dimensions=["/x"],
             ),
-            "/m": ArrayInfo(
+            "/m": VariableInfo(
                 name="m",
                 full_name="/m",
                 dtype="f32",
@@ -1042,13 +1042,13 @@ class TestFlattenForIndex:
                 dimensions=["/x"],
             ),
         }
-        md = _make_metadata(arrays=arrays)
+        md = _make_metadata(variables=arrays)
         flat = flatten_for_index(md)
-        assert flat["arrays"] == [
+        assert flat["variables"] == [
             "/a",
             "/m",
             "/z",
-        ], f"Expected sorted arrays, got {flat['arrays']}"
+        ], f"Expected sorted arrays, got {flat['variables']}"
 
     def test_root_group_none(self):
         """Verify root_group=None is captured in the flat dict."""

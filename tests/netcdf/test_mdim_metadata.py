@@ -32,7 +32,7 @@ def test_mdim_metadata_basic(request, fixture_name: str):
     assert md1.driver and isinstance(md1.driver, str)
     assert md1.structural is not None
     assert isinstance(md1.groups, dict) and len(md1.groups) >= 1
-    assert isinstance(md1.arrays, dict) and len(md1.arrays) >= 1
+    assert isinstance(md1.variables, dict) and len(md1.variables) >= 1
     assert isinstance(md1.dimensions, dict) and len(md1.dimensions) >= 1
 
     # dimension_overview should mirror nc.meta_data
@@ -58,8 +58,8 @@ def test_mdim_metadata_basic(request, fixture_name: str):
     # flatten_for_index returns basic keys
     flat = flatten_for_index(md1)
     assert flat["driver"] == md1.driver
-    assert flat["array_count"] >= 1
-    assert isinstance(flat.get("arrays"), list)
+    assert flat["variable_count"] >= 1
+    assert isinstance(flat.get("variables"), list)
 
 
 def test_get_mdim_metadata_from_path_and_instance(pyramids_created_nc_3d: str):

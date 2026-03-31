@@ -302,7 +302,7 @@ class TestMetaDataSetter:
             driver="netCDF",
             root_group="/",
             groups={},
-            arrays={},
+            variables={},
             dimensions={
                 "/x": DimensionInfo(name="x", full_name="/x", size=12),
             },
