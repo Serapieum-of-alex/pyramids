@@ -100,7 +100,8 @@ def _get_gzip_path(path: str, file_i: int = 0):
         vsi_path = f"/vsigzip/{path}"
     else:
         try:
-            file_list = tarfile.open(path).getnames()
+            with tarfile.open(path) as tf:
+                file_list = tf.getnames()
             vsi_path = f"/vsigzip/{path}/{file_list[file_i]}"
         except tarfile.ReadError:
             # if the tarfile.open() does not give a getnames() method, it means the file contains one file
@@ -169,11 +170,8 @@ def extract_from_gz(input_file: str | Path, output_file: str | Path, delete=Fals
     output_file = Path(output_file)
     with gzip.GzipFile(input_file, "rb") as zf:
         content = zf.read()
-        save_file_content = open(output_file, "wb")
-        save_file_content.write(content)
-
-    save_file_content.close()
-    zf.close()
+        with open(output_file, "wb") as save_file_content:
+            save_file_content.write(content)
 
     if delete:
         input_file.unlink()
@@ -283,16 +281,14 @@ def to_ascii(
     columns = arr.shape[1]
     # y_lower_side = geotransform[3] - rows * cell_size
     # write the the ASCII file details
-    file = open(path, "w")
-    file.write("ncols         " + str(columns) + "\n")
-    file.write("nrows         " + str(rows) + "\n")
-    file.write("xllcorner     " + str(xmin) + "\n")
-    file.write("yllcorner     " + str(ymin) + "\n")
-    file.write("cellsize      " + str(cell_size) + "\n")
-    file.write("NODATA_value  " + str(no_data_value) + "\n")
-    # write the array
-    for i in range(rows):
-        file.writelines(list(map(insert_space, arr[i, :])))
-        file.write("\n")
-
-    file.close()
+    with open(path, "w") as file:
+        file.write("ncols         " + str(columns) + "\n")
+        file.write("nrows         " + str(rows) + "\n")
+        file.write("xllcorner     " + str(xmin) + "\n")
+        file.write("yllcorner     " + str(ymin) + "\n")
+        file.write("cellsize      " + str(cell_size) + "\n")
+        file.write("NODATA_value  " + str(no_data_value) + "\n")
+        # write the array
+        for i in range(rows):
+            file.writelines(list(map(insert_space, arr[i, :])))
+            file.write("\n")
