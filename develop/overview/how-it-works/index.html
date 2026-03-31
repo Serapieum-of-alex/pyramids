@@ -1976,7 +1976,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     <pre class="mermaid"><code>flowchart TB
   subgraph Process
     A[Dataset]:::c --&gt; B[_io]:::c
-    C[Datacube]:::c --&gt; B
+    C[DatasetCollection]:::c --&gt; B
     D[FeatureCollection]:::c --&gt; B
     A --&gt; E[_utils]
     C --&gt; E
@@ -2011,8 +2011,8 @@ Hold "Ctrl" to enable pan &amp; zoom
     </nav>
     <pre class="mermaid"><code>flowchart LR
   io[_io: read_file, to_ascii, path parsing]\nutils[_utils: geometry/index helpers]
-  ds[dataset.Dataset]\nabs[abstract_dataset.AbstractDataset]
-  dc[datacube.Datacube]\nfc[featurecollection.FeatureCollection]
+  ds[dataset.Dataset]\nabs[dataset.abstract_dataset.AbstractDataset]
+  dc[dataset.DatasetCollection]\nfc[feature.FeatureCollection]
 
   abs --&gt; ds
   ds --&gt; io
@@ -2026,7 +2026,7 @@ Hold "Ctrl" to enable pan &amp; zoom
 <ol>
 <li>Input paths are parsed; archives (.zip/.gz/.tar) are handled in <code>_io</code>.</li>
 <li>Raster inputs are loaded into <code>Dataset</code>; vector inputs into <code>FeatureCollection</code>.</li>
-<li><code>Datacube</code> orchestrates collections of datasets for temporal/spatial ops.</li>
+<li><code>DatasetCollection</code> orchestrates collections of datasets for temporal/spatial ops.</li>
 <li>Results are exported via <code>to_file</code> (GeoTIFF/ASCII/GeoJSON, etc.).</li>
 </ol>
 <p>See the diagrams page for UML and sequence flows.</p>

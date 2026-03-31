@@ -839,10 +839,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sequence-build-datacube-from-folder" class="md-nav__link">
+  <a href="#sequence-build-datasetcollection-from-folder" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sequence: Build Datacube from Folder
+        Sequence: Build DatasetCollection from Folder
       
     </span>
   </a>
@@ -1993,10 +1993,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sequence-build-datacube-from-folder" class="md-nav__link">
+  <a href="#sequence-build-datasetcollection-from-folder" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sequence: Build Datacube from Folder
+        Sequence: Build DatasetCollection from Folder
       
     </span>
   </a>
@@ -2130,7 +2130,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     <pre class="mermaid"><code>flowchart TB
   subgraph Runtime Process
     A[Dataset]:::c --&gt; B[_io]
-    C[Datacube]:::c --&gt; B
+    C[DatasetCollection]:::c --&gt; B
     D[FeatureCollection]:::c --&gt; B
     A --&gt; E[_utils]
     C --&gt; E
@@ -2167,9 +2167,9 @@ Hold "Ctrl" to enable pan &amp; zoom
   io[_io: read_file, to_ascii, path parsing]
   utils[_utils: geometry/index helpers]
   ds[dataset.Dataset]
-  abs[abstract_dataset.AbstractDataset]
-  dc[datacube.Datacube]
-  fc[featurecollection.FeatureCollection]
+  abs[dataset.AbstractDataset]
+  dc[dataset.DatasetCollection]
+  fc[feature.FeatureCollection]
 
   abs --&gt; ds
   ds --&gt; io
@@ -2315,7 +2315,7 @@ Hold "Ctrl" to enable pan &amp; zoom
   DS--&gt;&gt;U: writes file</code></pre> 
     
 </div>
-<h2 id="sequence-build-datacube-from-folder"><a class="toclink" href="#sequence-build-datacube-from-folder">Sequence: Build Datacube from Folder</a><a class="headerlink" href="#sequence-build-datacube-from-folder" title="Permanent link">#</a></h2>
+<h2 id="sequence-build-datasetcollection-from-folder"><a class="toclink" href="#sequence-build-datasetcollection-from-folder">Sequence: Build DatasetCollection from Folder</a><a class="headerlink" href="#sequence-build-datasetcollection-from-folder" title="Permanent link">#</a></h2>
 <div class="panzoom-box" data-key="ctrl" id="panzoom0" oncontextmenu="return false;">
     <div class="panzoom-info-box panzoom-info-box-top panzoom-hidden">
 Hold "Ctrl" to enable pan &amp; zoom
@@ -2341,12 +2341,12 @@ Hold "Ctrl" to enable pan &amp; zoom
     </nav>
     <pre class="mermaid"><code>sequenceDiagram
   participant U as User
-  participant DC as Datacube
+  participant DC as DatasetCollection
   participant DS as Dataset
   U-&gt;&gt;DC: from_folder("./rasters/*.tif")
   DC-&gt;&gt;DS: open each file
   DS--&gt;&gt;DC: Dataset objects
-  DC--&gt;&gt;U: Datacube</code></pre> 
+  DC--&gt;&gt;U: DatasetCollection</code></pre> 
     
 </div>
 <h2 id="sequence-zonal-statistics"><a class="toclink" href="#sequence-zonal-statistics">Sequence: Zonal Statistics</a><a class="headerlink" href="#sequence-zonal-statistics" title="Permanent link">#</a></h2>
@@ -2442,9 +2442,9 @@ Hold "Ctrl" to enable pan &amp; zoom
   abstract_dataset --&gt; dataset
   _io --&gt; dataset
   _utils --&gt; dataset
-  dataset --&gt; datacube
-  _io --&gt; featurecollection
-  _utils --&gt; featurecollection</code></pre> 
+  dataset --&gt; dataset_collection
+  _io --&gt; feature
+  _utils --&gt; feature</code></pre> 
     
 </div>
 <ul>
@@ -2524,7 +2524,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     }
 
     %% DataCube: stack of rasters
-    class datacube_Datacube {
+    class collection_DatasetCollection {
         +__init__(src, time_length, files)
         +create_cube(src, dataset_length)
         +read_multiple_files(path, with_order, regex_string, date, file_name_data_fmt, start, end, fmt, extension)
@@ -2577,7 +2577,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     dataset_Dataset &lt;|-- netcdf_NetCDF
 
     %% composition/usage relations
-    datacube_Datacube --&gt; dataset_Dataset : "base raster"
+    collection_DatasetCollection --&gt; dataset_Dataset : "base raster"
     abstract_dataset_AbstractDataset ..&gt; _utils_Catalog : "uses Catalog constant"
     abstract_dataset_AbstractDataset ..&gt; feature_FeatureCollection : "vector ops"
     dataset_Dataset ..&gt; feature_FeatureCollection : "vector ops"
@@ -2587,7 +2587,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     dataset_Dataset ..&gt; _errors_NoDataValueError : "raises"
     dataset_Dataset ..&gt; _errors_FailedToSaveError : "raises"
     dataset_Dataset ..&gt; _errors_OutOfBoundsError : "raises"
-    datacube_Datacube ..&gt; _errors_DatasetNotFoundError : "raises"
+    collection_DatasetCollection ..&gt; _errors_DatasetNotFoundError : "raises"
     feature_FeatureCollection ..&gt; _errors_DriverNotExistError : "raises"
     netcdf_NetCDF ..&gt; _errors_OptionalPackageDoesNotExist : "raises"
     config_Config ..&gt; dataset_Dataset : "initialises raster settings"
@@ -2749,7 +2749,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     }
 
     %% DataCube: stack of rasters
-    class datacube_Datacube {
+    class collection_DatasetCollection {
         +__init__(src, time_length, files)
         +__str__()
         +__repr__()
@@ -2849,7 +2849,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     dataset_Dataset &lt;|-- netcdf_NetCDF
 
     %% composition/usage relations
-    datacube_Datacube --&gt; dataset_Dataset : "base raster"
+    collection_DatasetCollection --&gt; dataset_Dataset : "base raster"
     abstract_dataset_AbstractDataset ..&gt; _utils_Catalog : "uses Catalog constant"
     abstract_dataset_AbstractDataset ..&gt; feature_FeatureCollection : "vector ops"
     dataset_Dataset ..&gt; feature_FeatureCollection : "vector ops"
@@ -2859,7 +2859,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     dataset_Dataset ..&gt; _errors_NoDataValueError : "raises"
     dataset_Dataset ..&gt; _errors_FailedToSaveError : "raises"
     dataset_Dataset ..&gt; _errors_OutOfBoundsError : "raises"
-    datacube_Datacube ..&gt; _errors_DatasetNotFoundError : "raises"
+    collection_DatasetCollection ..&gt; _errors_DatasetNotFoundError : "raises"
     feature_FeatureCollection ..&gt; _errors_DriverNotExistError : "raises"
     netcdf_NetCDF ..&gt; _errors_OptionalPackageDoesNotExist : "raises"
     config_Config ..&gt; dataset_Dataset : "initialises raster settings"
