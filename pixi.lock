@@ -14071,7 +14071,7 @@ packages:
 - pypi: ./
   name: pyramids-gis
   version: 0.9.1
-  sha256: 7bf7f08470875f100acc4eb46d31d74be28ba37a068fd9c09364772f87993e8f
+  sha256: c4aaf9cf2b61434455351f1bcf28e0469f11ef5a019fdd86a304b199b2c2b838
   requires_dist:
   - gdal>=3.10.0,<4
   - geopandas>=1.0.0

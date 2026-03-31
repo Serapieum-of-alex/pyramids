@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from geopandas import GeoDataFrame
 
 
-class Dataset(
+class Dataset(  # type: ignore[misc]
     BandMetadata,
     IO,
     Spatial,

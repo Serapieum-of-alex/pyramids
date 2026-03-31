@@ -21,7 +21,7 @@ class Cell:
     """Mixin providing cell coordinate and geometry utilities for Dataset."""
 
     def get_cell_coords(
-        self: Dataset, location: str = "center", mask: bool = False
+        self, location: str = "center", mask: bool = False
     ) -> np.ndarray:
         """Get coordinates for the center/corner of cells inside the dataset domain.
 
@@ -136,7 +136,7 @@ class Cell:
 
         return coords
 
-    def get_cell_polygons(self: Dataset, mask: bool = False) -> GeoDataFrame:
+    def get_cell_polygons(self, mask: bool = False) -> GeoDataFrame:
         """Get a polygon shapely geometry for the raster cells.
 
         Args:
@@ -217,7 +217,7 @@ class Cell:
         gdf["id"] = gdf.index
         return gdf
 
-    def get_cell_points(self: Dataset, location: str = "center", mask=False) -> GeoDataFrame:
+    def get_cell_points(self, location: str = "center", mask=False) -> GeoDataFrame:
         """Get a point shapely geometry for the raster cells center point.
 
         Args:

@@ -25,7 +25,7 @@ class Analysis:
     """Mixin providing analysis, statistics, and data extraction operations for Dataset."""
 
     def stats(
-        self: Dataset, band: int | None = None, mask: GeoDataFrame | None = None
+        self, band: int | None = None, mask: GeoDataFrame | None = None
     ) -> DataFrame:
         """Get statistics of a band [Min, max, mean, std].
 
@@ -138,7 +138,7 @@ class Analysis:
 
         return df
 
-    def _get_stats(self: Dataset, band: int | None = None) -> list[float]:
+    def _get_stats(self, band: int | None = None) -> list[float]:
         """_get_stats."""
         band_index = band if band is not None else 0
         band_i = self._iloc(band_index)
@@ -157,7 +157,7 @@ class Analysis:
 
         return list(vals)
 
-    def count_domain_cells(self: Dataset, band: int = 0) -> int:
+    def count_domain_cells(self, band: int = 0) -> int:
         """Count cells inside the domain.
 
         Args:
@@ -174,7 +174,7 @@ class Analysis:
         )
         return int(domain_count)
 
-    def apply(self: Dataset, func, band: int = 0) -> Dataset:
+    def apply(self, func, band: int = 0) -> Dataset:
         """Apply a function to all domain cells.
 
         - apply method executes a mathematical operation on the raster array.
@@ -250,7 +250,7 @@ class Analysis:
         return dst_obj
 
     def fill(
-        self: Dataset, value: float | int, inplace: bool = False, path: str | Path | None = None
+        self, value: float | int, inplace: bool = False, path: str | Path | None = None
     ) -> Dataset | None:
         """Fill the domain cells with a certain value.
 
@@ -312,8 +312,8 @@ class Analysis:
             result = dst
         return result
 
-    def extract(  # type: ignore[override]
-        self: Dataset,
+    def extract(
+        self,
         band: int | None = None,
         exclude_value: Any | None = None,
         feature: FeatureCollection | GeoDataFrame | None = None,
@@ -513,7 +513,7 @@ class Analysis:
 
         return values
 
-    def get_mask(self: Dataset, band: int = 0) -> np.ndarray:
+    def get_mask(self, band: int = 0) -> np.ndarray:
         """Get the mask array.
 
         Args:

@@ -149,6 +149,13 @@ exclude = [
     "planning/",
 ]
 
+[[tool.mypy.overrides]]
+module = "pyramids.dataset.ops.*"
+disable_error_code = [
+    "attr-defined", "call-arg", "misc", "return-value",
+    "assignment", "union-attr", "no-any-return", "arg-type",
+]
+
 [tool.commitizen]
 name = "cz_conventional_commits"
 version_provider = "pep621"

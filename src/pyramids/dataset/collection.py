@@ -517,8 +517,8 @@ class DatasetCollection:
                 raise ValueError(
                     f"Length of the given paths: {len(path)} does not equal number of rasters in the data cube: {self.time_length}"
                 )
-            path = [Path(p) for p in path]
-            parent = path[0].parent
+            path_list = [Path(p) for p in path]
+            parent = path_list[0].parent
             if not parent.exists():
                 parent.mkdir(parents=True, exist_ok=True)
 
