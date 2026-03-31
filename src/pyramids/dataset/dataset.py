@@ -32,9 +32,6 @@ from pyramids.dataset.ops import (
     BandMetadata,
     Cell,
     IO,
-    NoData,
-    Overviews,
-    Plot,
     Spatial,
     Vectorize,
 )
@@ -44,15 +41,12 @@ if TYPE_CHECKING:
 
 
 class Dataset(
-    Overviews,
-    Plot,
-    NoData,
-    Cell,
     BandMetadata,
     IO,
     Spatial,
     Analysis,
     Vectorize,
+    Cell,
     AbstractDataset,
 ):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
