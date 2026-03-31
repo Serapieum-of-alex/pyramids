@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3955,8 +3955,8 @@
 <a id="__codelineno-0-517" name="__codelineno-0-517"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
 <a id="__codelineno-0-518" name="__codelineno-0-518"></a>                    <span class="sa">f</span><span class="s2">&quot;Length of the given paths: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="si">}</span><span class="s2"> does not equal number of rasters in the data cube: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">time_length</span><span class="si">}</span><span class="s2">&quot;</span>
 <a id="__codelineno-0-519" name="__codelineno-0-519"></a>                <span class="p">)</span>
-<a id="__codelineno-0-520" name="__codelineno-0-520"></a>            <span class="n">path</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">path</span><span class="p">]</span>
-<a id="__codelineno-0-521" name="__codelineno-0-521"></a>            <span class="n">parent</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">parent</span>
+<a id="__codelineno-0-520" name="__codelineno-0-520"></a>            <span class="n">path_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">path</span><span class="p">]</span>
+<a id="__codelineno-0-521" name="__codelineno-0-521"></a>            <span class="n">parent</span> <span class="o">=</span> <span class="n">path_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">parent</span>
 <a id="__codelineno-0-522" name="__codelineno-0-522"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">parent</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
 <a id="__codelineno-0-523" name="__codelineno-0-523"></a>                <span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-524" name="__codelineno-0-524"></a>
@@ -6442,8 +6442,8 @@ the given path will be read.</p>
 <a id="__codelineno-0-517" name="__codelineno-0-517"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
 <a id="__codelineno-0-518" name="__codelineno-0-518"></a>                <span class="sa">f</span><span class="s2">&quot;Length of the given paths: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="si">}</span><span class="s2"> does not equal number of rasters in the data cube: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">time_length</span><span class="si">}</span><span class="s2">&quot;</span>
 <a id="__codelineno-0-519" name="__codelineno-0-519"></a>            <span class="p">)</span>
-<a id="__codelineno-0-520" name="__codelineno-0-520"></a>        <span class="n">path</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">path</span><span class="p">]</span>
-<a id="__codelineno-0-521" name="__codelineno-0-521"></a>        <span class="n">parent</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">parent</span>
+<a id="__codelineno-0-520" name="__codelineno-0-520"></a>        <span class="n">path_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">path</span><span class="p">]</span>
+<a id="__codelineno-0-521" name="__codelineno-0-521"></a>        <span class="n">parent</span> <span class="o">=</span> <span class="n">path_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">parent</span>
 <a id="__codelineno-0-522" name="__codelineno-0-522"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">parent</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
 <a id="__codelineno-0-523" name="__codelineno-0-523"></a>            <span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-524" name="__codelineno-0-524"></a>
