@@ -89,10 +89,6 @@
          <lastmod>2026-03-31</lastmod>
     </url>
     <url>
-         <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/</loc>
-         <lastmod>2026-03-31</lastmod>
-    </url>
-    <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset_collection/</loc>
          <lastmod>2026-03-31</lastmod>
     </url>
@@ -102,6 +98,34 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf_metadata/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/analysis/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/band_metadata/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/cell/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/io/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/spatial/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/vectorize/</loc>
          <lastmod>2026-03-31</lastmod>
     </url>
     <url>
