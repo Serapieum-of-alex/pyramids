@@ -3678,7 +3678,7 @@
 <a id="__codelineno-0-461" name="__codelineno-0-461"></a>
 <a id="__codelineno-0-462" name="__codelineno-0-462"></a><span class="sd">              ```</span>
 <a id="__codelineno-0-463" name="__codelineno-0-463"></a>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">              ![rhine-rainfall](./../_images/dataset/rhine-rainfall.png)</span>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">              ![rhine-rainfall](./../../_images/dataset/rhine-rainfall.png)</span>
 <a id="__codelineno-0-465" name="__codelineno-0-465"></a>
 <a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">            - Read the classes dataset:</span>
 <a id="__codelineno-0-467" name="__codelineno-0-467"></a>
@@ -3688,7 +3688,7 @@
 <a id="__codelineno-0-471" name="__codelineno-0-471"></a>
 <a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="sd">              ```</span>
 <a id="__codelineno-0-473" name="__codelineno-0-473"></a>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">              ![rhine-classes](./../_images/dataset/rhine-classes.png)</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">              ![rhine-classes](./../../_images/dataset/rhine-classes.png)</span>
 <a id="__codelineno-0-475" name="__codelineno-0-475"></a>
 <a id="__codelineno-0-476" name="__codelineno-0-476"></a><span class="sd">            - Overlay the dataset with the classes dataset:</span>
 <a id="__codelineno-0-477" name="__codelineno-0-477"></a>
@@ -3788,7 +3788,7 @@
 <a id="__codelineno-0-571" name="__codelineno-0-571"></a>
 <a id="__codelineno-0-572" name="__codelineno-0-572"></a><span class="sd">              ```</span>
 <a id="__codelineno-0-573" name="__codelineno-0-573"></a>
-<a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="sd">            ![dataset-footprint-rhine-flood](./../_images/dataset/dataset-footprint-rhine-flood.png)</span>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="sd">            ![dataset-footprint-rhine-flood](./../../_images/dataset/dataset-footprint-rhine-flood.png)</span>
 <a id="__codelineno-0-575" name="__codelineno-0-575"></a>
 <a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">            - Now, to extract the footprint of the dataset band, we need to specify the `exclude_values` parameter with the</span>
 <a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">              value of the non-flooded cells.</span>
@@ -3810,7 +3810,7 @@
 <a id="__codelineno-0-593" name="__codelineno-0-593"></a>
 <a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">              ```</span>
 <a id="__codelineno-0-595" name="__codelineno-0-595"></a>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">            ![dataset-footprint-rhine-flood-extent](./../_images/dataset/dataset-footprint-rhine-flood-extent.png)</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">            ![dataset-footprint-rhine-flood-extent](./../../_images/dataset/dataset-footprint-rhine-flood-extent.png)</span>
 <a id="__codelineno-0-597" name="__codelineno-0-597"></a>
 <a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-599" name="__codelineno-0-599"></a>        <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="n">band</span><span class="p">)</span>
@@ -5755,14 +5755,14 @@ values in the base map.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">&quot;examples/data/geotiff/raster-folder/MSWEP_1979.01.01.tif&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">dataset</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span> <span class="c1"># doctest: +SKIP</span>
 </code></pre></div>
-<p><img alt="rhine-rainfall" src="./../_images/dataset/rhine-rainfall.png" /></p>
+<p><img alt="rhine-rainfall" src="../../../_images/dataset/rhine-rainfall.png" /></p>
 <ul>
 <li>Read the classes dataset:</li>
 </ul>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">classes</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">&quot;examples/data/geotiff/rhine-classes.tif&quot;</span><span class="p">)</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">classes</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">color_scale</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">])</span> <span class="c1"># doctest: +SKIP</span>
 </code></pre></div>
-<p><img alt="rhine-classes" src="./../_images/dataset/rhine-classes.png" /></p>
+<p><img alt="rhine-classes" src="../../../_images/dataset/rhine-classes.png" /></p>
 <ul>
 <li>Overlay the dataset with the classes dataset:</li>
 </ul>
@@ -5891,7 +5891,7 @@ values in the base map.</p>
 <a id="__codelineno-0-461" name="__codelineno-0-461"></a>
 <a id="__codelineno-0-462" name="__codelineno-0-462"></a><span class="sd">          ```</span>
 <a id="__codelineno-0-463" name="__codelineno-0-463"></a>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">          ![rhine-rainfall](./../_images/dataset/rhine-rainfall.png)</span>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">          ![rhine-rainfall](./../../_images/dataset/rhine-rainfall.png)</span>
 <a id="__codelineno-0-465" name="__codelineno-0-465"></a>
 <a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">        - Read the classes dataset:</span>
 <a id="__codelineno-0-467" name="__codelineno-0-467"></a>
@@ -5901,7 +5901,7 @@ values in the base map.</p>
 <a id="__codelineno-0-471" name="__codelineno-0-471"></a>
 <a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="sd">          ```</span>
 <a id="__codelineno-0-473" name="__codelineno-0-473"></a>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">          ![rhine-classes](./../_images/dataset/rhine-classes.png)</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">          ![rhine-classes](./../../_images/dataset/rhine-classes.png)</span>
 <a id="__codelineno-0-475" name="__codelineno-0-475"></a>
 <a id="__codelineno-0-476" name="__codelineno-0-476"></a><span class="sd">        - Overlay the dataset with the classes dataset:</span>
 <a id="__codelineno-0-477" name="__codelineno-0-477"></a>
@@ -6162,7 +6162,7 @@ list of tuples a [(value_to_be_exclude_valuesd, new_value)].</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">dataset</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">(</span><span class="o">&lt;</span><span class="n">Figure</span> <span class="n">size</span> <span class="mi">800</span><span class="n">x800</span> <span class="k">with</span> <span class="mi">2</span> <span class="n">Axes</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">Axes</span><span class="p">:</span> <span class="o">&gt;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="dataset-footprint-rhine-flood" src="./../_images/dataset/dataset-footprint-rhine-flood.png" /></p>
+<p><img alt="dataset-footprint-rhine-flood" src="../../../_images/dataset/dataset-footprint-rhine-flood.png" /></p>
 <ul>
 <li>Now, to extract the footprint of the dataset band, we need to specify the <code>exclude_values</code> parameter with the
   value of the non-flooded cells.</li>
@@ -6181,7 +6181,7 @@ list of tuples a [(value_to_be_exclude_valuesd, new_value)].</p>
 <a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">extent</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
 <a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="o">&lt;</span><span class="n">Axes</span><span class="p">:</span> <span class="o">&gt;</span>
 </code></pre></div>
-<p><img alt="dataset-footprint-rhine-flood-extent" src="./../_images/dataset/dataset-footprint-rhine-flood-extent.png" /></p>
+<p><img alt="dataset-footprint-rhine-flood-extent" src="../../../_images/dataset/dataset-footprint-rhine-flood-extent.png" /></p>
 
 
             <details class="mkdocstrings-source">
@@ -6345,7 +6345,7 @@ list of tuples a [(value_to_be_exclude_valuesd, new_value)].</p>
 <a id="__codelineno-0-571" name="__codelineno-0-571"></a>
 <a id="__codelineno-0-572" name="__codelineno-0-572"></a><span class="sd">          ```</span>
 <a id="__codelineno-0-573" name="__codelineno-0-573"></a>
-<a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="sd">        ![dataset-footprint-rhine-flood](./../_images/dataset/dataset-footprint-rhine-flood.png)</span>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="sd">        ![dataset-footprint-rhine-flood](./../../_images/dataset/dataset-footprint-rhine-flood.png)</span>
 <a id="__codelineno-0-575" name="__codelineno-0-575"></a>
 <a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">        - Now, to extract the footprint of the dataset band, we need to specify the `exclude_values` parameter with the</span>
 <a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">          value of the non-flooded cells.</span>
@@ -6367,7 +6367,7 @@ list of tuples a [(value_to_be_exclude_valuesd, new_value)].</p>
 <a id="__codelineno-0-593" name="__codelineno-0-593"></a>
 <a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">          ```</span>
 <a id="__codelineno-0-595" name="__codelineno-0-595"></a>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">        ![dataset-footprint-rhine-flood-extent](./../_images/dataset/dataset-footprint-rhine-flood-extent.png)</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">        ![dataset-footprint-rhine-flood-extent](./../../_images/dataset/dataset-footprint-rhine-flood-extent.png)</span>
 <a id="__codelineno-0-597" name="__codelineno-0-597"></a>
 <a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-599" name="__codelineno-0-599"></a>    <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="n">band</span><span class="p">)</span>
