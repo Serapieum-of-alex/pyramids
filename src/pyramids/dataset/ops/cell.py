@@ -180,7 +180,7 @@ class Cell:
 
               ```
 
-        ![get_cell_polygons](./../_images/dataset/get_cell_polygons.png)
+        ![get_cell_polygons](./../../_images/dataset/get_cell_polygons.png)
         """
         coords = self.get_cell_coords(location="corner", mask=mask)
         cell_size = self.geotransform[1]
@@ -263,7 +263,7 @@ class Cell:
 
               ```
 
-            ![get_cell_points](./../_images/dataset/get_cell_points.png)
+            ![get_cell_points](./../../_images/dataset/get_cell_points.png)
 
             - Get the coordinates of the top left corner of cells inside the domain.
 
@@ -286,7 +286,7 @@ class Cell:
 
               ```
 
-            ![get_cell_points-corner](./../_images/dataset/get_cell_points-corner.png)
+            ![get_cell_points-corner](./../../_images/dataset/get_cell_points-corner.png)
         """
         coords = self.get_cell_coords(location=location, mask=mask)
         epsg = self._get_epsg()

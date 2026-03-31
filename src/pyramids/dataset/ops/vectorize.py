@@ -808,7 +808,7 @@ class Vectorize:
               ... )  # doctest: +SKIP
 
               ```
-              ![cluster](./../_images/dataset/cluster.png)
+              ![cluster](./../../_images/dataset/cluster.png)
 
             - Now let's cluster the values in the dataset that are between 2 and 4.
 

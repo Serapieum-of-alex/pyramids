@@ -295,7 +295,7 @@ class Spatial:
               (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
               ```
-              ![resample-source](./../_images/dataset/resample-source.png)
+              ![resample-source](./../../_images/dataset/resample-source.png)
 
             - Resample the raster to a new cell size of 0.1:
 
@@ -316,7 +316,7 @@ class Spatial:
               (<Figure size 800x800 with 2 Axes>, <Axes: >)
 
               ```
-              ![resample-new](./../_images/dataset/resample-new.png)
+              ![resample-new](./../../_images/dataset/resample-new.png)
 
             - Resampling the dataset from cell_size 0.05 to 0.1 degrees reduced the number of cells to 5 in each
               dimension instead of 10.
@@ -723,7 +723,7 @@ class Spatial:
 
               ```
 
-            ![align-source-target](./../_images/dataset/align-source-target.png)
+            ![align-source-target](./../../_images/dataset/align-source-target.png)
 
             - Now call the `align` method and use the dataset as the alignment source.
 
@@ -743,7 +743,7 @@ class Spatial:
 
               ```
 
-            ![align-result](./../_images/dataset/align-result.png)
+            ![align-result](./../../_images/dataset/align-result.png)
         """
         if isinstance(alignment_src, AbstractDataset):
             src = alignment_src

@@ -461,7 +461,7 @@ class Analysis:
 
               ```
 
-              ![rhine-rainfall](./../_images/dataset/rhine-rainfall.png)
+              ![rhine-rainfall](./../../_images/dataset/rhine-rainfall.png)
 
             - Read the classes dataset:
 
@@ -471,7 +471,7 @@ class Analysis:
 
               ```
 
-              ![rhine-classes](./../_images/dataset/rhine-classes.png)
+              ![rhine-classes](./../../_images/dataset/rhine-classes.png)
 
             - Overlay the dataset with the classes dataset:
 
@@ -571,7 +571,7 @@ class Analysis:
 
               ```
 
-            ![dataset-footprint-rhine-flood](./../_images/dataset/dataset-footprint-rhine-flood.png)
+            ![dataset-footprint-rhine-flood](./../../_images/dataset/dataset-footprint-rhine-flood.png)
 
             - Now, to extract the footprint of the dataset band, we need to specify the `exclude_values` parameter with the
               value of the non-flooded cells.
@@ -593,7 +593,7 @@ class Analysis:
 
               ```
 
-            ![dataset-footprint-rhine-flood-extent](./../_images/dataset/dataset-footprint-rhine-flood-extent.png)
+            ![dataset-footprint-rhine-flood-extent](./../../_images/dataset/dataset-footprint-rhine-flood-extent.png)
 
         """
         arr = self.read_array(band=band)

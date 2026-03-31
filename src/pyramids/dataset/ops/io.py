@@ -508,7 +508,7 @@ class IO:
               [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
 
               ```
-              ![get_tile](./../_images/dataset/get_tile.png)
+              ![get_tile](./../../_images/dataset/get_tile.png)
 
             - So the first two chunks are 2*2, 2*1 chunk, then two 1*2 chunks, and the last chunk is 1*1.
             - The `get_tile` method returns a generator object that can be used to iterate over the smaller chunks of
@@ -671,18 +671,18 @@ class IO:
               ```python
               >>> dataset.plot(band=0, overview=True, overview_index=0) # doctest: +SKIP
               ```
-              ![overviews-level-0](./../_images/dataset/overviews-level-0.png)
+              ![overviews-level-0](./../../_images/dataset/overviews-level-0.png)
             - However, the dataset originally is 10*10, but the first overview level (2) displays half of the cells by
               aggregating all the cells using the nearest neighbor. The second level displays only 3 cells in each:
               ```python
               >>> dataset.plot(band=0, overview=True, overview_index=1)   # doctest: +SKIP
               ```
-              ![overviews-level-1](./../_images/dataset/overviews-level-1.png)
+              ![overviews-level-1](./../../_images/dataset/overviews-level-1.png)
             - For the third overview level:
               ```python
               >>> dataset.plot(band=0, overview=True, overview_index=2)       # doctest: +SKIP
               ```
-              ![overviews-level-2](./../_images/dataset/overviews-level-2.png)
+              ![overviews-level-2](./../../_images/dataset/overviews-level-2.png)
         See Also:
             - Dataset.recreate_overviews: Recreate the dataset overviews if they exist
             - Dataset.get_overview: Get an overview of a band
