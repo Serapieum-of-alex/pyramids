@@ -30,7 +30,7 @@ class Plot:
         """Plot the values/overviews of a given band.
 
         The plot function uses the `cleopatra` as a backend to plot the raster data, for more information check
-        [ArrayGlyph](https://serapieum-of-alex.github.io/cleopatra/latest/api/array-glyph-class/#cleopatra.array_glyph.ArrayGlyph.plot).
+        [ArrayGlyph](https://serapeum-org.github.io/cleopatra/latest/api/array-glyph-class/#cleopatra.array_glyph.ArrayGlyph.plot).
 
         Args:
             band (int, optional):
@@ -85,7 +85,7 @@ class Plot:
 
         Returns:
             ArrayGlyph:
-                ArrayGlyph object. For more details of the ArrayGlyph object check the [ArrayGlyph](https://serapieum-of-alex.github.io/cleopatra/latest/api/array-glyph-class/).
+                ArrayGlyph object. For more details of the ArrayGlyph object check the [ArrayGlyph](https://serapeum-org.github.io/cleopatra/latest/api/array-glyph-class/).
 
 
         Examples:

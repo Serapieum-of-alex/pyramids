@@ -1,6 +1,6 @@
 site_name: pyramids
 site_description: GIS package
-site_url: https://serapieum-of-alex.github.io/pyramids/
+site_url: https://serapeum-org.github.io/pyramids/
 repo_url: https://github.com/serapeum-org/pyramids
 repo_name: serapeum-org/pyramids
 
@@ -115,12 +115,12 @@ nav:
     - Diagrams: architecture/diagrams.md
   - Reference:
     - Dataset: reference/dataset.md
-    - Datacube: reference/datacube.md
+    - DatasetCollection: reference/dataset_collection.md
     - Feature Collection: reference/feature.md
     - config: reference/config.md
   - Tutorials:
       - Dataset: tutorials/dataset.md
-      - Datacube: tutorials/datacube.md
+      - DatasetCollection: tutorials/dataset_collection.md
       - Raster basics: tutorials/raster-basics.md
       - Datacube basics: tutorials/datacube-basics.md
   - How-to:

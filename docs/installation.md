@@ -219,5 +219,5 @@ pixi run -e dev pytest tests/netcdf/test_dimensions.py
 ## Notes
 - Supported Python versions are 3.11+.
 - Prefer conda-forge for GDAL and related libraries.
-- Documentation: https://serapieum-of-alex.github.io/pyramids/latest
+- Documentation: https://serapeum-org.github.io/pyramids/latest
 - Source repository: https://github.com/serapeum-org/pyramids
