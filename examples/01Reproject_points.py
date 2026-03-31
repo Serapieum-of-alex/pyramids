@@ -3,7 +3,7 @@
 @author: mofarrag
 """
 
-from pyramids.featurecollection import FeatureCollection
+from pyramids.feature import FeatureCollection
 
 # %%
 lon = [-180, -179.5]

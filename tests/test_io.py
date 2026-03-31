@@ -5,7 +5,7 @@ import pytest
 from osgeo import gdal
 
 from pyramids._io import _parse_path, extract_from_gz, read_file
-from pyramids.base._errors import FileFormatNotSupported
+from pyramids.base._errors import FileFormatNotSupportedError
 
 
 class TestZipFiles:
@@ -108,7 +108,7 @@ class TestReadGzip:
     def test_multiple_compressed_gzip_file_error(
         self, multiple_compressed_file_gzip: str
     ):
-        with pytest.raises(FileFormatNotSupported):
+        with pytest.raises(FileFormatNotSupportedError):
             read_file(multiple_compressed_file_gzip)
 
     def test_multiple_compressed_gzip_file_with_internal_path(
@@ -119,7 +119,7 @@ class TestReadGzip:
         first_file = multiple_compressed_file_gzip_content[0]
         try:
             read_file(f"{multiple_compressed_file_gzip}/{first_file}")
-        except FileFormatNotSupported:
+        except FileFormatNotSupportedError:
             pass
 
 
@@ -227,7 +227,7 @@ class TestReadFileExceptionBranches:
     def test_not_recognized_format_compressed_raises_file_format_not_supported(
         self, monkeypatch
     ):
-        """When GDAL raises 'not recognized' for a compressed path, FileFormatNotSupported is raised."""
+        """When GDAL raises 'not recognized' for a compressed path, FileFormatNotSupportedError is raised."""
         import pyramids._io as io_mod
 
         def mock_parse_path(path, file_i=0):
@@ -240,7 +240,7 @@ class TestReadFileExceptionBranches:
 
         monkeypatch.setattr(io_mod, "_parse_path", mock_parse_path)
         monkeypatch.setattr(gdal, "OpenShared", mock_open_shared)
-        with pytest.raises(FileFormatNotSupported):
+        with pytest.raises(FileFormatNotSupportedError):
             read_file("some_file.tif")
 
     def test_not_recognized_format_non_compressed_reraises(self, monkeypatch):

@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from osgeo import gdal
 
-from pyramids.base._errors import FileFormatNotSupported
+from pyramids.base._errors import FileFormatNotSupportedError
 
 gdal.UseExceptions()
 
@@ -100,7 +100,8 @@ def _get_gzip_path(path: str, file_i: int = 0):
         vsi_path = f"/vsigzip/{path}"
     else:
         try:
-            file_list = tarfile.open(path).getnames()
+            with tarfile.open(path) as tf:
+                file_list = tf.getnames()
             vsi_path = f"/vsigzip/{path}/{file_list[file_i]}"
         except tarfile.ReadError:
             # if the tarfile.open() does not give a getnames() method, it means the file contains one file
@@ -169,11 +170,8 @@ def extract_from_gz(input_file: str | Path, output_file: str | Path, delete=Fals
     output_file = Path(output_file)
     with gzip.GzipFile(input_file, "rb") as zf:
         content = zf.read()
-        save_file_content = open(output_file, "wb")
-        save_file_content.write(content)
-
-    save_file_content.close()
-    zf.close()
+        with open(output_file, "wb") as save_file_content:
+            save_file_content.write(content)
 
     if delete:
         input_file.unlink()
@@ -219,7 +217,7 @@ def read_file(
     except Exception as e:
         if str(e).__contains__(" not recognized as a supported file format."):
             if any(path.endswith(i) for i in COMPRESSED_FILES_EXTENSIONS):
-                raise FileFormatNotSupported(
+                raise FileFormatNotSupportedError(
                     "File format is not supported if you provided a gzip compressed file with multiple internal "
                     "files. Currently, it is not supported to read gzip files with multiple compressed internal "
                     "files"
@@ -229,7 +227,7 @@ def read_file(
         elif any(path.__contains__(i) for i in DOES_NOT_SUPPORT_INTERNAL) and not any(
             path.endswith(i) for i in DOES_NOT_SUPPORT_INTERNAL
         ):
-            raise FileFormatNotSupported(
+            raise FileFormatNotSupportedError(
                 "File format is not supported, if you provided a gzip/7z compressed file with multiple internal "
                 "files. Currently it is not supported to read gzip/7z files with multiple compressed internal "
                 "files"
@@ -283,16 +281,14 @@ def to_ascii(
     columns = arr.shape[1]
     # y_lower_side = geotransform[3] - rows * cell_size
     # write the the ASCII file details
-    File = open(path, "w")
-    File.write("ncols         " + str(columns) + "\n")
-    File.write("nrows         " + str(rows) + "\n")
-    File.write("xllcorner     " + str(xmin) + "\n")
-    File.write("yllcorner     " + str(ymin) + "\n")
-    File.write("cellsize      " + str(cell_size) + "\n")
-    File.write("NODATA_value  " + str(no_data_value) + "\n")
-    # write the array
-    for i in range(rows):
-        File.writelines(list(map(insert_space, arr[i, :])))
-        File.write("\n")
-
-    File.close()
+    with open(path, "w") as file:
+        file.write("ncols         " + str(columns) + "\n")
+        file.write("nrows         " + str(rows) + "\n")
+        file.write("xllcorner     " + str(xmin) + "\n")
+        file.write("yllcorner     " + str(ymin) + "\n")
+        file.write("cellsize      " + str(cell_size) + "\n")
+        file.write("NODATA_value  " + str(no_data_value) + "\n")
+        # write the array
+        for i in range(rows):
+            file.writelines(list(map(insert_space, arr[i, :])))
+            file.write("\n")

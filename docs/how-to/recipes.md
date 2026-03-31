@@ -39,9 +39,9 @@ ds = Dataset.read_file(src)
 ## Read multiple rasters into a datacube
 
 ```python
-from pyramids.multidataset import MultiDataset
+from pyramids.dataset import DatasetCollection
 
-dc = MultiDataset.read_multiple_files("tests\\data\\geotiff\\rhine", with_order=True, regex_string=r"\\d+", date=False)
+dc = DatasetCollection.read_multiple_files("tests\\data\\geotiff\\rhine", with_order=True, regex_string=r"\\d+", date=False)
 print(dc)
 ```
 
@@ -49,7 +49,7 @@ print(dc)
 
 ```python
 from pyramids.dataset import Dataset
-from pyramids.featurecollection import FeatureCollection
+from pyramids.feature import FeatureCollection
 
 raster = Dataset.read_file("tests\\data\\geotiff\\dem.tif")
 polys = FeatureCollection.read_file("tests\\data\\geometries\\polygons.geojson")

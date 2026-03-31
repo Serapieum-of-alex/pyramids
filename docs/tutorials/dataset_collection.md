@@ -1,25 +1,26 @@
-# DataCube
+# DatasetCollection
 
-- DataCube class is made to operate on multiple single files.
-- DataCube represents a stack of rasters that have the same dimensions (rows & columns).
+- DatasetCollection class is made to operate on multiple single files.
+- DatasetCollection represents a stack of rasters that have the same dimensions (rows & columns).
 
-![DataCube logo](./../_images/datacube/logo.png)
+![DatasetCollection logo](./../_images/datacube/logo.png)
 
-The datacube object has attributes and methods to help working with multiple raster files, or to repeat the same operation on multiple rasters.
+The DatasetCollection object has attributes and methods to help working with multiple raster files,
+or to repeat the same operation on multiple rasters.
 
-- To import the Datacube class:
+- To import the DatasetCollection class:
 
 ```python
-from pyramids.multidataset import MultiDataset
+from pyramids.dataset import DatasetCollection
 ```
 
 - The detailed module attributes and methods are summarized in the following figure.
 
-![DataCube details](./../_images/datacube/detailed.png)
+![DatasetCollection details](./../_images/datacube/detailed.png)
 
 ## Attributes
 
-The DataCube object has the following attributes:
+The DatasetCollection object has the following attributes:
 
 1. base: Dataset object
 2. columns: number of columns in the dataset
@@ -34,13 +35,15 @@ The DataCube object has the following attributes:
 
 ### read_multiple_files
 
-- `read_multiple_files` parses files in a directory and constructs a 3D array with the 2D dimensions of the first raster and length equal to the number of files.
+- `read_multiple_files` parses files in a directory and constructs a 3D array with the 2D dimensions
+  of the first raster and length equal to the number of files.
 - All rasters should have the same dimensions.
-- If you want to read the rasters with a certain order, then all raster file names should have a date that follows the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD), e.g. "MSWEP_1979.01.01.tif".
+- If you want to read the rasters with a certain order, then all raster file names should have a date
+  that follows the same format (YYYY.MM.DD / YYYY-MM-DD or YYYY_MM_DD), e.g. "MSWEP_1979.01.01.tif".
 
 Note:
-    — read_multiple_files only parses file names; to open each raster, read a specific band, and add it to the
-        DataCube you have to do one step further using the open_datacube method.
+    — read_multiple_files only parses file names; to open each raster, read a specific band, and add
+        it to the DatasetCollection you have to do one step further using the open_datacube method.
 
 #### Parameters
 
@@ -56,12 +59,13 @@ Note:
 
 #### Case: with_order = False
 
-If you want to make some mathematical operation on all the rasters, the order of the rasters does not matter.
+If you want to make some mathematical operation on all the rasters, the order of the rasters does
+not matter.
 
 ```python
 >>> rasters_folder_path = "examples/data/geotiff/raster-folder"
->>> datacube = MultiDataset.read_multiple_files(rasters_folder_path)
->>> print(datacube)
+>>> dc = DatasetCollection.read_multiple_files(rasters_folder_path)
+>>> print(dc)
 Files: 6
 Cell size: 5000.0
 EPSG: 4647
@@ -87,13 +91,13 @@ MSWEP_1979.01.06.tif
 
 ```python
 >>> rasters_folder_path = "examples/data/geotiff/raster-folder"
->>> datacube = MultiDataset.read_multiple_files(
+>>> dc = DatasetCollection.read_multiple_files(
 ...     rasters_folder_path,
 ...     regex_string=r"\d{4}.\d{2}.\d{2}",
 ...     date=True,
 ...     file_name_data_fmt="%Y.%m.%d",
 ... )
->>> print(datacube)
+>>> print(dc)
      Files: 6
      Cell size: 5000.0
      EPSG: 4647
@@ -113,10 +117,10 @@ If the directory contains files with a number in each file name:
 
 ```python
 rasters_folder_path = "tests/data/geotiff/rhine"
-datacube = MultiDataset.read_multiple_files(
+dc = DatasetCollection.read_multiple_files(
     rasters_folder_path, with_order=True, regex_string=r"\d+", date=False,
 )
-print(datacube)
+print(dc)
 # >>>     Files: 3
 # >>>     Cell size: 5000.0
 # >>>     EPSG: 4647
@@ -126,12 +130,15 @@ print(datacube)
 
 ### open_datacube
 
-After using read_multiple_files to parse the files in the directory, you can read the values of a specific band from each raster using open_datacube.
+After using read_multiple_files to parse the files in the directory, you can read the values of a
+specific band from each raster using open_datacube.
 
 ```python
 rasters_folder_path = "examples/data/geotiff/raster-folder"
-datacube = MultiDataset.read_multiple_files(rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator=".")
-datacube.open_multi_dataset()
-print(datacube.values.shape)
+dc = DatasetCollection.read_multiple_files(
+    rasters_folder_path, file_name_data_fmt="%Y.%m.%d", separator="."
+)
+dc.open_multi_dataset()
+print(dc.values.shape)
 # >>>     (6, 125, 93)
 ```

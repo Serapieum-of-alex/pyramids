@@ -249,7 +249,7 @@ class FeatureCollection:
         if path is None:
             raise ValueError("path must be provided for non-memory drivers.")
 
-        ds = FeatureCollection._create_driver(gdal_name, path)
+        ds = FeatureCollection._create_driver(gdal_name, str(path))
         return ds
 
     @staticmethod
@@ -997,11 +997,12 @@ class FeatureCollection:
         """
         points = list(map(Point, coords))
 
+        result: list | FeatureCollection = points
         if epsg is not None:
-            points = gpd.GeoDataFrame(columns=["geometry"], data=points, crs=epsg)
-            points = FeatureCollection(points)
+            gdf = gpd.GeoDataFrame(columns=["geometry"], data=points, crs=epsg)
+            result = FeatureCollection(gdf)
 
-        return points
+        return result
 
     def concate(self, gdf: GeoDataFrame, inplace: bool = False) -> GeoDataFrame | None:
         """Concatenate two shapefiles into one object.

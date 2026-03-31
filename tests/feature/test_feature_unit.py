@@ -1,7 +1,7 @@
 """Unit tests for FeatureCollection methods that lack coverage.
 
 Targets untested / low-coverage code paths in
-``pyramids.featurecollection``, including:
+``pyramids.feature``, including:
 - ``_geometry_collection`` static method
 - ``_explode_gdf`` with multipolygon geometry
 - ``_multi_geom_handler`` for multipoint, multilinestring, multipolygon
@@ -35,7 +35,7 @@ from shapely.geometry import (
 from shapely.geometry.collection import GeometryCollection
 
 from pyramids.base._errors import DriverNotExistError
-from pyramids.featurecollection import FeatureCollection
+from pyramids.feature import FeatureCollection
 
 
 @pytest.fixture()

@@ -1,15 +1,15 @@
-[![Documentations](https://img.shields.io/badge/Documentations-blue?logo=github&logoColor=white)](https://serapieum-of-alex.github.io/pyramids/main/)
+[![Documentations](https://img.shields.io/badge/Documentations-blue?logo=github&logoColor=white)](https://serapeum-org.github.io/pyramids/main/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pyramids-gis.png)](https://img.shields.io/pypi/pyversions/pyramids-gis)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
-![GitHub last commit](https://img.shields.io/github/last-commit/Serapieum-of-alex/pyramids)
-![GitHub Repo stars](https://img.shields.io/github/stars/Serapieum-of-alex/pyramids?style=social)
-[![codecov](https://codecov.io/gh/Serapieum-of-alex/pyramids/graph/badge.svg?token=g0DV4dCa8N)](https://codecov.io/gh/Serapieum-of-alex/pyramids)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/5e3aa4d0acc843d1a91caf33545ecf03)](https://www.codacy.com/gh/Serapieum-of-alex/pyramids/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Serapieum-of-alex/pyramids&amp;utm_campaign=Badge_Grade)
+![GitHub last commit](https://img.shields.io/github/last-commit/serapeum-org/pyramids)
+![GitHub Repo stars](https://img.shields.io/github/stars/serapeum-org/pyramids?style=social)
+[![codecov](https://codecov.io/gh/serapeum-org/pyramids/graph/badge.svg?token=g0DV4dCa8N)](https://codecov.io/gh/serapeum-org/pyramids)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/5e3aa4d0acc843d1a91caf33545ecf03)](https://www.codacy.com/gh/serapeum-org/pyramids/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=serapeum-org/pyramids&amp;utm_campaign=Badge_Grade)
 
-![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.io/github/commits-since/Serapieum-of-alex/pyramids/latest?include_prereleases&style=plastic)
+![GitHub commits since latest release (by SemVer including pre-releases)](https://img.shields.io/github/commits-since/serapeum-org/pyramids/latest?include_prereleases&style=plastic)
 
-[![pages-build-deployment](https://github.com/Serapieum-of-alex/pyramids/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/Serapieum-of-alex/pyramids/actions/workflows/pages/pages-build-deployment)
+[![pages-build-deployment](https://github.com/serapeum-org/pyramids/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/serapeum-org/pyramids/actions/workflows/pages/pages-build-deployment)
 
 Current release info
 ====================
@@ -57,7 +57,7 @@ conda search pyramids --channel conda-forge
 to install the last development to time, you can install the library from GitHub
 
 ```
-pip install git+https://github.com/Serapieum-of-alex/pyramids
+pip install git+https://github.com/serapeum-org/pyramids
 ```
 
 ## pip

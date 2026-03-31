@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from osgeo import gdal, osr
 
-from pyramids.abstract_dataset import AbstractDataset
+from pyramids.dataset.abstract_dataset import AbstractDataset
 from pyramids.base._errors import (
     AlignmentError,
     FailedToSaveError,
@@ -3057,7 +3057,7 @@ class TestCropWithPolygonFeatureCollection:
         import geopandas as gpd
         from shapely.geometry import box
 
-        from pyramids.featurecollection import FeatureCollection
+        from pyramids.feature import FeatureCollection
 
         poly = box(0.0, -0.15, 0.15, 0.0)
         gdf = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
@@ -3445,7 +3445,7 @@ class TestMapToArrayFeatureCollection:
         import geopandas as gpd
         from shapely.geometry import Point
 
-        from pyramids.featurecollection import FeatureCollection
+        from pyramids.feature import FeatureCollection
 
         pts = gpd.GeoDataFrame(
             geometry=[Point(0.025, -0.025), Point(0.075, -0.075)],

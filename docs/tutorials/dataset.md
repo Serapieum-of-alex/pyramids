@@ -1292,5 +1292,5 @@ ReadOnlyError
 ## References
 
 .. target-notes::
-.. _`Digital-Earth`: https://github.com/Serapieum-of-alex/Digital-Earth
+.. _`Digital-Earth`: https://github.com/serapeum-org/Digital-Earth
 .. _`cropAlignedFolder`: https://github.com/MAfarrag/pyramids/tree/main/examples/data/crop_aligned_folder

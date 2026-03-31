@@ -1,6 +1,8 @@
-# FeatureCollection Class
+# I/O Operations
 
-::: pyramids.featurecollection.FeatureCollection
+Array reading/writing, file serialization, tiling, and overview operations.
+
+::: pyramids.dataset.ops.io.IO
     options:
         show_root_heading: true
         show_source: true
