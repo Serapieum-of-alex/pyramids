@@ -115,13 +115,8 @@ class Dataset(  # type: ignore[misc]
 
     @property
     def raster(self) -> gdal.Dataset:
-        """Base GDAL Dataset."""
+        """Base GDAL Dataset (read-only)."""
         return super().raster
-
-    @raster.setter
-    def raster(self, value: gdal.Dataset):
-        """Contains GDAL Dataset."""
-        self._raster = value
 
     @property
     def rows(self) -> int:

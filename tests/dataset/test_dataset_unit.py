@@ -1161,23 +1161,19 @@ class TestToCrs:
             single_band_dataset.to_crs(to_epsg=3857, method=123)
 
 
-class TestRasterSetter:
-    """Tests for the raster property setter."""
+class TestRasterProperty:
+    """Tests for the raster property (read-only)."""
 
-    def test_raster_setter_updates_internal(self, single_band_dataset):
-        """Setting the raster property should update _raster."""
-        new_arr = np.ones((4, 4), dtype=np.float32)
-        new_ds = Dataset.create_from_array(
-            new_arr,
-            top_left_corner=(0.0, 0.0),
-            cell_size=0.1,
-            epsg=4326,
+    def test_raster_getter_returns_gdal_dataset(self, single_band_dataset):
+        """The raster property should return the underlying gdal.Dataset."""
+        assert isinstance(single_band_dataset.raster, gdal.Dataset), (
+            "raster property should return a gdal.Dataset"
         )
-        old_raster = single_band_dataset._raster
-        single_band_dataset.raster = new_ds._raster
-        assert (
-            single_band_dataset._raster is not old_raster
-        ), "raster setter should update _raster reference"
+
+    def test_raster_has_no_public_setter(self, single_band_dataset):
+        """Assigning to .raster should raise AttributeError (no public setter)."""
+        with pytest.raises(AttributeError):
+            single_band_dataset.raster = single_band_dataset._raster
 
 
 class TestReadBlockError:
