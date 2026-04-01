@@ -3217,7 +3217,23 @@
 <span class="normal"><a href="#__codelineno-0-1049">1049</a></span>
 <span class="normal"><a href="#__codelineno-0-1050">1050</a></span>
 <span class="normal"><a href="#__codelineno-0-1051">1051</a></span>
-<span class="normal"><a href="#__codelineno-0-1052">1052</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="k">class</span><span class="w"> </span><span class="nc">BandMetadata</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-1052">1052</a></span>
+<span class="normal"><a href="#__codelineno-0-1053">1053</a></span>
+<span class="normal"><a href="#__codelineno-0-1054">1054</a></span>
+<span class="normal"><a href="#__codelineno-0-1055">1055</a></span>
+<span class="normal"><a href="#__codelineno-0-1056">1056</a></span>
+<span class="normal"><a href="#__codelineno-0-1057">1057</a></span>
+<span class="normal"><a href="#__codelineno-0-1058">1058</a></span>
+<span class="normal"><a href="#__codelineno-0-1059">1059</a></span>
+<span class="normal"><a href="#__codelineno-0-1060">1060</a></span>
+<span class="normal"><a href="#__codelineno-0-1061">1061</a></span>
+<span class="normal"><a href="#__codelineno-0-1062">1062</a></span>
+<span class="normal"><a href="#__codelineno-0-1063">1063</a></span>
+<span class="normal"><a href="#__codelineno-0-1064">1064</a></span>
+<span class="normal"><a href="#__codelineno-0-1065">1065</a></span>
+<span class="normal"><a href="#__codelineno-0-1066">1066</a></span>
+<span class="normal"><a href="#__codelineno-0-1067">1067</a></span>
+<span class="normal"><a href="#__codelineno-0-1068">1068</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="k">class</span><span class="w"> </span><span class="nc">BandMetadata</span><span class="p">:</span>
 <a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Mixin providing band metadata, attribute table, and color table operations.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-33" name="__codelineno-0-33"></a>
 <a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_iloc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gdal</span><span class="o">.</span><span class="n">Band</span><span class="p">:</span>
@@ -4173,72 +4189,88 @@
 <a id="__codelineno-0-984" name="__codelineno-0-984"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">SetNoDataValue</span><span class="p">(</span><span class="n">no_data_value</span><span class="p">)</span>
 <a id="__codelineno-0-985" name="__codelineno-0-985"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_no_data_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span> <span class="o">=</span> <span class="n">no_data_value</span>
 <a id="__codelineno-0-986" name="__codelineno-0-986"></a>
-<a id="__codelineno-0-987" name="__codelineno-0-987"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">old_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<a id="__codelineno-0-988" name="__codelineno-0-988"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Change No Data Value.</span>
-<a id="__codelineno-0-989" name="__codelineno-0-989"></a><span class="sd">            - Set the no data value in all raster bands.</span>
-<a id="__codelineno-0-990" name="__codelineno-0-990"></a><span class="sd">            - Fill the whole raster with the no_data_value.</span>
-<a id="__codelineno-0-991" name="__codelineno-0-991"></a><span class="sd">            - Change the no_data_value in the array in all bands.</span>
-<a id="__codelineno-0-992" name="__codelineno-0-992"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-993" name="__codelineno-0-993"></a><span class="sd">            new_value (numeric):</span>
-<a id="__codelineno-0-994" name="__codelineno-0-994"></a><span class="sd">                No data value to set in the raster bands.</span>
-<a id="__codelineno-0-995" name="__codelineno-0-995"></a><span class="sd">            old_value (numeric):</span>
-<a id="__codelineno-0-996" name="__codelineno-0-996"></a><span class="sd">                Old no data value that is already in the raster bands.</span>
-<a id="__codelineno-0-997" name="__codelineno-0-997"></a><span class="sd">        Warning:</span>
-<a id="__codelineno-0-998" name="__codelineno-0-998"></a><span class="sd">            The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value` in the raster bands.</span>
-<a id="__codelineno-0-999" name="__codelineno-0-999"></a><span class="sd">        Examples:</span>
-<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a><span class="sd">            - Create a Dataset (4 bands, 10 rows, 10 columns) at lon/lat (0, 0):</span>
-<a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="sd">              ```python</span>
-<a id="__codelineno-0-1002" name="__codelineno-0-1002"></a><span class="sd">              &gt;&gt;&gt; dataset = Dataset.create(</span>
-<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">              ...     cell_size=0.05, rows=3, columns=3, bands=1, top_left_corner=(0, 0),dtype=&quot;float32&quot;,</span>
-<a id="__codelineno-0-1004" name="__codelineno-0-1004"></a><span class="sd">              ...     epsg=4326, no_data_value=-9</span>
-<a id="__codelineno-0-1005" name="__codelineno-0-1005"></a><span class="sd">              ... )</span>
-<a id="__codelineno-0-1006" name="__codelineno-0-1006"></a><span class="sd">              &gt;&gt;&gt; arr = dataset.read_array()</span>
-<a id="__codelineno-0-1007" name="__codelineno-0-1007"></a><span class="sd">              &gt;&gt;&gt; print(arr)</span>
-<a id="__codelineno-0-1008" name="__codelineno-0-1008"></a><span class="sd">              [[-9. -9. -9.]</span>
-<a id="__codelineno-0-1009" name="__codelineno-0-1009"></a><span class="sd">               [-9. -9. -9.]</span>
-<a id="__codelineno-0-1010" name="__codelineno-0-1010"></a><span class="sd">               [-9. -9. -9.]]</span>
-<a id="__codelineno-0-1011" name="__codelineno-0-1011"></a><span class="sd">              &gt;&gt;&gt; print(dataset.no_data_value) # doctest: +SKIP</span>
-<a id="__codelineno-0-1012" name="__codelineno-0-1012"></a><span class="sd">              [-9.0]</span>
-<a id="__codelineno-0-1013" name="__codelineno-0-1013"></a><span class="sd">              ```</span>
-<a id="__codelineno-0-1014" name="__codelineno-0-1014"></a><span class="sd">            - The dataset is full of the no_data_value. Now change it using `change_no_data_value`:</span>
-<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">              ```python</span>
-<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a><span class="sd">              &gt;&gt;&gt; new_dataset = dataset.change_no_data_value(-10, -9)</span>
-<a id="__codelineno-0-1017" name="__codelineno-0-1017"></a><span class="sd">              &gt;&gt;&gt; arr = new_dataset.read_array()</span>
-<a id="__codelineno-0-1018" name="__codelineno-0-1018"></a><span class="sd">              &gt;&gt;&gt; print(arr)</span>
-<a id="__codelineno-0-1019" name="__codelineno-0-1019"></a><span class="sd">              [[-10. -10. -10.]</span>
-<a id="__codelineno-0-1020" name="__codelineno-0-1020"></a><span class="sd">               [-10. -10. -10.]</span>
-<a id="__codelineno-0-1021" name="__codelineno-0-1021"></a><span class="sd">               [-10. -10. -10.]]</span>
-<a id="__codelineno-0-1022" name="__codelineno-0-1022"></a><span class="sd">              &gt;&gt;&gt; print(new_dataset.no_data_value) # doctest: +SKIP</span>
-<a id="__codelineno-0-1023" name="__codelineno-0-1023"></a><span class="sd">              [-10.0]</span>
-<a id="__codelineno-0-1024" name="__codelineno-0-1024"></a><span class="sd">              ```</span>
-<a id="__codelineno-0-1025" name="__codelineno-0-1025"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-1026" name="__codelineno-0-1026"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-<a id="__codelineno-0-1027" name="__codelineno-0-1027"></a>            <span class="n">new_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_value</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span>
-<a id="__codelineno-0-1028" name="__codelineno-0-1028"></a>        <span class="k">if</span> <span class="n">old_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">old_value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-<a id="__codelineno-0-1029" name="__codelineno-0-1029"></a>            <span class="n">old_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">old_value</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span>
-<a id="__codelineno-0-1030" name="__codelineno-0-1030"></a>        <span class="n">dst</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">GetDriverByName</span><span class="p">(</span><span class="s2">&quot;MEM&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">CreateCopy</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-0-1031" name="__codelineno-0-1031"></a>        <span class="c1"># create a new dataset</span>
-<a id="__codelineno-0-1032" name="__codelineno-0-1032"></a>        <span class="n">new_dataset</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="n">dst</span><span class="p">,</span> <span class="s2">&quot;write&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-1033" name="__codelineno-0-1033"></a>        <span class="c1"># the new_value could change inside the _set_no_data_value method before it is used to set the no_data_value</span>
-<a id="__codelineno-0-1034" name="__codelineno-0-1034"></a>        <span class="c1"># attribute in the gdal object/pyramids object and to fill the band.</span>
-<a id="__codelineno-0-1035" name="__codelineno-0-1035"></a>        <span class="n">new_dataset</span><span class="o">.</span><span class="n">_set_no_data_value</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
-<a id="__codelineno-0-1036" name="__codelineno-0-1036"></a>        <span class="c1"># now we have to use the no_data_value value in the no_data_value attribute in the Dataset object as it is</span>
-<a id="__codelineno-0-1037" name="__codelineno-0-1037"></a>        <span class="c1"># updated.</span>
-<a id="__codelineno-0-1038" name="__codelineno-0-1038"></a>        <span class="n">new_value</span> <span class="o">=</span> <span class="n">new_dataset</span><span class="o">.</span><span class="n">no_data_value</span>
-<a id="__codelineno-0-1039" name="__codelineno-0-1039"></a>        <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_count</span><span class="p">):</span>
-<a id="__codelineno-0-1040" name="__codelineno-0-1040"></a>            <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">band</span><span class="p">)</span>
-<a id="__codelineno-0-1041" name="__codelineno-0-1041"></a>            <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-1042" name="__codelineno-0-1042"></a>                <span class="k">if</span> <span class="n">old_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-1043" name="__codelineno-0-1043"></a>                    <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">old_value</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)]</span> <span class="o">=</span> <span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
-<a id="__codelineno-0-1044" name="__codelineno-0-1044"></a>                <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-1045" name="__codelineno-0-1045"></a>                    <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">arr</span><span class="p">)]</span> <span class="o">=</span> <span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
-<a id="__codelineno-0-1046" name="__codelineno-0-1046"></a>            <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-<a id="__codelineno-0-1047" name="__codelineno-0-1047"></a>                <span class="k">raise</span> <span class="n">NoDataValueError</span><span class="p">(</span>
-<a id="__codelineno-0-1048" name="__codelineno-0-1048"></a>                    <span class="sa">f</span><span class="s2">&quot;The dtype of the given no_data_value: </span><span class="si">{</span><span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span><span class="si">}</span><span class="s2"> differs from the dtype of the &quot;</span>
-<a id="__codelineno-0-1049" name="__codelineno-0-1049"></a>                    <span class="sa">f</span><span class="s2">&quot;band: </span><span class="si">{</span><span class="n">gdal_to_numpy_dtype</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gdal_dtype</span><span class="p">[</span><span class="n">band</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-1050" name="__codelineno-0-1050"></a>                <span class="p">)</span>
-<a id="__codelineno-0-1051" name="__codelineno-0-1051"></a>            <span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
-<a id="__codelineno-0-1052" name="__codelineno-0-1052"></a>        <span class="k">return</span> <span class="n">new_dataset</span>
+<a id="__codelineno-0-987" name="__codelineno-0-987"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span>
+<a id="__codelineno-0-988" name="__codelineno-0-988"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">old_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-989" name="__codelineno-0-989"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-990" name="__codelineno-0-990"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Change No Data Value.</span>
+<a id="__codelineno-0-991" name="__codelineno-0-991"></a><span class="sd">            - Set the no data value in all raster bands.</span>
+<a id="__codelineno-0-992" name="__codelineno-0-992"></a><span class="sd">            - Fill the whole raster with the no_data_value.</span>
+<a id="__codelineno-0-993" name="__codelineno-0-993"></a><span class="sd">            - Change the no_data_value in the array in all bands.</span>
+<a id="__codelineno-0-994" name="__codelineno-0-994"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-995" name="__codelineno-0-995"></a><span class="sd">            new_value (numeric):</span>
+<a id="__codelineno-0-996" name="__codelineno-0-996"></a><span class="sd">                No data value to set in the raster bands.</span>
+<a id="__codelineno-0-997" name="__codelineno-0-997"></a><span class="sd">            old_value (numeric):</span>
+<a id="__codelineno-0-998" name="__codelineno-0-998"></a><span class="sd">                Old no data value that is already in the raster bands.</span>
+<a id="__codelineno-0-999" name="__codelineno-0-999"></a><span class="sd">            inplace (bool):</span>
+<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a><span class="sd">                If True, the original dataset will be modified. If False, a new dataset will be created.</span>
+<a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="sd">                Default is False.</span>
+<a id="__codelineno-0-1002" name="__codelineno-0-1002"></a>
+<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-1004" name="__codelineno-0-1004"></a><span class="sd">            Dataset | None:</span>
+<a id="__codelineno-0-1005" name="__codelineno-0-1005"></a><span class="sd">                The resulting dataset if inplace is False; otherwise None.</span>
+<a id="__codelineno-0-1006" name="__codelineno-0-1006"></a>
+<a id="__codelineno-0-1007" name="__codelineno-0-1007"></a><span class="sd">        Warning:</span>
+<a id="__codelineno-0-1008" name="__codelineno-0-1008"></a><span class="sd">            The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value` in the raster bands.</span>
+<a id="__codelineno-0-1009" name="__codelineno-0-1009"></a><span class="sd">        Examples:</span>
+<a id="__codelineno-0-1010" name="__codelineno-0-1010"></a><span class="sd">            - Create a Dataset (4 bands, 10 rows, 10 columns) at lon/lat (0, 0):</span>
+<a id="__codelineno-0-1011" name="__codelineno-0-1011"></a><span class="sd">              ```python</span>
+<a id="__codelineno-0-1012" name="__codelineno-0-1012"></a><span class="sd">              &gt;&gt;&gt; dataset = Dataset.create(</span>
+<a id="__codelineno-0-1013" name="__codelineno-0-1013"></a><span class="sd">              ...     cell_size=0.05, rows=3, columns=3, bands=1, top_left_corner=(0, 0),dtype=&quot;float32&quot;,</span>
+<a id="__codelineno-0-1014" name="__codelineno-0-1014"></a><span class="sd">              ...     epsg=4326, no_data_value=-9</span>
+<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">              ... )</span>
+<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a><span class="sd">              &gt;&gt;&gt; arr = dataset.read_array()</span>
+<a id="__codelineno-0-1017" name="__codelineno-0-1017"></a><span class="sd">              &gt;&gt;&gt; print(arr)</span>
+<a id="__codelineno-0-1018" name="__codelineno-0-1018"></a><span class="sd">              [[-9. -9. -9.]</span>
+<a id="__codelineno-0-1019" name="__codelineno-0-1019"></a><span class="sd">               [-9. -9. -9.]</span>
+<a id="__codelineno-0-1020" name="__codelineno-0-1020"></a><span class="sd">               [-9. -9. -9.]]</span>
+<a id="__codelineno-0-1021" name="__codelineno-0-1021"></a><span class="sd">              &gt;&gt;&gt; print(dataset.no_data_value) # doctest: +SKIP</span>
+<a id="__codelineno-0-1022" name="__codelineno-0-1022"></a><span class="sd">              [-9.0]</span>
+<a id="__codelineno-0-1023" name="__codelineno-0-1023"></a><span class="sd">              ```</span>
+<a id="__codelineno-0-1024" name="__codelineno-0-1024"></a><span class="sd">            - The dataset is full of the no_data_value. Now change it using `change_no_data_value`:</span>
+<a id="__codelineno-0-1025" name="__codelineno-0-1025"></a><span class="sd">              ```python</span>
+<a id="__codelineno-0-1026" name="__codelineno-0-1026"></a><span class="sd">              &gt;&gt;&gt; new_dataset = dataset.change_no_data_value(-10, -9)</span>
+<a id="__codelineno-0-1027" name="__codelineno-0-1027"></a><span class="sd">              &gt;&gt;&gt; arr = new_dataset.read_array()</span>
+<a id="__codelineno-0-1028" name="__codelineno-0-1028"></a><span class="sd">              &gt;&gt;&gt; print(arr)</span>
+<a id="__codelineno-0-1029" name="__codelineno-0-1029"></a><span class="sd">              [[-10. -10. -10.]</span>
+<a id="__codelineno-0-1030" name="__codelineno-0-1030"></a><span class="sd">               [-10. -10. -10.]</span>
+<a id="__codelineno-0-1031" name="__codelineno-0-1031"></a><span class="sd">               [-10. -10. -10.]]</span>
+<a id="__codelineno-0-1032" name="__codelineno-0-1032"></a><span class="sd">              &gt;&gt;&gt; print(new_dataset.no_data_value) # doctest: +SKIP</span>
+<a id="__codelineno-0-1033" name="__codelineno-0-1033"></a><span class="sd">              [-10.0]</span>
+<a id="__codelineno-0-1034" name="__codelineno-0-1034"></a><span class="sd">              ```</span>
+<a id="__codelineno-0-1035" name="__codelineno-0-1035"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-1036" name="__codelineno-0-1036"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+<a id="__codelineno-0-1037" name="__codelineno-0-1037"></a>            <span class="n">new_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_value</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span>
+<a id="__codelineno-0-1038" name="__codelineno-0-1038"></a>        <span class="k">if</span> <span class="n">old_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">old_value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+<a id="__codelineno-0-1039" name="__codelineno-0-1039"></a>            <span class="n">old_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">old_value</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span>
+<a id="__codelineno-0-1040" name="__codelineno-0-1040"></a>        <span class="n">dst</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">GetDriverByName</span><span class="p">(</span><span class="s2">&quot;MEM&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">CreateCopy</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-0-1041" name="__codelineno-0-1041"></a>        <span class="c1"># create a new dataset</span>
+<a id="__codelineno-0-1042" name="__codelineno-0-1042"></a>        <span class="n">new_dataset</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="n">dst</span><span class="p">,</span> <span class="s2">&quot;write&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-1043" name="__codelineno-0-1043"></a>        <span class="c1"># the new_value could change inside the _set_no_data_value method before it is used to set the no_data_value</span>
+<a id="__codelineno-0-1044" name="__codelineno-0-1044"></a>        <span class="c1"># attribute in the gdal object/pyramids object and to fill the band.</span>
+<a id="__codelineno-0-1045" name="__codelineno-0-1045"></a>        <span class="n">new_dataset</span><span class="o">.</span><span class="n">_set_no_data_value</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
+<a id="__codelineno-0-1046" name="__codelineno-0-1046"></a>        <span class="c1"># now we have to use the no_data_value value in the no_data_value attribute in the Dataset object as it is</span>
+<a id="__codelineno-0-1047" name="__codelineno-0-1047"></a>        <span class="c1"># updated.</span>
+<a id="__codelineno-0-1048" name="__codelineno-0-1048"></a>        <span class="n">new_value</span> <span class="o">=</span> <span class="n">new_dataset</span><span class="o">.</span><span class="n">no_data_value</span>
+<a id="__codelineno-0-1049" name="__codelineno-0-1049"></a>        <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_count</span><span class="p">):</span>
+<a id="__codelineno-0-1050" name="__codelineno-0-1050"></a>            <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">band</span><span class="p">)</span>
+<a id="__codelineno-0-1051" name="__codelineno-0-1051"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-1052" name="__codelineno-0-1052"></a>                <span class="k">if</span> <span class="n">old_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-1053" name="__codelineno-0-1053"></a>                    <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">old_value</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)]</span> <span class="o">=</span> <span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+<a id="__codelineno-0-1054" name="__codelineno-0-1054"></a>                <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-1055" name="__codelineno-0-1055"></a>                    <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">arr</span><span class="p">)]</span> <span class="o">=</span> <span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+<a id="__codelineno-0-1056" name="__codelineno-0-1056"></a>            <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+<a id="__codelineno-0-1057" name="__codelineno-0-1057"></a>                <span class="k">raise</span> <span class="n">NoDataValueError</span><span class="p">(</span>
+<a id="__codelineno-0-1058" name="__codelineno-0-1058"></a>                    <span class="sa">f</span><span class="s2">&quot;The dtype of the given no_data_value: </span><span class="si">{</span><span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span><span class="si">}</span><span class="s2"> differs from the dtype of the &quot;</span>
+<a id="__codelineno-0-1059" name="__codelineno-0-1059"></a>                    <span class="sa">f</span><span class="s2">&quot;band: </span><span class="si">{</span><span class="n">gdal_to_numpy_dtype</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gdal_dtype</span><span class="p">[</span><span class="n">band</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-1060" name="__codelineno-0-1060"></a>                <span class="p">)</span>
+<a id="__codelineno-0-1061" name="__codelineno-0-1061"></a>            <span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+<a id="__codelineno-0-1062" name="__codelineno-0-1062"></a>
+<a id="__codelineno-0-1063" name="__codelineno-0-1063"></a>        <span class="n">result</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-1064" name="__codelineno-0-1064"></a>        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+<a id="__codelineno-0-1065" name="__codelineno-0-1065"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="p">)</span>
+<a id="__codelineno-0-1066" name="__codelineno-0-1066"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-1067" name="__codelineno-0-1067"></a>            <span class="n">result</span> <span class="o">=</span> <span class="n">new_dataset</span>
+<a id="__codelineno-0-1068" name="__codelineno-0-1068"></a>        <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -5589,7 +5621,7 @@ Dataset.set_attribute_table: Set the attribute table for a specific band.</p>
 
 
 <h4 id="pyramids.dataset.ops.band_metadata.BandMetadata.change_no_data_value" class="doc doc-heading"><a href="#pyramids.dataset.ops.band_metadata.BandMetadata.change_no_data_value" class="toclink">
-            <code class="highlight language-python"><span class="n">change_no_data_value</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="n">old_value</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">change_no_data_value</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="n">old_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 </a><a href="#pyramids.dataset.ops.band_metadata.BandMetadata.change_no_data_value" class="headerlink" title="Permanent link">#</a></h4>
 
@@ -5605,9 +5637,39 @@ Args:
         No data value to set in the raster bands.
     old_value (numeric):
         Old no data value that is already in the raster bands.
-Warning:
-    The <code>change_no_data_value</code> method creates a new dataset in memory in order to change the <code>no_data_value</code> in the raster bands.
-Examples:
+    inplace (bool):
+        If True, the original dataset will be modified. If False, a new dataset will be created.
+        Default is False.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.dataset.Dataset&lt;/code&gt; (&lt;code&gt;pyramids.dataset.dataset.Dataset&lt;/code&gt;)" href="../#pyramids.dataset.Dataset">Dataset</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Dataset | None:
+The resulting dataset if inplace is False; otherwise None.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="warning" open>
+  <summary>Warning</summary>
+  <p>The <code>change_no_data_value</code> method creates a new dataset in memory in order to change the <code>no_data_value</code> in the raster bands.</p>
+</details>        <p>Examples:
     - Create a Dataset (4 bands, 10 rows, 10 columns) at lon/lat (0, 0):
       <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="o">...</span>     <span class="n">cell_size</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">rows</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">top_left_corner</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span><span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float32&quot;</span><span class="p">,</span>
@@ -5700,72 +5762,104 @@ Examples:
 <span class="normal"><a href="#__codelineno-0-1049">1049</a></span>
 <span class="normal"><a href="#__codelineno-0-1050">1050</a></span>
 <span class="normal"><a href="#__codelineno-0-1051">1051</a></span>
-<span class="normal"><a href="#__codelineno-0-1052">1052</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-987" name="__codelineno-0-987"></a><span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">old_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<a id="__codelineno-0-988" name="__codelineno-0-988"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Change No Data Value.</span>
-<a id="__codelineno-0-989" name="__codelineno-0-989"></a><span class="sd">        - Set the no data value in all raster bands.</span>
-<a id="__codelineno-0-990" name="__codelineno-0-990"></a><span class="sd">        - Fill the whole raster with the no_data_value.</span>
-<a id="__codelineno-0-991" name="__codelineno-0-991"></a><span class="sd">        - Change the no_data_value in the array in all bands.</span>
-<a id="__codelineno-0-992" name="__codelineno-0-992"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-993" name="__codelineno-0-993"></a><span class="sd">        new_value (numeric):</span>
-<a id="__codelineno-0-994" name="__codelineno-0-994"></a><span class="sd">            No data value to set in the raster bands.</span>
-<a id="__codelineno-0-995" name="__codelineno-0-995"></a><span class="sd">        old_value (numeric):</span>
-<a id="__codelineno-0-996" name="__codelineno-0-996"></a><span class="sd">            Old no data value that is already in the raster bands.</span>
-<a id="__codelineno-0-997" name="__codelineno-0-997"></a><span class="sd">    Warning:</span>
-<a id="__codelineno-0-998" name="__codelineno-0-998"></a><span class="sd">        The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value` in the raster bands.</span>
-<a id="__codelineno-0-999" name="__codelineno-0-999"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a><span class="sd">        - Create a Dataset (4 bands, 10 rows, 10 columns) at lon/lat (0, 0):</span>
-<a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="sd">          ```python</span>
-<a id="__codelineno-0-1002" name="__codelineno-0-1002"></a><span class="sd">          &gt;&gt;&gt; dataset = Dataset.create(</span>
-<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">          ...     cell_size=0.05, rows=3, columns=3, bands=1, top_left_corner=(0, 0),dtype=&quot;float32&quot;,</span>
-<a id="__codelineno-0-1004" name="__codelineno-0-1004"></a><span class="sd">          ...     epsg=4326, no_data_value=-9</span>
-<a id="__codelineno-0-1005" name="__codelineno-0-1005"></a><span class="sd">          ... )</span>
-<a id="__codelineno-0-1006" name="__codelineno-0-1006"></a><span class="sd">          &gt;&gt;&gt; arr = dataset.read_array()</span>
-<a id="__codelineno-0-1007" name="__codelineno-0-1007"></a><span class="sd">          &gt;&gt;&gt; print(arr)</span>
-<a id="__codelineno-0-1008" name="__codelineno-0-1008"></a><span class="sd">          [[-9. -9. -9.]</span>
-<a id="__codelineno-0-1009" name="__codelineno-0-1009"></a><span class="sd">           [-9. -9. -9.]</span>
-<a id="__codelineno-0-1010" name="__codelineno-0-1010"></a><span class="sd">           [-9. -9. -9.]]</span>
-<a id="__codelineno-0-1011" name="__codelineno-0-1011"></a><span class="sd">          &gt;&gt;&gt; print(dataset.no_data_value) # doctest: +SKIP</span>
-<a id="__codelineno-0-1012" name="__codelineno-0-1012"></a><span class="sd">          [-9.0]</span>
-<a id="__codelineno-0-1013" name="__codelineno-0-1013"></a><span class="sd">          ```</span>
-<a id="__codelineno-0-1014" name="__codelineno-0-1014"></a><span class="sd">        - The dataset is full of the no_data_value. Now change it using `change_no_data_value`:</span>
-<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">          ```python</span>
-<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a><span class="sd">          &gt;&gt;&gt; new_dataset = dataset.change_no_data_value(-10, -9)</span>
-<a id="__codelineno-0-1017" name="__codelineno-0-1017"></a><span class="sd">          &gt;&gt;&gt; arr = new_dataset.read_array()</span>
-<a id="__codelineno-0-1018" name="__codelineno-0-1018"></a><span class="sd">          &gt;&gt;&gt; print(arr)</span>
-<a id="__codelineno-0-1019" name="__codelineno-0-1019"></a><span class="sd">          [[-10. -10. -10.]</span>
-<a id="__codelineno-0-1020" name="__codelineno-0-1020"></a><span class="sd">           [-10. -10. -10.]</span>
-<a id="__codelineno-0-1021" name="__codelineno-0-1021"></a><span class="sd">           [-10. -10. -10.]]</span>
-<a id="__codelineno-0-1022" name="__codelineno-0-1022"></a><span class="sd">          &gt;&gt;&gt; print(new_dataset.no_data_value) # doctest: +SKIP</span>
-<a id="__codelineno-0-1023" name="__codelineno-0-1023"></a><span class="sd">          [-10.0]</span>
-<a id="__codelineno-0-1024" name="__codelineno-0-1024"></a><span class="sd">          ```</span>
-<a id="__codelineno-0-1025" name="__codelineno-0-1025"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-1026" name="__codelineno-0-1026"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-<a id="__codelineno-0-1027" name="__codelineno-0-1027"></a>        <span class="n">new_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_value</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span>
-<a id="__codelineno-0-1028" name="__codelineno-0-1028"></a>    <span class="k">if</span> <span class="n">old_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">old_value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-<a id="__codelineno-0-1029" name="__codelineno-0-1029"></a>        <span class="n">old_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">old_value</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span>
-<a id="__codelineno-0-1030" name="__codelineno-0-1030"></a>    <span class="n">dst</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">GetDriverByName</span><span class="p">(</span><span class="s2">&quot;MEM&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">CreateCopy</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-0-1031" name="__codelineno-0-1031"></a>    <span class="c1"># create a new dataset</span>
-<a id="__codelineno-0-1032" name="__codelineno-0-1032"></a>    <span class="n">new_dataset</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="n">dst</span><span class="p">,</span> <span class="s2">&quot;write&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-1033" name="__codelineno-0-1033"></a>    <span class="c1"># the new_value could change inside the _set_no_data_value method before it is used to set the no_data_value</span>
-<a id="__codelineno-0-1034" name="__codelineno-0-1034"></a>    <span class="c1"># attribute in the gdal object/pyramids object and to fill the band.</span>
-<a id="__codelineno-0-1035" name="__codelineno-0-1035"></a>    <span class="n">new_dataset</span><span class="o">.</span><span class="n">_set_no_data_value</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
-<a id="__codelineno-0-1036" name="__codelineno-0-1036"></a>    <span class="c1"># now we have to use the no_data_value value in the no_data_value attribute in the Dataset object as it is</span>
-<a id="__codelineno-0-1037" name="__codelineno-0-1037"></a>    <span class="c1"># updated.</span>
-<a id="__codelineno-0-1038" name="__codelineno-0-1038"></a>    <span class="n">new_value</span> <span class="o">=</span> <span class="n">new_dataset</span><span class="o">.</span><span class="n">no_data_value</span>
-<a id="__codelineno-0-1039" name="__codelineno-0-1039"></a>    <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_count</span><span class="p">):</span>
-<a id="__codelineno-0-1040" name="__codelineno-0-1040"></a>        <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">band</span><span class="p">)</span>
-<a id="__codelineno-0-1041" name="__codelineno-0-1041"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-1042" name="__codelineno-0-1042"></a>            <span class="k">if</span> <span class="n">old_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-1043" name="__codelineno-0-1043"></a>                <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">old_value</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)]</span> <span class="o">=</span> <span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
-<a id="__codelineno-0-1044" name="__codelineno-0-1044"></a>            <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-1045" name="__codelineno-0-1045"></a>                <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">arr</span><span class="p">)]</span> <span class="o">=</span> <span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
-<a id="__codelineno-0-1046" name="__codelineno-0-1046"></a>        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-<a id="__codelineno-0-1047" name="__codelineno-0-1047"></a>            <span class="k">raise</span> <span class="n">NoDataValueError</span><span class="p">(</span>
-<a id="__codelineno-0-1048" name="__codelineno-0-1048"></a>                <span class="sa">f</span><span class="s2">&quot;The dtype of the given no_data_value: </span><span class="si">{</span><span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span><span class="si">}</span><span class="s2"> differs from the dtype of the &quot;</span>
-<a id="__codelineno-0-1049" name="__codelineno-0-1049"></a>                <span class="sa">f</span><span class="s2">&quot;band: </span><span class="si">{</span><span class="n">gdal_to_numpy_dtype</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gdal_dtype</span><span class="p">[</span><span class="n">band</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-1050" name="__codelineno-0-1050"></a>            <span class="p">)</span>
-<a id="__codelineno-0-1051" name="__codelineno-0-1051"></a>        <span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
-<a id="__codelineno-0-1052" name="__codelineno-0-1052"></a>    <span class="k">return</span> <span class="n">new_dataset</span>
+<span class="normal"><a href="#__codelineno-0-1052">1052</a></span>
+<span class="normal"><a href="#__codelineno-0-1053">1053</a></span>
+<span class="normal"><a href="#__codelineno-0-1054">1054</a></span>
+<span class="normal"><a href="#__codelineno-0-1055">1055</a></span>
+<span class="normal"><a href="#__codelineno-0-1056">1056</a></span>
+<span class="normal"><a href="#__codelineno-0-1057">1057</a></span>
+<span class="normal"><a href="#__codelineno-0-1058">1058</a></span>
+<span class="normal"><a href="#__codelineno-0-1059">1059</a></span>
+<span class="normal"><a href="#__codelineno-0-1060">1060</a></span>
+<span class="normal"><a href="#__codelineno-0-1061">1061</a></span>
+<span class="normal"><a href="#__codelineno-0-1062">1062</a></span>
+<span class="normal"><a href="#__codelineno-0-1063">1063</a></span>
+<span class="normal"><a href="#__codelineno-0-1064">1064</a></span>
+<span class="normal"><a href="#__codelineno-0-1065">1065</a></span>
+<span class="normal"><a href="#__codelineno-0-1066">1066</a></span>
+<span class="normal"><a href="#__codelineno-0-1067">1067</a></span>
+<span class="normal"><a href="#__codelineno-0-1068">1068</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-987" name="__codelineno-0-987"></a><span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span>
+<a id="__codelineno-0-988" name="__codelineno-0-988"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">old_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-989" name="__codelineno-0-989"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-990" name="__codelineno-0-990"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Change No Data Value.</span>
+<a id="__codelineno-0-991" name="__codelineno-0-991"></a><span class="sd">        - Set the no data value in all raster bands.</span>
+<a id="__codelineno-0-992" name="__codelineno-0-992"></a><span class="sd">        - Fill the whole raster with the no_data_value.</span>
+<a id="__codelineno-0-993" name="__codelineno-0-993"></a><span class="sd">        - Change the no_data_value in the array in all bands.</span>
+<a id="__codelineno-0-994" name="__codelineno-0-994"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-995" name="__codelineno-0-995"></a><span class="sd">        new_value (numeric):</span>
+<a id="__codelineno-0-996" name="__codelineno-0-996"></a><span class="sd">            No data value to set in the raster bands.</span>
+<a id="__codelineno-0-997" name="__codelineno-0-997"></a><span class="sd">        old_value (numeric):</span>
+<a id="__codelineno-0-998" name="__codelineno-0-998"></a><span class="sd">            Old no data value that is already in the raster bands.</span>
+<a id="__codelineno-0-999" name="__codelineno-0-999"></a><span class="sd">        inplace (bool):</span>
+<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a><span class="sd">            If True, the original dataset will be modified. If False, a new dataset will be created.</span>
+<a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="sd">            Default is False.</span>
+<a id="__codelineno-0-1002" name="__codelineno-0-1002"></a>
+<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-1004" name="__codelineno-0-1004"></a><span class="sd">        Dataset | None:</span>
+<a id="__codelineno-0-1005" name="__codelineno-0-1005"></a><span class="sd">            The resulting dataset if inplace is False; otherwise None.</span>
+<a id="__codelineno-0-1006" name="__codelineno-0-1006"></a>
+<a id="__codelineno-0-1007" name="__codelineno-0-1007"></a><span class="sd">    Warning:</span>
+<a id="__codelineno-0-1008" name="__codelineno-0-1008"></a><span class="sd">        The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value` in the raster bands.</span>
+<a id="__codelineno-0-1009" name="__codelineno-0-1009"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-1010" name="__codelineno-0-1010"></a><span class="sd">        - Create a Dataset (4 bands, 10 rows, 10 columns) at lon/lat (0, 0):</span>
+<a id="__codelineno-0-1011" name="__codelineno-0-1011"></a><span class="sd">          ```python</span>
+<a id="__codelineno-0-1012" name="__codelineno-0-1012"></a><span class="sd">          &gt;&gt;&gt; dataset = Dataset.create(</span>
+<a id="__codelineno-0-1013" name="__codelineno-0-1013"></a><span class="sd">          ...     cell_size=0.05, rows=3, columns=3, bands=1, top_left_corner=(0, 0),dtype=&quot;float32&quot;,</span>
+<a id="__codelineno-0-1014" name="__codelineno-0-1014"></a><span class="sd">          ...     epsg=4326, no_data_value=-9</span>
+<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">          ... )</span>
+<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a><span class="sd">          &gt;&gt;&gt; arr = dataset.read_array()</span>
+<a id="__codelineno-0-1017" name="__codelineno-0-1017"></a><span class="sd">          &gt;&gt;&gt; print(arr)</span>
+<a id="__codelineno-0-1018" name="__codelineno-0-1018"></a><span class="sd">          [[-9. -9. -9.]</span>
+<a id="__codelineno-0-1019" name="__codelineno-0-1019"></a><span class="sd">           [-9. -9. -9.]</span>
+<a id="__codelineno-0-1020" name="__codelineno-0-1020"></a><span class="sd">           [-9. -9. -9.]]</span>
+<a id="__codelineno-0-1021" name="__codelineno-0-1021"></a><span class="sd">          &gt;&gt;&gt; print(dataset.no_data_value) # doctest: +SKIP</span>
+<a id="__codelineno-0-1022" name="__codelineno-0-1022"></a><span class="sd">          [-9.0]</span>
+<a id="__codelineno-0-1023" name="__codelineno-0-1023"></a><span class="sd">          ```</span>
+<a id="__codelineno-0-1024" name="__codelineno-0-1024"></a><span class="sd">        - The dataset is full of the no_data_value. Now change it using `change_no_data_value`:</span>
+<a id="__codelineno-0-1025" name="__codelineno-0-1025"></a><span class="sd">          ```python</span>
+<a id="__codelineno-0-1026" name="__codelineno-0-1026"></a><span class="sd">          &gt;&gt;&gt; new_dataset = dataset.change_no_data_value(-10, -9)</span>
+<a id="__codelineno-0-1027" name="__codelineno-0-1027"></a><span class="sd">          &gt;&gt;&gt; arr = new_dataset.read_array()</span>
+<a id="__codelineno-0-1028" name="__codelineno-0-1028"></a><span class="sd">          &gt;&gt;&gt; print(arr)</span>
+<a id="__codelineno-0-1029" name="__codelineno-0-1029"></a><span class="sd">          [[-10. -10. -10.]</span>
+<a id="__codelineno-0-1030" name="__codelineno-0-1030"></a><span class="sd">           [-10. -10. -10.]</span>
+<a id="__codelineno-0-1031" name="__codelineno-0-1031"></a><span class="sd">           [-10. -10. -10.]]</span>
+<a id="__codelineno-0-1032" name="__codelineno-0-1032"></a><span class="sd">          &gt;&gt;&gt; print(new_dataset.no_data_value) # doctest: +SKIP</span>
+<a id="__codelineno-0-1033" name="__codelineno-0-1033"></a><span class="sd">          [-10.0]</span>
+<a id="__codelineno-0-1034" name="__codelineno-0-1034"></a><span class="sd">          ```</span>
+<a id="__codelineno-0-1035" name="__codelineno-0-1035"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-1036" name="__codelineno-0-1036"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+<a id="__codelineno-0-1037" name="__codelineno-0-1037"></a>        <span class="n">new_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_value</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span>
+<a id="__codelineno-0-1038" name="__codelineno-0-1038"></a>    <span class="k">if</span> <span class="n">old_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">old_value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+<a id="__codelineno-0-1039" name="__codelineno-0-1039"></a>        <span class="n">old_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">old_value</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_count</span>
+<a id="__codelineno-0-1040" name="__codelineno-0-1040"></a>    <span class="n">dst</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">GetDriverByName</span><span class="p">(</span><span class="s2">&quot;MEM&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">CreateCopy</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-0-1041" name="__codelineno-0-1041"></a>    <span class="c1"># create a new dataset</span>
+<a id="__codelineno-0-1042" name="__codelineno-0-1042"></a>    <span class="n">new_dataset</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="n">dst</span><span class="p">,</span> <span class="s2">&quot;write&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-1043" name="__codelineno-0-1043"></a>    <span class="c1"># the new_value could change inside the _set_no_data_value method before it is used to set the no_data_value</span>
+<a id="__codelineno-0-1044" name="__codelineno-0-1044"></a>    <span class="c1"># attribute in the gdal object/pyramids object and to fill the band.</span>
+<a id="__codelineno-0-1045" name="__codelineno-0-1045"></a>    <span class="n">new_dataset</span><span class="o">.</span><span class="n">_set_no_data_value</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
+<a id="__codelineno-0-1046" name="__codelineno-0-1046"></a>    <span class="c1"># now we have to use the no_data_value value in the no_data_value attribute in the Dataset object as it is</span>
+<a id="__codelineno-0-1047" name="__codelineno-0-1047"></a>    <span class="c1"># updated.</span>
+<a id="__codelineno-0-1048" name="__codelineno-0-1048"></a>    <span class="n">new_value</span> <span class="o">=</span> <span class="n">new_dataset</span><span class="o">.</span><span class="n">no_data_value</span>
+<a id="__codelineno-0-1049" name="__codelineno-0-1049"></a>    <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_count</span><span class="p">):</span>
+<a id="__codelineno-0-1050" name="__codelineno-0-1050"></a>        <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">band</span><span class="p">)</span>
+<a id="__codelineno-0-1051" name="__codelineno-0-1051"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-1052" name="__codelineno-0-1052"></a>            <span class="k">if</span> <span class="n">old_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-1053" name="__codelineno-0-1053"></a>                <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">old_value</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)]</span> <span class="o">=</span> <span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+<a id="__codelineno-0-1054" name="__codelineno-0-1054"></a>            <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-1055" name="__codelineno-0-1055"></a>                <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">arr</span><span class="p">)]</span> <span class="o">=</span> <span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+<a id="__codelineno-0-1056" name="__codelineno-0-1056"></a>        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+<a id="__codelineno-0-1057" name="__codelineno-0-1057"></a>            <span class="k">raise</span> <span class="n">NoDataValueError</span><span class="p">(</span>
+<a id="__codelineno-0-1058" name="__codelineno-0-1058"></a>                <span class="sa">f</span><span class="s2">&quot;The dtype of the given no_data_value: </span><span class="si">{</span><span class="n">new_value</span><span class="p">[</span><span class="n">band</span><span class="p">]</span><span class="si">}</span><span class="s2"> differs from the dtype of the &quot;</span>
+<a id="__codelineno-0-1059" name="__codelineno-0-1059"></a>                <span class="sa">f</span><span class="s2">&quot;band: </span><span class="si">{</span><span class="n">gdal_to_numpy_dtype</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gdal_dtype</span><span class="p">[</span><span class="n">band</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-1060" name="__codelineno-0-1060"></a>            <span class="p">)</span>
+<a id="__codelineno-0-1061" name="__codelineno-0-1061"></a>        <span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+<a id="__codelineno-0-1062" name="__codelineno-0-1062"></a>
+<a id="__codelineno-0-1063" name="__codelineno-0-1063"></a>    <span class="n">result</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-1064" name="__codelineno-0-1064"></a>    <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+<a id="__codelineno-0-1065" name="__codelineno-0-1065"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="p">)</span>
+<a id="__codelineno-0-1066" name="__codelineno-0-1066"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-1067" name="__codelineno-0-1067"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">new_dataset</span>
+<a id="__codelineno-0-1068" name="__codelineno-0-1068"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
