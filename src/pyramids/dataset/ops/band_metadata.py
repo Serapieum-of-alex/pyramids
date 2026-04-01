@@ -863,6 +863,7 @@ class BandMetadata:
                 )
                 no_data_value[i] = self.numpy_dtype[i](DEFAULT_NO_DATA_VALUE)
         return no_data_value
+
     def _set_no_data_value(self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE):
         """setNoDataValue.
             - Set the no data value in all raster bands.
@@ -903,12 +904,14 @@ class BandMetadata:
                         "the type of the given no_data_value differs from the dtype of the raster"
                         f"no_data_value now is set to {DEFAULT_NO_DATA_VALUE} in the raster"
                     )
+
     def _calculate_bbox(self) -> list:
         """Calculate bounding box."""
         xmin, ymax = self.top_left_corner
         ymin = ymax - self.rows * self.cell_size
         xmax = xmin + self.columns * self.cell_size
         return [xmin, ymin, xmax, ymax]
+
     def _calculate_bounds(self) -> GeoDataFrame:
         """Get the bbox as a geodataframe with a polygon geometry."""
         xmin, ymin, xmax, ymax = self._calculate_bbox()
@@ -917,6 +920,7 @@ class BandMetadata:
         gdf = gpd.GeoDataFrame(geometry=[poly])
         gdf.set_crs(epsg=self.epsg, inplace=True)
         return gdf
+
     def _set_no_data_value_backend(self, band_i: int, no_data_value: Any):
         """
             - band_i starts from 0 to the number of bands-1.
@@ -949,7 +953,8 @@ class BandMetadata:
                     f"Failed to fill the band {band_i} with value: {no_data_value}, because of {e}"
                 )
         # update the no_data_value in the Dataset object
-        self.no_data_value[band_i] = no_data_value
+        self._no_data_value[band_i] = no_data_value
+
     def _change_no_data_value_attr(self, band: int, no_data_value):
         """Change the no_data_value attribute.
             - Change only the no_data_value attribute in the gdal Dataset object.
@@ -978,6 +983,7 @@ class BandMetadata:
                 no_data_value = np.float64(no_data_value)
                 self.raster.GetRasterBand(band + 1).SetNoDataValue(no_data_value)
         self._no_data_value[band] = no_data_value
+
     def change_no_data_value(self, new_value: Any, old_value: Any | None = None):
         """Change No Data Value.
             - Set the no data value in all raster bands.
