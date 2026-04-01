@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import collections
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -603,164 +604,31 @@ class Vectorize:
     def _group_neighbours(
         array, i, j, lower_bound, upper_bound, position, values, count, cluster
     ):
-        """Group neighboring cells with the same values."""
-        # bottom cell
-        if i + 1 < array.shape[0]:
-            if lower_bound <= array[i + 1, j] <= upper_bound and cluster[i + 1, j] == 0:
-                position.append([i + 1, j])
-                values.append(array[i + 1, j])
-                cluster[i + 1, j] = count
-                Vectorize._group_neighbours(
-                    array,
-                    i + 1,
-                    j,
-                    lower_bound,
-                    upper_bound,
-                    position,
-                    values,
-                    count,
-                    cluster,
-                )
+        """Group neighboring cells with the same values using iterative BFS.
 
-        # bottom right
-        if j + 1 < array.shape[1]:
-            if i + 1 < array.shape[0]:
-                if (
-                    lower_bound <= array[i + 1, j + 1] <= upper_bound
-                    and cluster[i + 1, j + 1] == 0
-                ):
-                    position.append([i + 1, j + 1])
-                    values.append(array[i + 1, j + 1])
-                    cluster[i + 1, j + 1] = count
-                    Vectorize._group_neighbours(
-                        array,
-                        i + 1,
-                        j + 1,
-                        lower_bound,
-                        upper_bound,
-                        position,
-                        values,
-                        count,
-                        cluster,
-                    )
+        Uses a queue-based breadth-first search instead of recursion to avoid
+        hitting Python's recursion limit on large connected regions.
+        """
+        rows, cols = array.shape
+        queue = collections.deque()
+        queue.append((i, j))
 
-        # right
-        if j + 1 < array.shape[1]:
-            if lower_bound <= array[i, j + 1] <= upper_bound and cluster[i, j + 1] == 0:
-                position.append([i, j + 1])
-                values.append(array[i, j + 1])
-                cluster[i, j + 1] = count
-                Vectorize._group_neighbours(
-                    array,
-                    i,
-                    j + 1,
-                    lower_bound,
-                    upper_bound,
-                    position,
-                    values,
-                    count,
-                    cluster,
-                )
-
-        # upper right
-        if j + 1 < array.shape[1]:
-            if i - 1 >= 0:
-                if (
-                    lower_bound <= array[i - 1, j + 1] <= upper_bound
-                    and cluster[i - 1, j + 1] == 0
-                ):
-                    position.append([i - 1, j + 1])
-                    values.append(array[i - 1, j + 1])
-                    cluster[i - 1, j + 1] = count
-                    Vectorize._group_neighbours(
-                        array,
-                        i - 1,
-                        j + 1,
-                        lower_bound,
-                        upper_bound,
-                        position,
-                        values,
-                        count,
-                        cluster,
-                    )
-        # top
-        if i - 1 >= 0:
-            if lower_bound <= array[i - 1, j] <= upper_bound and cluster[i - 1, j] == 0:
-                position.append([i - 1, j])
-                values.append(array[i - 1, j])
-                cluster[i - 1, j] = count
-                Vectorize._group_neighbours(
-                    array,
-                    i - 1,
-                    j,
-                    lower_bound,
-                    upper_bound,
-                    position,
-                    values,
-                    count,
-                    cluster,
-                )
-
-        # top left
-        if i - 1 >= 0:
-            if j - 1 >= 0:
-                if (
-                    lower_bound <= array[i - 1, j - 1] <= upper_bound
-                    and cluster[i - 1, j - 1] == 0
-                ):
-                    position.append([i - 1, j - 1])
-                    values.append(array[i - 1, j - 1])
-                    cluster[i - 1, j - 1] = count
-                    Vectorize._group_neighbours(
-                        array,
-                        i - 1,
-                        j - 1,
-                        lower_bound,
-                        upper_bound,
-                        position,
-                        values,
-                        count,
-                        cluster,
-                    )
-        # left
-        if j - 1 >= 0:
-            if lower_bound <= array[i, j - 1] <= upper_bound and cluster[i, j - 1] == 0:
-                position.append([i, j - 1])
-                values.append(array[i, j - 1])
-                cluster[i, j - 1] = count
-                Vectorize._group_neighbours(
-                    array,
-                    i,
-                    j - 1,
-                    lower_bound,
-                    upper_bound,
-                    position,
-                    values,
-                    count,
-                    cluster,
-                )
-
-        # bottom left
-        if j - 1 >= 0:
-            if i + 1 < array.shape[0]:
-                if (
-                    lower_bound <= array[i + 1, j - 1] <= upper_bound
-                    and cluster[i + 1, j - 1] == 0
-                ):
-                    position.append([i + 1, j - 1])
-                    values.append(array[i + 1, j - 1])
-                    cluster[i + 1, j - 1] = count
-                    Vectorize._group_neighbours(
-                        array,
-                        i + 1,
-                        j - 1,
-                        lower_bound,
-                        upper_bound,
-                        position,
-                        values,
-                        count,
-                        cluster,
-                    )
+        while queue:
+            ci, cj = queue.popleft()
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    if di == 0 and dj == 0:
+                        continue
+                    ni, nj = ci + di, cj + dj
+                    if 0 <= ni < rows and 0 <= nj < cols:
+                        if (
+                            cluster[ni, nj] == 0
+                            and lower_bound <= array[ni, nj] <= upper_bound
+                        ):
+                            cluster[ni, nj] = count
+                            position.append([ni, nj])
+                            values.append(array[ni, nj])
+                            queue.append((ni, nj))
 
     def cluster(
         self, lower_bound: Any, upper_bound: Any
