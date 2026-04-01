@@ -89,14 +89,8 @@ class AbstractDataset(ABC):
     @property
     @abstractmethod
     def raster(self) -> gdal.Dataset:
-        """The ase GDAL Dataset."""
+        """The base GDAL Dataset (read-only)."""
         return self._raster
-
-    @raster.setter
-    @abstractmethod
-    def raster(self, value: gdal.Dataset):
-        """Contains GDAL Dataset."""
-        self._raster = value
 
     @property
     @abstractmethod
