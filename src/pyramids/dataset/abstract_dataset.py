@@ -621,7 +621,9 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def change_no_data_value(self, new_value: Any, old_value: Any | None = None):
+    def change_no_data_value(
+        self, new_value: Any, old_value: Any | None = None, inplace: bool = False
+    ):
         """Change No Data Value.
 
             - Set the no data value in all raster bands.
@@ -633,6 +635,9 @@ class AbstractDataset(ABC):
                 No data value to set in the raster bands.
             old_value (numeric, optional):
                 Old no data value that is already in the raster bands.
+            inplace (bool):
+                If True, the original dataset will be modified. If False, a new dataset will be created.
+                Default is False.
         """
         pass
 

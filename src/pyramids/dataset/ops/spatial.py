@@ -254,8 +254,8 @@ class Spatial:
         return result
 
     def resample(
-        self, cell_size: int | float, method: str = "nearest neighbor"
-    ) -> Dataset:
+        self, cell_size: int | float, method: str = "nearest neighbor", inplace: bool = False
+    ) -> Dataset | None:
         """resample.
 
         resample method reprojects a raster to any projection (default the WGS84 web mercator projection,
@@ -266,10 +266,13 @@ class Spatial:
                 New cell size to resample the raster. If None, raster will not be resampled.
             method (str):
                 Resampling method: "nearest neighbor", "cubic", or "bilinear". Default is "nearest neighbor".
+            inplace (bool):
+                If True, the original dataset will be modified. If False, a new dataset will be created.
+                Default is False.
 
         Returns:
-            Dataset:
-                Dataset object.
+            Dataset | None:
+                The resulting dataset if inplace is False; otherwise None.
 
         Examples:
             - Create a Dataset with 4 bands, 10 rows, 10 columns, at lon/lat (0, 0):
@@ -373,7 +376,12 @@ class Spatial:
             resampling_method,
         )
 
-        return dst_obj
+        result: Dataset | None = None
+        if inplace:
+            self._update_inplace(dst_obj.raster)
+        else:
+            result = dst_obj
+        return result
 
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neighbor"
@@ -660,7 +668,8 @@ class Spatial:
     def align(
         self,
         alignment_src: Dataset,
-    ) -> Dataset:
+        inplace: bool = False,
+    ) -> Dataset | None:
         """Align the current dataset (rows and columns) to match a given dataset.
 
         Copies spatial properties from alignment_src to the current raster:
@@ -673,9 +682,12 @@ class Spatial:
             alignment_src (Dataset):
                 Spatial information source raster to get the spatial information (coordinate system, number of rows and
                 columns). The data values of the current dataset are resampled to this alignment.
+            inplace (bool):
+                If True, the original dataset will be modified. If False, a new dataset will be created.
+                Default is False.
 
         Returns:
-            Dataset: The aligned dataset.
+            Dataset | None: The aligned dataset if inplace is False; otherwise None.
 
         Examples:
             - The source dataset has a `top_left_corner` at (0, 0) with a 5*5 alignment, and a 0.05 degree cell size.
@@ -779,7 +791,12 @@ class Spatial:
             method,
         )
 
-        return dst_obj
+        result: Dataset | None = None
+        if inplace:
+            self._update_inplace(dst_obj.raster)
+        else:
+            result = dst_obj
+        return result
 
     def _crop_with_raster(
         self,

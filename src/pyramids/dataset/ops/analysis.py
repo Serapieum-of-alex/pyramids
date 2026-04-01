@@ -174,7 +174,7 @@ class Analysis:
         )
         return int(domain_count)
 
-    def apply(self, func, band: int = 0) -> Dataset:
+    def apply(self, func, band: int = 0, inplace: bool = False) -> Dataset | None:
         """Apply a function to all domain cells.
 
         - apply method executes a mathematical operation on the raster array.
@@ -185,10 +185,13 @@ class Analysis:
                 Defined function that takes one input (the cell value).
             band (int):
                 Band number.
+            inplace (bool):
+                If True, the original dataset will be modified. If False, a new dataset will be created.
+                Default is False.
 
         Returns:
-            Dataset:
-                Dataset object.
+            Dataset | None:
+                The resulting dataset if inplace is False; otherwise None.
 
         Examples:
             - Create a dataset from an array filled with values between -1 and 1:
@@ -247,7 +250,12 @@ class Analysis:
         dst_obj._set_no_data_value(no_data_value=no_data_value)
         dst_obj.raster.GetRasterBand(band + 1).WriteArray(new_array)
 
-        return dst_obj
+        result: Dataset | None = None
+        if inplace:
+            self._update_inplace(dst_obj.raster)
+        else:
+            result = dst_obj
+        return result
 
     def fill(
         self, value: float | int, inplace: bool = False, path: str | Path | None = None

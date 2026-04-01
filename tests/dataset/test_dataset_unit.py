@@ -3497,3 +3497,97 @@ class TestGroupNeighbours:
         )
         gdf = ds.cluster2(band=0)
         assert len(gdf) >= 4, "Should find at least 4 clusters"
+
+
+class TestInplaceConsistency:
+    """Tests for the inplace parameter added to resample, align, apply, and change_no_data_value."""
+
+    def test_resample_inplace_returns_none(self, single_band_dataset):
+        """resample(inplace=True) should return None and modify the dataset in place."""
+        original_cell_size = single_band_dataset.cell_size
+        result = single_band_dataset.resample(cell_size=0.1, inplace=True)
+        assert result is None, "inplace resample should return None"
+        assert single_band_dataset.cell_size == 0.1, (
+            f"Cell size should be 0.1 after inplace resample, got {single_band_dataset.cell_size}"
+        )
+
+    def test_resample_not_inplace_returns_new_dataset(self, single_band_dataset):
+        """resample(inplace=False) should return a new Dataset without modifying the original."""
+        original_cell_size = single_band_dataset.cell_size
+        result = single_band_dataset.resample(cell_size=0.1, inplace=False)
+        assert result is not None, "non-inplace resample should return a Dataset"
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert single_band_dataset.cell_size == original_cell_size, (
+            "Original dataset cell size should not change"
+        )
+
+    def test_align_inplace_returns_none(self, single_band_dataset):
+        """align(inplace=True) should return None and modify the dataset in place."""
+        ref_arr = np.ones((5, 5), dtype=np.float32)
+        ref = Dataset.create_from_array(
+            ref_arr, top_left_corner=(0.0, 0.0), cell_size=0.02, epsg=4326
+        )
+        result = single_band_dataset.align(ref, inplace=True)
+        assert result is None, "inplace align should return None"
+        assert single_band_dataset.rows == 5, (
+            f"Rows should be 5 after inplace align, got {single_band_dataset.rows}"
+        )
+        assert single_band_dataset.columns == 5, (
+            f"Columns should be 5 after inplace align, got {single_band_dataset.columns}"
+        )
+
+    def test_align_not_inplace_returns_new_dataset(self, single_band_dataset):
+        """align(inplace=False) should return a new Dataset without modifying the original."""
+        original_rows = single_band_dataset.rows
+        ref_arr = np.ones((5, 5), dtype=np.float32)
+        ref = Dataset.create_from_array(
+            ref_arr, top_left_corner=(0.0, 0.0), cell_size=0.02, epsg=4326
+        )
+        result = single_band_dataset.align(ref, inplace=False)
+        assert result is not None, "non-inplace align should return a Dataset"
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert single_band_dataset.rows == original_rows, (
+            "Original dataset rows should not change"
+        )
+
+    def test_apply_inplace_returns_none(self, single_band_dataset):
+        """apply(inplace=True) should return None and modify the dataset in place."""
+        result = single_band_dataset.apply(lambda x: x * 2, inplace=True)
+        assert result is None, "inplace apply should return None"
+        arr = single_band_dataset.read_array()
+        assert arr[0, 0] == 2.0, f"Expected 2.0 after doubling, got {arr[0, 0]}"
+
+    def test_apply_not_inplace_returns_new_dataset(self, single_band_dataset):
+        """apply(inplace=False) should return a new Dataset without modifying the original."""
+        original_val = single_band_dataset.read_array()[0, 0]
+        result = single_band_dataset.apply(lambda x: x * 2, inplace=False)
+        assert result is not None, "non-inplace apply should return a Dataset"
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert single_band_dataset.read_array()[0, 0] == original_val, (
+            "Original dataset values should not change"
+        )
+
+    def test_change_no_data_value_inplace_returns_none(self):
+        """change_no_data_value(inplace=True) should return None and modify the dataset in place."""
+        arr = np.full((3, 3), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.change_no_data_value(-1.0, old_value=-9999.0, inplace=True)
+        assert result is None, "inplace change_no_data_value should return None"
+        assert ds.no_data_value[0] == -1.0, (
+            f"No data value should be -1.0 after inplace change, got {ds.no_data_value[0]}"
+        )
+
+    def test_change_no_data_value_not_inplace_returns_new_dataset(self):
+        """change_no_data_value(inplace=False) should return a new Dataset."""
+        arr = np.full((3, 3), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.change_no_data_value(-1.0, old_value=-9999.0, inplace=False)
+        assert result is not None, "non-inplace change_no_data_value should return a Dataset"
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert ds.no_data_value[0] == -9999.0, (
+            "Original dataset no_data_value should not change"
+        )
