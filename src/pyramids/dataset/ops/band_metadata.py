@@ -984,7 +984,9 @@ class BandMetadata:
                 self.raster.GetRasterBand(band + 1).SetNoDataValue(no_data_value)
         self._no_data_value[band] = no_data_value
 
-    def change_no_data_value(self, new_value: Any, old_value: Any | None = None):
+    def change_no_data_value(
+        self, new_value: Any, old_value: Any | None = None, inplace: bool = False
+    ) -> Dataset | None:
         """Change No Data Value.
             - Set the no data value in all raster bands.
             - Fill the whole raster with the no_data_value.
@@ -994,6 +996,14 @@ class BandMetadata:
                 No data value to set in the raster bands.
             old_value (numeric):
                 Old no data value that is already in the raster bands.
+            inplace (bool):
+                If True, the original dataset will be modified. If False, a new dataset will be created.
+                Default is False.
+
+        Returns:
+            Dataset | None:
+                The resulting dataset if inplace is False; otherwise None.
+
         Warning:
             The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value` in the raster bands.
         Examples:
@@ -1049,4 +1059,10 @@ class BandMetadata:
                     f"band: {gdal_to_numpy_dtype(self.gdal_dtype[band])}"
                 )
             new_dataset.raster.GetRasterBand(band + 1).WriteArray(arr)
-        return new_dataset
+
+        result: Dataset | None = None
+        if inplace:
+            self._update_inplace(new_dataset.raster)
+        else:
+            result = new_dataset
+        return result
