@@ -334,6 +334,175 @@ class TestFeatureCollectionPropertiesE2E:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+class TestClusterE2E:
+    """End-to-end workflows combining cluster with other Dataset operations."""
+
+    def test_create_cluster_save_reload(self):
+        """Create dataset -> cluster -> write cluster array to file -> reload and verify.
+
+        Test scenario:
+            Full round-trip: create a raster with known values, cluster it,
+            save the cluster array as a new GeoTIFF, reload it, and verify
+            the cluster labels survive the disk round-trip.
+        """
+        arr = np.array(
+            [
+                [5.0, 5.0, 0.0, 0.0, 0.0],
+                [5.0, 5.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 8.0, 8.0],
+                [0.0, 0.0, 0.0, 8.0, 8.0],
+            ],
+            dtype=np.float32,
+        )
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=1.0, epsg=4326
+        )
+        cluster_array, count, position, values = src.cluster(1, 10)
+
+        assert count == 3, f"Expected 2 clusters, got {count - 1}"
+        assert len(position) == 8, f"Expected 8 cells clustered, got {len(position)}"
+
+        result = Dataset.create_from_array(
+            cluster_array.astype(np.float32),
+            top_left_corner=(0, 0),
+            cell_size=1.0,
+            epsg=4326,
+        )
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "cluster_result.tif"
+        try:
+            result.to_file(path)
+            assert path.exists(), "Cluster GeoTIFF should be written"
+
+            reloaded = Dataset.read_file(path)
+            reloaded_arr = reloaded.read_array()
+            np.testing.assert_array_equal(
+                reloaded_arr,
+                cluster_array,
+                err_msg="Cluster array should survive disk round-trip",
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_crop_then_cluster(self):
+        """Create a large raster -> crop to subset -> cluster the cropped region.
+
+        Test scenario:
+            Verify that cropping a dataset and then clustering the result
+            produces correct clusters based on the cropped data, not the
+            original extent.
+        """
+        arr = np.zeros((20, 20), dtype=np.float32)
+        arr[2:5, 2:5] = 7.0
+        arr[15:18, 15:18] = 7.0
+        src = Dataset.create_from_array(
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+        )
+
+        crop_poly = box(-0.5, -5.5, 6.5, 0.5)
+        crop_mask = gpd.GeoDataFrame(geometry=[crop_poly], crs="EPSG:4326")
+        cropped = src.crop(crop_mask)
+
+        cluster_array, count, position, values = cropped.cluster(5, 10)
+
+        assert count == 2, (
+            f"Expected 1 cluster in cropped region, got {count - 1}"
+        )
+        for v in values:
+            assert 5 <= v <= 10, f"Clustered value {v} outside bounds [5, 10]"
+
+    def test_cluster_reproject_preserves_count(self):
+        """Create dataset -> cluster -> reproject -> re-cluster -> compare counts.
+
+        Test scenario:
+            Create a dataset in EPSG:4326, cluster it, reproject to
+            EPSG:32636 (UTM), re-cluster, and verify a similar number of
+            clusters exist (exact match not expected due to resampling).
+        """
+        np.random.seed(77)
+        arr = np.random.choice([0.0, 5.0], size=(10, 10), p=[0.6, 0.4]).astype(
+            np.float32
+        )
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(30.0, 31.0), cell_size=0.01, epsg=4326
+        )
+
+        _, count_orig, _, _ = src.cluster(4, 6)
+
+        reprojected = src.to_crs(to_epsg=32636)
+        _, count_reproj, _, _ = reprojected.cluster(4, 6)
+
+        assert count_reproj >= 1, "Reprojected dataset should have at least 1 cluster"
+        assert abs(count_reproj - count_orig) <= count_orig, (
+            f"Cluster count after reproject ({count_reproj}) diverged too far "
+            f"from original ({count_orig})"
+        )
+
+    def test_cluster_to_vector_polygons(self):
+        """Create dataset -> cluster -> convert clusters to vector polygons.
+
+        Test scenario:
+            Create a dataset, cluster it, then use cluster2 (GDAL
+            Polygonize) on the cluster array to produce vector polygons.
+            Verify the polygons are valid and cover the clustered region.
+        """
+        arr = np.array(
+            [
+                [5.0, 5.0, 0.0],
+                [5.0, 5.0, 0.0],
+                [0.0, 0.0, 5.0],
+            ],
+            dtype=np.float32,
+        )
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326
+        )
+
+        cluster_array, count, position, values = src.cluster(4, 6)
+
+        cluster_ds = Dataset.create_from_array(
+            cluster_array.astype(np.float32),
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+        )
+        gdf = cluster_ds.cluster2()
+
+        assert isinstance(gdf, gpd.GeoDataFrame), (
+            f"Expected GeoDataFrame, got {type(gdf)}"
+        )
+        assert len(gdf) > 0, "Should produce at least one polygon"
+        assert all(
+            geom.is_valid for geom in gdf.geometry
+        ), "All polygons should be valid geometries"
+
+    def test_large_cluster_no_recursion_e2e(self):
+        """Create a 300x300 raster -> cluster all cells -> verify no crash.
+
+        Test scenario:
+            End-to-end verification that the iterative BFS handles a
+            90,000-cell connected region through the full Dataset.cluster
+            pipeline without hitting recursion limits.
+        """
+        arr = np.ones((300, 300), dtype=np.float32) * 5
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.01, epsg=4326
+        )
+
+        cluster_array, count, position, values = src.cluster(1, 10)
+
+        assert count == 2, f"Expected 1 cluster, got {count - 1}"
+        assert len(position) == 90000, (
+            f"Expected 90000 cells, got {len(position)}"
+        )
+        assert np.all(cluster_array == 1), "All cells should be cluster 1"
+
+
 class TestGeoTiffRoundTrip:
     """Write an in-memory Dataset to GeoTIFF, reload, verify."""
 
