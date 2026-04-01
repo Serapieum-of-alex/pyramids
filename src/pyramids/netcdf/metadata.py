@@ -241,7 +241,7 @@ class GroupTraverser:
 
         for d in dims_sorted:
             dim = DimensionInfo.from_gdal_dim(d, group_full_name)
-            self.dimensions[dim.full_name] = dim
+            self.dimensions[dim.full_name.lstrip("/")] = dim
 
     def _collect_arrays(self, group: gdal.Group, group_full_name: str) -> list[str]:
         """Collect all arrays from *group* into ``self.variables``.
@@ -272,7 +272,8 @@ class GroupTraverser:
 
             variable_info = VariableInfo.from_md_array(md_arr, md_arr_name, group_full_name)
 
-            self.variables[variable_info.full_name] = variable_info
+            key = variable_info.full_name.lstrip("/")
+            self.variables[key] = variable_info
             variable_full_names.append(variable_info.full_name)
         return variable_full_names
 
@@ -351,7 +352,10 @@ class GroupTraverser:
                 variables=group_variables,
                 children=children_full,
             )
-            self.groups[group_info.full_name] = group_info
+            gkey = group_info.full_name
+            if gkey != "/":
+                gkey = gkey.lstrip("/")
+            self.groups[gkey] = group_info
 
 
 def get_metadata(

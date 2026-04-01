@@ -239,8 +239,8 @@ class TestMetadataBuilder:
         A dataset with a root group should trigger GroupTraverser.walk
         and populate groups/arrays/dimensions from the MDIM hierarchy.
         """
-        dim = _mock_dimension(name="x", full_name="/x", size=10)
-        arr = _mock_md_array(name="temp", full_name="/temp", shape=(10,))
+        dim = _mock_dimension(name="x", full_name="x", size=10)
+        arr = _mock_md_array(name="temp", full_name="temp", shape=(10,))
 
         root = _mock_group(
             name="root",
@@ -260,7 +260,7 @@ class TestMetadataBuilder:
         assert len(md.groups) >= 1, "Should have at least one group"
         assert "/" in md.groups, "Root group '/' should be in groups"
         assert len(md.variables) >= 1, "Should have at least one array"
-        assert "/temp" in md.variables, "'/temp' should be in arrays"
+        assert "temp" in md.variables, "'temp' should be in arrays"
         assert len(md.dimensions) >= 1, "Should have at least one dimension"
         assert md.structural is not None, "Structural info should be populated"
         assert (
@@ -350,8 +350,8 @@ class TestGroupTraverserWalk:
 
     def test_single_root_group(self):
         """Verify walk collects a single root group with no children."""
-        dim = _mock_dimension(name="x", full_name="/x", size=5)
-        arr = _mock_md_array(name="v", full_name="/v", shape=(5,))
+        dim = _mock_dimension(name="x", full_name="x", size=5)
+        arr = _mock_md_array(name="v", full_name="v", shape=(5,))
         root = _mock_group(
             name="root",
             full_name="/",
@@ -365,23 +365,23 @@ class TestGroupTraverserWalk:
         t.walk(root)
 
         assert "/" in groups, "Root group should be collected"
-        assert "/v" in arrays, "Array '/v' should be collected"
-        assert "/x" in dimensions, "Dimension '/x' should be collected"
+        assert "v" in arrays, "Array 'v' should be collected"
+        assert "x" in dimensions, "Dimension 'x' should be collected"
 
     def test_nested_groups(self):
         """Verify BFS traverses nested child groups."""
-        child_dim = _mock_dimension(name="y", full_name="/child/y", size=3)
-        child_arr = _mock_md_array(name="w", full_name="/child/w", shape=(3,))
+        child_dim = _mock_dimension(name="y", full_name="child/y", size=3)
+        child_arr = _mock_md_array(name="w", full_name="child/w", shape=(3,))
         child = _mock_group(
             name="child",
-            full_name="/child",
+            full_name="child",
             dimensions=[child_dim],
             array_names=["w"],
         )
         child.OpenMDArray.return_value = child_arr
 
-        root_dim = _mock_dimension(name="x", full_name="/x", size=5)
-        root_arr = _mock_md_array(name="v", full_name="/v", shape=(5,))
+        root_dim = _mock_dimension(name="x", full_name="x", size=5)
+        root_arr = _mock_md_array(name="v", full_name="v", shape=(5,))
         root = _mock_group(
             name="root",
             full_name="/",
@@ -397,11 +397,11 @@ class TestGroupTraverserWalk:
         t.walk(root)
 
         assert "/" in groups, "Root group should be collected"
-        assert "/child" in groups, "Child group should be collected"
-        assert "/v" in arrays, "Root array should be collected"
-        assert "/child/w" in arrays, "Child array should be collected"
-        assert "/x" in dimensions, "Root dimension should be collected"
-        assert "/child/y" in dimensions, "Child dimension should be collected"
+        assert "child" in groups, "Child group should be collected"
+        assert "v" in arrays, "Root array should be collected"
+        assert "child/w" in arrays, "Child array should be collected"
+        assert "x" in dimensions, "Root dimension should be collected"
+        assert "child/y" in dimensions, "Child dimension should be collected"
 
     def test_child_open_group_failure(self):
         """Verify walk continues when OpenGroup returns None for a child."""
@@ -437,7 +437,7 @@ class TestGroupTraverserWalk:
         GroupInfo.from_group raises and the code falls back to
         constructing the full name via string concatenation.
         """
-        child = _mock_group(name="child", full_name="/child")
+        child = _mock_group(name="child", full_name="child")
         child.GetDimensions.return_value = []
         child.GetMDArrayNames.return_value = []
         child.GetGroupNames.return_value = []
@@ -467,7 +467,7 @@ class TestGroupTraverserWalk:
 
         # The child should still be traversed with a fallback name /child
         assert (
-            "/child" in [v for v in groups.keys()] or len(groups) >= 1
+            "child" in [v for v in groups.keys()] or len(groups) >= 1
         ), f"Expected child to be in the traversal, got {list(groups.keys())}"
 
     def test_child_group_info_fallback_non_root_parent(self):
@@ -478,7 +478,7 @@ class TestGroupTraverserWalk:
         """
         child = _mock_group(
             name="child",
-            full_name="/child",
+            full_name="child",
         )
         child.GetDimensions.return_value = []
         child.GetMDArrayNames.return_value = []
@@ -494,7 +494,7 @@ class TestGroupTraverserWalk:
         t = GroupTraverser(groups, arrays, dimensions)
         t.walk(root)
         assert "/" in groups, "Root should be collected"
-        assert "/child" in groups, "Child should be collected"
+        assert "child" in groups, "Child should be collected"
 
     def test_array_open_failure_skipped(self):
         """Verify arrays that fail to open are silently skipped."""
@@ -503,7 +503,7 @@ class TestGroupTraverserWalk:
             full_name="/",
             array_names=["good", "bad"],
         )
-        good_arr = _mock_md_array(name="good", full_name="/good", shape=(5,))
+        good_arr = _mock_md_array(name="good", full_name="good", shape=(5,))
 
         def open_md_side_effect(name):
             """Return array for 'good', None for 'bad'."""
@@ -516,7 +516,7 @@ class TestGroupTraverserWalk:
         groups, arrays, dimensions = {}, {}, {}
         t = GroupTraverser(groups, arrays, dimensions)
         t.walk(root)
-        assert "/good" in arrays, "Good array should be collected"
+        assert "good" in arrays, "Good array should be collected"
         assert "/bad" not in arrays, "Bad array should be skipped"
 
     def test_array_open_exception_skipped(self):
@@ -538,8 +538,8 @@ class TestGroupTraverserCollectDimensions:
 
     def test_dimensions_sorted_by_name(self):
         """Verify dimensions are sorted by name for deterministic output."""
-        dim_b = _mock_dimension(name="b", full_name="/b", size=2)
-        dim_a = _mock_dimension(name="a", full_name="/a", size=1)
+        dim_b = _mock_dimension(name="b", full_name="b", size=2)
+        dim_a = _mock_dimension(name="a", full_name="a", size=1)
         root = _mock_group(dimensions=[dim_b, dim_a])
 
         groups, arrays, dimensions = {}, {}, {}
@@ -547,9 +547,9 @@ class TestGroupTraverserCollectDimensions:
         t._collect_dimensions(root, "/")
         keys = list(dimensions.keys())
         assert keys == [
-            "/a",
-            "/b",
-        ], f"Expected sorted dimension keys ['/a', '/b'], got {keys}"
+            "a",
+            "b",
+        ], f"Expected sorted dimension keys ['a', 'b'], got {keys}"
 
     def test_dimensions_failure_returns_empty(self):
         """Verify empty result when GetDimensions raises."""
@@ -562,7 +562,7 @@ class TestGroupTraverserCollectDimensions:
 
     def test_dimension_get_name_failure_sorted_empty(self):
         """Verify dimensions with failing GetName are sorted using empty string."""
-        dim = _mock_dimension(name="x", full_name="/x", size=5)
+        dim = _mock_dimension(name="x", full_name="x", size=5)
         dim.GetName.side_effect = RuntimeError("fail")
         root = _mock_group(dimensions=[dim])
         groups, arrays, dimensions = {}, {}, {}
@@ -576,15 +576,15 @@ class TestGroupTraverserCollectArrays:
 
     def test_returns_full_names(self):
         """Verify _collect_arrays returns list of full names."""
-        arr = _mock_md_array(name="v", full_name="/v", shape=(5,))
+        arr = _mock_md_array(name="v", full_name="v", shape=(5,))
         root = _mock_group(array_names=["v"])
         root.OpenMDArray.return_value = arr
 
         groups, arrays, dimensions = {}, {}, {}
         t = GroupTraverser(groups, arrays, dimensions)
         result = t._collect_arrays(root, "/")
-        assert result == ["/v"], f"Expected ['/v'], got {result}"
-        assert "/v" in arrays, "Array should be stored in arrays dict"
+        assert result == ["v"], f"Expected ['v'], got {result}"
+        assert "v" in arrays, "Array should be stored in arrays dict"
 
     def test_empty_when_no_arrays(self):
         """Verify empty list when group has no arrays."""
@@ -922,17 +922,17 @@ class TestFromJson:
         """Verify block_size=None survives round-trip (not converted to [])."""
         arr = VariableInfo(
             name="v",
-            full_name="/v",
+            full_name="v",
             dtype="float32",
             shape=[10],
-            dimensions=["/x"],
+            dimensions=["x"],
             block_size=None,
         )
-        md = _make_metadata(variables={"/v": arr})
+        md = _make_metadata(variables={"v": arr})
         restored = from_json(to_json(md))
         assert (
-            restored.variables["/v"].block_size is None
-        ), f"Expected None block_size, got {restored.variables['/v'].block_size}"
+            restored.variables["v"].block_size is None
+        ), f"Expected None block_size, got {restored.variables['v'].block_size}"
 
 
 class TestToDictFromJsonConsistency:
@@ -1020,34 +1020,34 @@ class TestFlattenForIndex:
     def test_multiple_arrays_sorted(self):
         """Verify multiple arrays are sorted alphabetically."""
         arrays = {
-            "/z": VariableInfo(
+            "z": VariableInfo(
                 name="z",
-                full_name="/z",
+                full_name="z",
                 dtype="f32",
                 shape=[1],
-                dimensions=["/x"],
+                dimensions=["x"],
             ),
-            "/a": VariableInfo(
+            "a": VariableInfo(
                 name="a",
-                full_name="/a",
+                full_name="a",
                 dtype="f32",
                 shape=[1],
-                dimensions=["/x"],
+                dimensions=["x"],
             ),
-            "/m": VariableInfo(
+            "m": VariableInfo(
                 name="m",
-                full_name="/m",
+                full_name="m",
                 dtype="f32",
                 shape=[1],
-                dimensions=["/x"],
+                dimensions=["x"],
             ),
         }
         md = _make_metadata(variables=arrays)
         flat = flatten_for_index(md)
         assert flat["variables"] == [
-            "/a",
-            "/m",
-            "/z",
+            "a",
+            "m",
+            "z",
         ], f"Expected sorted arrays, got {flat['variables']}"
 
     def test_root_group_none(self):
