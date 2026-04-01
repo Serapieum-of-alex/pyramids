@@ -324,9 +324,9 @@ class TestProperties:
         dataset = Dataset(src)
         assert dataset.shape == (1, 13, 14)
 
-    def test_values(self, src: gdal.Dataset):
+    def test_read_array(self, src: gdal.Dataset):
         dataset = Dataset(src)
-        assert isinstance(dataset.values, np.ndarray)
+        assert isinstance(dataset.read_array(), np.ndarray)
 
     def test_get_band_names(self, src: gdal.Dataset):
         src = Dataset(src)

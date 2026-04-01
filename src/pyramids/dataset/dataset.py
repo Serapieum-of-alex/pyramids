@@ -124,16 +124,6 @@ class Dataset(  # type: ignore[misc]
         self._raster = value
 
     @property
-    def values(self) -> np.ndarray:
-        """Values of all the bands.
-
-        Returns:
-            np.ndarray:
-                the values of all the bands in the raster as a 3D numpy array (bands, rows, columns).
-        """
-        return self.read_array()
-
-    @property
     def rows(self) -> int:
         """Number of rows in the raster array."""
         return int(self._rows)

@@ -100,12 +100,6 @@ class AbstractDataset(ABC):
 
     @property
     @abstractmethod
-    def values(self) -> np.ndarray:
-        """Values of all the bands."""
-        pass
-
-    @property
-    @abstractmethod
     def rows(self) -> int:
         """Number of rows in the raster array."""
         pass
