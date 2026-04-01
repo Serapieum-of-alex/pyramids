@@ -752,41 +752,6 @@ def _make_metadata(
     )
 
 
-class TestNetCDFMetadataNames:
-    """Tests for NetCDFMetadata.names property."""
-
-    def test_returns_short_names(self):
-        """Verify names property returns short names of all dimensions."""
-        meta = _make_metadata()
-        names = meta.names
-        assert set(names) == {
-            "time",
-            "lat",
-            "lon",
-        }, f"Expected {{'time', 'lat', 'lon'}}, got {set(names)}"
-
-    def test_empty_dimensions(self):
-        """Verify names returns [] when no dimensions exist."""
-        meta = _make_metadata(dims={})
-        assert meta.names == [], f"Expected [], got {meta.names}"
-
-    def test_preserves_order(self):
-        """Verify names preserves insertion order of dimensions dict."""
-        from collections import OrderedDict
-
-        dims = OrderedDict(
-            [
-                ("/b", DimensionInfo(name="b", full_name="/b", size=1)),
-                ("/a", DimensionInfo(name="a", full_name="/a", size=2)),
-            ]
-        )
-        meta = _make_metadata(dims=dims)
-        assert meta.names == [
-            "b",
-            "a",
-        ], f"Expected ['b', 'a'] (insertion order), got {meta.names}"
-
-
 class TestNetCDFMetadataGetDimension:
     """Tests for NetCDFMetadata.get_dimension method."""
 

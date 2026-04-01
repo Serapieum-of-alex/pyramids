@@ -75,10 +75,11 @@ class TestStage1_GetAllMetadata:
 class TestStage1_GetDimensionOnMetadata:
     """NCP-1.3: NetCDFMetadata.get_dimension() and .names must work."""
 
-    def test_names_returns_list(self, mdim_nc):
+    def test_dimensions_dict_populated(self, mdim_nc):
+        """Verify meta_data.dimensions is a non-empty dict."""
         md = mdim_nc.meta_data
-        assert isinstance(md.names, list)
-        assert len(md.names) > 0
+        assert isinstance(md.dimensions, dict)
+        assert len(md.dimensions) > 0
 
     def test_get_dimension_by_name(self, created_nc):
         md = created_nc.meta_data

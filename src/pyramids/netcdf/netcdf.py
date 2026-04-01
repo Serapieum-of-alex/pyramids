@@ -407,7 +407,7 @@ class NetCDF(Dataset):
                 and ``values`` keys, or None on failure.
         """
         md = metadata if metadata is not None else self.meta_data
-        names = list(md.names)
+        names = [dim.name for dim in md.dimensions.values()]
         sizes: dict[str, int] = {}
 
         for name in names:

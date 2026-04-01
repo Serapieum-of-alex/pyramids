@@ -47,8 +47,9 @@ def test_mdim_metadata_basic(request, fixture_name: str):
     sizes = dov.get("sizes", {})
     assert isinstance(names, list)
     assert isinstance(sizes, dict)
-    # names from overview should be a subset of meta_data.names
-    assert set(names).issubset(set(list(nc.meta_data.names)))
+    # names from overview should be a subset of dimension names
+    dim_names = [d.name for d in nc.meta_data.dimensions.values()]
+    assert set(names).issubset(set(dim_names))
 
     # JSON round-trip
     s = to_json(md1)

@@ -674,8 +674,8 @@ class NetCDFMetadata:
             ... )
             >>> meta.driver
             'netCDF'
-            >>> meta.names
-            ['time']
+            >>> list(meta.dimensions.keys())
+            ['/time']
             >>> meta.get_dimension("time").size
             12
 
@@ -748,52 +748,6 @@ class NetCDFMetadata:
             f"attributes={len(self.global_attributes)}"
             f")"
         )
-
-    @property
-    def names(self) -> list[str]:
-        """Short names of all dimensions in the dataset.
-
-        Returns a list of dimension short names (e.g.
-        ``["time", "lat", "lon"]``) in the iteration order
-        of the ``dimensions`` dictionary.
-
-        Returns:
-            List[str]: Short names of every dimension.
-
-        Examples:
-            - Retrieve dimension names:
-                ```python
-                >>> from pyramids.netcdf.models import (
-                ...     NetCDFMetadata,
-                ...     DimensionInfo,
-                ... )
-                >>> meta = NetCDFMetadata(
-                ...     driver="netCDF",
-                ...     root_group="/",
-                ...     groups={},
-                ...     arrays={},
-                ...     dimensions={
-                ...         "/lat": DimensionInfo(
-                ...             name="lat",
-                ...             full_name="/lat",
-                ...             size=180,
-                ...         ),
-                ...         "/lon": DimensionInfo(
-                ...             name="lon",
-                ...             full_name="/lon",
-                ...             size=360,
-                ...         ),
-                ...     },
-                ...     global_attributes={},
-                ...     structural=None,
-                ...     created_with={},
-                ... )
-                >>> meta.names
-                ['lat', 'lon']
-
-                ```
-        """
-        return [dim.name for dim in self.dimensions.values()]
 
     def get_dimension(self, name: str) -> DimensionInfo | None:
         """Look up a dimension by short name or full name.
@@ -887,8 +841,8 @@ class NetCDFMetadata:
                 ```
 
         See Also:
-            NetCDFMetadata.names: List all dimension short
-                names without looking up full metadata.
+            NetCDFMetadata.dimensions: The full dimensions
+                dictionary keyed by full name.
         """
         # Try full name first (exact key lookup)
         if name in self.dimensions:
