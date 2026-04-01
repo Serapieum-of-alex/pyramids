@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Any, TypeAlias, cast
 
 from osgeo import gdal, osr
+from pyramids.base._utils import gdal_to_numpy_dtype
 
 # Keep simple, JSON-serializable attribute values only
 AttributeScalar: TypeAlias = bool | int | float | str
@@ -515,30 +516,36 @@ def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S
 
 
 def _dtype_to_str(dt: Any) -> str:
-    """Convert a GDAL extended data type to a string name.
+    """Convert a GDAL extended data type to a numpy dtype string.
 
-    Attempts ``dt.GetName()`` for ``gdal.ExtendedDataType``
-    objects, then falls back to ``str(dt)``.
+    Tries ``dt.GetName()`` first (works for string types), then
+    ``dt.GetNumericDataType()`` which returns a GDAL code that
+    ``gdal_to_numpy_dtype()`` converts to a name like ``"float32"``.
 
     Args:
         dt: A GDAL ``ExtendedDataType`` or similar object.
 
     Returns:
-        A human-readable type name string, or ``"unknown"``
-        if conversion fails entirely.
+        A numpy-compatible dtype name (e.g. ``"float32"``,
+        ``"int16"``), or ``"unknown"`` if conversion fails.
     """
+    result = "unknown"
     try:
-        # gdal.ExtendedDataType in MDIM
+        # gdal.ExtendedDataType in MDIM (works for string types)
         name = dt.GetName()
         if isinstance(name, str) and name:
-            return name
+            result = name
     except Exception:
-        pass  # nosec B110
-    try:
-        # As a fallback, class name
-        return str(dt)
-    except Exception:
-        return "unknown"
+        pass
+    if result == "unknown":
+        try:
+            # Numeric types: GetName() returns "" but GetNumericDataType()
+            # gives the GDAL code (e.g. 6 = GDT_Float32)
+            gdal_code = dt.GetNumericDataType()
+            result = gdal_to_numpy_dtype(gdal_code)
+        except Exception:
+            pass
+    return result
 
 
 def _to_py_scalar(x: Any) -> Any:
