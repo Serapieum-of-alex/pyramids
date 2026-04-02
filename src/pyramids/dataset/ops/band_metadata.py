@@ -914,8 +914,8 @@ class BandMetadata:
 
     def _calculate_bounds(self) -> GeoDataFrame:
         """Get the bbox as a geodataframe with a polygon geometry."""
-        xmin, ymin, xmax, ymax = self._calculate_bbox()
-        coords = [(xmin, ymax), (xmin, ymin), (xmax, ymin), (xmax, ymax)]
+        x_min, y_min, x_max, y_max = self._calculate_bbox()
+        coords = [(x_min, y_max), (x_min, y_min), (x_max, y_min), (x_max, y_max)]
         poly = FeatureCollection.create_polygon(coords)
         gdf = gpd.GeoDataFrame(geometry=[poly])
         gdf.set_crs(epsg=self.epsg, inplace=True)
