@@ -38,7 +38,7 @@ class BandMetadata:
 
         Args:
             i (int):
-                index, the index starts from 1.
+                Band index (0-based).
 
         Returns:
             gdal.Band:
