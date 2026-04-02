@@ -178,7 +178,7 @@ class Analysis:
         """Apply a function to all domain cells.
 
         - apply method executes a mathematical operation on the raster array.
-        - The apply method executes the function only on one cell at a time.
+        - The function is applied to all domain cells at once using vectorized NumPy operations.
 
         Args:
             func (function):
@@ -231,14 +231,13 @@ class Analysis:
         src_array = self.read_array(band)
         dtype = self.gdal_dtype[band]
 
-        # fill the new array with the nodata value
-        new_array = np.ones((self.rows, self.columns)) * no_data_value
-        # execute the function on each cell
-        # TODO: optimize executing a function over a whole array
-        for i in range(self.rows):
-            for j in range(self.columns):
-                if not np.isclose(src_array[i, j], no_data_value, rtol=0.001):
-                    new_array[i, j] = func(src_array[i, j])
+        new_array = np.full((self.rows, self.columns), no_data_value, dtype=src_array.dtype)
+        domain_mask = ~np.isclose(src_array, no_data_value, rtol=0.001)
+        domain_values = src_array[domain_mask]
+        try:
+            new_array[domain_mask] = func(domain_values)
+        except (ValueError, TypeError):
+            new_array[domain_mask] = np.vectorize(func)(domain_values)
 
         # create the output raster
         dst = type(self)._create_dataset(self.columns, self.rows, 1, dtype, driver="MEM")

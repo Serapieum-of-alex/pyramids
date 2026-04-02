@@ -1041,6 +1041,165 @@ class TestApply:
         with pytest.raises(TypeError, match="function"):
             single_band_dataset.apply("not_a_function")
 
+    @pytest.mark.parametrize(
+        "func, expected_corner",
+        [
+            (np.abs, 1.0),
+            (np.sqrt, 1.0),
+            (np.square, 1.0),
+            (lambda x: x + 10, 11.0),
+        ],
+        ids=["np.abs", "np.sqrt", "np.square", "lambda_add10"],
+    )
+    def test_apply_vectorized_numpy_functions(self, single_band_dataset, func, expected_corner):
+        """Test apply with vectorized NumPy functions (fast path).
+
+        Test scenario:
+            Vectorized functions like np.abs, np.sqrt, np.square, and
+            array-compatible lambdas should work via the direct array
+            application path without falling back to np.vectorize.
+        """
+        result = single_band_dataset.apply(func)
+        arr = result.read_array()
+        assert np.isclose(arr[0, 0], expected_corner), (
+            f"Expected {expected_corner} at (0,0), got {arr[0, 0]}"
+        )
+
+    def test_apply_scalar_function_fallback(self):
+        """Test apply with a scalar if/elif function triggers np.vectorize fallback.
+
+        Test scenario:
+            A function using Python if/elif on scalar values cannot operate
+            on arrays directly. apply should catch the error and fall back
+            to np.vectorize, producing correct per-cell results.
+        """
+        def classify(val):
+            if val < 3:
+                return 0.0
+            elif val < 6:
+                return 1.0
+            else:
+                return 2.0
+
+        arr = np.array([[1.0, 4.0, 7.0], [2.0, 5.0, 8.0], [3.0, 6.0, 9.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.apply(classify)
+        result_arr = result.read_array()
+        expected = np.array([[0.0, 1.0, 2.0], [0.0, 1.0, 2.0], [1.0, 2.0, 2.0]], dtype=np.float32)
+        np.testing.assert_array_equal(
+            result_arr, expected, err_msg="Scalar classify function should produce correct per-cell results"
+        )
+
+    def test_apply_preserves_nodata_cells(self):
+        """Test that no-data cells are not transformed by apply.
+
+        Test scenario:
+            Create a dataset with some cells set to the no_data_value.
+            After apply, those cells should still hold the no_data_value.
+        """
+        arr = np.array([[1.0, -9999.0], [-9999.0, 4.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.apply(lambda x: x * 10)
+        result_arr = result.read_array()
+        assert np.isclose(result_arr[0, 0], 10.0), f"Domain cell should be transformed, got {result_arr[0, 0]}"
+        assert np.isclose(result_arr[1, 1], 40.0), f"Domain cell should be transformed, got {result_arr[1, 1]}"
+        assert np.isclose(result_arr[0, 1], -9999.0, rtol=0.001), (
+            f"No-data cell should stay -9999, got {result_arr[0, 1]}"
+        )
+        assert np.isclose(result_arr[1, 0], -9999.0, rtol=0.001), (
+            f"No-data cell should stay -9999, got {result_arr[1, 0]}"
+        )
+
+    def test_apply_all_nodata(self):
+        """Test apply on a dataset where all cells are no-data.
+
+        Test scenario:
+            When all cells are no-data, the function should never be called
+            and the output should be identical to the input.
+        """
+        arr = np.full((3, 3), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.apply(lambda x: x * 100)
+        result_arr = result.read_array()
+        assert np.allclose(result_arr, -9999.0, rtol=0.001), (
+            "All-nodata input should produce all-nodata output"
+        )
+
+    def test_apply_single_cell(self):
+        """Test apply on a 1x1 dataset.
+
+        Test scenario:
+            A single domain cell should be correctly transformed.
+        """
+        arr = np.array([[5.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.apply(lambda x: x ** 2)
+        assert np.isclose(result.read_array()[0, 0], 25.0), (
+            f"Expected 25.0, got {result.read_array()[0, 0]}"
+        )
+
+    def test_apply_with_band_parameter(self, multi_band_dataset):
+        """Test apply on band=0 of a multi-band dataset.
+
+        Test scenario:
+            Applying to band=0 on a multi-band dataset should produce a
+            single-band result with the first band's values transformed.
+        """
+        original_band0 = multi_band_dataset.read_array(band=0).copy()
+        result = multi_band_dataset.apply(lambda x: x + 100, band=0)
+        result_arr = result.read_array()
+        assert result.band_count == 1, f"Result should be single-band, got {result.band_count}"
+        domain_mask = ~np.isclose(original_band0, multi_band_dataset.no_data_value[0], rtol=0.001)
+        np.testing.assert_array_almost_equal(
+            result_arr[domain_mask], original_band0[domain_mask] + 100,
+            err_msg="Band 0 domain cells should be shifted by +100"
+        )
+
+    def test_apply_preserves_spatial_metadata(self, single_band_dataset):
+        """Test that apply preserves geotransform, CRS, and no_data_value.
+
+        Test scenario:
+            The output dataset should have the same spatial metadata as the
+            input (geotransform, EPSG, no_data_value).
+        """
+        original_geo = single_band_dataset.geotransform
+        original_epsg = single_band_dataset.epsg
+        original_nd = single_band_dataset.no_data_value[0]
+        result = single_band_dataset.apply(np.abs)
+        assert result.geotransform == original_geo, (
+            f"Geotransform mismatch: {result.geotransform} vs {original_geo}"
+        )
+        assert result.epsg == original_epsg, f"EPSG mismatch: {result.epsg} vs {original_epsg}"
+        assert result.no_data_value[0] == original_nd, (
+            f"No-data value mismatch: {result.no_data_value[0]} vs {original_nd}"
+        )
+
+    def test_apply_not_inplace_does_not_mutate_original(self):
+        """Test that apply(inplace=False) does not mutate the original array.
+
+        Test scenario:
+            Read the original values, apply a function, then verify the
+            original dataset still has its original values.
+        """
+        arr = np.array([[2.0, 4.0], [6.0, 8.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        original_arr = ds.read_array().copy()
+        ds.apply(lambda x: x * 0)
+        np.testing.assert_array_equal(
+            ds.read_array(), original_arr,
+            err_msg="Original dataset should not be mutated by non-inplace apply"
+        )
+
 
 class TestFill:
     """Tests for the fill method."""

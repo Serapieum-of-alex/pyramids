@@ -503,6 +503,176 @@ class TestClusterE2E:
         assert np.all(cluster_array == 1), "All cells should be cluster 1"
 
 
+class TestApplyE2E:
+    """End-to-end workflows combining apply with other Dataset operations."""
+
+    def test_apply_save_reload(self):
+        """Apply a function -> save to GeoTIFF -> reload -> verify values survive round-trip.
+
+        Test scenario:
+            Create a dataset, apply np.square, save the result to disk,
+            reload it, and verify the squared values are preserved.
+        """
+        arr = np.array([[2.0, 3.0], [4.0, 5.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        result = src.apply(np.square)
+        expected = np.array([[4.0, 9.0], [16.0, 25.0]], dtype=np.float32)
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "apply_result.tif"
+        try:
+            result.to_file(path)
+            assert path.exists(), "GeoTIFF should be written"
+
+            reloaded = Dataset.read_file(path)
+            np.testing.assert_array_almost_equal(
+                reloaded.read_array(), expected, decimal=2,
+                err_msg="Squared values should survive disk round-trip"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_apply_then_crop(self):
+        """Apply a function -> crop the result with a polygon -> verify cropped values.
+
+        Test scenario:
+            Create a 10x10 dataset, apply doubling, crop to a 5x5 sub-region,
+            and verify the cropped values are doubled.
+        """
+        arr = np.arange(1, 101, dtype=np.float32).reshape(10, 10)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        doubled = src.apply(lambda x: x * 2)
+
+        crop_poly = box(0.5, -4.5, 4.5, -0.5)
+        crop_mask = gpd.GeoDataFrame(geometry=[crop_poly], crs="EPSG:4326")
+        cropped = doubled.crop(crop_mask)
+
+        cropped_arr = cropped.read_array()
+        nodata = cropped.no_data_value[0]
+        domain_vals = cropped_arr[~np.isclose(cropped_arr, nodata, rtol=0.001)]
+        assert len(domain_vals) > 0, "Cropped result should have domain cells"
+        assert np.all(domain_vals % 2 == 0), (
+            "All cropped domain values should be even (doubled from integers)"
+        )
+
+    def test_apply_chained(self):
+        """Chain multiple apply calls -> verify cumulative transformation.
+
+        Test scenario:
+            Create a dataset with value 2, apply x+3 -> then apply x*10.
+            The result should be (2+3)*10 = 50.
+        """
+        arr = np.full((3, 3), 2.0, dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        step1 = src.apply(lambda x: x + 3)
+        step2 = step1.apply(lambda x: x * 10)
+        result_arr = step2.read_array()
+        assert np.allclose(result_arr, 50.0), (
+            f"Expected all cells to be 50.0 after chaining, got {result_arr}"
+        )
+
+    def test_apply_scalar_function_e2e(self):
+        """Apply a scalar if/elif classification function end-to-end.
+
+        Test scenario:
+            Create a dataset with values spanning multiple classification
+            bins, apply a scalar function that uses if/elif, and verify
+            each cell gets the correct class.
+        """
+        def classify(val):
+            if val < 5:
+                return 1.0
+            elif val < 15:
+                return 2.0
+            else:
+                return 3.0
+
+        arr = np.array(
+            [[1.0, 5.0, 20.0], [3.0, 10.0, 25.0], [4.0, 14.0, 30.0]],
+            dtype=np.float32,
+        )
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        result = src.apply(classify)
+        result_arr = result.read_array()
+        expected = np.array(
+            [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
+            dtype=np.float32,
+        )
+        np.testing.assert_array_equal(
+            result_arr, expected,
+            err_msg="Scalar classify should produce correct classification"
+        )
+
+    def test_apply_with_nodata_save_reload(self):
+        """Apply a function to a dataset with no-data cells -> save -> reload -> verify.
+
+        Test scenario:
+            No-data cells should remain as no-data through the apply,
+            disk save, and reload pipeline.
+        """
+        arr = np.array([[10.0, -9999.0], [-9999.0, 20.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        result = src.apply(lambda x: x + 5)
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "apply_nodata.tif"
+        try:
+            result.to_file(path)
+            reloaded = Dataset.read_file(path)
+            reloaded_arr = reloaded.read_array()
+            assert np.isclose(reloaded_arr[0, 0], 15.0), (
+                f"Domain cell should be 15.0, got {reloaded_arr[0, 0]}"
+            )
+            assert np.isclose(reloaded_arr[1, 1], 25.0), (
+                f"Domain cell should be 25.0, got {reloaded_arr[1, 1]}"
+            )
+            nodata = reloaded.no_data_value[0]
+            assert np.isclose(reloaded_arr[0, 1], nodata, rtol=0.001), (
+                f"No-data cell should remain {nodata}, got {reloaded_arr[0, 1]}"
+            )
+            assert np.isclose(reloaded_arr[1, 0], nodata, rtol=0.001), (
+                f"No-data cell should remain {nodata}, got {reloaded_arr[1, 0]}"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_apply_inplace_then_save(self):
+        """Apply inplace -> save the modified dataset -> reload -> verify.
+
+        Test scenario:
+            Using inplace=True should modify the original dataset, and
+            saving + reloading should reflect those modifications.
+        """
+        arr = np.array([[3.0, 6.0], [9.0, 12.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        src.apply(lambda x: x / 3, inplace=True)
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "apply_inplace.tif"
+        try:
+            src.to_file(path)
+            reloaded = Dataset.read_file(path)
+            expected = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+            np.testing.assert_array_almost_equal(
+                reloaded.read_array(), expected, decimal=2,
+                err_msg="Inplace apply should be reflected after save/reload"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 class TestGeoTiffRoundTrip:
     """Write an in-memory Dataset to GeoTIFF, reload, verify."""
 
