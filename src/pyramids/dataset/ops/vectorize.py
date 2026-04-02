@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import collections
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -19,6 +20,9 @@ from pyramids.feature import FeatureCollection
 
 if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
+
+
+logger = logging.getLogger(__name__)
 
 
 class Vectorize:
@@ -597,7 +601,7 @@ class Vectorize:
                 # give the cell the value of the cell that is at the right Top
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i] + 1]
             else:
-                print("the cell is isolated (No surrounding cells exist)")
+                logger.warning("the cell is isolated (No surrounding cells exist)")
         return array
 
     @staticmethod
