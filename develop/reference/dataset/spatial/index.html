@@ -1017,17 +1017,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.dataset.ops.spatial.Spatial.correct_wrap_cutline_error" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        correct_wrap_cutline_error
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#pyramids.dataset.ops.spatial.Spatial.crop" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2122,17 +2111,6 @@
     <span class="md-ellipsis">
       
         align
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.dataset.ops.spatial.Spatial.correct_wrap_cutline_error" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        correct_wrap_cutline_error
       
     </span>
   </a>
@@ -3255,7 +3233,7 @@
 <a id="__codelineno-0-69" name="__codelineno-0-69"></a>        <span class="bp">self</span><span class="p">,</span>
 <a id="__codelineno-0-70" name="__codelineno-0-70"></a>        <span class="n">to_epsg</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <a id="__codelineno-0-71" name="__codelineno-0-71"></a>        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;nearest neighbor&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>        <span class="n">maintain_alignment</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>        <span class="n">maintain_alignment</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-73" name="__codelineno-0-73"></a>        <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Reproject the dataset to any projection.</span>
@@ -3993,7 +3971,7 @@
 <a id="__codelineno-0-807" name="__codelineno-0-807"></a>        <span class="c1"># crop the src raster with the aligned mask</span>
 <a id="__codelineno-0-808" name="__codelineno-0-808"></a>        <span class="n">dst_obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crop_aligned</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
 <a id="__codelineno-0-809" name="__codelineno-0-809"></a>
-<a id="__codelineno-0-810" name="__codelineno-0-810"></a>        <span class="n">dst_obj</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">correct_wrap_cutline_error</span><span class="p">(</span><span class="n">dst_obj</span><span class="p">)</span>
+<a id="__codelineno-0-810" name="__codelineno-0-810"></a>        <span class="n">dst_obj</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_correct_wrap_cutline_error</span><span class="p">(</span><span class="n">dst_obj</span><span class="p">)</span>
 <a id="__codelineno-0-811" name="__codelineno-0-811"></a>        <span class="k">return</span> <span class="n">dst_obj</span>
 <a id="__codelineno-0-812" name="__codelineno-0-812"></a>
 <a id="__codelineno-0-813" name="__codelineno-0-813"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_crop_with_polygon_warp</span><span class="p">(</span>
@@ -4033,7 +4011,7 @@
 <a id="__codelineno-0-847" name="__codelineno-0-847"></a>        <span class="p">)</span>
 <a id="__codelineno-0-848" name="__codelineno-0-848"></a>        <span class="n">dst</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">Warp</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">warp_options</span><span class="p">)</span>
 <a id="__codelineno-0-849" name="__codelineno-0-849"></a>        <span class="c1"># Use the base Dataset class (not a subclass like NetCDF) for intermediate GDAL warp results</span>
-<a id="__codelineno-0-850" name="__codelineno-0-850"></a>        <span class="c1"># because correct_wrap_cutline_error calls create_from_array which has different behavior in</span>
+<a id="__codelineno-0-850" name="__codelineno-0-850"></a>        <span class="c1"># because _correct_wrap_cutline_error calls create_from_array which has different behavior in</span>
 <a id="__codelineno-0-851" name="__codelineno-0-851"></a>        <span class="c1"># subclasses.</span>
 <a id="__codelineno-0-852" name="__codelineno-0-852"></a>        <span class="n">base_cls</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
 <a id="__codelineno-0-853" name="__codelineno-0-853"></a>            <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__mro__</span>
@@ -4042,12 +4020,12 @@
 <a id="__codelineno-0-856" name="__codelineno-0-856"></a>        <span class="n">dst_obj</span> <span class="o">=</span> <span class="n">base_cls</span><span class="p">(</span><span class="n">dst</span><span class="p">)</span>
 <a id="__codelineno-0-857" name="__codelineno-0-857"></a>
 <a id="__codelineno-0-858" name="__codelineno-0-858"></a>        <span class="k">if</span> <span class="n">touch</span><span class="p">:</span>
-<a id="__codelineno-0-859" name="__codelineno-0-859"></a>            <span class="n">dst_obj</span> <span class="o">=</span> <span class="n">base_cls</span><span class="o">.</span><span class="n">correct_wrap_cutline_error</span><span class="p">(</span><span class="n">dst_obj</span><span class="p">)</span>
+<a id="__codelineno-0-859" name="__codelineno-0-859"></a>            <span class="n">dst_obj</span> <span class="o">=</span> <span class="n">base_cls</span><span class="o">.</span><span class="n">_correct_wrap_cutline_error</span><span class="p">(</span><span class="n">dst_obj</span><span class="p">)</span>
 <a id="__codelineno-0-860" name="__codelineno-0-860"></a>
 <a id="__codelineno-0-861" name="__codelineno-0-861"></a>        <span class="k">return</span> <span class="n">dst_obj</span>
 <a id="__codelineno-0-862" name="__codelineno-0-862"></a>
 <a id="__codelineno-0-863" name="__codelineno-0-863"></a>    <span class="nd">@staticmethod</span>
-<a id="__codelineno-0-864" name="__codelineno-0-864"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">correct_wrap_cutline_error</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+<a id="__codelineno-0-864" name="__codelineno-0-864"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_correct_wrap_cutline_error</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
 <a id="__codelineno-0-865" name="__codelineno-0-865"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Correct wrap cutline error.</span>
 <a id="__codelineno-0-866" name="__codelineno-0-866"></a>
 <a id="__codelineno-0-867" name="__codelineno-0-867"></a><span class="sd">        https://github.com/serapeum-org/pyramids/issues/74</span>
@@ -4634,7 +4612,7 @@ Default is False.</p>
 <a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="bp">self</span><span class="p">,</span>
 <a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="n">to_epsg</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;nearest neighbor&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>    <span class="n">maintain_alignment</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>    <span class="n">maintain_alignment</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reproject the dataset to any projection.</span>
@@ -5947,106 +5925,6 @@ Default is False.</p>
 <a id="__codelineno-0-777" name="__codelineno-0-777"></a>    <span class="k">else</span><span class="p">:</span>
 <a id="__codelineno-0-778" name="__codelineno-0-778"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">dst_obj</span>
 <a id="__codelineno-0-779" name="__codelineno-0-779"></a>    <span class="k">return</span> <span class="n">result</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="pyramids.dataset.ops.spatial.Spatial.correct_wrap_cutline_error" class="doc doc-heading"><a href="#pyramids.dataset.ops.spatial.Spatial.correct_wrap_cutline_error" class="toclink">
-            <code class="highlight language-python"><span class="n">correct_wrap_cutline_error</span><span class="p">(</span><span class="n">src</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
-  </span>
-
-</a><a href="#pyramids.dataset.ops.spatial.Spatial.correct_wrap_cutline_error" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Correct wrap cutline error.</p>
-<p>https://github.com/serapeum-org/pyramids/issues/74</p>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>src/pyramids/dataset/ops/spatial.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-863">863</a></span>
-<span class="normal"><a href="#__codelineno-0-864">864</a></span>
-<span class="normal"><a href="#__codelineno-0-865">865</a></span>
-<span class="normal"><a href="#__codelineno-0-866">866</a></span>
-<span class="normal"><a href="#__codelineno-0-867">867</a></span>
-<span class="normal"><a href="#__codelineno-0-868">868</a></span>
-<span class="normal"><a href="#__codelineno-0-869">869</a></span>
-<span class="normal"><a href="#__codelineno-0-870">870</a></span>
-<span class="normal"><a href="#__codelineno-0-871">871</a></span>
-<span class="normal"><a href="#__codelineno-0-872">872</a></span>
-<span class="normal"><a href="#__codelineno-0-873">873</a></span>
-<span class="normal"><a href="#__codelineno-0-874">874</a></span>
-<span class="normal"><a href="#__codelineno-0-875">875</a></span>
-<span class="normal"><a href="#__codelineno-0-876">876</a></span>
-<span class="normal"><a href="#__codelineno-0-877">877</a></span>
-<span class="normal"><a href="#__codelineno-0-878">878</a></span>
-<span class="normal"><a href="#__codelineno-0-879">879</a></span>
-<span class="normal"><a href="#__codelineno-0-880">880</a></span>
-<span class="normal"><a href="#__codelineno-0-881">881</a></span>
-<span class="normal"><a href="#__codelineno-0-882">882</a></span>
-<span class="normal"><a href="#__codelineno-0-883">883</a></span>
-<span class="normal"><a href="#__codelineno-0-884">884</a></span>
-<span class="normal"><a href="#__codelineno-0-885">885</a></span>
-<span class="normal"><a href="#__codelineno-0-886">886</a></span>
-<span class="normal"><a href="#__codelineno-0-887">887</a></span>
-<span class="normal"><a href="#__codelineno-0-888">888</a></span>
-<span class="normal"><a href="#__codelineno-0-889">889</a></span>
-<span class="normal"><a href="#__codelineno-0-890">890</a></span>
-<span class="normal"><a href="#__codelineno-0-891">891</a></span>
-<span class="normal"><a href="#__codelineno-0-892">892</a></span>
-<span class="normal"><a href="#__codelineno-0-893">893</a></span>
-<span class="normal"><a href="#__codelineno-0-894">894</a></span>
-<span class="normal"><a href="#__codelineno-0-895">895</a></span>
-<span class="normal"><a href="#__codelineno-0-896">896</a></span>
-<span class="normal"><a href="#__codelineno-0-897">897</a></span>
-<span class="normal"><a href="#__codelineno-0-898">898</a></span>
-<span class="normal"><a href="#__codelineno-0-899">899</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-863" name="__codelineno-0-863"></a><span class="nd">@staticmethod</span>
-<a id="__codelineno-0-864" name="__codelineno-0-864"></a><span class="k">def</span><span class="w"> </span><span class="nf">correct_wrap_cutline_error</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
-<a id="__codelineno-0-865" name="__codelineno-0-865"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Correct wrap cutline error.</span>
-<a id="__codelineno-0-866" name="__codelineno-0-866"></a>
-<a id="__codelineno-0-867" name="__codelineno-0-867"></a><span class="sd">    https://github.com/serapeum-org/pyramids/issues/74</span>
-<a id="__codelineno-0-868" name="__codelineno-0-868"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-869" name="__codelineno-0-869"></a>    <span class="n">big_array</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">read_array</span><span class="p">()</span>
-<a id="__codelineno-0-870" name="__codelineno-0-870"></a>    <span class="n">value_to_remove</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-871" name="__codelineno-0-871"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove rows and columns that are all filled with a certain value from a 2D array.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-872" name="__codelineno-0-872"></a>    <span class="c1"># Find rows and columns to be removed</span>
-<a id="__codelineno-0-873" name="__codelineno-0-873"></a>    <span class="k">if</span> <span class="n">big_array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-<a id="__codelineno-0-874" name="__codelineno-0-874"></a>        <span class="n">rows_to_remove</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">big_array</span> <span class="o">==</span> <span class="n">value_to_remove</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-875" name="__codelineno-0-875"></a>        <span class="n">cols_to_remove</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">big_array</span> <span class="o">==</span> <span class="n">value_to_remove</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-0-876" name="__codelineno-0-876"></a>        <span class="c1"># Use boolean indexing to remove rows and columns</span>
-<a id="__codelineno-0-877" name="__codelineno-0-877"></a>        <span class="n">small_array</span> <span class="o">=</span> <span class="n">big_array</span><span class="p">[</span><span class="o">~</span><span class="n">rows_to_remove</span><span class="p">][:,</span> <span class="o">~</span><span class="n">cols_to_remove</span><span class="p">]</span>
-<a id="__codelineno-0-878" name="__codelineno-0-878"></a>    <span class="k">elif</span> <span class="n">big_array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-<a id="__codelineno-0-879" name="__codelineno-0-879"></a>        <span class="n">rows_to_remove</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">big_array</span> <span class="o">==</span> <span class="n">value_to_remove</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-<a id="__codelineno-0-880" name="__codelineno-0-880"></a>        <span class="n">cols_to_remove</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">big_array</span> <span class="o">==</span> <span class="n">value_to_remove</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
-<a id="__codelineno-0-881" name="__codelineno-0-881"></a>        <span class="c1"># Use boolean indexing to remove rows and columns</span>
-<a id="__codelineno-0-882" name="__codelineno-0-882"></a>        <span class="c1"># first remove the rows then the columns</span>
-<a id="__codelineno-0-883" name="__codelineno-0-883"></a>        <span class="n">small_array</span> <span class="o">=</span> <span class="n">big_array</span><span class="p">[:,</span> <span class="o">~</span><span class="n">rows_to_remove</span><span class="p">,</span> <span class="p">:]</span>
-<a id="__codelineno-0-884" name="__codelineno-0-884"></a>        <span class="n">small_array</span> <span class="o">=</span> <span class="n">small_array</span><span class="p">[:,</span> <span class="p">:,</span> <span class="o">~</span><span class="n">cols_to_remove</span><span class="p">]</span>
-<a id="__codelineno-0-885" name="__codelineno-0-885"></a>        <span class="n">n_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="o">~</span><span class="n">rows_to_remove</span><span class="p">)</span>
-<a id="__codelineno-0-886" name="__codelineno-0-886"></a>        <span class="n">n_cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="o">~</span><span class="n">cols_to_remove</span><span class="p">)</span>
-<a id="__codelineno-0-887" name="__codelineno-0-887"></a>        <span class="n">small_array</span> <span class="o">=</span> <span class="n">small_array</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">src</span><span class="o">.</span><span class="n">band_count</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">))</span>
-<a id="__codelineno-0-888" name="__codelineno-0-888"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-889" name="__codelineno-0-889"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Array must be 2D or 3D&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-890" name="__codelineno-0-890"></a>
-<a id="__codelineno-0-891" name="__codelineno-0-891"></a>    <span class="n">x_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">~</span><span class="n">rows_to_remove</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-892" name="__codelineno-0-892"></a>    <span class="n">y_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">~</span><span class="n">cols_to_remove</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-893" name="__codelineno-0-893"></a>    <span class="n">new_x</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">y_ind</span><span class="p">]</span> <span class="o">-</span> <span class="n">src</span><span class="o">.</span><span class="n">cell_size</span> <span class="o">/</span> <span class="mi">2</span>
-<a id="__codelineno-0-894" name="__codelineno-0-894"></a>    <span class="n">new_y</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="n">x_ind</span><span class="p">]</span> <span class="o">+</span> <span class="n">src</span><span class="o">.</span><span class="n">cell_size</span> <span class="o">/</span> <span class="mi">2</span>
-<a id="__codelineno-0-895" name="__codelineno-0-895"></a>    <span class="n">new_gt</span> <span class="o">=</span> <span class="p">(</span><span class="n">new_x</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">cell_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">new_y</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">src</span><span class="o">.</span><span class="n">cell_size</span><span class="p">)</span>
-<a id="__codelineno-0-896" name="__codelineno-0-896"></a>    <span class="n">new_src</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">create_from_array</span><span class="p">(</span>
-<a id="__codelineno-0-897" name="__codelineno-0-897"></a>        <span class="n">small_array</span><span class="p">,</span> <span class="n">geo</span><span class="o">=</span><span class="n">new_gt</span><span class="p">,</span> <span class="n">epsg</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">no_data_value</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">no_data_value</span>
-<a id="__codelineno-0-898" name="__codelineno-0-898"></a>    <span class="p">)</span>
-<a id="__codelineno-0-899" name="__codelineno-0-899"></a>    <span class="k">return</span> <span class="n">new_src</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
