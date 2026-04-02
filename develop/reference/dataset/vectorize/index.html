@@ -2989,7 +2989,7 @@
 <a id="__codelineno-0-47" name="__codelineno-0-47"></a>
 <a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_feature_collection</span><span class="p">(</span>
 <a id="__codelineno-0-49" name="__codelineno-0-49"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>        <span class="n">vector_mask</span><span class="p">:</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a>        <span class="n">mask</span><span class="p">:</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-51" name="__codelineno-0-51"></a>        <span class="n">add_geometry</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-52" name="__codelineno-0-52"></a>        <span class="n">tile</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-53" name="__codelineno-0-53"></a>        <span class="n">tile_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
@@ -2998,7 +2998,7 @@
 <a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert a dataset to a vector.</span>
 <a id="__codelineno-0-57" name="__codelineno-0-57"></a>
 <a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">        The function does the following:</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">            - Flatten the array in each band in the raster then mask the values if a vector_mask file is given</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">            - Flatten the array in each band in the raster then mask the values if a mask is given</span>
 <a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">                otherwise it will flatten all values.</span>
 <a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">            - Put the values for each band in a column in a dataframe under the name of the raster band,</span>
 <a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">                but if no meta-data in the raster band exists, an index number will be used [1, 2, 3, ...]</span>
@@ -3009,8 +3009,8 @@
 <a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">                - If a polygon is chosen, a square polygon will be created that covers the entire cell.</span>
 <a id="__codelineno-0-68" name="__codelineno-0-68"></a>
 <a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">            vector_mask (GeoDataFrame, optional):</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">                GeoDataFrame for the vector_mask. If given, it will be used to clip the raster.</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">            mask (GeoDataFrame, optional):</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">                GeoDataFrame to clip the raster. If given, the raster will be cropped to the mask extent.</span>
 <a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">            add_geometry (str):</span>
 <a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">                &quot;Polygon&quot; or &quot;Point&quot; if you want to add a polygon geometry of the cells as column in dataframe.</span>
 <a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">                Default is None.</span>
@@ -3106,7 +3106,7 @@
 <a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">                  &gt;&gt;&gt; poly = gpd.GeoDataFrame(</span>
 <a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">                  ...             geometry=[Polygon([(0.05, -0.05), (0.05, -0.1), (0.1, -0.1), (0.1, -0.05)])], crs=4326</span>
 <a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">                  ... )</span>
-<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">                  &gt;&gt;&gt; df = dataset.to_feature_collection(vector_mask=poly)</span>
+<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">                  &gt;&gt;&gt; df = dataset.to_feature_collection(mask=poly)</span>
 <a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="sd">                  &gt;&gt;&gt; print(df) # doctest: +SKIP</span>
 <a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">                       Band_1    Band_2</span>
 <a id="__codelineno-0-170" name="__codelineno-0-170"></a><span class="sd">                  0  0.354482  0.383279</span>
@@ -3136,8 +3136,8 @@
 <a id="__codelineno-0-194" name="__codelineno-0-194"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-195" name="__codelineno-0-195"></a>        <span class="n">band_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_names</span>
 <a id="__codelineno-0-196" name="__codelineno-0-196"></a>
-<a id="__codelineno-0-197" name="__codelineno-0-197"></a>        <span class="k">if</span> <span class="n">vector_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-198" name="__codelineno-0-198"></a>            <span class="n">src</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">mask</span><span class="o">=</span><span class="n">vector_mask</span><span class="p">,</span> <span class="n">touch</span><span class="o">=</span><span class="n">touch</span><span class="p">)</span>
+<a id="__codelineno-0-197" name="__codelineno-0-197"></a>        <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-198" name="__codelineno-0-198"></a>            <span class="n">src</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span> <span class="n">touch</span><span class="o">=</span><span class="n">touch</span><span class="p">)</span>
 <a id="__codelineno-0-199" name="__codelineno-0-199"></a>        <span class="k">else</span><span class="p">:</span>
 <a id="__codelineno-0-200" name="__codelineno-0-200"></a>            <span class="n">src</span> <span class="o">=</span> <span class="bp">self</span>
 <a id="__codelineno-0-201" name="__codelineno-0-201"></a>
@@ -3212,9 +3212,9 @@
 <a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">            gpd.GeoDataFrame: GeoDataFrame with geometry column.</span>
 <a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-272" name="__codelineno-0-272"></a>        <span class="k">if</span> <span class="n">geometry_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;point&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>            <span class="n">coords</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_cell_points</span><span class="p">(</span><span class="n">mask</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a>            <span class="n">coords</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_cell_points</span><span class="p">(</span><span class="n">domain_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-274" name="__codelineno-0-274"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>            <span class="n">coords</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_cell_polygons</span><span class="p">(</span><span class="n">mask</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>            <span class="n">coords</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_cell_polygons</span><span class="p">(</span><span class="n">domain_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-276" name="__codelineno-0-276"></a>
 <a id="__codelineno-0-277" name="__codelineno-0-277"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:],</span> <span class="n">geometry</span><span class="o">=</span><span class="n">coords</span><span class="p">[</span><span class="s2">&quot;geometry&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">())</span>
 <a id="__codelineno-0-278" name="__codelineno-0-278"></a>        <span class="n">gdf</span><span class="o">.</span><span class="n">set_crs</span><span class="p">(</span><span class="n">coords</span><span class="o">.</span><span class="n">crs</span><span class="o">.</span><span class="n">to_epsg</span><span class="p">())</span>
@@ -3825,7 +3825,7 @@
 
 
 <h4 id="pyramids.dataset.ops.vectorize.Vectorize.to_feature_collection" class="doc doc-heading"><a href="#pyramids.dataset.ops.vectorize.Vectorize.to_feature_collection" class="toclink">
-            <code class="highlight language-python"><span class="n">to_feature_collection</span><span class="p">(</span><span class="n">vector_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_geometry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tile</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">touch</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">to_feature_collection</span><span class="p">(</span><span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_geometry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tile</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">touch</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
 </a><a href="#pyramids.dataset.ops.vectorize.Vectorize.to_feature_collection" class="headerlink" title="Permanent link">#</a></h4>
 
@@ -3838,7 +3838,7 @@
 <details class="the-function-does-the-following" open>
   <summary>The function does the following</summary>
   <ul>
-<li>Flatten the array in each band in the raster then mask the values if a vector_mask file is given
+<li>Flatten the array in each band in the raster then mask the values if a mask is given
     otherwise it will flatten all values.</li>
 <li>Put the values for each band in a column in a dataframe under the name of the raster band,
     but if no meta-data in the raster band exists, an index number will be used [1, 2, 3, ...]</li>
@@ -3866,14 +3866,14 @@
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>vector_mask</code>
+                <code>mask</code>
             </td>
             <td>
                   <code><span title="geopandas.geodataframe.GeoDataFrame">GeoDataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>GeoDataFrame for the vector_mask. If given, it will be used to clip the raster.</p>
+                <p>GeoDataFrame to clip the raster. If given, the raster will be cropped to the mask extent.</p>
               </div>
             </td>
             <td>
@@ -4049,7 +4049,7 @@ metadata; if not, the bands will be indexed from 1 to the number of bands).</p>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">poly</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="o">...</span>             <span class="n">geometry</span><span class="o">=</span><span class="p">[</span><span class="n">Polygon</span><span class="p">([(</span><span class="mf">0.05</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">)])],</span> <span class="n">crs</span><span class="o">=</span><span class="mi">4326</span>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="o">...</span> <span class="p">)</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">df</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">to_feature_collection</span><span class="p">(</span><span class="n">vector_mask</span><span class="o">=</span><span class="n">poly</span><span class="p">)</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">df</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">to_feature_collection</span><span class="p">(</span><span class="n">mask</span><span class="o">=</span><span class="n">poly</span><span class="p">)</span>
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="o">&gt;&gt;&gt;</span> <span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="c1"># doctest: +SKIP</span>
 <a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>     <span class="n">Band_1</span>    <span class="n">Band_2</span>
 <a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="mi">0</span>  <span class="mf">0.354482</span>  <span class="mf">0.383279</span>
@@ -4244,7 +4244,7 @@ metadata; if not, the bands will be indexed from 1 to the number of bands).</p>
 <span class="normal"><a href="#__codelineno-0-211">211</a></span>
 <span class="normal"><a href="#__codelineno-0-212">212</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_feature_collection</span><span class="p">(</span>
 <a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="n">vector_mask</span><span class="p">:</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="n">mask</span><span class="p">:</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="n">add_geometry</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="n">tile</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="n">tile_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
@@ -4253,7 +4253,7 @@ metadata; if not, the bands will be indexed from 1 to the number of bands).</p>
 <a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a dataset to a vector.</span>
 <a id="__codelineno-0-57" name="__codelineno-0-57"></a>
 <a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">    The function does the following:</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">        - Flatten the array in each band in the raster then mask the values if a vector_mask file is given</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">        - Flatten the array in each band in the raster then mask the values if a mask is given</span>
 <a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">            otherwise it will flatten all values.</span>
 <a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">        - Put the values for each band in a column in a dataframe under the name of the raster band,</span>
 <a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">            but if no meta-data in the raster band exists, an index number will be used [1, 2, 3, ...]</span>
@@ -4264,8 +4264,8 @@ metadata; if not, the bands will be indexed from 1 to the number of bands).</p>
 <a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">            - If a polygon is chosen, a square polygon will be created that covers the entire cell.</span>
 <a id="__codelineno-0-68" name="__codelineno-0-68"></a>
 <a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        vector_mask (GeoDataFrame, optional):</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">            GeoDataFrame for the vector_mask. If given, it will be used to clip the raster.</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        mask (GeoDataFrame, optional):</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">            GeoDataFrame to clip the raster. If given, the raster will be cropped to the mask extent.</span>
 <a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">        add_geometry (str):</span>
 <a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">            &quot;Polygon&quot; or &quot;Point&quot; if you want to add a polygon geometry of the cells as column in dataframe.</span>
 <a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">            Default is None.</span>
@@ -4361,7 +4361,7 @@ metadata; if not, the bands will be indexed from 1 to the number of bands).</p>
 <a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">              &gt;&gt;&gt; poly = gpd.GeoDataFrame(</span>
 <a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">              ...             geometry=[Polygon([(0.05, -0.05), (0.05, -0.1), (0.1, -0.1), (0.1, -0.05)])], crs=4326</span>
 <a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">              ... )</span>
-<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">              &gt;&gt;&gt; df = dataset.to_feature_collection(vector_mask=poly)</span>
+<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">              &gt;&gt;&gt; df = dataset.to_feature_collection(mask=poly)</span>
 <a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="sd">              &gt;&gt;&gt; print(df) # doctest: +SKIP</span>
 <a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">                   Band_1    Band_2</span>
 <a id="__codelineno-0-170" name="__codelineno-0-170"></a><span class="sd">              0  0.354482  0.383279</span>
@@ -4391,8 +4391,8 @@ metadata; if not, the bands will be indexed from 1 to the number of bands).</p>
 <a id="__codelineno-0-194" name="__codelineno-0-194"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-195" name="__codelineno-0-195"></a>    <span class="n">band_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_names</span>
 <a id="__codelineno-0-196" name="__codelineno-0-196"></a>
-<a id="__codelineno-0-197" name="__codelineno-0-197"></a>    <span class="k">if</span> <span class="n">vector_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-198" name="__codelineno-0-198"></a>        <span class="n">src</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">mask</span><span class="o">=</span><span class="n">vector_mask</span><span class="p">,</span> <span class="n">touch</span><span class="o">=</span><span class="n">touch</span><span class="p">)</span>
+<a id="__codelineno-0-197" name="__codelineno-0-197"></a>    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-198" name="__codelineno-0-198"></a>        <span class="n">src</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span> <span class="n">touch</span><span class="o">=</span><span class="n">touch</span><span class="p">)</span>
 <a id="__codelineno-0-199" name="__codelineno-0-199"></a>    <span class="k">else</span><span class="p">:</span>
 <a id="__codelineno-0-200" name="__codelineno-0-200"></a>        <span class="n">src</span> <span class="o">=</span> <span class="bp">self</span>
 <a id="__codelineno-0-201" name="__codelineno-0-201"></a>

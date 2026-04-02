@@ -3537,13 +3537,13 @@
 <a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="bp">self</span><span class="p">,</span>
 <a id="__codelineno-0-319" name="__codelineno-0-319"></a>        <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-320" name="__codelineno-0-320"></a>        <span class="n">exclude_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="n">feature</span><span class="p">:</span> <span class="n">FeatureCollection</span> <span class="o">|</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="n">mask</span><span class="p">:</span> <span class="n">FeatureCollection</span> <span class="o">|</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-322" name="__codelineno-0-322"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract.</span>
 <a id="__codelineno-0-324" name="__codelineno-0-324"></a>
 <a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">        - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">        - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">          values within the feature are extracted.</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">        - If the mask parameter is given, the raster will be clipped to the extent of the given mask and the</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">          values within the mask are extracted.</span>
 <a id="__codelineno-0-328" name="__codelineno-0-328"></a>
 <a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">            band (int, optional):</span>
@@ -3551,7 +3551,7 @@
 <a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">            exclude_value (Numeric, optional):</span>
 <a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">                Values to exclude from extracted values. If the dataset is multi-band, the values in `exclude_value`</span>
 <a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">                will be filtered out from the first band only.</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">            feature (FeatureCollection | GeoDataFrame, optional):</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">            mask (FeatureCollection | GeoDataFrame, optional):</span>
 <a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">                Vector data containing point geometries at which to extract the values. Default is None.</span>
 <a id="__codelineno-0-337" name="__codelineno-0-337"></a>
 <a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">        Returns:</span>
@@ -3621,7 +3621,7 @@
 <a id="__codelineno-0-402" name="__codelineno-0-402"></a>
 <a id="__codelineno-0-403" name="__codelineno-0-403"></a><span class="sd">                ```python</span>
 <a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">                &gt;&gt;&gt; points = gpd.GeoDataFrame(geometry=[Point(0.1, -0.1), Point(0.1, -0.2), Point(0.2, -0.2), Point(0.2, -0.1)],crs=4326)</span>
-<a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">                &gt;&gt;&gt; values = dataset.extract(feature=points)</span>
+<a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">                &gt;&gt;&gt; values = dataset.extract(mask=points)</span>
 <a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="sd">                &gt;&gt;&gt; print(values) # doctest: +SKIP</span>
 <a id="__codelineno-0-407" name="__codelineno-0-407"></a><span class="sd">                [[4 3 3 4]</span>
 <a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="sd">                 [3 4 4 2]]</span>
@@ -3634,15 +3634,15 @@
 <a id="__codelineno-0-415" name="__codelineno-0-415"></a>        <span class="n">no_data_value</span> <span class="o">=</span> <span class="p">(</span>
 <a id="__codelineno-0-416" name="__codelineno-0-416"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 <a id="__codelineno-0-417" name="__codelineno-0-417"></a>        <span class="p">)</span>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a>        <span class="k">if</span> <span class="n">feature</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a>            <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-418" name="__codelineno-0-418"></a>        <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-419" name="__codelineno-0-419"></a>            <span class="n">exclude_list</span> <span class="o">=</span> <span class="p">(</span>
 <a id="__codelineno-0-420" name="__codelineno-0-420"></a>                <span class="p">[</span><span class="n">no_data_value</span><span class="p">,</span> <span class="n">exclude_value</span><span class="p">]</span>
 <a id="__codelineno-0-421" name="__codelineno-0-421"></a>                <span class="k">if</span> <span class="n">exclude_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 <a id="__codelineno-0-422" name="__codelineno-0-422"></a>                <span class="k">else</span> <span class="p">[</span><span class="n">no_data_value</span><span class="p">]</span>
 <a id="__codelineno-0-423" name="__codelineno-0-423"></a>            <span class="p">)</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a>            <span class="n">values</span> <span class="o">=</span> <span class="n">get_pixels2</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a>            <span class="n">values</span> <span class="o">=</span> <span class="n">get_pixels2</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">exclude_list</span><span class="p">)</span>
 <a id="__codelineno-0-425" name="__codelineno-0-425"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-426" name="__codelineno-0-426"></a>            <span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_to_array_coordinates</span><span class="p">(</span><span class="n">feature</span><span class="p">)</span>
+<a id="__codelineno-0-426" name="__codelineno-0-426"></a>            <span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_to_array_coordinates</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
 <a id="__codelineno-0-427" name="__codelineno-0-427"></a>            <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
 <a id="__codelineno-0-428" name="__codelineno-0-428"></a>                <span class="n">values</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[:,</span> <span class="n">indices</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">indices</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]]</span>
 <a id="__codelineno-0-429" name="__codelineno-0-429"></a>            <span class="k">else</span><span class="p">:</span>
@@ -5262,7 +5262,7 @@ The resulting dataset if inplace is False; otherwise None.</p>
 
 
 <h4 id="pyramids.dataset.ops.analysis.Analysis.extract" class="doc doc-heading"><a href="#pyramids.dataset.ops.analysis.Analysis.extract" class="toclink">
-            <code class="highlight language-python"><span class="n">extract</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">feature</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">extract</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </a><a href="#pyramids.dataset.ops.analysis.Analysis.extract" class="headerlink" title="Permanent link">#</a></h4>
 
@@ -5272,8 +5272,8 @@ The resulting dataset if inplace is False; otherwise None.</p>
         <p>Extract.</p>
 <ul>
 <li>Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.</li>
-<li>If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
-  values within the feature are extracted.</li>
+<li>If the mask parameter is given, the raster will be clipped to the extent of the given mask and the
+  values within the mask are extracted.</li>
 </ul>
 
 
@@ -5323,7 +5323,7 @@ will be filtered out from the first band only.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>feature</code>
+                <code>mask</code>
             </td>
             <td>
                   <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt;" href="../../feature/#pyramids.feature.FeatureCollection">FeatureCollection</a> | <span title="geopandas.geodataframe.GeoDataFrame">GeoDataFrame</span></code>
@@ -5424,7 +5424,7 @@ The extracted values from each band in the dataset will be in one row in the ret
 <li>
 <p>Create the points using shapely and GeoPandas to cover the 4 cells with xmin, ymin, xmax, ymax = [0.1, -0.2, 0.2, -0.1]:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">points</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="p">[</span><span class="n">Point</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">),</span> <span class="n">Point</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">),</span> <span class="n">Point</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">),</span> <span class="n">Point</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">)],</span><span class="n">crs</span><span class="o">=</span><span class="mi">4326</span><span class="p">)</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">values</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">feature</span><span class="o">=</span><span class="n">points</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">values</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">mask</span><span class="o">=</span><span class="n">points</span><span class="p">)</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="nb">print</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="c1"># doctest: +SKIP</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="p">[[</span><span class="mi">4</span> <span class="mi">3</span> <span class="mi">3</span> <span class="mi">4</span><span class="p">]</span>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a> <span class="p">[</span><span class="mi">3</span> <span class="mi">4</span> <span class="mi">4</span> <span class="mi">2</span><span class="p">]]</span>
@@ -5554,13 +5554,13 @@ The extracted values from each band in the dataset will be in one row in the ret
 <a id="__codelineno-0-318" name="__codelineno-0-318"></a>    <span class="bp">self</span><span class="p">,</span>
 <a id="__codelineno-0-319" name="__codelineno-0-319"></a>    <span class="n">band</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-320" name="__codelineno-0-320"></a>    <span class="n">exclude_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a>    <span class="n">feature</span><span class="p">:</span> <span class="n">FeatureCollection</span> <span class="o">|</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>    <span class="n">mask</span><span class="p">:</span> <span class="n">FeatureCollection</span> <span class="o">|</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract.</span>
 <a id="__codelineno-0-324" name="__codelineno-0-324"></a>
 <a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">    - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">    - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">      values within the feature are extracted.</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">    - If the mask parameter is given, the raster will be clipped to the extent of the given mask and the</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">      values within the mask are extracted.</span>
 <a id="__codelineno-0-328" name="__codelineno-0-328"></a>
 <a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">        band (int, optional):</span>
@@ -5568,7 +5568,7 @@ The extracted values from each band in the dataset will be in one row in the ret
 <a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">        exclude_value (Numeric, optional):</span>
 <a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">            Values to exclude from extracted values. If the dataset is multi-band, the values in `exclude_value`</span>
 <a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">            will be filtered out from the first band only.</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">        feature (FeatureCollection | GeoDataFrame, optional):</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">        mask (FeatureCollection | GeoDataFrame, optional):</span>
 <a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">            Vector data containing point geometries at which to extract the values. Default is None.</span>
 <a id="__codelineno-0-337" name="__codelineno-0-337"></a>
 <a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">    Returns:</span>
@@ -5638,7 +5638,7 @@ The extracted values from each band in the dataset will be in one row in the ret
 <a id="__codelineno-0-402" name="__codelineno-0-402"></a>
 <a id="__codelineno-0-403" name="__codelineno-0-403"></a><span class="sd">            ```python</span>
 <a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">            &gt;&gt;&gt; points = gpd.GeoDataFrame(geometry=[Point(0.1, -0.1), Point(0.1, -0.2), Point(0.2, -0.2), Point(0.2, -0.1)],crs=4326)</span>
-<a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">            &gt;&gt;&gt; values = dataset.extract(feature=points)</span>
+<a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">            &gt;&gt;&gt; values = dataset.extract(mask=points)</span>
 <a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="sd">            &gt;&gt;&gt; print(values) # doctest: +SKIP</span>
 <a id="__codelineno-0-407" name="__codelineno-0-407"></a><span class="sd">            [[4 3 3 4]</span>
 <a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="sd">             [3 4 4 2]]</span>
@@ -5651,15 +5651,15 @@ The extracted values from each band in the dataset will be in one row in the ret
 <a id="__codelineno-0-415" name="__codelineno-0-415"></a>    <span class="n">no_data_value</span> <span class="o">=</span> <span class="p">(</span>
 <a id="__codelineno-0-416" name="__codelineno-0-416"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 <a id="__codelineno-0-417" name="__codelineno-0-417"></a>    <span class="p">)</span>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="k">if</span> <span class="n">feature</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a>        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-419" name="__codelineno-0-419"></a>        <span class="n">exclude_list</span> <span class="o">=</span> <span class="p">(</span>
 <a id="__codelineno-0-420" name="__codelineno-0-420"></a>            <span class="p">[</span><span class="n">no_data_value</span><span class="p">,</span> <span class="n">exclude_value</span><span class="p">]</span>
 <a id="__codelineno-0-421" name="__codelineno-0-421"></a>            <span class="k">if</span> <span class="n">exclude_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 <a id="__codelineno-0-422" name="__codelineno-0-422"></a>            <span class="k">else</span> <span class="p">[</span><span class="n">no_data_value</span><span class="p">]</span>
 <a id="__codelineno-0-423" name="__codelineno-0-423"></a>        <span class="p">)</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a>        <span class="n">values</span> <span class="o">=</span> <span class="n">get_pixels2</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a>        <span class="n">values</span> <span class="o">=</span> <span class="n">get_pixels2</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">exclude_list</span><span class="p">)</span>
 <a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-426" name="__codelineno-0-426"></a>        <span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_to_array_coordinates</span><span class="p">(</span><span class="n">feature</span><span class="p">)</span>
+<a id="__codelineno-0-426" name="__codelineno-0-426"></a>        <span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_to_array_coordinates</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
 <a id="__codelineno-0-427" name="__codelineno-0-427"></a>        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
 <a id="__codelineno-0-428" name="__codelineno-0-428"></a>            <span class="n">values</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[:,</span> <span class="n">indices</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">indices</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]]</span>
 <a id="__codelineno-0-429" name="__codelineno-0-429"></a>        <span class="k">else</span><span class="p">:</span>

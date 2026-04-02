@@ -3525,7 +3525,7 @@
 <a id="__codelineno-0-361" name="__codelineno-0-361"></a>
 <a id="__codelineno-0-362" name="__codelineno-0-362"></a>        <span class="n">dst_obj</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_build_dataset</span><span class="p">(</span>
 <a id="__codelineno-0-363" name="__codelineno-0-363"></a>            <span class="n">cols</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">bands</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">new_geo</span><span class="p">,</span> <span class="n">sr_src</span><span class="o">.</span><span class="n">ExportToWkt</span><span class="p">(),</span>
-<a id="__codelineno-0-364" name="__codelineno-0-364"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="s2">&quot;write&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-364" name="__codelineno-0-364"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">,</span>
 <a id="__codelineno-0-365" name="__codelineno-0-365"></a>        <span class="p">)</span>
 <a id="__codelineno-0-366" name="__codelineno-0-366"></a>        <span class="n">gdal</span><span class="o">.</span><span class="n">ReprojectImage</span><span class="p">(</span>
 <a id="__codelineno-0-367" name="__codelineno-0-367"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span>
@@ -5289,7 +5289,7 @@ The resulting dataset if inplace is False; otherwise None.</p>
 <a id="__codelineno-0-361" name="__codelineno-0-361"></a>
 <a id="__codelineno-0-362" name="__codelineno-0-362"></a>    <span class="n">dst_obj</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_build_dataset</span><span class="p">(</span>
 <a id="__codelineno-0-363" name="__codelineno-0-363"></a>        <span class="n">cols</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">bands</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">new_geo</span><span class="p">,</span> <span class="n">sr_src</span><span class="o">.</span><span class="n">ExportToWkt</span><span class="p">(),</span>
-<a id="__codelineno-0-364" name="__codelineno-0-364"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="s2">&quot;write&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-364" name="__codelineno-0-364"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">,</span>
 <a id="__codelineno-0-365" name="__codelineno-0-365"></a>    <span class="p">)</span>
 <a id="__codelineno-0-366" name="__codelineno-0-366"></a>    <span class="n">gdal</span><span class="o">.</span><span class="n">ReprojectImage</span><span class="p">(</span>
 <a id="__codelineno-0-367" name="__codelineno-0-367"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="p">,</span>

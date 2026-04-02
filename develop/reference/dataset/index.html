@@ -4498,7 +4498,7 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <a id="__codelineno-0-547" name="__codelineno-0-547"></a>        <span class="n">no_data_value</span><span class="p">,</span>
 <a id="__codelineno-0-548" name="__codelineno-0-548"></a>        <span class="n">driver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;MEM&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-549" name="__codelineno-0-549"></a>        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-550" name="__codelineno-0-550"></a>        <span class="n">access</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;read_only&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-550" name="__codelineno-0-550"></a>        <span class="n">access</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;write&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-551" name="__codelineno-0-551"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
 <a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a GDAL dataset, set its spatial metadata, and wrap it as a Dataset.</span>
 <a id="__codelineno-0-553" name="__codelineno-0-553"></a>
@@ -4515,7 +4515,7 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">            no_data_value: No-data value (scalar or list).</span>
 <a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">            driver (str): Driver type. Default is &quot;MEM&quot;.</span>
 <a id="__codelineno-0-566" name="__codelineno-0-566"></a><span class="sd">            path (str | Path | None): Path for disk-based drivers.</span>
-<a id="__codelineno-0-567" name="__codelineno-0-567"></a><span class="sd">            access (str): Access mode for the Dataset wrapper. Default is &quot;read_only&quot;.</span>
+<a id="__codelineno-0-567" name="__codelineno-0-567"></a><span class="sd">            access (str): Access mode for the Dataset wrapper. Default is &quot;write&quot;.</span>
 <a id="__codelineno-0-568" name="__codelineno-0-568"></a>
 <a id="__codelineno-0-569" name="__codelineno-0-569"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-570" name="__codelineno-0-570"></a><span class="sd">            Dataset: A fully configured Dataset object.</span>
@@ -4740,7 +4740,7 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <a id="__codelineno-0-789" name="__codelineno-0-789"></a>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a>        <span class="n">dst_obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_build_dataset</span><span class="p">(</span>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a>            <span class="n">src</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">rows</span><span class="p">,</span> <span class="n">bands</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">geotransform</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span>
-<a id="__codelineno-0-792" name="__codelineno-0-792"></a>            <span class="n">src</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="s2">&quot;write&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-792" name="__codelineno-0-792"></a>            <span class="n">src</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
 <a id="__codelineno-0-793" name="__codelineno-0-793"></a>        <span class="p">)</span>
 <a id="__codelineno-0-794" name="__codelineno-0-794"></a>
 <a id="__codelineno-0-795" name="__codelineno-0-795"></a>        <span class="k">if</span> <span class="n">bands</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
@@ -6855,7 +6855,7 @@ method will return an in-memory dataset.</p>
 <a id="__codelineno-0-789" name="__codelineno-0-789"></a>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a>    <span class="n">dst_obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_build_dataset</span><span class="p">(</span>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a>        <span class="n">src</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">rows</span><span class="p">,</span> <span class="n">bands</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">geotransform</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span>
-<a id="__codelineno-0-792" name="__codelineno-0-792"></a>        <span class="n">src</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="s2">&quot;write&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-792" name="__codelineno-0-792"></a>        <span class="n">src</span><span class="o">.</span><span class="n">no_data_value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
 <a id="__codelineno-0-793" name="__codelineno-0-793"></a>    <span class="p">)</span>
 <a id="__codelineno-0-794" name="__codelineno-0-794"></a>
 <a id="__codelineno-0-795" name="__codelineno-0-795"></a>    <span class="k">if</span> <span class="n">bands</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
