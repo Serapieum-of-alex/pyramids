@@ -242,7 +242,7 @@ class Analysis:
         dst_obj = type(self)._build_dataset(
             self.columns, self.rows, 1, dtype, self.geotransform, self.crs, no_data_value
         )
-        dst_obj.raster.GetRasterBand(band + 1).WriteArray(new_array)
+        dst_obj.raster.GetRasterBand(1).WriteArray(new_array)
 
         result: Dataset | None = None
         if inplace:
