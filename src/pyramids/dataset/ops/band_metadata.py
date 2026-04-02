@@ -907,10 +907,10 @@ class BandMetadata:
 
     def _calculate_bbox(self) -> list:
         """Calculate bounding box."""
-        xmin, ymax = self.top_left_corner
-        ymin = ymax - self.rows * self.cell_size
-        xmax = xmin + self.columns * self.cell_size
-        return [xmin, ymin, xmax, ymax]
+        x_min, y_max = self.top_left_corner
+        y_min = y_max - self.rows * self.cell_size
+        x_max = x_min + self.columns * self.cell_size
+        return [x_min, y_min, x_max, y_max]
 
     def _calculate_bounds(self) -> GeoDataFrame:
         """Get the bbox as a geodataframe with a polygon geometry."""
