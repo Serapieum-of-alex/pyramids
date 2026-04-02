@@ -478,7 +478,7 @@ class Dataset(  # type: ignore[misc]
 
         return Dataset(src, access="write")
 
-    def close(self):
+    def close(self) -> None:
         """Close the dataset."""
         self._raster.FlushCache()
         self._raster = None

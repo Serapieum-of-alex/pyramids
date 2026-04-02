@@ -30,7 +30,7 @@ class Spatial:
         """Get coordinate reference system."""
         return str(self.raster.GetProjection())
 
-    def set_crs(self, crs: str | None = None, epsg: int | None = None):
+    def set_crs(self, crs: str | None = None, epsg: int | None = None) -> None:
         """Set the Coordinate Reference System (CRS).
 
             Set the Coordinate Reference System (CRS) of a

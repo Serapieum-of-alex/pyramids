@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class Vectorize:
     """Mixin providing vectorization, clustering, and translate methods for Dataset."""
 
-    def _band_to_polygon(self, band: int, col_name: str):
+    def _band_to_polygon(self, band: int, col_name: str) -> GeoDataFrame:
         band = self.raster.GetRasterBand(band + 1)
         srs = osr.SpatialReference(wkt=self.crs)
 
@@ -278,7 +278,7 @@ class Vectorize:
         gdf.set_crs(coords.crs.to_epsg())
         return gdf
 
-    def translate(self, path: str | Path | None = None, **kwargs):
+    def translate(self, path: str | Path | None = None, **kwargs) -> Dataset:
         """Translate.
 
         The translate function can be used to
@@ -639,7 +639,7 @@ class Vectorize:
     @staticmethod
     def _group_neighbours(
         array, i, j, lower_bound, upper_bound, position, values, count, cluster
-    ):
+    ) -> None:
         """Group neighboring cells with the same values using iterative BFS.
 
         Uses a queue-based breadth-first search instead of recursion to avoid
