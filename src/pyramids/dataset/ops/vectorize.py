@@ -29,7 +29,7 @@ class Vectorize:
     """Mixin providing vectorization, clustering, and translate methods for Dataset."""
 
     def _band_to_polygon(self, band: int, col_name: str) -> GeoDataFrame:
-        band = self.raster.GetRasterBand(band + 1)
+        gdal_band = self.raster.GetRasterBand(band + 1)
         srs = osr.SpatialReference(wkt=self.crs)
 
         dst_ds = FeatureCollection.create_ds("memory")
@@ -39,7 +39,7 @@ class Vectorize:
         dtype = gdal_to_ogr_dtype(self.raster)
         new_field = ogr.FieldDefn(col_name, dtype)
         dst_layer.CreateField(new_field)
-        gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
+        gdal.Polygonize(gdal_band, gdal_band, dst_layer, 0, [], callback=None)
 
         vector = FeatureCollection(dst_ds)
         gdf = vector._ds_to_gdf()
@@ -653,6 +653,12 @@ class Vectorize:
 
         Uses a queue-based breadth-first search instead of recursion to avoid
         hitting Python's recursion limit on large connected regions.
+
+        Note: The starting cell (i, j) is enqueued but not marked. When a
+        discovered neighbor later checks its own neighbors, it will find (i, j)
+        still unmarked and add it to position/values. Therefore the starting
+        cell appears in the output whenever it has at least one in-bound
+        neighbor. The caller (cluster) handles truly isolated cells separately.
         """
         rows, cols = array.shape
         queue = collections.deque()
