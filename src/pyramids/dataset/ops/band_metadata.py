@@ -779,8 +779,8 @@ class BandMetadata:
         if "alpha" not in color_df.columns:
             color_df.loc[:, "alpha"] = 255
 
-        for band, df_band in color_df.groupby("band"):
-            band = self.raster.GetRasterBand(band)
+        for band_idx, df_band in color_df.groupby("band"):
+            band = self.raster.GetRasterBand(band_idx)
 
             if overwrite:
                 color_table = gdal.ColorTable()
