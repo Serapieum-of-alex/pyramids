@@ -1147,20 +1147,20 @@ class TestApply:
         )
 
     def test_apply_with_band_parameter(self, multi_band_dataset):
-        """Test apply on band=0 of a multi-band dataset.
+        """Test apply on band=1 of a multi-band dataset.
 
         Test scenario:
-            Applying to band=0 on a multi-band dataset should produce a
-            single-band result with the first band's values transformed.
+            Applying to band=1 on a multi-band dataset should produce a
+            single-band result with that band's values transformed.
         """
-        original_band0 = multi_band_dataset.read_array(band=0).copy()
-        result = multi_band_dataset.apply(lambda x: x + 100, band=0)
+        original_band1 = multi_band_dataset.read_array(band=1).copy()
+        result = multi_band_dataset.apply(lambda x: x + 100, band=1)
         result_arr = result.read_array()
         assert result.band_count == 1, f"Result should be single-band, got {result.band_count}"
-        domain_mask = ~np.isclose(original_band0, multi_band_dataset.no_data_value[0], rtol=0.001)
+        domain_mask = ~np.isclose(original_band1, multi_band_dataset.no_data_value[1], rtol=0.001)
         np.testing.assert_array_almost_equal(
-            result_arr[domain_mask], original_band0[domain_mask] + 100,
-            err_msg="Band 0 domain cells should be shifted by +100"
+            result_arr[domain_mask], original_band1[domain_mask] + 100,
+            err_msg="Band 1 domain cells should be shifted by +100"
         )
 
     def test_apply_preserves_spatial_metadata(self, single_band_dataset):
