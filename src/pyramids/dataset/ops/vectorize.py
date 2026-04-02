@@ -221,14 +221,23 @@ class Vectorize:
         Returns:
             pd.DataFrame: Concatenated DataFrame from all tiles.
         """
+        no_data_value = self.no_data_value[0]
         df_list = []
         for arr in self.get_tile(tile_size):
             idx = (1, 2) if arr.ndim > 2 else (0, 1)
             mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
             pixels = get_pixels(arr, mask_arr).transpose()
-            df_list.append(pd.DataFrame(pixels, columns=band_names))
+            df = pd.DataFrame(pixels, columns=band_names)
+            if no_data_value is not None:
+                df.replace(no_data_value, np.nan, inplace=True)
+            df.dropna(axis=0, inplace=True, ignore_index=True)
+            if not df.empty:
+                df_list.append(df)
 
-        return pd.concat(df_list)
+        if not df_list:
+            return pd.DataFrame(columns=band_names)
+
+        return pd.concat(df_list, ignore_index=True)
 
     def _extract_values_full(self, band_names: list) -> pd.DataFrame:
         """Extract all raster band values into a DataFrame (no tiling).
