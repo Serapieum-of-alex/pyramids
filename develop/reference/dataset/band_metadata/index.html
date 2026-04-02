@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3655,7 +3655,7 @@
 <a id="__codelineno-0-450" name="__codelineno-0-450"></a>
 <a id="__codelineno-0-451" name="__codelineno-0-451"></a>        <span class="k">return</span> <span class="n">names</span>
 <a id="__codelineno-0-452" name="__codelineno-0-452"></a>
-<a id="__codelineno-0-453" name="__codelineno-0-453"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_set_band_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<a id="__codelineno-0-453" name="__codelineno-0-453"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_set_band_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Set band names from a given list of names.</span>
 <a id="__codelineno-0-455" name="__codelineno-0-455"></a>
 <a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="sd">        Returns:</span>
@@ -3950,7 +3950,7 @@
 <a id="__codelineno-0-745" name="__codelineno-0-745"></a>
 <a id="__codelineno-0-746" name="__codelineno-0-746"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_set_color_table</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-747" name="__codelineno-0-747"></a>
-<a id="__codelineno-0-748" name="__codelineno-0-748"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_set_color_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<a id="__codelineno-0-748" name="__codelineno-0-748"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_set_color_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-749" name="__codelineno-0-749"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;_set_color_table.</span>
 <a id="__codelineno-0-750" name="__codelineno-0-750"></a>
 <a id="__codelineno-0-751" name="__codelineno-0-751"></a><span class="sd">        Args:</span>
@@ -4033,7 +4033,7 @@
 <a id="__codelineno-0-828" name="__codelineno-0-828"></a>
 <a id="__codelineno-0-829" name="__codelineno-0-829"></a>        <span class="k">return</span> <span class="n">df</span>
 <a id="__codelineno-0-830" name="__codelineno-0-830"></a>
-<a id="__codelineno-0-831" name="__codelineno-0-831"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_check_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">no_data_value</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<a id="__codelineno-0-831" name="__codelineno-0-831"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_check_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">no_data_value</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-832" name="__codelineno-0-832"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate the no_data_value with the dtype of the object.</span>
 <a id="__codelineno-0-833" name="__codelineno-0-833"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-834" name="__codelineno-0-834"></a><span class="sd">            no_data_value:</span>
@@ -4069,7 +4069,7 @@
 <a id="__codelineno-0-864" name="__codelineno-0-864"></a>                <span class="n">no_data_value</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">numpy_dtype</span><span class="p">[</span><span class="n">i</span><span class="p">](</span><span class="n">DEFAULT_NO_DATA_VALUE</span><span class="p">)</span>
 <a id="__codelineno-0-865" name="__codelineno-0-865"></a>        <span class="k">return</span> <span class="n">no_data_value</span>
 <a id="__codelineno-0-866" name="__codelineno-0-866"></a>
-<a id="__codelineno-0-867" name="__codelineno-0-867"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_set_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">no_data_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">DEFAULT_NO_DATA_VALUE</span><span class="p">):</span>
+<a id="__codelineno-0-867" name="__codelineno-0-867"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_set_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">no_data_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">DEFAULT_NO_DATA_VALUE</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-868" name="__codelineno-0-868"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;setNoDataValue.</span>
 <a id="__codelineno-0-869" name="__codelineno-0-869"></a><span class="sd">            - Set the no data value in all raster bands.</span>
 <a id="__codelineno-0-870" name="__codelineno-0-870"></a><span class="sd">            - Fill the whole raster with the no_data_value.</span>
@@ -4126,7 +4126,7 @@
 <a id="__codelineno-0-921" name="__codelineno-0-921"></a>        <span class="n">gdf</span><span class="o">.</span><span class="n">set_crs</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-922" name="__codelineno-0-922"></a>        <span class="k">return</span> <span class="n">gdf</span>
 <a id="__codelineno-0-923" name="__codelineno-0-923"></a>
-<a id="__codelineno-0-924" name="__codelineno-0-924"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_set_no_data_value_backend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">band_i</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">no_data_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+<a id="__codelineno-0-924" name="__codelineno-0-924"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_set_no_data_value_backend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">band_i</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">no_data_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-925" name="__codelineno-0-925"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-926" name="__codelineno-0-926"></a><span class="sd">            - band_i starts from 0 to the number of bands-1.</span>
 <a id="__codelineno-0-927" name="__codelineno-0-927"></a><span class="sd">        Args:</span>
@@ -4160,7 +4160,7 @@
 <a id="__codelineno-0-955" name="__codelineno-0-955"></a>        <span class="c1"># update the no_data_value in the Dataset object</span>
 <a id="__codelineno-0-956" name="__codelineno-0-956"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_no_data_value</span><span class="p">[</span><span class="n">band_i</span><span class="p">]</span> <span class="o">=</span> <span class="n">no_data_value</span>
 <a id="__codelineno-0-957" name="__codelineno-0-957"></a>
-<a id="__codelineno-0-958" name="__codelineno-0-958"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_change_no_data_value_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">band</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">no_data_value</span><span class="p">):</span>
+<a id="__codelineno-0-958" name="__codelineno-0-958"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_change_no_data_value_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">band</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">no_data_value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-959" name="__codelineno-0-959"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Change the no_data_value attribute.</span>
 <a id="__codelineno-0-960" name="__codelineno-0-960"></a><span class="sd">            - Change only the no_data_value attribute in the gdal Dataset object.</span>
 <a id="__codelineno-0-961" name="__codelineno-0-961"></a><span class="sd">            - Change the no_data_value in the Dataset object for the given band index.</span>

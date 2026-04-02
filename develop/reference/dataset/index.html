@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -4429,7 +4429,7 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <a id="__codelineno-0-478" name="__codelineno-0-478"></a>
 <a id="__codelineno-0-479" name="__codelineno-0-479"></a>        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="s2">&quot;write&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-480" name="__codelineno-0-480"></a>
-<a id="__codelineno-0-481" name="__codelineno-0-481"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-0-481" name="__codelineno-0-481"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Close the dataset.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-483" name="__codelineno-0-483"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_raster</span><span class="o">.</span><span class="n">FlushCache</span><span class="p">()</span>
 <a id="__codelineno-0-484" name="__codelineno-0-484"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_raster</span> <span class="o">=</span> <span class="kc">None</span>
@@ -5973,7 +5973,7 @@ will be created in memory.</p>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-481">481</a></span>
 <span class="normal"><a href="#__codelineno-0-482">482</a></span>
 <span class="normal"><a href="#__codelineno-0-483">483</a></span>
-<span class="normal"><a href="#__codelineno-0-484">484</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-484">484</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Close the dataset.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-483" name="__codelineno-0-483"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_raster</span><span class="o">.</span><span class="n">FlushCache</span><span class="p">()</span>
 <a id="__codelineno-0-484" name="__codelineno-0-484"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_raster</span> <span class="o">=</span> <span class="kc">None</span>
