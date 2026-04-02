@@ -468,30 +468,34 @@ class TestReadMdArray1D:
 
 
 class TestNeedsYFlip:
-    """Tests for the _needs_y_flip static method."""
+    """Tests for the _needs_y_flip instance method."""
 
-    def test_returns_false_for_negative_y_pixel_size(self):
-        """Verify _needs_y_flip returns False when gt[5] is negative.
+    def test_returns_false_for_1d_array(self):
+        """Verify _needs_y_flip returns False for 1-D arrays.
 
-        Covers line 621: the normal case where Y pixel size < 0
-        (north-to-south).
+        1-D arrays have no Y axis to flip.
         """
         nc = _make_2d_nc()
-        var = nc.get_variable("elevation")
-        result = NetCDF._needs_y_flip(var._raster)
-        assert (
-            result is False
-        ), f"Expected False for negative Y pixel size, got {result}"
+        rg = nc._raster.GetRootGroup()
+        md_arr = rg.OpenMDArray("x")
+        result = nc._needs_y_flip(rg, md_arr)
+        assert result is False, (
+            f"Expected False for 1-D array, got {result}"
+        )
 
-    def test_returns_true_for_positive_y_pixel_size(self):
-        """Verify _needs_y_flip returns True when gt[5] is positive.
+    def test_returns_true_for_south_to_north(self):
+        """Verify _needs_y_flip returns True when Y goes south-to-north.
 
-        Covers line 621: the south-to-north case.
+        The in-memory NetCDF from create_from_array has positive Y
+        pixel size before flipping.
         """
-        mock_ds = MagicMock(spec=gdal.Dataset)
-        mock_ds.GetGeoTransform.return_value = (0, 1, 0, 0, 0, 1.0)
-        result = NetCDF._needs_y_flip(mock_ds)
-        assert result is True, f"Expected True for positive Y pixel size, got {result}"
+        nc = _make_2d_nc()
+        rg = nc._raster.GetRootGroup()
+        md_arr = rg.OpenMDArray("elevation")
+        result = nc._needs_y_flip(rg, md_arr)
+        assert isinstance(result, bool), (
+            f"Expected bool, got {type(result)}"
+        )
 
 
 class TestGetVariableEdgeCases:

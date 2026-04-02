@@ -506,11 +506,34 @@ class NetCDF(Dataset):
             dim = None
         return dim
 
+    def _needs_y_flip(self, rg, md_arr) -> bool:
+        """Check if an MDArray's Y dimension goes south-to-north.
+
+        Uses AsClassicDataset to check the geotransform Y pixel size.
+        Returns True if the data needs flipping (positive Y pixel size).
+        Returns False for 1-D arrays or when orientation is already correct.
+
+        Args:
+            rg: The root group (kept alive to prevent SWIG GC).
+            md_arr: The MDArray to check.
+        """
+        dims = md_arr.GetDimensions()
+        if len(dims) < 2:
+            return False
+        try:
+            src = md_arr.AsClassicDataset(len(dims) - 1, len(dims) - 2, rg)
+            return src.GetGeoTransform()[5] > 0
+        except Exception:
+            return False
+
     def _read_variable(self, var: str) -> np.ndarray | None:
         """Read a variable's data as a numpy array.
 
         Uses the MDIM root group when available (avoids opening a new GDAL
         handle). Falls back to the classic ``NETCDF:file:var`` path.
+
+        For arrays with 2+ dimensions, the Y axis is flipped if the data
+        is stored south-to-north (matching the flip in ``get_variable``).
 
         Args:
             var: Variable name in the dataset.
@@ -522,13 +545,17 @@ class NetCDF(Dataset):
         result = None
         rg = self._raster.GetRootGroup()
         if rg is not None:
-            # Try as an MDArray first
             try:
                 md_arr = rg.OpenMDArray(var)
                 if md_arr is not None:
                     result = md_arr.ReadAsArray()
+                    # Flip Y axis if south-to-north (same as get_variable)
+                    if result is not None and result.ndim >= 2:
+                        if self._needs_y_flip(rg, md_arr):
+                            y_axis = result.ndim - 2
+                            result = np.flip(result, axis=y_axis)
             except Exception:
-                pass  # nosec B110
+                pass # nosec B110
             # Fall back to dimension indexing variable
             if result is None:
                 dim = self._get_dimension(var)
@@ -615,10 +642,6 @@ class NetCDF(Dataset):
 
         return src, md_arr, rg
 
-    @staticmethod
-    def _needs_y_flip(src: gdal.Dataset) -> bool:
-        """Check if a classic dataset has south-to-north Y orientation."""
-        return bool(src.GetGeoTransform()[5] > 0)
 
     def get_variable(self, variable_name: str) -> NetCDF:
         """Extract a single variable as a classic-raster NetCDF object.
