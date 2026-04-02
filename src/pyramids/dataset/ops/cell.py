@@ -109,6 +109,7 @@ class Cell:
             yy_span,
             cell_size_y,
         ) = self.geotransform
+
         if cell_size_x != cell_size_y:
             if np.abs(cell_size_x) != np.abs(cell_size_y):
                 self.logger.warning(
@@ -118,7 +119,7 @@ class Cell:
         # data in the array
         no_val = self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
         arr = self.read_array(band=0)
-        if domain_only is not None and no_val not in arr:
+        if domain_only and no_val not in arr:
             self.logger.warning(
                 "The no data value does not exist in the band, so all the cells will be considered, and the "
                 "domain_only filter will not be applied."
