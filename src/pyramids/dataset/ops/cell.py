@@ -21,7 +21,7 @@ class Cell:
     """Mixin providing cell coordinate and geometry utilities for Dataset."""
 
     def get_cell_coords(
-        self, location: str = "center", mask: bool = False
+        self, location: str = "center", domain_only: bool = False
     ) -> np.ndarray:
         """Get coordinates for the center/corner of cells inside the dataset domain.
 
@@ -32,7 +32,7 @@ class Cell:
             location (str):
                 Location of the coordinates. Use `center` for the center of a cell, `corner` for the corner of the
                 cell (top-left corner).
-            mask (bool):
+            domain_only (bool):
                 True to exclude the cells out of the domain. Default is False.
 
         Returns:
@@ -118,13 +118,13 @@ class Cell:
         # data in the array
         no_val = self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
         arr = self.read_array(band=0)
-        if mask is not None and no_val not in arr:
+        if domain_only is not None and no_val not in arr:
             self.logger.warning(
                 "The no data value does not exist in the band, so all the cells will be considered, and the "
-                "mask will not be considered."
+                "domain_only filter will not be applied."
             )
 
-        mask_values: list[Any] | None = [no_val] if mask else None
+        mask_values: list[Any] | None = [no_val] if domain_only else None
         indices = get_indices2(arr, mask=mask_values)
 
         # exclude the no_data_values cells.
@@ -136,11 +136,11 @@ class Cell:
 
         return coords
 
-    def get_cell_polygons(self, mask: bool = False) -> GeoDataFrame:
+    def get_cell_polygons(self, domain_only: bool = False) -> GeoDataFrame:
         """Get a polygon shapely geometry for the raster cells.
 
         Args:
-            mask (bool):
+            domain_only (bool):
                 True to get the polygons of the cells inside the domain.
 
         Returns:
@@ -182,7 +182,7 @@ class Cell:
 
         ![get_cell_polygons](./../../_images/dataset/get_cell_polygons.png)
         """
-        coords = self.get_cell_coords(location="corner", mask=mask)
+        coords = self.get_cell_coords(location="corner", domain_only=domain_only)
         cell_size = self.geotransform[1]
         epsg = self._get_epsg()
         x = np.zeros((coords.shape[0], 4))
@@ -217,14 +217,14 @@ class Cell:
         gdf["id"] = gdf.index
         return gdf
 
-    def get_cell_points(self, location: str = "center", mask=False) -> GeoDataFrame:
+    def get_cell_points(self, location: str = "center", domain_only: bool = False) -> GeoDataFrame:
         """Get a point shapely geometry for the raster cells center point.
 
         Args:
             location (str):
                 Location of the point, ["corner", "center"]. Default is "center".
-            mask (bool):
-                True to get the polygons of the cells inside the domain.
+            domain_only (bool):
+                True to get the points of the cells inside the domain only.
 
         Returns:
             GeoDataFrame:
@@ -288,7 +288,7 @@ class Cell:
 
             ![get_cell_points-corner](./../../_images/dataset/get_cell_points-corner.png)
         """
-        coords = self.get_cell_coords(location=location, mask=mask)
+        coords = self.get_cell_coords(location=location, domain_only=domain_only)
         epsg = self._get_epsg()
 
         coords_tuples = list(zip(coords[:, 0], coords[:, 1]))

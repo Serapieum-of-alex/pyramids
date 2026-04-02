@@ -201,8 +201,8 @@ class BandMetadata:
               ```
         """
         rat = self._df_to_attribute_table(df)
-        band_index = band if band is not None else 0
-        band_obj = self._iloc(band_index)
+        band = band if band is not None else 0
+        band_obj = self._iloc(band)
         band_obj.SetDefaultRAT(rat)
 
     @staticmethod
@@ -432,21 +432,21 @@ class BandMetadata:
         """
         names = []
         for i in range(1, self.band_count + 1):
-            band_i = self.raster.GetRasterBand(i)
+            band = self.raster.GetRasterBand(i)
 
-            if band_i.GetDescription():
-                # Use the band_i description.
-                names.append(band_i.GetDescription())
+            if band.GetDescription():
+                # Use the band description.
+                names.append(band.GetDescription())
             else:
                 # Check for metadata.
-                band_i_name = "Band_{}".format(band_i.GetBand())
-                metadata = band_i.GetDataset().GetMetadata_Dict()
+                band_name = f"Band_{band.GetBand()}"
+                metadata = band.GetDataset().GetMetadata_Dict()
 
                 # If in metadata, return the metadata entry, else Band_N.
-                if band_i_name in metadata and metadata[band_i_name]:
-                    names.append(metadata[band_i_name])
+                if band_name in metadata and metadata[band_name]:
+                    names.append(metadata[band_name])
                 else:
-                    names.append(band_i_name)
+                    names.append(band_name)
 
         return names
 
@@ -459,8 +459,8 @@ class BandMetadata:
         """
         for i in range(self.band_count):
             # first set the band name in the gdal dataset object
-            band_i = self.raster.GetRasterBand(i + 1)
-            band_i.SetDescription(name_list[i])
+            band = self.raster.GetRasterBand(i + 1)
+            band.SetDescription(name_list[i])
             # second, change the band names in the _band_names property.
             self._band_names[i] = name_list[i]
 
@@ -561,18 +561,18 @@ class BandMetadata:
             - Now use `get_band_by_color` to know which band is the red band, for example:
 
               ```python
-              >>> band_index = dataset.get_band_by_color('red')
-              >>> print(band_index)
+              >>> band = dataset.get_band_by_color('red')
+              >>> print(band)
               0
 
               ```
         """
         colors = list(self.band_color.values())
         if color_name not in colors:
-            band_index = None
+            band = None
         else:
-            band_index = colors.index(color_name)
-        return band_index
+            band = colors.index(color_name)
+        return band
 
     # TODO: find a better way to handle the color table in accordance with attribute_table
     # and figure out how to take a color ramp and convert it to a color table.
@@ -779,8 +779,8 @@ class BandMetadata:
         if "alpha" not in color_df.columns:
             color_df.loc[:, "alpha"] = 255
 
-        for band_i, df_band in color_df.groupby("band"):
-            band = self.raster.GetRasterBand(band_i)
+        for band, df_band in color_df.groupby("band"):
+            band = self.raster.GetRasterBand(band)
 
             if overwrite:
                 color_table = gdal.ColorTable()
@@ -815,15 +815,15 @@ class BandMetadata:
             range(self.band_count) if band is None else [band]
         )
         row = 0
-        for band_i in band_iter:
+        for band in band_iter:
             color_table = self.raster.GetRasterBand(
-                band_i + 1
+                band + 1
             ).GetRasterColorTable()
             for i in range(color_table.GetCount()):
                 df.loc[row, ["red", "green", "blue", "alpha"]] = (
                     color_table.GetColorEntry(i)
                 )
-                df.loc[row, ["band", "values"]] = band_i + 1, i
+                df.loc[row, ["band", "values"]] = band + 1, i
                 row += 1
 
         return df
@@ -921,25 +921,25 @@ class BandMetadata:
         gdf.set_crs(epsg=self.epsg, inplace=True)
         return gdf
 
-    def _set_no_data_value_backend(self, band_i: int, no_data_value: Any) -> None:
+    def _set_no_data_value_backend(self, band: int, no_data_value: Any) -> None:
         """
-            - band_i starts from 0 to the number of bands-1.
+            - band starts from 0 to the number of bands-1.
         Args:
-            band_i:
+            band:
                 Band index, starts from 0.
             no_data_value:
                 Numerical value.
         """
         # check if the dtype of the no_data_value complies with the dtype of the raster itself.
-        self._change_no_data_value_attr(band_i, no_data_value)
+        self._change_no_data_value_attr(band, no_data_value)
         # initialize the band with the nodata value instead of 0
         # the no_data_value may have changed inside the _change_no_data_value_attr method to float64, so redefine it.
-        no_data_value = self.no_data_value[band_i]
+        no_data_value = self.no_data_value[band]
         try:
-            self.raster.GetRasterBand(band_i + 1).Fill(no_data_value)
+            self.raster.GetRasterBand(band + 1).Fill(no_data_value)
         except Exception as e:
             if str(e).__contains__(" argument 2 of type 'double'"):
-                self.raster.GetRasterBand(band_i + 1).Fill(np.float64(no_data_value))
+                self.raster.GetRasterBand(band + 1).Fill(np.float64(no_data_value))
             elif str(e).__contains__(
                 "Attempt to write to read only dataset in GDALRasterBand::Fill()."
             ) or str(e).__contains__(
@@ -950,10 +950,10 @@ class BandMetadata:
                 )
             else:
                 raise ValueError(
-                    f"Failed to fill the band {band_i} with value: {no_data_value}, because of {e}"
+                    f"Failed to fill the band {band} with value: {no_data_value}, because of {e}"
                 )
         # update the no_data_value in the Dataset object
-        self._no_data_value[band_i] = no_data_value
+        self._no_data_value[band] = no_data_value
 
     def _change_no_data_value_attr(self, band: int, no_data_value) -> None:
         """Change the no_data_value attribute.
