@@ -30,7 +30,7 @@ class Spatial:
         """Get coordinate reference system."""
         return str(self.raster.GetProjection())
 
-    def set_crs(self, crs: str | None = None, epsg: int | None = None):
+    def set_crs(self, crs: str | None = None, epsg: int | None = None) -> None:
         """Set the Coordinate Reference System (CRS).
 
             Set the Coordinate Reference System (CRS) of a
@@ -69,7 +69,7 @@ class Spatial:
         self,
         to_epsg: int,
         method: str = "nearest neighbor",
-        maintain_alignment: int = False,
+        maintain_alignment: bool = False,
         inplace: bool = False,
     ) -> Dataset | None:
         """Reproject the dataset to any projection.
@@ -254,8 +254,8 @@ class Spatial:
         return result
 
     def resample(
-        self, cell_size: int | float, method: str = "nearest neighbor"
-    ) -> Dataset:
+        self, cell_size: int | float, method: str = "nearest neighbor", inplace: bool = False
+    ) -> Dataset | None:
         """resample.
 
         resample method reprojects a raster to any projection (default the WGS84 web mercator projection,
@@ -266,10 +266,13 @@ class Spatial:
                 New cell size to resample the raster. If None, raster will not be resampled.
             method (str):
                 Resampling method: "nearest neighbor", "cubic", or "bilinear". Default is "nearest neighbor".
+            inplace (bool):
+                If True, the original dataset will be modified. If False, a new dataset will be created.
+                Default is False.
 
         Returns:
-            Dataset:
-                Dataset object.
+            Dataset | None:
+                The resulting dataset if inplace is False; otherwise None.
 
         Examples:
             - Create a Dataset with 4 bands, 10 rows, 10 columns, at lon/lat (0, 0):
@@ -356,15 +359,10 @@ class Spatial:
         dtype = self.gdal_dtype[0]
         bands = self.band_count
 
-        dst = type(self)._create_dataset(cols, rows, bands, dtype)
-        # set the geotransform
-        dst.SetGeoTransform(new_geo)
-        # set the projection
-        dst.SetProjection(sr_src.ExportToWkt())
-        dst_obj = type(self)(dst, "write")
-        # set the no data value
-        dst_obj._set_no_data_value(self.no_data_value)
-        # perform the projection & resampling
+        dst_obj = type(self)._build_dataset(
+            cols, rows, bands, dtype, new_geo, sr_src.ExportToWkt(),
+            self.no_data_value,
+        )
         gdal.ReprojectImage(
             self.raster,
             dst_obj.raster,
@@ -373,7 +371,12 @@ class Spatial:
             resampling_method,
         )
 
-        return dst_obj
+        result: Dataset | None = None
+        if inplace:
+            self._update_inplace(dst_obj.raster)
+        else:
+            result = dst_obj
+        return result
 
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neighbor"
@@ -446,9 +449,6 @@ class Spatial:
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
         dtype = self.gdal_dtype[0]
-        dst = type(self)._create_dataset(cols, rows, self.band_count, dtype)
-
-        # new geotransform
         new_geo = (
             ulx,
             pixel_spacing,
@@ -457,14 +457,10 @@ class Spatial:
             src_gt[4],
             np.sign(src_gt[-1]) * pixel_spacing,
         )
-        # set the geotransform
-        dst.SetGeoTransform(new_geo)
-        # set the projection
-        dst.SetProjection(dst_sr.ExportToWkt())
-        # set the no data value
-        dst_obj = type(self)(dst)
-        dst_obj._set_no_data_value(self.no_data_value)
-        # perform the projection & resampling
+        dst_obj = type(self)._build_dataset(
+            cols, rows, self.band_count, dtype, new_geo, dst_sr.ExportToWkt(),
+            self.no_data_value,
+        )
         gdal.ReprojectImage(
             self.raster,
             dst_obj.raster,
@@ -660,7 +656,8 @@ class Spatial:
     def align(
         self,
         alignment_src: Dataset,
-    ) -> Dataset:
+        inplace: bool = False,
+    ) -> Dataset | None:
         """Align the current dataset (rows and columns) to match a given dataset.
 
         Copies spatial properties from alignment_src to the current raster:
@@ -673,9 +670,12 @@ class Spatial:
             alignment_src (Dataset):
                 Spatial information source raster to get the spatial information (coordinate system, number of rows and
                 columns). The data values of the current dataset are resampled to this alignment.
+            inplace (bool):
+                If True, the original dataset will be modified. If False, a new dataset will be created.
+                Default is False.
 
         Returns:
-            Dataset: The aligned dataset.
+            Dataset | None: The aligned dataset if inplace is False; otherwise None.
 
         Examples:
             - The source dataset has a `top_left_corner` at (0, 0) with a 5*5 alignment, and a 0.05 degree cell size.
@@ -757,18 +757,10 @@ class Spatial:
         reprojected_raster_b: Dataset = self
         if self.epsg != src.epsg:
             reprojected_raster_b = self.to_crs(src.epsg)  # type: ignore[assignment]
-        # create a new raster
-        dst = type(self)._create_dataset(
-            src.columns, src.rows, self.band_count, src.gdal_dtype[0], driver="MEM"
+        dst_obj = type(self)._build_dataset(
+            src.columns, src.rows, self.band_count, src.gdal_dtype[0],
+            src.geotransform, src.crs, self.no_data_value,
         )
-        # set the geotransform
-        dst.SetGeoTransform(src.geotransform)
-        # set the projection
-        dst.SetProjection(src.crs)
-        # set the no data value
-        dst_obj = type(self)(dst)
-        dst_obj._set_no_data_value(self.no_data_value)
-        # perform the projection & resampling
         method = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
         gdal.ReprojectImage(
@@ -779,7 +771,12 @@ class Spatial:
             method,
         )
 
-        return dst_obj
+        result: Dataset | None = None
+        if inplace:
+            self._update_inplace(dst_obj.raster)
+        else:
+            result = dst_obj
+        return result
 
     def _crop_with_raster(
         self,
@@ -810,7 +807,7 @@ class Spatial:
         # crop the src raster with the aligned mask
         dst_obj = self._crop_aligned(mask)
 
-        dst_obj = type(self).correct_wrap_cutline_error(dst_obj)
+        dst_obj = type(self)._correct_wrap_cutline_error(dst_obj)
         return dst_obj
 
     def _crop_with_polygon_warp(
@@ -850,7 +847,7 @@ class Spatial:
         )
         dst = gdal.Warp("", self.raster, options=warp_options)
         # Use the base Dataset class (not a subclass like NetCDF) for intermediate GDAL warp results
-        # because correct_wrap_cutline_error calls create_from_array which has different behavior in
+        # because _correct_wrap_cutline_error calls create_from_array which has different behavior in
         # subclasses.
         base_cls = next(
             c for c in type(self).__mro__
@@ -859,12 +856,12 @@ class Spatial:
         dst_obj = base_cls(dst)
 
         if touch:
-            dst_obj = base_cls.correct_wrap_cutline_error(dst_obj)
+            dst_obj = base_cls._correct_wrap_cutline_error(dst_obj)
 
         return dst_obj
 
     @staticmethod
-    def correct_wrap_cutline_error(src: Dataset) -> Dataset:
+    def _correct_wrap_cutline_error(src: Dataset) -> Dataset:
         """Correct wrap cutline error.
 
         https://github.com/serapeum-org/pyramids/issues/74

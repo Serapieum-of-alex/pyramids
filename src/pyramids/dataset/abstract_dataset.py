@@ -89,20 +89,8 @@ class AbstractDataset(ABC):
     @property
     @abstractmethod
     def raster(self) -> gdal.Dataset:
-        """The ase GDAL Dataset."""
+        """The base GDAL Dataset (read-only)."""
         return self._raster
-
-    @raster.setter
-    @abstractmethod
-    def raster(self, value: gdal.Dataset):
-        """Contains GDAL Dataset."""
-        self._raster = value
-
-    @property
-    @abstractmethod
-    def values(self) -> np.ndarray:
-        """Values of all the bands."""
-        pass
 
     @property
     @abstractmethod
@@ -627,7 +615,9 @@ class AbstractDataset(ABC):
         pass
 
     @abstractmethod
-    def change_no_data_value(self, new_value: Any, old_value: Any | None = None):
+    def change_no_data_value(
+        self, new_value: Any, old_value: Any | None = None, inplace: bool = False
+    ):
         """Change No Data Value.
 
             - Set the no data value in all raster bands.
@@ -639,6 +629,9 @@ class AbstractDataset(ABC):
                 No data value to set in the raster bands.
             old_value (numeric, optional):
                 Old no data value that is already in the raster bands.
+            inplace (bool):
+                If True, the original dataset will be modified. If False, a new dataset will be created.
+                Default is False.
         """
         pass
 
@@ -697,13 +690,13 @@ class AbstractDataset(ABC):
     def extract(
         self,
         exclude_value: Any | None = None,
-        feature: FeatureCollection | GeoDataFrame | None = None,
+        mask: FeatureCollection | GeoDataFrame | None = None,
     ) -> np.ndarray:
         """Extract.
 
             - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
-            - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
-            values within the feature are extracted.
+            - If the mask parameter is given, the raster will be clipped to the extent of the given mask and the
+            values within the mask are extracted.
 
         Args:
             exclude_value (Numeric, optional):

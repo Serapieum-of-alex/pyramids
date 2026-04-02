@@ -324,9 +324,9 @@ class TestProperties:
         dataset = Dataset(src)
         assert dataset.shape == (1, 13, 14)
 
-    def test_values(self, src: gdal.Dataset):
+    def test_read_array(self, src: gdal.Dataset):
         dataset = Dataset(src)
-        assert isinstance(dataset.values, np.ndarray)
+        assert isinstance(dataset.read_array(), np.ndarray)
 
     def test_get_band_names(self, src: gdal.Dataset):
         src = Dataset(src)
@@ -621,7 +621,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
     ):
         """get cell coordinates from cells inside the domain only."""
         src = Dataset(src)
-        coords = src.get_cell_coords(location="center", mask=True)
+        coords = src.get_cell_coords(location="center", domain_only=True)
         assert coords.shape[0] == src_masked_values_len
         assert np.isclose(
             coords[-4:, :], src_masked_cells_center_coords_last4, rtol=0.000001
@@ -637,7 +637,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
     ):
         """get center coordinates of all cells."""
         src = Dataset(src)
-        coords = src.get_cell_coords(location="center", mask=False)
+        coords = src.get_cell_coords(location="center", domain_only=False)
         assert len(coords) == src_shape[0] * src_shape[1]
         assert np.isclose(
             coords[:4, :], src_cell_center_coords_first_4_rows, rtol=0.000001
@@ -678,7 +678,7 @@ class TestGetCellCoordsAndCreateCellGeometry:
         self, era5_image: gdal.Dataset, src_shape: Tuple, src_epsg: int
     ):
         src = Dataset(era5_image)
-        gdf = src.get_cell_points(mask=True)
+        gdf = src.get_cell_points(domain_only=True)
         # check the size
         assert len(gdf) == 5
         assert gdf.crs.to_epsg() == 4326
@@ -1244,7 +1244,7 @@ class TestToFeatureCollection:
     # ):
     #     """the input raster is given as a string path on disk."""
     #     dataset = Dataset(era5_image)
-    #     gdf = dataset.to_feature_collection(add_geometry="Point", vector_mask=era5_mask)
+    #     gdf = dataset.to_feature_collection(add_geometry="Point", mask=era5_mask)
     #     assert isinstance(gdf, GeoDataFrame)
     #     assert gdf.equals(era5_image_gdf), (
     #         "the extracted values in the dataframe does not equa the real "
@@ -1414,7 +1414,7 @@ class TestExtract:
         indices = np.array([[1, 1], [3, 1], [3, 3], [1, 3]])
         arr_extracted_values = arr[:, indices[:, 0], indices[:, 1]]
 
-        values = dataset.extract(feature=points)
+        values = dataset.extract(mask=points)
         np.testing.assert_array_equal(values, arr_extracted_values)
 
     def test_array_to_map_coordinates(self):
@@ -1483,7 +1483,7 @@ class TestExtract:
         coello_gauges: GeoDataFrame,
     ):
         src = Dataset(src)
-        values = src.extract(exclude_value=0, feature=coello_gauges)
+        values = src.extract(exclude_value=0, mask=coello_gauges)
         assert len(values) == len(coello_gauges)
         assert np.array_equal(values, [4, 6, 1, 5, 49, 88])
 

@@ -174,21 +174,24 @@ class Analysis:
         )
         return int(domain_count)
 
-    def apply(self, func, band: int = 0) -> Dataset:
+    def apply(self, func, band: int = 0, inplace: bool = False) -> Dataset | None:
         """Apply a function to all domain cells.
 
         - apply method executes a mathematical operation on the raster array.
-        - The apply method executes the function only on one cell at a time.
+        - The function is applied to all domain cells at once using vectorized NumPy operations.
 
         Args:
             func (function):
                 Defined function that takes one input (the cell value).
             band (int):
                 Band number.
+            inplace (bool):
+                If True, the original dataset will be modified. If False, a new dataset will be created.
+                Default is False.
 
         Returns:
-            Dataset:
-                Dataset object.
+            Dataset | None:
+                The resulting dataset if inplace is False; otherwise None.
 
         Examples:
             - Create a dataset from an array filled with values between -1 and 1:
@@ -228,26 +231,25 @@ class Analysis:
         src_array = self.read_array(band)
         dtype = self.gdal_dtype[band]
 
-        # fill the new array with the nodata value
-        new_array = np.ones((self.rows, self.columns)) * no_data_value
-        # execute the function on each cell
-        # TODO: optimize executing a function over a whole array
-        for i in range(self.rows):
-            for j in range(self.columns):
-                if not np.isclose(src_array[i, j], no_data_value, rtol=0.001):
-                    new_array[i, j] = func(src_array[i, j])
+        new_array = np.full((self.rows, self.columns), no_data_value, dtype=src_array.dtype)
+        domain_mask = ~np.isclose(src_array, no_data_value, rtol=0.001)
+        domain_values = src_array[domain_mask]
+        try:
+            new_array[domain_mask] = func(domain_values)
+        except (ValueError, TypeError):
+            new_array[domain_mask] = np.vectorize(func)(domain_values)
 
-        # create the output raster
-        dst = type(self)._create_dataset(self.columns, self.rows, 1, dtype, driver="MEM")
-        # set the geotransform
-        dst.SetGeoTransform(self.geotransform)
-        # set the projection
-        dst.SetProjection(self.crs)
-        dst_obj = type(self)(dst)
-        dst_obj._set_no_data_value(no_data_value=no_data_value)
-        dst_obj.raster.GetRasterBand(band + 1).WriteArray(new_array)
+        dst_obj = type(self)._build_dataset(
+            self.columns, self.rows, 1, dtype, self.geotransform, self.crs, no_data_value
+        )
+        dst_obj.raster.GetRasterBand(1).WriteArray(new_array)
 
-        return dst_obj
+        result: Dataset | None = None
+        if inplace:
+            self._update_inplace(dst_obj.raster)
+        else:
+            result = dst_obj
+        return result
 
     def fill(
         self, value: float | int, inplace: bool = False, path: str | Path | None = None
@@ -316,13 +318,13 @@ class Analysis:
         self,
         band: int | None = None,
         exclude_value: Any | None = None,
-        feature: FeatureCollection | GeoDataFrame | None = None,
+        mask: FeatureCollection | GeoDataFrame | None = None,
     ) -> np.ndarray:
         """Extract.
 
         - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
-        - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
-          values within the feature are extracted.
+        - If the mask parameter is given, the raster will be clipped to the extent of the given mask and the
+          values within the mask are extracted.
 
         Args:
             band (int, optional):
@@ -330,7 +332,7 @@ class Analysis:
             exclude_value (Numeric, optional):
                 Values to exclude from extracted values. If the dataset is multi-band, the values in `exclude_value`
                 will be filtered out from the first band only.
-            feature (FeatureCollection | GeoDataFrame, optional):
+            mask (FeatureCollection | GeoDataFrame, optional):
                 Vector data containing point geometries at which to extract the values. Default is None.
 
         Returns:
@@ -400,7 +402,7 @@ class Analysis:
 
                 ```python
                 >>> points = gpd.GeoDataFrame(geometry=[Point(0.1, -0.1), Point(0.1, -0.2), Point(0.2, -0.2), Point(0.2, -0.1)],crs=4326)
-                >>> values = dataset.extract(feature=points)
+                >>> values = dataset.extract(mask=points)
                 >>> print(values) # doctest: +SKIP
                 [[4 3 3 4]
                  [3 4 4 2]]
@@ -413,15 +415,15 @@ class Analysis:
         no_data_value = (
             self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
         )
-        if feature is None:
-            mask = (
+        if mask is None:
+            exclude_list = (
                 [no_data_value, exclude_value]
                 if exclude_value is not None
                 else [no_data_value]
             )
-            values = get_pixels2(arr, mask)
+            values = get_pixels2(arr, exclude_list)
         else:
-            indices = self.map_to_array_coordinates(feature)
+            indices = self.map_to_array_coordinates(mask)
             if arr.ndim > 2:
                 values = arr[:, indices[:, 0], indices[:, 1]]
             else:

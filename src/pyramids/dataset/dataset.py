@@ -115,23 +115,8 @@ class Dataset(  # type: ignore[misc]
 
     @property
     def raster(self) -> gdal.Dataset:
-        """Base GDAL Dataset."""
+        """Base GDAL Dataset (read-only)."""
         return super().raster
-
-    @raster.setter
-    def raster(self, value: gdal.Dataset):
-        """Contains GDAL Dataset."""
-        self._raster = value
-
-    @property
-    def values(self) -> np.ndarray:
-        """Values of all the bands.
-
-        Returns:
-            np.ndarray:
-                the values of all the bands in the raster as a 3D numpy array (bands, rows, columns).
-        """
-        return self.read_array()
 
     @property
     def rows(self) -> int:
@@ -237,9 +222,9 @@ class Dataset(  # type: ignore[misc]
             self._iloc(i).SetUnitType(val)
 
     @property
-    def no_data_value(self):
+    def no_data_value(self) -> list:
         """No data value that marks the cells out of the domain."""
-        return self._no_data_value
+        return list(self._no_data_value)
 
     @no_data_value.setter
     def no_data_value(self, value: list | Number):
@@ -493,7 +478,7 @@ class Dataset(  # type: ignore[misc]
 
         return Dataset(src, access="write")
 
-    def close(self):
+    def close(self) -> None:
         """Close the dataset."""
         self._raster.FlushCache()
         self._raster = None
@@ -549,6 +534,49 @@ class Dataset(  # type: ignore[misc]
             driver = "MEM"
             src = gdal.GetDriverByName(driver).Create("", cols, rows, bands, dtype)
         return src
+
+    @classmethod
+    def _build_dataset(
+        cls,
+        cols: int,
+        rows: int,
+        bands: int,
+        dtype: int,
+        geo: tuple,
+        crs: str,
+        no_data_value,
+        driver: str = "MEM",
+        path: str | Path | None = None,
+        access: str = "write",
+    ) -> Dataset:
+        """Create a GDAL dataset, set its spatial metadata, and wrap it as a Dataset.
+
+        Consolidates the repeated pattern of _create_dataset + SetGeoTransform +
+        SetProjection + wrap + _set_no_data_value into a single helper.
+
+        Args:
+            cols (int): Number of columns.
+            rows (int): Number of rows.
+            bands (int): Number of bands.
+            dtype (int): GDAL data type.
+            geo (tuple): Geotransform tuple.
+            crs (str): Projection as WKT string.
+            no_data_value: No-data value. Scalar (broadcast to all bands) or list (one per band).
+            driver (str): Driver type. Default is "MEM".
+            path (str | Path | None): Path for disk-based drivers.
+            access (str): Access mode for the Dataset wrapper. Default is "write".
+                Note: MEM driver datasets can be written to regardless of access mode since
+                the access flag is enforced at the pyramids level, not by GDAL.
+
+        Returns:
+            Dataset: A fully configured Dataset object.
+        """
+        dst = cls._create_dataset(cols, rows, bands, dtype, driver=driver, path=path)
+        dst.SetGeoTransform(geo)
+        dst.SetProjection(crs)
+        dst_obj = cls(dst, access=access)
+        dst_obj._set_no_data_value(no_data_value=no_data_value)
+        return dst_obj
 
     @classmethod
     def create(
@@ -761,13 +789,10 @@ class Dataset(  # type: ignore[misc]
 
         dtype = numpy_to_gdal_dtype(array)
 
-        dst = Dataset._create_dataset(src.columns, src.rows, bands, dtype, path=path)
-
-        dst.SetGeoTransform(src.geotransform)
-        dst.SetProjection(src.crs)
-        # setting the NoDataValue does not accept double precision numbers
-        dst_obj = cls(dst, access="write")
-        dst_obj._set_no_data_value(no_data_value=src.no_data_value[0])
+        dst_obj = cls._build_dataset(
+            src.columns, src.rows, bands, dtype, src.geotransform, src.crs,
+            src.no_data_value[0], path=path,
+        )
 
         if bands == 1:
             dst_obj.raster.GetRasterBand(1).WriteArray(array)

@@ -518,13 +518,13 @@ class TestCellGeometryMethods:
         """With mask=True, only domain cells should get polygons."""
         import geopandas as gpd
 
-        gdf = dataset_with_nodata.get_cell_polygons(mask=True)
+        gdf = dataset_with_nodata.get_cell_polygons(domain_only=True)
         assert isinstance(gdf, gpd.GeoDataFrame), "Should return GeoDataFrame"
         assert len(gdf) == 4, f"Expected 4 polygons for domain cells, got {len(gdf)}"
 
 
 class TestCorrectWrapCutlineError:
-    """Tests for the correct_wrap_cutline_error static method."""
+    """Tests for the _correct_wrap_cutline_error static method."""
 
     def test_removes_nodata_border_2d(self):
         """Should remove full rows/cols of nodata from 2D array."""
@@ -545,7 +545,7 @@ class TestCorrectWrapCutlineError:
             epsg=4326,
             no_data_value=nd,
         )
-        corrected = Dataset.correct_wrap_cutline_error(ds)
+        corrected = Dataset._correct_wrap_cutline_error(ds)
         assert (
             corrected.rows == 2
         ), f"Expected 2 rows after correction, got {corrected.rows}"
@@ -587,7 +587,7 @@ class TestCorrectWrapCutlineError:
             epsg=4326,
             no_data_value=nd,
         )
-        corrected = Dataset.correct_wrap_cutline_error(ds)
+        corrected = Dataset._correct_wrap_cutline_error(ds)
         assert corrected.rows == 1, "Expected 1 row after 3D correction"
         assert corrected.columns == 1, "Expected 1 col after 3D correction"
 
@@ -1041,6 +1041,165 @@ class TestApply:
         with pytest.raises(TypeError, match="function"):
             single_band_dataset.apply("not_a_function")
 
+    @pytest.mark.parametrize(
+        "func, expected_corner",
+        [
+            (np.abs, 1.0),
+            (np.sqrt, 1.0),
+            (np.square, 1.0),
+            (lambda x: x + 10, 11.0),
+        ],
+        ids=["np.abs", "np.sqrt", "np.square", "lambda_add10"],
+    )
+    def test_apply_vectorized_numpy_functions(self, single_band_dataset, func, expected_corner):
+        """Test apply with vectorized NumPy functions (fast path).
+
+        Test scenario:
+            Vectorized functions like np.abs, np.sqrt, np.square, and
+            array-compatible lambdas should work via the direct array
+            application path without falling back to np.vectorize.
+        """
+        result = single_band_dataset.apply(func)
+        arr = result.read_array()
+        assert np.isclose(arr[0, 0], expected_corner), (
+            f"Expected {expected_corner} at (0,0), got {arr[0, 0]}"
+        )
+
+    def test_apply_scalar_function_fallback(self):
+        """Test apply with a scalar if/elif function triggers np.vectorize fallback.
+
+        Test scenario:
+            A function using Python if/elif on scalar values cannot operate
+            on arrays directly. apply should catch the error and fall back
+            to np.vectorize, producing correct per-cell results.
+        """
+        def classify(val):
+            if val < 3:
+                return 0.0
+            elif val < 6:
+                return 1.0
+            else:
+                return 2.0
+
+        arr = np.array([[1.0, 4.0, 7.0], [2.0, 5.0, 8.0], [3.0, 6.0, 9.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.apply(classify)
+        result_arr = result.read_array()
+        expected = np.array([[0.0, 1.0, 2.0], [0.0, 1.0, 2.0], [1.0, 2.0, 2.0]], dtype=np.float32)
+        np.testing.assert_array_equal(
+            result_arr, expected, err_msg="Scalar classify function should produce correct per-cell results"
+        )
+
+    def test_apply_preserves_nodata_cells(self):
+        """Test that no-data cells are not transformed by apply.
+
+        Test scenario:
+            Create a dataset with some cells set to the no_data_value.
+            After apply, those cells should still hold the no_data_value.
+        """
+        arr = np.array([[1.0, -9999.0], [-9999.0, 4.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.apply(lambda x: x * 10)
+        result_arr = result.read_array()
+        assert np.isclose(result_arr[0, 0], 10.0), f"Domain cell should be transformed, got {result_arr[0, 0]}"
+        assert np.isclose(result_arr[1, 1], 40.0), f"Domain cell should be transformed, got {result_arr[1, 1]}"
+        assert np.isclose(result_arr[0, 1], -9999.0, rtol=0.001), (
+            f"No-data cell should stay -9999, got {result_arr[0, 1]}"
+        )
+        assert np.isclose(result_arr[1, 0], -9999.0, rtol=0.001), (
+            f"No-data cell should stay -9999, got {result_arr[1, 0]}"
+        )
+
+    def test_apply_all_nodata(self):
+        """Test apply on a dataset where all cells are no-data.
+
+        Test scenario:
+            When all cells are no-data, the function should never be called
+            and the output should be identical to the input.
+        """
+        arr = np.full((3, 3), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.apply(lambda x: x * 100)
+        result_arr = result.read_array()
+        assert np.allclose(result_arr, -9999.0, rtol=0.001), (
+            "All-nodata input should produce all-nodata output"
+        )
+
+    def test_apply_single_cell(self):
+        """Test apply on a 1x1 dataset.
+
+        Test scenario:
+            A single domain cell should be correctly transformed.
+        """
+        arr = np.array([[5.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.apply(lambda x: x ** 2)
+        assert np.isclose(result.read_array()[0, 0], 25.0), (
+            f"Expected 25.0, got {result.read_array()[0, 0]}"
+        )
+
+    def test_apply_with_band_parameter(self, multi_band_dataset):
+        """Test apply on band=1 of a multi-band dataset.
+
+        Test scenario:
+            Applying to band=1 on a multi-band dataset should produce a
+            single-band result with that band's values transformed.
+        """
+        original_band1 = multi_band_dataset.read_array(band=1).copy()
+        result = multi_band_dataset.apply(lambda x: x + 100, band=1)
+        result_arr = result.read_array()
+        assert result.band_count == 1, f"Result should be single-band, got {result.band_count}"
+        domain_mask = ~np.isclose(original_band1, multi_band_dataset.no_data_value[1], rtol=0.001)
+        np.testing.assert_array_almost_equal(
+            result_arr[domain_mask], original_band1[domain_mask] + 100,
+            err_msg="Band 1 domain cells should be shifted by +100"
+        )
+
+    def test_apply_preserves_spatial_metadata(self, single_band_dataset):
+        """Test that apply preserves geotransform, CRS, and no_data_value.
+
+        Test scenario:
+            The output dataset should have the same spatial metadata as the
+            input (geotransform, EPSG, no_data_value).
+        """
+        original_geo = single_band_dataset.geotransform
+        original_epsg = single_band_dataset.epsg
+        original_nd = single_band_dataset.no_data_value[0]
+        result = single_band_dataset.apply(np.abs)
+        assert result.geotransform == original_geo, (
+            f"Geotransform mismatch: {result.geotransform} vs {original_geo}"
+        )
+        assert result.epsg == original_epsg, f"EPSG mismatch: {result.epsg} vs {original_epsg}"
+        assert result.no_data_value[0] == original_nd, (
+            f"No-data value mismatch: {result.no_data_value[0]} vs {original_nd}"
+        )
+
+    def test_apply_not_inplace_does_not_mutate_original(self):
+        """Test that apply(inplace=False) does not mutate the original array.
+
+        Test scenario:
+            Read the original values, apply a function, then verify the
+            original dataset still has its original values.
+        """
+        arr = np.array([[2.0, 4.0], [6.0, 8.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        original_arr = ds.read_array().copy()
+        ds.apply(lambda x: x * 0)
+        np.testing.assert_array_equal(
+            ds.read_array(), original_arr,
+            err_msg="Original dataset should not be mutated by non-inplace apply"
+        )
+
 
 class TestFill:
     """Tests for the fill method."""
@@ -1161,23 +1320,19 @@ class TestToCrs:
             single_band_dataset.to_crs(to_epsg=3857, method=123)
 
 
-class TestRasterSetter:
-    """Tests for the raster property setter."""
+class TestRasterProperty:
+    """Tests for the raster property (read-only)."""
 
-    def test_raster_setter_updates_internal(self, single_band_dataset):
-        """Setting the raster property should update _raster."""
-        new_arr = np.ones((4, 4), dtype=np.float32)
-        new_ds = Dataset.create_from_array(
-            new_arr,
-            top_left_corner=(0.0, 0.0),
-            cell_size=0.1,
-            epsg=4326,
+    def test_raster_getter_returns_gdal_dataset(self, single_band_dataset):
+        """The raster property should return the underlying gdal.Dataset."""
+        assert isinstance(single_band_dataset.raster, gdal.Dataset), (
+            "raster property should return a gdal.Dataset"
         )
-        old_raster = single_band_dataset._raster
-        single_band_dataset.raster = new_ds._raster
-        assert (
-            single_band_dataset._raster is not old_raster
-        ), "raster setter should update _raster reference"
+
+    def test_raster_has_no_public_setter(self, single_band_dataset):
+        """Assigning to .raster should raise AttributeError (no public setter)."""
+        with pytest.raises(AttributeError):
+            single_band_dataset.raster = single_band_dataset._raster
 
 
 class TestReadBlockError:
@@ -2324,10 +2479,10 @@ class TestToXyzPath:
 
 
 class TestCorrectWrapCutlineErrorNdim:
-    """Tests for correct_wrap_cutline_error with invalid ndim."""
+    """Tests for _correct_wrap_cutline_error with invalid ndim."""
 
     def test_4d_array_raises(self):
-        """A 4D array in correct_wrap_cutline_error should raise ValueError."""
+        """A 4D array in _correct_wrap_cutline_error should raise ValueError."""
         nd = -9999.0
         arr = np.ones((3, 3), dtype=np.float32)
         ds = Dataset.create_from_array(
@@ -2350,7 +2505,7 @@ class TestCorrectWrapCutlineErrorNdim:
             epsg=4326,
             no_data_value=nd,
         )
-        result = Dataset.correct_wrap_cutline_error(ds_3d)
+        result = Dataset._correct_wrap_cutline_error(ds_3d)
         assert result.rows == 2, "Should trim first row of nodata"
 
 
@@ -2900,6 +3055,142 @@ class TestToFeatureCollection:
             result, gpd.GeoDataFrame
         ), "Should return GeoDataFrame with polygon geometry"
 
+    def test_to_feature_collection_all_nodata(self):
+        """Test that a dataset with all no-data cells returns an empty DataFrame.
+
+        Test scenario:
+            Every cell is no-data, so after filtering the result should
+            have zero rows.
+        """
+        arr = np.full((3, 3), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df = ds.to_feature_collection()
+        assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+        assert len(df) == 0, f"Expected 0 rows for all-nodata, got {len(df)}"
+
+    def test_to_feature_collection_1x1_dataset(self):
+        """Test to_feature_collection on a minimal 1x1 dataset.
+
+        Test scenario:
+            A single-cell dataset should produce a DataFrame with exactly
+            one row and one column.
+        """
+        arr = np.array([[42.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        df = ds.to_feature_collection()
+        assert len(df) == 1, f"Expected 1 row, got {len(df)}"
+        assert df.iloc[0, 0] == 42.0, f"Expected value 42.0, got {df.iloc[0, 0]}"
+
+    def test_to_feature_collection_column_names_match_band_names(self, multi_band_dataset):
+        """Test that DataFrame columns match the dataset's band names.
+
+        Test scenario:
+            The resulting DataFrame columns should be the same as
+            dataset.band_names.
+        """
+        df = multi_band_dataset.to_feature_collection()
+        expected_names = multi_band_dataset.band_names
+        assert list(df.columns) == expected_names, (
+            f"Expected columns {expected_names}, got {list(df.columns)}"
+        )
+
+    def test_to_feature_collection_point_geometry_types(self):
+        """Test that add_geometry='point' produces Point geometries.
+
+        Test scenario:
+            Every geometry in the result should be a shapely Point.
+        """
+        import geopandas as gpd
+
+        arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        gdf = ds.to_feature_collection(add_geometry="point")
+        assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
+        assert all(g.geom_type == "Point" for g in gdf.geometry), (
+            "All geometries should be Points"
+        )
+
+    def test_to_feature_collection_polygon_geometry_types(self):
+        """Test that add_geometry='polygon' produces Polygon geometries.
+
+        Test scenario:
+            Every geometry in the result should be a shapely Polygon.
+        """
+        import geopandas as gpd
+
+        arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        gdf = ds.to_feature_collection(add_geometry="polygon")
+        assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
+        assert all(g.geom_type == "Polygon" for g in gdf.geometry), (
+            "All geometries should be Polygons"
+        )
+
+    def test_to_feature_collection_tile_matches_non_tile(self):
+        """Test that tile=True produces the same values as tile=False.
+
+        Test scenario:
+            Both paths should extract the same cell values; only the
+            reading strategy differs.
+        """
+        arr = np.arange(1, 17, dtype=np.float32).reshape(4, 4)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df_full = ds.to_feature_collection(tile=False)
+        df_tiled = ds.to_feature_collection(tile=True, tile_size=2)
+        full_vals = sorted(df_full.iloc[:, 0].tolist())
+        tiled_vals = sorted(df_tiled.iloc[:, 0].tolist())
+        assert full_vals == tiled_vals, (
+            f"Tiled and non-tiled should produce same values.\n"
+            f"Full: {full_vals}\nTiled: {tiled_vals}"
+        )
+
+    def test_to_feature_collection_vector_mask_with_geometry(self, single_band_dataset):
+        """Test to_feature_collection with both vector_mask and add_geometry.
+
+        Test scenario:
+            Combining a crop mask with geometry attachment should produce
+            a GeoDataFrame with fewer rows than the full dataset.
+        """
+        import geopandas as gpd
+        from shapely.geometry import box
+
+        full_df = single_band_dataset.to_feature_collection()
+        poly = box(0.0, -0.10, 0.10, 0.0)
+        mask = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
+        gdf = single_band_dataset.to_feature_collection(
+            mask=mask, add_geometry="point"
+        )
+        assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
+        assert len(gdf) <= len(full_df), (
+            f"Masked result ({len(gdf)} rows) should have <= rows than full ({len(full_df)})"
+        )
+        assert "geometry" in gdf.columns, "Should have geometry column"
+
+    def test_to_feature_collection_nodata_values_excluded(self):
+        """Test that no-data values do not appear in the output DataFrame.
+
+        Test scenario:
+            A dataset with mixed domain and no-data cells; the output
+            should only contain domain values.
+        """
+        arr = np.array([[1.0, -9999.0, 3.0], [4.0, 5.0, -9999.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df = ds.to_feature_collection()
+        assert len(df) == 4, f"Expected 4 domain cells, got {len(df)}"
+        assert not df.isnull().any().any(), "No NaN values should remain in the output"
+
 
 class TestWindow:
     """Tests for _window generator method."""
@@ -2968,6 +3259,54 @@ class TestToFeatureCollectionTile:
         df = ds.to_feature_collection(tile=True, tile_size=4)
         assert isinstance(df, pd.DataFrame), "Should return a DataFrame"
         assert len(df) > 0, "Should have rows"
+
+    def test_tiled_filters_nodata(self):
+        """Test that tile=True filters out no-data values like tile=False.
+
+        Test scenario:
+            A dataset with mixed domain and no-data cells should produce
+            the same row count whether tiled or not.
+        """
+        arr = np.array(
+            [
+                [1.0, -9999.0, 3.0, 4.0],
+                [-9999.0, 6.0, 7.0, -9999.0],
+                [9.0, 10.0, -9999.0, 12.0],
+                [13.0, -9999.0, 15.0, 16.0],
+            ],
+            dtype=np.float32,
+        )
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df_full = ds.to_feature_collection(tile=False)
+        df_tiled = ds.to_feature_collection(tile=True, tile_size=2)
+
+        assert len(df_tiled) == len(df_full), (
+            f"Tiled ({len(df_tiled)}) should have same row count as "
+            f"non-tiled ({len(df_full)})"
+        )
+        assert -9999.0 not in df_tiled.iloc[:, 0].values, (
+            "No-data values should be filtered out in tiled path"
+        )
+
+    def test_tiled_all_nodata(self):
+        """Test that tile=True on all-nodata dataset returns empty DataFrame.
+
+        Test scenario:
+            Every cell is no-data. The tiled path should return an empty
+            DataFrame with the correct column names.
+        """
+        arr = np.full((4, 4), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df = ds.to_feature_collection(tile=True, tile_size=2)
+        assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+        assert len(df) == 0, f"Expected 0 rows for all-nodata, got {len(df)}"
+        assert list(df.columns) == ds.band_names, (
+            f"Expected columns {ds.band_names}, got {list(df.columns)}"
+        )
 
 
 class TestCluster2BandNone:
@@ -3076,7 +3415,7 @@ class TestToFeatureCollectionWithMask:
 
         poly = box(0.0, -0.10, 0.10, 0.0)
         gdf = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
-        df = single_band_dataset.to_feature_collection(vector_mask=gdf)
+        df = single_band_dataset.to_feature_collection(mask=gdf)
         assert isinstance(df, pd.DataFrame), "Should return a DataFrame"
 
     def test_to_feature_collection_none_nodata(self):
@@ -3497,3 +3836,97 @@ class TestGroupNeighbours:
         )
         gdf = ds.cluster2(band=0)
         assert len(gdf) >= 4, "Should find at least 4 clusters"
+
+
+class TestInplaceConsistency:
+    """Tests for the inplace parameter added to resample, align, apply, and change_no_data_value."""
+
+    def test_resample_inplace_returns_none(self, single_band_dataset):
+        """resample(inplace=True) should return None and modify the dataset in place."""
+        original_cell_size = single_band_dataset.cell_size
+        result = single_band_dataset.resample(cell_size=0.1, inplace=True)
+        assert result is None, "inplace resample should return None"
+        assert single_band_dataset.cell_size == 0.1, (
+            f"Cell size should be 0.1 after inplace resample, got {single_band_dataset.cell_size}"
+        )
+
+    def test_resample_not_inplace_returns_new_dataset(self, single_band_dataset):
+        """resample(inplace=False) should return a new Dataset without modifying the original."""
+        original_cell_size = single_band_dataset.cell_size
+        result = single_band_dataset.resample(cell_size=0.1, inplace=False)
+        assert result is not None, "non-inplace resample should return a Dataset"
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert single_band_dataset.cell_size == original_cell_size, (
+            "Original dataset cell size should not change"
+        )
+
+    def test_align_inplace_returns_none(self, single_band_dataset):
+        """align(inplace=True) should return None and modify the dataset in place."""
+        ref_arr = np.ones((5, 5), dtype=np.float32)
+        ref = Dataset.create_from_array(
+            ref_arr, top_left_corner=(0.0, 0.0), cell_size=0.02, epsg=4326
+        )
+        result = single_band_dataset.align(ref, inplace=True)
+        assert result is None, "inplace align should return None"
+        assert single_band_dataset.rows == 5, (
+            f"Rows should be 5 after inplace align, got {single_band_dataset.rows}"
+        )
+        assert single_band_dataset.columns == 5, (
+            f"Columns should be 5 after inplace align, got {single_band_dataset.columns}"
+        )
+
+    def test_align_not_inplace_returns_new_dataset(self, single_band_dataset):
+        """align(inplace=False) should return a new Dataset without modifying the original."""
+        original_rows = single_band_dataset.rows
+        ref_arr = np.ones((5, 5), dtype=np.float32)
+        ref = Dataset.create_from_array(
+            ref_arr, top_left_corner=(0.0, 0.0), cell_size=0.02, epsg=4326
+        )
+        result = single_band_dataset.align(ref, inplace=False)
+        assert result is not None, "non-inplace align should return a Dataset"
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert single_band_dataset.rows == original_rows, (
+            "Original dataset rows should not change"
+        )
+
+    def test_apply_inplace_returns_none(self, single_band_dataset):
+        """apply(inplace=True) should return None and modify the dataset in place."""
+        result = single_band_dataset.apply(lambda x: x * 2, inplace=True)
+        assert result is None, "inplace apply should return None"
+        arr = single_band_dataset.read_array()
+        assert arr[0, 0] == 2.0, f"Expected 2.0 after doubling, got {arr[0, 0]}"
+
+    def test_apply_not_inplace_returns_new_dataset(self, single_band_dataset):
+        """apply(inplace=False) should return a new Dataset without modifying the original."""
+        original_val = single_band_dataset.read_array()[0, 0]
+        result = single_band_dataset.apply(lambda x: x * 2, inplace=False)
+        assert result is not None, "non-inplace apply should return a Dataset"
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert single_band_dataset.read_array()[0, 0] == original_val, (
+            "Original dataset values should not change"
+        )
+
+    def test_change_no_data_value_inplace_returns_none(self):
+        """change_no_data_value(inplace=True) should return None and modify the dataset in place."""
+        arr = np.full((3, 3), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.change_no_data_value(-1.0, old_value=-9999.0, inplace=True)
+        assert result is None, "inplace change_no_data_value should return None"
+        assert ds.no_data_value[0] == -1.0, (
+            f"No data value should be -1.0 after inplace change, got {ds.no_data_value[0]}"
+        )
+
+    def test_change_no_data_value_not_inplace_returns_new_dataset(self):
+        """change_no_data_value(inplace=False) should return a new Dataset."""
+        arr = np.full((3, 3), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        result = ds.change_no_data_value(-1.0, old_value=-9999.0, inplace=False)
+        assert result is not None, "non-inplace change_no_data_value should return a Dataset"
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert ds.no_data_value[0] == -9999.0, (
+            "Original dataset no_data_value should not change"
+        )

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import collections
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -20,11 +22,14 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
+logger = logging.getLogger(__name__)
+
+
 class Vectorize:
     """Mixin providing vectorization, clustering, and translate methods for Dataset."""
 
-    def _band_to_polygon(self, band: int, col_name: str):
-        band = self.raster.GetRasterBand(band + 1)
+    def _band_to_polygon(self, band: int, col_name: str) -> GeoDataFrame:
+        gdal_band = self.raster.GetRasterBand(band + 1)
         srs = osr.SpatialReference(wkt=self.crs)
 
         dst_ds = FeatureCollection.create_ds("memory")
@@ -34,7 +39,7 @@ class Vectorize:
         dtype = gdal_to_ogr_dtype(self.raster)
         new_field = ogr.FieldDefn(col_name, dtype)
         dst_layer.CreateField(new_field)
-        gdal.Polygonize(band, band, dst_layer, 0, [], callback=None)
+        gdal.Polygonize(gdal_band, gdal_band, dst_layer, 0, [], callback=None)
 
         vector = FeatureCollection(dst_ds)
         gdf = vector._ds_to_gdf()
@@ -42,7 +47,7 @@ class Vectorize:
 
     def to_feature_collection(
         self,
-        vector_mask: GeoDataFrame | None = None,
+        mask: GeoDataFrame | None = None,
         add_geometry: str | None = None,
         tile: bool = False,
         tile_size: int = 256,
@@ -51,7 +56,7 @@ class Vectorize:
         """Convert a dataset to a vector.
 
         The function does the following:
-            - Flatten the array in each band in the raster then mask the values if a vector_mask file is given
+            - Flatten the array in each band in the raster then mask the values if a mask is given
                 otherwise it will flatten all values.
             - Put the values for each band in a column in a dataframe under the name of the raster band,
                 but if no meta-data in the raster band exists, an index number will be used [1, 2, 3, ...]
@@ -62,8 +67,8 @@ class Vectorize:
                 - If a polygon is chosen, a square polygon will be created that covers the entire cell.
 
         Args:
-            vector_mask (GeoDataFrame, optional):
-                GeoDataFrame for the vector_mask. If given, it will be used to clip the raster.
+            mask (GeoDataFrame, optional):
+                GeoDataFrame to clip the raster. If given, the raster will be cropped to the mask extent.
             add_geometry (str):
                 "Polygon" or "Point" if you want to add a polygon geometry of the cells as column in dataframe.
                 Default is None.
@@ -159,7 +164,7 @@ class Vectorize:
                   >>> poly = gpd.GeoDataFrame(
                   ...             geometry=[Polygon([(0.05, -0.05), (0.05, -0.1), (0.1, -0.1), (0.1, -0.05)])], crs=4326
                   ... )
-                  >>> df = dataset.to_feature_collection(vector_mask=poly)
+                  >>> df = dataset.to_feature_collection(mask=poly)
                   >>> print(df) # doctest: +SKIP
                        Band_1    Band_2
                   0  0.354482  0.383279
@@ -187,61 +192,102 @@ class Vectorize:
                   ```
 
         """
-        # Get raster band names. open the dataset using gdal.Open
         band_names = self.band_names
 
-        # Create a mask from the pixels touched by the vector_mask.
-        if vector_mask is not None:
-            src = self.crop(mask=vector_mask, touch=touch)
+        if mask is not None:
+            src = self.crop(mask=mask, touch=touch)
         else:
             src = self
 
         if tile:
-            df_list = []  # DataFrames of each tile.
-            for arr in self.get_tile(tile_size):
-                # Assume multi-band
-                idx = (1, 2)
-                if arr.ndim == 2:
-                    # Handle single band rasters
-                    idx = (0, 1)
-
-                mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
-                pixels = get_pixels(arr, mask_arr).transpose()
-                df_list.append(pd.DataFrame(pixels, columns=band_names))
-
-            # Merge all the tiles.
-            df = pd.concat(df_list)
+            df = self._extract_values_tiled(band_names, tile_size)
         else:
-            arr = src.read_array()
-
-            if self.band_count == 1:
-                pixels = arr.flatten()
-            else:
-                pixels = (
-                    arr.flatten()
-                    .reshape(src.band_count, src.columns * src.rows)
-                    .transpose()
-                )
-            df = pd.DataFrame(pixels, columns=band_names)
-            # mask no data values.
-            if src.no_data_value[0] is not None:
-                df.replace(src.no_data_value[0], np.nan, inplace=True)
-            df.dropna(axis=0, inplace=True, ignore_index=True)
-
-        if add_geometry:
-            if add_geometry.lower() == "point":
-                coords = src.get_cell_points(mask=True)
-            else:
-                coords = src.get_cell_polygons(mask=True)
+            df = src._extract_values_full(band_names)
 
         df.drop(columns=["burn_value", "geometry"], errors="ignore", inplace=True)
+
         if add_geometry:
-            df = gpd.GeoDataFrame(df.loc[:], geometry=coords["geometry"].to_list())
-            df.set_crs(coords.crs.to_epsg())
+            df = self._attach_geometry(src, df, add_geometry)
 
         return df
 
-    def translate(self, path: str | Path | None = None, **kwargs):
+    def _extract_values_tiled(self, band_names: list, tile_size: int) -> pd.DataFrame:
+        """Extract raster band values into a DataFrame using tiles.
+
+        Args:
+            band_names (list): Band names for the DataFrame columns.
+            tile_size (int): Tile size in pixels.
+
+        Returns:
+            pd.DataFrame: Concatenated DataFrame from all tiles.
+        """
+        no_data_value = self.no_data_value[0]
+        df_list = []
+        for arr in self.get_tile(tile_size):
+            idx = (1, 2) if arr.ndim > 2 else (0, 1)
+            mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
+            pixels = get_pixels(arr, mask_arr).transpose()
+            df = pd.DataFrame(pixels, columns=band_names)
+            if no_data_value is not None:
+                df.replace(no_data_value, np.nan, inplace=True)
+            df.dropna(axis=0, inplace=True, ignore_index=True)
+            if not df.empty:
+                df_list.append(df)
+
+        if not df_list:
+            return pd.DataFrame(columns=band_names)
+
+        return pd.concat(df_list, ignore_index=True)
+
+    def _extract_values_full(self, band_names: list) -> pd.DataFrame:
+        """Extract all raster band values into a DataFrame (no tiling).
+
+        Args:
+            band_names (list): Band names for the DataFrame columns.
+
+        Returns:
+            pd.DataFrame: DataFrame with one column per band, no-data rows removed.
+        """
+        arr = self.read_array()
+
+        if self.band_count == 1:
+            pixels = arr.flatten()
+        else:
+            pixels = (
+                arr.flatten()
+                .reshape(self.band_count, self.columns * self.rows)
+                .transpose()
+            )
+        df = pd.DataFrame(pixels, columns=band_names)
+        if self.no_data_value[0] is not None:
+            df.replace(self.no_data_value[0], np.nan, inplace=True)
+        df.dropna(axis=0, inplace=True, ignore_index=True)
+        return df
+
+    @staticmethod
+    def _attach_geometry(
+        src, df: pd.DataFrame, geometry_type: str
+    ) -> gpd.GeoDataFrame:
+        """Attach point or polygon geometry to a DataFrame.
+
+        Args:
+            src: The dataset to derive cell geometries from.
+            df (pd.DataFrame): DataFrame with band values.
+            geometry_type (str): "point" or "polygon".
+
+        Returns:
+            gpd.GeoDataFrame: GeoDataFrame with geometry column.
+        """
+        if geometry_type.lower() == "point":
+            coords = src.get_cell_points(domain_only=True)
+        else:
+            coords = src.get_cell_polygons(domain_only=True)
+
+        gdf = gpd.GeoDataFrame(df.loc[:], geometry=coords["geometry"].to_list())
+        gdf = gdf.set_crs(coords.crs.to_epsg())
+        return gdf
+
+    def translate(self, path: str | Path | None = None, **kwargs) -> Dataset:
         """Translate.
 
         The translate function can be used to
@@ -596,171 +642,44 @@ class Vectorize:
                 # give the cell the value of the cell that is at the right Top
                 array[rows[i], cols[i]] = array[rows[i] + 1, cols[i] + 1]
             else:
-                print("the cell is isolated (No surrounding cells exist)")
+                logger.warning("the cell is isolated (No surrounding cells exist)")
         return array
 
     @staticmethod
     def _group_neighbours(
         array, i, j, lower_bound, upper_bound, position, values, count, cluster
-    ):
-        """Group neighboring cells with the same values."""
-        # bottom cell
-        if i + 1 < array.shape[0]:
-            if lower_bound <= array[i + 1, j] <= upper_bound and cluster[i + 1, j] == 0:
-                position.append([i + 1, j])
-                values.append(array[i + 1, j])
-                cluster[i + 1, j] = count
-                Vectorize._group_neighbours(
-                    array,
-                    i + 1,
-                    j,
-                    lower_bound,
-                    upper_bound,
-                    position,
-                    values,
-                    count,
-                    cluster,
-                )
+    ) -> None:
+        """Group neighboring cells with the same values using iterative BFS.
 
-        # bottom right
-        if j + 1 < array.shape[1]:
-            if i + 1 < array.shape[0]:
-                if (
-                    lower_bound <= array[i + 1, j + 1] <= upper_bound
-                    and cluster[i + 1, j + 1] == 0
-                ):
-                    position.append([i + 1, j + 1])
-                    values.append(array[i + 1, j + 1])
-                    cluster[i + 1, j + 1] = count
-                    Vectorize._group_neighbours(
-                        array,
-                        i + 1,
-                        j + 1,
-                        lower_bound,
-                        upper_bound,
-                        position,
-                        values,
-                        count,
-                        cluster,
-                    )
+        Uses a queue-based breadth-first search instead of recursion to avoid
+        hitting Python's recursion limit on large connected regions.
 
-        # right
-        if j + 1 < array.shape[1]:
-            if lower_bound <= array[i, j + 1] <= upper_bound and cluster[i, j + 1] == 0:
-                position.append([i, j + 1])
-                values.append(array[i, j + 1])
-                cluster[i, j + 1] = count
-                Vectorize._group_neighbours(
-                    array,
-                    i,
-                    j + 1,
-                    lower_bound,
-                    upper_bound,
-                    position,
-                    values,
-                    count,
-                    cluster,
-                )
+        Note: The starting cell (i, j) is enqueued but not marked. When a
+        discovered neighbor later checks its own neighbors, it will find (i, j)
+        still unmarked and add it to position/values. Therefore the starting
+        cell appears in the output whenever it has at least one in-bound
+        neighbor. The caller (cluster) handles truly isolated cells separately.
+        """
+        rows, cols = array.shape
+        queue = collections.deque()
+        queue.append((i, j))
 
-        # upper right
-        if j + 1 < array.shape[1]:
-            if i - 1 >= 0:
-                if (
-                    lower_bound <= array[i - 1, j + 1] <= upper_bound
-                    and cluster[i - 1, j + 1] == 0
-                ):
-                    position.append([i - 1, j + 1])
-                    values.append(array[i - 1, j + 1])
-                    cluster[i - 1, j + 1] = count
-                    Vectorize._group_neighbours(
-                        array,
-                        i - 1,
-                        j + 1,
-                        lower_bound,
-                        upper_bound,
-                        position,
-                        values,
-                        count,
-                        cluster,
-                    )
-        # top
-        if i - 1 >= 0:
-            if lower_bound <= array[i - 1, j] <= upper_bound and cluster[i - 1, j] == 0:
-                position.append([i - 1, j])
-                values.append(array[i - 1, j])
-                cluster[i - 1, j] = count
-                Vectorize._group_neighbours(
-                    array,
-                    i - 1,
-                    j,
-                    lower_bound,
-                    upper_bound,
-                    position,
-                    values,
-                    count,
-                    cluster,
-                )
-
-        # top left
-        if i - 1 >= 0:
-            if j - 1 >= 0:
-                if (
-                    lower_bound <= array[i - 1, j - 1] <= upper_bound
-                    and cluster[i - 1, j - 1] == 0
-                ):
-                    position.append([i - 1, j - 1])
-                    values.append(array[i - 1, j - 1])
-                    cluster[i - 1, j - 1] = count
-                    Vectorize._group_neighbours(
-                        array,
-                        i - 1,
-                        j - 1,
-                        lower_bound,
-                        upper_bound,
-                        position,
-                        values,
-                        count,
-                        cluster,
-                    )
-        # left
-        if j - 1 >= 0:
-            if lower_bound <= array[i, j - 1] <= upper_bound and cluster[i, j - 1] == 0:
-                position.append([i, j - 1])
-                values.append(array[i, j - 1])
-                cluster[i, j - 1] = count
-                Vectorize._group_neighbours(
-                    array,
-                    i,
-                    j - 1,
-                    lower_bound,
-                    upper_bound,
-                    position,
-                    values,
-                    count,
-                    cluster,
-                )
-
-        # bottom left
-        if j - 1 >= 0:
-            if i + 1 < array.shape[0]:
-                if (
-                    lower_bound <= array[i + 1, j - 1] <= upper_bound
-                    and cluster[i + 1, j - 1] == 0
-                ):
-                    position.append([i + 1, j - 1])
-                    values.append(array[i + 1, j - 1])
-                    cluster[i + 1, j - 1] = count
-                    Vectorize._group_neighbours(
-                        array,
-                        i + 1,
-                        j - 1,
-                        lower_bound,
-                        upper_bound,
-                        position,
-                        values,
-                        count,
-                        cluster,
-                    )
+        while queue:
+            ci, cj = queue.popleft()
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    if di == 0 and dj == 0:
+                        continue
+                    ni, nj = ci + di, cj + dj
+                    if 0 <= ni < rows and 0 <= nj < cols:
+                        if (
+                            cluster[ni, nj] == 0
+                            and lower_bound <= array[ni, nj] <= upper_bound
+                        ):
+                            cluster[ni, nj] = count
+                            position.append([ni, nj])
+                            values.append(array[ni, nj])
+                            queue.append((ni, nj))
 
     def cluster(
         self, lower_bound: Any, upper_bound: Any

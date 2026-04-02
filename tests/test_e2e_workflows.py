@@ -16,6 +16,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import pytest
 from osgeo import gdal
 from shapely.geometry import box
@@ -332,6 +333,439 @@ class TestFeatureCollectionPropertiesE2E:
             ), "Reloaded score value should be ~99.5"
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+class TestClusterE2E:
+    """End-to-end workflows combining cluster with other Dataset operations."""
+
+    def test_create_cluster_save_reload(self):
+        """Create dataset -> cluster -> write cluster array to file -> reload and verify.
+
+        Test scenario:
+            Full round-trip: create a raster with known values, cluster it,
+            save the cluster array as a new GeoTIFF, reload it, and verify
+            the cluster labels survive the disk round-trip.
+        """
+        arr = np.array(
+            [
+                [5.0, 5.0, 0.0, 0.0, 0.0],
+                [5.0, 5.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 8.0, 8.0],
+                [0.0, 0.0, 0.0, 8.0, 8.0],
+            ],
+            dtype=np.float32,
+        )
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0, 0), cell_size=1.0, epsg=4326
+        )
+        cluster_array, count, position, values = src.cluster(1, 10)
+
+        assert count == 3, f"Expected 2 clusters, got {count - 1}"
+        assert len(position) == 8, f"Expected 8 cells clustered, got {len(position)}"
+
+        result = Dataset.create_from_array(
+            cluster_array.astype(np.float32),
+            top_left_corner=(0, 0),
+            cell_size=1.0,
+            epsg=4326,
+        )
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "cluster_result.tif"
+        try:
+            result.to_file(path)
+            assert path.exists(), "Cluster GeoTIFF should be written"
+
+            reloaded = Dataset.read_file(path)
+            reloaded_arr = reloaded.read_array()
+            np.testing.assert_array_equal(
+                reloaded_arr,
+                cluster_array,
+                err_msg="Cluster array should survive disk round-trip",
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_crop_then_cluster(self):
+        """Create a large raster -> crop to subset -> cluster the cropped region.
+
+        Test scenario:
+            Verify that cropping a dataset and then clustering the result
+            produces correct clusters based on the cropped data, not the
+            original extent.
+        """
+        arr = np.zeros((20, 20), dtype=np.float32)
+        arr[2:5, 2:5] = 7.0
+        arr[15:18, 15:18] = 7.0
+        src = Dataset.create_from_array(
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+        )
+
+        crop_poly = box(-0.5, -5.5, 6.5, 0.5)
+        crop_mask = gpd.GeoDataFrame(geometry=[crop_poly], crs="EPSG:4326")
+        cropped = src.crop(crop_mask)
+
+        cluster_array, count, position, values = cropped.cluster(5, 10)
+
+        assert count == 2, (
+            f"Expected 1 cluster in cropped region, got {count - 1}"
+        )
+        for v in values:
+            assert 5 <= v <= 10, f"Clustered value {v} outside bounds [5, 10]"
+
+    def test_cluster_reproject_preserves_count(self):
+        """Create dataset -> cluster -> reproject -> re-cluster -> compare counts.
+
+        Test scenario:
+            Create a dataset in EPSG:4326, cluster it, reproject to
+            EPSG:32636 (UTM), re-cluster, and verify a similar number of
+            clusters exist (exact match not expected due to resampling).
+        """
+        np.random.seed(77)
+        arr = np.random.choice([0.0, 5.0], size=(10, 10), p=[0.6, 0.4]).astype(
+            np.float32
+        )
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(30.0, 31.0), cell_size=0.01, epsg=4326
+        )
+
+        _, count_orig, _, _ = src.cluster(4, 6)
+
+        reprojected = src.to_crs(to_epsg=32636)
+        _, count_reproj, _, _ = reprojected.cluster(4, 6)
+
+        assert count_reproj >= 1, "Reprojected dataset should have at least 1 cluster"
+        assert abs(count_reproj - count_orig) <= count_orig, (
+            f"Cluster count after reproject ({count_reproj}) diverged too far "
+            f"from original ({count_orig})"
+        )
+
+    def test_cluster_to_vector_polygons(self):
+        """Create dataset -> cluster -> convert clusters to vector polygons.
+
+        Test scenario:
+            Create a dataset, cluster it, then use cluster2 (GDAL
+            Polygonize) on the cluster array to produce vector polygons.
+            Verify the polygons are valid and cover the clustered region.
+        """
+        arr = np.array(
+            [
+                [5.0, 5.0, 0.0],
+                [5.0, 5.0, 0.0],
+                [0.0, 0.0, 5.0],
+            ],
+            dtype=np.float32,
+        )
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326
+        )
+
+        cluster_array, count, position, values = src.cluster(4, 6)
+
+        cluster_ds = Dataset.create_from_array(
+            cluster_array.astype(np.float32),
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+        )
+        gdf = cluster_ds.cluster2()
+
+        assert isinstance(gdf, gpd.GeoDataFrame), (
+            f"Expected GeoDataFrame, got {type(gdf)}"
+        )
+        assert len(gdf) > 0, "Should produce at least one polygon"
+        assert all(
+            geom.is_valid for geom in gdf.geometry
+        ), "All polygons should be valid geometries"
+
+    def test_large_cluster_no_recursion_e2e(self):
+        """Create a 300x300 raster -> cluster all cells -> verify no crash.
+
+        Test scenario:
+            End-to-end verification that the iterative BFS handles a
+            90,000-cell connected region through the full Dataset.cluster
+            pipeline without hitting recursion limits.
+        """
+        arr = np.ones((300, 300), dtype=np.float32) * 5
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.01, epsg=4326
+        )
+
+        cluster_array, count, position, values = src.cluster(1, 10)
+
+        assert count == 2, f"Expected 1 cluster, got {count - 1}"
+        assert len(position) == 90000, (
+            f"Expected 90000 cells, got {len(position)}"
+        )
+        assert np.all(cluster_array == 1), "All cells should be cluster 1"
+
+
+class TestApplyE2E:
+    """End-to-end workflows combining apply with other Dataset operations."""
+
+    def test_apply_save_reload(self):
+        """Apply a function -> save to GeoTIFF -> reload -> verify values survive round-trip.
+
+        Test scenario:
+            Create a dataset, apply np.square, save the result to disk,
+            reload it, and verify the squared values are preserved.
+        """
+        arr = np.array([[2.0, 3.0], [4.0, 5.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        result = src.apply(np.square)
+        expected = np.array([[4.0, 9.0], [16.0, 25.0]], dtype=np.float32)
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "apply_result.tif"
+        try:
+            result.to_file(path)
+            assert path.exists(), "GeoTIFF should be written"
+
+            reloaded = Dataset.read_file(path)
+            np.testing.assert_array_almost_equal(
+                reloaded.read_array(), expected, decimal=2,
+                err_msg="Squared values should survive disk round-trip"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_apply_then_crop(self):
+        """Apply a function -> crop the result with a polygon -> verify cropped values.
+
+        Test scenario:
+            Create a 10x10 dataset, apply doubling, crop to a 5x5 sub-region,
+            and verify the cropped values are doubled.
+        """
+        arr = np.arange(1, 101, dtype=np.float32).reshape(10, 10)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        doubled = src.apply(lambda x: x * 2)
+
+        crop_poly = box(0.5, -4.5, 4.5, -0.5)
+        crop_mask = gpd.GeoDataFrame(geometry=[crop_poly], crs="EPSG:4326")
+        cropped = doubled.crop(crop_mask)
+
+        cropped_arr = cropped.read_array()
+        nodata = cropped.no_data_value[0]
+        domain_vals = cropped_arr[~np.isclose(cropped_arr, nodata, rtol=0.001)]
+        assert len(domain_vals) > 0, "Cropped result should have domain cells"
+        assert np.all(domain_vals % 2 == 0), (
+            "All cropped domain values should be even (doubled from integers)"
+        )
+
+    def test_apply_chained(self):
+        """Chain multiple apply calls -> verify cumulative transformation.
+
+        Test scenario:
+            Create a dataset with value 2, apply x+3 -> then apply x*10.
+            The result should be (2+3)*10 = 50.
+        """
+        arr = np.full((3, 3), 2.0, dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        step1 = src.apply(lambda x: x + 3)
+        step2 = step1.apply(lambda x: x * 10)
+        result_arr = step2.read_array()
+        assert np.allclose(result_arr, 50.0), (
+            f"Expected all cells to be 50.0 after chaining, got {result_arr}"
+        )
+
+    def test_apply_scalar_function_e2e(self):
+        """Apply a scalar if/elif classification function end-to-end.
+
+        Test scenario:
+            Create a dataset with values spanning multiple classification
+            bins, apply a scalar function that uses if/elif, and verify
+            each cell gets the correct class.
+        """
+        def classify(val):
+            if val < 5:
+                return 1.0
+            elif val < 15:
+                return 2.0
+            else:
+                return 3.0
+
+        arr = np.array(
+            [[1.0, 5.0, 20.0], [3.0, 10.0, 25.0], [4.0, 14.0, 30.0]],
+            dtype=np.float32,
+        )
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        result = src.apply(classify)
+        result_arr = result.read_array()
+        expected = np.array(
+            [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
+            dtype=np.float32,
+        )
+        np.testing.assert_array_equal(
+            result_arr, expected,
+            err_msg="Scalar classify should produce correct classification"
+        )
+
+    def test_apply_with_nodata_save_reload(self):
+        """Apply a function to a dataset with no-data cells -> save -> reload -> verify.
+
+        Test scenario:
+            No-data cells should remain as no-data through the apply,
+            disk save, and reload pipeline.
+        """
+        arr = np.array([[10.0, -9999.0], [-9999.0, 20.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        result = src.apply(lambda x: x + 5)
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "apply_nodata.tif"
+        try:
+            result.to_file(path)
+            reloaded = Dataset.read_file(path)
+            reloaded_arr = reloaded.read_array()
+            assert np.isclose(reloaded_arr[0, 0], 15.0), (
+                f"Domain cell should be 15.0, got {reloaded_arr[0, 0]}"
+            )
+            assert np.isclose(reloaded_arr[1, 1], 25.0), (
+                f"Domain cell should be 25.0, got {reloaded_arr[1, 1]}"
+            )
+            nodata = reloaded.no_data_value[0]
+            assert np.isclose(reloaded_arr[0, 1], nodata, rtol=0.001), (
+                f"No-data cell should remain {nodata}, got {reloaded_arr[0, 1]}"
+            )
+            assert np.isclose(reloaded_arr[1, 0], nodata, rtol=0.001), (
+                f"No-data cell should remain {nodata}, got {reloaded_arr[1, 0]}"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_apply_inplace_then_save(self):
+        """Apply inplace -> save the modified dataset -> reload -> verify.
+
+        Test scenario:
+            Using inplace=True should modify the original dataset, and
+            saving + reloading should reflect those modifications.
+        """
+        arr = np.array([[3.0, 6.0], [9.0, 12.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        src.apply(lambda x: x / 3, inplace=True)
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "apply_inplace.tif"
+        try:
+            src.to_file(path)
+            reloaded = Dataset.read_file(path)
+            expected = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+            np.testing.assert_array_almost_equal(
+                reloaded.read_array(), expected, decimal=2,
+                err_msg="Inplace apply should be reflected after save/reload"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+class TestToFeatureCollectionE2E:
+    """End-to-end workflows combining to_feature_collection with other operations."""
+
+    def test_to_feature_collection_save_geojson_reload(self):
+        """Create dataset -> to_feature_collection with geometry -> save GeoJSON -> reload.
+
+        Test scenario:
+            Convert a dataset to a GeoDataFrame with point geometry, save
+            it as GeoJSON, reload it, and verify the values and geometry
+            survive the round-trip.
+        """
+        arr = np.array([[10.0, 20.0], [30.0, 40.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        gdf = src.to_feature_collection(add_geometry="point")
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "test_fc.geojson"
+        try:
+            gdf.to_file(path, driver="GeoJSON")
+            assert path.exists(), "GeoJSON file should exist"
+
+            reloaded = gpd.read_file(path)
+            assert len(reloaded) == 4, f"Expected 4 rows, got {len(reloaded)}"
+            assert "geometry" in reloaded.columns, "Should have geometry column"
+            assert all(g.geom_type == "Point" for g in reloaded.geometry), (
+                "All geometries should be Points after reload"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_crop_then_to_feature_collection(self):
+        """Create dataset -> crop -> to_feature_collection -> verify subset.
+
+        Test scenario:
+            Crop a 10x10 dataset to a 3x3 region, then convert to
+            DataFrame. The result should have fewer rows than the full
+            dataset.
+        """
+        arr = np.arange(1, 101, dtype=np.float32).reshape(10, 10)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        poly = box(1.5, -3.5, 4.5, -0.5)
+        mask = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
+        cropped = src.crop(mask)
+        df = cropped.to_feature_collection()
+
+        assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+        assert len(df) < 100, f"Cropped result should have fewer than 100 rows, got {len(df)}"
+        assert len(df) > 0, "Should have some domain cells"
+
+    def test_apply_then_to_feature_collection(self):
+        """Create dataset -> apply function -> to_feature_collection -> verify transformed values.
+
+        Test scenario:
+            Apply x*10 to a dataset, then convert to DataFrame. All
+            values in the DataFrame should be multiples of 10.
+        """
+        arr = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        transformed = src.apply(lambda x: x * 10)
+        df = transformed.to_feature_collection()
+
+        assert len(df) == 6, f"Expected 6 rows, got {len(df)}"
+        assert all(v % 10 == 0 for v in df.iloc[:, 0]), (
+            "All values should be multiples of 10"
+        )
+
+    def test_multiband_to_feature_collection_polygon_geometry(self):
+        """Create multi-band dataset -> to_feature_collection with polygon -> verify.
+
+        Test scenario:
+            A 2-band dataset converted with polygon geometry should
+            produce a GeoDataFrame with 2 value columns plus geometry.
+        """
+        arr = np.random.default_rng(42).random((2, 4, 4)).astype(np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        gdf = src.to_feature_collection(add_geometry="polygon")
+
+        assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
+        value_cols = [c for c in gdf.columns if c != "geometry"]
+        assert len(value_cols) == 2, f"Expected 2 value columns, got {len(value_cols)}"
+        assert all(g.geom_type == "Polygon" for g in gdf.geometry), (
+            "All geometries should be Polygons"
+        )
+        assert len(gdf) == 16, f"Expected 16 rows (4x4), got {len(gdf)}"
 
 
 class TestGeoTiffRoundTrip:
