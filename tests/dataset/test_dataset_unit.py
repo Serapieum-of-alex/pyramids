@@ -3260,6 +3260,54 @@ class TestToFeatureCollectionTile:
         assert isinstance(df, pd.DataFrame), "Should return a DataFrame"
         assert len(df) > 0, "Should have rows"
 
+    def test_tiled_filters_nodata(self):
+        """Test that tile=True filters out no-data values like tile=False.
+
+        Test scenario:
+            A dataset with mixed domain and no-data cells should produce
+            the same row count whether tiled or not.
+        """
+        arr = np.array(
+            [
+                [1.0, -9999.0, 3.0, 4.0],
+                [-9999.0, 6.0, 7.0, -9999.0],
+                [9.0, 10.0, -9999.0, 12.0],
+                [13.0, -9999.0, 15.0, 16.0],
+            ],
+            dtype=np.float32,
+        )
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df_full = ds.to_feature_collection(tile=False)
+        df_tiled = ds.to_feature_collection(tile=True, tile_size=2)
+
+        assert len(df_tiled) == len(df_full), (
+            f"Tiled ({len(df_tiled)}) should have same row count as "
+            f"non-tiled ({len(df_full)})"
+        )
+        assert -9999.0 not in df_tiled.iloc[:, 0].values, (
+            "No-data values should be filtered out in tiled path"
+        )
+
+    def test_tiled_all_nodata(self):
+        """Test that tile=True on all-nodata dataset returns empty DataFrame.
+
+        Test scenario:
+            Every cell is no-data. The tiled path should return an empty
+            DataFrame with the correct column names.
+        """
+        arr = np.full((4, 4), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df = ds.to_feature_collection(tile=True, tile_size=2)
+        assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+        assert len(df) == 0, f"Expected 0 rows for all-nodata, got {len(df)}"
+        assert list(df.columns) == ds.band_names, (
+            f"Expected columns {ds.band_names}, got {list(df.columns)}"
+        )
+
 
 class TestCluster2BandNone:
     """Tests for cluster2 with band=None."""
