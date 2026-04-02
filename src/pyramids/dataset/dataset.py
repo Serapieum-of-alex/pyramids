@@ -547,7 +547,7 @@ class Dataset(  # type: ignore[misc]
         no_data_value,
         driver: str = "MEM",
         path: str | Path | None = None,
-        access: str = "read_only",
+        access: str = "write",
     ) -> Dataset:
         """Create a GDAL dataset, set its spatial metadata, and wrap it as a Dataset.
 
@@ -564,7 +564,7 @@ class Dataset(  # type: ignore[misc]
             no_data_value: No-data value (scalar or list).
             driver (str): Driver type. Default is "MEM".
             path (str | Path | None): Path for disk-based drivers.
-            access (str): Access mode for the Dataset wrapper. Default is "read_only".
+            access (str): Access mode for the Dataset wrapper. Default is "write".
 
         Returns:
             Dataset: A fully configured Dataset object.
@@ -789,7 +789,7 @@ class Dataset(  # type: ignore[misc]
 
         dst_obj = cls._build_dataset(
             src.columns, src.rows, bands, dtype, src.geotransform, src.crs,
-            src.no_data_value[0], path=path, access="write",
+            src.no_data_value[0], path=path,
         )
 
         if bands == 1:

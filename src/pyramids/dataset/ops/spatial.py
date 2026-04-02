@@ -361,7 +361,7 @@ class Spatial:
 
         dst_obj = type(self)._build_dataset(
             cols, rows, bands, dtype, new_geo, sr_src.ExportToWkt(),
-            self.no_data_value, access="write",
+            self.no_data_value,
         )
         gdal.ReprojectImage(
             self.raster,
