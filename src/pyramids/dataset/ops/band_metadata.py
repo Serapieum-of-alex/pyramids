@@ -828,7 +828,7 @@ class BandMetadata:
 
         return df
 
-    def _check_no_data_value(self, no_data_value: list) -> None:
+    def _check_no_data_value(self, no_data_value: list) -> list:
         """Validate the no_data_value with the dtype of the object.
         Args:
             no_data_value:
