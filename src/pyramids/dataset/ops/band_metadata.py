@@ -450,7 +450,7 @@ class BandMetadata:
 
         return names
 
-    def _set_band_names(self, name_list: list):
+    def _set_band_names(self, name_list: list) -> None:
         """Set band names from a given list of names.
 
         Returns:
@@ -745,7 +745,7 @@ class BandMetadata:
 
         self._set_color_table(df, overwrite=True)
 
-    def _set_color_table(self, color_df: DataFrame, overwrite: bool = False):
+    def _set_color_table(self, color_df: DataFrame, overwrite: bool = False) -> None:
         """_set_color_table.
 
         Args:
@@ -828,7 +828,7 @@ class BandMetadata:
 
         return df
 
-    def _check_no_data_value(self, no_data_value: list):
+    def _check_no_data_value(self, no_data_value: list) -> None:
         """Validate the no_data_value with the dtype of the object.
         Args:
             no_data_value:
@@ -864,7 +864,7 @@ class BandMetadata:
                 no_data_value[i] = self.numpy_dtype[i](DEFAULT_NO_DATA_VALUE)
         return no_data_value
 
-    def _set_no_data_value(self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE):
+    def _set_no_data_value(self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE) -> None:
         """setNoDataValue.
             - Set the no data value in all raster bands.
             - Fill the whole raster with the no_data_value.
@@ -921,7 +921,7 @@ class BandMetadata:
         gdf.set_crs(epsg=self.epsg, inplace=True)
         return gdf
 
-    def _set_no_data_value_backend(self, band_i: int, no_data_value: Any):
+    def _set_no_data_value_backend(self, band_i: int, no_data_value: Any) -> None:
         """
             - band_i starts from 0 to the number of bands-1.
         Args:
@@ -955,7 +955,7 @@ class BandMetadata:
         # update the no_data_value in the Dataset object
         self._no_data_value[band_i] = no_data_value
 
-    def _change_no_data_value_attr(self, band: int, no_data_value):
+    def _change_no_data_value_attr(self, band: int, no_data_value) -> None:
         """Change the no_data_value attribute.
             - Change only the no_data_value attribute in the gdal Dataset object.
             - Change the no_data_value in the Dataset object for the given band index.

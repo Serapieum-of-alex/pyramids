@@ -216,7 +216,7 @@ class IO:
         y_size = arr_indeces[1, 1] - arr_indeces[0, 1]
         return [xoff, yoff, x_size, y_size]
 
-    def write_array(self: Dataset, array: np.ndarray, top_left_corner: list[int]):
+    def write_array(self: Dataset, array: np.ndarray, top_left_corner: list[int]) -> None:
         """Write an array to the dataset at the given xoff, yoff position.
 
         Args:
@@ -426,7 +426,7 @@ class IO:
                         f"Failed to save the {driver_name} raster to the path: {path}"
                     )
 
-    def _window(self: Dataset, size: int = 256):
+    def _window(self: Dataset, size: int = 256) -> Generator:
         """Dataset square window size/offsets.
 
         Args:
@@ -708,7 +708,7 @@ class IO:
         # Build overviews using nearest neighbor resampling
         # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
         self.raster.BuildOverviews(resampling_method, overview_levels)
-    def recreate_overviews(self: Dataset, resampling_method: str = "nearest"):
+    def recreate_overviews(self: Dataset, resampling_method: str = "nearest") -> None:
         """Recreate overviews for the dataset.
         Args:
             resampling_method (str): Resampling method used to recreate overviews. Possible values are
