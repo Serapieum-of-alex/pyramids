@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3461,7 +3461,7 @@
 <a id="__codelineno-0-242" name="__codelineno-0-242"></a>        <span class="n">dst_obj</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_build_dataset</span><span class="p">(</span>
 <a id="__codelineno-0-243" name="__codelineno-0-243"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rows</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geotransform</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span> <span class="n">no_data_value</span>
 <a id="__codelineno-0-244" name="__codelineno-0-244"></a>        <span class="p">)</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>        <span class="n">dst_obj</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">new_array</span><span class="p">)</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>        <span class="n">dst_obj</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">new_array</span><span class="p">)</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a>        <span class="n">result</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <a id="__codelineno-0-248" name="__codelineno-0-248"></a>        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
@@ -4986,7 +4986,7 @@ The resulting dataset if inplace is False; otherwise None.</p>
 <a id="__codelineno-0-242" name="__codelineno-0-242"></a>    <span class="n">dst_obj</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_build_dataset</span><span class="p">(</span>
 <a id="__codelineno-0-243" name="__codelineno-0-243"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rows</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geotransform</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span> <span class="n">no_data_value</span>
 <a id="__codelineno-0-244" name="__codelineno-0-244"></a>    <span class="p">)</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="n">dst_obj</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">new_array</span><span class="p">)</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="n">dst_obj</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">new_array</span><span class="p">)</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="n">result</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>

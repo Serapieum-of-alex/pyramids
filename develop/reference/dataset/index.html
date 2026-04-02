@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -4512,7 +4512,7 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">            dtype (int): GDAL data type.</span>
 <a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">            geo (tuple): Geotransform tuple.</span>
 <a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">            crs (str): Projection as WKT string.</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">            no_data_value: No-data value (scalar or list).</span>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">            no_data_value: No-data value. Scalar (broadcast to all bands) or list (one per band).</span>
 <a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">            driver (str): Driver type. Default is &quot;MEM&quot;.</span>
 <a id="__codelineno-0-566" name="__codelineno-0-566"></a><span class="sd">            path (str | Path | None): Path for disk-based drivers.</span>
 <a id="__codelineno-0-567" name="__codelineno-0-567"></a><span class="sd">            access (str): Access mode for the Dataset wrapper. Default is &quot;write&quot;.</span>
