@@ -524,7 +524,7 @@ class TestCellGeometryMethods:
 
 
 class TestCorrectWrapCutlineError:
-    """Tests for the correct_wrap_cutline_error static method."""
+    """Tests for the _correct_wrap_cutline_error static method."""
 
     def test_removes_nodata_border_2d(self):
         """Should remove full rows/cols of nodata from 2D array."""
@@ -545,7 +545,7 @@ class TestCorrectWrapCutlineError:
             epsg=4326,
             no_data_value=nd,
         )
-        corrected = Dataset.correct_wrap_cutline_error(ds)
+        corrected = Dataset._correct_wrap_cutline_error(ds)
         assert (
             corrected.rows == 2
         ), f"Expected 2 rows after correction, got {corrected.rows}"
@@ -587,7 +587,7 @@ class TestCorrectWrapCutlineError:
             epsg=4326,
             no_data_value=nd,
         )
-        corrected = Dataset.correct_wrap_cutline_error(ds)
+        corrected = Dataset._correct_wrap_cutline_error(ds)
         assert corrected.rows == 1, "Expected 1 row after 3D correction"
         assert corrected.columns == 1, "Expected 1 col after 3D correction"
 
@@ -2479,10 +2479,10 @@ class TestToXyzPath:
 
 
 class TestCorrectWrapCutlineErrorNdim:
-    """Tests for correct_wrap_cutline_error with invalid ndim."""
+    """Tests for _correct_wrap_cutline_error with invalid ndim."""
 
     def test_4d_array_raises(self):
-        """A 4D array in correct_wrap_cutline_error should raise ValueError."""
+        """A 4D array in _correct_wrap_cutline_error should raise ValueError."""
         nd = -9999.0
         arr = np.ones((3, 3), dtype=np.float32)
         ds = Dataset.create_from_array(
@@ -2505,7 +2505,7 @@ class TestCorrectWrapCutlineErrorNdim:
             epsg=4326,
             no_data_value=nd,
         )
-        result = Dataset.correct_wrap_cutline_error(ds_3d)
+        result = Dataset._correct_wrap_cutline_error(ds_3d)
         assert result.rows == 2, "Should trim first row of nodata"
 
 
