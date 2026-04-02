@@ -69,7 +69,7 @@ class Spatial:
         self,
         to_epsg: int,
         method: str = "nearest neighbor",
-        maintain_alignment: int = False,
+        maintain_alignment: bool = False,
         inplace: bool = False,
     ) -> Dataset | None:
         """Reproject the dataset to any projection.
