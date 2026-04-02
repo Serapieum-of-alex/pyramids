@@ -561,7 +561,7 @@ class Dataset(  # type: ignore[misc]
             dtype (int): GDAL data type.
             geo (tuple): Geotransform tuple.
             crs (str): Projection as WKT string.
-            no_data_value: No-data value (scalar or list).
+            no_data_value: No-data value. Scalar (broadcast to all bands) or list (one per band).
             driver (str): Driver type. Default is "MEM".
             path (str | Path | None): Path for disk-based drivers.
             access (str): Access mode for the Dataset wrapper. Default is "write".
