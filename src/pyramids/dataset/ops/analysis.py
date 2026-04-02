@@ -239,14 +239,9 @@ class Analysis:
         except (ValueError, TypeError):
             new_array[domain_mask] = np.vectorize(func)(domain_values)
 
-        # create the output raster
-        dst = type(self)._create_dataset(self.columns, self.rows, 1, dtype, driver="MEM")
-        # set the geotransform
-        dst.SetGeoTransform(self.geotransform)
-        # set the projection
-        dst.SetProjection(self.crs)
-        dst_obj = type(self)(dst)
-        dst_obj._set_no_data_value(no_data_value=no_data_value)
+        dst_obj = type(self)._build_dataset(
+            self.columns, self.rows, 1, dtype, self.geotransform, self.crs, no_data_value
+        )
         dst_obj.raster.GetRasterBand(band + 1).WriteArray(new_array)
 
         result: Dataset | None = None

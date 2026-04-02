@@ -536,6 +536,47 @@ class Dataset(  # type: ignore[misc]
         return src
 
     @classmethod
+    def _build_dataset(
+        cls,
+        cols: int,
+        rows: int,
+        bands: int,
+        dtype: int,
+        geo: tuple,
+        crs: str,
+        no_data_value,
+        driver: str = "MEM",
+        path: str | Path | None = None,
+        access: str = "read_only",
+    ) -> Dataset:
+        """Create a GDAL dataset, set its spatial metadata, and wrap it as a Dataset.
+
+        Consolidates the repeated pattern of _create_dataset + SetGeoTransform +
+        SetProjection + wrap + _set_no_data_value into a single helper.
+
+        Args:
+            cols (int): Number of columns.
+            rows (int): Number of rows.
+            bands (int): Number of bands.
+            dtype (int): GDAL data type.
+            geo (tuple): Geotransform tuple.
+            crs (str): Projection as WKT string.
+            no_data_value: No-data value (scalar or list).
+            driver (str): Driver type. Default is "MEM".
+            path (str | Path | None): Path for disk-based drivers.
+            access (str): Access mode for the Dataset wrapper. Default is "read_only".
+
+        Returns:
+            Dataset: A fully configured Dataset object.
+        """
+        dst = cls._create_dataset(cols, rows, bands, dtype, driver=driver, path=path)
+        dst.SetGeoTransform(geo)
+        dst.SetProjection(crs)
+        dst_obj = cls(dst, access=access)
+        dst_obj._set_no_data_value(no_data_value=no_data_value)
+        return dst_obj
+
+    @classmethod
     def create(
         cls,
         cell_size: int | float,
@@ -746,13 +787,10 @@ class Dataset(  # type: ignore[misc]
 
         dtype = numpy_to_gdal_dtype(array)
 
-        dst = Dataset._create_dataset(src.columns, src.rows, bands, dtype, path=path)
-
-        dst.SetGeoTransform(src.geotransform)
-        dst.SetProjection(src.crs)
-        # setting the NoDataValue does not accept double precision numbers
-        dst_obj = cls(dst, access="write")
-        dst_obj._set_no_data_value(no_data_value=src.no_data_value[0])
+        dst_obj = cls._build_dataset(
+            src.columns, src.rows, bands, dtype, src.geotransform, src.crs,
+            src.no_data_value[0], path=path, access="write",
+        )
 
         if bands == 1:
             dst_obj.raster.GetRasterBand(1).WriteArray(array)
