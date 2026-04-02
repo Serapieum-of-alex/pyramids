@@ -3055,6 +3055,142 @@ class TestToFeatureCollection:
             result, gpd.GeoDataFrame
         ), "Should return GeoDataFrame with polygon geometry"
 
+    def test_to_feature_collection_all_nodata(self):
+        """Test that a dataset with all no-data cells returns an empty DataFrame.
+
+        Test scenario:
+            Every cell is no-data, so after filtering the result should
+            have zero rows.
+        """
+        arr = np.full((3, 3), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df = ds.to_feature_collection()
+        assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+        assert len(df) == 0, f"Expected 0 rows for all-nodata, got {len(df)}"
+
+    def test_to_feature_collection_1x1_dataset(self):
+        """Test to_feature_collection on a minimal 1x1 dataset.
+
+        Test scenario:
+            A single-cell dataset should produce a DataFrame with exactly
+            one row and one column.
+        """
+        arr = np.array([[42.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        df = ds.to_feature_collection()
+        assert len(df) == 1, f"Expected 1 row, got {len(df)}"
+        assert df.iloc[0, 0] == 42.0, f"Expected value 42.0, got {df.iloc[0, 0]}"
+
+    def test_to_feature_collection_column_names_match_band_names(self, multi_band_dataset):
+        """Test that DataFrame columns match the dataset's band names.
+
+        Test scenario:
+            The resulting DataFrame columns should be the same as
+            dataset.band_names.
+        """
+        df = multi_band_dataset.to_feature_collection()
+        expected_names = multi_band_dataset.band_names
+        assert list(df.columns) == expected_names, (
+            f"Expected columns {expected_names}, got {list(df.columns)}"
+        )
+
+    def test_to_feature_collection_point_geometry_types(self):
+        """Test that add_geometry='point' produces Point geometries.
+
+        Test scenario:
+            Every geometry in the result should be a shapely Point.
+        """
+        import geopandas as gpd
+
+        arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        gdf = ds.to_feature_collection(add_geometry="point")
+        assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
+        assert all(g.geom_type == "Point" for g in gdf.geometry), (
+            "All geometries should be Points"
+        )
+
+    def test_to_feature_collection_polygon_geometry_types(self):
+        """Test that add_geometry='polygon' produces Polygon geometries.
+
+        Test scenario:
+            Every geometry in the result should be a shapely Polygon.
+        """
+        import geopandas as gpd
+
+        arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        gdf = ds.to_feature_collection(add_geometry="polygon")
+        assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
+        assert all(g.geom_type == "Polygon" for g in gdf.geometry), (
+            "All geometries should be Polygons"
+        )
+
+    def test_to_feature_collection_tile_matches_non_tile(self):
+        """Test that tile=True produces the same values as tile=False.
+
+        Test scenario:
+            Both paths should extract the same cell values; only the
+            reading strategy differs.
+        """
+        arr = np.arange(1, 17, dtype=np.float32).reshape(4, 4)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df_full = ds.to_feature_collection(tile=False)
+        df_tiled = ds.to_feature_collection(tile=True, tile_size=2)
+        full_vals = sorted(df_full.iloc[:, 0].tolist())
+        tiled_vals = sorted(df_tiled.iloc[:, 0].tolist())
+        assert full_vals == tiled_vals, (
+            f"Tiled and non-tiled should produce same values.\n"
+            f"Full: {full_vals}\nTiled: {tiled_vals}"
+        )
+
+    def test_to_feature_collection_vector_mask_with_geometry(self, single_band_dataset):
+        """Test to_feature_collection with both vector_mask and add_geometry.
+
+        Test scenario:
+            Combining a crop mask with geometry attachment should produce
+            a GeoDataFrame with fewer rows than the full dataset.
+        """
+        import geopandas as gpd
+        from shapely.geometry import box
+
+        full_df = single_band_dataset.to_feature_collection()
+        poly = box(0.0, -0.10, 0.10, 0.0)
+        mask = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
+        gdf = single_band_dataset.to_feature_collection(
+            vector_mask=mask, add_geometry="point"
+        )
+        assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
+        assert len(gdf) <= len(full_df), (
+            f"Masked result ({len(gdf)} rows) should have <= rows than full ({len(full_df)})"
+        )
+        assert "geometry" in gdf.columns, "Should have geometry column"
+
+    def test_to_feature_collection_nodata_values_excluded(self):
+        """Test that no-data values do not appear in the output DataFrame.
+
+        Test scenario:
+            A dataset with mixed domain and no-data cells; the output
+            should only contain domain values.
+        """
+        arr = np.array([[1.0, -9999.0, 3.0], [4.0, 5.0, -9999.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
+        )
+        df = ds.to_feature_collection()
+        assert len(df) == 4, f"Expected 4 domain cells, got {len(df)}"
+        assert not df.isnull().any().any(), "No NaN values should remain in the output"
+
 
 class TestWindow:
     """Tests for _window generator method."""

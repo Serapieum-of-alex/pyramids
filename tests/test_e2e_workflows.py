@@ -16,6 +16,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import pytest
 from osgeo import gdal
 from shapely.geometry import box
@@ -671,6 +672,100 @@ class TestApplyE2E:
             )
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+class TestToFeatureCollectionE2E:
+    """End-to-end workflows combining to_feature_collection with other operations."""
+
+    def test_to_feature_collection_save_geojson_reload(self):
+        """Create dataset -> to_feature_collection with geometry -> save GeoJSON -> reload.
+
+        Test scenario:
+            Convert a dataset to a GeoDataFrame with point geometry, save
+            it as GeoJSON, reload it, and verify the values and geometry
+            survive the round-trip.
+        """
+        arr = np.array([[10.0, 20.0], [30.0, 40.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        gdf = src.to_feature_collection(add_geometry="point")
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "test_fc.geojson"
+        try:
+            gdf.to_file(path, driver="GeoJSON")
+            assert path.exists(), "GeoJSON file should exist"
+
+            reloaded = gpd.read_file(path)
+            assert len(reloaded) == 4, f"Expected 4 rows, got {len(reloaded)}"
+            assert "geometry" in reloaded.columns, "Should have geometry column"
+            assert all(g.geom_type == "Point" for g in reloaded.geometry), (
+                "All geometries should be Points after reload"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_crop_then_to_feature_collection(self):
+        """Create dataset -> crop -> to_feature_collection -> verify subset.
+
+        Test scenario:
+            Crop a 10x10 dataset to a 3x3 region, then convert to
+            DataFrame. The result should have fewer rows than the full
+            dataset.
+        """
+        arr = np.arange(1, 101, dtype=np.float32).reshape(10, 10)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        poly = box(1.5, -3.5, 4.5, -0.5)
+        mask = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
+        cropped = src.crop(mask)
+        df = cropped.to_feature_collection()
+
+        assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+        assert len(df) < 100, f"Cropped result should have fewer than 100 rows, got {len(df)}"
+        assert len(df) > 0, "Should have some domain cells"
+
+    def test_apply_then_to_feature_collection(self):
+        """Create dataset -> apply function -> to_feature_collection -> verify transformed values.
+
+        Test scenario:
+            Apply x*10 to a dataset, then convert to DataFrame. All
+            values in the DataFrame should be multiples of 10.
+        """
+        arr = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        transformed = src.apply(lambda x: x * 10)
+        df = transformed.to_feature_collection()
+
+        assert len(df) == 6, f"Expected 6 rows, got {len(df)}"
+        assert all(v % 10 == 0 for v in df.iloc[:, 0]), (
+            "All values should be multiples of 10"
+        )
+
+    def test_multiband_to_feature_collection_polygon_geometry(self):
+        """Create multi-band dataset -> to_feature_collection with polygon -> verify.
+
+        Test scenario:
+            A 2-band dataset converted with polygon geometry should
+            produce a GeoDataFrame with 2 value columns plus geometry.
+        """
+        arr = np.random.default_rng(42).random((2, 4, 4)).astype(np.float32)
+        src = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+        )
+        gdf = src.to_feature_collection(add_geometry="polygon")
+
+        assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
+        value_cols = [c for c in gdf.columns if c != "geometry"]
+        assert len(value_cols) == 2, f"Expected 2 value columns, got {len(value_cols)}"
+        assert all(g.geom_type == "Polygon" for g in gdf.geometry), (
+            "All geometries should be Polygons"
+        )
+        assert len(gdf) == 16, f"Expected 16 rows (4x4), got {len(gdf)}"
 
 
 class TestGeoTiffRoundTrip:

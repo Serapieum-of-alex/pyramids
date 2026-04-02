@@ -192,59 +192,91 @@ class Vectorize:
                   ```
 
         """
-        # Get raster band names. open the dataset using gdal.Open
         band_names = self.band_names
 
-        # Create a mask from the pixels touched by the vector_mask.
         if vector_mask is not None:
             src = self.crop(mask=vector_mask, touch=touch)
         else:
             src = self
 
         if tile:
-            df_list = []  # DataFrames of each tile.
-            for arr in self.get_tile(tile_size):
-                # Assume multi-band
-                idx = (1, 2)
-                if arr.ndim == 2:
-                    # Handle single band rasters
-                    idx = (0, 1)
-
-                mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
-                pixels = get_pixels(arr, mask_arr).transpose()
-                df_list.append(pd.DataFrame(pixels, columns=band_names))
-
-            # Merge all the tiles.
-            df = pd.concat(df_list)
+            df = self._extract_values_tiled(band_names, tile_size)
         else:
-            arr = src.read_array()
-
-            if self.band_count == 1:
-                pixels = arr.flatten()
-            else:
-                pixels = (
-                    arr.flatten()
-                    .reshape(src.band_count, src.columns * src.rows)
-                    .transpose()
-                )
-            df = pd.DataFrame(pixels, columns=band_names)
-            # mask no data values.
-            if src.no_data_value[0] is not None:
-                df.replace(src.no_data_value[0], np.nan, inplace=True)
-            df.dropna(axis=0, inplace=True, ignore_index=True)
-
-        if add_geometry:
-            if add_geometry.lower() == "point":
-                coords = src.get_cell_points(mask=True)
-            else:
-                coords = src.get_cell_polygons(mask=True)
+            df = src._extract_values_full(band_names)
 
         df.drop(columns=["burn_value", "geometry"], errors="ignore", inplace=True)
+
         if add_geometry:
-            df = gpd.GeoDataFrame(df.loc[:], geometry=coords["geometry"].to_list())
-            df.set_crs(coords.crs.to_epsg())
+            df = self._attach_geometry(src, df, add_geometry)
 
         return df
+
+    def _extract_values_tiled(self, band_names: list, tile_size: int) -> pd.DataFrame:
+        """Extract raster band values into a DataFrame using tiles.
+
+        Args:
+            band_names (list): Band names for the DataFrame columns.
+            tile_size (int): Tile size in pixels.
+
+        Returns:
+            pd.DataFrame: Concatenated DataFrame from all tiles.
+        """
+        df_list = []
+        for arr in self.get_tile(tile_size):
+            idx = (1, 2) if arr.ndim > 2 else (0, 1)
+            mask_arr = np.ones((arr.shape[idx[0]], arr.shape[idx[1]]))
+            pixels = get_pixels(arr, mask_arr).transpose()
+            df_list.append(pd.DataFrame(pixels, columns=band_names))
+
+        return pd.concat(df_list)
+
+    def _extract_values_full(self, band_names: list) -> pd.DataFrame:
+        """Extract all raster band values into a DataFrame (no tiling).
+
+        Args:
+            band_names (list): Band names for the DataFrame columns.
+
+        Returns:
+            pd.DataFrame: DataFrame with one column per band, no-data rows removed.
+        """
+        arr = self.read_array()
+
+        if self.band_count == 1:
+            pixels = arr.flatten()
+        else:
+            pixels = (
+                arr.flatten()
+                .reshape(self.band_count, self.columns * self.rows)
+                .transpose()
+            )
+        df = pd.DataFrame(pixels, columns=band_names)
+        if self.no_data_value[0] is not None:
+            df.replace(self.no_data_value[0], np.nan, inplace=True)
+        df.dropna(axis=0, inplace=True, ignore_index=True)
+        return df
+
+    @staticmethod
+    def _attach_geometry(
+        src, df: pd.DataFrame, geometry_type: str
+    ) -> gpd.GeoDataFrame:
+        """Attach point or polygon geometry to a DataFrame.
+
+        Args:
+            src: The dataset to derive cell geometries from.
+            df (pd.DataFrame): DataFrame with band values.
+            geometry_type (str): "point" or "polygon".
+
+        Returns:
+            gpd.GeoDataFrame: GeoDataFrame with geometry column.
+        """
+        if geometry_type.lower() == "point":
+            coords = src.get_cell_points(mask=True)
+        else:
+            coords = src.get_cell_polygons(mask=True)
+
+        gdf = gpd.GeoDataFrame(df.loc[:], geometry=coords["geometry"].to_list())
+        gdf.set_crs(coords.crs.to_epsg())
+        return gdf
 
     def translate(self, path: str | Path | None = None, **kwargs):
         """Translate.
