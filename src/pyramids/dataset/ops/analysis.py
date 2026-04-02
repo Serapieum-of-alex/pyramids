@@ -318,13 +318,13 @@ class Analysis:
         self,
         band: int | None = None,
         exclude_value: Any | None = None,
-        feature: FeatureCollection | GeoDataFrame | None = None,
+        mask: FeatureCollection | GeoDataFrame | None = None,
     ) -> np.ndarray:
         """Extract.
 
         - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
-        - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
-          values within the feature are extracted.
+        - If the mask parameter is given, the raster will be clipped to the extent of the given mask and the
+          values within the mask are extracted.
 
         Args:
             band (int, optional):
@@ -332,7 +332,7 @@ class Analysis:
             exclude_value (Numeric, optional):
                 Values to exclude from extracted values. If the dataset is multi-band, the values in `exclude_value`
                 will be filtered out from the first band only.
-            feature (FeatureCollection | GeoDataFrame, optional):
+            mask (FeatureCollection | GeoDataFrame, optional):
                 Vector data containing point geometries at which to extract the values. Default is None.
 
         Returns:
@@ -402,7 +402,7 @@ class Analysis:
 
                 ```python
                 >>> points = gpd.GeoDataFrame(geometry=[Point(0.1, -0.1), Point(0.1, -0.2), Point(0.2, -0.2), Point(0.2, -0.1)],crs=4326)
-                >>> values = dataset.extract(feature=points)
+                >>> values = dataset.extract(mask=points)
                 >>> print(values) # doctest: +SKIP
                 [[4 3 3 4]
                  [3 4 4 2]]
@@ -415,15 +415,15 @@ class Analysis:
         no_data_value = (
             self.no_data_value[0] if self.no_data_value[0] is not None else np.nan
         )
-        if feature is None:
-            mask = (
+        if mask is None:
+            exclude_list = (
                 [no_data_value, exclude_value]
                 if exclude_value is not None
                 else [no_data_value]
             )
-            values = get_pixels2(arr, mask)
+            values = get_pixels2(arr, exclude_list)
         else:
-            indices = self.map_to_array_coordinates(feature)
+            indices = self.map_to_array_coordinates(mask)
             if arr.ndim > 2:
                 values = arr[:, indices[:, 0], indices[:, 1]]
             else:

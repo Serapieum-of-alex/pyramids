@@ -518,7 +518,7 @@ class TestCellGeometryMethods:
         """With mask=True, only domain cells should get polygons."""
         import geopandas as gpd
 
-        gdf = dataset_with_nodata.get_cell_polygons(mask=True)
+        gdf = dataset_with_nodata.get_cell_polygons(domain_only=True)
         assert isinstance(gdf, gpd.GeoDataFrame), "Should return GeoDataFrame"
         assert len(gdf) == 4, f"Expected 4 polygons for domain cells, got {len(gdf)}"
 
@@ -3168,7 +3168,7 @@ class TestToFeatureCollection:
         poly = box(0.0, -0.10, 0.10, 0.0)
         mask = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
         gdf = single_band_dataset.to_feature_collection(
-            vector_mask=mask, add_geometry="point"
+            mask=mask, add_geometry="point"
         )
         assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
         assert len(gdf) <= len(full_df), (
@@ -3367,7 +3367,7 @@ class TestToFeatureCollectionWithMask:
 
         poly = box(0.0, -0.10, 0.10, 0.0)
         gdf = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
-        df = single_band_dataset.to_feature_collection(vector_mask=gdf)
+        df = single_band_dataset.to_feature_collection(mask=gdf)
         assert isinstance(df, pd.DataFrame), "Should return a DataFrame"
 
     def test_to_feature_collection_none_nodata(self):

@@ -47,7 +47,7 @@ class Vectorize:
 
     def to_feature_collection(
         self,
-        vector_mask: GeoDataFrame | None = None,
+        mask: GeoDataFrame | None = None,
         add_geometry: str | None = None,
         tile: bool = False,
         tile_size: int = 256,
@@ -56,7 +56,7 @@ class Vectorize:
         """Convert a dataset to a vector.
 
         The function does the following:
-            - Flatten the array in each band in the raster then mask the values if a vector_mask file is given
+            - Flatten the array in each band in the raster then mask the values if a mask is given
                 otherwise it will flatten all values.
             - Put the values for each band in a column in a dataframe under the name of the raster band,
                 but if no meta-data in the raster band exists, an index number will be used [1, 2, 3, ...]
@@ -67,8 +67,8 @@ class Vectorize:
                 - If a polygon is chosen, a square polygon will be created that covers the entire cell.
 
         Args:
-            vector_mask (GeoDataFrame, optional):
-                GeoDataFrame for the vector_mask. If given, it will be used to clip the raster.
+            mask (GeoDataFrame, optional):
+                GeoDataFrame to clip the raster. If given, the raster will be cropped to the mask extent.
             add_geometry (str):
                 "Polygon" or "Point" if you want to add a polygon geometry of the cells as column in dataframe.
                 Default is None.
@@ -164,7 +164,7 @@ class Vectorize:
                   >>> poly = gpd.GeoDataFrame(
                   ...             geometry=[Polygon([(0.05, -0.05), (0.05, -0.1), (0.1, -0.1), (0.1, -0.05)])], crs=4326
                   ... )
-                  >>> df = dataset.to_feature_collection(vector_mask=poly)
+                  >>> df = dataset.to_feature_collection(mask=poly)
                   >>> print(df) # doctest: +SKIP
                        Band_1    Band_2
                   0  0.354482  0.383279
@@ -194,8 +194,8 @@ class Vectorize:
         """
         band_names = self.band_names
 
-        if vector_mask is not None:
-            src = self.crop(mask=vector_mask, touch=touch)
+        if mask is not None:
+            src = self.crop(mask=mask, touch=touch)
         else:
             src = self
 
@@ -270,9 +270,9 @@ class Vectorize:
             gpd.GeoDataFrame: GeoDataFrame with geometry column.
         """
         if geometry_type.lower() == "point":
-            coords = src.get_cell_points(mask=True)
+            coords = src.get_cell_points(domain_only=True)
         else:
-            coords = src.get_cell_polygons(mask=True)
+            coords = src.get_cell_polygons(domain_only=True)
 
         gdf = gpd.GeoDataFrame(df.loc[:], geometry=coords["geometry"].to_list())
         gdf.set_crs(coords.crs.to_epsg())

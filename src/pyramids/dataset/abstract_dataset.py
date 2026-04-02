@@ -690,13 +690,13 @@ class AbstractDataset(ABC):
     def extract(
         self,
         exclude_value: Any | None = None,
-        feature: FeatureCollection | GeoDataFrame | None = None,
+        mask: FeatureCollection | GeoDataFrame | None = None,
     ) -> np.ndarray:
         """Extract.
 
             - Extract method gets all the values in a raster, and excludes the values in the exclude_value parameter.
-            - If the feature parameter is given, the raster will be clipped to the extent of the given feature and the
-            values within the feature are extracted.
+            - If the mask parameter is given, the raster will be clipped to the extent of the given mask and the
+            values within the mask are extracted.
 
         Args:
             exclude_value (Numeric, optional):
