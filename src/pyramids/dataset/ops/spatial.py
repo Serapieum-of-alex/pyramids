@@ -359,15 +359,10 @@ class Spatial:
         dtype = self.gdal_dtype[0]
         bands = self.band_count
 
-        dst = type(self)._create_dataset(cols, rows, bands, dtype)
-        # set the geotransform
-        dst.SetGeoTransform(new_geo)
-        # set the projection
-        dst.SetProjection(sr_src.ExportToWkt())
-        dst_obj = type(self)(dst, "write")
-        # set the no data value
-        dst_obj._set_no_data_value(self.no_data_value)
-        # perform the projection & resampling
+        dst_obj = type(self)._build_dataset(
+            cols, rows, bands, dtype, new_geo, sr_src.ExportToWkt(),
+            self.no_data_value, access="write",
+        )
         gdal.ReprojectImage(
             self.raster,
             dst_obj.raster,
@@ -454,9 +449,6 @@ class Spatial:
         rows = int(np.round(abs(uly - lry) / pixel_spacing))
 
         dtype = self.gdal_dtype[0]
-        dst = type(self)._create_dataset(cols, rows, self.band_count, dtype)
-
-        # new geotransform
         new_geo = (
             ulx,
             pixel_spacing,
@@ -465,14 +457,10 @@ class Spatial:
             src_gt[4],
             np.sign(src_gt[-1]) * pixel_spacing,
         )
-        # set the geotransform
-        dst.SetGeoTransform(new_geo)
-        # set the projection
-        dst.SetProjection(dst_sr.ExportToWkt())
-        # set the no data value
-        dst_obj = type(self)(dst)
-        dst_obj._set_no_data_value(self.no_data_value)
-        # perform the projection & resampling
+        dst_obj = type(self)._build_dataset(
+            cols, rows, self.band_count, dtype, new_geo, dst_sr.ExportToWkt(),
+            self.no_data_value,
+        )
         gdal.ReprojectImage(
             self.raster,
             dst_obj.raster,
@@ -769,18 +757,10 @@ class Spatial:
         reprojected_raster_b: Dataset = self
         if self.epsg != src.epsg:
             reprojected_raster_b = self.to_crs(src.epsg)  # type: ignore[assignment]
-        # create a new raster
-        dst = type(self)._create_dataset(
-            src.columns, src.rows, self.band_count, src.gdal_dtype[0], driver="MEM"
+        dst_obj = type(self)._build_dataset(
+            src.columns, src.rows, self.band_count, src.gdal_dtype[0],
+            src.geotransform, src.crs, self.no_data_value,
         )
-        # set the geotransform
-        dst.SetGeoTransform(src.geotransform)
-        # set the projection
-        dst.SetProjection(src.crs)
-        # set the no data value
-        dst_obj = type(self)(dst)
-        dst_obj._set_no_data_value(self.no_data_value)
-        # perform the projection & resampling
         method = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
         gdal.ReprojectImage(
