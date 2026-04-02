@@ -807,7 +807,7 @@ class Spatial:
         # crop the src raster with the aligned mask
         dst_obj = self._crop_aligned(mask)
 
-        dst_obj = type(self).correct_wrap_cutline_error(dst_obj)
+        dst_obj = type(self)._correct_wrap_cutline_error(dst_obj)
         return dst_obj
 
     def _crop_with_polygon_warp(
@@ -847,7 +847,7 @@ class Spatial:
         )
         dst = gdal.Warp("", self.raster, options=warp_options)
         # Use the base Dataset class (not a subclass like NetCDF) for intermediate GDAL warp results
-        # because correct_wrap_cutline_error calls create_from_array which has different behavior in
+        # because _correct_wrap_cutline_error calls create_from_array which has different behavior in
         # subclasses.
         base_cls = next(
             c for c in type(self).__mro__
@@ -856,12 +856,12 @@ class Spatial:
         dst_obj = base_cls(dst)
 
         if touch:
-            dst_obj = base_cls.correct_wrap_cutline_error(dst_obj)
+            dst_obj = base_cls._correct_wrap_cutline_error(dst_obj)
 
         return dst_obj
 
     @staticmethod
-    def correct_wrap_cutline_error(src: Dataset) -> Dataset:
+    def _correct_wrap_cutline_error(src: Dataset) -> Dataset:
         """Correct wrap cutline error.
 
         https://github.com/serapeum-org/pyramids/issues/74
