@@ -284,7 +284,7 @@ class Vectorize:
             coords = src.get_cell_polygons(domain_only=True)
 
         gdf = gpd.GeoDataFrame(df.loc[:], geometry=coords["geometry"].to_list())
-        gdf.set_crs(coords.crs.to_epsg())
+        gdf = gdf.set_crs(coords.crs.to_epsg())
         return gdf
 
     def translate(self, path: str | Path | None = None, **kwargs) -> Dataset:
