@@ -565,6 +565,8 @@ class Dataset(  # type: ignore[misc]
             driver (str): Driver type. Default is "MEM".
             path (str | Path | None): Path for disk-based drivers.
             access (str): Access mode for the Dataset wrapper. Default is "write".
+                Note: MEM driver datasets can be written to regardless of access mode since
+                the access flag is enforced at the pyramids level, not by GDAL.
 
         Returns:
             Dataset: A fully configured Dataset object.
