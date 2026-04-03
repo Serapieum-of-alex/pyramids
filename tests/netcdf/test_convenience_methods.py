@@ -224,6 +224,100 @@ class TestWholeContainerCrop:
         )
 
 
+class TestWholeContainerResample:
+    """Resample on root container resamples all variables."""
+
+    def test_resamples_all_variables(self):
+        """resample() on container should resample every variable.
+
+        Test scenario:
+            Container with 2 variables, resample to larger cell size,
+            both should have smaller spatial dimensions.
+        """
+        nc = _make_nc()
+        ds2 = Dataset.create_from_array(
+            np.random.RandomState(99).rand(5, 20, 30),
+            geo=(30.0, 0.5, 0, 35.0, 0, -0.5),
+            epsg=4326, no_data_value=-9999.0,
+        )
+        nc.set_variable("pressure", ds2)
+        resampled = nc.resample(cell_size=1.0)
+        assert "temperature" in resampled.variable_names, (
+            "temperature should be in resampled container"
+        )
+        assert "pressure" in resampled.variable_names, (
+            "pressure should be in resampled container"
+        )
+
+    def test_returns_new_container(self):
+        """resample() should return a new NetCDF.
+
+        Test scenario:
+            Original should be unchanged.
+        """
+        nc = _make_nc()
+        resampled = nc.resample(cell_size=1.0)
+        assert resampled is not nc, "Should return a new container"
+        assert isinstance(resampled, NetCDF), (
+            f"Expected NetCDF, got {type(resampled).__name__}"
+        )
+
+    def test_band_count_preserved(self):
+        """Resampling container should preserve band count.
+
+        Test scenario:
+            5 time steps before = 5 time steps after.
+        """
+        nc = _make_nc()
+        resampled = nc.resample(cell_size=1.0)
+        var = resampled.get_variable("temperature")
+        assert var.band_count == 5, (
+            f"Expected 5 bands, got {var.band_count}"
+        )
+
+
+class TestWholeContainerReproject:
+    """to_crs on root container reprojects all variables."""
+
+    def test_reprojects_all_variables(self):
+        """to_crs() on container should reproject every variable.
+
+        Test scenario:
+            Container with temperature, reproject to UTM.
+        """
+        nc = _make_nc()
+        reprojected = nc.to_crs(to_epsg=32636)
+        assert "temperature" in reprojected.variable_names, (
+            "temperature should be in reprojected container"
+        )
+
+    def test_epsg_changed(self):
+        """Reprojected container variables should have new EPSG.
+
+        Test scenario:
+            Original is 4326, reproject to 32636.
+        """
+        nc = _make_nc()
+        reprojected = nc.to_crs(to_epsg=32636)
+        var = reprojected.get_variable("temperature")
+        assert var.epsg == 32636, (
+            f"Expected 32636, got {var.epsg}"
+        )
+
+    def test_returns_new_container(self):
+        """to_crs() should return a new NetCDF.
+
+        Test scenario:
+            Original should be unchanged.
+        """
+        nc = _make_nc()
+        reprojected = nc.to_crs(to_epsg=32636)
+        assert reprojected is not nc, "Should return a new container"
+        assert isinstance(reprojected, NetCDF), (
+            f"Expected NetCDF, got {type(reprojected).__name__}"
+        )
+
+
 class TestChaining:
     """Convenience methods should be chainable."""
 

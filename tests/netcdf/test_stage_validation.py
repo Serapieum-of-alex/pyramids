@@ -501,9 +501,12 @@ class TestStage4_SpatialOpsGuard:
             f"Expected NetCDF, got {type(cropped)}"
         )
 
-    def test_to_crs_on_container_raises(self, mdim_nc):
-        with pytest.raises(ValueError, match="not supported on the NetCDF container"):
-            mdim_nc.to_crs(3857)
+    def test_to_crs_on_container_reprojects_all(self, mdim_nc):
+        """to_crs() on root container should reproject all variables (NEW-7)."""
+        reprojected = mdim_nc.to_crs(3857)
+        assert isinstance(reprojected, NetCDF), (
+            f"Expected NetCDF, got {type(reprojected)}"
+        )
 
     def test_crop_on_variable_allowed(self, classic_nc):
         """Spatial ops on variable subsets should not raise."""

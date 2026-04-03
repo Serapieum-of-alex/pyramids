@@ -346,29 +346,58 @@ class NetCDF(Dataset):
             NetCDF or Dataset: Cropped container or dataset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
-            first_var = self.get_variable(self.variable_names[0])
-            first_cropped = first_var.crop(mask, touch=touch)
-            ndv = first_cropped.no_data_value
-            ndv_scalar = ndv[0] if isinstance(ndv, list) and ndv else ndv
-            result = NetCDF.create_from_array(
-                arr=first_cropped.read_array(),
-                geo=first_cropped.geotransform,
-                epsg=first_cropped.epsg,
-                no_data_value=ndv_scalar,
-                variable_name=self.variable_names[0],
-                extra_dim_name=first_var._band_dim_name or "time",
-                extra_dim_values=first_var._band_dim_values,
+            return self._apply_to_all_variables(
+                "crop", {"mask": mask, "touch": touch}, inplace=inplace,
             )
-            for var_name in self.variable_names[1:]:
-                var = self.get_variable(var_name)
-                cropped = var.crop(mask, touch=touch)
-                result.set_variable(var_name, cropped)
-
-            if inplace:
-                self._replace_raster(result._raster)
-                return None
-            return result
         return super().crop(mask=mask, touch=touch, inplace=inplace)
+
+    def _apply_to_all_variables(self, operation, op_kwargs, inplace=False):
+        """Apply an operation to every variable in the container.
+
+        Args:
+            operation: Name of the Dataset method to call (e.g. "crop").
+            op_kwargs: Keyword arguments to pass to the method.
+            inplace: If True, replace this container's raster in place.
+
+        Returns:
+            NetCDF or None: New container, or None if inplace=True.
+        """
+        first_name = self.variable_names[0]
+        first_var = self.get_variable(first_name)
+        first_result = getattr(first_var, operation)(**op_kwargs)
+
+        # to_crs returns a VRT — materialize to avoid dangling refs
+        first_arr = first_result.read_array()
+        ndv = first_result.no_data_value
+        ndv_scalar = ndv[0] if isinstance(ndv, list) and ndv else ndv
+        result = NetCDF.create_from_array(
+            arr=first_arr,
+            geo=first_result.geotransform,
+            epsg=first_result.epsg,
+            no_data_value=ndv_scalar,
+            variable_name=first_name,
+            extra_dim_name=first_var._band_dim_name or "time",
+            extra_dim_values=first_var._band_dim_values,
+        )
+
+        for var_name in self.variable_names[1:]:
+            var = self.get_variable(var_name)
+            var_result = getattr(var, operation)(**op_kwargs)
+            var_arr = var_result.read_array()
+            var_ndv = var_result.no_data_value
+            var_ndv_scalar = var_ndv[0] if isinstance(var_ndv, list) and var_ndv else var_ndv
+            ds = Dataset.create_from_array(
+                var_arr, geo=var_result.geotransform,
+                epsg=var_result.epsg, no_data_value=var_ndv_scalar,
+            )
+            ds._band_dim_name = var._band_dim_name
+            ds._band_dim_values = var._band_dim_values
+            result.set_variable(var_name, ds)
+
+        if inplace:
+            self._replace_raster(result._raster)
+            return None
+        return result
 
     def to_crs(
         self,
@@ -377,30 +406,66 @@ class NetCDF(Dataset):
         maintain_alignment=False,
         inplace=False,
     ):
-        """Reproject the dataset to a different coordinate reference system.
+        """Reproject the dataset to a different CRS.
 
-        Blocked on root MDIM containers — extract a variable first with
-        ``get_variable()``.
+        On a **root MDIM container** this reprojects every variable
+        and returns a new container. On a **variable subset** it
+        delegates to ``Dataset.to_crs()``.
 
         Args:
             to_epsg: Target EPSG code (e.g., 4326, 32637).
             method: Resampling method. Defaults to ``"nearest neighbor"``.
-            maintain_alignment: If True, keep the same number of rows and
-                columns after reprojection. Defaults to False.
-            inplace: If True, modify this object in place. Defaults to False.
+            maintain_alignment: If True, keep the same number of rows
+                and columns. Defaults to False.
+            inplace: If True, modify this object in place (container
+                mode only). Defaults to False.
 
         Returns:
-            Dataset or None: Reprojected dataset (or None if inplace=True).
-
-        Raises:
-            ValueError: If called on a root MDIM container.
+            NetCDF or Dataset: Reprojected container or dataset.
         """
-        self._check_not_container("to_crs")
+        if self._is_md_array and not self._is_subset and self.band_count == 0:
+            return self._apply_to_all_variables(
+                "to_crs",
+                {"to_epsg": to_epsg, "method": method,
+                 "maintain_alignment": maintain_alignment},
+                inplace=inplace,
+            )
         return super().to_crs(
             to_epsg=to_epsg,
             method=method,
             maintain_alignment=maintain_alignment,
             inplace=inplace,
+        )
+
+    def resample(
+        self,
+        cell_size,
+        method="nearest neighbor",
+        inplace=False,
+    ):
+        """Resample the dataset to a different cell size.
+
+        On a **root MDIM container** this resamples every variable
+        and returns a new container. On a **variable subset** it
+        delegates to ``Dataset.resample()``.
+
+        Args:
+            cell_size: New cell size.
+            method: Resampling method. Defaults to ``"nearest neighbor"``.
+            inplace: If True, modify this object in place (container
+                mode only). Defaults to False.
+
+        Returns:
+            NetCDF or Dataset: Resampled container or dataset.
+        """
+        if self._is_md_array and not self._is_subset and self.band_count == 0:
+            return self._apply_to_all_variables(
+                "resample",
+                {"cell_size": cell_size, "method": method},
+                inplace=inplace,
+            )
+        return super().resample(
+            cell_size=cell_size, method=method, inplace=inplace,
         )
 
     def sel(self, **kwargs) -> Dataset:
