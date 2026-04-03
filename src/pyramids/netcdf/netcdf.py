@@ -41,6 +41,11 @@ class _LazyVariableDict(dict):
             dict.__setitem__(self, key, self._nc.get_variable(key))
         return dict.__getitem__(self, key)
 
+    def get(self, key, default=None):
+        if key in self._names:
+            return self[key]
+        return default
+
     def __contains__(self, key):
         return key in self._names
 
