@@ -1562,10 +1562,12 @@ class NetCDF(Dataset):
         dtype = gdal.ExtendedDataType.Create(numpy_to_gdal_dtype(arr))
         new_md_array = dst_group.CreateMDArray(var_name, src_dims, dtype)
         new_md_array.Write(arr)
-        try:
-            new_md_array.SetNoDataValueDouble(src_mdarray.GetNoDataValue())
-        except Exception:
-            new_md_array.SetNoDataValueDouble(-9999)
+        ndv = src_mdarray.GetNoDataValue()
+        if ndv is not None:
+            try:
+                new_md_array.SetNoDataValueDouble(ndv)
+            except Exception:
+                pass
 
         new_md_array.SetSpatialRef(src_mdarray.GetSpatialRef())
 

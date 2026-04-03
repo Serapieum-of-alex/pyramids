@@ -685,13 +685,14 @@ class TestCreateNetcdfFromArrayValidation:
 
 
 class TestAddMdArrayToGroupFallback:
-    """Tests for _add_md_array_to_group NoData exception path."""
+    """Tests for _add_md_array_to_group NoData handling."""
 
-    def test_add_md_array_no_data_fallback(self):
-        """Verify _add_md_array_to_group falls back to -9999 when NoData fails.
+    def test_no_nodata_when_source_has_none(self):
+        """When source has no nodata, the copy should also have no nodata.
 
-        Covers lines 1086-1087: the except branch calling
-        SetNoDataValueDouble(-9999).
+        Test scenario:
+            Source variable with GetNoDataValue() returning None should
+            not produce a phantom -9999 sentinel on the copy.
         """
         nc = _make_2d_nc()
         src_rg = nc._raster.GetRootGroup()
@@ -702,22 +703,22 @@ class TestAddMdArrayToGroupFallback:
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
         for d in src_arr.GetDimensions():
             iv = d.GetIndexingVariable()
-            NetCDF.create_main_dimension(dst_rg, d.GetName(), dtype, iv.ReadAsArray())
+            NetCDF.create_main_dimension(
+                dst_rg, d.GetName(), dtype, iv.ReadAsArray()
+            )
 
-        # Patch GetNoDataValue to return a value that triggers failure
-        original_get_ndv = src_arr.GetNoDataValue
-
-        def bad_nodata():
-            """Return a value that makes SetNoDataValueDouble fail."""
-            raise RuntimeError("Simulated NoData failure")
-
-        with patch.object(type(src_arr), "GetNoDataValue", bad_nodata):
+        # Patch GetNoDataValue to return None (no nodata on source)
+        with patch.object(
+            type(src_arr), "GetNoDataValue", return_value=None
+        ):
             NetCDF._add_md_array_to_group(dst_rg, "copied_var", src_arr)
 
         copied = dst_rg.OpenMDArray("copied_var")
         assert copied is not None, "Copied variable should exist"
         ndv = copied.GetNoDataValue()
-        assert ndv is not None, "NoData value should have been set"
+        assert ndv is None, (
+            f"Expected no nodata (None), got {ndv}"
+        )
 
 
 class TestSetVariableAttributes:
