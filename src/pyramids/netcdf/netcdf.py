@@ -708,6 +708,126 @@ class NetCDF(Dataset):
                 pass
         return result
 
+    @property
+    def group_names(self) -> list[str]:
+        """Names of sub-groups in the root group.
+
+        Returns:
+            list[str]: Sub-group names (e.g. ``["forecast", "analysis"]``).
+            Empty list if no sub-groups exist or the dataset is in
+            classic mode.
+        """
+        rg = self._raster.GetRootGroup()
+        result = []
+        if rg is not None:
+            try:
+                names = rg.GetGroupNames()
+                if names:
+                    result = list(names)
+            except Exception:
+                pass
+        return result
+
+    def get_group(self, group_name: str) -> NetCDF:
+        """Open a sub-group as a NetCDF container.
+
+        The returned object wraps the sub-group's GDAL dataset and
+        exposes the sub-group's variables and dimensions via the
+        same API as the root container.
+
+        Args:
+            group_name: Name of the sub-group. Supports nested paths
+                separated by ``/`` (e.g. ``"forecast/surface"``).
+
+        Returns:
+            NetCDF: A container backed by the sub-group.
+
+        Raises:
+            ValueError: If the group doesn't exist or the dataset
+                has no root group.
+        """
+        rg = self._raster.GetRootGroup()
+        if rg is None:
+            raise ValueError(
+                "get_group requires a multidimensional container."
+            )
+
+        # Navigate nested paths: "forecast/surface" → open each level
+        group = rg
+        parts = group_name.split("/")
+        for part in parts:
+            try:
+                group = group.OpenGroup(part)
+            except Exception:
+                group = None
+            if group is None:
+                raise ValueError(
+                    f"Group '{group_name}' not found. "
+                    f"Available groups: {self.group_names}"
+                )
+
+        # Create a multidimensional dataset from the sub-group.
+        # GDAL doesn't have a direct "group → dataset" conversion,
+        # so we build a MEM MDIM dataset and copy the group's
+        # arrays and dimensions into it.
+        dst = gdal.GetDriverByName("MEM").CreateMultiDimensional("group")
+        dst_rg = dst.GetRootGroup()
+        dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
+
+        # Copy dimensions from the sub-group
+        dim_map = {}
+        for gdal_dim in (group.GetDimensions() or []):
+            dim_name = gdal_dim.GetName()
+            new_dim = dst_rg.CreateDimension(
+                dim_name, gdal_dim.GetType(), None, gdal_dim.GetSize()
+            )
+            iv = gdal_dim.GetIndexingVariable()
+            if iv is not None:
+                coord_arr = dst_rg.CreateMDArray(
+                    dim_name, [new_dim],
+                    gdal.ExtendedDataType.Create(
+                        numpy_to_gdal_dtype(iv.ReadAsArray())
+                    ),
+                )
+                coord_arr.Write(iv.ReadAsArray())
+                new_dim.SetIndexingVariable(coord_arr)
+            dim_map[dim_name] = new_dim
+
+        # Copy arrays from the sub-group
+        for arr_name in (group.GetMDArrayNames() or []):
+            md_arr = group.OpenMDArray(arr_name)
+            if md_arr is None:
+                continue
+            arr_dims = md_arr.GetDimensions()
+            # Map source dims to destination dims (by name)
+            new_dims = []
+            for d in arr_dims:
+                d_name = d.GetName()
+                if d_name in dim_map:
+                    new_dims.append(dim_map[d_name])
+                else:
+                    # Dimension from parent group — create locally
+                    new_d = dst_rg.CreateDimension(
+                        d_name, d.GetType(), None, d.GetSize()
+                    )
+                    dim_map[d_name] = new_d
+                    new_dims.append(new_d)
+            arr_data = md_arr.ReadAsArray()
+            arr_dtype = gdal.ExtendedDataType.Create(
+                numpy_to_gdal_dtype(arr_data)
+            )
+            new_arr = dst_rg.CreateMDArray(arr_name, new_dims, arr_dtype)
+            new_arr.Write(arr_data)
+            ndv = md_arr.GetNoDataValue()
+            if ndv is not None:
+                new_arr.SetNoDataValueDouble(ndv)
+            srs = md_arr.GetSpatialRef()
+            if srs is not None:
+                new_arr.SetSpatialRef(srs)
+
+        result = NetCDF(dst)
+        return result
+
     def get_variable_names(self) -> list[str]:
         """Return names of data variables, excluding dimension coordinates.
 
@@ -783,8 +903,13 @@ class NetCDF(Dataset):
         The returned object carries origin metadata so that modified data
         can be written back via ``set_variable()``.
 
+        Supports group-qualified names: ``"forecast/temperature"`` first
+        navigates to the ``forecast`` sub-group, then extracts
+        ``temperature`` from it.
+
         Args:
-            variable_name: Name of the variable to extract.
+            variable_name: Name of the variable to extract. Use ``/``
+                to separate group path from variable name.
 
         Returns:
             NetCDF: A subset backed by a classic dataset where
@@ -793,6 +918,14 @@ class NetCDF(Dataset):
         Raises:
             ValueError: If ``variable_name`` is not present in the dataset.
         """
+        # Handle group-qualified names: "forecast/temperature"
+        if "/" in variable_name:
+            parts = variable_name.rsplit("/", 1)
+            group_path = parts[0]
+            var_name = parts[1]
+            group_nc = self.get_group(group_path)
+            return group_nc.get_variable(var_name)
+
         if variable_name not in self.variable_names:
             raise ValueError(
                 f"{variable_name} is not a valid variable name in {self.variable_names}"
