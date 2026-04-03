@@ -1267,6 +1267,96 @@ class NetCDF(Dataset):
 
         return NetCDF.create_main_dimension(rg, dim_name, dtype, values)
 
+    @property
+    def global_attributes(self) -> dict[str, Any]:
+        """Global attributes from the root group.
+
+        Returns a live dict read from the GDAL root group each time.
+        For MDIM mode, reads from the root group's attributes.
+        For classic mode, reads from GDAL's ``GetMetadata()``.
+
+        Returns:
+            dict[str, Any]: Key-value mapping of global attributes.
+        """
+        rg = self._raster.GetRootGroup()
+        result = {}
+        if rg is not None:
+            try:
+                for attr in rg.GetAttributes():
+                    result[attr.GetName()] = attr.Read()
+            except Exception:
+                pass
+        else:
+            result = dict(self._raster.GetMetadata())
+        return result
+
+    def set_global_attribute(self, name: str, value: Any):
+        """Set a global attribute on the root group.
+
+        Creates or updates a single attribute on the root group.
+
+        Args:
+            name: Attribute name (e.g. ``"history"``,
+                ``"Conventions"``).
+            value: Attribute value. Supports str, int, float.
+
+        Raises:
+            ValueError: If the dataset has no root group
+                (not opened in MDIM mode).
+        """
+        rg = self._raster.GetRootGroup()
+        if rg is None:
+            raise ValueError(
+                "set_global_attribute requires a multidimensional "
+                "container. Open the file with "
+                "open_as_multi_dimensional=True."
+            )
+        # Delete existing attribute if present (GDAL raises on duplicate)
+        try:
+            rg.DeleteAttribute(name)
+        except Exception:
+            pass
+        if isinstance(value, str):
+            attr = rg.CreateAttribute(
+                name, [], gdal.ExtendedDataType.CreateString()
+            )
+        elif isinstance(value, float):
+            attr = rg.CreateAttribute(
+                name, [], gdal.ExtendedDataType.Create(gdal.GDT_Float64)
+            )
+        elif isinstance(value, int):
+            attr = rg.CreateAttribute(
+                name, [], gdal.ExtendedDataType.Create(gdal.GDT_Int32)
+            )
+        else:
+            attr = rg.CreateAttribute(
+                name, [], gdal.ExtendedDataType.CreateString()
+            )
+            value = str(value)
+        attr.Write(value)
+        self._invalidate_caches()
+
+    def delete_global_attribute(self, name: str):
+        """Delete a global attribute from the root group.
+
+        Args:
+            name: Attribute name to delete.
+
+        Raises:
+            ValueError: If the dataset has no root group.
+        """
+        rg = self._raster.GetRootGroup()
+        if rg is None:
+            raise ValueError(
+                "delete_global_attribute requires a multidimensional "
+                "container."
+            )
+        try:
+            rg.DeleteAttribute(name)
+        except Exception:
+            pass
+        self._invalidate_caches()
+
     def set_variable(
         self,
         variable_name: str,
