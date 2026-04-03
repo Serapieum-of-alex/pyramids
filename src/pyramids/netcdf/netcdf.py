@@ -381,6 +381,109 @@ class NetCDF(Dataset):
             inplace=inplace,
         )
 
+    def sel(self, **kwargs) -> Dataset:
+        """Select a subset of bands by coordinate values.
+
+        Extracts bands whose coordinate values match the given
+        criteria.  Works on variable subsets that have
+        ``_band_dim_name`` and ``_band_dim_values`` set by
+        ``get_variable()``.
+
+        Args:
+            **kwargs: One keyword argument where the key is the
+                dimension name and the value is one of:
+
+                - A single number: select one band by exact value.
+                - A list of numbers: select multiple bands.
+                - A ``slice(start, stop)``: select bands where
+                  ``start <= coord <= stop``.
+
+        Returns:
+            Dataset: A new dataset with only the selected bands.
+
+        Raises:
+            ValueError: If the dimension name doesn't match
+                ``_band_dim_name``, or no matching bands are found.
+
+        Examples:
+            Select a single time step::
+
+                var.sel(time=6)
+
+            Select multiple time steps::
+
+                var.sel(time=[0, 12, 24])
+
+            Select a range::
+
+                var.sel(time=slice(6, 18))
+        """
+        if len(kwargs) != 1:
+            raise ValueError("sel() requires exactly one keyword argument.")
+
+        dim_name, selector = next(iter(kwargs.items()))
+
+        if self._band_dim_name is None:
+            raise ValueError(
+                "sel() requires a variable with a non-spatial dimension. "
+                "This variable has no band dimension tracked."
+            )
+        if dim_name != self._band_dim_name:
+            raise ValueError(
+                f"Dimension '{dim_name}' does not match the band "
+                f"dimension '{self._band_dim_name}'."
+            )
+        if self._band_dim_values is None:
+            raise ValueError(
+                "No coordinate values available for dimension "
+                f"'{dim_name}'."
+            )
+
+        coords = self._band_dim_values
+
+        if isinstance(selector, slice):
+            start = selector.start if selector.start is not None else coords[0]
+            stop = selector.stop if selector.stop is not None else coords[-1]
+            band_indices = [
+                i for i, v in enumerate(coords) if start <= v <= stop
+            ]
+        elif isinstance(selector, list):
+            coord_set = set(selector)
+            band_indices = [
+                i for i, v in enumerate(coords) if v in coord_set
+            ]
+        else:
+            band_indices = [
+                i for i, v in enumerate(coords) if v == selector
+            ]
+
+        if not band_indices:
+            raise ValueError(
+                f"No bands match {dim_name}={selector}. "
+                f"Available values: {coords}"
+            )
+
+        full_arr = self.read_array()
+        selected = full_arr[band_indices]
+        selected_coords = [coords[i] for i in band_indices]
+
+        # Squeeze to 2D if only one band selected
+        if selected.shape[0] == 1:
+            selected = selected[0]
+
+        ndv = self.no_data_value
+        ndv_scalar = ndv[0] if isinstance(ndv, list) and ndv else ndv
+        result = Dataset.create_from_array(
+            selected, geo=self.geotransform, epsg=self.epsg,
+            no_data_value=ndv_scalar,
+        )
+        result._band_dim_name = self._band_dim_name
+        result._band_dim_values = selected_coords
+        if hasattr(self, "_variable_attrs"):
+            result._variable_attrs = self._variable_attrs
+
+        return result
+
     @classmethod
     def read_file(  # type: ignore[override]
         cls,
