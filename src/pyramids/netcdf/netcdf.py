@@ -1747,7 +1747,6 @@ class NetCDF(Dataset):
             variable_name: Name of the variable to remove.
         """
         if self.driver_type == "memory":
-            # first copy the dataset to memory
             dst = self._raster
         else:
             dst = gdal.GetDriverByName("MEM").CreateCopy("", self._raster, 0)
@@ -1756,3 +1755,38 @@ class NetCDF(Dataset):
         rg.DeleteMDArray(variable_name)
 
         self._replace_raster(dst)
+
+    def rename_variable(self, old_name: str, new_name: str):
+        """Rename a variable in this container.
+
+        Internally extracts the variable data and metadata, creates
+        a new variable with the new name, and removes the old one.
+
+        Args:
+            old_name: Current name of the variable.
+            new_name: Desired new name.
+
+        Raises:
+            ValueError: If ``old_name`` doesn't exist or ``new_name``
+                already exists.
+        """
+        if old_name not in self.variable_names:
+            raise ValueError(
+                f"Variable '{old_name}' not found. "
+                f"Available: {self.variable_names}"
+            )
+        if new_name in self.variable_names:
+            raise ValueError(
+                f"Variable '{new_name}' already exists."
+            )
+
+        rg = self._raster.GetRootGroup()
+        if rg is None:
+            raise ValueError(
+                "rename_variable requires a multidimensional container."
+            )
+
+        md_arr = rg.OpenMDArray(old_name)
+        self._add_md_array_to_group(rg, new_name, md_arr)
+        rg.DeleteMDArray(old_name)
+        self._invalidate_caches()
