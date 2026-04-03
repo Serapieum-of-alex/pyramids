@@ -907,17 +907,6 @@ class TestFromJson:
             "KEY": "VAL"
         }, f"Expected {{'KEY': 'VAL'}}, got {restored.open_options_used}"
 
-    def test_from_json_dimension_overview_preserved(self):
-        """Verify dimension_overview is preserved through round-trip."""
-        md = _make_metadata(
-            dimension_overview={"names": ["time"], "sizes": {"time": 365}}
-        )
-        restored = from_json(to_json(md))
-        assert restored.dimension_overview == {
-            "names": ["time"],
-            "sizes": {"time": 365},
-        }, f"Expected dimension_overview to be preserved, got {restored.dimension_overview}"
-
     def test_from_json_block_size_none(self):
         """Verify block_size=None survives round-trip (not converted to [])."""
         arr = VariableInfo(

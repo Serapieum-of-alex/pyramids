@@ -64,12 +64,11 @@ class TestStage1_GetAllMetadata:
         md = mdim_nc.get_all_metadata()
         assert isinstance(md, NetCDFMetadata)
 
-    def test_dimension_overview_populated(self, mdim_nc):
+    def test_dimensions_populated(self, mdim_nc):
+        """get_all_metadata should have dimensions populated."""
         md = mdim_nc.get_all_metadata()
-        assert md.dimension_overview is not None
-        assert isinstance(md.dimension_overview, dict)
-        assert "names" in md.dimension_overview
-        assert "sizes" in md.dimension_overview
+        assert isinstance(md.dimensions, dict)
+        assert len(md.dimensions) > 0
 
 
 class TestStage1_GetDimensionOnMetadata:
@@ -491,13 +490,16 @@ class TestStage3_RoundTripDecision:
 class TestStage4_SpatialOpsGuard:
     """NCP-3.2: Spatial operations on root container raise ValueError."""
 
-    def test_crop_on_container_raises(self, mdim_nc):
+    def test_crop_on_container_crops_all_variables(self, mdim_nc):
+        """crop() on root container should crop all variables (RT-9)."""
         mask = gpd.GeoDataFrame(
             geometry=[Polygon([(0, -80), (0, -70), (10, -70), (10, -80)])],
             crs=4326,
         )
-        with pytest.raises(ValueError, match="not supported on the NetCDF container"):
-            mdim_nc.crop(mask)
+        cropped = mdim_nc.crop(mask)
+        assert isinstance(cropped, NetCDF), (
+            f"Expected NetCDF, got {type(cropped)}"
+        )
 
     def test_to_crs_on_container_raises(self, mdim_nc):
         with pytest.raises(ValueError, match="not supported on the NetCDF container"):

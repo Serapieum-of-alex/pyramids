@@ -632,9 +632,6 @@ class NetCDFMetadata:
         open_options_used: GDAL open options that were
             passed when opening the file. ``None`` when
             no special options were used.
-        dimension_overview: Optional summary dictionary
-            with dimension names as keys and sizes as
-            values.
 
     Examples:
         - Create a minimal NetCDFMetadata instance:
@@ -697,7 +694,6 @@ class NetCDFMetadata:
     structural: StructuralInfo | None
     created_with: dict[str, str]
     open_options_used: dict[str, str] | None = None
-    dimension_overview: dict[str, Any] | None = None
 
     def __str__(self) -> str:
         """Human-readable summary of the NetCDF structure."""

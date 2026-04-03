@@ -316,81 +316,6 @@ class TestMetaDataSetter:
         ), "Expected _cached_meta_data to be the assigned object"
 
 
-class TestBuildDimensionOverviewErrors:
-    """Tests for _build_dimension_overview error handling paths."""
-
-    def test_overview_skips_unreadable_variable(self):
-        """Verify _build_dimension_overview handles RuntimeError from _read_variable.
-
-        Covers lines 419-425: the except (RuntimeError, AttributeError)
-        branch where arr becomes None and the dimension is skipped.
-        """
-        nc = _make_2d_nc()
-        original_read = nc._read_variable
-
-        call_count = [0]
-
-        def patched_read(name):
-            """Raise RuntimeError on the first call to simulate unreadable var."""
-            call_count[0] += 1
-            if call_count[0] == 1:
-                raise RuntimeError("Simulated read failure")
-            return original_read(name)
-
-        with patch.object(nc, "_read_variable", side_effect=patched_read):
-            result = nc._build_dimension_overview()
-        assert result is not None, "Overview should still be built"
-        assert "names" in result, "Overview should contain 'names' key"
-
-    def test_overview_handles_reshape_error(self):
-        """Verify _build_dimension_overview handles reshape/conversion errors.
-
-        Covers lines 430-437: the except (ValueError, TypeError,
-        AttributeError) branches in the value conversion logic.
-        """
-        nc = _make_2d_nc()
-        original_read = nc._read_variable
-
-        def patched_read(name):
-            """Return a mock array whose reshape raises ValueError."""
-            arr = original_read(name)
-            if arr is not None:
-                mock_arr = MagicMock()
-                mock_arr.reshape.side_effect = ValueError("bad reshape")
-                # Also make list() on the mock raise to hit inner except
-                mock_arr.__iter__ = MagicMock(side_effect=TypeError("not iterable"))
-                return mock_arr
-            return arr
-
-        with patch.object(nc, "_read_variable", side_effect=patched_read):
-            result = nc._build_dimension_overview()
-        assert result is not None, "Overview should still be built"
-
-    def test_overview_handles_reshape_fallback_to_list(self):
-        """Verify _build_dimension_overview falls back to list() on reshape error.
-
-        Covers lines 434-435: the try block converting via list(arr)
-        when reshape fails.
-        """
-        nc = _make_2d_nc()
-        original_read = nc._read_variable
-
-        def patched_read(name):
-            """Return a mock array whose reshape fails but list works."""
-            arr = original_read(name)
-            if arr is not None:
-                mock_arr = MagicMock()
-                mock_arr.reshape.side_effect = ValueError("bad reshape")
-                mock_arr.__iter__ = MagicMock(return_value=iter([1.0, 2.0, 3.0]))
-                return mock_arr
-            return arr
-
-        with patch.object(nc, "_read_variable", side_effect=patched_read):
-            result = nc._build_dimension_overview()
-        assert result is not None, "Overview should still be built"
-        assert "values" in result, "Overview should contain 'values' key"
-
-
 class TestReadVariable:
     """Tests for NetCDF._read_variable private method."""
 
@@ -1076,10 +1001,7 @@ class TestMSWEPFile:
             open_as_multi_dimensional=True,
         )
         md = nc.get_all_metadata()
-        assert (
-            md.dimension_overview is not None
-        ), "dimension_overview should be populated"
-        assert "names" in md.dimension_overview, "Overview should have 'names' key"
+        assert len(md.dimensions) > 0, "dimensions should be populated"
 
     def test_mswep_lon_lat(self):
         """Verify lon/lat are readable from MSWEP file."""

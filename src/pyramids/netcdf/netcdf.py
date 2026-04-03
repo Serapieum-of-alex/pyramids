@@ -20,7 +20,44 @@ from pyramids.dataset import Dataset
 from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
-from pyramids.netcdf.utils import _to_py_scalar, create_time_conversion_func
+from pyramids.netcdf.utils import create_time_conversion_func
+
+
+class _LazyVariableDict(dict):
+    """Dict that loads NetCDF variables on first access per key.
+
+    Avoids the cost of calling ``get_variable()`` (which does
+    ``AsClassicDataset`` + Y-flip) for every variable upfront.
+    Only the variables actually accessed are loaded.
+    """
+
+    def __init__(self, nc):
+        super().__init__()
+        self._nc = nc
+        self._names = nc.get_variable_names()
+
+    def __getitem__(self, key: str):
+        if not dict.__contains__(self, key) and key in self._names:
+            dict.__setitem__(self, key, self._nc.get_variable(key))
+        return dict.__getitem__(self, key)
+
+    def __contains__(self, key):
+        return key in self._names
+
+    def __len__(self):
+        return len(self._names)
+
+    def __iter__(self):
+        return iter(self._names)
+
+    def keys(self):
+        return self._names
+
+    def values(self):
+        return [self[k] for k in self._names]
+
+    def items(self):
+        return [(k, self[k]) for k in self._names]
 
 
 class NetCDF(Dataset):
@@ -179,19 +216,17 @@ class NetCDF(Dataset):
 
     @property
     def variables(self) -> dict[str, NetCDF]:
-        """All data variables as a dict of ``{name: NetCDF}`` subsets.
+        """All data variables as a lazy dict of ``{name: NetCDF}`` subsets.
 
-        Each value is a classic-raster NetCDF obtained via
-        ``get_variable()``.  Cached on first access; invalidated by
-        ``add_variable`` / ``remove_variable`` / ``set_variable``.
+        Variables are loaded on first access per key, not all at once.
+        Cached after loading; invalidated by ``add_variable`` /
+        ``remove_variable`` / ``set_variable``.
 
         Returns:
             dict[str, NetCDF]: Mapping from variable name to its subset.
         """
         if self._cached_variables is None:
-            self._cached_variables = {
-                var: self.get_variable(var) for var in self.variable_names
-            }
+            self._cached_variables = _LazyVariableDict(self)
         return self._cached_variables
 
     @property
@@ -249,6 +284,17 @@ class NetCDF(Dataset):
                 f"Use nc.get_variable('var_name').{operation}(...) instead."
             )
 
+    def plot(self, band=None, **kwargs):
+        """Plot a band of the dataset.
+
+        Blocked on root MDIM containers — extract a variable first.
+
+        Raises:
+            ValueError: If called on a root MDIM container.
+        """
+        self._check_not_container("plot")
+        return super().plot(band=band, **kwargs)
+
     def read_array(self, band: int | None = None, window=None) -> np.ndarray:
         """Read array from the dataset.
 
@@ -261,23 +307,45 @@ class NetCDF(Dataset):
     def crop(self, mask, touch: bool = True, inplace: bool = False):
         """Crop the dataset using a polygon or raster mask.
 
-        Blocked on root MDIM containers — extract a variable first with
-        ``get_variable()``.
+        On a **root MDIM container** this crops every variable and
+        returns a new in-memory NetCDF container with the cropped
+        results.  On a **variable subset** it delegates to the
+        parent ``Dataset.crop()``.
 
         Args:
-            mask: GeoDataFrame with polygon geometry, or a Dataset to use
-                as a spatial mask.
-            touch: If True, include cells that touch the mask boundary.
-                Defaults to True.
-            inplace: If True, modify this object in place. Defaults to False.
+            mask: GeoDataFrame with polygon geometry, or a Dataset
+                to use as a spatial mask.
+            touch: If True, include cells that touch the mask
+                boundary. Defaults to True.
+            inplace: If True, modify this object in place (container
+                mode only). Defaults to False.
 
         Returns:
-            Dataset or None: Cropped dataset (or None if inplace=True).
-
-        Raises:
-            ValueError: If called on a root MDIM container.
+            NetCDF or Dataset: Cropped container or dataset.
         """
-        self._check_not_container("crop")
+        if self._is_md_array and not self._is_subset and self.band_count == 0:
+            first_var = self.get_variable(self.variable_names[0])
+            first_cropped = first_var.crop(mask, touch=touch)
+            ndv = first_cropped.no_data_value
+            ndv_scalar = ndv[0] if isinstance(ndv, list) and ndv else ndv
+            result = NetCDF.create_from_array(
+                arr=first_cropped.read_array(),
+                geo=first_cropped.geotransform,
+                epsg=first_cropped.epsg,
+                no_data_value=ndv_scalar,
+                variable_name=self.variable_names[0],
+                extra_dim_name=first_var._band_dim_name or "time",
+                extra_dim_values=first_var._band_dim_values,
+            )
+            for var_name in self.variable_names[1:]:
+                var = self.get_variable(var_name)
+                cropped = var.crop(mask, touch=touch)
+                result.set_variable(var_name, cropped)
+
+            if inplace:
+                self._replace_raster(result._raster)
+                return None
+            return result
         return super().crop(mask=mask, touch=touch, inplace=inplace)
 
     def to_crs(
@@ -375,79 +443,20 @@ class NetCDF(Dataset):
             self._cached_meta_data = value
 
     def get_all_metadata(self, open_options: dict | None = None) -> NetCDFMetadata:
-        """Get full MDIM metadata with a dimension overview snapshot.
+        """Get full MDIM metadata (uncached).
 
         Unlike ``meta_data`` (which is cached), this always re-traverses
-        the GDAL multidimensional structure and populates the
-        ``dimension_overview`` field with coordinate values and sizes.
+        the GDAL multidimensional structure.
 
         Args:
             open_options: Driver-specific open options forwarded to
                 ``get_metadata()``. Defaults to None.
 
         Returns:
-            NetCDFMetadata: Metadata with ``dimension_overview`` populated.
+            NetCDFMetadata
         """
-        metadata = get_metadata(self._raster, open_options)
-        metadata.dimension_overview = self._build_dimension_overview(metadata)
-        return metadata
-
-    def _build_dimension_overview(
-        self, metadata: NetCDFMetadata | None = None
-    ) -> dict[str, Any] | None:
-        """Create a compact snapshot of dimensions.
-
-        Args:
-            metadata: Pre-built metadata to avoid re-calling
-                ``self.meta_data`` (which would cause infinite recursion
-                if called from within ``meta_data``). Defaults to None.
-
-        Returns:
-            dict or None: Dictionary with ``names``, ``sizes``, ``attrs``,
-                and ``values`` keys, or None on failure.
-        """
-        md = metadata if metadata is not None else self.meta_data
-        names = [dim.name for dim in md.dimensions.values()]
-        sizes: dict[str, int] = {}
-
-        for name in names:
-            dim_info = md.get_dimension(name)
-            if dim_info is not None:
-                sizes[name] = int(dim_info.size)
-        attrs: dict[str, dict[str, Any]] = {}
-        values: dict[str, list[int | float | str]] = {}
-
-        for name in names:
-            dim = md.get_dimension(name)
-            if dim is not None and dim.attrs:
-                attrs[name] = {
-                    str(k): (list(v) if isinstance(v, list) else v)
-                    for k, v in dim.attrs.items()
-                }
-
-        for name in names:
-            try:
-                arr = self._read_variable(name)
-            except (RuntimeError, AttributeError) as e:
-                self.logger.debug(f"Could not read dimension variable '{name}': {e}")
-                arr = None
-            if arr is None:
-                continue
-            try:
-                values[name] = [_to_py_scalar(v) for v in arr.reshape(-1).tolist()]
-            except (ValueError, TypeError, AttributeError) as e:
-                self.logger.debug(f"Could not reshape dimension '{name}': {e}")
-                try:
-                    values[name] = [_to_py_scalar(v) for v in list(arr)]
-                except (ValueError, TypeError) as e:
-                    self.logger.debug(f"Could not convert dimension '{name}': {e}")
-
-        return {
-            "names": names,
-            "sizes": sizes,
-            "attrs": attrs,
-            "values": values if values else None,
-        }
+        result = get_metadata(self._raster, open_options)
+        return result
 
     def get_time_variable(self, var_name="time", time_format: str = "%Y-%m-%d"):
         """Parse the time coordinate variable into formatted date strings.
@@ -1294,6 +1303,85 @@ class NetCDF(Dataset):
                     pass  # nosec B110
 
         self._invalidate_caches()
+
+    def crop_variable(
+        self, variable_name: str, mask, touch: bool = True
+    ) -> NetCDF:
+        """Crop a single variable and store the result back.
+
+        Convenience method that combines ``get_variable`` → ``crop``
+        → ``set_variable`` in one call.
+
+        Args:
+            variable_name: Name of the variable to crop.
+            mask: GeoDataFrame with polygon geometry, or a Dataset
+                to use as a spatial mask.
+            touch: If True, include cells touching the mask boundary.
+                Defaults to True.
+
+        Returns:
+            NetCDF: This container (modified in-place).
+        """
+        var = self.get_variable(variable_name)
+        cropped = var.crop(mask, touch=touch)
+        self.set_variable(variable_name, cropped)
+        return self
+
+    def reproject_variable(
+        self, variable_name: str, to_epsg: int, method: str = "nearest neighbor"
+    ) -> NetCDF:
+        """Reproject a single variable and store the result back.
+
+        Convenience method that combines ``get_variable`` → ``to_crs``
+        → ``set_variable`` in one call.
+
+        Args:
+            variable_name: Name of the variable to reproject.
+            to_epsg: Target EPSG code (e.g. 4326, 32637).
+            method: Resampling method. Defaults to
+                ``"nearest neighbor"``.
+
+        Returns:
+            NetCDF: This container (modified in-place).
+        """
+        var = self.get_variable(variable_name)
+        reprojected = var.to_crs(to_epsg, method=method)
+        # to_crs returns a VRT-backed dataset — materialize it into
+        # a MEM dataset so the data survives after the VRT source
+        # (the variable subset) is garbage collected.
+        arr = reprojected.read_array()
+        materialized = Dataset.create_from_array(
+            arr, geo=reprojected.geotransform, epsg=reprojected.epsg,
+            no_data_value=reprojected.no_data_value,
+        )
+        materialized._band_dim_name = var._band_dim_name
+        materialized._band_dim_values = var._band_dim_values
+        materialized._variable_attrs = var._variable_attrs
+        self.set_variable(variable_name, materialized)
+        return self
+
+    def resample_variable(
+        self, variable_name: str, cell_size: int | float,
+        method: str = "nearest neighbor"
+    ) -> NetCDF:
+        """Resample a single variable and store the result back.
+
+        Convenience method that combines ``get_variable`` → ``resample``
+        → ``set_variable`` in one call.
+
+        Args:
+            variable_name: Name of the variable to resample.
+            cell_size: New cell size.
+            method: Resampling method. Defaults to
+                ``"nearest neighbor"``.
+
+        Returns:
+            NetCDF: This container (modified in-place).
+        """
+        var = self.get_variable(variable_name)
+        resampled = var.resample(cell_size, method=method)
+        self.set_variable(variable_name, resampled)
+        return self
 
     def add_variable(self, dataset: Dataset | NetCDF, variable_name: str | None = None):
         """Copy MDArray variables from another NetCDF into this container.

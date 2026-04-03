@@ -35,21 +35,11 @@ def test_mdim_metadata_basic(request, fixture_name: str):
     assert isinstance(md1.variables, dict) and len(md1.variables) >= 1
     assert isinstance(md1.dimensions, dict) and len(md1.dimensions) >= 1
 
-    # dimension_overview should mirror nc.meta_data
-    dov = md1.dimension_overview
-    assert isinstance(dov, dict)
-    assert {"names", "sizes", "attrs", "values"}.issuperset(dov.keys()) or {
-        "names",
-        "sizes",
-        "attrs",
-    }.issuperset(dov.keys())
-    names = dov.get("names", [])
-    sizes = dov.get("sizes", {})
-    assert isinstance(names, list)
-    assert isinstance(sizes, dict)
-    # names from overview should be a subset of dimension names
-    dim_names = [d.name for d in nc.meta_data.dimensions.values()]
-    assert set(names).issubset(set(dim_names))
+    # dimensions should be populated with DimensionInfo objects
+    assert len(md1.dimensions) >= 1
+    for dim in md1.dimensions.values():
+        assert dim.name, "Each dimension should have a name"
+        assert dim.size >= 0, "Each dimension should have a non-negative size"
 
     # JSON round-trip
     s = to_json(md1)

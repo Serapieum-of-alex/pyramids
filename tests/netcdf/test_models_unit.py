@@ -800,14 +800,11 @@ class TestNetCDFMetadataDataclass:
     """Tests for NetCDFMetadata dataclass defaults and fields."""
 
     def test_optional_defaults(self):
-        """Verify open_options_used and dimension_overview default to None."""
+        """Verify open_options_used defaults to None."""
         meta = _make_metadata()
         assert (
             meta.open_options_used is None
         ), "open_options_used should default to None"
-        assert (
-            meta.dimension_overview is None
-        ), "dimension_overview should default to None"
 
     def test_all_fields_accessible(self):
         """Verify all expected fields are accessible."""

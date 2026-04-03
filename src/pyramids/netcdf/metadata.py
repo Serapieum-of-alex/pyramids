@@ -642,7 +642,6 @@ def from_json(s: str) -> NetCDFMetadata:
         structural=structural_obj,
         open_options_used=d.get("open_options_used"),
         created_with=d.get("created_with", {}),
-        dimension_overview=d.get("dimension_overview"),
     )
 
 
