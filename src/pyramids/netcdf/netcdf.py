@@ -295,14 +295,36 @@ class NetCDF(Dataset):
         self._check_not_container("plot")
         return super().plot(band=band, **kwargs)
 
-    def read_array(self, band: int | None = None, window=None) -> np.ndarray:
+    def read_array(
+        self, band: int | None = None, window=None, unpack: bool = False
+    ) -> np.ndarray:
         """Read array from the dataset.
 
-        Raises a clear error when called on the root MDIM container
-        (which has no raster bands).
+        Args:
+            band: Band index to read, or None for all bands.
+            window: Spatial window to read.
+            unpack: If True and the variable has CF ``scale_factor``
+                and/or ``add_offset``, apply the transformation
+                ``real = raw * scale + offset``. Defaults to False.
+
+        Returns:
+            np.ndarray: The array data, optionally unpacked.
+
+        Raises:
+            ValueError: If called on a root MDIM container.
         """
         self._check_not_container("read_array")
-        return super().read_array(band=band, window=window)
+        result = super().read_array(band=band, window=window)
+        if unpack:
+            scale = getattr(self, "_scale", None)
+            offset = getattr(self, "_offset", None)
+            if scale is not None or offset is not None:
+                result = result.astype(np.float64)
+                if scale is not None:
+                    result = result * scale
+                if offset is not None:
+                    result = result + offset
+        return result
 
     def crop(self, mask, touch: bool = True, inplace: bool = False):
         """Crop the dataset using a polygon or raster mask.
@@ -863,16 +885,28 @@ class NetCDF(Dataset):
                         cube._variable_attrs[attr.GetName()] = attr.Read()
                 except Exception:
                     pass  # nosec B110
+
+                # Scale/offset for CF packed data
+                try:
+                    cube._scale = md_arr.GetScale()
+                    cube._offset = md_arr.GetOffset()
+                except Exception:
+                    cube._scale = None
+                    cube._offset = None
             else:
                 cube._md_array_dims = []
                 cube._band_dim_name = None
                 cube._band_dim_values = None
                 cube._variable_attrs = {}
+                cube._scale = None
+                cube._offset = None
         else:
             cube._md_array_dims = []
             cube._band_dim_name = None
             cube._band_dim_values = None
             cube._variable_attrs = {}
+            cube._scale = None
+            cube._offset = None
 
         return cube
 
