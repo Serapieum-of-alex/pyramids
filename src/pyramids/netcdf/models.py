@@ -609,18 +609,28 @@ class NetCDFMetadata:
     extraction pipeline and is intended as a complete,
     JSON-serializable snapshot of the file's structure.
 
+    Note:
+        Dictionary keys for ``groups``, ``variables``, and
+        ``dimensions`` use **short names** with the leading
+        ``/`` stripped (e.g. ``"time"`` not ``"/time"``).
+        The root group keeps ``"/"`` as its key.  The
+        ``full_name`` attribute on each object retains the
+        original GDAL path (e.g. ``"/time"``).  Use
+        ``get_dimension(name)`` for lookups that accept
+        both forms.
+
     Args:
         driver: Short name of the GDAL driver used to
             open the file (e.g. ``"netCDF"``).
         root_group: Full name of the root group
             (typically ``"/"``). ``None`` when the file
             has no group hierarchy.
-        groups: Mapping from group full name to its
-            ``GroupInfo`` metadata.
-        variables: Mapping from variable name to its
+        groups: Mapping keyed by short name (or ``"/"``
+            for root) to ``GroupInfo`` metadata.
+        variables: Mapping keyed by short name to
             ``VariableInfo`` metadata.
-        dimensions: Mapping from dimension full name to
-            its ``DimensionInfo`` metadata.
+        dimensions: Mapping keyed by short name to
+            ``DimensionInfo`` metadata.
         global_attributes: Key-value mapping of root-level
             NetCDF attributes (e.g. ``Conventions``,
             ``history``).
