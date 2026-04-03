@@ -651,7 +651,7 @@ def flatten_for_index(metadata: NetCDFMetadata) -> dict[str, Any]:
     Extracts a small, searchable summary from a full
     ``NetCDFMetadata`` instance. The result contains scalar
     counts, the first 20 global attributes (prefixed with
-    ``global.``), and sorted lists of array and dimension names.
+    ``global.``), and sorted lists of variable and dimension names.
 
     Args:
         metadata: A ``NetCDFMetadata`` instance to flatten.
@@ -662,16 +662,16 @@ def flatten_for_index(metadata: NetCDFMetadata) -> dict[str, Any]:
             - ``driver`` (str): Driver name.
             - ``root_group`` (str | None): Root group path.
             - ``group_count`` (int): Number of groups.
-            - ``array_count`` (int): Number of arrays.
+            - ``variable_count`` (int): Number of variables.
             - ``dimension_count`` (int): Number of dimensions.
             - ``global.<key>`` entries for the first 20 global
               attributes.
-            - ``arrays`` (list[str]): Sorted array full names.
-            - ``dimensions`` (list[str]): Sorted dimension full
+            - ``variables`` (list[str]): Sorted variable names.
+            - ``dimensions`` (list[str]): Sorted dimension
               names.
 
     Examples:
-        Flatten a metadata object with one array and one
+        Flatten a metadata object with one variable and one
         dimension:
 
         >>> from pyramids.netcdf.metadata import flatten_for_index
