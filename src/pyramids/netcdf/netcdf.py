@@ -385,6 +385,10 @@ class NetCDF(Dataset):
 
         # to_crs returns a VRT — materialize to avoid dangling refs
         first_arr = first_result.read_array()
+        # Preserve the extra dimension for single-band 3D variables
+        # (read_array squeezes to 2D, but the time/level dim should survive)
+        if first_arr.ndim == 2 and first_var._band_dim_name is not None:
+            first_arr = np.expand_dims(first_arr, axis=0)
         ndv = first_result.no_data_value
         ndv_scalar = ndv[0] if isinstance(ndv, list) and ndv else ndv
         result = NetCDF.create_from_array(
@@ -401,6 +405,8 @@ class NetCDF(Dataset):
             var = self.get_variable(var_name)
             var_result = getattr(var, operation)(**op_kwargs)
             var_arr = var_result.read_array()
+            if var_arr.ndim == 2 and var._band_dim_name is not None:
+                var_arr = np.expand_dims(var_arr, axis=0)
             var_ndv = var_result.no_data_value
             var_ndv_scalar = var_ndv[0] if isinstance(var_ndv, list) and var_ndv else var_ndv
             ds = Dataset.create_from_array(
