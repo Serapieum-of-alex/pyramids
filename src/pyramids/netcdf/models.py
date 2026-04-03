@@ -25,11 +25,11 @@ class GroupInfo:
 
     All fields are JSON-serializable and use full names
     (e.g. ``"/root/subgroup"``) for stable cross-references
-    between groups, arrays, and dimensions.
+    between groups, variables, and dimensions.
 
     Note:
         ``frozen=True`` prevents field reassignment but container
-        fields (``attributes``, ``children``, ``arrays``) are
+        fields (``attributes``, ``children``, ``variables``) are
         technically mutable.  Treat all contents as **read-only**
         after construction.
 
@@ -40,7 +40,7 @@ class GroupInfo:
         attributes: Key-value mapping of group-level
             attributes read from the NetCDF file.
         children: Full names of direct child groups.
-        arrays: Full names of arrays belonging to this
+        variables: Full names of variables belonging to this
             group.
 
     Examples:
@@ -52,7 +52,7 @@ class GroupInfo:
             ...     full_name="/",
             ...     attributes={"Conventions": "CF-1.6"},
             ...     children=["/forecast"],
-            ...     arrays=["/temperature", "/pressure"],
+            ...     variables=["/temperature", "/pressure"],
             ... )
             >>> info.name
             'root'
@@ -69,7 +69,7 @@ class GroupInfo:
             >>> info = GroupInfo(name="leaf", full_name="/leaf")
             >>> info.children
             []
-            >>> info.arrays
+            >>> info.variables
             []
             >>> info.attributes
             {}
@@ -77,7 +77,7 @@ class GroupInfo:
             ```
 
     See Also:
-        VariableInfo: Metadata for individual arrays within a group.
+        VariableInfo: Metadata for individual variables within a group.
         StructuralInfo: Driver-level metadata for the dataset.
     """
 
@@ -203,7 +203,7 @@ class DimensionInfo:
             ```
 
     See Also:
-        VariableInfo: Metadata for arrays that reference these
+        VariableInfo: Metadata for variables that reference these
             dimensions.
         NetCDFMetadata.get_dimension: Look up a dimension by
             name.
@@ -586,7 +586,7 @@ class StructuralInfo:
         See Also:
             NetCDFMetadata: The top-level model that
                 aggregates structural info with groups,
-                arrays, and dimensions.
+                variables, and dimensions.
         """
         try:
             dmd = dataset.GetDriver().GetMetadata_Dict()
@@ -602,7 +602,7 @@ class NetCDFMetadata:
 
     Aggregates all structural and scientific metadata
     extracted from a NetCDF file opened through the GDAL
-    multidimensional API: groups, arrays (variables),
+    multidimensional API: groups, variables,
     dimensions, global attributes, and driver information.
 
     This is the single object returned by the metadata
@@ -617,7 +617,7 @@ class NetCDFMetadata:
             has no group hierarchy.
         groups: Mapping from group full name to its
             ``GroupInfo`` metadata.
-        arrays: Mapping from array full name to its
+        variables: Mapping from variable name to its
             ``VariableInfo`` metadata.
         dimensions: Mapping from dimension full name to
             its ``DimensionInfo`` metadata.
@@ -657,13 +657,13 @@ class NetCDFMetadata:
             >>> grp = GroupInfo(
             ...     name="root",
             ...     full_name="/",
-            ...     arrays=["/temp"],
+            ...     variables=["/temp"],
             ... )
             >>> meta = NetCDFMetadata(
             ...     driver="netCDF",
             ...     root_group="/",
             ...     groups={"/": grp},
-            ...     arrays={"/temp": arr},
+            ...     variables={"/temp": arr},
             ...     dimensions={"/time": dim},
             ...     global_attributes={"Conventions": "CF-1.6"},
             ...     structural=None,
@@ -778,7 +778,7 @@ class NetCDFMetadata:
                 ...     driver="netCDF",
                 ...     root_group="/",
                 ...     groups={},
-                ...     arrays={},
+                ...     variables={},
                 ...     dimensions={"/time": dim},
                 ...     global_attributes={},
                 ...     structural=None,
@@ -804,7 +804,7 @@ class NetCDFMetadata:
                 ...     driver="netCDF",
                 ...     root_group="/",
                 ...     groups={},
-                ...     arrays={},
+                ...     variables={},
                 ...     dimensions={"/time": dim},
                 ...     global_attributes={},
                 ...     structural=None,
@@ -825,7 +825,7 @@ class NetCDFMetadata:
                 ...     driver="netCDF",
                 ...     root_group="/",
                 ...     groups={},
-                ...     arrays={},
+                ...     variables={},
                 ...     dimensions={},
                 ...     global_attributes={},
                 ...     structural=None,
