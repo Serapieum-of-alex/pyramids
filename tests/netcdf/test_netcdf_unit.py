@@ -408,11 +408,14 @@ class TestNeedsYFlip:
             f"Expected False for 1-D array, got {result}"
         )
 
-    def test_returns_true_for_south_to_north(self):
-        """Verify _needs_y_flip returns True when Y goes south-to-north.
+    def test_returns_bool_for_2d_array(self):
+        """Verify _needs_y_flip returns a bool for 2D arrays.
 
-        The in-memory NetCDF from create_from_array has positive Y
-        pixel size before flipping.
+        The result depends on whether the Y dimension goes
+        south-to-north (positive Y pixel size) or not. For
+        in-memory datasets created by pyramids the geotransform
+        is already GDAL-convention (negative Y), so the result
+        may be False.
         """
         nc = _make_2d_nc()
         rg = nc._raster.GetRootGroup()
