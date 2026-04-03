@@ -247,7 +247,7 @@ class GroupTraverser:
         """Collect all arrays from *group* into ``self.variables``.
 
         Each array is opened via ``group.OpenMDArray`` and
-        converted to an ``VariableInfo`` dataclass. Arrays that
+        converted to a ``VariableInfo`` dataclass. Arrays that
         cannot be opened are silently skipped.
 
         Args:

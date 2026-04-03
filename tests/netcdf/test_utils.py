@@ -745,12 +745,14 @@ class TestCreateTimeConversionFunc:
 class TestDtypeToStr:
     """Tests for _dtype_to_str."""
 
-    def test_returns_name_from_get_name(self):
-        """GetName returns a valid name."""
+    def test_returns_lowercase_name_from_get_name(self):
+        """GetName returns a valid name, lowercased to numpy convention."""
         dt = MagicMock()
         dt.GetName.return_value = "Float64"
         result = _dtype_to_str(dt)
-        assert result == "Float64", "Should return the name from GetName"
+        assert result == "float64", (
+            f"Should return lowercased name, got {result}"
+        )
 
     def test_falls_back_to_numeric_dtype(self):
         """GetName fails; falls back to GetNumericDataType."""

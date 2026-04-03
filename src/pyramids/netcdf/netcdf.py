@@ -368,7 +368,15 @@ class NetCDF(Dataset):
 
         Returns:
             NetCDF or None: New container, or None if inplace=True.
+
+        Raises:
+            ValueError: If the container has no data variables.
         """
+        if not self.variable_names:
+            raise ValueError(
+                "Cannot apply operation to an empty container "
+                "(no data variables)."
+            )
         first_name = self.variable_names[0]
         first_var = self.get_variable(first_name)
         first_result = getattr(first_var, operation)(**op_kwargs)
@@ -1683,6 +1691,8 @@ class NetCDF(Dataset):
     def delete_global_attribute(self, name: str):
         """Delete a global attribute from the root group.
 
+        If the attribute does not exist, the call is silently ignored.
+
         Args:
             name: Attribute name to delete.
 
@@ -1698,7 +1708,7 @@ class NetCDF(Dataset):
         try:
             rg.DeleteAttribute(name)
         except Exception:
-            pass
+            pass  # attribute may not exist — silently ignored
         self._invalidate_caches()
 
     def set_variable(

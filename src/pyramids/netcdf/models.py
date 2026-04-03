@@ -412,7 +412,7 @@ class VariableInfo:
     def from_md_array(
         cls, md_arr: gdal.MDArray, md_arr_name: str, group_full_name: str
     ) -> VariableInfo:
-        """Build an VariableInfo from a live GDAL MDArray.
+        """Build a VariableInfo from a live GDAL MDArray.
 
         Extracts name, data type, shape, dimension links,
         attributes, CF conventions (scale, offset, nodata),

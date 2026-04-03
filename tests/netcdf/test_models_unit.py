@@ -455,7 +455,7 @@ class TestVariableInfoFromMdArray:
         assert (
             info.full_name == "/temperature"
         ), f"Expected '/temperature', got '{info.full_name}'"
-        assert info.dtype == "Float32", f"Expected 'Float32', got '{info.dtype}'"
+        assert info.dtype == "float32", f"Expected 'float32', got '{info.dtype}'"
         assert info.shape == [
             365,
             180,

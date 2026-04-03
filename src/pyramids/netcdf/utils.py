@@ -534,7 +534,7 @@ def _dtype_to_str(dt: Any) -> str:
         # gdal.ExtendedDataType in MDIM (works for string types)
         name = dt.GetName()
         if isinstance(name, str) and name:
-            result = name
+            result = name.lower()
     except Exception:
         pass
     if result == "unknown":
