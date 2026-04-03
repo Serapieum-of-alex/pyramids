@@ -1499,17 +1499,7 @@ class NetCDF(Dataset):
         x_dim_values = NetCDF.get_x_lon_dimension_array(geo[0], geo[1], cols)
         y_dim_values = NetCDF.get_y_lat_dimension_array(geo[3], geo[1], rows)
 
-        has_creation_options = (
-            chunk_sizes is not None
-            or compression is not None
-        )
-        # When writing to disk with creation options, use the netCDF
-        # driver directly (SetIndexingVariable is not supported but
-        # chunking/compression options only work on the netCDF driver).
-        # Otherwise create in MEM (supports SetIndexingVariable).
-        if path is not None and has_creation_options:
-            driver_type = "netCDF"
-        elif path is not None:
+        if path is not None:
             driver_type = "netCDF"
         else:
             driver_type = "MEM"
