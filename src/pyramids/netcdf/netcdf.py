@@ -1005,6 +1005,37 @@ class NetCDF(Dataset):
         return NetCDF(src, access="write")
 
     @staticmethod
+    def _create_dimension(
+        group: gdal.Group,
+        dim_name: str,
+        dtype,
+        values: np.ndarray,
+        dim_type=None,
+        set_indexing: bool = True,
+    ) -> gdal.Dimension:
+        """Create a dimension with its coordinate array.
+
+        Args:
+            group: GDAL root group.
+            dim_name: Dimension name.
+            dtype: GDAL ExtendedDataType.
+            values: Coordinate values.
+            dim_type: GDAL dimension type constant.
+            set_indexing: If True, call SetIndexingVariable (works
+                on MEM driver). If False, skip it (required for
+                netCDF driver which doesn't support it).
+
+        Returns:
+            gdal.Dimension
+        """
+        dim = group.CreateDimension(dim_name, dim_type, None, values.shape[0])
+        coord_arr = group.CreateMDArray(dim_name, [dim], dtype)
+        coord_arr.Write(values)
+        if set_indexing:
+            dim.SetIndexingVariable(coord_arr)
+        return dim
+
+    @staticmethod
     def create_main_dimension(
         group: gdal.Group, dim_name: str, dtype: int, values: np.ndarray
     ) -> gdal.Dimension:
@@ -1055,6 +1086,9 @@ class NetCDF(Dataset):
         extra_dim_values: list | None = None,
         top_left_corner: tuple[float, float] | None = None,
         cell_size: int | float | None = None,
+        chunk_sizes: tuple | list | None = None,
+        compression: str | None = None,
+        compression_level: int | None = None,
     ) -> NetCDF:
         """Create a NetCDF dataset from a NumPy array and geotransform.
 
@@ -1091,6 +1125,15 @@ class NetCDF(Dataset):
                 not provided. Defaults to None.
             cell_size: Pixel size. Used with ``top_left_corner`` to
                 build ``geo``. Defaults to None.
+            chunk_sizes: Chunk sizes for the data variable as a tuple
+                matching the array dimensions (e.g. ``(1, 256, 256)``
+                for 3-D). Only effective when writing to disk.
+                Defaults to None (GDAL default chunking).
+            compression: Compression algorithm name (``"DEFLATE"``,
+                ``"ZSTD"``, etc.). Only effective when writing to
+                disk. Defaults to None (no compression).
+            compression_level: Compression level (e.g. 1-9 for
+                DEFLATE). Defaults to None (GDAL default).
 
         Returns:
             NetCDF: The newly created NetCDF dataset.
@@ -1141,6 +1184,9 @@ class NetCDF(Dataset):
             epsg,
             no_data_value,
             path=path,
+            chunk_sizes=chunk_sizes,
+            compression=compression,
+            compression_level=compression_level,
         )
         result = cls(dst_ds)
 
@@ -1158,6 +1204,9 @@ class NetCDF(Dataset):
         epsg: str | int | None = None,
         no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
         path: str | Path | None = None,
+        chunk_sizes: tuple | list | None = None,
+        compression: str | None = None,
+        compression_level: int | None = None,
     ) -> gdal.Dataset:
         """Build a multidimensional GDAL dataset from an array.
 
@@ -1180,6 +1229,10 @@ class NetCDF(Dataset):
                 DEFAULT_NO_DATA_VALUE.
             path: Output file path. If None, created in memory.
                 Defaults to None.
+            chunk_sizes: Chunk sizes for the variable. Defaults to
+                None.
+            compression: Compression algorithm. Defaults to None.
+            compression_level: Compression level. Defaults to None.
 
         Returns:
             gdal.Dataset: The created multidimensional GDAL dataset.
@@ -1193,30 +1246,74 @@ class NetCDF(Dataset):
         x_dim_values = NetCDF.get_x_lon_dimension_array(geo[0], geo[1], cols)
         y_dim_values = NetCDF.get_y_lat_dimension_array(geo[3], geo[1], rows)
 
-        if path is not None:
+        has_creation_options = (
+            chunk_sizes is not None
+            or compression is not None
+        )
+        # When writing to disk with creation options, use the netCDF
+        # driver directly (SetIndexingVariable is not supported but
+        # chunking/compression options only work on the netCDF driver).
+        # Otherwise create in MEM (supports SetIndexingVariable).
+        if path is not None and has_creation_options:
+            driver_type = "netCDF"
+        elif path is not None:
             driver_type = "netCDF"
         else:
             driver_type = "MEM"
             path = "netcdf"
-        src = gdal.GetDriverByName(driver_type).CreateMultiDimensional(str(path))
+
+        src = gdal.GetDriverByName(driver_type).CreateMultiDimensional(
+            str(path)
+        )
         rg = src.GetRootGroup()
 
-        dim_x = NetCDF.create_main_dimension(rg, "x", dtype, np.array(x_dim_values))
-        dim_y = NetCDF.create_main_dimension(rg, "y", dtype, np.array(y_dim_values))
-        if arr.ndim == 3:
-            extra_dim = NetCDF.create_main_dimension(
-                rg, extra_dim_name, dtype, np.array(extra_dim_values)
+        # Build creation options for chunking and compression
+        create_options = []
+        if chunk_sizes is not None:
+            create_options.append(
+                f"BLOCKSIZE={','.join(str(s) for s in chunk_sizes)}"
             )
-            md_arr = rg.CreateMDArray(variable_name, [extra_dim, dim_y, dim_x], dtype)
-        else:
-            md_arr = rg.CreateMDArray(variable_name, [dim_y, dim_x], dtype)
+        if compression is not None:
+            create_options.append(f"COMPRESS={compression}")
+        if compression_level is not None:
+            create_options.append(f"ZLEVEL={compression_level}")
 
-        md_arr.Write(arr)
+        # netCDF driver doesn't support SetIndexingVariable — create
+        # dimension arrays manually without linking them.
+        use_set_indexing = (driver_type == "MEM")
+
+        dim_x = NetCDF._create_dimension(
+            rg, "x", dtype, np.array(x_dim_values),
+            gdal.DIM_TYPE_HORIZONTAL_X, use_set_indexing,
+        )
+        dim_y = NetCDF._create_dimension(
+            rg, "y", dtype, np.array(y_dim_values),
+            gdal.DIM_TYPE_HORIZONTAL_Y, use_set_indexing,
+        )
+
+        if arr.ndim == 3:
+            extra_dim = NetCDF._create_dimension(
+                rg, extra_dim_name, dtype, np.array(extra_dim_values),
+                gdal.DIM_TYPE_TEMPORAL, use_set_indexing,
+            )
+            md_arr = rg.CreateMDArray(
+                variable_name, [extra_dim, dim_y, dim_x], dtype,
+                create_options if create_options else [],
+            )
+        else:
+            md_arr = rg.CreateMDArray(
+                variable_name, [dim_y, dim_x], dtype,
+                create_options if create_options else [],
+            )
+
+        # Set metadata BEFORE writing data — netCDF driver requires
+        # nodata to be set before the first Write call.
         md_arr.SetNoDataValueDouble(no_data_value)
         if epsg is None:
             raise ValueError("epsg cannot be None")
         srse = Dataset._create_sr_from_epsg(epsg=int(epsg))
         md_arr.SetSpatialRef(srse)
+        md_arr.Write(arr)
 
         return src
 
