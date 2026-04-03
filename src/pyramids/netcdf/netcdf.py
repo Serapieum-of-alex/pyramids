@@ -351,10 +351,12 @@ class NetCDF(Dataset):
             NetCDF or Dataset: Cropped container or dataset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
-            return self._apply_to_all_variables(
+            result = self._apply_to_all_variables(
                 "crop", {"mask": mask, "touch": touch}, inplace=inplace,
             )
-        return super().crop(mask=mask, touch=touch, inplace=inplace)
+        else:
+            result = super().crop(mask=mask, touch=touch, inplace=inplace)
+        return result
 
     def _apply_to_all_variables(self, operation, op_kwargs, inplace=False):
         """Apply an operation to every variable in the container.
@@ -401,7 +403,7 @@ class NetCDF(Dataset):
 
         if inplace:
             self._replace_raster(result._raster)
-            return None
+            result = None
         return result
 
     def to_crs(
@@ -429,18 +431,20 @@ class NetCDF(Dataset):
             NetCDF or Dataset: Reprojected container or dataset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
-            return self._apply_to_all_variables(
+            result = self._apply_to_all_variables(
                 "to_crs",
                 {"to_epsg": to_epsg, "method": method,
                  "maintain_alignment": maintain_alignment},
                 inplace=inplace,
             )
-        return super().to_crs(
-            to_epsg=to_epsg,
-            method=method,
-            maintain_alignment=maintain_alignment,
-            inplace=inplace,
-        )
+        else:
+            result = super().to_crs(
+                to_epsg=to_epsg,
+                method=method,
+                maintain_alignment=maintain_alignment,
+                inplace=inplace,
+            )
+        return result
 
     def resample(
         self,
@@ -464,14 +468,16 @@ class NetCDF(Dataset):
             NetCDF or Dataset: Resampled container or dataset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
-            return self._apply_to_all_variables(
+            result = self._apply_to_all_variables(
                 "resample",
                 {"cell_size": cell_size, "method": method},
                 inplace=inplace,
             )
-        return super().resample(
-            cell_size=cell_size, method=method, inplace=inplace,
-        )
+        else:
+            result = super().resample(
+                cell_size=cell_size, method=method, inplace=inplace,
+            )
+        return result
 
     def sel(self, **kwargs) -> Dataset:
         """Select a subset of bands by coordinate values.
@@ -721,14 +727,17 @@ class NetCDF(Dataset):
             rg: The root group (kept alive to prevent SWIG GC).
             md_arr: The MDArray to check.
         """
+        result = False
         dims = md_arr.GetDimensions()
-        if len(dims) < 2:
-            return False
-        try:
-            src = md_arr.AsClassicDataset(len(dims) - 1, len(dims) - 2, rg)
-            return src.GetGeoTransform()[5] > 0
-        except Exception:
-            return False
+        if len(dims) >= 2:
+            try:
+                src = md_arr.AsClassicDataset(
+                    len(dims) - 1, len(dims) - 2, rg
+                )
+                result = src.GetGeoTransform()[5] > 0
+            except Exception:
+                pass
+        return result
 
     def _read_variable(self, var: str) -> np.ndarray | None:
         """Read a variable's data as a numpy array.
@@ -991,10 +1000,9 @@ class NetCDF(Dataset):
         # Handle group-qualified names: "forecast/temperature"
         if "/" in variable_name:
             parts = variable_name.rsplit("/", 1)
-            group_path = parts[0]
-            var_name = parts[1]
-            group_nc = self.get_group(group_path)
-            return group_nc.get_variable(var_name)
+            group_nc = self.get_group(parts[0])
+            cube = group_nc.get_variable(parts[1])
+            return cube  # single return below handles non-group path
 
         if variable_name not in self.variable_names:
             raise ValueError(
