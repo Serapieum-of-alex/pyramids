@@ -112,6 +112,8 @@ class NetCDF(Dataset):
         self._band_dim_name: str | None = None
         self._band_dim_values: list[Any] | None = None
         self._variable_attrs: dict[str, Any] = {}
+        self._scale: float | None = None
+        self._offset: float | None = None
 
     def __str__(self):
         """Return a human-readable summary of the NetCDF dataset."""
