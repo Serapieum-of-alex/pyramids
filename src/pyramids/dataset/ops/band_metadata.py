@@ -32,9 +32,11 @@ class BandMetadata:
     """Mixin providing band metadata, attribute table, and color table operations."""
 
     def _iloc(self, i: int) -> gdal.Band:
-        """_iloc.
+        """Access a GDAL Band by 0-based index.
 
-            - Access dataset bands using index.
+        The returned band object is only valid while the parent dataset
+        is open. Do not store the band reference — use it immediately
+        and discard it.
 
         Args:
             i (int):
@@ -43,7 +45,16 @@ class BandMetadata:
         Returns:
             gdal.Band:
                 Gdal Band.
+
+        Raises:
+            IndexError: If the index is negative or out of bounds.
+            RuntimeError: If the dataset has been closed.
         """
+        if self._raster is None:
+            raise RuntimeError(
+                "Cannot access band on a closed dataset. "
+                "The dataset has been closed via close() or a context manager."
+            )
         if i < 0:
             raise IndexError("negative index not supported")
 

@@ -1043,6 +1043,17 @@ class TestIloc:
         band = single_band_dataset._iloc(0)
         assert band is not None, "Band should not be None"
 
+    def test_iloc_on_closed_dataset(self, single_band_dataset):
+        """Accessing a band on a closed dataset should raise RuntimeError.
+
+        Test scenario:
+            After calling close(), the GDAL dataset is gone. _iloc should
+            raise a clear error instead of segfaulting or returning garbage.
+        """
+        single_band_dataset.close()
+        with pytest.raises(RuntimeError, match="closed dataset"):
+            single_band_dataset._iloc(0)
+
 
 class TestCheckNoDataValue:
     """Tests for _check_no_data_value method."""
