@@ -578,6 +578,9 @@ class NetCDF(Dataset):
             )
 
         full_arr = self.read_array()
+        # Ensure 3D so band_indices index bands, not rows
+        if full_arr.ndim == 2:
+            full_arr = np.expand_dims(full_arr, axis=0)
         selected = full_arr[band_indices]
         selected_coords = [coords[i] for i in band_indices]
 
