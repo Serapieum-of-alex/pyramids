@@ -70,6 +70,15 @@ class AbstractDataset(ABC):
             src.GetRasterBand(i).GetBlockSize() for i in range(1, self._band_count + 1)
         ]
 
+    def __enter__(self):
+        """Enter the context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager and close the dataset."""
+        self.close()
+        return False
+
     @abstractmethod
     def __str__(self):
         """__str__."""

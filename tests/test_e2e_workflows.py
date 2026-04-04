@@ -768,6 +768,91 @@ class TestToFeatureCollectionE2E:
         assert len(gdf) == 16, f"Expected 16 rows (4x4), got {len(gdf)}"
 
 
+class TestContextManagerE2E:
+    """End-to-end workflows using the context manager protocol."""
+
+    def test_context_manager_save_and_reload(self):
+        """Create dataset -> use in with block -> save -> reload outside block.
+
+        Test scenario:
+            Create a dataset, save it to disk inside a with block, then
+            reload it outside the block after the original is closed.
+        """
+        arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "ctx_test.tif"
+        try:
+            ds = Dataset.create_from_array(
+                arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326,
+                no_data_value=-9999.0,
+            )
+            with ds:
+                ds.to_file(path)
+            assert ds._raster is None, "Dataset should be closed after with block"
+
+            reloaded = Dataset.read_file(path)
+            np.testing.assert_array_almost_equal(
+                reloaded.read_array(), arr, decimal=2,
+                err_msg="Reloaded values should match original"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_context_manager_apply_then_save(self):
+        """Create dataset -> apply inside with block -> save -> verify.
+
+        Test scenario:
+            Apply a transformation inside a with block, save the result,
+            and verify the pipeline works end-to-end with cleanup.
+        """
+        arr = np.array([[2.0, 4.0], [6.0, 8.0]], dtype=np.float32)
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "ctx_apply.tif"
+        try:
+            ds = Dataset.create_from_array(
+                arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326,
+                no_data_value=-9999.0,
+            )
+            with ds:
+                result = ds.apply(lambda x: x * 2)
+                result.to_file(path)
+
+            reloaded = Dataset.read_file(path)
+            expected = np.array([[4.0, 8.0], [12.0, 16.0]], dtype=np.float32)
+            np.testing.assert_array_almost_equal(
+                reloaded.read_array(), expected, decimal=2,
+                err_msg="Applied values should be doubled"
+            )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_context_manager_exception_no_file_leak(self):
+        """Exception inside with block should not leave file locks.
+
+        Test scenario:
+            Create a dataset, raise inside the with block, then verify
+            we can still write to the same path (no lingering file lock).
+        """
+        arr = np.ones((3, 3), dtype=np.float32) * 42
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / "ctx_exception.tif"
+        try:
+            ds = Dataset.create_from_array(
+                arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326,
+            )
+            with pytest.raises(ValueError):
+                with ds:
+                    raise ValueError("intentional error")
+
+            ds2 = Dataset.create_from_array(
+                arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326,
+            )
+            ds2.to_file(path)
+            assert path.exists(), "Should be able to write after exception cleanup"
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 class TestGeoTiffRoundTrip:
     """Write an in-memory Dataset to GeoTIFF, reload, verify."""
 

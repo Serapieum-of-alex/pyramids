@@ -289,6 +289,151 @@ class TestClose:
             single_band_dataset._raster is None
         ), "Internal raster reference should be None after close()"
 
+    def test_double_close_is_safe(self, single_band_dataset):
+        """Calling close() twice should not raise an error.
+
+        Test scenario:
+            The double-close guard checks `_raster is not None` before
+            calling FlushCache, so the second call is a no-op.
+        """
+        single_band_dataset.close()
+        single_band_dataset.close()
+        assert single_band_dataset._raster is None, (
+            "Raster should remain None after double close"
+        )
+
+    def test_close_flushes_before_nullify(self):
+        """close() should call FlushCache before setting _raster to None.
+
+        Test scenario:
+            Verify that FlushCache is invoked on the GDAL dataset before
+            the reference is dropped.
+        """
+        arr = np.ones((3, 3), dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326
+        )
+        raster_before = ds._raster
+        assert raster_before is not None, "Raster should exist before close"
+        ds.close()
+        assert ds._raster is None, "Raster should be None after close"
+
+
+class TestContextManager:
+    """Tests for the context manager protocol (__enter__/__exit__)."""
+
+    def test_with_statement_returns_dataset(self):
+        """The `with` statement should yield the Dataset object.
+
+        Test scenario:
+            `__enter__` returns `self`, so the `as` variable should be the
+            same Dataset instance.
+        """
+        arr = np.ones((3, 3), dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326
+        )
+        with ds as ctx:
+            assert ctx is ds, "Context manager should return the same Dataset instance"
+            assert ctx._raster is not None, "Raster should be available inside with block"
+
+    def test_raster_closed_after_with_block(self):
+        """After exiting the `with` block, the dataset should be closed.
+
+        Test scenario:
+            The `__exit__` method calls `close()`, so `_raster` should be
+            None after the block ends.
+        """
+        arr = np.ones((3, 3), dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326
+        )
+        with ds:
+            assert ds._raster is not None, "Raster should exist inside with block"
+        assert ds._raster is None, "Raster should be None after with block exits"
+
+    def test_cleanup_on_exception(self):
+        """The dataset should be closed even if an exception occurs inside the with block.
+
+        Test scenario:
+            Raise a ValueError inside the block; the dataset should still
+            be cleaned up after the exception propagates.
+        """
+        arr = np.ones((3, 3), dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326
+        )
+        with pytest.raises(ValueError, match="test error"):
+            with ds:
+                raise ValueError("test error")
+        assert ds._raster is None, (
+            "Raster should be None after exception inside with block"
+        )
+
+    def test_operations_inside_with_block(self):
+        """Dataset operations should work normally inside a with block.
+
+        Test scenario:
+            Read array and check properties inside the block to verify
+            the dataset is fully functional.
+        """
+        arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326
+        )
+        with ds:
+            result = ds.read_array()
+            assert result.shape == (2, 2), f"Expected shape (2, 2), got {result.shape}"
+            assert ds.epsg == 4326, f"Expected EPSG 4326, got {ds.epsg}"
+            assert ds.rows == 2, f"Expected 2 rows, got {ds.rows}"
+
+    def test_context_manager_with_create_from_array(self):
+        """Context manager should work with the create_from_array factory.
+
+        Test scenario:
+            Create a dataset inline in the `with` statement and verify
+            it works and gets cleaned up.
+        """
+        arr = np.array([[5.0, 6.0], [7.0, 8.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326
+        )
+        with ds as ctx:
+            val = ctx.read_array()[0, 0]
+            assert np.isclose(val, 5.0), f"Expected 5.0, got {val}"
+        assert ds._raster is None, "Should be closed after with block"
+
+    def test_double_close_after_context_manager(self):
+        """Calling close() after the with block should be safe (no-op).
+
+        Test scenario:
+            The with block already calls close(). An explicit close()
+            afterwards should not raise.
+        """
+        arr = np.ones((2, 2), dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326
+        )
+        with ds:
+            pass
+        ds.close()
+        assert ds._raster is None, "Should remain None after redundant close"
+
+    def test_exit_returns_false(self):
+        """__exit__ should return False so exceptions are not suppressed.
+
+        Test scenario:
+            A ValueError raised inside the with block should propagate
+            to the caller, not be silently swallowed.
+        """
+        arr = np.ones((2, 2), dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326
+        )
+        with pytest.raises(RuntimeError, match="propagate"):
+            with ds:
+                raise RuntimeError("propagate")
+
 
 class TestTranslate:
     """Tests for the translate method."""
