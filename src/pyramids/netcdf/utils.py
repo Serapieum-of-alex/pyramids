@@ -536,7 +536,7 @@ def _dtype_to_str(dt: Any) -> str:
         if isinstance(name, str) and name:
             result = name.lower()
     except Exception:
-        pass
+        pass  # nosec B110
     if result == "unknown":
         try:
             # Numeric types: GetName() returns "" but GetNumericDataType()
@@ -544,7 +544,7 @@ def _dtype_to_str(dt: Any) -> str:
             gdal_code = dt.GetNumericDataType()
             result = gdal_to_numpy_dtype(gdal_code)
         except Exception:
-            pass
+            pass  # nosec B110
     return result
 
 

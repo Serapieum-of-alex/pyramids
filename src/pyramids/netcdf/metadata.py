@@ -75,7 +75,7 @@ class MetadataBuilder:
     def build(self) -> NetCDFMetadata:
         """Build and return the ``NetCDFMetadata`` for the dataset.
 
-        Reads the driver name, root group, groups, arrays,
+        Reads the driver name, root group, groups, variables,
         dimensions, global attributes, and structural information
         from the underlying GDAL dataset and assembles them into
         a ``NetCDFMetadata`` instance.
@@ -150,22 +150,22 @@ class MetadataBuilder:
 
 
 class GroupTraverser:
-    """Iterative BFS traverser for MDIM groups, arrays, and dimensions.
+    """Iterative BFS traverser for MDIM groups, variables, and dimensions.
 
     Performs a breadth-first walk over the GDAL multidimensional
     group hierarchy starting from a root ``gdal.Group``. At each
-    group it collects dimensions, arrays, and child-group
+    group it collects dimensions, variables, and child-group
     references, storing them in the caller-provided dictionaries.
 
     A ``collections.deque`` is used instead of recursion to avoid
-    stack overflow on deeply nested files. Group and array names
+    stack overflow on deeply nested files. Group and variable names
     are sorted for deterministic output ordering.
 
     Args:
         groups: Mutable dictionary that will be populated with
-            ``GroupInfo`` instances keyed by full name.
-        arrays: Mutable dictionary that will be populated with
-            ``VariableInfo`` instances keyed by full name.
+            ``GroupInfo`` instances keyed by short name.
+        variables: Mutable dictionary that will be populated with
+            ``VariableInfo`` instances keyed by short name.
         dimensions: Mutable dictionary that will be populated
             with ``DimensionInfo`` instances keyed by full name.
 
@@ -176,9 +176,9 @@ class GroupTraverser:
         ...     "precip.nc", gdal.OF_MULTIDIM_RASTER
         ... )
         >>> root = ds.GetRootGroup()  # doctest: +SKIP
-        >>> groups, arrays, dims = {}, {}, {}  # doctest: +SKIP
+        >>> groups, variables, dims = {}, {}, {}  # doctest: +SKIP
         >>> t = GroupTraverser(  # doctest: +SKIP
-        ...     groups, arrays, dims
+        ...     groups, variables, dims
         ... )
         >>> t.walk(root)  # doctest: +SKIP
         >>> list(groups.keys())  # doctest: +SKIP
@@ -244,20 +244,20 @@ class GroupTraverser:
             self.dimensions[dim.full_name.lstrip("/")] = dim
 
     def _collect_arrays(self, group: gdal.Group, group_full_name: str) -> list[str]:
-        """Collect all arrays from *group* into ``self.variables``.
+        """Collect all variables from *group* into ``self.variables``.
 
-        Each array is opened via ``group.OpenMDArray`` and
-        converted to a ``VariableInfo`` dataclass. Arrays that
+        Each variable is opened via ``group.OpenMDArray`` and
+        converted to a ``VariableInfo`` dataclass. Variables that
         cannot be opened are silently skipped.
 
         Args:
-            group: The GDAL group whose arrays to read.
+            group: The GDAL group whose variables to read.
             group_full_name: Full path of the parent group,
                 used as fallback context for full-name
                 resolution.
 
         Returns:
-            list[str]: Full names of the arrays that were
+            list[str]: Full names of the variables that were
                 successfully collected.
         """
         variable_full_names: list[str] = []
@@ -281,7 +281,7 @@ class GroupTraverser:
         """Traverse the group tree starting from *root* (BFS).
 
         Visits every reachable group, collecting its dimensions,
-        arrays, child references, and attributes. All results are
+        variables, child references, and attributes. All results are
         written into the dictionaries supplied at construction
         time.
 
@@ -295,9 +295,9 @@ class GroupTraverser:
             ...     "precip.nc", gdal.OF_MULTIDIM_RASTER
             ... )
             >>> root = ds.GetRootGroup()  # doctest: +SKIP
-            >>> groups, arrays, dims = {}, {}, {}  # doctest: +SKIP
+            >>> groups, variables, dims = {}, {}, {}  # doctest: +SKIP
             >>> traverser = GroupTraverser(  # doctest: +SKIP
-            ...     groups, arrays, dims
+            ...     groups, variables, dims
             ... )
             >>> traverser.walk(root)  # doctest: +SKIP
             >>> "/" in groups  # doctest: +SKIP
@@ -314,7 +314,7 @@ class GroupTraverser:
             )
             group_full_name = base_group.full_name
 
-            # Dimensions and arrays for this group
+            # Dimensions and variables for this group
             self._collect_dimensions(group, group_full_name)
             group_variables = self._collect_arrays(group, group_full_name)
 
@@ -732,7 +732,7 @@ def flatten_for_index(metadata: NetCDFMetadata) -> dict[str, Any]:
     # include some global attrs
     for k, v in list(metadata.global_attributes.items())[:20]:
         d[f"global.{k}"] = v
-    # include names of arrays and dims
+    # include names of variables and dims
     d["variables"] = sorted([a for a in metadata.variables.keys()])
     d["dimensions"] = sorted([dname for dname in metadata.dimensions.keys()])
     return d
