@@ -1898,9 +1898,11 @@ class NetCDF(Dataset):
         # a MEM dataset so the data survives after the VRT source
         # (the variable subset) is garbage collected.
         arr = reprojected.read_array()
+        no_data_value = reprojected.no_data_value
+        ndv_scalar = no_data_value[0] if isinstance(no_data_value, list) and no_data_value else no_data_value
         materialized = Dataset.create_from_array(
             arr, geo=reprojected.geotransform, epsg=reprojected.epsg,
-            no_data_value=reprojected.no_data_value,
+            no_data_value=ndv_scalar,
         )
         materialized._band_dim_name = var._band_dim_name
         materialized._band_dim_values = var._band_dim_values
