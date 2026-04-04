@@ -745,20 +745,24 @@ class TestCreateTimeConversionFunc:
 class TestDtypeToStr:
     """Tests for _dtype_to_str."""
 
-    def test_returns_name_from_get_name(self):
-        """GetName returns a valid name."""
+    def test_returns_lowercase_name_from_get_name(self):
+        """GetName returns a valid name, lowercased to numpy convention."""
         dt = MagicMock()
         dt.GetName.return_value = "Float64"
         result = _dtype_to_str(dt)
-        assert result == "Float64", "Should return the name from GetName"
+        assert result == "float64", (
+            f"Should return lowercased name, got {result}"
+        )
 
-    def test_falls_back_to_str(self):
-        """GetName fails; falls back to str()."""
+    def test_falls_back_to_numeric_dtype(self):
+        """GetName fails; falls back to GetNumericDataType."""
         dt = MagicMock()
         dt.GetName.side_effect = AttributeError("no GetName")
-        dt.__str__ = lambda self: "Int32"
+        dt.GetNumericDataType.return_value = 3  # GDT_Int16
         result = _dtype_to_str(dt)
-        assert result == "Int32", "Should fall back to str()"
+        assert result == "int16", (
+            f"Should fall back to numeric dtype, got {result}"
+        )
 
     def test_returns_unknown_when_all_fail(self):
         """Both GetName and str() fail."""
@@ -768,25 +772,25 @@ class TestDtypeToStr:
         result = _dtype_to_str(dt)
         assert result == "unknown", "Should return 'unknown' as last resort"
 
-    def test_empty_name_falls_to_str(self):
-        """GetName returns empty string; falls back to str()."""
+    def test_empty_name_falls_to_numeric(self):
+        """GetName returns empty; falls back to GetNumericDataType."""
         dt = MagicMock()
         dt.GetName.return_value = ""
-        dt.__str__ = lambda self: "SomeType"
+        dt.GetNumericDataType.return_value = 6  # GDT_Float32
         result = _dtype_to_str(dt)
-        assert (
-            result == "SomeType"
-        ), "Empty name from GetName should fall through to str()"
+        assert result == "float32", (
+            f"Empty name should fall through to numeric, got {result}"
+        )
 
-    def test_get_name_returns_non_string(self):
-        """GetName returns a non-string value; falls back to str()."""
+    def test_no_numeric_returns_unknown(self):
+        """GetName empty and GetNumericDataType fails; returns 'unknown'."""
         dt = MagicMock()
         dt.GetName.return_value = None
-        dt.__str__ = lambda self: "Fallback"
+        dt.GetNumericDataType.side_effect = Exception("no numeric")
         result = _dtype_to_str(dt)
-        assert (
-            result == "Fallback"
-        ), "Non-string from GetName should fall through to str()"
+        assert result == "unknown", (
+            f"Should return 'unknown' when all paths fail, got {result}"
+        )
 
 
 class TestToPyScalar:
