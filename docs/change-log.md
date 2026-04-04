@@ -1,6 +1,19 @@
 ﻿# Change log
 
 
+## 0.10.0 (2026-04-04)
+
+### Feat
+
+- **netcdf**: add variable operations, metadata refinement, and  rename ArrayInfo to VariableInfo (#172)
+- **netcdf**: add variable operations, metadata refinement, and
+  rename ArrayInfo to VariableInfo
+
+### Refactor
+
+- **dataset**: resolve 20 design issues from architectural review (#175)
+- restructure package layout and decompose Dataset into mixins (#170)
+
 ## 0.9.1 (2026-03-29)
 
 ### Fix
