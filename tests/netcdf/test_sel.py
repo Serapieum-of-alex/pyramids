@@ -399,16 +399,26 @@ class TestSelPreservation:
         )
 
 
-class TestSelReturnsDataset:
-    """sel() returns a Dataset (not NetCDF) — by design."""
+class TestSelReturnsNetCDF:
+    """sel() returns a NetCDF with variable metadata preserved."""
 
-    def test_result_is_dataset(self):
-        """sel() should return a Dataset, not a NetCDF.
+    def test_result_is_netcdf(self):
+        """sel() should return a NetCDF, not a plain Dataset.
 
         Test scenario:
-            The result is a plain Dataset because GIS ops return
-            Dataset by design. Use set_variable() to write back.
+            The result must be a NetCDF so that chaining sel() and
+            calling read_array(unpack=True) remain available.
         """
+        from pyramids.netcdf import NetCDF
+        nc = _make_nc()
+        var = nc.get_variable("temp")
+        result = var.sel(time=12)
+        assert isinstance(result, NetCDF), (
+            f"Expected NetCDF, got {type(result).__name__}"
+        )
+
+    def test_result_is_also_dataset(self):
+        """sel() result is still a Dataset (via inheritance)."""
         from pyramids.dataset import Dataset
         nc = _make_nc()
         var = nc.get_variable("temp")

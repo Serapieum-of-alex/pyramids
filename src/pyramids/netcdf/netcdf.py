@@ -333,13 +333,53 @@ class NetCDF(Dataset):
                     result = result + offset
         return result
 
+    def _preserve_netcdf_metadata(self, result: Dataset) -> NetCDF:
+        """Wrap a Dataset result as a NetCDF, preserving variable-subset metadata.
+
+        When spatial operations (crop, to_crs, resample) are called on a
+        NetCDF variable subset, the parent ``Dataset`` mixin returns a
+        plain ``Dataset``.  This helper re-wraps the result as a ``NetCDF``
+        and copies over the variable-specific attributes so that methods
+        like ``sel()``, ``read_array(unpack=True)``, and further spatial
+        operations continue to work with consistent return types.
+
+        Args:
+            result: The ``Dataset`` (or ``NetCDF``) returned by a parent
+                spatial operation.
+
+        Returns:
+            NetCDF: The same data wrapped as a ``NetCDF`` with all
+                variable-subset metadata preserved.
+        """
+        if isinstance(result, NetCDF):
+            wrapped = result
+        else:
+            wrapped = NetCDF(
+                result._raster, access=result._access,
+                open_as_multi_dimensional=False,
+            )
+        wrapped._is_md_array = self._is_md_array
+        wrapped._is_subset = self._is_subset
+        wrapped._band_dim_name = self._band_dim_name
+        wrapped._band_dim_values = self._band_dim_values
+        wrapped._variable_attrs = self._variable_attrs
+        wrapped._scale = self._scale
+        wrapped._offset = self._offset
+        wrapped._parent_nc = self._parent_nc
+        wrapped._source_var_name = self._source_var_name
+        wrapped._gdal_md_arr_ref = None
+        wrapped._gdal_rg_ref = None
+        return wrapped
+
     def crop(self, mask, touch: bool = True, inplace: bool = False):
         """Crop the dataset using a polygon or raster mask.
 
         On a **root MDIM container** this crops every variable and
         returns a new in-memory NetCDF container with the cropped
         results.  On a **variable subset** it delegates to the
-        parent ``Dataset.crop()``.
+        parent ``Dataset.crop()`` and wraps the result as ``NetCDF``
+        to preserve variable metadata (``_band_dim_name``,
+        ``_band_dim_values``, ``sel()``, etc.).
 
         Args:
             mask: GeoDataFrame with polygon geometry, or a Dataset
@@ -350,7 +390,7 @@ class NetCDF(Dataset):
                 mode only). Defaults to False.
 
         Returns:
-            NetCDF or Dataset: Cropped container or dataset.
+            NetCDF: Cropped container or variable subset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
             result = self._apply_to_all_variables(
@@ -358,6 +398,8 @@ class NetCDF(Dataset):
             )
         else:
             result = super().crop(mask=mask, touch=touch, inplace=inplace)
+            if result is not None:
+                result = self._preserve_netcdf_metadata(result)
         return result
 
     def _apply_to_all_variables(self, operation, op_kwargs, inplace=False):
@@ -433,7 +475,8 @@ class NetCDF(Dataset):
 
         On a **root MDIM container** this reprojects every variable
         and returns a new container. On a **variable subset** it
-        delegates to ``Dataset.to_crs()``.
+        delegates to ``Dataset.to_crs()`` and wraps the result as
+        ``NetCDF`` to preserve variable metadata.
 
         Args:
             to_epsg: Target EPSG code (e.g., 4326, 32637).
@@ -444,7 +487,7 @@ class NetCDF(Dataset):
                 mode only). Defaults to False.
 
         Returns:
-            NetCDF or Dataset: Reprojected container or dataset.
+            NetCDF: Reprojected container or variable subset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
             result = self._apply_to_all_variables(
@@ -460,6 +503,8 @@ class NetCDF(Dataset):
                 maintain_alignment=maintain_alignment,
                 inplace=inplace,
             )
+            if result is not None:
+                result = self._preserve_netcdf_metadata(result)
         return result
 
     def resample(
@@ -472,7 +517,8 @@ class NetCDF(Dataset):
 
         On a **root MDIM container** this resamples every variable
         and returns a new container. On a **variable subset** it
-        delegates to ``Dataset.resample()``.
+        delegates to ``Dataset.resample()`` and wraps the result as
+        ``NetCDF`` to preserve variable metadata.
 
         Args:
             cell_size: New cell size.
@@ -481,7 +527,7 @@ class NetCDF(Dataset):
                 mode only). Defaults to False.
 
         Returns:
-            NetCDF or Dataset: Resampled container or dataset.
+            NetCDF: Resampled container or variable subset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
             result = self._apply_to_all_variables(
@@ -493,15 +539,22 @@ class NetCDF(Dataset):
             result = super().resample(
                 cell_size=cell_size, method=method, inplace=inplace,
             )
+            if result is not None:
+                result = self._preserve_netcdf_metadata(result)
         return result
 
-    def sel(self, **kwargs) -> Dataset:
+    def sel(self, **kwargs) -> NetCDF:
         """Select a subset of bands by coordinate values.
 
         Extracts bands whose coordinate values match the given
         criteria.  Works on variable subsets that have
         ``_band_dim_name`` and ``_band_dim_values`` set by
         ``get_variable()``.
+
+        The result is always a ``NetCDF`` instance with the same
+        variable metadata preserved, so that ``sel()`` can be
+        chained and NetCDF-specific methods like
+        ``read_array(unpack=True)`` remain available.
 
         Args:
             **kwargs: One keyword argument where the key is the
@@ -513,7 +566,8 @@ class NetCDF(Dataset):
                   ``start <= coord <= stop``.
 
         Returns:
-            Dataset: A new dataset with only the selected bands.
+            NetCDF: A new NetCDF variable subset with only the
+                selected bands and all variable metadata preserved.
 
         Raises:
             ValueError: If the dimension name doesn't match
@@ -590,14 +644,12 @@ class NetCDF(Dataset):
 
         ndv = self.no_data_value
         ndv_scalar = ndv[0] if isinstance(ndv, list) and ndv else ndv
-        result = Dataset.create_from_array(
+        ds_result = Dataset.create_from_array(
             selected, geo=self.geotransform, epsg=self.epsg,
             no_data_value=ndv_scalar,
         )
-        result._band_dim_name = self._band_dim_name
+        result = self._preserve_netcdf_metadata(ds_result)
         result._band_dim_values = selected_coords
-        if hasattr(self, "_variable_attrs"):
-            result._variable_attrs = self._variable_attrs
 
         return result
 
