@@ -7,73 +7,50 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ReadOnlyError(Exception):
+class _PyramidsError(Exception):
+    """Base class for all pyramids exceptions.
+
+    Logs the error message at DEBUG level on construction for traceability,
+    even when the exception is caught and handled. DEBUG is hidden by default
+    and only appears when verbose logging is enabled.
+    """
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        logger.debug(f"{type(self).__name__}: {message}")
+
+
+class ReadOnlyError(_PyramidsError):
     """ReadOnlyError."""
 
-    def __init__(self, error_message: str):
-        """__init__."""
-        logger.error(error_message)
 
-
-class DatasetNotFoundError(Exception):
+class DatasetNotFoundError(_PyramidsError):
     """DatasetNotFoundError."""
 
-    def __init__(self, error_message: str):
-        """__init__."""
-        logger.error(error_message)
 
-
-class NoDataValueError(Exception):
+class NoDataValueError(_PyramidsError):
     """NoDataValueError."""
 
-    def __init__(self, error_message: str):
-        """__init__."""
-        logger.error(error_message)
 
-
-class AlignmentError(Exception):
+class AlignmentError(_PyramidsError):
     """Alignment Error."""
 
-    def __init__(self, error_message: str):
-        """__init__."""
-        logger.error(error_message)
 
-
-class DriverNotExistError(Exception):
+class DriverNotExistError(_PyramidsError):
     """Driver-Not-exist Error."""
 
-    def __init__(self, error_message: str):
-        """__init__."""
-        logger.error(error_message)
 
-
-class FileFormatNotSupportedError(Exception):
+class FileFormatNotSupportedError(_PyramidsError):
     """File Format Not Supported."""
 
-    def __init__(self, error_message: str):
-        """__init__."""
-        logger.error(error_message)
 
-
-class OptionalPackageDoesNotExist(Exception):
+class OptionalPackageDoesNotExist(_PyramidsError):
     """Optional Package does not exist."""
 
-    def __init__(self, error_message: str):
-        """__init__."""
-        logger.error(error_message)
 
-
-class FailedToSaveError(Exception):
+class FailedToSaveError(_PyramidsError):
     """Failed to save error."""
 
-    def __init__(self, error_message: str):
-        """__init__."""
-        logger.error(error_message)
 
-
-class OutOfBoundsError(Exception):
+class OutOfBoundsError(_PyramidsError):
     """Out-of-bounds error."""
-
-    def __init__(self, error_message: str):
-        """__init__."""
-        logger.error(error_message)
