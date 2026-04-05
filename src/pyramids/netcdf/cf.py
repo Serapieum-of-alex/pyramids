@@ -64,6 +64,60 @@ def write_attributes_to_md_array(
             pass  # nosec B110
 
 
+def build_coordinate_attrs(
+    dim_name: str,
+    is_geographic: bool = True,
+) -> dict[str, str]:
+    """Generate CF-compliant attributes for a coordinate variable.
+
+    Maps dimension names to the appropriate CF ``axis``,
+    ``standard_name``, ``long_name``, and ``units`` attributes
+    based on whether the CRS is geographic or projected.
+
+    Args:
+        dim_name: Dimension name (e.g. ``"x"``, ``"y"``, ``"lat"``,
+            ``"lon"``, ``"time"``).
+        is_geographic: True if the CRS is geographic (lon/lat),
+            False if projected (easting/northing in metres).
+
+    Returns:
+        Dict of CF attribute names to string values. Empty dict
+        if the dimension name is not recognized.
+    """
+    name_lower = dim_name.lower()
+    attrs: dict[str, str] = {}
+
+    if name_lower in ("x", "lon", "longitude"):
+        attrs["axis"] = "X"
+        if is_geographic:
+            attrs["standard_name"] = "longitude"
+            attrs["long_name"] = "longitude"
+            attrs["units"] = "degrees_east"
+        else:
+            attrs["standard_name"] = "projection_x_coordinate"
+            attrs["long_name"] = "x coordinate of projection"
+            attrs["units"] = "m"
+    elif name_lower in ("y", "lat", "latitude"):
+        attrs["axis"] = "Y"
+        if is_geographic:
+            attrs["standard_name"] = "latitude"
+            attrs["long_name"] = "latitude"
+            attrs["units"] = "degrees_north"
+        else:
+            attrs["standard_name"] = "projection_y_coordinate"
+            attrs["long_name"] = "y coordinate of projection"
+            attrs["units"] = "m"
+    elif name_lower in ("time", "t"):
+        attrs["axis"] = "T"
+        attrs["standard_name"] = "time"
+        attrs["long_name"] = "time"
+    elif name_lower in ("z", "lev", "level", "depth", "height"):
+        attrs["axis"] = "Z"
+        attrs["long_name"] = dim_name
+
+    return attrs
+
+
 def write_global_attributes(
     rg: gdal.Group,
     attrs: dict[str, Any],

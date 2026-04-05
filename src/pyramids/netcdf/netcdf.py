@@ -20,7 +20,11 @@ from pyramids.dataset import Dataset
 from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
-from pyramids.netcdf.cf import write_global_attributes
+from pyramids.netcdf.cf import (
+    build_coordinate_attrs,
+    write_attributes_to_md_array,
+    write_global_attributes,
+)
 from pyramids.netcdf.utils import create_time_conversion_func
 
 
@@ -1337,8 +1341,9 @@ class NetCDF(Dataset):
         values: np.ndarray,
         dim_type=None,
         set_indexing: bool = True,
+        is_geographic: bool = True,
     ) -> gdal.Dimension:
-        """Create a dimension with its coordinate array.
+        """Create a dimension with its coordinate array and CF attributes.
 
         Args:
             group: GDAL root group.
@@ -1349,6 +1354,8 @@ class NetCDF(Dataset):
             set_indexing: If True, call SetIndexingVariable (works
                 on MEM driver). If False, skip it (required for
                 netCDF driver which doesn't support it).
+            is_geographic: If True, coordinate units are degrees.
+                If False, units are metres. Defaults to True.
 
         Returns:
             gdal.Dimension
@@ -1358,6 +1365,9 @@ class NetCDF(Dataset):
         coord_arr.Write(values)
         if set_indexing:
             dim.SetIndexingVariable(coord_arr)
+        cf_attrs = build_coordinate_attrs(dim_name, is_geographic)
+        if cf_attrs:
+            write_attributes_to_md_array(coord_arr, cf_attrs)
         return dim
 
     @staticmethod
@@ -1636,13 +1646,21 @@ class NetCDF(Dataset):
         # dimension arrays manually without linking them.
         use_set_indexing = (driver_type == "MEM")
 
+        # Determine if CRS is geographic (lon/lat) or projected (m)
+        is_geographic = True
+        if epsg is not None:
+            srs_check = Dataset._create_sr_from_epsg(int(epsg))
+            is_geographic = srs_check.IsGeographic() == 1
+
         dim_x = NetCDF._create_dimension(
             rg, "x", dtype, np.array(x_dim_values),
             gdal.DIM_TYPE_HORIZONTAL_X, use_set_indexing,
+            is_geographic=is_geographic,
         )
         dim_y = NetCDF._create_dimension(
             rg, "y", dtype, np.array(y_dim_values),
             gdal.DIM_TYPE_HORIZONTAL_Y, use_set_indexing,
+            is_geographic=is_geographic,
         )
 
         if arr.ndim == 3:
