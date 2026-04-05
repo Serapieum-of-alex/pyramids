@@ -596,6 +596,9 @@ class StructuralInfo:
         return cls(driver_name=driver_name, driver_metadata=dmd)
 
 
+MAX_DISPLAY_VARIABLES = 10
+
+
 @dataclass
 class CFInfo:
     """CF convention metadata derived by cross-referencing variables.
@@ -746,7 +749,7 @@ class NetCDFMetadata:
         dims_str = "\n".join(dim_lines) if dim_lines else "    (none)"
 
         var_lines = []
-        max_display = 10
+        max_display = MAX_DISPLAY_VARIABLES
         arr_list = list(self.variables.values())
         for arr in arr_list[:max_display]:
             dtype_str = arr.dtype if len(arr.dtype) < 20 else "unknown"
@@ -792,9 +795,11 @@ class NetCDFMetadata:
         """Look up a dimension by short name or full name.
 
         Tries an exact key match against the ``dimensions``
-        dictionary first (which is keyed by full name),
-        then falls back to matching by the dimension's
-        short ``name`` attribute.
+        dictionary first (keys are full names with the leading
+        ``/`` stripped, e.g. ``"/time"`` -> key ``"time"``,
+        ``"/group/time"`` -> key ``"group/time"``), then falls
+        back to matching by the dimension's short ``name``
+        attribute.
 
         Args:
             name: Dimension short name (e.g. ``"time"``)

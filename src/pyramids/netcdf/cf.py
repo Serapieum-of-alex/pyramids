@@ -106,9 +106,13 @@ def build_coordinate_attrs(
     ``standard_name``, ``long_name``, and ``units`` attributes
     based on whether the CRS is geographic or projected.
 
+    Dimension names are **case-normalized** (lowered) before
+    matching, so ``"X"``, ``"x"``, and ``"Lon"`` all match the
+    X-axis pattern.
+
     Args:
         dim_name: Dimension name (e.g. ``"x"``, ``"y"``, ``"lat"``,
-            ``"lon"``, ``"time"``).
+            ``"lon"``, ``"time"``). Case-insensitive.
         is_geographic: True if the CRS is geographic (lon/lat),
             False if projected (easting/northing in metres).
 
@@ -212,7 +216,11 @@ def srs_to_grid_mapping(
         grid_mapping_name = _GDAL_PROJ_TO_CF[proj_name]
         params.update(_extract_proj_params(srs, proj_name))
     else:
-        grid_mapping_name = "unknown"
+        logger.warning(
+            f"Projection '{proj_name}' is not in the CF grid mapping table. "
+            f"Only crs_wkt will be written for CRS interoperability."
+        )
+        grid_mapping_name = "latitude_longitude"
 
     return grid_mapping_name, params
 
@@ -668,8 +676,14 @@ def _is_connectivity(attrs: dict[str, Any]) -> bool:
 #  Conventions parsing                                                 #
 # ------------------------------------------------------------------ #
 
+_MAX_TESTED_CF_VERSION = "1.11"
+
+
 def parse_conventions(conventions_str: str | None) -> dict[str, str]:
     """Parse a Conventions global attribute string.
+
+    Logs a warning if the CF version is higher than the highest
+    tested version (``1.11``).
 
     Args:
         conventions_str: Space-separated conventions string, e.g.
@@ -687,6 +701,19 @@ def parse_conventions(conventions_str: str | None) -> dict[str, str]:
             result[name] = version
         else:
             result[token] = ""
+    cf_version = result.get("CF")
+    if cf_version is not None:
+        try:
+            parts = cf_version.split(".")
+            tested_parts = _MAX_TESTED_CF_VERSION.split(".")
+            if [int(p) for p in parts] > [int(p) for p in tested_parts]:
+                logger.warning(
+                    f"CF version {cf_version} is newer than the "
+                    f"highest tested version ({_MAX_TESTED_CF_VERSION}). "
+                    f"Some features may not be supported."
+                )
+        except (ValueError, TypeError):
+            pass
     return result
 
 

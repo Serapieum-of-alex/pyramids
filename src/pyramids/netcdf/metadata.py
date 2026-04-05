@@ -291,7 +291,7 @@ class GroupTraverser:
                 result = ""
             return result
 
-        dims_sorted = sorted(list(dims), key=_dim_name)
+        dims_sorted = sorted(dims, key=_dim_name)
 
         for d in dims_sorted:
             dim = DimensionInfo.from_gdal_dim(d, group_full_name)
@@ -699,6 +699,9 @@ def from_json(s: str) -> NetCDFMetadata:
     )
 
 
+MAX_INDEXED_GLOBAL_ATTRS = 20
+
+
 def flatten_for_index(metadata: NetCDFMetadata) -> dict[str, Any]:
     """Return a flat dict of key properties for indexing/search.
 
@@ -784,7 +787,7 @@ def flatten_for_index(metadata: NetCDFMetadata) -> dict[str, Any]:
         "dimension_count": len(metadata.dimensions),
     }
     # include some global attrs
-    for k, v in list(metadata.global_attributes.items())[:20]:
+    for k, v in list(metadata.global_attributes.items())[:MAX_INDEXED_GLOBAL_ATTRS]:
         d[f"global.{k}"] = v
     # include names of variables and dims
     d["variables"] = sorted([a for a in metadata.variables.keys()])

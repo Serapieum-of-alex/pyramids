@@ -37,39 +37,45 @@ class _LazyVariableDict(dict):
     Avoids the cost of calling ``get_variable()`` (which does
     ``AsClassicDataset`` + Y-flip) for every variable upfront.
     Only the variables actually accessed are loaded.
+
+    Note:
+        This class is **not thread-safe**. Concurrent access from
+        multiple threads may cause ``get_variable()`` to be called
+        more than once for the same key. Use external locking if
+        thread-safety is required.
     """
 
-    def __init__(self, nc):
+    def __init__(self, nc: NetCDF) -> None:
         super().__init__()
         self._nc = nc
-        self._names = nc.get_variable_names()
+        self._names: list[str] = nc.get_variable_names()
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> NetCDF:
         if not dict.__contains__(self, key) and key in self._names:
             dict.__setitem__(self, key, self._nc.get_variable(key))
         return dict.__getitem__(self, key)
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any = None) -> NetCDF | Any:
         if key in self._names:
             return self[key]
         return default
 
-    def __contains__(self, key):
+    def __contains__(self, key: object) -> bool:
         return key in self._names
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._names)
 
     def __iter__(self):
         return iter(self._names)
 
-    def keys(self):
+    def keys(self) -> list[str]:
         return self._names
 
-    def values(self):
+    def values(self) -> list[NetCDF]:
         return [self[k] for k in self._names]
 
-    def items(self):
+    def items(self) -> list[tuple[str, NetCDF]]:
         return [(k, self[k]) for k in self._names]
 
 
@@ -369,7 +375,14 @@ class NetCDF(Dataset):
         wrapped._is_md_array = self._is_md_array
         wrapped._is_subset = self._is_subset
         wrapped._band_dim_name = self._band_dim_name
-        wrapped._band_dim_values = self._band_dim_values
+        if (
+            self._band_dim_values is not None
+            and wrapped._band_count > 0
+            and len(self._band_dim_values) != wrapped._band_count
+        ):
+            wrapped._band_dim_values = None
+        else:
+            wrapped._band_dim_values = self._band_dim_values
         wrapped._variable_attrs = self._variable_attrs
         wrapped._scale = self._scale
         wrapped._offset = self._offset
