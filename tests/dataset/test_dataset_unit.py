@@ -4210,3 +4210,132 @@ class TestPDEP8InplacePattern:
         assert ds.no_data_value[0] == -1.0, (
             f"Expected no_data_value=-1.0, got {ds.no_data_value[0]}"
         )
+
+
+class TestMapBlocks:
+    """Tests for the map_blocks method (block-by-block processing)."""
+
+    def test_map_blocks_doubles_values(self):
+        """map_blocks should apply the function to every tile.
+
+        Test scenario:
+            Apply x*2 to a 6x6 raster with tile_size=3. The result
+            should have all values doubled.
+        """
+        arr = np.arange(1, 37, dtype=np.float32).reshape(6, 6)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326
+        )
+        result = ds.map_blocks(lambda tile: tile * 2, tile_size=3)
+        expected = arr * 2
+        np.testing.assert_array_almost_equal(
+            result.read_array(), expected,
+            err_msg="map_blocks should double all values"
+        )
+
+    def test_map_blocks_preserves_spatial_metadata(self, single_band_dataset):
+        """map_blocks result should have same geotransform, CRS, no_data_value.
+
+        Test scenario:
+            The output dataset should inherit all spatial metadata from
+            the source.
+        """
+        result = single_band_dataset.map_blocks(lambda tile: tile, tile_size=2)
+        assert result.geotransform == single_band_dataset.geotransform, (
+            "Geotransform should be preserved"
+        )
+        assert result.epsg == single_band_dataset.epsg, "EPSG should be preserved"
+        assert result.no_data_value == single_band_dataset.no_data_value, (
+            "No-data value should be preserved"
+        )
+
+    def test_map_blocks_identity_matches_read_array(self):
+        """map_blocks with identity function should produce the same array.
+
+        Test scenario:
+            Applying an identity function tile-by-tile should yield the
+            exact same array as read_array().
+        """
+        arr = np.random.default_rng(42).random((10, 10)).astype(np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326
+        )
+        result = ds.map_blocks(lambda tile: tile, tile_size=4)
+        np.testing.assert_array_equal(
+            result.read_array(), ds.read_array(),
+            err_msg="Identity map_blocks should reproduce the original"
+        )
+
+    def test_map_blocks_single_band(self):
+        """map_blocks with band parameter should process only that band.
+
+        Test scenario:
+            On a 2-band dataset, map_blocks(band=1) should produce a
+            1-band output with only band 1's values transformed.
+        """
+        arr = np.ones((2, 4, 4), dtype=np.float32)
+        arr[0, :, :] = 10
+        arr[1, :, :] = 20
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326
+        )
+        result = ds.map_blocks(lambda tile: tile + 5, tile_size=2, band=1)
+        assert result.band_count == 1, f"Expected 1 band, got {result.band_count}"
+        result_arr = result.read_array()
+        assert np.allclose(result_arr, 25.0), (
+            f"Expected all 25.0 (20+5), got {result_arr}"
+        )
+
+    def test_map_blocks_non_square_raster(self):
+        """map_blocks should handle non-square rasters with partial edge tiles.
+
+        Test scenario:
+            A 7x5 raster with tile_size=3 will have partial tiles at the
+            edges. All tiles should be processed correctly.
+        """
+        arr = np.ones((7, 5), dtype=np.float32) * 3.0
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326
+        )
+        result = ds.map_blocks(lambda tile: tile + 1, tile_size=3)
+        assert np.allclose(result.read_array(), 4.0), (
+            "All cells should be 4.0 (3+1), including edge tiles"
+        )
+
+    def test_map_blocks_tile_size_larger_than_raster(self):
+        """map_blocks should work when tile_size exceeds the raster dimensions.
+
+        Test scenario:
+            A single tile covers the entire raster — should behave like
+            a normal array operation.
+        """
+        arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326
+        )
+        result = ds.map_blocks(lambda tile: tile ** 2, tile_size=1000)
+        expected = np.array([[1.0, 4.0], [9.0, 16.0]], dtype=np.float32)
+        np.testing.assert_array_almost_equal(
+            result.read_array(), expected,
+            err_msg="Single-tile map_blocks should square values"
+        )
+
+    def test_map_blocks_multi_band_all_bands(self):
+        """map_blocks without band parameter should process all bands.
+
+        Test scenario:
+            A 3-band dataset processed with map_blocks(band=None) should
+            produce a 3-band output with all bands transformed.
+        """
+        arr = np.ones((3, 4, 4), dtype=np.float32)
+        arr[0] = 1
+        arr[1] = 2
+        arr[2] = 3
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326
+        )
+        result = ds.map_blocks(lambda tile: tile * 10, tile_size=2)
+        assert result.band_count == 3, f"Expected 3 bands, got {result.band_count}"
+        assert np.allclose(result.read_array(band=0), 10.0), "Band 0 should be 10"
+        assert np.allclose(result.read_array(band=1), 20.0), "Band 1 should be 20"
+        assert np.allclose(result.read_array(band=2), 30.0), "Band 2 should be 30"

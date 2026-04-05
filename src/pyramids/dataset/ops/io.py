@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Generator
 
 import numpy as np
@@ -537,6 +538,78 @@ class IO:
             yield self.raster.ReadAsArray(
                 xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize
             )
+
+    def map_blocks(
+        self: Dataset,
+        func: Callable[[np.ndarray], np.ndarray],
+        tile_size: int = 256,
+        band: int | None = None,
+    ) -> Dataset:
+        """Apply a function block-by-block without loading the full raster into memory.
+
+        Reads the raster in tiles of `tile_size x tile_size`, applies `func` to each
+        tile, and writes the result to a new in-memory Dataset. Neither the input nor
+        the output array needs to fit in memory at once — only one tile at a time.
+
+        This is the key enabler for processing rasters larger than RAM.
+
+        Args:
+            func (Callable[[np.ndarray], np.ndarray]):
+                A function that takes a numpy array (the tile) and returns a numpy array
+                of the same shape. The function should handle no-data values internally
+                if needed.
+            tile_size (int):
+                Size of each square tile in pixels. Default is 256.
+            band (int | None):
+                Band index to process. If None, all bands are processed. Default is None.
+
+        Returns:
+            Dataset:
+                A new Dataset with the function applied to every tile.
+
+        Examples:
+            - Apply a function block-by-block to avoid loading a large raster into memory:
+
+              ```python
+              >>> import numpy as np
+              >>> arr = np.arange(1, 101, dtype=np.float32).reshape(10, 10)
+              >>> dataset = Dataset.create_from_array(
+              ...     arr, top_left_corner=(0, 0), cell_size=1.0, epsg=4326
+              ... )
+              >>> result = dataset.map_blocks(lambda tile: tile * 2, tile_size=5)
+              >>> print(result.read_array()[0, 0])
+              2.0
+
+              ```
+        """
+        if band is not None:
+            bands = 1
+            dtype = self.gdal_dtype[band]
+        else:
+            bands = self.band_count
+            dtype = self.gdal_dtype[0]
+
+        dst_obj = type(self)._build_dataset(
+            self.columns, self.rows, bands, dtype,
+            self.geotransform, self.crs, self.no_data_value,
+        )
+
+        for xoff, yoff, xsize, ysize in self._window(size=tile_size):
+            if band is not None:
+                tile = self._iloc(band).ReadAsArray(xoff, yoff, xsize, ysize)
+                result_tile = func(np.asarray(tile))
+                dst_obj.raster.GetRasterBand(1).WriteArray(result_tile, xoff, yoff)
+            else:
+                for b in range(self.band_count):
+                    tile = self._raster.GetRasterBand(b + 1).ReadAsArray(
+                        xoff, yoff, xsize, ysize
+                    )
+                    result_tile = func(np.asarray(tile))
+                    dst_obj.raster.GetRasterBand(b + 1).WriteArray(
+                        result_tile, xoff, yoff
+                    )
+
+        return dst_obj
 
     def to_xyz(
         self: Dataset, bands: list[int] | None = None, path: str | Path | None = None
