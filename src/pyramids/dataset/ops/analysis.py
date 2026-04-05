@@ -174,7 +174,7 @@ class Analysis:
         )
         return int(domain_count)
 
-    def apply(self, func, band: int = 0, inplace: bool = False) -> Dataset | None:
+    def apply(self, func, band: int = 0, inplace: bool = False) -> Dataset:
         """Apply a function to all domain cells.
 
         - apply method executes a mathematical operation on the raster array.
@@ -190,8 +190,8 @@ class Analysis:
                 Default is False.
 
         Returns:
-            Dataset | None:
-                The resulting dataset if inplace is False; otherwise None.
+            Dataset:
+                A new Dataset with the function applied. If inplace is True, returns self.
 
         Examples:
             - Create a dataset from an array filled with values between -1 and 1:
@@ -244,16 +244,14 @@ class Analysis:
         )
         dst_obj.raster.GetRasterBand(1).WriteArray(new_array)
 
-        result: Dataset | None = None
         if inplace:
             self._update_inplace(dst_obj.raster)
-        else:
-            result = dst_obj
-        return result
+            return self
+        return dst_obj
 
     def fill(
         self, value: float | int, inplace: bool = False, path: str | Path | None = None
-    ) -> Dataset | None:
+    ) -> Dataset:
         """Fill the domain cells with a certain value.
 
             Fill takes a raster and fills it with one value
@@ -268,7 +266,7 @@ class Analysis:
 
         Returns:
             Dataset:
-                The resulting dataset if inplace is False; otherwise None.
+                A new Dataset with cells filled. If inplace is True, returns self.
 
         Examples:
             - Create a Dataset with 1 band, 5 rows, 5 columns, at the point lon/lat (0, 0):
@@ -307,12 +305,10 @@ class Analysis:
             src_array[~np.isnan(src_array)] = value
 
         dst = type(self).dataset_like(self, src_array, path=path)
-        result: Dataset | None = None
         if inplace:
             self._update_inplace(dst.raster)
-        else:
-            result = dst
-        return result
+            return self
+        return dst
 
     def extract(
         self,

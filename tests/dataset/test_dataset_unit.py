@@ -1369,7 +1369,7 @@ class TestFill:
     def test_fill_inplace(self, single_band_dataset):
         """fill(inplace=True) should modify the dataset in place."""
         result = single_band_dataset.fill(99, inplace=True)
-        assert result is None, "inplace fill should return None"
+        assert result is single_band_dataset, "inplace fill should return self"
         arr = single_band_dataset.read_array()
         assert np.all(arr == 99), "All cells should be 99 after inplace fill"
 
@@ -1454,11 +1454,11 @@ class TestToCrs:
         assert result is not None, "to_crs should return a Dataset"
         assert result.epsg == 3857, f"Expected EPSG 3857, got {result.epsg}"
 
-    def test_to_crs_inplace(self, single_band_dataset):
-        """to_crs(inplace=True) should modify in place and return None."""
-        result = single_band_dataset.to_crs(to_epsg=3857, inplace=True)
-        assert result is None, "inplace to_crs should return None"
-        assert single_band_dataset.epsg == 3857, "EPSG should be updated in place"
+    def test_to_crs_returns_new_dataset(self, single_band_dataset):
+        """to_crs() should always return a new Dataset."""
+        result = single_band_dataset.to_crs(to_epsg=3857)
+        assert result is not None, "to_crs should return a Dataset"
+        assert result.epsg == 3857, "EPSG should be 3857 on the returned dataset"
 
     def test_to_crs_invalid_type_raises(self, single_band_dataset):
         """to_crs with a non-int epsg should raise TypeError."""
@@ -1836,8 +1836,8 @@ class TestConvertLongitude:
         with pytest.raises(ValueError, match="whole globe"):
             ds.convert_longitude()
 
-    def test_convert_longitude_inplace(self):
-        """convert_longitude(inplace=True) should modify in place."""
+    def test_convert_longitude_returns_new_dataset(self):
+        """convert_longitude() should always return a new Dataset."""
         cols = 360
         arr = np.ones((1, cols), dtype=np.float32)
         ds = Dataset.create_from_array(
@@ -1847,8 +1847,9 @@ class TestConvertLongitude:
             epsg=4326,
             no_data_value=-9999.0,
         )
-        result = ds.convert_longitude(inplace=True)
-        assert result is None, "inplace convert_longitude should return None"
+        result = ds.convert_longitude()
+        assert result is not None, "convert_longitude should return a Dataset"
+        assert isinstance(result, Dataset), "convert_longitude should return a Dataset"
 
 
 class TestFillNanNodata:
@@ -3528,8 +3529,8 @@ class TestWriteArrayException:
 class TestConvertLongitudeInplace:
     """Tests for convert_longitude inplace path."""
 
-    def test_convert_longitude_not_inplace(self):
-        """convert_longitude(inplace=False) returns new Dataset."""
+    def test_convert_longitude_returns_dataset(self):
+        """convert_longitude() returns new Dataset."""
         cols = 360
         arr = np.ones((1, cols), dtype=np.float32)
         ds = Dataset.create_from_array(
@@ -3539,7 +3540,7 @@ class TestConvertLongitudeInplace:
             epsg=4326,
             no_data_value=-9999.0,
         )
-        result = ds.convert_longitude(inplace=False)
+        result = ds.convert_longitude()
         assert isinstance(result, Dataset), "Should return a new Dataset"
         assert result.geotransform[0] < 0, "New top-left x should be negative"
 
@@ -3997,58 +3998,43 @@ class TestGroupNeighbours:
 class TestInplaceConsistency:
     """Tests for the inplace parameter added to resample, align, apply, and change_no_data_value."""
 
-    def test_resample_inplace_returns_none(self, single_band_dataset):
-        """resample(inplace=True) should return None and modify the dataset in place."""
+    def test_resample_returns_new_dataset(self, single_band_dataset):
+        """resample() should always return a new Dataset."""
         original_cell_size = single_band_dataset.cell_size
-        result = single_band_dataset.resample(cell_size=0.1, inplace=True)
-        assert result is None, "inplace resample should return None"
-        assert single_band_dataset.cell_size == 0.1, (
-            f"Cell size should be 0.1 after inplace resample, got {single_band_dataset.cell_size}"
-        )
-
-    def test_resample_not_inplace_returns_new_dataset(self, single_band_dataset):
-        """resample(inplace=False) should return a new Dataset without modifying the original."""
-        original_cell_size = single_band_dataset.cell_size
-        result = single_band_dataset.resample(cell_size=0.1, inplace=False)
-        assert result is not None, "non-inplace resample should return a Dataset"
+        result = single_band_dataset.resample(cell_size=0.1)
+        assert result is not None, "resample should return a Dataset"
         assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert result.cell_size == 0.1, (
+            f"Cell size should be 0.1 after resample, got {result.cell_size}"
+        )
         assert single_band_dataset.cell_size == original_cell_size, (
             "Original dataset cell size should not change"
         )
 
-    def test_align_inplace_returns_none(self, single_band_dataset):
-        """align(inplace=True) should return None and modify the dataset in place."""
-        ref_arr = np.ones((5, 5), dtype=np.float32)
-        ref = Dataset.create_from_array(
-            ref_arr, top_left_corner=(0.0, 0.0), cell_size=0.02, epsg=4326
-        )
-        result = single_band_dataset.align(ref, inplace=True)
-        assert result is None, "inplace align should return None"
-        assert single_band_dataset.rows == 5, (
-            f"Rows should be 5 after inplace align, got {single_band_dataset.rows}"
-        )
-        assert single_band_dataset.columns == 5, (
-            f"Columns should be 5 after inplace align, got {single_band_dataset.columns}"
-        )
-
-    def test_align_not_inplace_returns_new_dataset(self, single_band_dataset):
-        """align(inplace=False) should return a new Dataset without modifying the original."""
+    def test_align_returns_new_dataset(self, single_band_dataset):
+        """align() should always return a new Dataset."""
         original_rows = single_band_dataset.rows
         ref_arr = np.ones((5, 5), dtype=np.float32)
         ref = Dataset.create_from_array(
             ref_arr, top_left_corner=(0.0, 0.0), cell_size=0.02, epsg=4326
         )
-        result = single_band_dataset.align(ref, inplace=False)
-        assert result is not None, "non-inplace align should return a Dataset"
+        result = single_band_dataset.align(ref)
+        assert result is not None, "align should return a Dataset"
         assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert result.rows == 5, (
+            f"Rows should be 5 after align, got {result.rows}"
+        )
+        assert result.columns == 5, (
+            f"Columns should be 5 after align, got {result.columns}"
+        )
         assert single_band_dataset.rows == original_rows, (
             "Original dataset rows should not change"
         )
 
-    def test_apply_inplace_returns_none(self, single_band_dataset):
-        """apply(inplace=True) should return None and modify the dataset in place."""
+    def test_apply_inplace_returns_self(self, single_band_dataset):
+        """apply(inplace=True) should return self and modify the dataset in place."""
         result = single_band_dataset.apply(lambda x: x * 2, inplace=True)
-        assert result is None, "inplace apply should return None"
+        assert result is single_band_dataset, "inplace apply should return self"
         arr = single_band_dataset.read_array()
         assert arr[0, 0] == 2.0, f"Expected 2.0 after doubling, got {arr[0, 0]}"
 
@@ -4062,14 +4048,14 @@ class TestInplaceConsistency:
             "Original dataset values should not change"
         )
 
-    def test_change_no_data_value_inplace_returns_none(self):
-        """change_no_data_value(inplace=True) should return None and modify the dataset in place."""
+    def test_change_no_data_value_inplace_returns_self(self):
+        """change_no_data_value(inplace=True) should return self and modify the dataset in place."""
         arr = np.full((3, 3), -9999.0, dtype=np.float32)
         ds = Dataset.create_from_array(
             arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326, no_data_value=-9999.0
         )
         result = ds.change_no_data_value(-1.0, old_value=-9999.0, inplace=True)
-        assert result is None, "inplace change_no_data_value should return None"
+        assert result is ds, "inplace change_no_data_value should return self"
         assert ds.no_data_value[0] == -1.0, (
             f"No data value should be -1.0 after inplace change, got {ds.no_data_value[0]}"
         )
@@ -4085,4 +4071,142 @@ class TestInplaceConsistency:
         assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
         assert ds.no_data_value[0] == -9999.0, (
             "Original dataset no_data_value should not change"
+        )
+
+
+class TestPDEP8InplacePattern:
+    """Tests for PDEP-8 aligned inplace pattern.
+
+    Structural operations (crop, resample, align, to_crs, convert_longitude)
+    no longer accept an `inplace` parameter — they always return a new Dataset.
+    Value operations (fill, apply, change_no_data_value) still accept `inplace`
+    but return `self` instead of `None` when inplace=True, enabling chaining.
+    """
+
+    @pytest.mark.parametrize(
+        "method_name",
+        ["crop", "resample", "align", "to_crs"],
+        ids=["crop", "resample", "align", "to_crs"],
+    )
+    def test_structural_ops_reject_inplace_kwarg(self, single_band_dataset, method_name):
+        """Structural operations should raise TypeError if inplace is passed.
+
+        Test scenario:
+            Passing `inplace=True` to crop/resample/align/to_crs should
+            raise TypeError since the parameter was removed.
+        """
+        kwargs = {"inplace": True}
+        if method_name == "crop":
+            import geopandas as gpd
+            from shapely.geometry import box
+            poly = box(0.0, -0.15, 0.15, 0.0)
+            mask = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
+            kwargs["mask"] = mask
+        elif method_name == "resample":
+            kwargs["cell_size"] = 0.1
+        elif method_name == "align":
+            kwargs["alignment_src"] = single_band_dataset
+        elif method_name == "to_crs":
+            kwargs["to_epsg"] = 3857
+
+        with pytest.raises(TypeError):
+            getattr(single_band_dataset, method_name)(**kwargs)
+
+    def test_convert_longitude_rejects_inplace_kwarg(self):
+        """convert_longitude should raise TypeError if inplace is passed.
+
+        Test scenario:
+            convert_longitude no longer accepts inplace — passing it
+            should raise TypeError.
+        """
+        arr = np.ones((2, 720), dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 90.0), cell_size=0.5, epsg=4326
+        )
+        with pytest.raises(TypeError):
+            ds.convert_longitude(inplace=True)
+
+    def test_crop_always_returns_new_dataset(self, single_band_dataset):
+        """crop should always return a new Dataset, never None.
+
+        Test scenario:
+            Call crop without inplace and verify the return is a Dataset
+            and the original is unchanged.
+        """
+        import geopandas as gpd
+        from shapely.geometry import box
+        poly = box(0.0, -0.15, 0.15, 0.0)
+        mask = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
+        original_shape = single_band_dataset.shape
+        result = single_band_dataset.crop(mask)
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert result is not single_band_dataset, "crop should return a new object"
+        assert single_band_dataset.shape == original_shape, "Original should not change"
+
+    def test_to_crs_always_returns_new_dataset(self, single_band_dataset):
+        """to_crs should always return a new Dataset, never None.
+
+        Test scenario:
+            Reproject and verify a new Dataset is returned.
+        """
+        result = single_band_dataset.to_crs(to_epsg=3857)
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert result is not single_band_dataset, "to_crs should return a new object"
+
+    def test_fill_inplace_returns_self(self, single_band_dataset):
+        """fill(inplace=True) should return self (not None) per PDEP-8.
+
+        Test scenario:
+            The return value should be the same object, enabling chaining.
+        """
+        result = single_band_dataset.fill(99, inplace=True)
+        assert result is single_band_dataset, (
+            f"fill(inplace=True) should return self, got {type(result)}"
+        )
+
+    def test_fill_not_inplace_returns_new_dataset(self, single_band_dataset):
+        """fill(inplace=False) should return a new Dataset.
+
+        Test scenario:
+            The return value should be a different object from the original.
+        """
+        result = single_band_dataset.fill(99, inplace=False)
+        assert isinstance(result, Dataset), f"Expected Dataset, got {type(result)}"
+        assert result is not single_band_dataset, "Should return a new object"
+
+    def test_value_ops_method_chaining(self):
+        """Value operations should support method chaining via inplace=True returning self.
+
+        Test scenario:
+            Chain fill(inplace=True).apply(inplace=True) and verify the
+            result is the same object with both transformations applied.
+        """
+        arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326,
+            no_data_value=-9999.0,
+        )
+        result = ds.fill(10, inplace=True).apply(lambda x: x + 5, inplace=True)
+        assert result is ds, "Chained inplace calls should return the same object"
+        result_arr = ds.read_array()
+        assert np.allclose(result_arr, 15.0), (
+            f"Expected all cells to be 15 after fill(10)+apply(+5), got {result_arr}"
+        )
+
+    def test_change_no_data_chained_with_apply(self):
+        """change_no_data_value and apply should chain via inplace=True.
+
+        Test scenario:
+            Change no-data value inplace, then apply a function inplace,
+            all in one expression.
+        """
+        arr = np.full((2, 2), -9999.0, dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 0.0), cell_size=0.05, epsg=4326,
+            no_data_value=-9999.0,
+        )
+        result = ds.change_no_data_value(-1.0, old_value=-9999.0, inplace=True)
+        assert result is ds, "change_no_data_value(inplace=True) should return self"
+        assert ds.no_data_value[0] == -1.0, (
+            f"Expected no_data_value=-1.0, got {ds.no_data_value[0]}"
         )

@@ -528,9 +528,8 @@ class AbstractDataset(ABC):
         self,
         to_epsg: int,
         method: str = "nearest neighbor",
-        maintain_alignment: int = False,
-        inplace: bool = False,
-    ) -> AbstractDataset | None:
+        maintain_alignment: bool = False,
+    ) -> AbstractDataset:
         """To EPSG.
 
         to_epsg reprojects a raster to any projection
@@ -676,8 +675,7 @@ class AbstractDataset(ABC):
         self,
         mask: GeoDataFrame | FeatureCollection,
         touch: bool = True,
-        inplace: bool = False,
-    ) -> AbstractDataset | None:
+    ) -> AbstractDataset:
         """Crop.
 
             Crop/Clip the Dataset object using a polygon/raster.

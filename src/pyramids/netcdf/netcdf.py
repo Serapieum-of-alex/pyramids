@@ -371,7 +371,7 @@ class NetCDF(Dataset):
         wrapped._gdal_rg_ref = None
         return wrapped
 
-    def crop(self, mask, touch: bool = True, inplace: bool = False):
+    def crop(self, mask, touch: bool = True):
         """Crop the dataset using a polygon or raster mask.
 
         On a **root MDIM container** this crops every variable and
@@ -386,32 +386,28 @@ class NetCDF(Dataset):
                 to use as a spatial mask.
             touch: If True, include cells that touch the mask
                 boundary. Defaults to True.
-            inplace: If True, modify this object in place (container
-                mode only). Defaults to False.
 
         Returns:
             NetCDF: Cropped container or variable subset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
             result = self._apply_to_all_variables(
-                "crop", {"mask": mask, "touch": touch}, inplace=inplace,
+                "crop", {"mask": mask, "touch": touch},
             )
         else:
-            result = super().crop(mask=mask, touch=touch, inplace=inplace)
-            if result is not None:
-                result = self._preserve_netcdf_metadata(result)
+            result = super().crop(mask=mask, touch=touch)
+            result = self._preserve_netcdf_metadata(result)
         return result
 
-    def _apply_to_all_variables(self, operation, op_kwargs, inplace=False):
+    def _apply_to_all_variables(self, operation, op_kwargs):
         """Apply an operation to every variable in the container.
 
         Args:
             operation: Name of the Dataset method to call (e.g. "crop").
             op_kwargs: Keyword arguments to pass to the method.
-            inplace: If True, replace this container's raster in place.
 
         Returns:
-            NetCDF or None: New container, or None if inplace=True.
+            NetCDF: New container with the operation applied to all variables.
 
         Raises:
             ValueError: If the container has no data variables.
@@ -425,7 +421,7 @@ class NetCDF(Dataset):
         first_var = self.get_variable(first_name)
         first_result = getattr(first_var, operation)(**op_kwargs)
 
-        # to_crs returns a VRT — materialize to avoid dangling refs
+        # to_crs returns a VRT -- materialize to avoid dangling refs
         first_arr = first_result.read_array()
         # Preserve the extra dimension for single-band 3D variables
         # (read_array squeezes to 2D, but the time/level dim should survive)
@@ -459,9 +455,6 @@ class NetCDF(Dataset):
             ds._band_dim_values = var._band_dim_values
             result.set_variable(var_name, ds)
 
-        if inplace:
-            self._replace_raster(result._raster)
-            result = None
         return result
 
     def to_crs(
@@ -469,7 +462,6 @@ class NetCDF(Dataset):
         to_epsg,
         method="nearest neighbor",
         maintain_alignment=False,
-        inplace=False,
     ):
         """Reproject the dataset to a different CRS.
 
@@ -483,8 +475,6 @@ class NetCDF(Dataset):
             method: Resampling method. Defaults to ``"nearest neighbor"``.
             maintain_alignment: If True, keep the same number of rows
                 and columns. Defaults to False.
-            inplace: If True, modify this object in place (container
-                mode only). Defaults to False.
 
         Returns:
             NetCDF: Reprojected container or variable subset.
@@ -494,24 +484,20 @@ class NetCDF(Dataset):
                 "to_crs",
                 {"to_epsg": to_epsg, "method": method,
                  "maintain_alignment": maintain_alignment},
-                inplace=inplace,
             )
         else:
             result = super().to_crs(
                 to_epsg=to_epsg,
                 method=method,
                 maintain_alignment=maintain_alignment,
-                inplace=inplace,
             )
-            if result is not None:
-                result = self._preserve_netcdf_metadata(result)
+            result = self._preserve_netcdf_metadata(result)
         return result
 
     def resample(
         self,
         cell_size,
         method="nearest neighbor",
-        inplace=False,
     ):
         """Resample the dataset to a different cell size.
 
@@ -523,8 +509,6 @@ class NetCDF(Dataset):
         Args:
             cell_size: New cell size.
             method: Resampling method. Defaults to ``"nearest neighbor"``.
-            inplace: If True, modify this object in place (container
-                mode only). Defaults to False.
 
         Returns:
             NetCDF: Resampled container or variable subset.
@@ -533,14 +517,12 @@ class NetCDF(Dataset):
             result = self._apply_to_all_variables(
                 "resample",
                 {"cell_size": cell_size, "method": method},
-                inplace=inplace,
             )
         else:
             result = super().resample(
-                cell_size=cell_size, method=method, inplace=inplace,
+                cell_size=cell_size, method=method,
             )
-            if result is not None:
-                result = self._preserve_netcdf_metadata(result)
+            result = self._preserve_netcdf_metadata(result)
         return result
 
     def sel(self, **kwargs) -> NetCDF:

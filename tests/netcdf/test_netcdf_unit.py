@@ -234,7 +234,7 @@ class TestSpatialOperationDelegates:
             geometry=[box(1.0, 1.0, 5.0, 5.0)],
             crs="EPSG:4326",
         )
-        result = var.crop(mask, touch=True, inplace=False)
+        result = var.crop(mask, touch=True)
         assert result is not None, "crop should return a new Dataset"
         assert (
             result.rows <= var.rows
@@ -247,7 +247,7 @@ class TestSpatialOperationDelegates:
         """
         nc = _make_3d_nc(rows=10, cols=12, bands=1, epsg=4326)
         var = nc.get_variable("temperature")
-        result = var.to_crs(to_epsg=32637, inplace=False)
+        result = var.to_crs(to_epsg=32637)
         assert result is not None, "to_crs should return a reprojected Dataset"
 
 

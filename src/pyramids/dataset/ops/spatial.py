@@ -70,8 +70,7 @@ class Spatial:
         to_epsg: int,
         method: str = "nearest neighbor",
         maintain_alignment: bool = False,
-        inplace: bool = False,
-    ) -> Dataset | None:
+    ) -> Dataset:
         """Reproject the dataset to any projection.
 
             (default the WGS84 web mercator projection, without resampling)
@@ -86,12 +85,10 @@ class Spatial:
             maintain_alignment (bool):
                 True to maintain the number of rows and columns of the raster the same after reprojection.
                 Default is False.
-            inplace (bool):
-                True to make changes inplace. Default is False.
 
         Returns:
             Dataset:
-                Dataset object, if inplace is True, the method returns None.
+                A new reprojected Dataset.
 
         Examples:
             - Create a dataset and reproject it:
@@ -160,12 +157,7 @@ class Spatial:
             dst = gdal.Warp("", self.raster, dstSRS=f"EPSG:{to_epsg}", format="VRT")
             dst_obj = type(self)(dst)
 
-        result: Dataset | None = None
-        if inplace:
-            self._update_inplace(dst_obj.raster)
-        else:
-            result = dst_obj
-        return result
+        return dst_obj
 
     def _get_epsg(self) -> int:
         """Get the EPSG number.
@@ -198,20 +190,16 @@ class Spatial:
         sr.ImportFromEPSG(int(epsg))
         return sr
 
-    def convert_longitude(self, inplace: bool = False) -> Dataset | None:
+    def convert_longitude(self) -> Dataset:
         """Convert Longitude.
 
         - convert the longitude from 0-360 to -180 - 180.
         - currently the function works correctly if the raster covers the whole world, it means that the columns
             in the rasters covers from longitude 0 to 360.
 
-        Args:
-            inplace (bool):
-                True to make the changes in place.
-
         Returns:
             Dataset:
-                The converted dataset if inplace is False; otherwise None.
+                A new Dataset with longitude converted to -180/180.
         """
         # dst = gdal.Warp(
         #     "",
@@ -246,16 +234,11 @@ class Spatial:
             gt[0] = new_gt
 
         dst.SetGeoTransform(gt)
-        result: Dataset | None = None
-        if not inplace:
-            result = type(self)(dst)
-        else:
-            self._update_inplace(dst)
-        return result
+        return type(self)(dst)
 
     def resample(
-        self, cell_size: int | float, method: str = "nearest neighbor", inplace: bool = False
-    ) -> Dataset | None:
+        self, cell_size: int | float, method: str = "nearest neighbor"
+    ) -> Dataset:
         """resample.
 
         resample method reprojects a raster to any projection (default the WGS84 web mercator projection,
@@ -266,13 +249,10 @@ class Spatial:
                 New cell size to resample the raster. If None, raster will not be resampled.
             method (str):
                 Resampling method: "nearest neighbor", "cubic", or "bilinear". Default is "nearest neighbor".
-            inplace (bool):
-                If True, the original dataset will be modified. If False, a new dataset will be created.
-                Default is False.
 
         Returns:
-            Dataset | None:
-                The resulting dataset if inplace is False; otherwise None.
+            Dataset:
+                A new resampled Dataset.
 
         Examples:
             - Create a Dataset with 4 bands, 10 rows, 10 columns, at lon/lat (0, 0):
@@ -371,12 +351,7 @@ class Spatial:
             resampling_method,
         )
 
-        result: Dataset | None = None
-        if inplace:
-            self._update_inplace(dst_obj.raster)
-        else:
-            result = dst_obj
-        return result
+        return dst_obj
 
     def _reproject_with_ReprojectImage(
         self, to_epsg: int, method: str = "nearest neighbor"
@@ -656,8 +631,7 @@ class Spatial:
     def align(
         self,
         alignment_src: Dataset,
-        inplace: bool = False,
-    ) -> Dataset | None:
+    ) -> Dataset:
         """Align the current dataset (rows and columns) to match a given dataset.
 
         Copies spatial properties from alignment_src to the current raster:
@@ -670,12 +644,9 @@ class Spatial:
             alignment_src (Dataset):
                 Spatial information source raster to get the spatial information (coordinate system, number of rows and
                 columns). The data values of the current dataset are resampled to this alignment.
-            inplace (bool):
-                If True, the original dataset will be modified. If False, a new dataset will be created.
-                Default is False.
 
         Returns:
-            Dataset | None: The aligned dataset if inplace is False; otherwise None.
+            Dataset: A new aligned Dataset.
 
         Examples:
             - The source dataset has a `top_left_corner` at (0, 0) with a 5*5 alignment, and a 0.05 degree cell size.
@@ -771,12 +742,7 @@ class Spatial:
             method,
         )
 
-        result: Dataset | None = None
-        if inplace:
-            self._update_inplace(dst_obj.raster)
-        else:
-            result = dst_obj
-        return result
+        return dst_obj
 
     def _crop_with_raster(
         self,
@@ -902,8 +868,7 @@ class Spatial:
         self,
         mask: GeoDataFrame | FeatureCollection,
         touch: bool = True,
-        inplace: bool = False,
-    ) -> Dataset | None:
+    ) -> Dataset:
         """Crop dataset using dataset/feature collection.
 
             Crop/Clip the Dataset object using a polygon/raster.
@@ -914,12 +879,10 @@ class Spatial:
             touch (bool):
                 Include the cells that touch the polygon, not only those that lie entirely inside the polygon mask.
                 Default is True.
-            inplace (bool):
-                If True, apply changes in place. Default is False.
 
         Returns:
-            Dataset | None:
-                The cropped raster. If inplace is True, the method will change the raster in place and return None.
+            Dataset:
+                A new cropped Dataset.
 
         Hint:
             - If the mask is a dataset with multi-bands, the `crop` method will use the first band as the mask.
@@ -1013,9 +976,4 @@ class Spatial:
                 "The second parameter: mask could be either GeoDataFrame or Dataset object"
             )
 
-        result: Dataset | None = None
-        if inplace:
-            self._update_inplace(dst.raster)
-        else:
-            result = dst
-        return result
+        return dst
