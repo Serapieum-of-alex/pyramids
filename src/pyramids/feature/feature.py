@@ -42,7 +42,6 @@ from pyramids.base._utils import (
 )
 
 CATALOG = Catalog(raster_driver=False)
-MEMORY_FILE = "/vsimem/myjson.geojson"
 gdal.UseExceptions()
 
 
@@ -308,16 +307,15 @@ class FeatureCollection:
                 OGR DataSource, or a FeatureCollection wrapper if not inplace.
         """
         if isinstance(self.feature, GeoDataFrame):
+            mem_path = f"/vsimem/{uuid.uuid4()}.geojson"
             gdf_json = json.loads(self.feature.to_json())
             geojson_str = json.dumps(gdf_json)
-            # Use the /vsimem/ (Virtual File Systems) to write the GeoJSON string to memory
-            gdal.FileFromMemBuffer(MEMORY_FILE, geojson_str)
-            # Use OGR to open the GeoJSON from memory
+            gdal.FileFromMemBuffer(mem_path, geojson_str)
             if not gdal_dataset:
                 drv = ogr.GetDriverByName("GeoJSON")
-                ds = drv.Open(MEMORY_FILE)
+                ds = drv.Open(mem_path)
             else:
-                ds = gdal.OpenEx(MEMORY_FILE)
+                ds = gdal.OpenEx(mem_path)
         else:
             ds = self.feature
 
@@ -377,22 +375,19 @@ class FeatureCollection:
         Returns:
             GeoDataFrame
         """
-        gdal_ds = ogr_ds_to_gdal_dataset(self.feature)
-        layer_name = gdal_ds.GetLayer().GetName()  # self.layer_names[0]
-        gdal.VectorTranslate(
-            MEMORY_FILE,
-            gdal_ds,
-            SQLStatement=f"SELECT * FROM {layer_name}",  # nosec B608 - OGR SQL, not a database
-            layerName=layer_name,
-        )
-        # import fiona
-        # from fiona import MemoryFile
-        # f = MemoryFile(MEMORY_FILE)
-        # f = fiona.Collection(MEMORY_FILE)
-
-        # f = fiona.open(MEMORY_FILE, driver='geojson')
-        # gdf = gpd.GeoDataFrame.from_features(f, crs=f.crs)
-        gdf = gpd.read_file(MEMORY_FILE, layer=layer_name, driver="geojson")
+        mem_path = f"/vsimem/{uuid.uuid4()}.geojson"
+        try:
+            gdal_ds = ogr_ds_to_gdal_dataset(self.feature)
+            layer_name = gdal_ds.GetLayer().GetName()
+            gdal.VectorTranslate(
+                mem_path,
+                gdal_ds,
+                SQLStatement=f"SELECT * FROM {layer_name}",  # nosec B608 - OGR SQL, not a database
+                layerName=layer_name,
+            )
+            gdf = gpd.read_file(mem_path, layer=layer_name, driver="geojson")
+        finally:
+            gdal.Unlink(mem_path)
 
         if inplace:
             self._update_inplace(gdf)
