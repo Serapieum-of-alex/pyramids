@@ -693,27 +693,27 @@ def parse_conventions(conventions_str: str | None) -> dict[str, str]:
         Dict of ``{convention_name: version_string}``.
     """
     result: dict[str, str] = {}
-    if not conventions_str:
-        return result
-    for token in conventions_str.split():
-        if "-" in token:
-            name, _, version = token.partition("-")
-            result[name] = version
-        else:
-            result[token] = ""
-    cf_version = result.get("CF")
-    if cf_version is not None:
-        try:
-            parts = cf_version.split(".")
-            tested_parts = _MAX_TESTED_CF_VERSION.split(".")
-            if [int(p) for p in parts] > [int(p) for p in tested_parts]:
-                logger.warning(
-                    f"CF version {cf_version} is newer than the "
-                    f"highest tested version ({_MAX_TESTED_CF_VERSION}). "
-                    f"Some features may not be supported."
-                )
-        except (ValueError, TypeError):
-            pass
+    if conventions_str:
+        for token in conventions_str.split():
+            if "-" in token:
+                name, _, version = token.partition("-")
+                result[name] = version
+            else:
+                result[token] = ""
+        cf_version = result.get("CF")
+        if cf_version is not None:
+            try:
+                parts = cf_version.split(".")
+                tested_parts = _MAX_TESTED_CF_VERSION.split(".")
+                if [int(p) for p in parts] > [int(p) for p in tested_parts]:
+                    logger.warning(
+                        f"CF version {cf_version} is newer than the "
+                        f"highest tested version "
+                        f"({_MAX_TESTED_CF_VERSION}). "
+                        f"Some features may not be supported."
+                    )
+            except (ValueError, TypeError):
+                pass
     return result
 
 

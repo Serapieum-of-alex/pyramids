@@ -1991,32 +1991,7 @@ class NetCDF(Dataset):
 
         # Set variable attributes (RT-7)
         if attrs:
-            for key, value in attrs.items():
-                try:
-                    if isinstance(value, str):
-                        attr = md_arr.CreateAttribute(
-                            key, [], gdal.ExtendedDataType.CreateString()
-                        )
-                    elif isinstance(value, float):
-                        attr = md_arr.CreateAttribute(
-                            key,
-                            [],
-                            gdal.ExtendedDataType.Create(gdal.GDT_Float64),
-                        )
-                    elif isinstance(value, int):
-                        attr = md_arr.CreateAttribute(
-                            key,
-                            [],
-                            gdal.ExtendedDataType.Create(gdal.GDT_Int32),
-                        )
-                    else:
-                        attr = md_arr.CreateAttribute(
-                            key, [], gdal.ExtendedDataType.CreateString()
-                        )
-                        value = str(value)
-                    attr.Write(value)
-                except Exception:
-                    pass  # nosec B110
+            write_attributes_to_md_array(md_arr, attrs)
 
         self._invalidate_caches()
 
@@ -2237,46 +2212,48 @@ class NetCDF(Dataset):
 
         if is_file_backed:
             result = xr.open_dataset(file_path)
-            return result
+        else:
+            rg = self._raster.GetRootGroup()
+            if rg is None:
+                raise ValueError(
+                    "to_xarray requires a multidimensional container. "
+                    "Open the file with "
+                    "open_as_multi_dimensional=True."
+                )
 
-        rg = self._raster.GetRootGroup()
-        if rg is None:
-            raise ValueError(
-                "to_xarray requires a multidimensional container. "
-                "Open the file with open_as_multi_dimensional=True."
+            coords: dict[str, Any] = {}
+            dims = rg.GetDimensions() or []
+            for d in dims:
+                dim_name = d.GetName()
+                iv = d.GetIndexingVariable()
+                if iv is not None:
+                    coords[dim_name] = ([dim_name], iv.ReadAsArray())
+
+            data_vars: dict[str, Any] = {}
+            for var_name in self.variable_names:
+                md_arr = rg.OpenMDArray(var_name)
+                if md_arr is None:
+                    continue
+                arr_dims = md_arr.GetDimensions() or []
+                arr_dim_names = [ad.GetName() for ad in arr_dims]
+                arr_data = md_arr.ReadAsArray()
+                var_attrs: dict[str, Any] = {}
+                try:
+                    for attr in md_arr.GetAttributes():
+                        var_attrs[attr.GetName()] = attr.Read()
+                except Exception:
+                    pass
+                data_vars[var_name] = (
+                    arr_dim_names, arr_data, var_attrs
+                )
+
+            global_attrs = self.global_attributes
+            result = xr.Dataset(
+                data_vars=data_vars,
+                coords=coords,
+                attrs=global_attrs,
             )
 
-        coords: dict[str, Any] = {}
-        dims = rg.GetDimensions() or []
-        for d in dims:
-            dim_name = d.GetName()
-            iv = d.GetIndexingVariable()
-            if iv is not None:
-                coords[dim_name] = ([dim_name], iv.ReadAsArray())
-
-        data_vars: dict[str, Any] = {}
-        for var_name in self.variable_names:
-            md_arr = rg.OpenMDArray(var_name)
-            if md_arr is None:
-                continue
-            arr_dims = md_arr.GetDimensions() or []
-            arr_dim_names = [ad.GetName() for ad in arr_dims]
-            arr_data = md_arr.ReadAsArray()
-            var_attrs: dict[str, Any] = {}
-            try:
-                for attr in md_arr.GetAttributes():
-                    var_attrs[attr.GetName()] = attr.Read()
-            except Exception:
-                pass
-            data_vars[var_name] = (arr_dim_names, arr_data, var_attrs)
-
-        global_attrs = self.global_attributes
-
-        result = xr.Dataset(
-            data_vars=data_vars,
-            coords=coords,
-            attrs=global_attrs,
-        )
         return result
 
     @classmethod
