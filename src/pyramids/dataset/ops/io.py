@@ -427,7 +427,7 @@ class IO:
                         f"Failed to save the {driver_name} raster to the path: {path}"
                     )
 
-    def _window(self: Dataset, size: int = 256) -> Generator:
+    def _tile_offsets(self: Dataset, size: int = 256) -> Generator:
         """Dataset square window size/offsets.
 
         Args:
@@ -448,7 +448,7 @@ class IO:
               >>> top_left_corner = (0, 0)
               >>> cell_size = 0.05
               >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
-              >>> tile_dimensions = list(dataset._window(2))
+              >>> tile_dimensions = list(dataset._tile_offsets(2))
               >>> print(tile_dimensions)
               [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
 
@@ -501,10 +501,10 @@ class IO:
                [0.22231314 0.96283065 0.15201337 0.03522544 0.44616888]]
 
               ```
-            - The `get_tile` method splits the domain into tiles of the specified `size` using the `_window` function.
+            - The `get_tile` method splits the domain into tiles of the specified `size` using the `_tile_offsets` function.
 
               ```python
-              >>> tile_dimensions = list(dataset._window(2))
+              >>> tile_dimensions = list(dataset._tile_offsets(2))
               >>> print(tile_dimensions)
               [(0, 0, 2, 2), (2, 0, 2, 2), (4, 0, 1, 2), (0, 2, 2, 1), (2, 2, 2, 1), (4, 2, 1, 1)]
 
@@ -533,7 +533,7 @@ class IO:
 
               ```
         """
-        for xoff, yoff, xsize, ysize in self._window(size=size):
+        for xoff, yoff, xsize, ysize in self._tile_offsets(size=size):
             # read the array at certain indices
             yield self.raster.ReadAsArray(
                 xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize
@@ -594,7 +594,7 @@ class IO:
             self.geotransform, self.crs, self.no_data_value,
         )
 
-        for xoff, yoff, xsize, ysize in self._window(size=tile_size):
+        for xoff, yoff, xsize, ysize in self._tile_offsets(size=tile_size):
             if band is not None:
                 tile = self._iloc(band).ReadAsArray(xoff, yoff, xsize, ysize)
                 result_tile = func(np.asarray(tile))
