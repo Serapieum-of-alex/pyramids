@@ -6,6 +6,9 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 
 from __future__ import annotations
 
+import os
+import tempfile
+import weakref
 from numbers import Number
 from pathlib import Path
 from typing import Any
@@ -14,9 +17,9 @@ import numpy as np
 from osgeo import gdal
 
 from pyramids import _io
-from pyramids.dataset import DEFAULT_NO_DATA_VALUE
+from pyramids.base._errors import OptionalPackageDoesNotExist
 from pyramids.base._utils import numpy_to_gdal_dtype
-from pyramids.dataset import Dataset
+from pyramids.dataset import DEFAULT_NO_DATA_VALUE, Dataset
 from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
@@ -365,6 +368,10 @@ class NetCDF(Dataset):
         wrapped._variable_attrs = self._variable_attrs
         wrapped._scale = self._scale
         wrapped._offset = self._offset
+        # _parent_nc is a reference to the root MDIM container used only for
+        # metadata lookup (variable names, attributes) during round-trip
+        # serialisation.  It is NOT used for data reads, so a stale reference
+        # (e.g. after the parent has been cropped/reprojected) is harmless.
         wrapped._parent_nc = self._parent_nc
         wrapped._source_var_name = self._source_var_name
         wrapped._gdal_md_arr_ref = None
@@ -618,6 +625,14 @@ class NetCDF(Dataset):
         # Read only the selected bands instead of loading the full array.
         # Each band index maps to a 1-based GDAL band in the classic
         # dataset view created by get_variable().
+        #
+        # Trade-off: band-by-band reads avoid loading the entire variable
+        # into memory, which matters for large variables with few selected
+        # bands.  However, when *most* bands are selected the per-band
+        # GDAL overhead may be slower than a single full read followed by
+        # NumPy slicing.  In practice the difference is small because GDAL
+        # MEM driver reads are cheap; revisit if profiling shows a
+        # bottleneck for large on-disk NetCDFs.
         band_arrays = [
             self.read_array(band=i) for i in band_indices
         ]
@@ -2113,9 +2128,9 @@ class NetCDF(Dataset):
                 print(ds)
         """
         try:
+            # xarray is an optional dependency, keep this import inline.
             import xarray as xr
         except ImportError:
-            from pyramids.base._errors import OptionalPackageDoesNotExist
             raise OptionalPackageDoesNotExist(
                 "xarray is required for to_xarray(). "
                 "Install it with: pip install xarray"
@@ -2130,47 +2145,46 @@ class NetCDF(Dataset):
 
         if is_file_backed:
             result = xr.open_dataset(file_path)
-            return result
+        else:
+            rg = self._raster.GetRootGroup()
+            if rg is None:
+                raise ValueError(
+                    "to_xarray requires a multidimensional container. "
+                    "Open the file with open_as_multi_dimensional=True."
+                )
 
-        rg = self._raster.GetRootGroup()
-        if rg is None:
-            raise ValueError(
-                "to_xarray requires a multidimensional container. "
-                "Open the file with open_as_multi_dimensional=True."
+            coords: dict[str, Any] = {}
+            dims = rg.GetDimensions() or []
+            for d in dims:
+                dim_name = d.GetName()
+                iv = d.GetIndexingVariable()
+                if iv is not None:
+                    coords[dim_name] = ([dim_name], iv.ReadAsArray())
+
+            data_vars: dict[str, Any] = {}
+            for var_name in self.variable_names:
+                md_arr = rg.OpenMDArray(var_name)
+                if md_arr is None:
+                    continue
+                arr_dims = md_arr.GetDimensions() or []
+                arr_dim_names = [ad.GetName() for ad in arr_dims]
+                arr_data = md_arr.ReadAsArray()
+                var_attrs: dict[str, Any] = {}
+                try:
+                    for attr in md_arr.GetAttributes():
+                        var_attrs[attr.GetName()] = attr.Read()
+                except Exception:
+                    pass
+                data_vars[var_name] = (arr_dim_names, arr_data, var_attrs)
+
+            global_attrs = self.global_attributes
+
+            result = xr.Dataset(
+                data_vars=data_vars,
+                coords=coords,
+                attrs=global_attrs,
             )
 
-        coords: dict[str, Any] = {}
-        dims = rg.GetDimensions() or []
-        dim_name_list = [d.GetName() for d in dims]
-        for d in dims:
-            dim_name = d.GetName()
-            iv = d.GetIndexingVariable()
-            if iv is not None:
-                coords[dim_name] = ([dim_name], iv.ReadAsArray())
-
-        data_vars: dict[str, Any] = {}
-        for var_name in self.variable_names:
-            md_arr = rg.OpenMDArray(var_name)
-            if md_arr is None:
-                continue
-            arr_dims = md_arr.GetDimensions() or []
-            arr_dim_names = [ad.GetName() for ad in arr_dims]
-            arr_data = md_arr.ReadAsArray()
-            var_attrs: dict[str, Any] = {}
-            try:
-                for attr in md_arr.GetAttributes():
-                    var_attrs[attr.GetName()] = attr.Read()
-            except Exception:
-                pass
-            data_vars[var_name] = (arr_dim_names, arr_data, var_attrs)
-
-        global_attrs = self.global_attributes
-
-        result = xr.Dataset(
-            data_vars=data_vars,
-            coords=coords,
-            attrs=global_attrs,
-        )
         return result
 
     @classmethod
@@ -2182,7 +2196,7 @@ class NetCDF(Dataset):
         """Create a pyramids NetCDF from an ``xarray.Dataset``.
 
         Serialises the xarray Dataset to a NetCDF file (on disk or
-        in a GDAL ``/vsimem/`` memory file) and reads it back as a
+        in a temporary file on disk) and reads it back as a
         pyramids ``NetCDF`` container.
 
         This is the inverse of ``to_xarray()`` and enables workflows
@@ -2199,9 +2213,9 @@ class NetCDF(Dataset):
         Args:
             dataset: An ``xarray.Dataset`` instance.
             path: File path where the intermediate NetCDF will be
-                written.  If ``None``, a GDAL in-memory file
-                (``/vsimem/``) is used and cleaned up automatically
-                when the returned object is garbage-collected.
+                written.  If ``None``, a temporary file on disk is
+                used and cleaned up automatically when the returned
+                object is garbage-collected.
 
         Returns:
             NetCDF: A pyramids NetCDF container backed by the data
@@ -2213,9 +2227,9 @@ class NetCDF(Dataset):
             TypeError: If *dataset* is not an ``xarray.Dataset``.
         """
         try:
+            # xarray is an optional dependency, keep this import inline.
             import xarray as xr
         except ImportError:
-            from pyramids.base._errors import OptionalPackageDoesNotExist
             raise OptionalPackageDoesNotExist(
                 "xarray is required for from_xarray(). "
                 "Install it with: pip install xarray"
@@ -2230,7 +2244,6 @@ class NetCDF(Dataset):
         if path is not None:
             path = str(path)
         else:
-            import tempfile
             tmp = tempfile.NamedTemporaryFile(
                 suffix=".nc", delete=False,
             )
@@ -2243,5 +2256,6 @@ class NetCDF(Dataset):
 
         if cleanup_temp:
             result._xarray_temp_path = path
+            weakref.finalize(result, os.unlink, path)
 
         return result

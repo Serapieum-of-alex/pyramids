@@ -16,23 +16,23 @@ from shapely.geometry import box
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
 
+from tests.netcdf.conftest import make_3d_nc
+
 
 def _make_3d_nc(
     rows=10, cols=12, bands=4, epsg=4326, variable_name="temperature",
 ):
     """Create a 3D in-memory NetCDF container for testing.
 
-    Returns:
-        NetCDF: An in-memory MDIM container with one variable.
+    Delegates to the shared ``make_3d_nc`` helper in conftest.
     """
-    arr = np.random.RandomState(42).rand(bands, rows, cols).astype(np.float64)
-    geo = (30.0, 1.0, 0, 40.0, 0, -1.0)
-    nc = NetCDF.create_from_array(
-        arr=arr, geo=geo, epsg=epsg, no_data_value=-9999.0,
+    return make_3d_nc(
+        rows=rows, cols=cols, bands=bands, epsg=epsg,
         variable_name=variable_name,
+        geo=(30.0, 1.0, 0, 40.0, 0, -1.0),
+        arr_type="random", seed=42,
         extra_dim_name="time", extra_dim_values=[0, 6, 12, 18],
     )
-    return nc
 
 
 def _make_2d_nc(rows=10, cols=12, variable_name="elevation"):
