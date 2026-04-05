@@ -12,8 +12,27 @@ import tempfile
 
 import numpy as np
 import pytest
-import xarray as xr
 from numpy.testing import assert_allclose, assert_array_equal
+
+xr = pytest.importorskip("xarray")
+
+# Check that xarray has a working NetCDF backend (netCDF4, h5netcdf, or scipy).
+# On some CI environments (e.g. macOS py311) xarray is installed but none of
+# the NetCDF I/O backends are available, causing all file-based tests to fail.
+_HAS_XR_NETCDF_BACKEND = False
+try:
+    xr.backends.list_engines()
+    for engine in ("netcdf4", "h5netcdf", "scipy"):
+        if engine in xr.backends.list_engines():
+            _HAS_XR_NETCDF_BACKEND = True
+            break
+except Exception:
+    pass
+
+pytestmark = pytest.mark.skipif(
+    not _HAS_XR_NETCDF_BACKEND,
+    reason="xarray NetCDF backend (netCDF4/h5netcdf/scipy) not available",
+)
 
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
