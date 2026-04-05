@@ -613,16 +613,18 @@ class NetCDF(Dataset):
                 f"Available values: {coords}"
             )
 
-        full_arr = self.read_array()
-        # Ensure 3D so band_indices index bands, not rows
-        if full_arr.ndim == 2:
-            full_arr = np.expand_dims(full_arr, axis=0)
-        selected = full_arr[band_indices]
         selected_coords = [coords[i] for i in band_indices]
 
-        # Squeeze to 2D if only one band selected
-        if selected.shape[0] == 1:
-            selected = selected[0]
+        # Read only the selected bands instead of loading the full array.
+        # Each band index maps to a 1-based GDAL band in the classic
+        # dataset view created by get_variable().
+        band_arrays = [
+            self.read_array(band=i) for i in band_indices
+        ]
+        if len(band_arrays) == 1:
+            selected = band_arrays[0]
+        else:
+            selected = np.stack(band_arrays, axis=0)
 
         ndv = self.no_data_value
         ndv_scalar = ndv[0] if isinstance(ndv, list) and ndv else ndv
@@ -792,8 +794,12 @@ class NetCDF(Dataset):
                 pass
         return result
 
-    def _read_variable(self, var: str) -> np.ndarray | None:
-        """Read a variable's data as a numpy array.
+    def _read_variable(
+        self,
+        var: str,
+        window: list[tuple[int, int]] | None = None,
+    ) -> np.ndarray | None:
+        """Read a variable's data as a numpy array, optionally windowed.
 
         Uses the MDIM root group when available (avoids opening a new GDAL
         handle). Falls back to the classic ``NETCDF:file:var`` path.
@@ -803,6 +809,12 @@ class NetCDF(Dataset):
 
         Args:
             var: Variable name in the dataset.
+            window: Per-dimension window as a list of ``(start, count)``
+                tuples, one per dimension of the target variable.  For
+                example, ``[(0, 1), (100, 256), (200, 256)]`` reads
+                time[0:1], y[100:356], x[200:456].  When ``None`` the
+                full variable is read.  Only supported in MDIM mode;
+                ignored in classic mode.
 
         Returns:
             np.ndarray or None: The variable data, or None if the
@@ -814,21 +826,35 @@ class NetCDF(Dataset):
             try:
                 md_arr = rg.OpenMDArray(var)
                 if md_arr is not None:
-                    result = md_arr.ReadAsArray()
+                    if window is not None:
+                        starts = [w[0] for w in window]
+                        counts = [w[1] for w in window]
+                        result = md_arr.ReadAsArray(
+                            array_start_idx=starts, count=counts,
+                        )
+                    else:
+                        result = md_arr.ReadAsArray()
                     # Flip Y axis if south-to-north (same as get_variable)
                     if result is not None and result.ndim >= 2:
-                        if self._needs_y_flip(rg, md_arr):
+                        if window is None and self._needs_y_flip(rg, md_arr):
                             y_axis = result.ndim - 2
                             result = np.flip(result, axis=y_axis)
             except Exception:
-                pass # nosec B110
+                pass  # nosec B110
             # Fall back to dimension indexing variable
             if result is None:
                 dim = self._get_dimension(var)
                 if dim is not None:
                     iv = dim.GetIndexingVariable()
                     if iv is not None:
-                        result = iv.ReadAsArray()
+                        if window is not None and len(window) == 1:
+                            starts = [window[0][0]]
+                            counts = [window[0][1]]
+                            result = iv.ReadAsArray(
+                                array_start_idx=starts, count=counts,
+                            )
+                        else:
+                            result = iv.ReadAsArray()
         else:
             # Classic mode: open via subdataset string
             try:
