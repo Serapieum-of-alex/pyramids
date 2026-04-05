@@ -212,10 +212,10 @@ default = {features = ["viz"], solve-group = "default" }
 dev = { features = ["viz", "dev", "xarray"], solve-group = "default" }
 notebook = { features = ["viz", "notebook"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "docs" }
-py311 = { features = ["py311", "viz", "dev"], solve-group = "py311" }
-py312 = { features = ["py312", "viz", "dev"], solve-group = "py312" }
-py313 = { features = ["py313", "viz", "dev"], solve-group = "py313" }
-py314 = { features = ["py314", "viz", "dev"], solve-group = "py314" }
+py311 = { features = ["py311", "viz", "dev", "xarray"], solve-group = "py311" }
+py312 = { features = ["py312", "viz", "dev", "xarray"], solve-group = "py312" }
+py313 = { features = ["py313", "viz", "dev", "xarray"], solve-group = "py313" }
+py314 = { features = ["py314", "viz", "dev", "xarray"], solve-group = "py314" }
 
 
 [tool.pixi.feature.py311.dependencies]
