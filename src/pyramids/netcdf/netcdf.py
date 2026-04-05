@@ -22,6 +22,7 @@ from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
 from pyramids.netcdf.cf import (
     build_coordinate_attrs,
+    srs_to_grid_mapping,
     write_attributes_to_md_array,
     write_global_attributes,
 )
@@ -1006,7 +1007,15 @@ class NetCDF(Dataset):
             variable_names = rg.GetMDArrayNames()
             dims = rg.GetDimensions()
             dims = [dim.GetName() for dim in dims]
-            variable_names = [var for var in variable_names if var not in dims]
+            filtered = []
+            for var in variable_names:
+                if var in dims:
+                    continue
+                md_arr = rg.OpenMDArray(var)
+                if md_arr is not None and len(md_arr.GetDimensions()) == 0:
+                    continue
+                filtered.append(var)
+            variable_names = filtered
         else:
             variable_names = [
                 var[1].split(" ")[1] for var in self._raster.GetSubDatasets()
@@ -1686,6 +1695,22 @@ class NetCDF(Dataset):
         srse = Dataset._create_sr_from_epsg(epsg=int(epsg))
         md_arr.SetSpatialRef(srse)
         md_arr.Write(arr)
+
+        # Create CF grid_mapping variable (MEM driver only — the netCDF
+        # driver creates its own via SetSpatialRef above). Use
+        # "spatial_ref" as the variable name to avoid collision with
+        # GDAL's automatic "crs" during CreateCopy to netCDF.
+        if driver_type == "MEM":
+            gm_name, gm_params = srs_to_grid_mapping(srse)
+            gm_dtype = gdal.ExtendedDataType.Create(gdal.GDT_Int32)
+            gm_var_name = "spatial_ref"
+            crs_arr = rg.CreateMDArray(gm_var_name, [], gm_dtype)
+            crs_arr.Write(np.array(0, dtype=np.int32))
+            gm_params["grid_mapping_name"] = gm_name
+            write_attributes_to_md_array(crs_arr, gm_params)
+            write_attributes_to_md_array(
+                md_arr, {"grid_mapping": gm_var_name}
+            )
 
         return src
 
