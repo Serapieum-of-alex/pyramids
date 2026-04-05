@@ -1,6 +1,16 @@
 ﻿# Change log
 
 
+## 0.11.0 (2026-04-05)
+
+### Feat
+
+- **netcdf**: add CF conventions support and xarray interop (#198)
+
+### Fix
+
+- resolve architectural issues across dataset, netcdf, and feature modules (#197)
+
 ## 0.10.0 (2026-04-04)
 
 ### Feat
