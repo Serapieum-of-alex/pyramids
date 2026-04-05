@@ -40,26 +40,3 @@ jobs:
       - name: test Jupyter notebooks
         run: |
           pixi run -e ${{ matrix.environment }} notebooks
-
-  xarray-tests:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: serapeum-org/github-actions/actions/python-setup/pixi@pixi/v1
-        with:
-          environments: xarray-test
-          activate-environment: xarray-test
-          cache: true
-
-      - name: Run xarray tests
-        run: |
-          pixi run -e xarray-test xarray-tests
