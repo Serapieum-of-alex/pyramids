@@ -20,6 +20,7 @@ from pyramids.dataset import Dataset
 from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
+from pyramids.netcdf.cf import write_global_attributes
 from pyramids.netcdf.utils import create_time_conversion_func
 
 
@@ -1413,6 +1414,10 @@ class NetCDF(Dataset):
         chunk_sizes: tuple | list | None = None,
         compression: str | None = None,
         compression_level: int | None = None,
+        title: str | None = None,
+        institution: str | None = None,
+        source: str | None = None,
+        history: str | None = None,
     ) -> NetCDF:
         """Create a NetCDF dataset from a NumPy array and geotransform.
 
@@ -1458,6 +1463,14 @@ class NetCDF(Dataset):
                 disk. Defaults to None (no compression).
             compression_level: Compression level (e.g. 1-9 for
                 DEFLATE). Defaults to None (GDAL default).
+            title: CF global attribute ``title``. Short
+                description of the dataset. Defaults to None.
+            institution: CF global attribute ``institution``.
+                Where the data was produced. Defaults to None.
+            source: CF global attribute ``source``. How the
+                data was produced. Defaults to None.
+            history: CF global attribute ``history``. Audit
+                trail of processing steps. Defaults to None.
 
         Returns:
             NetCDF: The newly created NetCDF dataset.
@@ -1511,6 +1524,10 @@ class NetCDF(Dataset):
             chunk_sizes=chunk_sizes,
             compression=compression,
             compression_level=compression_level,
+            title=title,
+            institution=institution,
+            source=source,
+            history=history,
         )
         result = cls(dst_ds)
 
@@ -1531,6 +1548,10 @@ class NetCDF(Dataset):
         chunk_sizes: tuple | list | None = None,
         compression: str | None = None,
         compression_level: int | None = None,
+        title: str | None = None,
+        institution: str | None = None,
+        source: str | None = None,
+        history: str | None = None,
     ) -> gdal.Dataset:
         """Build a multidimensional GDAL dataset from an array.
 
@@ -1557,6 +1578,13 @@ class NetCDF(Dataset):
                 None.
             compression: Compression algorithm. Defaults to None.
             compression_level: Compression level. Defaults to None.
+            title: CF global attribute ``title``. Defaults to None.
+            institution: CF global attribute ``institution``.
+                Defaults to None.
+            source: CF global attribute ``source``.
+                Defaults to None.
+            history: CF global attribute ``history``.
+                Defaults to None.
 
         Returns:
             gdal.Dataset: The created multidimensional GDAL dataset.
@@ -1580,6 +1608,18 @@ class NetCDF(Dataset):
             str(path)
         )
         rg = src.GetRootGroup()
+
+        # Set CF global attributes on root group
+        cf_global = {"Conventions": "CF-1.8"}
+        if title is not None:
+            cf_global["title"] = title
+        if institution is not None:
+            cf_global["institution"] = institution
+        if source is not None:
+            cf_global["source"] = source
+        if history is not None:
+            cf_global["history"] = history
+        write_global_attributes(rg, cf_global)
 
         # Build creation options for chunking and compression
         create_options = []
