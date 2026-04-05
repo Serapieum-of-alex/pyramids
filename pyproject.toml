@@ -38,6 +38,7 @@ dependencies = [
 
 [project.optional-dependencies]
 viz = ["cleopatra>=0.6.0"]
+xarray = ["xarray>=2023.1.0"]
 
 [dependency-groups]
 dev = [
