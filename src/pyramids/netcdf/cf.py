@@ -315,3 +315,134 @@ def _extract_proj_params(
         )
 
     return p
+
+
+def grid_mapping_to_srs(
+    grid_mapping_name: str,
+    params: dict[str, Any],
+) -> osr.SpatialReference:
+    """Convert CF grid_mapping attributes to an OGR SpatialReference.
+
+    Tries ``crs_wkt`` first (fast path). Falls back to reconstructing
+    the SRS from individual CF parameters.
+
+    Args:
+        grid_mapping_name: CF ``grid_mapping_name`` attribute value.
+        params: All attributes from the grid_mapping variable.
+
+    Returns:
+        osr.SpatialReference: The reconstructed spatial reference.
+
+    Raises:
+        ValueError: If the grid_mapping_name is not supported and
+            no ``crs_wkt`` is available.
+    """
+    srs = osr.SpatialReference()
+
+    crs_wkt = params.get("crs_wkt")
+    if crs_wkt:
+        srs.ImportFromWkt(crs_wkt)
+        return srs
+
+    semi_major = params.get("semi_major_axis", 6378137.0)
+    inv_flat = params.get("inverse_flattening", 298.257223563)
+    earth_radius = params.get("earth_radius")
+
+    if earth_radius is not None:
+        srs.SetGeogCS("GCS", "Datum", "Sphere", float(earth_radius), 0.0)
+    else:
+        srs.SetGeogCS(
+            params.get("geographic_crs_name", "GCS_unknown"),
+            params.get("horizontal_datum_name", "unknown"),
+            params.get("reference_ellipsoid_name", "unknown"),
+            float(semi_major),
+            float(inv_flat),
+        )
+
+    if grid_mapping_name == "latitude_longitude":
+        pass
+    elif grid_mapping_name == "transverse_mercator":
+        srs.SetTM(
+            params.get("latitude_of_projection_origin", 0.0),
+            params.get("longitude_of_central_meridian", 0.0),
+            params.get("scale_factor_at_central_meridian", 1.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
+    elif grid_mapping_name == "lambert_conformal_conic":
+        sp = params.get("standard_parallel", [0.0, 0.0])
+        if isinstance(sp, (int, float)):
+            sp = [sp, sp]
+        srs.SetLCC(
+            sp[0], sp[1] if len(sp) > 1 else sp[0],
+            params.get("latitude_of_projection_origin", 0.0),
+            params.get("longitude_of_central_meridian", 0.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
+    elif grid_mapping_name == "mercator":
+        sp = params.get("standard_parallel", 0.0)
+        if isinstance(sp, list):
+            sp = sp[0]
+        srs.SetMercator(
+            float(sp),
+            params.get("longitude_of_projection_origin", 0.0),
+            params.get("scale_factor_at_projection_origin", 1.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
+    elif grid_mapping_name == "polar_stereographic":
+        srs.SetPS(
+            params.get("latitude_of_projection_origin", 90.0),
+            params.get("straight_vertical_longitude_from_pole", 0.0),
+            params.get("scale_factor_at_projection_origin", 1.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
+    elif grid_mapping_name == "albers_conical_equal_area":
+        sp = params.get("standard_parallel", [0.0, 0.0])
+        if isinstance(sp, (int, float)):
+            sp = [sp, sp]
+        srs.SetACEA(
+            sp[0], sp[1] if len(sp) > 1 else sp[0],
+            params.get("latitude_of_projection_origin", 0.0),
+            params.get("longitude_of_central_meridian", 0.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
+    elif grid_mapping_name == "stereographic":
+        srs.SetStereographic(
+            params.get("latitude_of_projection_origin", 0.0),
+            params.get("longitude_of_projection_origin", 0.0),
+            params.get("scale_factor_at_projection_origin", 1.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
+    elif grid_mapping_name == "lambert_azimuthal_equal_area":
+        srs.SetLAEA(
+            params.get("latitude_of_projection_origin", 0.0),
+            params.get("longitude_of_projection_origin", 0.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
+    elif grid_mapping_name == "orthographic":
+        srs.SetOrthographic(
+            params.get("latitude_of_projection_origin", 0.0),
+            params.get("longitude_of_projection_origin", 0.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
+    elif grid_mapping_name == "azimuthal_equidistant":
+        srs.SetAE(
+            params.get("latitude_of_projection_origin", 0.0),
+            params.get("longitude_of_projection_origin", 0.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
+    else:
+        raise ValueError(
+            f"Unsupported CF grid_mapping_name: {grid_mapping_name!r}. "
+            f"Include crs_wkt in the grid_mapping variable."
+        )
+
+    return srs

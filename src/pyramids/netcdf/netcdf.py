@@ -22,6 +22,7 @@ from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
 from pyramids.netcdf.cf import (
     build_coordinate_attrs,
+    grid_mapping_to_srs,
     srs_to_grid_mapping,
     write_attributes_to_md_array,
     write_global_attributes,
