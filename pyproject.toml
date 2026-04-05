@@ -38,7 +38,7 @@ dependencies = [
 
 [project.optional-dependencies]
 viz = ["cleopatra>=0.6.0"]
-xarray = ["xarray>=2023.1.0"]
+xarray = ["xarray>=2023.1.0", "netCDF4>=1.6.0", "h5netcdf>=1.0.0", "cftime>=1.6.0"]
 
 [dependency-groups]
 dev = [
@@ -184,7 +184,8 @@ markers = [
     "vfs: mark a test as a virtual file system (deselect with '-m \"not vfs\"')",
     "slow: mark test as slow (deselect with '-m \"not slow\"')",
     "fast: mark test as fast (deselect with '-m \"not fast\"')",
-    "plot: test plotting function optional package (deselect with '-m \"not plot\"')"
+    "plot: test plotting function optional package (deselect with '-m \"not plot\"')",
+    "xarray: tests requiring xarray with NetCDF backend (deselect with '-m \"not xarray\"')"
 ]
 
 
@@ -196,9 +197,10 @@ platforms = ["win-64", "linux-64", "osx-arm64"]
 pyramids-gis = { path = ".", editable = true }
 
 [tool.pixi.tasks]
-main = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'not plot' --cov-report=xml", description = "Run the main test suite" }
+main = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'not plot and not xarray' --cov-report=xml", description = "Run the main test suite" }
 plot = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'plot' --cov-report=xml", description = "Run plot test suite" }
-test-all = { cmd = "pytest -vvv --cov=src/pyramids -sv --cov-report=xml --cov-report=term-missing", description = "Run all testsuite" }
+test-all = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'not xarray' --cov-report=xml --cov-report=term-missing", description = "Run all testsuite" }
+xarray-tests = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'xarray' --cov-report=xml", description = "Run xarray interop tests" }
 notebooks = { cmd = "pytest --nbval --nbval-lax --verbose examples/notebooks", description = "check notebooks" }
 build-dist = { cmd = "python -m build", description = "Build sdist and wheel for PyPI" }
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
@@ -212,10 +214,11 @@ default = {features = ["viz"], solve-group = "default" }
 dev = { features = ["viz", "dev", "xarray"], solve-group = "default" }
 notebook = { features = ["viz", "notebook"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "docs" }
-py311 = { features = ["py311", "viz", "dev", "xarray"], solve-group = "py311" }
-py312 = { features = ["py312", "viz", "dev", "xarray"], solve-group = "py312" }
-py313 = { features = ["py313", "viz", "dev", "xarray"], solve-group = "py313" }
-py314 = { features = ["py314", "viz", "dev", "xarray"], solve-group = "py314" }
+py311 = { features = ["py311", "viz", "dev"], solve-group = "py311" }
+py312 = { features = ["py312", "viz", "dev"], solve-group = "py312" }
+py313 = { features = ["py313", "viz", "dev"], solve-group = "py313" }
+py314 = { features = ["py314", "viz", "dev"], solve-group = "py314" }
+xarray-test = { features = ["viz", "dev", "xarray"], solve-group = "default" }
 
 
 [tool.pixi.feature.py311.dependencies]
@@ -226,7 +229,6 @@ python = "3.12.*"
 python = "3.13.*"
 [tool.pixi.feature.py314.dependencies]
 python = "3.14.*"
-
 
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"
