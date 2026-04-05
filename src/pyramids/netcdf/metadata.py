@@ -17,6 +17,7 @@ from pyramids.netcdf.models import (
     NetCDFMetadata,
     StructuralInfo,
 )
+from pyramids.netcdf.cf import classify_variables, parse_conventions
 from pyramids.netcdf.utils import (
     _get_driver_name,
     _get_root_group,
@@ -170,7 +171,6 @@ class MetadataBuilder:
         Returns:
             CFInfo with classifications, grid_mappings, bounds_map.
         """
-        from pyramids.netcdf.cf import classify_variables, parse_conventions
 
         conventions = parse_conventions(
             global_attrs.get("Conventions")

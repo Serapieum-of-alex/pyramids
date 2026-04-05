@@ -507,6 +507,8 @@ def create_time_conversion_func(
     See Also:
         _parse_units_origin: Parses the unit string.
     """
+    converter = None
+
     if calendar.lower() not in (
         "standard", "proleptic_gregorian", "gregorian"
     ):
@@ -522,26 +524,28 @@ def create_time_conversion_func(
             dt = cftime.num2date(value, units, calendar)
             return dt.strftime(out_format)
 
-        return convert_cftime
-
-    unit, origin = _parse_units_origin(units)
-
-    if unit.startswith("day"):
-        scale = timedelta(days=1)
-    elif unit.startswith("hour"):
-        scale = timedelta(hours=1)
-    elif unit.startswith("min"):
-        scale = timedelta(minutes=1)
-    elif unit.startswith("sec"):
-        scale = timedelta(seconds=1)
+        converter = convert_cftime
     else:
-        raise ValueError(f"Unsupported time unit: {unit!r}")
+        unit, origin = _parse_units_origin(units)
 
-    def convert(value):
-        dt = origin + value * scale
-        return dt.strftime(out_format)
+        if unit.startswith("day"):
+            scale = timedelta(days=1)
+        elif unit.startswith("hour"):
+            scale = timedelta(hours=1)
+        elif unit.startswith("min"):
+            scale = timedelta(minutes=1)
+        elif unit.startswith("sec"):
+            scale = timedelta(seconds=1)
+        else:
+            raise ValueError(f"Unsupported time unit: {unit!r}")
 
-    return convert
+        def convert(value):
+            dt = origin + value * scale
+            return dt.strftime(out_format)
+
+        converter = convert
+
+    return converter
 
 
 def _dtype_to_str(dt: Any) -> str:

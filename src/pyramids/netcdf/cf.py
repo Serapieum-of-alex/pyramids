@@ -7,9 +7,72 @@ UgridDataset class.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
+import numpy as np
 from osgeo import gdal, osr
+
+
+def _write_attrs(target: Any, attrs: dict[str, Any]) -> None:
+    """Write attributes to a GDAL object (MDArray or Group).
+
+    Both ``gdal.MDArray`` and ``gdal.Group`` expose the same
+    ``CreateAttribute`` interface, so this single helper serves
+    both ``write_attributes_to_md_array`` and
+    ``write_global_attributes``.
+
+    Handles str, bool (stored as int32, since NetCDF has no bool
+    type), int, float, list-of-numbers, and fallback-to-string.
+    Silently skips attributes that can't be written.
+
+    Args:
+        target: A GDAL MDArray or Group with CreateAttribute.
+        attrs: Dict of attribute names to values.
+    """
+    for key, value in attrs.items():
+        try:
+            if isinstance(value, bool):
+                attr = target.CreateAttribute(
+                    key, [],
+                    gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+                )
+                value = int(value)
+            elif isinstance(value, str):
+                attr = target.CreateAttribute(
+                    key, [], gdal.ExtendedDataType.CreateString()
+                )
+            elif isinstance(value, float):
+                attr = target.CreateAttribute(
+                    key, [],
+                    gdal.ExtendedDataType.Create(gdal.GDT_Float64),
+                )
+            elif isinstance(value, int):
+                attr = target.CreateAttribute(
+                    key, [],
+                    gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+                )
+            elif isinstance(value, list) and len(value) > 0:
+                if isinstance(value[0], (int, float)):
+                    attr = target.CreateAttribute(
+                        key,
+                        [len(value)],
+                        gdal.ExtendedDataType.Create(gdal.GDT_Float64),
+                    )
+                else:
+                    attr = target.CreateAttribute(
+                        key, [],
+                        gdal.ExtendedDataType.CreateString(),
+                    )
+                    value = str(value)
+            else:
+                attr = target.CreateAttribute(
+                    key, [], gdal.ExtendedDataType.CreateString()
+                )
+                value = str(value)
+            attr.Write(value)
+        except Exception:
+            pass  # nosec B110
 
 
 def write_attributes_to_md_array(
@@ -18,50 +81,15 @@ def write_attributes_to_md_array(
 ) -> None:
     """Write a dict of attributes to a GDAL MDArray.
 
-    Handles str, int, float, and list values. Silently skips
-    attributes that can't be written (GDAL limitation).
+    Handles str, bool, int, float, and list values. Silently skips
+    attributes that can't be written (GDAL limitation). Bool values
+    are stored as int32 (1/0) since NetCDF has no boolean type.
 
     Args:
         md_arr: The GDAL MDArray to write attributes to.
         attrs: Dict of attribute names to values.
     """
-    for key, value in attrs.items():
-        try:
-            if isinstance(value, str):
-                attr = md_arr.CreateAttribute(
-                    key, [], gdal.ExtendedDataType.CreateString()
-                )
-            elif isinstance(value, float):
-                attr = md_arr.CreateAttribute(
-                    key, [],
-                    gdal.ExtendedDataType.Create(gdal.GDT_Float64),
-                )
-            elif isinstance(value, int):
-                attr = md_arr.CreateAttribute(
-                    key, [],
-                    gdal.ExtendedDataType.Create(gdal.GDT_Int32),
-                )
-            elif isinstance(value, list) and len(value) > 0:
-                if isinstance(value[0], (int, float)):
-                    attr = md_arr.CreateAttribute(
-                        key,
-                        [len(value)],
-                        gdal.ExtendedDataType.Create(gdal.GDT_Float64),
-                    )
-                else:
-                    attr = md_arr.CreateAttribute(
-                        key, [],
-                        gdal.ExtendedDataType.CreateString(),
-                    )
-                    value = str(value)
-            else:
-                attr = md_arr.CreateAttribute(
-                    key, [], gdal.ExtendedDataType.CreateString()
-                )
-                value = str(value)
-            attr.Write(value)
-        except Exception:
-            pass  # nosec B110
+    _write_attrs(md_arr, attrs)
 
 
 def build_coordinate_attrs(
@@ -124,34 +152,14 @@ def write_global_attributes(
 ) -> None:
     """Write a dict of attributes to a GDAL root group.
 
+    Handles str, bool, int, float values. Bool values are stored
+    as int32. Silently skips attributes that can't be written.
+
     Args:
         rg: The GDAL root group to write attributes to.
         attrs: Dict of attribute names to values.
     """
-    for key, value in attrs.items():
-        try:
-            if isinstance(value, str):
-                attr = rg.CreateAttribute(
-                    key, [], gdal.ExtendedDataType.CreateString()
-                )
-            elif isinstance(value, float):
-                attr = rg.CreateAttribute(
-                    key, [],
-                    gdal.ExtendedDataType.Create(gdal.GDT_Float64),
-                )
-            elif isinstance(value, int):
-                attr = rg.CreateAttribute(
-                    key, [],
-                    gdal.ExtendedDataType.Create(gdal.GDT_Int32),
-                )
-            else:
-                attr = rg.CreateAttribute(
-                    key, [], gdal.ExtendedDataType.CreateString()
-                )
-                value = str(value)
-            attr.Write(value)
-        except Exception:
-            pass  # nosec B110
+    _write_attrs(rg, attrs)
 
 
 _GDAL_PROJ_TO_CF: dict[str, str] = {
@@ -342,7 +350,26 @@ def grid_mapping_to_srs(
     crs_wkt = params.get("crs_wkt")
     if crs_wkt:
         srs.ImportFromWkt(crs_wkt)
-        return srs
+    else:
+        srs = _build_srs_from_cf_params(grid_mapping_name, params)
+
+    return srs
+
+
+def _build_srs_from_cf_params(
+    grid_mapping_name: str,
+    params: dict[str, Any],
+) -> osr.SpatialReference:
+    """Reconstruct SRS from CF grid_mapping parameters (no crs_wkt).
+
+    Args:
+        grid_mapping_name: CF grid_mapping_name value.
+        params: CF projection parameter dict.
+
+    Returns:
+        osr.SpatialReference
+    """
+    srs = osr.SpatialReference()
 
     semi_major = params.get("semi_major_axis", 6378137.0)
     inv_flat = params.get("inverse_flattening", 298.257223563)
@@ -496,28 +523,34 @@ def detect_axis(
     Returns:
         One of ``"X"``, ``"Y"``, ``"Z"``, ``"T"``, or None.
     """
+    result: str | None = None
+
     axis = attrs.get("axis")
     if isinstance(axis, str) and axis.upper() in ("X", "Y", "Z", "T"):
-        return axis.upper()
+        result = axis.upper()
+    else:
+        stdname = attrs.get("standard_name")
+        if isinstance(stdname, str):
+            result = _STDNAME_TO_AXIS.get(stdname.lower())
 
-    stdname = attrs.get("standard_name")
-    if isinstance(stdname, str):
-        result = _STDNAME_TO_AXIS.get(stdname.lower())
-        if result is not None:
-            return result
+        if result is None:
+            unit_str = units or attrs.get("units")
+            if isinstance(unit_str, str):
+                unit_lower = unit_str.lower().strip()
+                if unit_lower in (
+                    "degrees_north", "degree_north", "degree_n", "degrees_n"
+                ):
+                    result = "Y"
+                elif unit_lower in (
+                    "degrees_east", "degree_east", "degree_e", "degrees_e"
+                ):
+                    result = "X"
+                elif "since" in unit_lower:
+                    result = "T"
 
-    unit_str = units or attrs.get("units")
-    if isinstance(unit_str, str):
-        unit_lower = unit_str.lower().strip()
-        if unit_lower in ("degrees_north", "degree_north", "degree_n", "degrees_n"):
-            return "Y"
-        if unit_lower in ("degrees_east", "degree_east", "degree_e", "degrees_e"):
-            return "X"
-        if "since" in unit_lower:
-            return "T"
+        if result is None:
+            result = _NAME_PATTERNS.get(name.lower().strip())
 
-    name_lower = name.lower().strip()
-    result = _NAME_PATTERNS.get(name_lower)
     return result
 
 
@@ -650,7 +683,6 @@ def parse_cell_methods(cell_methods_str: str) -> list[dict[str, str]]:
         List of dicts with keys ``"dimensions"``, ``"method"``,
         and optionally ``"where"`` and ``"over"``.
     """
-    import re
     results: list[dict[str, str]] = []
     pattern = (
         r'(\w[\w\s]*?):\s+(\w+)'
@@ -696,7 +728,6 @@ def apply_valid_range_mask(
     Returns:
         A copy of ``arr`` with out-of-range values replaced.
     """
-    import numpy as np
     if valid_range is not None:
         valid_min = valid_range[0]
         valid_max = valid_range[1]
@@ -717,7 +748,7 @@ def decode_flags(
     flag_values: list | None = None,
     flag_meanings: list[str] | None = None,
     flag_masks: list[int] | None = None,
-) -> str | list[str]:
+) -> list[str]:
     """Decode a CF flag value to human-readable label(s).
 
     Supports three CF flag modes:
@@ -736,36 +767,37 @@ def decode_flags(
         flag_masks: List of bit masks for boolean flags.
 
     Returns:
-        A single string (mutually exclusive) or list of strings
-        (boolean/combined). Returns ``"unknown"`` if no match.
+        list[str]: List of matching meaning strings. Returns
+        ``["unknown"]`` if no match or no meanings provided.
     """
-    if flag_meanings is None:
-        return "unknown"
+    result: list[str] = ["unknown"]
 
-    if flag_masks is not None and flag_values is not None:
-        result = [
+    if flag_meanings is None:
+        pass
+    elif flag_masks is not None and flag_values is not None:
+        matched = [
             flag_meanings[i]
             for i in range(len(flag_meanings))
             if i < len(flag_masks) and i < len(flag_values)
             and (value & flag_masks[i]) == flag_values[i]
         ]
-        return result if result else ["unknown"]
-
-    if flag_masks is not None:
-        result = [
+        if matched:
+            result = matched
+    elif flag_masks is not None:
+        matched = [
             flag_meanings[i]
             for i in range(len(flag_meanings))
             if i < len(flag_masks) and (value & flag_masks[i]) != 0
         ]
-        return result if result else ["unknown"]
-
-    if flag_values is not None:
+        if matched:
+            result = matched
+    elif flag_values is not None:
         for i, fv in enumerate(flag_values):
             if fv == value and i < len(flag_meanings):
-                return flag_meanings[i]
-        return "unknown"
+                result = [flag_meanings[i]]
+                break
 
-    return "unknown"
+    return result
 
 
 # ------------------------------------------------------------------ #

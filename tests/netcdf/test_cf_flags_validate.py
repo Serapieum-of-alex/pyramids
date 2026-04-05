@@ -27,16 +27,16 @@ class TestDecodeFlags:
             flag_values=[0, 1, 2],
             flag_meanings=["good", "questionable", "bad"],
         )
-        assert result == "questionable", f"Expected 'questionable', got {result!r}"
+        assert result == ["questionable"], f"Expected ['questionable'], got {result!r}"
 
     def test_mutually_exclusive_no_match(self):
-        """Value not in flag_values returns 'unknown'."""
+        """Value not in flag_values returns ['unknown']."""
         result = decode_flags(
             99,
             flag_values=[0, 1, 2],
             flag_meanings=["good", "questionable", "bad"],
         )
-        assert result == "unknown", f"Expected 'unknown', got {result!r}"
+        assert result == ["unknown"], f"Expected ['unknown'], got {result!r}"
 
     def test_boolean_masks(self):
         """Decode boolean bit-field flags.
@@ -65,9 +65,9 @@ class TestDecodeFlags:
         assert isinstance(result, list), f"Expected list, got {type(result)}"
 
     def test_no_meanings_returns_unknown(self):
-        """No flag_meanings returns 'unknown'."""
+        """No flag_meanings returns ['unknown']."""
         result = decode_flags(0)
-        assert result == "unknown", f"Expected 'unknown', got {result!r}"
+        assert result == ["unknown"], f"Expected ['unknown'], got {result!r}"
 
 
 class TestValidateCF:

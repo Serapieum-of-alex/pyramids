@@ -6,6 +6,7 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 
 from __future__ import annotations
 
+import tempfile
 from numbers import Number
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ import numpy as np
 from osgeo import gdal
 
 from pyramids import _io
+from pyramids.base._errors import OptionalPackageDoesNotExist
 from pyramids.dataset import DEFAULT_NO_DATA_VALUE
 from pyramids.base._utils import numpy_to_gdal_dtype
 from pyramids.dataset import Dataset
@@ -22,7 +24,6 @@ from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
 from pyramids.netcdf.cf import (
     build_coordinate_attrs,
-    grid_mapping_to_srs,
     srs_to_grid_mapping,
     write_attributes_to_md_array,
     write_global_attributes,
@@ -2202,7 +2203,6 @@ class NetCDF(Dataset):
         try:
             import xarray as xr
         except ImportError:
-            from pyramids.base._errors import OptionalPackageDoesNotExist
             raise OptionalPackageDoesNotExist(
                 "xarray is required for to_xarray(). "
                 "Install it with: pip install xarray"
@@ -2302,7 +2302,6 @@ class NetCDF(Dataset):
         try:
             import xarray as xr
         except ImportError:
-            from pyramids.base._errors import OptionalPackageDoesNotExist
             raise OptionalPackageDoesNotExist(
                 "xarray is required for from_xarray(). "
                 "Install it with: pip install xarray"
@@ -2317,7 +2316,6 @@ class NetCDF(Dataset):
         if path is not None:
             path = str(path)
         else:
-            import tempfile
             tmp = tempfile.NamedTemporaryFile(
                 suffix=".nc", delete=False,
             )
