@@ -7,11 +7,14 @@ UgridDataset class.
 """
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
 import numpy as np
 from osgeo import gdal, osr
+
+logger = logging.getLogger(__name__)
 
 
 def _write_attrs(target: Any, attrs: dict[str, Any]) -> None:
@@ -24,7 +27,8 @@ def _write_attrs(target: Any, attrs: dict[str, Any]) -> None:
 
     Handles str, bool (stored as int32, since NetCDF has no bool
     type), int, float, list-of-numbers, and fallback-to-string.
-    Silently skips attributes that can't be written.
+    Logs a DEBUG message and skips attributes that can't be written
+    (e.g. due to GDAL driver limitations or type mismatches).
 
     Args:
         target: A GDAL MDArray or Group with CreateAttribute.
@@ -71,8 +75,8 @@ def _write_attrs(target: Any, attrs: dict[str, Any]) -> None:
                 )
                 value = str(value)
             attr.Write(value)
-        except Exception:
-            pass  # nosec B110
+        except Exception as e:
+            logger.debug(f"Failed to write attribute '{key}': {e}")
 
 
 def write_attributes_to_md_array(
