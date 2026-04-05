@@ -17,22 +17,18 @@ from osgeo import gdal
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
 
+from tests.netcdf.conftest import make_3d_nc
+
 
 def _make_3d_nc(rows=10, cols=12, bands=3, epsg=4326, variable_name="temperature"):
     """Create a 3D in-memory NetCDF for testing.
 
-    Returns:
-        NetCDF: An in-memory multidimensional NetCDF container.
+    Delegates to the shared ``make_3d_nc`` helper in conftest.
     """
-    arr = np.random.RandomState(42).rand(bands, rows, cols).astype(np.float64)
-    geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
-    return NetCDF.create_from_array(
-        arr=arr,
-        geo=geo,
-        epsg=epsg,
-        no_data_value=-9999.0,
-        path=None,
+    return make_3d_nc(
+        rows=rows, cols=cols, bands=bands, epsg=epsg,
         variable_name=variable_name,
+        arr_type="random", seed=42,
     )
 
 

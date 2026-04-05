@@ -17,6 +17,8 @@ from numpy.testing import assert_array_equal, assert_allclose
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
 
+from tests.netcdf.conftest import make_3d_nc
+
 
 def _make_3d_nc(
     rows=6,
@@ -27,28 +29,15 @@ def _make_3d_nc(
 ):
     """Create a 3D in-memory NetCDF with sequential data.
 
-    The array is ``np.arange(bands * rows * cols)`` reshaped to
-    ``(bands, rows, cols)`` so that every cell has a unique,
-    predictable value. Time coordinate values are
-    ``[0, 6, 12, 18, 24]``.
-
-    Returns:
-        NetCDF: In-memory MDIM container.
+    Delegates to the shared ``make_3d_nc`` helper in conftest.
     """
-    arr = np.arange(
-        bands * rows * cols, dtype=np.float64,
-    ).reshape(bands, rows, cols)
-    geo = (30.0, 1.0, 0, 40.0, 0, -1.0)
-    nc = NetCDF.create_from_array(
-        arr=arr,
-        geo=geo,
-        epsg=4326,
-        no_data_value=-9999.0,
+    return make_3d_nc(
+        rows=rows, cols=cols, bands=bands,
         variable_name=variable_name,
-        extra_dim_name="time",
-        extra_dim_values=[0, 6, 12, 18, 24],
+        geo=(30.0, 1.0, 0, 40.0, 0, -1.0),
+        arr_type="sequential",
+        extra_dim_name="time", extra_dim_values=[0, 6, 12, 18, 24],
     )
-    return nc
 
 
 def _make_2d_nc(rows=6, cols=8, variable_name="elevation"):

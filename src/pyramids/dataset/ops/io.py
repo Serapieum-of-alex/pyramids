@@ -589,9 +589,14 @@ class IO:
             bands = self.band_count
             dtype = self.gdal_dtype[0]
 
+        if band is not None:
+            no_data = [self.no_data_value[band]]
+        else:
+            no_data = self.no_data_value
+
         dst_obj = type(self)._build_dataset(
             self.columns, self.rows, bands, dtype,
-            self.geotransform, self.crs, self.no_data_value,
+            self.geotransform, self.crs, no_data,
         )
 
         for xoff, yoff, xsize, ysize in self._tile_offsets(size=tile_size):

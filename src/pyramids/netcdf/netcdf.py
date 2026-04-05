@@ -6,7 +6,9 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 
 from __future__ import annotations
 
+import os
 import tempfile
+import weakref
 from numbers import Number
 from pathlib import Path
 from typing import Any
@@ -16,9 +18,8 @@ from osgeo import gdal
 
 from pyramids import _io
 from pyramids.base._errors import OptionalPackageDoesNotExist
-from pyramids.dataset import DEFAULT_NO_DATA_VALUE
 from pyramids.base._utils import numpy_to_gdal_dtype
-from pyramids.dataset import Dataset
+from pyramids.dataset import DEFAULT_NO_DATA_VALUE, Dataset
 from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
@@ -639,6 +640,14 @@ class NetCDF(Dataset):
         # Read only the selected bands instead of loading the full array.
         # Each band index maps to a 1-based GDAL band in the classic
         # dataset view created by get_variable().
+        #
+        # Trade-off: band-by-band reads avoid loading the entire variable
+        # into memory, which matters for large variables with few selected
+        # bands.  However, when *most* bands are selected the per-band
+        # GDAL overhead may be slower than a single full read followed by
+        # NumPy slicing.  In practice the difference is small because GDAL
+        # MEM driver reads are cheap; revisit if profiling shows a
+        # bottleneck for large on-disk NetCDFs.
         band_arrays = [
             self.read_array(band=i) for i in band_indices
         ]
@@ -2217,8 +2226,7 @@ class NetCDF(Dataset):
             if rg is None:
                 raise ValueError(
                     "to_xarray requires a multidimensional container. "
-                    "Open the file with "
-                    "open_as_multi_dimensional=True."
+                    "Open the file with open_as_multi_dimensional=True."
                 )
 
             coords: dict[str, Any] = {}
@@ -2243,9 +2251,7 @@ class NetCDF(Dataset):
                         var_attrs[attr.GetName()] = attr.Read()
                 except Exception:
                     pass
-                data_vars[var_name] = (
-                    arr_dim_names, arr_data, var_attrs
-                )
+                data_vars[var_name] = (arr_dim_names, arr_data, var_attrs)
 
             global_attrs = self.global_attributes
             result = xr.Dataset(
@@ -2324,5 +2330,6 @@ class NetCDF(Dataset):
 
         if cleanup_temp:
             result._xarray_temp_path = path
+            weakref.finalize(result, os.unlink, path)
 
         return result

@@ -1,8 +1,10 @@
 """Tests for xarray interop — to_xarray() and from_xarray().
 
-Requires xarray with a NetCDF backend (netCDF4 or h5netcdf).
-Run with: pixi run -e xarray-test xarray-tests
+Validates that pyramids NetCDF containers can be converted to/from
+xarray.Dataset with correct variables, coordinates, dimensions,
+attributes, and data integrity through round-trips.
 """
+
 from __future__ import annotations
 
 import os
@@ -19,6 +21,8 @@ pytestmark = pytest.mark.xarray
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
 
+from tests.netcdf.conftest import make_3d_nc
+
 
 def _make_3d_nc(
     rows=4,
@@ -28,23 +32,15 @@ def _make_3d_nc(
 ):
     """Create a 3D in-memory NetCDF with sequential data.
 
-    Returns:
-        NetCDF: In-memory MDIM container with one 3D variable.
+    Delegates to the shared ``make_3d_nc`` helper in conftest.
     """
-    arr = np.arange(
-        bands * rows * cols, dtype=np.float64,
-    ).reshape(bands, rows, cols)
-    geo = (10.0, 1.0, 0, 44.0, 0, -1.0)
-    nc = NetCDF.create_from_array(
-        arr=arr,
-        geo=geo,
-        epsg=4326,
-        no_data_value=-9999.0,
+    return make_3d_nc(
+        rows=rows, cols=cols, bands=bands,
         variable_name=variable_name,
-        extra_dim_name="time",
-        extra_dim_values=[0, 6, 12],
+        geo=(10.0, 1.0, 0, 44.0, 0, -1.0),
+        arr_type="sequential",
+        extra_dim_name="time", extra_dim_values=[0, 6, 12],
     )
-    return nc
 
 
 def _make_2d_nc(rows=4, cols=6, variable_name="elevation"):

@@ -50,6 +50,10 @@ class BandMetadata:
             IndexError: If the index is negative or out of bounds.
             RuntimeError: If the dataset has been closed.
         """
+        # RuntimeError is intentional here: the dataset is *closed*, not
+        # read-only, so ReadOnlyError would be misleading.  There is no
+        # DatasetClosedError in the hierarchy; RuntimeError is the standard
+        # Python choice for invalid runtime state.
         if self._raster is None:
             raise RuntimeError(
                 "Cannot access band on a closed dataset. "

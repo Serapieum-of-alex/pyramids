@@ -15,6 +15,7 @@ import shutil
 import tempfile
 import uuid
 import warnings
+import weakref
 from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable
@@ -169,7 +170,8 @@ class FeatureCollection:
         if isinstance(self.feature, gdal.Dataset) or isinstance(
             self.feature, DataSource
         ):
-            file_name = str(self.feature.GetFileList()[0])
+            file_list = self.feature.GetFileList()
+            file_name = str(file_list[0]) if file_list else ""
         else:
             file_name = ""
 
@@ -317,13 +319,19 @@ class FeatureCollection:
             else:
                 ds = gdal.OpenEx(mem_path)
         else:
+            mem_path = None
             ds = self.feature
 
         if inplace:
             self._update_inplace(ds)
+            if mem_path is not None:
+                gdal.Unlink(mem_path)
             ds = None
         else:
             ds = FeatureCollection(ds)
+            if mem_path is not None:
+                ds._vsimem_path = mem_path
+                weakref.finalize(ds, gdal.Unlink, mem_path)
 
         return ds
 

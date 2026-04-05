@@ -75,8 +75,17 @@ class AbstractDataset(ABC):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Exit the context manager and close the dataset."""
-        self.close()
+        """Exit the context manager and close the dataset.
+
+        If close() raises an error, it is suppressed when an original
+        exception is already propagating (to avoid masking it). If no
+        original exception exists, the close error propagates normally.
+        """
+        try:
+            self.close()
+        except Exception:
+            if exc_type is None:
+                raise
         return False
 
     @abstractmethod
