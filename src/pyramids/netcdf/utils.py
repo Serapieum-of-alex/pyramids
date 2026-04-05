@@ -440,12 +440,21 @@ def _parse_units_origin(units: str) -> tuple[str, datetime]:
     return unit.lower(), origin_dt
 
 
-def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S"):
+def create_time_conversion_func(
+    units: str,
+    out_format: str = "%Y-%m-%d %H:%M:%S",
+    calendar: str = "standard",
+):
     """Create a converter that maps numeric CF time offsets to date strings.
 
     Parses CF-compliant time unit strings (e.g.,
     ``"days since 1979-01-01"``) and returns a callable that
     converts numeric offsets to formatted date strings.
+
+    For standard/proleptic_gregorian calendars, uses Python's
+    ``datetime`` + ``timedelta``. For non-standard calendars
+    (``360_day``, ``noleap``, ``all_leap``, ``julian``), uses
+    ``cftime.num2date()`` (optional dependency).
 
     Args:
         units: CF time unit string in the format
@@ -453,6 +462,8 @@ def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S
             days, hours, minutes, and seconds.
         out_format: strftime format for the output strings.
             Defaults to ``"%Y-%m-%d %H:%M:%S"``.
+        calendar: CF calendar type. Defaults to ``"standard"``.
+            Non-standard calendars require the ``cftime`` package.
 
     Returns:
         Callable: A function that takes a numeric value and
@@ -461,6 +472,8 @@ def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S
     Raises:
         ValueError: If the unit string cannot be parsed or
             uses an unsupported time unit.
+        ImportError: If a non-standard calendar is requested
+            and ``cftime`` is not installed.
 
     Examples:
         - Convert day offsets from a 1979 origin:
@@ -494,6 +507,23 @@ def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S
     See Also:
         _parse_units_origin: Parses the unit string.
     """
+    if calendar.lower() not in (
+        "standard", "proleptic_gregorian", "gregorian"
+    ):
+        try:
+            import cftime  # noqa: F811 - optional dep, inline import required
+        except ImportError:
+            raise ImportError(
+                f"Calendar '{calendar}' requires the cftime package. "
+                f"Install it with: pixi add cftime"
+            )
+
+        def convert_cftime(value):
+            dt = cftime.num2date(value, units, calendar)
+            return dt.strftime(out_format)
+
+        return convert_cftime
+
     unit, origin = _parse_units_origin(units)
 
     if unit.startswith("day"):
@@ -508,7 +538,6 @@ def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S
         raise ValueError(f"Unsupported time unit: {unit!r}")
 
     def convert(value):
-        # value can be int/float; CF allows fractional units
         dt = origin + value * scale
         return dt.strftime(out_format)
 

@@ -743,9 +743,12 @@ class NetCDF(Dataset):
         if time_dim is not None:
             units = time_dim.attrs.get("units")
             if units is not None:
+                calendar = time_dim.attrs.get("calendar", "standard")
                 time_vals = self._read_variable(var_name)
                 if time_vals is not None:
-                    func = create_time_conversion_func(units, time_format)
+                    func = create_time_conversion_func(
+                        units, time_format, calendar=calendar
+                    )
                     time_stamp = list(map(func, time_vals.reshape(-1)))
         return time_stamp
 

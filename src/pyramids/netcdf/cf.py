@@ -446,3 +446,263 @@ def grid_mapping_to_srs(
         )
 
     return srs
+
+
+# ------------------------------------------------------------------ #
+#  Axis detection (CF-5)                                               #
+# ------------------------------------------------------------------ #
+
+_STDNAME_TO_AXIS: dict[str, str] = {
+    "latitude": "Y",
+    "longitude": "X",
+    "time": "T",
+    "projection_x_coordinate": "X",
+    "projection_y_coordinate": "Y",
+    "grid_latitude": "Y",
+    "grid_longitude": "X",
+    "height": "Z",
+    "altitude": "Z",
+    "depth": "Z",
+    "air_pressure": "Z",
+}
+
+_NAME_PATTERNS: dict[str, str] = {
+    "lat": "Y", "latitude": "Y", "y": "Y",
+    "lon": "X", "longitude": "X", "x": "X",
+    "time": "T",
+    "lev": "Z", "level": "Z", "depth": "Z",
+    "height": "Z", "z": "Z",
+}
+
+
+def detect_axis(
+    name: str,
+    attrs: dict[str, Any],
+    units: str | None = None,
+) -> str | None:
+    """Detect CF axis type from a variable's attributes.
+
+    Applies heuristics in priority order:
+    1. Explicit ``axis`` attribute (``"X"``, ``"Y"``, ``"Z"``, ``"T"``)
+    2. ``standard_name`` lookup against CF conventions
+    3. Unit string matching (``degrees_north`` -> Y, etc.)
+    4. Variable name pattern matching (``lat`` -> Y, ``lon`` -> X)
+
+    Args:
+        name: Variable or dimension short name.
+        attrs: Variable attribute dictionary.
+        units: Unit string (separate from attrs for flexibility).
+
+    Returns:
+        One of ``"X"``, ``"Y"``, ``"Z"``, ``"T"``, or None.
+    """
+    axis = attrs.get("axis")
+    if isinstance(axis, str) and axis.upper() in ("X", "Y", "Z", "T"):
+        return axis.upper()
+
+    stdname = attrs.get("standard_name")
+    if isinstance(stdname, str):
+        result = _STDNAME_TO_AXIS.get(stdname.lower())
+        if result is not None:
+            return result
+
+    unit_str = units or attrs.get("units")
+    if isinstance(unit_str, str):
+        unit_lower = unit_str.lower().strip()
+        if unit_lower in ("degrees_north", "degree_north", "degree_n", "degrees_n"):
+            return "Y"
+        if unit_lower in ("degrees_east", "degree_east", "degree_e", "degrees_e"):
+            return "X"
+        if "since" in unit_lower:
+            return "T"
+
+    name_lower = name.lower().strip()
+    result = _NAME_PATTERNS.get(name_lower)
+    return result
+
+
+# ------------------------------------------------------------------ #
+#  Variable classification (CF-5)                                      #
+# ------------------------------------------------------------------ #
+
+def classify_variables(
+    variables: dict[str, Any],
+    dimensions: dict[str, Any],
+) -> dict[str, str]:
+    """Classify each variable's CF role by cross-referencing attributes.
+
+    Must be called AFTER all variables are collected.
+
+    Args:
+        variables: Dict of ``{name: VariableInfo}`` from metadata.
+        dimensions: Dict of ``{name: DimensionInfo}`` from metadata.
+
+    Returns:
+        Dict of ``{variable_name: cf_role_string}``.
+    """
+    dim_names: set[str] = set()
+    for d in dimensions.values():
+        dim_names.add(d.name)
+        dim_names.add(d.full_name.lstrip("/"))
+
+    bounds_vars: set[str] = set()
+    cell_measure_vars: set[str] = set()
+    ancillary_vars: set[str] = set()
+    aux_coord_vars: set[str] = set()
+
+    for var in variables.values():
+        attrs = var.attributes
+        bounds_ref = attrs.get("bounds")
+        if isinstance(bounds_ref, str):
+            bounds_vars.add(bounds_ref)
+        cm = attrs.get("cell_measures")
+        if isinstance(cm, str):
+            for token in cm.replace(":", " ").split():
+                if token not in ("area", "volume"):
+                    cell_measure_vars.add(token)
+        av = attrs.get("ancillary_variables")
+        if isinstance(av, str):
+            for token in av.split():
+                ancillary_vars.add(token)
+        coords = attrs.get("coordinates")
+        if isinstance(coords, str):
+            for token in coords.split():
+                aux_coord_vars.add(token)
+
+    roles: dict[str, str] = {}
+    for name, var in variables.items():
+        short_name = name.lstrip("/")
+        attrs = var.attributes
+
+        if "grid_mapping_name" in attrs:
+            roles[name] = "grid_mapping"
+        elif short_name in bounds_vars or name in bounds_vars:
+            roles[name] = "bounds"
+        elif short_name in cell_measure_vars or name in cell_measure_vars:
+            roles[name] = "cell_measure"
+        elif short_name in ancillary_vars or name in ancillary_vars:
+            roles[name] = "ancillary"
+        elif _is_mesh_topology(attrs):
+            roles[name] = "mesh_topology"
+        elif _is_connectivity(attrs):
+            roles[name] = "connectivity"
+        elif short_name in dim_names:
+            roles[name] = "coordinate"
+        elif short_name in aux_coord_vars or name in aux_coord_vars:
+            roles[name] = "auxiliary_coordinate"
+        else:
+            roles[name] = "data"
+
+    return roles
+
+
+def _is_mesh_topology(attrs: dict[str, Any]) -> bool:
+    """Check if attributes indicate a UGRID mesh topology variable."""
+    cf_role = attrs.get("cf_role", "")
+    has_topo = "topology_dimension" in attrs and "node_coordinates" in attrs
+    return cf_role == "mesh_topology" or has_topo
+
+
+def _is_connectivity(attrs: dict[str, Any]) -> bool:
+    """Check if attributes indicate a UGRID connectivity variable."""
+    cf_role = attrs.get("cf_role", "")
+    return isinstance(cf_role, str) and "connectivity" in cf_role
+
+
+# ------------------------------------------------------------------ #
+#  Conventions parsing (CF-11)                                         #
+# ------------------------------------------------------------------ #
+
+def parse_conventions(conventions_str: str | None) -> dict[str, str]:
+    """Parse a Conventions global attribute string.
+
+    Args:
+        conventions_str: Space-separated conventions string, e.g.
+            ``"CF-1.8 UGRID-1.0 Deltares-0.10"``.
+
+    Returns:
+        Dict of ``{convention_name: version_string}``.
+    """
+    result: dict[str, str] = {}
+    if not conventions_str:
+        return result
+    for token in conventions_str.split():
+        if "-" in token:
+            name, _, version = token.partition("-")
+            result[name] = version
+        else:
+            result[token] = ""
+    return result
+
+
+# ------------------------------------------------------------------ #
+#  Cell methods parsing (CF-10)                                        #
+# ------------------------------------------------------------------ #
+
+def parse_cell_methods(cell_methods_str: str) -> list[dict[str, str]]:
+    """Parse a CF ``cell_methods`` attribute string.
+
+    Args:
+        cell_methods_str: CF cell_methods string, e.g.
+            ``"time: mean area: sum where land"``.
+
+    Returns:
+        List of dicts with keys ``"dimensions"``, ``"method"``,
+        and optionally ``"where"`` and ``"over"``.
+    """
+    import re
+    results: list[dict[str, str]] = []
+    pattern = (
+        r'(\w[\w\s]*?):\s+(\w+)'
+        r'(?:\s+where\s+(\w+))?'
+        r'(?:\s+over\s+(\w+))?'
+    )
+    for match in re.finditer(pattern, cell_methods_str):
+        entry: dict[str, str] = {
+            "dimensions": match.group(1).strip(),
+            "method": match.group(2),
+        }
+        if match.group(3):
+            entry["where"] = match.group(3)
+        if match.group(4):
+            entry["over"] = match.group(4)
+        results.append(entry)
+    return results
+
+
+# ------------------------------------------------------------------ #
+#  Valid range masking (CF-7)                                          #
+# ------------------------------------------------------------------ #
+
+def apply_valid_range_mask(
+    arr: Any,
+    valid_min: float | None = None,
+    valid_max: float | None = None,
+    valid_range: tuple | list | None = None,
+    fill_value: float = float("nan"),
+) -> Any:
+    """Mask values outside the CF valid range.
+
+    Values below ``valid_min`` or above ``valid_max`` are replaced
+    with ``fill_value``.
+
+    Args:
+        arr: Input numpy array.
+        valid_min: Minimum valid value.
+        valid_max: Maximum valid value.
+        valid_range: ``[min, max]``. Overrides valid_min/max.
+        fill_value: Replacement value. Defaults to NaN.
+
+    Returns:
+        A copy of ``arr`` with out-of-range values replaced.
+    """
+    import numpy as np
+    if valid_range is not None:
+        valid_min = valid_range[0]
+        valid_max = valid_range[1]
+    result = arr.astype(float).copy()
+    if valid_min is not None:
+        result[result < valid_min] = fill_value
+    if valid_max is not None:
+        result[result > valid_max] = fill_value
+    return result

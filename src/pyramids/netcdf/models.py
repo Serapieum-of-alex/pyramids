@@ -597,6 +597,38 @@ class StructuralInfo:
 
 
 @dataclass
+class CFInfo:
+    """CF convention metadata derived by cross-referencing variables.
+
+    Computed as a post-processing step in ``MetadataBuilder.build()``
+    after all variables, dimensions, and attributes are collected.
+
+    Args:
+        cf_version: CF version string parsed from ``Conventions``
+            (e.g. ``"1.8"``). None if not declared.
+        conventions: Parsed ``Conventions`` attribute as
+            ``{name: version}`` dict.
+        classifications: Per-variable CF role classification as
+            ``{var_name: role}`` where role is one of ``"data"``,
+            ``"coordinate"``, ``"grid_mapping"``, ``"bounds"``,
+            ``"cell_measure"``, ``"ancillary"``, ``"mesh_topology"``,
+            ``"connectivity"``, ``"auxiliary_coordinate"``.
+        grid_mappings: Grid mapping variable attributes as
+            ``{var_name: {attr: value}}``.
+        bounds_map: Bounds associations as
+            ``{bounds_var_name: parent_coord_name}``.
+        data_variable_names: Variable names classified as ``"data"``.
+    """
+
+    cf_version: str | None = None
+    conventions: dict[str, str] = field(default_factory=dict)
+    classifications: dict[str, str] = field(default_factory=dict)
+    grid_mappings: dict[str, dict[str, Any]] = field(default_factory=dict)
+    bounds_map: dict[str, str] = field(default_factory=dict)
+    data_variable_names: list[str] = field(default_factory=list)
+
+
+@dataclass
 class NetCDFMetadata:
     """Top-level metadata model for a NetCDF MDIM dataset.
 
@@ -704,6 +736,7 @@ class NetCDFMetadata:
     structural: StructuralInfo | None
     created_with: dict[str, str]
     open_options_used: dict[str, str] | None = None
+    cf: CFInfo | None = None
 
     def __str__(self) -> str:
         """Human-readable summary of the NetCDF structure."""
