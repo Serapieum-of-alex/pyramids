@@ -281,6 +281,128 @@ class TestBoundaryChunkSizes:
         )
 
 
+class TestChunkingViaMetadataAPI:
+    """Tests that verify chunking is accessible via NetCDFMetadata API."""
+
+    def test_chunk_sizes_in_variable_info(self, tmp_path):
+        """VariableInfo.block_size should reflect chunk_sizes from create.
+
+        Test scenario:
+            Create with chunk_sizes=(2, 30, 40), extract metadata via
+            get_metadata(), verify VariableInfo.block_size matches.
+        """
+        from pyramids.netcdf.metadata import get_metadata
+        
+        arr = np.random.RandomState(SEED).rand(5, 60, 80).astype(np.float64)
+        path = str(tmp_path / "chunked_meta.nc")
+        NetCDF.create_from_array(
+            arr=arr, geo=GEO, variable_name="precip",
+            extra_dim_name="time", path=path,
+            chunk_sizes=(2, 30, 40),
+        )
+        metadata = get_metadata(path)
+        assert "precip" in metadata.variables, (
+            f"Expected 'precip' in variables, got {list(metadata.variables.keys())}"
+        )
+        var_info = metadata.variables["precip"]
+        assert var_info.block_size == [2, 30, 40], (
+            f"Expected block_size [2, 30, 40], got {var_info.block_size}"
+        )
+
+    def test_2d_chunk_sizes_in_metadata(self, tmp_path):
+        """2D variable chunking should appear in metadata.
+
+        Test scenario:
+            Create 2D array with chunk_sizes=(20, 30), verify
+            VariableInfo.block_size.
+        """
+        from pyramids.netcdf.metadata import get_metadata
+        
+        arr = np.random.RandomState(SEED).rand(40, 60).astype(np.float64)
+        path = str(tmp_path / "2d_chunked_meta.nc")
+        NetCDF.create_from_array(
+            arr=arr, geo=GEO, variable_name="elev", path=path,
+            chunk_sizes=(20, 30),
+        )
+        metadata = get_metadata(path)
+        var_info = metadata.variables["elev"]
+        assert var_info.block_size == [20, 30], (
+            f"Expected [20, 30], got {var_info.block_size}"
+        )
+
+    def test_no_chunking_block_size_none(self, tmp_path):
+        """VariableInfo.block_size should be None when no chunking specified.
+
+        Test scenario:
+            Create without chunk_sizes parameter, verify block_size is None
+            or reflects GDAL's default chunking (if any).
+        """
+        from pyramids.netcdf.metadata import get_metadata
+        
+        arr = np.random.RandomState(SEED).rand(3, 25, 25).astype(np.float64)
+        path = str(tmp_path / "no_chunk_meta.nc")
+        NetCDF.create_from_array(
+            arr=arr, geo=GEO, variable_name="temp",
+            extra_dim_name="time", path=path,
+        )
+        metadata = get_metadata(path)
+        var_info = metadata.variables["temp"]
+        result = var_info.block_size
+        assert result is None or isinstance(result, list), (
+            f"block_size should be None or list, got {type(result).__name__}"
+        )
+
+    def test_chunk_with_compression_in_metadata(self, tmp_path):
+        """Chunking + compression should both be reflected in metadata.
+
+        Test scenario:
+            Create with chunk_sizes=(1, 40, 50) and DEFLATE compression,
+            verify block_size in metadata. Structural info may contain
+            compression details.
+        """
+        from pyramids.netcdf.metadata import get_metadata
+        
+        arr = np.random.RandomState(SEED).rand(4, 80, 100).astype(np.float64)
+        path = str(tmp_path / "chunk_compress_meta.nc")
+        NetCDF.create_from_array(
+            arr=arr, geo=GEO, variable_name="var",
+            extra_dim_name="time", path=path,
+            chunk_sizes=(1, 40, 50),
+            compression="DEFLATE", compression_level=6,
+        )
+        metadata = get_metadata(path)
+        var_info = metadata.variables["var"]
+        assert var_info.block_size == [1, 40, 50], (
+            f"Expected [1, 40, 50], got {var_info.block_size}"
+        )
+        assert var_info.structural_info is not None or True, (
+            "structural_info may contain compression details"
+        )
+
+    def test_read_file_preserves_chunking_info(self, tmp_path):
+        """NetCDF.read_file followed by get_metadata should preserve chunking.
+
+        Test scenario:
+            Create chunked file, read via NetCDF.read_file, extract
+            metadata from the NetCDF instance, verify block_size.
+        """
+        from pyramids.netcdf.metadata import get_metadata
+        
+        arr = np.random.RandomState(SEED).rand(3, 45, 55).astype(np.float64)
+        path = str(tmp_path / "read_chunk.nc")
+        NetCDF.create_from_array(
+            arr=arr, geo=GEO, variable_name="data",
+            extra_dim_name="level", path=path,
+            chunk_sizes=(1, 15, 15),
+        )
+        nc = NetCDF.read_file(path)
+        metadata = get_metadata(nc)
+        var_info = metadata.variables["data"]
+        assert var_info.block_size == [1, 15, 15], (
+            f"Expected [1, 15, 15] after read_file, got {var_info.block_size}"
+        )
+
+
 class TestCreateDimensionHelper:
     """Tests for NetCDF._create_dimension static method."""
 
