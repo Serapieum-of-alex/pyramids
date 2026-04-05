@@ -1,10 +1,3 @@
-"""Tests for ARC-15: xarray interop — to_xarray() and from_xarray().
-
-Validates that pyramids NetCDF containers can be converted to/from
-xarray.Dataset with correct variables, coordinates, dimensions,
-attributes, and data integrity through round-trips.
-"""
-
 """Tests for xarray interop — to_xarray() and from_xarray().
 
 Requires xarray with a NetCDF backend (netCDF4 or h5netcdf).

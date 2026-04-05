@@ -88,7 +88,7 @@ jobs:
 
       - name: Run tests against installed wheel
         shell: bash -el {0}
-        run: pytest -vvv -sv -m "not plot" --ignore=tests/dataset/test_plot.py tests/
+        run: pytest -vvv -sv -m "not plot and not xarray" --ignore=tests/dataset/test_plot.py tests/
 
       - name: Install viz extra
         shell: bash -el {0}
@@ -97,3 +97,11 @@ jobs:
       - name: Run plot tests
         shell: bash -el {0}
         run: pytest -vvv -sv -m "plot" tests/
+
+      - name: Install xarray extra
+        shell: bash -el {0}
+        run: pip install "pyramids-gis[xarray]"
+
+      - name: Run xarray tests
+        shell: bash -el {0}
+        run: pytest -vvv -sv -m "xarray" tests/
