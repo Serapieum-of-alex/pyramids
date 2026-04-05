@@ -22,6 +22,8 @@ from pyramids.dataset import Dataset
 from pyramids.netcdf.models import NetCDFMetadata
 from pyramids.netcdf.netcdf import NetCDF
 
+from tests.netcdf.conftest import make_3d_nc
+
 
 def _make_3d_nc(
     rows=10,
@@ -33,18 +35,12 @@ def _make_3d_nc(
 ):
     """Create a 3D in-memory NetCDF for testing.
 
-    Returns:
-        NetCDF: An in-memory multidimensional NetCDF container.
+    Delegates to the shared ``make_3d_nc`` helper in conftest.
     """
-    arr = np.random.RandomState(42).rand(bands, rows, cols).astype(np.float64)
-    geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
-    return NetCDF.create_from_array(
-        arr=arr,
-        geo=geo,
-        epsg=epsg,
-        no_data_value=no_data_value,
-        path=None,
-        variable_name=variable_name,
+    return make_3d_nc(
+        rows=rows, cols=cols, bands=bands, epsg=epsg,
+        variable_name=variable_name, no_data_value=no_data_value,
+        arr_type="random", seed=42,
     )
 
 
@@ -234,7 +230,7 @@ class TestSpatialOperationDelegates:
             geometry=[box(1.0, 1.0, 5.0, 5.0)],
             crs="EPSG:4326",
         )
-        result = var.crop(mask, touch=True, inplace=False)
+        result = var.crop(mask, touch=True)
         assert result is not None, "crop should return a new Dataset"
         assert (
             result.rows <= var.rows
@@ -247,7 +243,7 @@ class TestSpatialOperationDelegates:
         """
         nc = _make_3d_nc(rows=10, cols=12, bands=1, epsg=4326)
         var = nc.get_variable("temperature")
-        result = var.to_crs(to_epsg=32637, inplace=False)
+        result = var.to_crs(to_epsg=32637)
         assert result is not None, "to_crs should return a reprojected Dataset"
 
 

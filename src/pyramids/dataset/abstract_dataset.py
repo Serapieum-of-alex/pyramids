@@ -70,6 +70,24 @@ class AbstractDataset(ABC):
             src.GetRasterBand(i).GetBlockSize() for i in range(1, self._band_count + 1)
         ]
 
+    def __enter__(self):
+        """Enter the context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager and close the dataset.
+
+        If close() raises an error, it is suppressed when an original
+        exception is already propagating (to avoid masking it). If no
+        original exception exists, the close error propagates normally.
+        """
+        try:
+            self.close()
+        except Exception:
+            if exc_type is None:
+                raise
+        return False
+
     @abstractmethod
     def __str__(self):
         """__str__."""
@@ -519,9 +537,8 @@ class AbstractDataset(ABC):
         self,
         to_epsg: int,
         method: str = "nearest neighbor",
-        maintain_alignment: int = False,
-        inplace: bool = False,
-    ) -> AbstractDataset | None:
+        maintain_alignment: bool = False,
+    ) -> AbstractDataset:
         """To EPSG.
 
         to_epsg reprojects a raster to any projection
@@ -667,8 +684,7 @@ class AbstractDataset(ABC):
         self,
         mask: GeoDataFrame | FeatureCollection,
         touch: bool = True,
-        inplace: bool = False,
-    ) -> AbstractDataset | None:
+    ) -> AbstractDataset:
         """Crop.
 
             Crop/Clip the Dataset object using a polygon/raster.

@@ -6,6 +6,9 @@ netcdf contains python functions to handle netcdf data. gdal class: https://gdal
 
 from __future__ import annotations
 
+import os
+import tempfile
+import weakref
 from numbers import Number
 from pathlib import Path
 from typing import Any
@@ -14,9 +17,9 @@ import numpy as np
 from osgeo import gdal
 
 from pyramids import _io
-from pyramids.dataset import DEFAULT_NO_DATA_VALUE
+from pyramids.base._errors import OptionalPackageDoesNotExist
 from pyramids.base._utils import numpy_to_gdal_dtype
-from pyramids.dataset import Dataset
+from pyramids.dataset import DEFAULT_NO_DATA_VALUE, Dataset
 from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
@@ -333,43 +336,85 @@ class NetCDF(Dataset):
                     result = result + offset
         return result
 
-    def crop(self, mask, touch: bool = True, inplace: bool = False):
+    def _preserve_netcdf_metadata(self, result: Dataset) -> NetCDF:
+        """Wrap a Dataset result as a NetCDF, preserving variable-subset metadata.
+
+        When spatial operations (crop, to_crs, resample) are called on a
+        NetCDF variable subset, the parent ``Dataset`` mixin returns a
+        plain ``Dataset``.  This helper re-wraps the result as a ``NetCDF``
+        and copies over the variable-specific attributes so that methods
+        like ``sel()``, ``read_array(unpack=True)``, and further spatial
+        operations continue to work with consistent return types.
+
+        Args:
+            result: The ``Dataset`` (or ``NetCDF``) returned by a parent
+                spatial operation.
+
+        Returns:
+            NetCDF: The same data wrapped as a ``NetCDF`` with all
+                variable-subset metadata preserved.
+        """
+        if isinstance(result, NetCDF):
+            wrapped = result
+        else:
+            wrapped = NetCDF(
+                result._raster, access=result._access,
+                open_as_multi_dimensional=False,
+            )
+        wrapped._is_md_array = self._is_md_array
+        wrapped._is_subset = self._is_subset
+        wrapped._band_dim_name = self._band_dim_name
+        wrapped._band_dim_values = self._band_dim_values
+        wrapped._variable_attrs = self._variable_attrs
+        wrapped._scale = self._scale
+        wrapped._offset = self._offset
+        # _parent_nc is a reference to the root MDIM container used only for
+        # metadata lookup (variable names, attributes) during round-trip
+        # serialisation.  It is NOT used for data reads, so a stale reference
+        # (e.g. after the parent has been cropped/reprojected) is harmless.
+        wrapped._parent_nc = self._parent_nc
+        wrapped._source_var_name = self._source_var_name
+        wrapped._gdal_md_arr_ref = None
+        wrapped._gdal_rg_ref = None
+        return wrapped
+
+    def crop(self, mask, touch: bool = True):
         """Crop the dataset using a polygon or raster mask.
 
         On a **root MDIM container** this crops every variable and
         returns a new in-memory NetCDF container with the cropped
         results.  On a **variable subset** it delegates to the
-        parent ``Dataset.crop()``.
+        parent ``Dataset.crop()`` and wraps the result as ``NetCDF``
+        to preserve variable metadata (``_band_dim_name``,
+        ``_band_dim_values``, ``sel()``, etc.).
 
         Args:
             mask: GeoDataFrame with polygon geometry, or a Dataset
                 to use as a spatial mask.
             touch: If True, include cells that touch the mask
                 boundary. Defaults to True.
-            inplace: If True, modify this object in place (container
-                mode only). Defaults to False.
 
         Returns:
-            NetCDF or Dataset: Cropped container or dataset.
+            NetCDF: Cropped container or variable subset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
             result = self._apply_to_all_variables(
-                "crop", {"mask": mask, "touch": touch}, inplace=inplace,
+                "crop", {"mask": mask, "touch": touch},
             )
         else:
-            result = super().crop(mask=mask, touch=touch, inplace=inplace)
+            result = super().crop(mask=mask, touch=touch)
+            result = self._preserve_netcdf_metadata(result)
         return result
 
-    def _apply_to_all_variables(self, operation, op_kwargs, inplace=False):
+    def _apply_to_all_variables(self, operation, op_kwargs):
         """Apply an operation to every variable in the container.
 
         Args:
             operation: Name of the Dataset method to call (e.g. "crop").
             op_kwargs: Keyword arguments to pass to the method.
-            inplace: If True, replace this container's raster in place.
 
         Returns:
-            NetCDF or None: New container, or None if inplace=True.
+            NetCDF: New container with the operation applied to all variables.
 
         Raises:
             ValueError: If the container has no data variables.
@@ -383,7 +428,7 @@ class NetCDF(Dataset):
         first_var = self.get_variable(first_name)
         first_result = getattr(first_var, operation)(**op_kwargs)
 
-        # to_crs returns a VRT — materialize to avoid dangling refs
+        # to_crs returns a VRT -- materialize to avoid dangling refs
         first_arr = first_result.read_array()
         # Preserve the extra dimension for single-band 3D variables
         # (read_array squeezes to 2D, but the time/level dim should survive)
@@ -417,9 +462,6 @@ class NetCDF(Dataset):
             ds._band_dim_values = var._band_dim_values
             result.set_variable(var_name, ds)
 
-        if inplace:
-            self._replace_raster(result._raster)
-            result = None
         return result
 
     def to_crs(
@@ -427,81 +469,81 @@ class NetCDF(Dataset):
         to_epsg,
         method="nearest neighbor",
         maintain_alignment=False,
-        inplace=False,
     ):
         """Reproject the dataset to a different CRS.
 
         On a **root MDIM container** this reprojects every variable
         and returns a new container. On a **variable subset** it
-        delegates to ``Dataset.to_crs()``.
+        delegates to ``Dataset.to_crs()`` and wraps the result as
+        ``NetCDF`` to preserve variable metadata.
 
         Args:
             to_epsg: Target EPSG code (e.g., 4326, 32637).
             method: Resampling method. Defaults to ``"nearest neighbor"``.
             maintain_alignment: If True, keep the same number of rows
                 and columns. Defaults to False.
-            inplace: If True, modify this object in place (container
-                mode only). Defaults to False.
 
         Returns:
-            NetCDF or Dataset: Reprojected container or dataset.
+            NetCDF: Reprojected container or variable subset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
             result = self._apply_to_all_variables(
                 "to_crs",
                 {"to_epsg": to_epsg, "method": method,
                  "maintain_alignment": maintain_alignment},
-                inplace=inplace,
             )
         else:
             result = super().to_crs(
                 to_epsg=to_epsg,
                 method=method,
                 maintain_alignment=maintain_alignment,
-                inplace=inplace,
             )
+            result = self._preserve_netcdf_metadata(result)
         return result
 
     def resample(
         self,
         cell_size,
         method="nearest neighbor",
-        inplace=False,
     ):
         """Resample the dataset to a different cell size.
 
         On a **root MDIM container** this resamples every variable
         and returns a new container. On a **variable subset** it
-        delegates to ``Dataset.resample()``.
+        delegates to ``Dataset.resample()`` and wraps the result as
+        ``NetCDF`` to preserve variable metadata.
 
         Args:
             cell_size: New cell size.
             method: Resampling method. Defaults to ``"nearest neighbor"``.
-            inplace: If True, modify this object in place (container
-                mode only). Defaults to False.
 
         Returns:
-            NetCDF or Dataset: Resampled container or dataset.
+            NetCDF: Resampled container or variable subset.
         """
         if self._is_md_array and not self._is_subset and self.band_count == 0:
             result = self._apply_to_all_variables(
                 "resample",
                 {"cell_size": cell_size, "method": method},
-                inplace=inplace,
             )
         else:
             result = super().resample(
-                cell_size=cell_size, method=method, inplace=inplace,
+                cell_size=cell_size, method=method,
             )
+            result = self._preserve_netcdf_metadata(result)
         return result
 
-    def sel(self, **kwargs) -> Dataset:
+    def sel(self, **kwargs) -> NetCDF:
         """Select a subset of bands by coordinate values.
 
         Extracts bands whose coordinate values match the given
         criteria.  Works on variable subsets that have
         ``_band_dim_name`` and ``_band_dim_values`` set by
         ``get_variable()``.
+
+        The result is always a ``NetCDF`` instance with the same
+        variable metadata preserved, so that ``sel()`` can be
+        chained and NetCDF-specific methods like
+        ``read_array(unpack=True)`` remain available.
 
         Args:
             **kwargs: One keyword argument where the key is the
@@ -513,7 +555,8 @@ class NetCDF(Dataset):
                   ``start <= coord <= stop``.
 
         Returns:
-            Dataset: A new dataset with only the selected bands.
+            NetCDF: A new NetCDF variable subset with only the
+                selected bands and all variable metadata preserved.
 
         Raises:
             ValueError: If the dimension name doesn't match
@@ -577,27 +620,35 @@ class NetCDF(Dataset):
                 f"Available values: {coords}"
             )
 
-        full_arr = self.read_array()
-        # Ensure 3D so band_indices index bands, not rows
-        if full_arr.ndim == 2:
-            full_arr = np.expand_dims(full_arr, axis=0)
-        selected = full_arr[band_indices]
         selected_coords = [coords[i] for i in band_indices]
 
-        # Squeeze to 2D if only one band selected
-        if selected.shape[0] == 1:
-            selected = selected[0]
+        # Read only the selected bands instead of loading the full array.
+        # Each band index maps to a 1-based GDAL band in the classic
+        # dataset view created by get_variable().
+        #
+        # Trade-off: band-by-band reads avoid loading the entire variable
+        # into memory, which matters for large variables with few selected
+        # bands.  However, when *most* bands are selected the per-band
+        # GDAL overhead may be slower than a single full read followed by
+        # NumPy slicing.  In practice the difference is small because GDAL
+        # MEM driver reads are cheap; revisit if profiling shows a
+        # bottleneck for large on-disk NetCDFs.
+        band_arrays = [
+            self.read_array(band=i) for i in band_indices
+        ]
+        if len(band_arrays) == 1:
+            selected = band_arrays[0]
+        else:
+            selected = np.stack(band_arrays, axis=0)
 
         ndv = self.no_data_value
         ndv_scalar = ndv[0] if isinstance(ndv, list) and ndv else ndv
-        result = Dataset.create_from_array(
+        ds_result = Dataset.create_from_array(
             selected, geo=self.geotransform, epsg=self.epsg,
             no_data_value=ndv_scalar,
         )
-        result._band_dim_name = self._band_dim_name
+        result = self._preserve_netcdf_metadata(ds_result)
         result._band_dim_values = selected_coords
-        if hasattr(self, "_variable_attrs"):
-            result._variable_attrs = self._variable_attrs
 
         return result
 
@@ -758,8 +809,12 @@ class NetCDF(Dataset):
                 pass
         return result
 
-    def _read_variable(self, var: str) -> np.ndarray | None:
-        """Read a variable's data as a numpy array.
+    def _read_variable(
+        self,
+        var: str,
+        window: list[tuple[int, int]] | None = None,
+    ) -> np.ndarray | None:
+        """Read a variable's data as a numpy array, optionally windowed.
 
         Uses the MDIM root group when available (avoids opening a new GDAL
         handle). Falls back to the classic ``NETCDF:file:var`` path.
@@ -769,6 +824,12 @@ class NetCDF(Dataset):
 
         Args:
             var: Variable name in the dataset.
+            window: Per-dimension window as a list of ``(start, count)``
+                tuples, one per dimension of the target variable.  For
+                example, ``[(0, 1), (100, 256), (200, 256)]`` reads
+                time[0:1], y[100:356], x[200:456].  When ``None`` the
+                full variable is read.  Only supported in MDIM mode;
+                ignored in classic mode.
 
         Returns:
             np.ndarray or None: The variable data, or None if the
@@ -780,21 +841,35 @@ class NetCDF(Dataset):
             try:
                 md_arr = rg.OpenMDArray(var)
                 if md_arr is not None:
-                    result = md_arr.ReadAsArray()
+                    if window is not None:
+                        starts = [w[0] for w in window]
+                        counts = [w[1] for w in window]
+                        result = md_arr.ReadAsArray(
+                            array_start_idx=starts, count=counts,
+                        )
+                    else:
+                        result = md_arr.ReadAsArray()
                     # Flip Y axis if south-to-north (same as get_variable)
                     if result is not None and result.ndim >= 2:
-                        if self._needs_y_flip(rg, md_arr):
+                        if window is None and self._needs_y_flip(rg, md_arr):
                             y_axis = result.ndim - 2
                             result = np.flip(result, axis=y_axis)
             except Exception:
-                pass # nosec B110
+                pass  # nosec B110
             # Fall back to dimension indexing variable
             if result is None:
                 dim = self._get_dimension(var)
                 if dim is not None:
                     iv = dim.GetIndexingVariable()
                     if iv is not None:
-                        result = iv.ReadAsArray()
+                        if window is not None and len(window) == 1:
+                            starts = [window[0][0]]
+                            counts = [window[0][1]]
+                            result = iv.ReadAsArray(
+                                array_start_idx=starts, count=counts,
+                            )
+                        else:
+                            result = iv.ReadAsArray()
         else:
             # Classic mode: open via subdataset string
             try:
@@ -2016,3 +2091,171 @@ class NetCDF(Dataset):
         self._add_md_array_to_group(rg, new_name, md_arr)
         rg.DeleteMDArray(old_name)
         self._invalidate_caches()
+
+    def to_xarray(self) -> Any:
+        """Convert this NetCDF container to an ``xarray.Dataset``.
+
+        Builds an in-memory ``xarray.Dataset`` that mirrors the
+        variables, coordinates, dimensions, and global attributes
+        of this pyramids NetCDF container.
+
+        For **file-backed** containers the conversion delegates to
+        ``xr.open_dataset(self.file_name)`` which lets xarray use
+        its own optimised NetCDF reader.
+
+        For **in-memory** containers (MEM driver, no file on disk)
+        the method reads each variable via the MDIM API, constructs
+        coordinate arrays from the dimension indexing variables, and
+        assembles them into an ``xr.Dataset`` manually.
+
+        Requires the optional ``xarray`` package.  Install it with::
+
+            pip install xarray
+
+        Returns:
+            xarray.Dataset: An xarray Dataset with the same
+                variables, coordinates, and global attributes.
+
+        Raises:
+            pyramids.base._errors.OptionalPackageDoesNotExist:
+                If ``xarray`` is not installed.
+
+        Examples:
+            Convert a pyramids NetCDF to xarray::
+
+                nc = NetCDF.read_file("temperature.nc")
+                ds = nc.to_xarray()
+                print(ds)
+        """
+        try:
+            # xarray is an optional dependency, keep this import inline.
+            import xarray as xr
+        except ImportError:
+            raise OptionalPackageDoesNotExist(
+                "xarray is required for to_xarray(). "
+                "Install it with: pip install xarray"
+            )
+
+        file_path = self.file_name
+        is_file_backed = (
+            file_path
+            and not file_path.startswith("/vsimem/")
+            and Path(file_path).exists()
+        )
+
+        if is_file_backed:
+            result = xr.open_dataset(file_path)
+        else:
+            rg = self._raster.GetRootGroup()
+            if rg is None:
+                raise ValueError(
+                    "to_xarray requires a multidimensional container. "
+                    "Open the file with open_as_multi_dimensional=True."
+                )
+
+            coords: dict[str, Any] = {}
+            dims = rg.GetDimensions() or []
+            for d in dims:
+                dim_name = d.GetName()
+                iv = d.GetIndexingVariable()
+                if iv is not None:
+                    coords[dim_name] = ([dim_name], iv.ReadAsArray())
+
+            data_vars: dict[str, Any] = {}
+            for var_name in self.variable_names:
+                md_arr = rg.OpenMDArray(var_name)
+                if md_arr is None:
+                    continue
+                arr_dims = md_arr.GetDimensions() or []
+                arr_dim_names = [ad.GetName() for ad in arr_dims]
+                arr_data = md_arr.ReadAsArray()
+                var_attrs: dict[str, Any] = {}
+                try:
+                    for attr in md_arr.GetAttributes():
+                        var_attrs[attr.GetName()] = attr.Read()
+                except Exception:
+                    pass
+                data_vars[var_name] = (arr_dim_names, arr_data, var_attrs)
+
+            global_attrs = self.global_attributes
+
+            result = xr.Dataset(
+                data_vars=data_vars,
+                coords=coords,
+                attrs=global_attrs,
+            )
+
+        return result
+
+    @classmethod
+    def from_xarray(
+        cls,
+        dataset: Any,
+        path: str | Path | None = None,
+    ) -> NetCDF:
+        """Create a pyramids NetCDF from an ``xarray.Dataset``.
+
+        Serialises the xarray Dataset to a NetCDF file (on disk or
+        in a temporary file on disk) and reads it back as a
+        pyramids ``NetCDF`` container.
+
+        This is the inverse of ``to_xarray()`` and enables workflows
+        that mix xarray analysis with pyramids spatial operations::
+
+            ds = xr.open_dataset("input.nc")
+            # ... xarray processing ...
+            nc = NetCDF.from_xarray(ds)
+            var = nc.get_variable("temperature")
+            cropped = var.crop(mask)
+
+        Requires the optional ``xarray`` package.
+
+        Args:
+            dataset: An ``xarray.Dataset`` instance.
+            path: File path where the intermediate NetCDF will be
+                written.  If ``None``, a temporary file on disk is
+                used and cleaned up automatically when the returned
+                object is garbage-collected.
+
+        Returns:
+            NetCDF: A pyramids NetCDF container backed by the data
+                from the xarray Dataset.
+
+        Raises:
+            pyramids.base._errors.OptionalPackageDoesNotExist:
+                If ``xarray`` is not installed.
+            TypeError: If *dataset* is not an ``xarray.Dataset``.
+        """
+        try:
+            # xarray is an optional dependency, keep this import inline.
+            import xarray as xr
+        except ImportError:
+            raise OptionalPackageDoesNotExist(
+                "xarray is required for from_xarray(). "
+                "Install it with: pip install xarray"
+            )
+
+        if not isinstance(dataset, xr.Dataset):
+            raise TypeError(
+                f"Expected xarray.Dataset, got {type(dataset).__name__}"
+            )
+
+        cleanup_temp = False
+        if path is not None:
+            path = str(path)
+        else:
+            tmp = tempfile.NamedTemporaryFile(
+                suffix=".nc", delete=False,
+            )
+            path = tmp.name
+            tmp.close()
+            cleanup_temp = True
+
+        dataset.to_netcdf(path)
+        result = cls.read_file(path, read_only=True)
+
+        if cleanup_temp:
+            result._xarray_temp_path = path
+            weakref.finalize(result, os.unlink, path)
+
+        return result

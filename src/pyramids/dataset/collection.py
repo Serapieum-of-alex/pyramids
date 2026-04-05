@@ -530,7 +530,7 @@ class DatasetCollection:
         self,
         to_epsg: int = 3857,
         method: str = "nearest neighbor",
-        maintain_alignment: int = False,
+        maintain_alignment: bool = False,
     ) -> None:
         """to_epsg.
 

@@ -1003,7 +1003,7 @@ class TestCropWithPolygon:
         """
         dataset = Dataset(rhine_raster)
         cells = dataset.count_domain_cells()
-        dataset.crop(polygon_mask, touch=True, inplace=True)
+        dataset = dataset.crop(polygon_mask, touch=True)
         new_cells = dataset.count_domain_cells()
         assert not cells == new_cells
 
@@ -1624,7 +1624,7 @@ class TestNCtoGeoTIFF:
 
     def test_convert_0_360_to_180_180_longitude_inplace(self, noah: gdal.Dataset):
         dataset = Dataset(noah)
-        dataset.convert_longitude(inplace=True)
+        dataset = dataset.convert_longitude()
         lon = dataset.lon
         assert lon.max() < 180
         assert dataset.top_left_corner == (-180, 90)

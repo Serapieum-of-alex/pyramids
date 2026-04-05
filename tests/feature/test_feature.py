@@ -203,6 +203,81 @@ class TestConvert:
 #     print("sss")
 
 
+class TestVsimemIsolation:
+    """Tests for /vsimem/ memory management in _gdf_to_ds and _ds_to_gdf_in_memory."""
+
+    def test_gdf_to_ds_uses_unique_paths(self, ds_geodataframe: GeoDataFrame):
+        """Sequential _gdf_to_ds calls should use different /vsimem/ paths.
+
+        Test scenario:
+            Call _gdf_to_ds twice and verify both return valid results,
+            confirming they don't clobber a shared path.
+        """
+        fc = FeatureCollection(ds_geodataframe)
+        ds1 = fc._gdf_to_ds()
+        ds2 = fc._gdf_to_ds()
+        assert isinstance(ds1, FeatureCollection), (
+            f"First call should return FeatureCollection, got {type(ds1)}"
+        )
+        assert isinstance(ds2, FeatureCollection), (
+            f"Second call should return FeatureCollection, got {type(ds2)}"
+        )
+
+    def test_gdf_to_ds_roundtrip_preserves_data(self, ds_geodataframe: GeoDataFrame):
+        """GeoDataFrame -> DataSource -> GeoDataFrame should preserve geometry and attributes.
+
+        Test scenario:
+            Convert a GeoDataFrame to DataSource via _gdf_to_ds, then
+            back to GeoDataFrame via _ds_to_gdf, and verify the data
+            survives the round-trip.
+        """
+        fc = FeatureCollection(ds_geodataframe)
+        ds_fc = fc._gdf_to_ds()
+        gdf_back = ds_fc._ds_to_gdf()
+        assert isinstance(gdf_back, GeoDataFrame), (
+            f"Round-trip should produce GeoDataFrame, got {type(gdf_back)}"
+        )
+        assert len(gdf_back) == len(ds_geodataframe), (
+            f"Row count mismatch: {len(gdf_back)} vs {len(ds_geodataframe)}"
+        )
+
+    def test_sequential_conversions_no_interference(
+        self, ds_geodataframe: GeoDataFrame
+    ):
+        """Multiple sequential conversions should not interfere with each other.
+
+        Test scenario:
+            Perform several _gdf_to_ds and _ds_to_gdf round-trips in
+            sequence. Each should produce correct results independent
+            of the others.
+        """
+        for i in range(3):
+            fc = FeatureCollection(ds_geodataframe)
+            ds_fc = fc._gdf_to_ds()
+            assert isinstance(ds_fc, FeatureCollection), (
+                f"Iteration {i}: _gdf_to_ds should return FeatureCollection"
+            )
+            gdf_back = ds_fc._ds_to_gdf()
+            assert isinstance(gdf_back, GeoDataFrame), (
+                f"Iteration {i}: _ds_to_gdf should return GeoDataFrame"
+            )
+            assert len(gdf_back) == len(ds_geodataframe), (
+                f"Iteration {i}: row count mismatch"
+            )
+
+    def test_module_level_memory_file_removed(self):
+        """The shared MEMORY_FILE constant should no longer exist.
+
+        Test scenario:
+            Verify that the module-level MEMORY_FILE constant was removed
+            to prevent race conditions.
+        """
+        import pyramids.feature.feature as feat_module
+        assert not hasattr(feat_module, "MEMORY_FILE"), (
+            "MEMORY_FILE constant should have been removed from feature module"
+        )
+
+
 class TestCreatePolygon:
     def test_create_wkt_str(
         self,

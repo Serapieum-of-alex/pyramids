@@ -32,9 +32,11 @@ class BandMetadata:
     """Mixin providing band metadata, attribute table, and color table operations."""
 
     def _iloc(self, i: int) -> gdal.Band:
-        """_iloc.
+        """Access a GDAL Band by 0-based index.
 
-            - Access dataset bands using index.
+        The returned band object is only valid while the parent dataset
+        is open. Do not store the band reference — use it immediately
+        and discard it.
 
         Args:
             i (int):
@@ -43,7 +45,20 @@ class BandMetadata:
         Returns:
             gdal.Band:
                 Gdal Band.
+
+        Raises:
+            IndexError: If the index is negative or out of bounds.
+            RuntimeError: If the dataset has been closed.
         """
+        # RuntimeError is intentional here: the dataset is *closed*, not
+        # read-only, so ReadOnlyError would be misleading.  There is no
+        # DatasetClosedError in the hierarchy; RuntimeError is the standard
+        # Python choice for invalid runtime state.
+        if self._raster is None:
+            raise RuntimeError(
+                "Cannot access band on a closed dataset. "
+                "The dataset has been closed via close() or a context manager."
+            )
         if i < 0:
             raise IndexError("negative index not supported")
 
@@ -986,7 +1001,7 @@ class BandMetadata:
 
     def change_no_data_value(
         self, new_value: Any, old_value: Any | None = None, inplace: bool = False
-    ) -> Dataset | None:
+    ) -> Dataset:
         """Change No Data Value.
             - Set the no data value in all raster bands.
             - Fill the whole raster with the no_data_value.
@@ -1001,8 +1016,8 @@ class BandMetadata:
                 Default is False.
 
         Returns:
-            Dataset | None:
-                The resulting dataset if inplace is False; otherwise None.
+            Dataset:
+                A new Dataset with the updated no-data value. If inplace is True, returns self.
 
         Warning:
             The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value` in the raster bands.
@@ -1060,9 +1075,7 @@ class BandMetadata:
                 )
             new_dataset.raster.GetRasterBand(band + 1).WriteArray(arr)
 
-        result: Dataset | None = None
         if inplace:
             self._update_inplace(new_dataset.raster)
-        else:
-            result = new_dataset
-        return result
+            return self
+        return new_dataset

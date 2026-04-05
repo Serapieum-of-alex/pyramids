@@ -14085,7 +14085,7 @@ packages:
 - pypi: ./
   name: pyramids-gis
   version: 0.10.0
-  sha256: fc0c8f8cfb354217ee21c31f6f4a08ca39ee3eca2d23590731904dcc8c4a9b7a
+  sha256: ed5f8d9ac4df13f2b5a9331c6632a5b1bb811769ca9d2361c894f08f314470e5
   requires_dist:
   - gdal>=3.10.0,<4
   - geopandas>=1.0.0
@@ -14096,6 +14096,7 @@ packages:
   - pyyaml>=6.0.0
   - shapely>=2.0.0
   - cleopatra>=0.6.0 ; extra == 'viz'
+  - xarray>=2023.1.0 ; extra == 'xarray'
   requires_python: '>=3.11,<4'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/3b/ab/b3226f0bd7cdcf710fbede2b3548584366da3b19b5021e74f5bde2a8fa3f/pytest-9.0.2-py3-none-any.whl
