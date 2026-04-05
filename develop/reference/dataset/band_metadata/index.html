@@ -3242,9 +3242,7 @@
 <span class="normal"><a href="#__codelineno-0-1074">1074</a></span>
 <span class="normal"><a href="#__codelineno-0-1075">1075</a></span>
 <span class="normal"><a href="#__codelineno-0-1076">1076</a></span>
-<span class="normal"><a href="#__codelineno-0-1077">1077</a></span>
-<span class="normal"><a href="#__codelineno-0-1078">1078</a></span>
-<span class="normal"><a href="#__codelineno-0-1079">1079</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="k">class</span><span class="w"> </span><span class="nc">BandMetadata</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-1077">1077</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="k">class</span><span class="w"> </span><span class="nc">BandMetadata</span><span class="p">:</span>
 <a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Mixin providing band metadata, attribute table, and color table operations.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-33" name="__codelineno-0-33"></a>
 <a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_iloc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gdal</span><span class="o">.</span><span class="n">Band</span><span class="p">:</span>
@@ -4213,7 +4211,7 @@
 <a id="__codelineno-0-997" name="__codelineno-0-997"></a>
 <a id="__codelineno-0-998" name="__codelineno-0-998"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span>
 <a id="__codelineno-0-999" name="__codelineno-0-999"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">old_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
 <a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Change No Data Value.</span>
 <a id="__codelineno-0-1002" name="__codelineno-0-1002"></a><span class="sd">            - Set the no data value in all raster bands.</span>
 <a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">            - Fill the whole raster with the no_data_value.</span>
@@ -4228,8 +4226,8 @@
 <a id="__codelineno-0-1012" name="__codelineno-0-1012"></a><span class="sd">                Default is False.</span>
 <a id="__codelineno-0-1013" name="__codelineno-0-1013"></a>
 <a id="__codelineno-0-1014" name="__codelineno-0-1014"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">            Dataset | None:</span>
-<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a><span class="sd">                The resulting dataset if inplace is False; otherwise None.</span>
+<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">            Dataset:</span>
+<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a><span class="sd">                A new Dataset with the updated no-data value. If inplace is True, returns self.</span>
 <a id="__codelineno-0-1017" name="__codelineno-0-1017"></a>
 <a id="__codelineno-0-1018" name="__codelineno-0-1018"></a><span class="sd">        Warning:</span>
 <a id="__codelineno-0-1019" name="__codelineno-0-1019"></a><span class="sd">            The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value` in the raster bands.</span>
@@ -4287,12 +4285,10 @@
 <a id="__codelineno-0-1071" name="__codelineno-0-1071"></a>                <span class="p">)</span>
 <a id="__codelineno-0-1072" name="__codelineno-0-1072"></a>            <span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
 <a id="__codelineno-0-1073" name="__codelineno-0-1073"></a>
-<a id="__codelineno-0-1074" name="__codelineno-0-1074"></a>        <span class="n">result</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-1075" name="__codelineno-0-1075"></a>        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
-<a id="__codelineno-0-1076" name="__codelineno-0-1076"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="p">)</span>
-<a id="__codelineno-0-1077" name="__codelineno-0-1077"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-1078" name="__codelineno-0-1078"></a>            <span class="n">result</span> <span class="o">=</span> <span class="n">new_dataset</span>
-<a id="__codelineno-0-1079" name="__codelineno-0-1079"></a>        <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-1074" name="__codelineno-0-1074"></a>        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+<a id="__codelineno-0-1075" name="__codelineno-0-1075"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="p">)</span>
+<a id="__codelineno-0-1076" name="__codelineno-0-1076"></a>            <span class="k">return</span> <span class="bp">self</span>
+<a id="__codelineno-0-1077" name="__codelineno-0-1077"></a>        <span class="k">return</span> <span class="n">new_dataset</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -5668,19 +5664,18 @@ Args:
     <table>
       <thead>
         <tr>
-          <th>Type</th>
+<th>Name</th>          <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.dataset.Dataset&lt;/code&gt; (&lt;code&gt;pyramids.dataset.dataset.Dataset&lt;/code&gt;)" href="../#pyramids.dataset.Dataset">Dataset</a> | None</code>
+<td><code>Dataset</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.dataset.Dataset&lt;/code&gt; (&lt;code&gt;pyramids.dataset.dataset.Dataset&lt;/code&gt;)" href="../#pyramids.dataset.Dataset">Dataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Dataset | None:
-The resulting dataset if inplace is False; otherwise None.</p>
+                <p>A new Dataset with the updated no-data value. If inplace is True, returns self.</p>
               </div>
             </td>
           </tr>
@@ -5798,11 +5793,9 @@ The resulting dataset if inplace is False; otherwise None.</p>
 <span class="normal"><a href="#__codelineno-0-1074">1074</a></span>
 <span class="normal"><a href="#__codelineno-0-1075">1075</a></span>
 <span class="normal"><a href="#__codelineno-0-1076">1076</a></span>
-<span class="normal"><a href="#__codelineno-0-1077">1077</a></span>
-<span class="normal"><a href="#__codelineno-0-1078">1078</a></span>
-<span class="normal"><a href="#__codelineno-0-1079">1079</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-998" name="__codelineno-0-998"></a><span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-1077">1077</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-998" name="__codelineno-0-998"></a><span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span>
 <a id="__codelineno-0-999" name="__codelineno-0-999"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">old_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
 <a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Change No Data Value.</span>
 <a id="__codelineno-0-1002" name="__codelineno-0-1002"></a><span class="sd">        - Set the no data value in all raster bands.</span>
 <a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">        - Fill the whole raster with the no_data_value.</span>
@@ -5817,8 +5810,8 @@ The resulting dataset if inplace is False; otherwise None.</p>
 <a id="__codelineno-0-1012" name="__codelineno-0-1012"></a><span class="sd">            Default is False.</span>
 <a id="__codelineno-0-1013" name="__codelineno-0-1013"></a>
 <a id="__codelineno-0-1014" name="__codelineno-0-1014"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">        Dataset | None:</span>
-<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a><span class="sd">            The resulting dataset if inplace is False; otherwise None.</span>
+<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">        Dataset:</span>
+<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a><span class="sd">            A new Dataset with the updated no-data value. If inplace is True, returns self.</span>
 <a id="__codelineno-0-1017" name="__codelineno-0-1017"></a>
 <a id="__codelineno-0-1018" name="__codelineno-0-1018"></a><span class="sd">    Warning:</span>
 <a id="__codelineno-0-1019" name="__codelineno-0-1019"></a><span class="sd">        The `change_no_data_value` method creates a new dataset in memory in order to change the `no_data_value` in the raster bands.</span>
@@ -5876,12 +5869,10 @@ The resulting dataset if inplace is False; otherwise None.</p>
 <a id="__codelineno-0-1071" name="__codelineno-0-1071"></a>            <span class="p">)</span>
 <a id="__codelineno-0-1072" name="__codelineno-0-1072"></a>        <span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetRasterBand</span><span class="p">(</span><span class="n">band</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">WriteArray</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
 <a id="__codelineno-0-1073" name="__codelineno-0-1073"></a>
-<a id="__codelineno-0-1074" name="__codelineno-0-1074"></a>    <span class="n">result</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-1075" name="__codelineno-0-1075"></a>    <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
-<a id="__codelineno-0-1076" name="__codelineno-0-1076"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="p">)</span>
-<a id="__codelineno-0-1077" name="__codelineno-0-1077"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-1078" name="__codelineno-0-1078"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">new_dataset</span>
-<a id="__codelineno-0-1079" name="__codelineno-0-1079"></a>    <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-1074" name="__codelineno-0-1074"></a>    <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+<a id="__codelineno-0-1075" name="__codelineno-0-1075"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">new_dataset</span><span class="o">.</span><span class="n">raster</span><span class="p">)</span>
+<a id="__codelineno-0-1076" name="__codelineno-0-1076"></a>        <span class="k">return</span> <span class="bp">self</span>
+<a id="__codelineno-0-1077" name="__codelineno-0-1077"></a>    <span class="k">return</span> <span class="n">new_dataset</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
