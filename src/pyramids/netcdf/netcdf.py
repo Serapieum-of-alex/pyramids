@@ -2076,3 +2076,172 @@ class NetCDF(Dataset):
         self._add_md_array_to_group(rg, new_name, md_arr)
         rg.DeleteMDArray(old_name)
         self._invalidate_caches()
+
+    def to_xarray(self) -> Any:
+        """Convert this NetCDF container to an ``xarray.Dataset``.
+
+        Builds an in-memory ``xarray.Dataset`` that mirrors the
+        variables, coordinates, dimensions, and global attributes
+        of this pyramids NetCDF container.
+
+        For **file-backed** containers the conversion delegates to
+        ``xr.open_dataset(self.file_name)`` which lets xarray use
+        its own optimised NetCDF reader.
+
+        For **in-memory** containers (MEM driver, no file on disk)
+        the method reads each variable via the MDIM API, constructs
+        coordinate arrays from the dimension indexing variables, and
+        assembles them into an ``xr.Dataset`` manually.
+
+        Requires the optional ``xarray`` package.  Install it with::
+
+            pip install xarray
+
+        Returns:
+            xarray.Dataset: An xarray Dataset with the same
+                variables, coordinates, and global attributes.
+
+        Raises:
+            pyramids.base._errors.OptionalPackageDoesNotExist:
+                If ``xarray`` is not installed.
+
+        Examples:
+            Convert a pyramids NetCDF to xarray::
+
+                nc = NetCDF.read_file("temperature.nc")
+                ds = nc.to_xarray()
+                print(ds)
+        """
+        try:
+            import xarray as xr
+        except ImportError:
+            from pyramids.base._errors import OptionalPackageDoesNotExist
+            raise OptionalPackageDoesNotExist(
+                "xarray is required for to_xarray(). "
+                "Install it with: pip install xarray"
+            )
+
+        file_path = self.file_name
+        is_file_backed = (
+            file_path
+            and not file_path.startswith("/vsimem/")
+            and Path(file_path).exists()
+        )
+
+        if is_file_backed:
+            result = xr.open_dataset(file_path)
+            return result
+
+        rg = self._raster.GetRootGroup()
+        if rg is None:
+            raise ValueError(
+                "to_xarray requires a multidimensional container. "
+                "Open the file with open_as_multi_dimensional=True."
+            )
+
+        coords: dict[str, Any] = {}
+        dims = rg.GetDimensions() or []
+        dim_name_list = [d.GetName() for d in dims]
+        for d in dims:
+            dim_name = d.GetName()
+            iv = d.GetIndexingVariable()
+            if iv is not None:
+                coords[dim_name] = ([dim_name], iv.ReadAsArray())
+
+        data_vars: dict[str, Any] = {}
+        for var_name in self.variable_names:
+            md_arr = rg.OpenMDArray(var_name)
+            if md_arr is None:
+                continue
+            arr_dims = md_arr.GetDimensions() or []
+            arr_dim_names = [ad.GetName() for ad in arr_dims]
+            arr_data = md_arr.ReadAsArray()
+            var_attrs: dict[str, Any] = {}
+            try:
+                for attr in md_arr.GetAttributes():
+                    var_attrs[attr.GetName()] = attr.Read()
+            except Exception:
+                pass
+            data_vars[var_name] = (arr_dim_names, arr_data, var_attrs)
+
+        global_attrs = self.global_attributes
+
+        result = xr.Dataset(
+            data_vars=data_vars,
+            coords=coords,
+            attrs=global_attrs,
+        )
+        return result
+
+    @classmethod
+    def from_xarray(
+        cls,
+        dataset: Any,
+        path: str | Path | None = None,
+    ) -> NetCDF:
+        """Create a pyramids NetCDF from an ``xarray.Dataset``.
+
+        Serialises the xarray Dataset to a NetCDF file (on disk or
+        in a GDAL ``/vsimem/`` memory file) and reads it back as a
+        pyramids ``NetCDF`` container.
+
+        This is the inverse of ``to_xarray()`` and enables workflows
+        that mix xarray analysis with pyramids spatial operations::
+
+            ds = xr.open_dataset("input.nc")
+            # ... xarray processing ...
+            nc = NetCDF.from_xarray(ds)
+            var = nc.get_variable("temperature")
+            cropped = var.crop(mask)
+
+        Requires the optional ``xarray`` package.
+
+        Args:
+            dataset: An ``xarray.Dataset`` instance.
+            path: File path where the intermediate NetCDF will be
+                written.  If ``None``, a GDAL in-memory file
+                (``/vsimem/``) is used and cleaned up automatically
+                when the returned object is garbage-collected.
+
+        Returns:
+            NetCDF: A pyramids NetCDF container backed by the data
+                from the xarray Dataset.
+
+        Raises:
+            pyramids.base._errors.OptionalPackageDoesNotExist:
+                If ``xarray`` is not installed.
+            TypeError: If *dataset* is not an ``xarray.Dataset``.
+        """
+        try:
+            import xarray as xr
+        except ImportError:
+            from pyramids.base._errors import OptionalPackageDoesNotExist
+            raise OptionalPackageDoesNotExist(
+                "xarray is required for from_xarray(). "
+                "Install it with: pip install xarray"
+            )
+
+        if not isinstance(dataset, xr.Dataset):
+            raise TypeError(
+                f"Expected xarray.Dataset, got {type(dataset).__name__}"
+            )
+
+        cleanup_temp = False
+        if path is not None:
+            path = str(path)
+        else:
+            import tempfile
+            tmp = tempfile.NamedTemporaryFile(
+                suffix=".nc", delete=False,
+            )
+            path = tmp.name
+            tmp.close()
+            cleanup_temp = True
+
+        dataset.to_netcdf(path)
+        result = cls.read_file(path, read_only=True)
+
+        if cleanup_temp:
+            result._xarray_temp_path = path
+
+        return result
