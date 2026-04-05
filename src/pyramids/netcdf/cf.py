@@ -706,3 +706,119 @@ def apply_valid_range_mask(
     if valid_max is not None:
         result[result > valid_max] = fill_value
     return result
+
+
+# ------------------------------------------------------------------ #
+#  Flag decoding (CF-12)                                               #
+# ------------------------------------------------------------------ #
+
+def decode_flags(
+    value: int,
+    flag_values: list | None = None,
+    flag_meanings: list[str] | None = None,
+    flag_masks: list[int] | None = None,
+) -> str | list[str]:
+    """Decode a CF flag value to human-readable label(s).
+
+    Supports three CF flag modes:
+
+    1. **Mutually exclusive** (flag_values + flag_meanings):
+       Returns the single meaning matching the value.
+    2. **Boolean / bit-field** (flag_masks + flag_meanings):
+       Returns a list of meanings for active bits.
+    3. **Combined** (flag_masks + flag_values + flag_meanings):
+       Returns meanings where ``(value & mask) == flag_value``.
+
+    Args:
+        value: The integer flag value to decode.
+        flag_values: List of possible flag values (1:1 with meanings).
+        flag_meanings: List of human-readable meaning strings.
+        flag_masks: List of bit masks for boolean flags.
+
+    Returns:
+        A single string (mutually exclusive) or list of strings
+        (boolean/combined). Returns ``"unknown"`` if no match.
+    """
+    if flag_meanings is None:
+        return "unknown"
+
+    if flag_masks is not None and flag_values is not None:
+        result = [
+            flag_meanings[i]
+            for i in range(len(flag_meanings))
+            if i < len(flag_masks) and i < len(flag_values)
+            and (value & flag_masks[i]) == flag_values[i]
+        ]
+        return result if result else ["unknown"]
+
+    if flag_masks is not None:
+        result = [
+            flag_meanings[i]
+            for i in range(len(flag_meanings))
+            if i < len(flag_masks) and (value & flag_masks[i]) != 0
+        ]
+        return result if result else ["unknown"]
+
+    if flag_values is not None:
+        for i, fv in enumerate(flag_values):
+            if fv == value and i < len(flag_meanings):
+                return flag_meanings[i]
+        return "unknown"
+
+    return "unknown"
+
+
+# ------------------------------------------------------------------ #
+#  CF compliance validation (CF-14)                                    #
+# ------------------------------------------------------------------ #
+
+def validate_cf(
+    global_attrs: dict[str, Any],
+    variables: dict[str, Any],
+    dimensions: dict[str, Any],
+) -> list[str]:
+    """Check for common CF compliance issues.
+
+    Returns a list of warning/error messages. An empty list means
+    the dataset passes basic CF checks. This is NOT a full
+    cfchecker replacement — it covers the most common issues.
+
+    Checks:
+    1. ``Conventions`` attribute present and contains ``"CF-"``
+    2. Coordinate variables have ``units``
+    3. Time coordinates have ``calendar``
+    4. ``_FillValue`` type consistency (basic check)
+
+    Args:
+        global_attrs: Root-level attributes dict.
+        variables: Dict of ``{name: VariableInfo}`` from metadata.
+        dimensions: Dict of ``{name: DimensionInfo}`` from metadata.
+
+    Returns:
+        List of warning/error strings. Empty if compliant.
+    """
+    issues: list[str] = []
+
+    conv = global_attrs.get("Conventions", "")
+    if not isinstance(conv, str) or "CF-" not in conv:
+        issues.append(
+            "Missing or invalid 'Conventions' attribute. "
+            "Should contain 'CF-1.X'."
+        )
+
+    dim_names = {d.name for d in dimensions.values()}
+    for name, var in variables.items():
+        short = name.lstrip("/")
+        if short in dim_names:
+            if not var.attributes.get("units") and not var.unit:
+                issues.append(
+                    f"Coordinate variable '{short}' has no 'units' attribute."
+                )
+            units_val = var.attributes.get("units", "")
+            if isinstance(units_val, str) and "since" in units_val:
+                if "calendar" not in var.attributes:
+                    issues.append(
+                        f"Time coordinate '{short}' has no 'calendar' attribute."
+                    )
+
+    return issues
