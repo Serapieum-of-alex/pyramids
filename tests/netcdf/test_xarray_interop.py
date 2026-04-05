@@ -1,4 +1,4 @@
-"""Tests for ARC-15: xarray interop — to_xarray() and from_xarray().
+"""Tests for xarray interop — to_xarray() and from_xarray().
 
 Validates that pyramids NetCDF containers can be converted to/from
 xarray.Dataset with correct variables, coordinates, dimensions,
@@ -15,6 +15,8 @@ import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
 xr = pytest.importorskip("xarray")
+
+pytestmark = pytest.mark.xarray
 
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF

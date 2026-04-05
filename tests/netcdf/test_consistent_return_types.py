@@ -733,6 +733,58 @@ class TestChaining:
             err_msg="Unpack should apply scale*value+offset after crop",
         )
 
+    def test_read_array_unpack_after_to_crs(self):
+        """read_array(unpack=True) works after to_crs() with resampling.
+
+        Test scenario:
+            After reprojecting with bilinear interpolation, unpack should
+            correctly apply scale/offset to the interpolated values.
+        """
+        nc = _make_3d_nc()
+        var = nc.get_variable("temperature")
+        var._scale = 0.5
+        var._offset = 100.0
+        reprojected = var.to_crs(to_epsg=32637, method="bilinear")
+        assert reprojected._scale == 0.5, (
+            f"Scale not preserved: {reprojected._scale}"
+        )
+        assert reprojected._offset == 100.0, (
+            f"Offset not preserved: {reprojected._offset}"
+        )
+        raw = reprojected.read_array()
+        unpacked = reprojected.read_array(unpack=True)
+        expected = raw.astype(np.float64) * 0.5 + 100.0
+        np.testing.assert_allclose(
+            unpacked, expected, rtol=1e-10,
+            err_msg="Unpack formula (scale*value+offset) should work after to_crs",
+        )
+
+    def test_read_array_unpack_after_resample(self):
+        """read_array(unpack=True) works after resample() with interpolation.
+
+        Test scenario:
+            After resampling with cubic interpolation, unpack should
+            correctly apply scale/offset to the resampled values.
+        """
+        nc = _make_3d_nc()
+        var = nc.get_variable("temperature")
+        var._scale = 0.01
+        var._offset = 273.15
+        resampled = var.resample(cell_size=2.0, method="cubic")
+        assert resampled._scale == 0.01, (
+            f"Scale not preserved: {resampled._scale}"
+        )
+        assert resampled._offset == 273.15, (
+            f"Offset not preserved: {resampled._offset}"
+        )
+        raw = resampled.read_array()
+        unpacked = resampled.read_array(unpack=True)
+        expected = raw.astype(np.float64) * 0.01 + 273.15
+        np.testing.assert_allclose(
+            unpacked, expected, rtol=1e-10,
+            err_msg="Unpack formula should work after resample with interpolation",
+        )
+
 
 class TestContainerOpsReturnType:
     """Tests that container-level operations still work correctly."""

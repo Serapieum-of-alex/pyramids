@@ -1633,7 +1633,7 @@ class TestNCtoGeoTIFF:
 class TestTiling:
     def test_window(self, raster_1band_coello_path):
         dataset = Dataset.read_file(raster_1band_coello_path)
-        tiles_details = dataset._window(size=6)
+        tiles_details = dataset._tile_offsets(size=6)
         assert isinstance(tiles_details, GeneratorType)
         tiles_details_l = list(tiles_details)
         assert tiles_details_l == [

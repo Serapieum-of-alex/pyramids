@@ -23,6 +23,12 @@ from pyramids.dataset import DEFAULT_NO_DATA_VALUE, Dataset
 from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
+from pyramids.netcdf.cf import (
+    build_coordinate_attrs,
+    srs_to_grid_mapping,
+    write_attributes_to_md_array,
+    write_global_attributes,
+)
 from pyramids.netcdf.utils import create_time_conversion_func
 
 
@@ -32,39 +38,45 @@ class _LazyVariableDict(dict):
     Avoids the cost of calling ``get_variable()`` (which does
     ``AsClassicDataset`` + Y-flip) for every variable upfront.
     Only the variables actually accessed are loaded.
+
+    Note:
+        This class is **not thread-safe**. Concurrent access from
+        multiple threads may cause ``get_variable()`` to be called
+        more than once for the same key. Use external locking if
+        thread-safety is required.
     """
 
-    def __init__(self, nc):
+    def __init__(self, nc: NetCDF) -> None:
         super().__init__()
         self._nc = nc
-        self._names = nc.get_variable_names()
+        self._names: list[str] = nc.get_variable_names()
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> NetCDF:
         if not dict.__contains__(self, key) and key in self._names:
             dict.__setitem__(self, key, self._nc.get_variable(key))
         return dict.__getitem__(self, key)
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any = None) -> NetCDF | Any:
         if key in self._names:
             return self[key]
         return default
 
-    def __contains__(self, key):
+    def __contains__(self, key: object) -> bool:
         return key in self._names
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._names)
 
     def __iter__(self):
         return iter(self._names)
 
-    def keys(self):
+    def keys(self) -> list[str]:
         return self._names
 
-    def values(self):
+    def values(self) -> list[NetCDF]:
         return [self[k] for k in self._names]
 
-    def items(self):
+    def items(self) -> list[tuple[str, NetCDF]]:
         return [(k, self[k]) for k in self._names]
 
 
@@ -364,14 +376,17 @@ class NetCDF(Dataset):
         wrapped._is_md_array = self._is_md_array
         wrapped._is_subset = self._is_subset
         wrapped._band_dim_name = self._band_dim_name
-        wrapped._band_dim_values = self._band_dim_values
+        if (
+            self._band_dim_values is not None
+            and wrapped._band_count > 0
+            and len(self._band_dim_values) != wrapped._band_count
+        ):
+            wrapped._band_dim_values = None
+        else:
+            wrapped._band_dim_values = self._band_dim_values
         wrapped._variable_attrs = self._variable_attrs
         wrapped._scale = self._scale
         wrapped._offset = self._offset
-        # _parent_nc is a reference to the root MDIM container used only for
-        # metadata lookup (variable names, attributes) during round-trip
-        # serialisation.  It is NOT used for data reads, so a stale reference
-        # (e.g. after the parent has been cropped/reprojected) is harmless.
         wrapped._parent_nc = self._parent_nc
         wrapped._source_var_name = self._source_var_name
         wrapped._gdal_md_arr_ref = None
@@ -751,9 +766,12 @@ class NetCDF(Dataset):
         if time_dim is not None:
             units = time_dim.attrs.get("units")
             if units is not None:
+                calendar = time_dim.attrs.get("calendar", "standard")
                 time_vals = self._read_variable(var_name)
                 if time_vals is not None:
-                    func = create_time_conversion_func(units, time_format)
+                    func = create_time_conversion_func(
+                        units, time_format, calendar=calendar
+                    )
                     time_stamp = list(map(func, time_vals.reshape(-1)))
         return time_stamp
 
@@ -1004,23 +1022,38 @@ class NetCDF(Dataset):
     def get_variable_names(self) -> list[str]:
         """Return names of data variables, excluding dimension coordinates.
 
-        In MDIM mode, queries ``GetMDArrayNames()`` and filters out arrays
-        that are also dimensions (x, y, time, etc.).  In classic mode,
-        parses subdataset metadata.
+        Uses CF classification when metadata is cached (fast path).
+        Otherwise queries ``GetMDArrayNames()`` and filters out dimension
+        arrays and 0-dimensional scalar variables (grid_mapping etc.).
+        In classic mode, parses subdataset metadata.
 
         Returns:
             list[str]: Variable names (e.g., ``["temperature", "precipitation"]``).
         """
-        rg = self._raster.GetRootGroup()
-        if rg is not None:
-            variable_names = rg.GetMDArrayNames()
-            dims = rg.GetDimensions()
-            dims = [dim.GetName() for dim in dims]
-            variable_names = [var for var in variable_names if var not in dims]
+        if (
+            self._cached_meta_data is not None
+            and self._cached_meta_data.cf is not None
+        ):
+            variable_names = list(self._cached_meta_data.cf.data_variable_names)
         else:
-            variable_names = [
-                var[1].split(" ")[1] for var in self._raster.GetSubDatasets()
-            ]
+            rg = self._raster.GetRootGroup()
+            if rg is not None:
+                all_names = rg.GetMDArrayNames()
+                dim_names = {dim.GetName() for dim in rg.GetDimensions()}
+                filtered = []
+                for var in all_names:
+                    if var in dim_names:
+                        continue
+                    md_arr = rg.OpenMDArray(var)
+                    if md_arr is not None and len(md_arr.GetDimensions()) == 0:
+                        continue
+                    filtered.append(var)
+                variable_names = filtered
+            else:
+                variable_names = [
+                    var[1].split(" ")[1]
+                    for var in self._raster.GetSubDatasets()
+                ]
 
         return variable_names
 
@@ -1351,8 +1384,9 @@ class NetCDF(Dataset):
         values: np.ndarray,
         dim_type=None,
         set_indexing: bool = True,
+        is_geographic: bool = True,
     ) -> gdal.Dimension:
-        """Create a dimension with its coordinate array.
+        """Create a dimension with its coordinate array and CF attributes.
 
         Args:
             group: GDAL root group.
@@ -1363,6 +1397,8 @@ class NetCDF(Dataset):
             set_indexing: If True, call SetIndexingVariable (works
                 on MEM driver). If False, skip it (required for
                 netCDF driver which doesn't support it).
+            is_geographic: If True, coordinate units are degrees.
+                If False, units are metres. Defaults to True.
 
         Returns:
             gdal.Dimension
@@ -1372,6 +1408,9 @@ class NetCDF(Dataset):
         coord_arr.Write(values)
         if set_indexing:
             dim.SetIndexingVariable(coord_arr)
+        cf_attrs = build_coordinate_attrs(dim_name, is_geographic)
+        if cf_attrs:
+            write_attributes_to_md_array(coord_arr, cf_attrs)
         return dim
 
     @staticmethod
@@ -1428,6 +1467,10 @@ class NetCDF(Dataset):
         chunk_sizes: tuple | list | None = None,
         compression: str | None = None,
         compression_level: int | None = None,
+        title: str | None = None,
+        institution: str | None = None,
+        source: str | None = None,
+        history: str | None = None,
     ) -> NetCDF:
         """Create a NetCDF dataset from a NumPy array and geotransform.
 
@@ -1473,6 +1516,14 @@ class NetCDF(Dataset):
                 disk. Defaults to None (no compression).
             compression_level: Compression level (e.g. 1-9 for
                 DEFLATE). Defaults to None (GDAL default).
+            title: CF global attribute ``title``. Short
+                description of the dataset. Defaults to None.
+            institution: CF global attribute ``institution``.
+                Where the data was produced. Defaults to None.
+            source: CF global attribute ``source``. How the
+                data was produced. Defaults to None.
+            history: CF global attribute ``history``. Audit
+                trail of processing steps. Defaults to None.
 
         Returns:
             NetCDF: The newly created NetCDF dataset.
@@ -1526,6 +1577,10 @@ class NetCDF(Dataset):
             chunk_sizes=chunk_sizes,
             compression=compression,
             compression_level=compression_level,
+            title=title,
+            institution=institution,
+            source=source,
+            history=history,
         )
         result = cls(dst_ds)
 
@@ -1546,6 +1601,10 @@ class NetCDF(Dataset):
         chunk_sizes: tuple | list | None = None,
         compression: str | None = None,
         compression_level: int | None = None,
+        title: str | None = None,
+        institution: str | None = None,
+        source: str | None = None,
+        history: str | None = None,
     ) -> gdal.Dataset:
         """Build a multidimensional GDAL dataset from an array.
 
@@ -1572,6 +1631,13 @@ class NetCDF(Dataset):
                 None.
             compression: Compression algorithm. Defaults to None.
             compression_level: Compression level. Defaults to None.
+            title: CF global attribute ``title``. Defaults to None.
+            institution: CF global attribute ``institution``.
+                Defaults to None.
+            source: CF global attribute ``source``.
+                Defaults to None.
+            history: CF global attribute ``history``.
+                Defaults to None.
 
         Returns:
             gdal.Dataset: The created multidimensional GDAL dataset.
@@ -1596,6 +1662,18 @@ class NetCDF(Dataset):
         )
         rg = src.GetRootGroup()
 
+        # Set CF global attributes on root group
+        cf_global = {"Conventions": "CF-1.8"}
+        if title is not None:
+            cf_global["title"] = title
+        if institution is not None:
+            cf_global["institution"] = institution
+        if source is not None:
+            cf_global["source"] = source
+        if history is not None:
+            cf_global["history"] = history
+        write_global_attributes(rg, cf_global)
+
         # Build creation options for chunking and compression
         create_options = []
         if chunk_sizes is not None:
@@ -1611,13 +1689,21 @@ class NetCDF(Dataset):
         # dimension arrays manually without linking them.
         use_set_indexing = (driver_type == "MEM")
 
+        # Determine if CRS is geographic (lon/lat) or projected (m)
+        is_geographic = True
+        if epsg is not None:
+            srs_check = Dataset._create_sr_from_epsg(int(epsg))
+            is_geographic = srs_check.IsGeographic() == 1
+
         dim_x = NetCDF._create_dimension(
             rg, "x", dtype, np.array(x_dim_values),
             gdal.DIM_TYPE_HORIZONTAL_X, use_set_indexing,
+            is_geographic=is_geographic,
         )
         dim_y = NetCDF._create_dimension(
             rg, "y", dtype, np.array(y_dim_values),
             gdal.DIM_TYPE_HORIZONTAL_Y, use_set_indexing,
+            is_geographic=is_geographic,
         )
 
         if arr.ndim == 3:
@@ -1643,6 +1729,22 @@ class NetCDF(Dataset):
         srse = Dataset._create_sr_from_epsg(epsg=int(epsg))
         md_arr.SetSpatialRef(srse)
         md_arr.Write(arr)
+
+        # Create CF grid_mapping variable (MEM driver only — the netCDF
+        # driver creates its own via SetSpatialRef above). Use
+        # "spatial_ref" as the variable name to avoid collision with
+        # GDAL's automatic "crs" during CreateCopy to netCDF.
+        if driver_type == "MEM":
+            gm_name, gm_params = srs_to_grid_mapping(srse)
+            gm_dtype = gdal.ExtendedDataType.Create(gdal.GDT_Int32)
+            gm_var_name = "spatial_ref"
+            crs_arr = rg.CreateMDArray(gm_var_name, [], gm_dtype)
+            crs_arr.Write(np.array(0, dtype=np.int32))
+            gm_params["grid_mapping_name"] = gm_name
+            write_attributes_to_md_array(crs_arr, gm_params)
+            write_attributes_to_md_array(
+                md_arr, {"grid_mapping": gm_var_name}
+            )
 
         return src
 
@@ -1898,32 +2000,7 @@ class NetCDF(Dataset):
 
         # Set variable attributes (RT-7)
         if attrs:
-            for key, value in attrs.items():
-                try:
-                    if isinstance(value, str):
-                        attr = md_arr.CreateAttribute(
-                            key, [], gdal.ExtendedDataType.CreateString()
-                        )
-                    elif isinstance(value, float):
-                        attr = md_arr.CreateAttribute(
-                            key,
-                            [],
-                            gdal.ExtendedDataType.Create(gdal.GDT_Float64),
-                        )
-                    elif isinstance(value, int):
-                        attr = md_arr.CreateAttribute(
-                            key,
-                            [],
-                            gdal.ExtendedDataType.Create(gdal.GDT_Int32),
-                        )
-                    else:
-                        attr = md_arr.CreateAttribute(
-                            key, [], gdal.ExtendedDataType.CreateString()
-                        )
-                        value = str(value)
-                    attr.Write(value)
-                except Exception:
-                    pass  # nosec B110
+            write_attributes_to_md_array(md_arr, attrs)
 
         self._invalidate_caches()
 
@@ -2128,7 +2205,6 @@ class NetCDF(Dataset):
                 print(ds)
         """
         try:
-            # xarray is an optional dependency, keep this import inline.
             import xarray as xr
         except ImportError:
             raise OptionalPackageDoesNotExist(
@@ -2178,7 +2254,6 @@ class NetCDF(Dataset):
                 data_vars[var_name] = (arr_dim_names, arr_data, var_attrs)
 
             global_attrs = self.global_attributes
-
             result = xr.Dataset(
                 data_vars=data_vars,
                 coords=coords,
@@ -2196,7 +2271,7 @@ class NetCDF(Dataset):
         """Create a pyramids NetCDF from an ``xarray.Dataset``.
 
         Serialises the xarray Dataset to a NetCDF file (on disk or
-        in a temporary file on disk) and reads it back as a
+        in a GDAL ``/vsimem/`` memory file) and reads it back as a
         pyramids ``NetCDF`` container.
 
         This is the inverse of ``to_xarray()`` and enables workflows
@@ -2213,9 +2288,9 @@ class NetCDF(Dataset):
         Args:
             dataset: An ``xarray.Dataset`` instance.
             path: File path where the intermediate NetCDF will be
-                written.  If ``None``, a temporary file on disk is
-                used and cleaned up automatically when the returned
-                object is garbage-collected.
+                written.  If ``None``, a GDAL in-memory file
+                (``/vsimem/``) is used and cleaned up automatically
+                when the returned object is garbage-collected.
 
         Returns:
             NetCDF: A pyramids NetCDF container backed by the data
@@ -2227,7 +2302,6 @@ class NetCDF(Dataset):
             TypeError: If *dataset* is not an ``xarray.Dataset``.
         """
         try:
-            # xarray is an optional dependency, keep this import inline.
             import xarray as xr
         except ImportError:
             raise OptionalPackageDoesNotExist(

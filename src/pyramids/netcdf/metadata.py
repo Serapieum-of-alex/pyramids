@@ -10,12 +10,14 @@ from osgeo import gdal
 
 from pyramids.netcdf.dimensions import MetaData as SharedMetaData
 from pyramids.netcdf.models import (
+    CFInfo,
     VariableInfo,
     DimensionInfo,
     GroupInfo,
     NetCDFMetadata,
     StructuralInfo,
 )
+from pyramids.netcdf.cf import classify_variables, parse_conventions
 from pyramids.netcdf.utils import (
     _get_driver_name,
     _get_root_group,
@@ -136,6 +138,10 @@ class MetadataBuilder:
             "version": getattr(gdal, "__version__", "unknown"),
         }
 
+        cf_info = self._build_cf_info(
+            variables_map, dimensions_map, global_attrs
+        )
+
         return NetCDFMetadata(
             driver=driver_name,
             root_group=root_name,
@@ -146,6 +152,54 @@ class MetadataBuilder:
             structural=structural_info,
             created_with=created_with,
             open_options_used=self.open_options,
+            cf=cf_info,
+        )
+
+    @staticmethod
+    def _build_cf_info(
+        variables: dict[str, VariableInfo],
+        dimensions: dict[str, DimensionInfo],
+        global_attrs: dict[str, Any],
+    ) -> CFInfo:
+        """Post-process variables to extract CF semantics.
+
+        Args:
+            variables: All variables from metadata traversal.
+            dimensions: All dimensions from metadata traversal.
+            global_attrs: Root-level attributes.
+
+        Returns:
+            CFInfo with classifications, grid_mappings, bounds_map.
+        """
+
+        conventions = parse_conventions(
+            global_attrs.get("Conventions")
+        )
+        classifications = classify_variables(variables, dimensions)
+
+        grid_mappings: dict[str, dict[str, Any]] = {}
+        for name, role in classifications.items():
+            if role == "grid_mapping" and name in variables:
+                grid_mappings[name] = dict(variables[name].attributes)
+
+        bounds_map: dict[str, str] = {}
+        for var in variables.values():
+            bounds_ref = var.attributes.get("bounds")
+            if isinstance(bounds_ref, str):
+                bounds_map[bounds_ref] = var.name
+
+        data_vars = [
+            name for name, role in classifications.items()
+            if role == "data"
+        ]
+
+        return CFInfo(
+            cf_version=conventions.get("CF"),
+            conventions=conventions,
+            classifications=classifications,
+            grid_mappings=grid_mappings,
+            bounds_map=bounds_map,
+            data_variable_names=data_vars,
         )
 
 
@@ -237,7 +291,7 @@ class GroupTraverser:
                 result = ""
             return result
 
-        dims_sorted = sorted(list(dims), key=_dim_name)
+        dims_sorted = sorted(dims, key=_dim_name)
 
         for d in dims_sorted:
             dim = DimensionInfo.from_gdal_dim(d, group_full_name)
@@ -645,6 +699,9 @@ def from_json(s: str) -> NetCDFMetadata:
     )
 
 
+MAX_INDEXED_GLOBAL_ATTRS = 20
+
+
 def flatten_for_index(metadata: NetCDFMetadata) -> dict[str, Any]:
     """Return a flat dict of key properties for indexing/search.
 
@@ -730,7 +787,7 @@ def flatten_for_index(metadata: NetCDFMetadata) -> dict[str, Any]:
         "dimension_count": len(metadata.dimensions),
     }
     # include some global attrs
-    for k, v in list(metadata.global_attributes.items())[:20]:
+    for k, v in list(metadata.global_attributes.items())[:MAX_INDEXED_GLOBAL_ATTRS]:
         d[f"global.{k}"] = v
     # include names of variables and dims
     d["variables"] = sorted([a for a in metadata.variables.keys()])

@@ -596,6 +596,41 @@ class StructuralInfo:
         return cls(driver_name=driver_name, driver_metadata=dmd)
 
 
+MAX_DISPLAY_VARIABLES = 10
+
+
+@dataclass
+class CFInfo:
+    """CF convention metadata derived by cross-referencing variables.
+
+    Computed as a post-processing step in ``MetadataBuilder.build()``
+    after all variables, dimensions, and attributes are collected.
+
+    Args:
+        cf_version: CF version string parsed from ``Conventions``
+            (e.g. ``"1.8"``). None if not declared.
+        conventions: Parsed ``Conventions`` attribute as
+            ``{name: version}`` dict.
+        classifications: Per-variable CF role classification as
+            ``{var_name: role}`` where role is one of ``"data"``,
+            ``"coordinate"``, ``"grid_mapping"``, ``"bounds"``,
+            ``"cell_measure"``, ``"ancillary"``, ``"mesh_topology"``,
+            ``"connectivity"``, ``"auxiliary_coordinate"``.
+        grid_mappings: Grid mapping variable attributes as
+            ``{var_name: {attr: value}}``.
+        bounds_map: Bounds associations as
+            ``{bounds_var_name: parent_coord_name}``.
+        data_variable_names: Variable names classified as ``"data"``.
+    """
+
+    cf_version: str | None = None
+    conventions: dict[str, str] = field(default_factory=dict)
+    classifications: dict[str, str] = field(default_factory=dict)
+    grid_mappings: dict[str, dict[str, Any]] = field(default_factory=dict)
+    bounds_map: dict[str, str] = field(default_factory=dict)
+    data_variable_names: list[str] = field(default_factory=list)
+
+
 @dataclass
 class NetCDFMetadata:
     """Top-level metadata model for a NetCDF MDIM dataset.
@@ -704,6 +739,7 @@ class NetCDFMetadata:
     structural: StructuralInfo | None
     created_with: dict[str, str]
     open_options_used: dict[str, str] | None = None
+    cf: CFInfo | None = None
 
     def __str__(self) -> str:
         """Human-readable summary of the NetCDF structure."""
@@ -713,7 +749,7 @@ class NetCDFMetadata:
         dims_str = "\n".join(dim_lines) if dim_lines else "    (none)"
 
         var_lines = []
-        max_display = 10
+        max_display = MAX_DISPLAY_VARIABLES
         arr_list = list(self.variables.values())
         for arr in arr_list[:max_display]:
             dtype_str = arr.dtype if len(arr.dtype) < 20 else "unknown"
@@ -759,9 +795,11 @@ class NetCDFMetadata:
         """Look up a dimension by short name or full name.
 
         Tries an exact key match against the ``dimensions``
-        dictionary first (which is keyed by full name),
-        then falls back to matching by the dimension's
-        short ``name`` attribute.
+        dictionary first (keys are full names with the leading
+        ``/`` stripped, e.g. ``"/time"`` -> key ``"time"``,
+        ``"/group/time"`` -> key ``"group/time"``), then falls
+        back to matching by the dimension's short ``name``
+        attribute.
 
         Args:
             name: Dimension short name (e.g. ``"time"``)
