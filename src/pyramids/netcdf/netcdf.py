@@ -1000,31 +1000,38 @@ class NetCDF(Dataset):
     def get_variable_names(self) -> list[str]:
         """Return names of data variables, excluding dimension coordinates.
 
-        In MDIM mode, queries ``GetMDArrayNames()`` and filters out arrays
-        that are also dimensions (x, y, time, etc.).  In classic mode,
-        parses subdataset metadata.
+        Uses CF classification when metadata is cached (fast path).
+        Otherwise queries ``GetMDArrayNames()`` and filters out dimension
+        arrays and 0-dimensional scalar variables (grid_mapping etc.).
+        In classic mode, parses subdataset metadata.
 
         Returns:
             list[str]: Variable names (e.g., ``["temperature", "precipitation"]``).
         """
-        rg = self._raster.GetRootGroup()
-        if rg is not None:
-            variable_names = rg.GetMDArrayNames()
-            dims = rg.GetDimensions()
-            dims = [dim.GetName() for dim in dims]
-            filtered = []
-            for var in variable_names:
-                if var in dims:
-                    continue
-                md_arr = rg.OpenMDArray(var)
-                if md_arr is not None and len(md_arr.GetDimensions()) == 0:
-                    continue
-                filtered.append(var)
-            variable_names = filtered
+        if (
+            self._cached_meta_data is not None
+            and self._cached_meta_data.cf is not None
+        ):
+            variable_names = list(self._cached_meta_data.cf.data_variable_names)
         else:
-            variable_names = [
-                var[1].split(" ")[1] for var in self._raster.GetSubDatasets()
-            ]
+            rg = self._raster.GetRootGroup()
+            if rg is not None:
+                all_names = rg.GetMDArrayNames()
+                dim_names = {dim.GetName() for dim in rg.GetDimensions()}
+                filtered = []
+                for var in all_names:
+                    if var in dim_names:
+                        continue
+                    md_arr = rg.OpenMDArray(var)
+                    if md_arr is not None and len(md_arr.GetDimensions()) == 0:
+                        continue
+                    filtered.append(var)
+                variable_names = filtered
+            else:
+                variable_names = [
+                    var[1].split(" ")[1]
+                    for var in self._raster.GetSubDatasets()
+                ]
 
         return variable_names
 
@@ -2228,7 +2235,6 @@ class NetCDF(Dataset):
 
         coords: dict[str, Any] = {}
         dims = rg.GetDimensions() or []
-        dim_name_list = [d.GetName() for d in dims]
         for d in dims:
             dim_name = d.GetName()
             iv = d.GetIndexingVariable()

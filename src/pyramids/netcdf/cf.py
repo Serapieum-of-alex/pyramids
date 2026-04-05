@@ -321,6 +321,17 @@ def _extract_proj_params(
         p["scale_factor_at_projection_origin"] = srs.GetProjParm(
             osr.SRS_PP_SCALE_FACTOR, 1.0
         )
+    elif "Geostationary" in proj_name:
+        p["latitude_of_projection_origin"] = srs.GetProjParm(
+            osr.SRS_PP_LATITUDE_OF_ORIGIN, 0.0
+        )
+        p["longitude_of_projection_origin"] = srs.GetProjParm(
+            osr.SRS_PP_CENTRAL_MERIDIAN, 0.0
+        )
+        p["perspective_point_height"] = srs.GetProjParm(
+            "satellite_height", 35785831.0
+        )
+        p["sweep_angle_axis"] = "y"
 
     return p
 
@@ -466,6 +477,13 @@ def _build_srs_from_cf_params(
             params.get("false_easting", 0.0),
             params.get("false_northing", 0.0),
         )
+    elif grid_mapping_name == "geostationary":
+        srs.SetGEOS(
+            params.get("longitude_of_projection_origin", 0.0),
+            params.get("perspective_point_height", 35785831.0),
+            params.get("false_easting", 0.0),
+            params.get("false_northing", 0.0),
+        )
     else:
         raise ValueError(
             f"Unsupported CF grid_mapping_name: {grid_mapping_name!r}. "
@@ -476,7 +494,7 @@ def _build_srs_from_cf_params(
 
 
 # ------------------------------------------------------------------ #
-#  Axis detection (CF-5)                                               #
+#  Axis detection                                                      #
 # ------------------------------------------------------------------ #
 
 _STDNAME_TO_AXIS: dict[str, str] = {
@@ -555,7 +573,7 @@ def detect_axis(
 
 
 # ------------------------------------------------------------------ #
-#  Variable classification (CF-5)                                      #
+#  Variable classification                                             #
 # ------------------------------------------------------------------ #
 
 def classify_variables(
@@ -643,7 +661,7 @@ def _is_connectivity(attrs: dict[str, Any]) -> bool:
 
 
 # ------------------------------------------------------------------ #
-#  Conventions parsing (CF-11)                                         #
+#  Conventions parsing                                                 #
 # ------------------------------------------------------------------ #
 
 def parse_conventions(conventions_str: str | None) -> dict[str, str]:
@@ -669,7 +687,7 @@ def parse_conventions(conventions_str: str | None) -> dict[str, str]:
 
 
 # ------------------------------------------------------------------ #
-#  Cell methods parsing (CF-10)                                        #
+#  Cell methods parsing                                                #
 # ------------------------------------------------------------------ #
 
 def parse_cell_methods(cell_methods_str: str) -> list[dict[str, str]]:
@@ -703,7 +721,7 @@ def parse_cell_methods(cell_methods_str: str) -> list[dict[str, str]]:
 
 
 # ------------------------------------------------------------------ #
-#  Valid range masking (CF-7)                                          #
+#  Valid range masking                                                 #
 # ------------------------------------------------------------------ #
 
 def apply_valid_range_mask(
@@ -740,7 +758,7 @@ def apply_valid_range_mask(
 
 
 # ------------------------------------------------------------------ #
-#  Flag decoding (CF-12)                                               #
+#  Flag decoding                                                       #
 # ------------------------------------------------------------------ #
 
 def decode_flags(
@@ -801,7 +819,7 @@ def decode_flags(
 
 
 # ------------------------------------------------------------------ #
-#  CF compliance validation (CF-14)                                    #
+#  CF compliance validation                                            #
 # ------------------------------------------------------------------ #
 
 def validate_cf(
@@ -819,7 +837,11 @@ def validate_cf(
     1. ``Conventions`` attribute present and contains ``"CF-"``
     2. Coordinate variables have ``units``
     3. Time coordinates have ``calendar``
-    4. ``_FillValue`` type consistency (basic check)
+
+    Limitation: Only checks dimension-coordinate variables (those
+    whose name matches a dimension). Auxiliary coordinates referenced
+    by the ``coordinates`` attribute on data variables are not
+    validated.
 
     Args:
         global_attrs: Root-level attributes dict.
