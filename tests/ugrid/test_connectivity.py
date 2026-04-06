@@ -1,4 +1,4 @@
-"""Unit tests for pyramids.netcdf.ugrid._connectivity.
+"""Unit tests for pyramids.netcdf.ugrid.connectivity.
 
 Covers the Connectivity class: construction, element access,
 start_index normalization, fill_value handling, and masking.
@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid._connectivity import Connectivity
+from pyramids.netcdf.ugrid.connectivity import Connectivity
 
 
 @pytest.fixture

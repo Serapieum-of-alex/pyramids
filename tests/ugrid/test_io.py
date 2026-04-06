@@ -1,4 +1,4 @@
-"""Unit tests for pyramids.netcdf.ugrid._io.
+"""Unit tests for pyramids.netcdf.ugrid.io.
 
 Covers topology detection (parse_ugrid_topology), single topology
 parsing, and CRS detection using the Western Scheldt test file.
@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from osgeo import gdal
 
-from pyramids.netcdf.ugrid._io import parse_ugrid_topology
+from pyramids.netcdf.ugrid.io import parse_ugrid_topology
 
 
 class TestParseUgridTopology:

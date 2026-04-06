@@ -18,9 +18,9 @@ from typing import Any
 
 import numpy as np
 
-from pyramids.netcdf.ugrid._connectivity import Connectivity
-from pyramids.netcdf.ugrid._mesh import Mesh2d
-from pyramids.netcdf.ugrid._models import MeshVariable
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.mesh import Mesh2d
+from pyramids.netcdf.ugrid.models import MeshVariable
 
 
 class MeshSpatialIndex:
@@ -417,7 +417,7 @@ def _subset_mesh_by_face_indices(
             _data=new_data,
         )
 
-    from pyramids.netcdf.ugrid._dataset import UgridDataset
+    from pyramids.netcdf.ugrid.dataset import UgridDataset
 
     result = UgridDataset(
         mesh=new_mesh,

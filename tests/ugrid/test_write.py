@@ -10,8 +10,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid._dataset import UgridDataset
-from pyramids.netcdf.ugrid._models import MeshVariable
+from pyramids.netcdf.ugrid.dataset import UgridDataset
+from pyramids.netcdf.ugrid.models import MeshVariable
 
 
 class TestWriteUgrid:
@@ -65,7 +65,7 @@ class TestWriteUgrid:
                 units="K",
             ),
         }
-        from pyramids.netcdf.ugrid._models import MeshTopologyInfo
+        from pyramids.netcdf.ugrid.models import MeshTopologyInfo
         topo = MeshTopologyInfo(
             mesh_name="mesh2d", topology_dimension=2,
             node_x_var="mesh2d_node_x", node_y_var="mesh2d_node_y",

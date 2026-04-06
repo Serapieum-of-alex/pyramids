@@ -1,4 +1,4 @@
-"""Unit tests for pyramids.netcdf.ugrid._dataset.UgridDataset.
+"""Unit tests for pyramids.netcdf.ugrid.dataset.UgridDataset.
 
 Covers read_file(), properties, data access, metadata,
 and string representations.
@@ -11,10 +11,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid._connectivity import Connectivity
-from pyramids.netcdf.ugrid._dataset import UgridDataset
-from pyramids.netcdf.ugrid._mesh import Mesh2d
-from pyramids.netcdf.ugrid._models import MeshTopologyInfo, MeshVariable, UgridMetadata
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.dataset import UgridDataset
+from pyramids.netcdf.ugrid.mesh import Mesh2d
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable, UgridMetadata
 
 
 class TestUgridDatasetReadFile:

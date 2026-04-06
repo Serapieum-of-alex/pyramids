@@ -1,4 +1,4 @@
-"""Unit tests for pyramids.netcdf.ugrid._models.
+"""Unit tests for pyramids.netcdf.ugrid.models.
 
 Covers MeshTopologyInfo, MeshVariable, and UgridMetadata dataclasses
 with comprehensive scenario coverage. Targets >=95% line+branch coverage.
@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid._models import MeshTopologyInfo, MeshVariable, UgridMetadata
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable, UgridMetadata
 
 
 class TestMeshTopologyInfo:

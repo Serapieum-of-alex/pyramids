@@ -1,4 +1,4 @@
-"""Unit tests for pyramids.netcdf.ugrid._plot.
+"""Unit tests for pyramids.netcdf.ugrid.plot.
 
 Covers plot_mesh_data (tripcolor/tricontourf) and plot_mesh_outline
 (wireframe). Tests marked with 'plot' marker for optional skip.
@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid._plot import (
+from pyramids.netcdf.ugrid.plot import (
     _map_face_to_triangle_values,
     plot_mesh_data,
     plot_mesh_outline,

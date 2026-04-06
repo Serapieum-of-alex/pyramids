@@ -1,4 +1,4 @@
-"""Unit tests for pyramids.netcdf.ugrid._spatial.
+"""Unit tests for pyramids.netcdf.ugrid.spatial.
 
 Covers MeshSpatialIndex (KD-tree, STRtree), point-in-face queries,
 mesh clipping by polygon, and bounding box subsetting.
@@ -9,11 +9,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid._connectivity import Connectivity
-from pyramids.netcdf.ugrid._dataset import UgridDataset
-from pyramids.netcdf.ugrid._mesh import Mesh2d
-from pyramids.netcdf.ugrid._models import MeshTopologyInfo, MeshVariable
-from pyramids.netcdf.ugrid._spatial import (
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.dataset import UgridDataset
+from pyramids.netcdf.ugrid.mesh import Mesh2d
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable
+from pyramids.netcdf.ugrid.spatial import (
     MeshSpatialIndex,
     clip_mesh,
     subset_by_bounds,

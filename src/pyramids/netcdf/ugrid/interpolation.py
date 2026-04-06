@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pyramids.netcdf.ugrid._mesh import Mesh2d
+from pyramids.netcdf.ugrid.mesh import Mesh2d
 
 
 def mesh_to_grid(

@@ -20,7 +20,7 @@ from pyramids.netcdf.cf import (
     write_attributes_to_md_array,
     write_global_attributes,
 )
-from pyramids.netcdf.ugrid._models import MeshTopologyInfo
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo
 from pyramids.netcdf.utils import _read_attributes
 
 

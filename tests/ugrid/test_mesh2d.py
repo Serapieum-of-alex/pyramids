@@ -1,4 +1,4 @@
-"""Unit tests for pyramids.netcdf.ugrid._mesh.Mesh2d.
+"""Unit tests for pyramids.netcdf.ugrid.mesh.Mesh2d.
 
 Covers construction, properties, geometric computations (centroids,
 areas, triangulation), and element access methods.
@@ -9,8 +9,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid._connectivity import Connectivity
-from pyramids.netcdf.ugrid._mesh import Mesh2d
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.mesh import Mesh2d
 
 
 class TestMesh2dProperties:

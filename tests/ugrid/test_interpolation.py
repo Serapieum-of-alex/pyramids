@@ -1,4 +1,4 @@
-"""Unit tests for pyramids.netcdf.ugrid._interpolation.
+"""Unit tests for pyramids.netcdf.ugrid.interpolation.
 
 Covers mesh_to_grid nearest-neighbor and linear interpolation,
 and the to_dataset() bridge method on UgridDataset.
@@ -9,11 +9,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid._connectivity import Connectivity
-from pyramids.netcdf.ugrid._dataset import UgridDataset
-from pyramids.netcdf.ugrid._interpolation import mesh_to_grid
-from pyramids.netcdf.ugrid._mesh import Mesh2d
-from pyramids.netcdf.ugrid._models import MeshTopologyInfo, MeshVariable
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.dataset import UgridDataset
+from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
+from pyramids.netcdf.ugrid.mesh import Mesh2d
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable
 
 
 @pytest.fixture

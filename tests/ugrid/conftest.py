@@ -11,9 +11,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid._connectivity import Connectivity
-from pyramids.netcdf.ugrid._mesh import Mesh2d
-from pyramids.netcdf.ugrid._models import MeshTopologyInfo, MeshVariable
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.mesh import Mesh2d
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable
 
 
 @pytest.fixture(scope="session")

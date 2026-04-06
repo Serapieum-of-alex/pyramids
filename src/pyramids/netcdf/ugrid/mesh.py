@@ -11,8 +11,8 @@ from typing import Any
 
 import numpy as np
 
-from pyramids.netcdf.ugrid._connectivity import Connectivity
-from pyramids.netcdf.ugrid._models import MeshTopologyInfo
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo
 from pyramids.netcdf.utils import _read_attributes
 
 

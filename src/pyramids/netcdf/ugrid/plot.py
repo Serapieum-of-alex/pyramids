@@ -15,7 +15,7 @@ from typing import Any
 
 import numpy as np
 
-from pyramids.netcdf.ugrid._mesh import Mesh2d
+from pyramids.netcdf.ugrid.mesh import Mesh2d
 
 
 def plot_mesh_data(

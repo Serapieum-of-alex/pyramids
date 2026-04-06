@@ -17,14 +17,14 @@ from pyproj import CRS, Transformer
 from shapely.geometry import LineString, Point, Polygon
 
 from pyramids.netcdf.cf import write_global_attributes
-from pyramids.netcdf.ugrid._connectivity import Connectivity
-from pyramids.netcdf.ugrid._io import (
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.io import (
     parse_ugrid_topology,
     write_ugrid_data_variable,
     write_ugrid_topology,
 )
-from pyramids.netcdf.ugrid._mesh import Mesh2d
-from pyramids.netcdf.ugrid._models import MeshTopologyInfo, MeshVariable, UgridMetadata
+from pyramids.netcdf.ugrid.mesh import Mesh2d
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable, UgridMetadata
 from pyramids.netcdf.utils import _read_attributes
 
 
@@ -248,7 +248,7 @@ class UgridDataset:
             pyramids Dataset with the interpolated data.
         """
         from pyramids.dataset import Dataset
-        from pyramids.netcdf.ugrid._interpolation import mesh_to_grid
+        from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
 
         var = self.get_data(variable_name)
         data = var.data
@@ -288,7 +288,7 @@ class UgridDataset:
         Returns:
             New UgridDataset with clipped mesh and data.
         """
-        from pyramids.netcdf.ugrid._spatial import clip_mesh
+        from pyramids.netcdf.ugrid.spatial import clip_mesh
         result = clip_mesh(self, mask, touch=touch)
         return result
 
@@ -310,7 +310,7 @@ class UgridDataset:
         Returns:
             New UgridDataset with subset mesh and data.
         """
-        from pyramids.netcdf.ugrid._spatial import subset_by_bounds
+        from pyramids.netcdf.ugrid.spatial import subset_by_bounds
         result = subset_by_bounds(self, xmin, ymin, xmax, ymax)
         return result
 
@@ -658,7 +658,7 @@ class UgridDataset:
         Returns:
             matplotlib Axes with the plot.
         """
-        from pyramids.netcdf.ugrid._plot import plot_mesh_data
+        from pyramids.netcdf.ugrid.plot import plot_mesh_data
 
         var = self.get_data(variable_name)
         data = var.data
@@ -682,7 +682,7 @@ class UgridDataset:
         Returns:
             matplotlib Axes with the wireframe plot.
         """
-        from pyramids.netcdf.ugrid._plot import plot_mesh_outline
+        from pyramids.netcdf.ugrid.plot import plot_mesh_outline
 
         result = plot_mesh_outline(self._mesh, ax=ax, **kwargs)
         return result
