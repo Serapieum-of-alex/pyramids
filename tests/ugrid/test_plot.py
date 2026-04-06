@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.plot import (
     _map_face_to_triangle_values,
     plot_mesh_data,
@@ -144,3 +145,47 @@ class TestMapFaceToTriangleValues:
         assert len(result) == 4, f"Expected 4 triangle values, got {len(result)}"
         assert result[0] == 10.0, "First triangle from quad should be 10"
         assert result[1] == 10.0, "Second triangle from quad should be 10"
+
+
+@pytest.mark.plot
+class TestUgridDatasetPlotMethods:
+    """Tests for UgridDataset.plot() and plot_outline() methods (M11)."""
+
+    def test_dataset_plot(self):
+        """Test UgridDataset.plot() method.
+
+        Test scenario:
+            Should create a plot from dataset-level API.
+        """
+        import matplotlib
+        matplotlib.use("Agg")
+
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+            data={"depth": np.array([5.0])},
+            data_locations={"depth": "face"},
+        )
+        ax = ds.plot("depth")
+        assert ax is not None, "plot() should return Axes"
+        assert ax.get_title() == "depth", (
+            f"Default title should be variable name, got '{ax.get_title()}'"
+        )
+
+    def test_dataset_plot_outline(self):
+        """Test UgridDataset.plot_outline() method.
+
+        Test scenario:
+            Should create a wireframe plot from dataset-level API.
+        """
+        import matplotlib
+        matplotlib.use("Agg")
+
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+        )
+        ax = ds.plot_outline()
+        assert ax is not None, "plot_outline() should return Axes"

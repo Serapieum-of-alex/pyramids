@@ -107,10 +107,9 @@ class Connectivity:
         """
         row = self.data[idx]
         if self.data.ndim == 1:
-            result = row
+            result = np.atleast_1d(row)
         else:
-            valid = row[row != self.fill_value]
-            result = valid
+            result = row[row != self.fill_value]
         return result
 
     def nodes_per_element(self) -> np.ndarray:

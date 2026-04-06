@@ -50,6 +50,8 @@ def plot_mesh_data(
         colorbar: Whether to add a colorbar.
         title: Plot title.
         **kwargs: Additional keyword arguments passed to tripcolor/tricontourf.
+            Do not pass ``cmap``, ``levels``, ``vmin``, or ``vmax`` here;
+            use the dedicated parameters instead.
 
     Returns:
         matplotlib Axes with the plot.

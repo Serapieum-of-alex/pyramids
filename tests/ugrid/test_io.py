@@ -11,7 +11,16 @@ from pathlib import Path
 import pytest
 from osgeo import gdal
 
-from pyramids.netcdf.ugrid.io import _parse_single_topology, parse_ugrid_topology
+import numpy as np
+
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.io import (
+    _parse_single_topology,
+    parse_ugrid_topology,
+    write_ugrid_topology,
+)
+from pyramids.netcdf.ugrid.mesh import Mesh2d
+from pyramids.netcdf.utils import _read_attributes
 
 
 class TestParseUgridTopology:
@@ -190,3 +199,144 @@ class TestTopologyParsingEdgeCases:
         md_arr = rg.OpenMDArray("mesh2d_node_x")
         result = _parse_single_topology(rg, "mesh2d_node_x", md_arr)
         assert result is None, f"Expected None for non-topology variable, got {result}"
+
+
+class TestWriteUgridTopology:
+    """Direct unit tests for write_ugrid_topology() (H6)."""
+
+    def _write_and_reopen(self, tmp_path, mesh, mesh_name="mesh2d", crs_wkt=None):
+        """Helper: write via UgridDataset.to_file and reopen with GDAL.
+
+        Args:
+            tmp_path: pytest tmp_path fixture.
+            mesh: Mesh2d instance to write.
+            mesh_name: Topology variable name.
+            crs_wkt: Optional CRS WKT string.
+
+        Returns:
+            Tuple of (nc_path, gdal_root_group).
+        """
+        from pyramids.netcdf.ugrid.dataset import UgridDataset
+        from pyramids.netcdf.ugrid.models import MeshTopologyInfo
+
+        topo = MeshTopologyInfo(
+            mesh_name=mesh_name, topology_dimension=2,
+            node_x_var=f"{mesh_name}_node_x",
+            node_y_var=f"{mesh_name}_node_y",
+            face_node_var=f"{mesh_name}_face_nodes",
+            crs_wkt=crs_wkt,
+        )
+        ds = UgridDataset(
+            mesh=mesh, data_variables={},
+            global_attributes={"Conventions": "CF-1.8 UGRID-1.0"},
+            topology_info=topo, crs_wkt=crs_wkt,
+        )
+        nc_path = tmp_path / f"{mesh_name}.nc"
+        ds.to_file(nc_path)
+
+        ds2 = gdal.OpenEx(str(nc_path), gdal.OF_MULTIDIM_RASTER)
+        rg2 = ds2.GetRootGroup()
+        return nc_path, rg2
+
+    def test_writes_topology_variable_with_cf_role(self, tmp_path):
+        """Test that the topology variable has cf_role=mesh_topology.
+
+        Test scenario:
+            Write a simple mesh, reopen with raw GDAL, verify cf_role.
+        """
+        mesh = Mesh2d(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=Connectivity(
+                data=np.array([[0, 1, 2]], dtype=np.intp),
+                fill_value=-1, cf_role="face_node_connectivity",
+                original_start_index=0,
+            ),
+        )
+        _, rg = self._write_and_reopen(tmp_path, mesh)
+        topo_arr = rg.OpenMDArray("mesh2d")
+        attrs = _read_attributes(topo_arr)
+        assert attrs.get("cf_role") == "mesh_topology", (
+            f"Expected cf_role='mesh_topology', got '{attrs.get('cf_role')}'"
+        )
+        assert attrs.get("topology_dimension") == 2, (
+            f"Expected topology_dimension=2, got {attrs.get('topology_dimension')}"
+        )
+
+    def test_writes_node_coordinates(self, tmp_path):
+        """Test that node coordinate arrays are written correctly.
+
+        Test scenario:
+            Write mesh with known node coords, verify raw values.
+        """
+        node_x = np.array([0.0, 1.0, 0.5])
+        mesh = Mesh2d(
+            node_x=node_x,
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=Connectivity(
+                data=np.array([[0, 1, 2]], dtype=np.intp),
+                fill_value=-1, cf_role="face_node_connectivity",
+                original_start_index=0,
+            ),
+        )
+        _, rg = self._write_and_reopen(tmp_path, mesh)
+        x_arr = rg.OpenMDArray("mesh2d_node_x")
+        np.testing.assert_array_almost_equal(
+            x_arr.ReadAsArray(), node_x,
+            err_msg="Node x-coordinates should match",
+        )
+
+    def test_writes_connectivity_with_fill_and_start_index(self, tmp_path):
+        """Test that connectivity arrays have correct attributes.
+
+        Test scenario:
+            Write mixed connectivity, verify _FillValue and start_index.
+        """
+        mesh = Mesh2d(
+            node_x=np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0]),
+            node_y=np.array([0.0, 0.0, 0.0, 1.0, 1.0, 1.0]),
+            face_node_connectivity=Connectivity(
+                data=np.array([[0, 1, 4, 3], [1, 2, 5, -1]], dtype=np.intp),
+                fill_value=-1, cf_role="face_node_connectivity",
+                original_start_index=0,
+            ),
+        )
+        _, rg = self._write_and_reopen(tmp_path, mesh)
+        fnc_arr = rg.OpenMDArray("mesh2d_face_nodes")
+        attrs = _read_attributes(fnc_arr)
+        assert attrs.get("cf_role") == "face_node_connectivity", (
+            f"Expected cf_role 'face_node_connectivity', got '{attrs.get('cf_role')}'"
+        )
+        assert attrs.get("start_index") == 0, (
+            f"Expected start_index=0, got {attrs.get('start_index')}"
+        )
+        raw_data = fnc_arr.ReadAsArray()
+        assert raw_data[1, 3] == -999, (
+            f"Expected fill value -999 at [1,3], got {raw_data[1, 3]}"
+        )
+
+    def test_writes_crs_variable(self, tmp_path):
+        """Test that CRS variable is written when crs_wkt provided.
+
+        Test scenario:
+            Write mesh with CRS WKT, verify crs variable has crs_wkt attr.
+        """
+        from osgeo import osr
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        crs_wkt = srs.ExportToWkt()
+
+        mesh = Mesh2d(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=Connectivity(
+                data=np.array([[0, 1, 2]], dtype=np.intp),
+                fill_value=-1, cf_role="face_node_connectivity",
+                original_start_index=0,
+            ),
+        )
+        _, rg = self._write_and_reopen(tmp_path, mesh, crs_wkt=crs_wkt)
+        crs_arr = rg.OpenMDArray("crs")
+        assert crs_arr is not None, "CRS variable should exist"
+        crs_attrs = _read_attributes(crs_arr)
+        assert "crs_wkt" in crs_attrs, "CRS variable should have crs_wkt attribute"

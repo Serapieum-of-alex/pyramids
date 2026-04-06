@@ -140,7 +140,7 @@ class UgridDataset:
         return result
 
     @property
-    def crs(self) -> Any:
+    def crs(self) -> CRS | None:
         """CRS as a pyproj.CRS object, or None. Cached after first access."""
         if self._cached_crs is None and self._crs_wkt is not None:
             try:
@@ -232,7 +232,7 @@ class UgridDataset:
         bounds: tuple[float, float, float, float] | None = None,
         epsg: int | None = None,
         nodata: float = -9999.0,
-    ) -> Any:
+    ) -> Dataset:
         """Convert a mesh variable to a regular-grid Dataset.
 
         Interpolates mesh data onto a regular grid and returns a
@@ -501,7 +501,7 @@ class UgridDataset:
         self,
         variable_name: str | None = None,
         location: str = "face",
-    ) -> Any:
+    ) -> gpd.GeoDataFrame:
         """Convert mesh to a GeoDataFrame.
 
         For faces: each row is a Polygon with data columns.
@@ -517,10 +517,9 @@ class UgridDataset:
         """
         geometries = []
         if location == "face":
-            for i in range(self.n_face):
-                coords = self._mesh.get_face_polygon(i)
-                closed = np.vstack([coords, coords[0:1]])
-                geometries.append(Polygon(closed))
+            from pyramids.netcdf.ugrid.spatial import MeshSpatialIndex
+            spatial_idx = MeshSpatialIndex(self._mesh)
+            geometries = spatial_idx.face_polygons
         elif location == "node":
             for i in range(self.n_node):
                 geometries.append(
@@ -560,7 +559,7 @@ class UgridDataset:
         self,
         variable_name: str | None = None,
         location: str = "face",
-    ) -> Any:
+    ) -> FeatureCollection:
         """Convert mesh to a pyramids FeatureCollection.
 
         Args:

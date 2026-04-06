@@ -7,6 +7,7 @@ mesh), and dataset-level metadata.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -89,7 +90,7 @@ class MeshVariable:
     units: str | None = None
     standard_name: str | None = None
     _data: np.ndarray | None = field(default=None, repr=False)
-    _loader: Any = field(default=None, repr=False)
+    _loader: Callable[[], np.ndarray] | None = field(default=None, repr=False)
     _dtype: np.dtype | None = field(default=None, repr=False)
 
     @property

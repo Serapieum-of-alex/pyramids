@@ -333,13 +333,14 @@ class TestConnectivity1D:
         )
 
     def test_get_element_1d(self, conn_1d):
-        """Test get_element for 1D connectivity returns the scalar value.
+        """Test get_element for 1D connectivity returns a 1D array.
 
         Test scenario:
-            Element 0 of a 1D array [0, 1, 2] should return 0.
+            Element 0 of a 1D array [0, 1, 2] should return np.array([0]).
         """
         result = conn_1d.get_element(0)
-        assert result == 0, f"Expected 0, got {result}"
+        assert isinstance(result, np.ndarray), f"Expected ndarray, got {type(result)}"
+        assert result[0] == 0, f"Expected [0], got {result}"
 
     def test_nodes_per_element_1d(self, conn_1d):
         """Test nodes_per_element returns all ones for 1D array.
