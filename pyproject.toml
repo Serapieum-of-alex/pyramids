@@ -34,12 +34,12 @@ dependencies = [
     "pyproj >=3.7.0",
     "PyYAML >=6.0.0",
     "Shapely >=2.0.0",
+    "scipy>=1.10.0"
 ]
 
 [project.optional-dependencies]
 viz = ["cleopatra>=0.6.0"]
 xarray = ["xarray>=2023.1.0", "netCDF4>=1.6.0", "h5netcdf>=1.0.0", "cftime>=1.6.0"]
-ugrid = ["scipy>=1.10.0"]
 
 [dependency-groups]
 dev = [
