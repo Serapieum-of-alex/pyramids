@@ -39,6 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 viz = ["cleopatra>=0.6.0"]
 xarray = ["xarray>=2023.1.0", "netCDF4>=1.6.0", "h5netcdf>=1.0.0", "cftime>=1.6.0"]
+ugrid = ["scipy>=1.10.0"]
 
 [dependency-groups]
 dev = [
@@ -229,6 +230,9 @@ python = "3.12.*"
 python = "3.13.*"
 [tool.pixi.feature.py314.dependencies]
 python = "3.14.*"
+
+[tool.pixi.feature.dev.dependencies]
+scipy = ">=1.17.1,<2"
 
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"

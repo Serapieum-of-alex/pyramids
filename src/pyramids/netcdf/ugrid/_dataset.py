@@ -214,6 +214,46 @@ class UgridDataset:
         )
         return result
 
+    def clip(self, mask: Any, touch: bool = True) -> "UgridDataset":
+        """Clip the mesh to a polygon mask.
+
+        Selects faces that intersect (touch=True) or are fully
+        contained within (touch=False) the mask polygon.
+
+        Args:
+            mask: Polygon mask (GeoDataFrame, FeatureCollection,
+                or Shapely geometry).
+            touch: If True, include faces touching the boundary.
+
+        Returns:
+            New UgridDataset with clipped mesh and data.
+        """
+        from pyramids.netcdf.ugrid._spatial import clip_mesh
+        result = clip_mesh(self, mask, touch=touch)
+        return result
+
+    def subset_by_bounds(
+        self,
+        xmin: float,
+        ymin: float,
+        xmax: float,
+        ymax: float,
+    ) -> "UgridDataset":
+        """Subset mesh to faces within a bounding box.
+
+        Args:
+            xmin: Minimum x-coordinate.
+            ymin: Minimum y-coordinate.
+            xmax: Maximum x-coordinate.
+            ymax: Maximum y-coordinate.
+
+        Returns:
+            New UgridDataset with subset mesh and data.
+        """
+        from pyramids.netcdf.ugrid._spatial import subset_by_bounds
+        result = subset_by_bounds(self, xmin, ymin, xmax, ymax)
+        return result
+
     def __str__(self) -> str:
         """Human-readable summary of the dataset."""
         lines = [
