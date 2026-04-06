@@ -323,8 +323,6 @@ class UgridDataset:
         from osgeo import osr
         from pyproj import Transformer
 
-        from pyramids.netcdf.ugrid._connectivity import Connectivity
-
         source_epsg = self.epsg
         if source_epsg is None:
             raise ValueError(
@@ -339,11 +337,32 @@ class UgridDataset:
             self._mesh.node_x, self._mesh.node_y,
         )
 
+        new_face_x = None
+        new_face_y = None
+        if self._mesh._face_x is not None and self._mesh._face_y is not None:
+            new_face_x, new_face_y = transformer.transform(
+                self._mesh._face_x, self._mesh._face_y,
+            )
+
+        new_edge_x = None
+        new_edge_y = None
+        if self._mesh._edge_x is not None and self._mesh._edge_y is not None:
+            new_edge_x, new_edge_y = transformer.transform(
+                self._mesh._edge_x, self._mesh._edge_y,
+            )
+
         new_mesh = Mesh2d(
             node_x=new_node_x,
             node_y=new_node_y,
             face_node_connectivity=self._mesh.face_node_connectivity,
             edge_node_connectivity=self._mesh.edge_node_connectivity,
+            face_edge_connectivity=self._mesh.face_edge_connectivity,
+            face_face_connectivity=self._mesh.face_face_connectivity,
+            edge_face_connectivity=self._mesh.edge_face_connectivity,
+            face_x=new_face_x,
+            face_y=new_face_y,
+            edge_x=new_edge_x,
+            edge_y=new_edge_y,
         )
 
         srs = osr.SpatialReference()
@@ -457,6 +476,9 @@ class UgridDataset:
         dims = write_ugrid_topology(rg, self._mesh, mesh_name, self._crs_wkt)
 
         for var in self._data_variables.values():
+            if var.has_time and "time" not in dims:
+                time_dim = rg.CreateDimension("time", None, None, var.n_time_steps)
+                dims["time"] = time_dim
             write_ugrid_data_variable(rg, var, mesh_name, dims)
 
         global_attrs = dict(self._global_attributes)

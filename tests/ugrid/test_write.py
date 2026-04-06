@@ -42,6 +42,14 @@ class TestWriteUgrid:
         assert "elevation" in ds2.data_variable_names, (
             f"Expected 'elevation', got {ds2.data_variable_names}"
         )
+        np.testing.assert_array_almost_equal(
+            ds2["elevation"].data, [5.0],
+            err_msg="Elevation data should survive round-trip",
+        )
+        np.testing.assert_array_almost_equal(
+            ds2.mesh.node_x, [0.0, 1.0, 0.5],
+            err_msg="Node x-coordinates should survive round-trip",
+        )
 
     def test_write_mixed_mesh(self, tmp_path, mixed_mesh):
         """Test writing a mixed mesh (quad + triangles).
@@ -75,6 +83,9 @@ class TestWriteUgrid:
         ds2 = UgridDataset.read_file(out_path)
         assert ds2.n_face == 3, f"Expected 3 faces, got {ds2.n_face}"
         assert ds2.n_node == 6, f"Expected 6 nodes, got {ds2.n_node}"
+        fnc = ds2.mesh.face_node_connectivity
+        assert fnc.nodes_per_element()[0] == 4, "First face (quad) should have 4 nodes"
+        assert fnc.nodes_per_element()[1] == 3, "Second face (tri) should have 3 nodes"
 
     def test_western_scheldt_round_trip(self, western_scheldt_path, tmp_path):
         """Test read-write-read round trip on real data.
@@ -93,6 +104,14 @@ class TestWriteUgrid:
         )
         assert ds2.n_face == ds1.n_face, (
             f"Face count mismatch: {ds2.n_face} vs {ds1.n_face}"
+        )
+        np.testing.assert_array_almost_equal(
+            ds2["mesh2d_node_z"].data[:10], ds1["mesh2d_node_z"].data[:10],
+            err_msg="Node z data should survive round-trip",
+        )
+        np.testing.assert_array_almost_equal(
+            ds2.mesh.node_x[:10], ds1.mesh.node_x[:10],
+            err_msg="Node x-coordinates should survive round-trip",
         )
 
 

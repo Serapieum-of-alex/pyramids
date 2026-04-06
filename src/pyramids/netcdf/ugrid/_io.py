@@ -296,7 +296,30 @@ def write_ugrid_topology(
         _write_coord_array(rg, f"{mesh_name}_face_x", [n_face_dim], mesh._face_x)
         _write_coord_array(rg, f"{mesh_name}_face_y", [n_face_dim], mesh._face_y)
 
+    if crs_wkt is not None:
+        _write_crs_variable(rg, crs_wkt, topo_dim)
+
     return dims
+
+
+def _write_crs_variable(
+    rg: gdal.Group,
+    crs_wkt: str,
+    scalar_dim: Any,
+) -> None:
+    """Write a CRS variable with crs_wkt attribute.
+
+    Args:
+        rg: GDAL root group.
+        crs_wkt: WKT CRS string.
+        scalar_dim: Scalar dimension for the CRS variable.
+    """
+    crs_arr = rg.CreateMDArray(
+        "crs", [scalar_dim],
+        gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+    )
+    crs_arr.Write(np.array([0], dtype=np.int32))
+    write_attributes_to_md_array(crs_arr, {"crs_wkt": crs_wkt})
 
 
 def _write_coord_array(

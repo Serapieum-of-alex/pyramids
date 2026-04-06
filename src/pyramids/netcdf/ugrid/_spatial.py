@@ -270,6 +270,59 @@ def clip_mesh(
             if mask_geom.contains(face_poly):
                 selected_faces.append(i)
 
+    result = _subset_mesh_by_face_indices(dataset, selected_faces)
+    return result
+
+
+def subset_by_bounds(
+    dataset: Any,
+    xmin: float,
+    ymin: float,
+    xmax: float,
+    ymax: float,
+) -> Any:
+    """Subset mesh to faces whose centroids fall within a bounding box.
+
+    Faster than clip_mesh because it only checks face centroids
+    against the box without building Shapely polygons or doing
+    intersection tests. Uses vectorized numpy comparisons.
+
+    Args:
+        dataset: Source UgridDataset.
+        xmin: Minimum x-coordinate.
+        ymin: Minimum y-coordinate.
+        xmax: Maximum x-coordinate.
+        ymax: Maximum y-coordinate.
+
+    Returns:
+        New UgridDataset with faces whose centroids are within the box.
+    """
+    mesh = dataset.mesh
+    cx, cy = mesh.face_centroids
+    mask = (cx >= xmin) & (cx <= xmax) & (cy >= ymin) & (cy <= ymax)
+    selected_faces = np.where(mask)[0].tolist()
+
+    result = _subset_mesh_by_face_indices(dataset, selected_faces)
+    return result
+
+
+def _subset_mesh_by_face_indices(
+    dataset: Any,
+    selected_faces: list[int],
+) -> Any:
+    """Build a new UgridDataset from a subset of face indices.
+
+    Handles node renumbering, edge filtering, coordinate subsetting,
+    and data variable slicing. Shared by clip_mesh and subset_by_bounds.
+
+    Args:
+        dataset: Source UgridDataset.
+        selected_faces: List of face indices to keep.
+
+    Returns:
+        New UgridDataset with the selected faces.
+    """
+    mesh = dataset.mesh
     selected_faces_arr = np.array(selected_faces, dtype=np.intp)
 
     old_nodes: set[int] = set()
@@ -378,34 +431,4 @@ def clip_mesh(
         crs_wkt=dataset._crs_wkt,
         file_name=None,
     )
-    return result
-
-
-def subset_by_bounds(
-    dataset: Any,
-    xmin: float,
-    ymin: float,
-    xmax: float,
-    ymax: float,
-) -> Any:
-    """Subset mesh to faces within a bounding box.
-
-    Faster than clip_mesh because it only checks centroids
-    against the box (no polygon intersection). Uses the same
-    renumbering logic as clip_mesh.
-
-    Args:
-        dataset: Source UgridDataset.
-        xmin: Minimum x-coordinate.
-        ymin: Minimum y-coordinate.
-        xmax: Maximum x-coordinate.
-        ymax: Maximum y-coordinate.
-
-    Returns:
-        New UgridDataset with faces whose centroids are within the box.
-    """
-    from shapely.geometry import box
-
-    mask_geom = box(xmin, ymin, xmax, ymax)
-    result = clip_mesh(dataset, mask_geom, touch=True)
     return result
