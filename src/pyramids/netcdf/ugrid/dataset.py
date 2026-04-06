@@ -16,6 +16,8 @@ from osgeo import gdal, osr
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, Point, Polygon
 
+from pyramids.dataset import Dataset
+from pyramids.feature import FeatureCollection
 from pyramids.netcdf.cf import write_global_attributes
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.io import (
@@ -23,6 +25,7 @@ from pyramids.netcdf.ugrid.io import (
     write_ugrid_data_variable,
     write_ugrid_topology,
 )
+from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable, UgridMetadata
 from pyramids.netcdf.utils import _read_attributes
@@ -60,6 +63,7 @@ class UgridDataset:
         self._topology_info = topology_info
         self._crs_wkt = crs_wkt
         self._file_name = file_name
+        self._cached_crs: Any = None
 
     @classmethod
     def read_file(cls, path: str | Path) -> UgridDataset:
@@ -106,6 +110,8 @@ class UgridDataset:
 
         global_attrs = _read_global_attributes(rg)
 
+        ds = None
+
         result = cls(
             mesh=mesh,
             data_variables=data_variables,
@@ -135,22 +141,19 @@ class UgridDataset:
 
     @property
     def crs(self) -> Any:
-        """CRS as a pyproj.CRS object, or None."""
-        if self._crs_wkt is None:
-            return None
-        try:
-            result = CRS.from_wkt(self._crs_wkt)
-        except Exception:
-            result = None
-        return result
+        """CRS as a pyproj.CRS object, or None. Cached after first access."""
+        if self._cached_crs is None and self._crs_wkt is not None:
+            try:
+                self._cached_crs = CRS.from_wkt(self._crs_wkt)
+            except Exception:
+                pass
+        return self._cached_crs
 
     @property
     def epsg(self) -> int | None:
         """EPSG code of the CRS, or None."""
         crs = self.crs
-        if crs is None:
-            return None
-        result = crs.to_epsg()
+        result = crs.to_epsg() if crs is not None else None
         return result
 
     @property
@@ -247,11 +250,12 @@ class UgridDataset:
         Returns:
             pyramids Dataset with the interpolated data.
         """
-        from pyramids.dataset import Dataset
-        from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
-
         var = self.get_data(variable_name)
         data = var.data
+        if data is None:
+            raise ValueError(
+                f"Variable '{variable_name}' has no data loaded."
+            )
         if var.has_time:
             data = data[0]
 
@@ -373,11 +377,16 @@ class UgridDataset:
         srs.ImportFromEPSG(to_epsg)
         new_crs_wkt = srs.ExportToWkt()
 
+        from dataclasses import replace
+        new_topo_info = None
+        if self._topology_info is not None:
+            new_topo_info = replace(self._topology_info, crs_wkt=new_crs_wkt)
+
         result = UgridDataset(
             mesh=new_mesh,
             data_variables=self._data_variables,
             global_attributes=self._global_attributes,
-            topology_info=self._topology_info,
+            topology_info=new_topo_info,
             crs_wkt=new_crs_wkt,
         )
         return result
@@ -388,13 +397,15 @@ class UgridDataset:
 
         Returns None if no variables have a time dimension.
         """
+        result = None
         for var in self._data_variables.values():
             if var.has_time:
                 time_attr = var.attributes.get("time_values")
                 if time_attr is not None:
-                    return list(time_attr)
-                return list(range(var.n_time_steps))
-        result = None
+                    result = list(time_attr)
+                else:
+                    result = list(range(var.n_time_steps))
+                break
         return result
 
     def sel_time(self, index: int) -> "UgridDataset":
@@ -534,7 +545,7 @@ class UgridDataset:
             var = self.get_data(variable_name)
             if var.location == location:
                 var_data = var.data
-                if var.has_time:
+                if var_data is not None and var.has_time:
                     var_data = var_data[0]
                 data_dict[variable_name] = var_data
 
@@ -559,8 +570,6 @@ class UgridDataset:
         Returns:
             pyramids FeatureCollection.
         """
-        from pyramids.feature import FeatureCollection
-
         gdf = self.to_geodataframe(variable_name, location)
         result = FeatureCollection(gdf)
         return result
@@ -718,7 +727,7 @@ def _read_data_variables(
 ) -> dict[str, MeshVariable]:
     """Read all data variables from a GDAL root group.
 
-    Creates MeshVariable instances with lazy loading for each
+    Creates MeshVariable instances with eagerly loaded data for each
     variable that references the mesh topology.
 
     Args:

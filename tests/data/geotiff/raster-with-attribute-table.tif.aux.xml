@@ -33,8 +33,17 @@
         <F>#808080</F>
       </Row>
     </GDALRasterAttributeTable>
+    <Metadata>
+      <MDI key="RepresentationType">ATHEMATIC</MDI>
+      <MDI key="STATISTICS_MAXIMUM">88</MDI>
+      <MDI key="STATISTICS_MEAN">7.9662921348315</MDI>
+      <MDI key="STATISTICS_MINIMUM">0</MDI>
+      <MDI key="STATISTICS_STDDEV">18.294377743948</MDI>
+      <MDI key="STATISTICS_VALID_PERCENT">48.9</MDI>
+    </Metadata>
   </PAMRasterBand>
   <PAMRasterBand band="2">
+    <UnitType>meter</UnitType>
     <GDALRasterAttributeTable tableType="thematic">
       <FieldDefn index="0">
         <Name>Value</Name>

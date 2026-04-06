@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from osgeo import gdal
 
-from pyramids.netcdf.ugrid.io import parse_ugrid_topology
+from pyramids.netcdf.ugrid.io import _parse_single_topology, parse_ugrid_topology
 
 
 class TestParseUgridTopology:
@@ -184,7 +184,6 @@ class TestTopologyParsingEdgeCases:
             Open a data variable (not topology) and try to parse it.
             Should return None.
         """
-        from pyramids.netcdf.ugrid.io import _parse_single_topology
 
         ds = gdal.OpenEx(str(western_scheldt_path), gdal.OF_MULTIDIM_RASTER)
         rg = ds.GetRootGroup()

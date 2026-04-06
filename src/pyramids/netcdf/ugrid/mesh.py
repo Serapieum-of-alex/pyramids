@@ -11,6 +11,7 @@ from typing import Any
 
 import numpy as np
 from osgeo import gdal
+from pyproj import CRS as PyProjCRS
 
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo
@@ -173,12 +174,13 @@ class Mesh2d:
             cross[masked.mask] = 0.0
 
             last_valid = fnc.nodes_per_element() - 1
-            for i in range(self.n_face):
-                li = last_valid[i]
-                if li < fnc.max_nodes_per_element - 1:
-                    cross[i, li] = (
-                        x[i, li] * y[i, 0] - x[i, 0] * y[i, li]
-                    )
+            needs_fix = last_valid < fnc.max_nodes_per_element - 1
+            fix_rows = np.where(needs_fix)[0]
+            fix_cols = last_valid[fix_rows]
+            cross[fix_rows, fix_cols] = (
+                x[fix_rows, fix_cols] * y[fix_rows, 0]
+                - x[fix_rows, 0] * y[fix_rows, fix_cols]
+            )
 
             self._cached_face_areas = np.abs(cross.sum(axis=1)) * 0.5
 
@@ -436,8 +438,7 @@ class Mesh2d:
         crs = None
         if topo_info.crs_wkt:
             try:
-                from pyproj import CRS
-                crs = CRS.from_wkt(topo_info.crs_wkt)
+                crs = PyProjCRS.from_wkt(topo_info.crs_wkt)
             except Exception:
                 crs = None
 

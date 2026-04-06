@@ -5,9 +5,9 @@ queries, point-in-face location, mesh clipping by polygon, and
 bounding box subsetting.
 
 Depends on:
-    - _mesh.py: Mesh2d
-    - _connectivity.py: Connectivity
-    - _models.py: MeshVariable
+    - mesh.py: Mesh2d
+    - connectivity.py: Connectivity
+    - models.py: MeshVariable
     - scipy.spatial: cKDTree (optional, imported inline)
     - shapely: STRtree, Polygon (already a pyramids dependency)
 """
@@ -17,6 +17,10 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import shapely
+from shapely import STRtree
+from shapely.geometry import Polygon
+from shapely.ops import unary_union
 
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
@@ -68,7 +72,6 @@ class MeshSpatialIndex:
     def face_strtree(self) -> Any:
         """Shapely STRtree on face polygons. Lazy-built on first access."""
         if self._face_strtree is None:
-            from shapely import STRtree
             self._face_polygons = self._build_face_polygons()
             self._face_strtree = STRtree(self._face_polygons)
         return self._face_strtree
@@ -86,8 +89,6 @@ class MeshSpatialIndex:
         Returns:
             List of Shapely Polygon objects, one per face.
         """
-        from shapely.geometry import Polygon
-
         polygons = []
         for i in range(self._mesh.n_face):
             coords = self._mesh.get_face_polygon(i)
@@ -206,19 +207,17 @@ class MeshSpatialIndex:
         Returns:
             Array of face indices, -1 for points outside mesh.
         """
-        import shapely
-
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
         result = np.full(len(x), -1, dtype=np.intp)
 
         points = shapely.points(x, y)
         strtree = self.face_strtree
-        geom_idx, point_idx = strtree.query(points, predicate="within")
+        input_idx, tree_idx = strtree.query(points, predicate="within")
 
-        for gi, pi in zip(geom_idx, point_idx):
-            if result[pi] == -1:
-                result[pi] = gi
+        for pt_i, face_i in zip(input_idx, tree_idx):
+            if result[pt_i] == -1:
+                result[pt_i] = face_i
 
         return result
 
@@ -243,9 +242,6 @@ def clip_mesh(
     Returns:
         New UgridDataset with clipped mesh and subset data.
     """
-    from shapely.geometry import Polygon
-    from shapely.ops import unary_union
-
     mesh = dataset.mesh
 
     if hasattr(mask, "_gdf"):
@@ -254,8 +250,6 @@ def clip_mesh(
         mask_geom = unary_union(mask.geometry)
     else:
         mask_geom = mask
-
-    from shapely import STRtree
 
     spatial_idx = MeshSpatialIndex(mesh)
     face_polys = spatial_idx.face_polygons
@@ -319,6 +313,24 @@ def _subset_mesh_by_face_indices(
         New UgridDataset with the selected faces.
     """
     mesh = dataset.mesh
+
+    if len(selected_faces) == 0:
+        empty_fnc = Connectivity(
+            data=np.empty((0, 1), dtype=np.intp), fill_value=-1,
+            cf_role="face_node_connectivity", original_start_index=0,
+        )
+        empty_mesh = Mesh2d(
+            node_x=np.empty(0), node_y=np.empty(0),
+            face_node_connectivity=empty_fnc,
+        )
+        from pyramids.netcdf.ugrid.dataset import UgridDataset
+        return UgridDataset(
+            mesh=empty_mesh, data_variables={},
+            global_attributes=dataset._global_attributes,
+            topology_info=dataset._topology_info,
+            crs_wkt=dataset._crs_wkt,
+        )
+
     selected_faces_arr = np.array(selected_faces, dtype=np.intp)
 
     old_nodes: set[int] = set()

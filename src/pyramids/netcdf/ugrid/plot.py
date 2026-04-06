@@ -5,7 +5,7 @@ triangulation (tripcolor/tricontourf) and mesh wireframe
 rendering using LineCollection.
 
 Depends on:
-    - _mesh.py: Mesh2d (uses mesh.triangulation property)
+    - mesh.py: Mesh2d (uses mesh.triangulation property)
     - matplotlib (optional dependency via cleopatra/viz extra)
 """
 
@@ -111,11 +111,14 @@ def _map_face_to_triangle_values(
     """
     fnc = mesh.face_node_connectivity
     counts = fnc.nodes_per_element()
-    n_triangles = int(np.sum(counts - 2))
+    valid = counts >= 3
+    n_triangles = int(np.sum(counts[valid] - 2))
     tri_values = np.empty(n_triangles)
 
     tri_idx = 0
     for face_idx in range(mesh.n_face):
+        if counts[face_idx] < 3:
+            continue
         n_tris = counts[face_idx] - 2
         tri_values[tri_idx:tri_idx + n_tris] = face_values[face_idx]
         tri_idx += n_tris

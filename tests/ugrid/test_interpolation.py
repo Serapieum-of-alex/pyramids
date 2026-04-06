@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from pyramids.dataset import Dataset
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
@@ -185,7 +186,6 @@ class TestToDataset:
         Test scenario:
             Should return a Dataset with correct dimensions.
         """
-        from pyramids.dataset import Dataset
 
         ds = UgridDataset.read_file(western_scheldt_path)
         raster = ds.to_dataset("mesh2d_node_z", cell_size=500.0)
@@ -211,7 +211,6 @@ class TestToDataset:
         Test scenario:
             Linear method should produce a smoother result.
         """
-        from pyramids.dataset import Dataset
 
         ds = UgridDataset.read_file(western_scheldt_path)
         raster = ds.to_dataset("mesh2d_node_z", cell_size=1000.0, method="linear")

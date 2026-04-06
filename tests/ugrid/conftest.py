@@ -85,19 +85,3 @@ def mixed_mesh():
     )
 
 
-@pytest.fixture
-def sample_topo_info():
-    """Sample MeshTopologyInfo for a 2D mesh.
-
-    Returns:
-        MeshTopologyInfo: Minimal 2D mesh topology metadata.
-    """
-    return MeshTopologyInfo(
-        mesh_name="mesh2d",
-        topology_dimension=2,
-        node_x_var="mesh2d_node_x",
-        node_y_var="mesh2d_node_y",
-        face_node_var="mesh2d_face_nodes",
-        edge_node_var="mesh2d_edge_nodes",
-        data_variables={"mesh2d_node_z": "node", "mesh2d_edge_type": "edge"},
-    )

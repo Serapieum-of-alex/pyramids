@@ -5,7 +5,7 @@ and Dataset (regular grid). Converts mesh data to regular grid arrays
 using nearest-neighbor or linear interpolation.
 
 Depends on:
-    - _mesh.py: Mesh2d
+    - mesh.py: Mesh2d
     - scipy.spatial: cKDTree (optional, imported inline)
     - scipy.interpolate: LinearNDInterpolator (optional, imported inline)
 """

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from shapely.geometry import box
 
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
@@ -215,6 +216,31 @@ class TestMeshSpatialIndexLocateFaces:
         assert result[1] == -1, f"Expected -1 for outside point, got {result[1]}"
 
 
+    def test_locate_faces_nonaligned_indices(self):
+        """Test locate_faces when point/face indices don't align.
+
+        Test scenario:
+            Faces are at positions far apart so face 0 is at (10,10),
+            face 1 at (0,0). Point at (0.5, 0.5) should return face 1
+            (not face 0). This catches the swapped-index bug.
+        """
+        node_x = np.array([10.0, 11.0, 10.0, 0.0, 1.0, 0.0])
+        node_y = np.array([10.0, 10.0, 11.0, 0.0, 0.0, 1.0])
+        faces = np.array([[0, 1, 2], [3, 4, 5]], dtype=np.intp)
+        mesh = Mesh2d(
+            node_x=node_x, node_y=node_y,
+            face_node_connectivity=Connectivity(
+                data=faces, fill_value=-1,
+                cf_role="face_node_connectivity", original_start_index=0,
+            ),
+        )
+        idx = MeshSpatialIndex(mesh)
+        result = idx.locate_faces(np.array([0.3]), np.array([0.3]))
+        assert result[0] == 1, (
+            f"Point at (0.3, 0.3) should be in face 1, got face {result[0]}"
+        )
+
+
 class TestClipMesh:
     """Tests for clip_mesh() function (UGRID-8)."""
 
@@ -225,7 +251,7 @@ class TestClipMesh:
             Clipping to an area covering the left column should keep
             faces 0 and 2 (left column).
         """
-        from shapely.geometry import box
+
         mask = box(-0.1, -0.1, 1.1, 2.1)
         clipped = clip_mesh(unit_square_dataset, mask, touch=False)
         assert clipped.n_face == 2, f"Expected 2 faces, got {clipped.n_face}"
@@ -237,7 +263,7 @@ class TestClipMesh:
             Clipping to left half with touch=True should include faces
             that touch x=1.0 boundary.
         """
-        from shapely.geometry import box
+
         mask = box(0.0, 0.0, 1.0, 2.0)
         clipped = clip_mesh(unit_square_dataset, mask, touch=True)
         assert clipped.n_face >= 2, f"Expected >= 2 faces with touch=True, got {clipped.n_face}"
@@ -249,7 +275,7 @@ class TestClipMesh:
             Clipped dataset should have 'temperature' variable with
             subset data.
         """
-        from shapely.geometry import box
+
         mask = box(-0.1, -0.1, 1.1, 1.1)
         clipped = clip_mesh(unit_square_dataset, mask, touch=False)
         assert "temperature" in clipped.data_variable_names, (
@@ -267,7 +293,7 @@ class TestClipMesh:
         Test scenario:
             After clipping, node indices should be 0-based and contiguous.
         """
-        from shapely.geometry import box
+
         mask = box(0.0, 0.0, 1.1, 1.1)
         clipped = clip_mesh(unit_square_dataset, mask, touch=False)
         fnc = clipped.mesh.face_node_connectivity
@@ -314,7 +340,7 @@ class TestSubsetByBounds:
         Test scenario:
             clip() method should delegate to clip_mesh correctly.
         """
-        from shapely.geometry import box
+
         mask = box(-0.1, -0.1, 2.1, 2.1)
         result = unit_square_dataset.clip(mask)
         assert result.n_face == 4, f"Expected 4 faces, got {result.n_face}"
@@ -367,7 +393,7 @@ class TestSpatialEdgeCases:
         Test scenario:
             Polygon far from mesh should produce 0 faces.
         """
-        from shapely.geometry import box
+
         mask = box(100.0, 100.0, 200.0, 200.0)
         result = clip_mesh(unit_square_dataset, mask, touch=True)
         assert result.n_face == 0, f"Expected 0 faces, got {result.n_face}"
@@ -400,7 +426,7 @@ class TestSpatialEdgeCases:
         Test scenario:
             Clip a mesh with node data and verify node count matches data length.
         """
-        from shapely.geometry import box
+
 
         ds = UgridDataset.create_from_arrays(
             node_x=np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0, 0.0, 1.0, 2.0]),

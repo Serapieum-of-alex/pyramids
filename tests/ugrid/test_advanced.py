@@ -9,7 +9,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
+from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshVariable
 
 
@@ -93,8 +95,6 @@ class TestCrsHandling:
         Test scenario:
             Dataset without CRS should raise ValueError.
         """
-        from pyramids.netcdf.ugrid.connectivity import Connectivity
-        from pyramids.netcdf.ugrid.mesh import Mesh2d
 
         mesh = Mesh2d(
             node_x=np.array([0.0, 1.0, 0.5]),

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from shapely.geometry import box
 
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 
@@ -26,7 +27,7 @@ class TestFullLifecycle:
             5. Interpolate to a regular grid (Dataset).
             6. Verify the Dataset has valid data.
         """
-        from shapely.geometry import box
+
 
         ds = UgridDataset.create_from_arrays(
             node_x=np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0, 0.0, 1.0, 2.0]),

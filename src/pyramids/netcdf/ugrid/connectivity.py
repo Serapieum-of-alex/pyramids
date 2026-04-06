@@ -60,6 +60,10 @@ class Connectivity:
             raw_fill = -999
 
         raw_data = md_arr.ReadAsArray()
+        if raw_data is None:
+            raise ValueError(
+                f"Cannot read connectivity array for cf_role='{cf_role}'."
+            )
         data = raw_data.copy().astype(np.intp)
 
         mask = data == raw_fill

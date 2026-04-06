@@ -10,8 +10,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from pyramids.feature import FeatureCollection
 from pyramids.netcdf.ugrid.dataset import UgridDataset
-from pyramids.netcdf.ugrid.models import MeshVariable
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable
 
 
 class TestWriteUgrid:
@@ -65,7 +66,6 @@ class TestWriteUgrid:
                 units="K",
             ),
         }
-        from pyramids.netcdf.ugrid.models import MeshTopologyInfo
         topo = MeshTopologyInfo(
             mesh_name="mesh2d", topology_dimension=2,
             node_x_var="mesh2d_node_x", node_y_var="mesh2d_node_y",
@@ -169,6 +169,20 @@ class TestToGeoDataFrame:
         gdf = ds.to_geodataframe(location="face")
         assert len(gdf) == 1, f"Expected 1 row, got {len(gdf)}"
         assert "geometry" in gdf.columns, "Should have geometry column"
+
+    def test_invalid_location_raises(self):
+        """Test to_geodataframe with invalid location.
+
+        Test scenario:
+            location='invalid' should raise ValueError.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+        )
+        with pytest.raises(ValueError, match="Unknown location"):
+            ds.to_geodataframe(location="invalid")
 
 
 class TestCreateFromArrays:
@@ -288,7 +302,6 @@ class TestToFeatureCollection:
             data={"elev": np.array([5.0])},
             data_locations={"elev": "face"},
         )
-        from pyramids.feature import FeatureCollection
         fc = ds.to_feature_collection("elev", location="face")
         assert isinstance(fc, FeatureCollection), (
             f"Expected FeatureCollection, got {type(fc)}"
