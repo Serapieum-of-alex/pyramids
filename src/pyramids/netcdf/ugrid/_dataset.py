@@ -214,6 +214,59 @@ class UgridDataset:
         )
         return result
 
+    def to_dataset(
+        self,
+        variable_name: str,
+        cell_size: float,
+        method: str = "nearest",
+        bounds: tuple[float, float, float, float] | None = None,
+        epsg: int | None = None,
+        nodata: float = -9999.0,
+    ) -> Any:
+        """Convert a mesh variable to a regular-grid Dataset.
+
+        Interpolates mesh data onto a regular grid and returns a
+        standard pyramids Dataset. This is the bridge between
+        unstructured (UGRID) and structured (raster) worlds.
+
+        Args:
+            variable_name: Name of the data variable to rasterize.
+            cell_size: Target grid cell size in coordinate units.
+            method: Interpolation method ("nearest" or "linear").
+            bounds: Target (xmin, ymin, xmax, ymax). Defaults to mesh bounds.
+            epsg: Target EPSG code. Defaults to mesh CRS.
+            nodata: No-data value for the output raster.
+
+        Returns:
+            pyramids Dataset with the interpolated data.
+        """
+        from pyramids.dataset import Dataset
+        from pyramids.netcdf.ugrid._interpolation import mesh_to_grid
+
+        var = self.get_data(variable_name)
+        data = var.data
+        if var.has_time:
+            data = data[0]
+
+        grid_array, geotransform = mesh_to_grid(
+            mesh=self._mesh,
+            data=data,
+            location=var.location,
+            cell_size=cell_size,
+            method=method,
+            bounds=bounds,
+            nodata=nodata,
+        )
+
+        target_epsg = epsg or self.epsg or 4326
+        result = Dataset.create_from_array(
+            grid_array,
+            geo=geotransform,
+            epsg=target_epsg,
+            no_data_value=nodata,
+        )
+        return result
+
     def clip(self, mask: Any, touch: bool = True) -> "UgridDataset":
         """Clip the mesh to a polygon mask.
 
