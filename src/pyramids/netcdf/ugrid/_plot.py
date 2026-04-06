@@ -71,7 +71,12 @@ def plot_mesh_data(
             vmin=vmin, vmax=vmax, edgecolors=edgecolor, **kwargs
         )
     elif location == "node":
-        tpc = ax.tricontourf(tri, data, cmap=cmap, levels=20, **kwargs)
+        contour_kw = {"cmap": cmap, "levels": 20}
+        if vmin is not None:
+            contour_kw["vmin"] = vmin
+        if vmax is not None:
+            contour_kw["vmax"] = vmax
+        tpc = ax.tricontourf(tri, data, **contour_kw, **kwargs)
     else:
         raise ValueError(
             f"Plotting not supported for location='{location}'. "
@@ -147,20 +152,30 @@ def plot_mesh_outline(
         _, ax = plt.subplots(1, 1, figsize=(10, 8))
 
     segments: list[list[tuple[float, float]]] = []
-    seen_edges: set[tuple[int, int]] = set()
 
-    for i in range(mesh.n_face):
-        nodes = mesh.face_node_connectivity.get_element(i)
-        n = len(nodes)
-        for j in range(n):
-            n1, n2 = int(nodes[j]), int(nodes[(j + 1) % n])
-            edge_key = (min(n1, n2), max(n1, n2))
-            if edge_key not in seen_edges:
-                seen_edges.add(edge_key)
-                segments.append([
-                    (mesh.node_x[n1], mesh.node_y[n1]),
-                    (mesh.node_x[n2], mesh.node_y[n2]),
-                ])
+    if mesh.edge_node_connectivity is not None:
+        enc = mesh.edge_node_connectivity
+        for i in range(enc.n_elements):
+            nodes = enc.get_element(i)
+            n1, n2 = int(nodes[0]), int(nodes[1])
+            segments.append([
+                (mesh.node_x[n1], mesh.node_y[n1]),
+                (mesh.node_x[n2], mesh.node_y[n2]),
+            ])
+    else:
+        seen_edges: set[tuple[int, int]] = set()
+        for i in range(mesh.n_face):
+            nodes = mesh.face_node_connectivity.get_element(i)
+            n = len(nodes)
+            for j in range(n):
+                n1, n2 = int(nodes[j]), int(nodes[(j + 1) % n])
+                edge_key = (min(n1, n2), max(n1, n2))
+                if edge_key not in seen_edges:
+                    seen_edges.add(edge_key)
+                    segments.append([
+                        (mesh.node_x[n1], mesh.node_y[n1]),
+                        (mesh.node_x[n2], mesh.node_y[n2]),
+                    ])
 
     lc = LineCollection(segments, colors=color, linewidths=linewidth, **kwargs)
     ax.add_collection(lc)

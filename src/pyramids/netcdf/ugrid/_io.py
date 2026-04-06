@@ -105,10 +105,11 @@ def _parse_single_topology(
     Returns:
         MeshTopologyInfo or None if the variable lacks required attributes.
     """
+    result = None
     attrs = _read_attributes(md_arr)
     topo_dim = attrs.get("topology_dimension")
     if topo_dim is None:
-        return None
+        return result
     topo_dim = int(topo_dim)
 
     node_coords_str = attrs.get("node_coordinates", "")
@@ -117,7 +118,7 @@ def _parse_single_topology(
     node_y_var = node_parts[1] if len(node_parts) > 1 else None
 
     if node_x_var is None or node_y_var is None:
-        return None
+        return result
 
     face_node_var = attrs.get("face_node_connectivity")
     edge_node_var = attrs.get("edge_node_connectivity")
@@ -193,36 +194,34 @@ def _detect_crs(rg: gdal.Group, node_x_var: str) -> str | None:
         if srs is not None:
             crs_wkt = srs.ExportToWkt()
 
-    if crs_wkt is not None:
-        return crs_wkt
-
-    for candidate in ("projected_coordinate_system", "crs", "spatial_ref"):
-        try:
-            crs_arr = rg.OpenMDArray(candidate)
-        except RuntimeError:
-            continue
-        if crs_arr is None:
-            continue
-        crs_attrs = _read_attributes(crs_arr)
-        wkt = crs_attrs.get("crs_wkt") or crs_attrs.get("spatial_ref")
-        if isinstance(wkt, str):
-            crs_wkt = wkt
-            break
-        gmn = crs_attrs.get("grid_mapping_name")
-        if isinstance(gmn, str):
+    if crs_wkt is None:
+        for candidate in ("projected_coordinate_system", "crs", "spatial_ref"):
             try:
-                srs = grid_mapping_to_srs(gmn, crs_attrs)
-                crs_wkt = srs.ExportToWkt()
-            except (ValueError, RuntimeError):
-                pass
-            break
+                crs_arr = rg.OpenMDArray(candidate)
+            except RuntimeError:
+                continue
+            if crs_arr is None:
+                continue
+            crs_attrs = _read_attributes(crs_arr)
+            wkt = crs_attrs.get("crs_wkt") or crs_attrs.get("spatial_ref")
+            if isinstance(wkt, str):
+                crs_wkt = wkt
+                break
+            gmn = crs_attrs.get("grid_mapping_name")
+            if isinstance(gmn, str):
+                try:
+                    srs = grid_mapping_to_srs(gmn, crs_attrs)
+                    crs_wkt = srs.ExportToWkt()
+                except (ValueError, RuntimeError):
+                    pass
+                break
 
     return crs_wkt
 
 
 def write_ugrid_topology(
     rg: gdal.Group,
-    mesh: Any,
+    mesh: "Mesh2d",
     mesh_name: str = "mesh2d",
     crs_wkt: str | None = None,
 ) -> dict[str, Any]:
@@ -346,7 +345,7 @@ def _write_connectivity_array(
     rg: gdal.Group,
     name: str,
     dims: list,
-    conn: Any,
+    conn: "Connectivity",
 ) -> None:
     """Write a connectivity array to the GDAL group.
 
@@ -376,7 +375,7 @@ def _write_connectivity_array(
 
 def write_ugrid_data_variable(
     rg: gdal.Group,
-    var: Any,
+    var: "MeshVariable",
     mesh_name: str,
     dims: dict[str, Any],
 ) -> None:

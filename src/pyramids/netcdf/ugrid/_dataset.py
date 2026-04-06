@@ -10,11 +10,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import geopandas as gpd
 import numpy as np
-from osgeo import gdal
+from osgeo import gdal, osr
+from pyproj import CRS, Transformer
+from shapely.geometry import LineString, Point, Polygon
 
+from pyramids.netcdf.cf import write_global_attributes
 from pyramids.netcdf.ugrid._connectivity import Connectivity
-from pyramids.netcdf.ugrid._io import parse_ugrid_topology
+from pyramids.netcdf.ugrid._io import (
+    parse_ugrid_topology,
+    write_ugrid_data_variable,
+    write_ugrid_topology,
+)
 from pyramids.netcdf.ugrid._mesh import Mesh2d
 from pyramids.netcdf.ugrid._models import MeshTopologyInfo, MeshVariable, UgridMetadata
 from pyramids.netcdf.utils import _read_attributes
@@ -131,7 +139,6 @@ class UgridDataset:
         if self._crs_wkt is None:
             return None
         try:
-            from pyproj import CRS
             result = CRS.from_wkt(self._crs_wkt)
         except Exception:
             result = None
@@ -320,9 +327,6 @@ class UgridDataset:
         Returns:
             New UgridDataset with reprojected coordinates.
         """
-        from osgeo import osr
-        from pyproj import Transformer
-
         source_epsg = self.epsg
         if source_epsg is None:
             raise ValueError(
@@ -461,12 +465,6 @@ class UgridDataset:
         Args:
             path: Output file path.
         """
-        from pyramids.netcdf.ugrid._io import (
-            write_ugrid_data_variable,
-            write_ugrid_topology,
-        )
-        from pyramids.netcdf.cf import write_global_attributes
-
         path = Path(path)
         drv = gdal.GetDriverByName("netCDF")
         ds = drv.CreateMultiDimensional(str(path))
@@ -506,9 +504,6 @@ class UgridDataset:
         Returns:
             geopandas GeoDataFrame.
         """
-        import geopandas as gpd
-        from shapely.geometry import LineString, Point, Polygon
-
         geometries = []
         if location == "face":
             for i in range(self.n_face):
@@ -597,10 +592,6 @@ class UgridDataset:
         Returns:
             UgridDataset instance.
         """
-        from osgeo import osr
-
-        from pyramids.netcdf.ugrid._connectivity import Connectivity
-
         fnc = Connectivity(
             data=np.asarray(face_node_connectivity, dtype=np.intp),
             fill_value=-1,
