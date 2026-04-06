@@ -61,10 +61,7 @@ class Connectivity:
         raw_data = md_arr.ReadAsArray()
         data = raw_data.copy().astype(np.intp)
 
-        if raw_fill != -1:
-            mask = data == raw_fill
-        else:
-            mask = np.zeros_like(data, dtype=bool)
+        mask = data == raw_fill
 
         if start_index != 0:
             data[~mask] -= start_index

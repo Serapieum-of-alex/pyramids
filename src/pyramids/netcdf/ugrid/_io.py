@@ -406,8 +406,13 @@ def write_ugrid_data_variable(
     dtype_map = {
         np.dtype("float64"): gdal.GDT_Float64,
         np.dtype("float32"): gdal.GDT_Float32,
+        np.dtype("int64"): gdal.GDT_Int64,
         np.dtype("int32"): gdal.GDT_Int32,
         np.dtype("int16"): gdal.GDT_Int16,
+        np.dtype("int8"): gdal.GDT_Int16,
+        np.dtype("uint8"): gdal.GDT_Byte,
+        np.dtype("uint16"): gdal.GDT_UInt16,
+        np.dtype("uint32"): gdal.GDT_UInt32,
     }
     gdal_dt = dtype_map.get(var.dtype, gdal.GDT_Float64)
 

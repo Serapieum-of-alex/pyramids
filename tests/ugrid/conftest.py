@@ -23,7 +23,10 @@ def western_scheldt_path():
     Returns:
         Path: Absolute path to westernscheldt01_waqgeom.nc.
     """
-    return Path("tests/mo/netcdf/westernscheldt01_waqgeom.nc")
+    p = Path("tests/mo/netcdf/westernscheldt01_waqgeom.nc")
+    if not p.exists():
+        pytest.skip("Western Scheldt test file not available")
+    return p
 
 
 @pytest.fixture
@@ -80,29 +83,6 @@ def mixed_mesh():
             cf_role="face_node_connectivity", original_start_index=0,
         ),
     )
-
-
-@pytest.fixture
-def mesh_with_face_data(triangle_mesh):
-    """Triangle mesh with face-centered data variable.
-
-    Returns:
-        Tuple of (Mesh2d, dict of MeshVariable).
-    """
-    data_vars = {
-        "water_level": MeshVariable(
-            name="water_level",
-            location="face",
-            mesh_name="mesh2d",
-            shape=(2,),
-            attributes={"units": "m"},
-            nodata=-999.0,
-            units="m",
-            standard_name="sea_surface_height",
-            _data=np.array([1.5, 2.3]),
-        ),
-    }
-    return triangle_mesh, data_vars
 
 
 @pytest.fixture

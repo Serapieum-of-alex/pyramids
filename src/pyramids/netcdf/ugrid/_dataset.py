@@ -564,7 +564,7 @@ class UgridDataset:
         Returns:
             pyramids FeatureCollection.
         """
-        from pyramids.featurecollection import FeatureCollection
+        from pyramids.feature import FeatureCollection
 
         gdf = self.to_geodataframe(variable_name, location)
         result = FeatureCollection(gdf)

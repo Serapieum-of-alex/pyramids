@@ -222,11 +222,11 @@ class TestClipMesh:
         """Test clipping mesh with a Shapely box.
 
         Test scenario:
-            Clipping to the left half [0, 0, 1, 2] should keep
+            Clipping to an area covering the left column should keep
             faces 0 and 2 (left column).
         """
         from shapely.geometry import box
-        mask = box(0.0, 0.0, 1.0, 2.0)
+        mask = box(-0.1, -0.1, 1.1, 2.1)
         clipped = clip_mesh(unit_square_dataset, mask, touch=False)
         assert clipped.n_face == 2, f"Expected 2 faces, got {clipped.n_face}"
 

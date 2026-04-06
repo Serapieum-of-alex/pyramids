@@ -136,14 +136,18 @@ class Mesh2d:
             self._cached_face_centroids = (self._face_x, self._face_y)
             return self._cached_face_centroids
 
-        cx = np.empty(self.n_face, dtype=np.float64)
-        cy = np.empty(self.n_face, dtype=np.float64)
-
         fnc = self._face_node_connectivity
-        for i in range(self.n_face):
-            nodes = fnc.get_element(i)
-            cx[i] = self._node_x[nodes].mean()
-            cy[i] = self._node_y[nodes].mean()
+        masked = fnc.as_masked()
+        valid_counts = fnc.nodes_per_element().astype(np.float64)
+
+        padded_idx = np.where(masked.mask, 0, masked.data)
+        all_x = self._node_x[padded_idx]
+        all_y = self._node_y[padded_idx]
+        all_x[masked.mask] = 0.0
+        all_y[masked.mask] = 0.0
+
+        cx = all_x.sum(axis=1) / valid_counts
+        cy = all_y.sum(axis=1) / valid_counts
 
         self._cached_face_centroids = (cx, cy)
         return self._cached_face_centroids
@@ -157,20 +161,30 @@ class Mesh2d:
         if self._cached_face_areas is not None:
             return self._cached_face_areas
 
-        areas = np.empty(self.n_face, dtype=np.float64)
         fnc = self._face_node_connectivity
+        masked = fnc.as_masked()
+        padded_idx = np.where(masked.mask, 0, masked.data)
 
+        x = self._node_x[padded_idx]
+        y = self._node_y[padded_idx]
+        x[masked.mask] = 0.0
+        y[masked.mask] = 0.0
+
+        x_next = np.roll(x, -1, axis=1)
+        y_next = np.roll(y, -1, axis=1)
+
+        cross = x * y_next - x_next * y
+        cross[masked.mask] = 0.0
+
+        last_valid = fnc.nodes_per_element() - 1
         for i in range(self.n_face):
-            nodes = fnc.get_element(i)
-            x = self._node_x[nodes]
-            y = self._node_y[nodes]
-            n = len(nodes)
-            area = 0.0
-            for j in range(n):
-                j_next = (j + 1) % n
-                area += x[j] * y[j_next] - x[j_next] * y[j]
-            areas[i] = abs(area) * 0.5
+            li = last_valid[i]
+            if li < fnc.max_nodes_per_element - 1:
+                cross[i, li] = (
+                    x[i, li] * y[i, 0] - x[i, 0] * y[i, li]
+                )
 
+        areas = np.abs(cross.sum(axis=1)) * 0.5
         self._cached_face_areas = areas
         return self._cached_face_areas
 
@@ -200,6 +214,10 @@ class Mesh2d:
             for j in range(1, n - 1):
                 triangles.append([int(nodes[0]), int(nodes[j]), int(nodes[j + 1])])
 
+        if not triangles:
+            raise ValueError(
+                "Cannot create triangulation: no faces with 3 or more nodes."
+            )
         tri_array = np.array(triangles, dtype=np.intp)
         self._cached_triangulation = mtri.Triangulation(
             self._node_x, self._node_y, tri_array

@@ -90,6 +90,7 @@ class MeshVariable:
     standard_name: str | None = None
     _data: np.ndarray | None = field(default=None, repr=False)
     _loader: Any = field(default=None, repr=False)
+    _dtype: np.dtype | None = field(default=None, repr=False)
 
     @property
     def data(self) -> np.ndarray | None:
@@ -118,8 +119,17 @@ class MeshVariable:
 
     @property
     def dtype(self) -> np.dtype:
-        """Data type of the variable."""
-        result = self.data.dtype if self.data is not None else np.dtype("float64")
+        """Data type of the variable.
+
+        Returns the explicitly set dtype if available, falls back to
+        the loaded data's dtype, and defaults to float64.
+        """
+        if self._dtype is not None:
+            result = self._dtype
+        elif self._data is not None:
+            result = self._data.dtype
+        else:
+            result = np.dtype("float64")
         return result
 
     def sel_time(self, index: int) -> np.ndarray:

@@ -234,3 +234,94 @@ class TestCreateFromArrays:
             epsg=32631,
         )
         assert ds.epsg == 32631, f"Expected EPSG 32631, got {ds.epsg}"
+
+
+class TestEdgeGeoDataFrame:
+    """Tests for to_geodataframe with edge location (M9)."""
+
+    def test_edge_geodataframe(self):
+        """Test converting edges to GeoDataFrame with LineStrings.
+
+        Test scenario:
+            Build edge connectivity, then convert edges to LineStrings.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+        )
+        ds.mesh.build_edge_connectivity()
+        gdf = ds.to_geodataframe(location="edge")
+        assert len(gdf) == 3, f"Expected 3 edge rows, got {len(gdf)}"
+        assert gdf.geometry.iloc[0].geom_type == "LineString", (
+            f"Expected LineString, got {gdf.geometry.iloc[0].geom_type}"
+        )
+
+    def test_edge_no_connectivity_raises(self):
+        """Test to_geodataframe raises when edge connectivity missing.
+
+        Test scenario:
+            Without edge connectivity, should raise ValueError.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+        )
+        with pytest.raises(ValueError, match="Edge connectivity"):
+            ds.to_geodataframe(location="edge")
+
+
+class TestToFeatureCollection:
+    """Tests for to_feature_collection (M10)."""
+
+    def test_feature_collection(self):
+        """Test converting mesh to FeatureCollection.
+
+        Test scenario:
+            Should wrap GeoDataFrame in a FeatureCollection.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+            data={"elev": np.array([5.0])},
+            data_locations={"elev": "face"},
+        )
+        from pyramids.feature import FeatureCollection
+        fc = ds.to_feature_collection("elev", location="face")
+        assert isinstance(fc, FeatureCollection), (
+            f"Expected FeatureCollection, got {type(fc)}"
+        )
+
+
+class TestTemporalWrite:
+    """Tests for temporal data write round-trip (M11)."""
+
+    def test_temporal_write_round_trip(self, tmp_path):
+        """Test writing and reading temporal data.
+
+        Test scenario:
+            Create dataset with 2D temporal data, write, read back,
+            verify time dimension and values are preserved.
+        """
+        temporal_data = np.array([[1.0, 2.0], [3.0, 4.0]])
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2], [1, 3, 2]]),
+            data={"wl": temporal_data},
+            data_locations={"wl": "face"},
+        )
+        out_path = tmp_path / "temporal.nc"
+        ds.to_file(out_path)
+
+        ds2 = UgridDataset.read_file(out_path)
+        assert "wl" in ds2.data_variable_names, "Should have wl variable"
+        var = ds2["wl"]
+        assert var.has_time, "Should have time dimension"
+        assert var.n_time_steps == 2, f"Expected 2 time steps, got {var.n_time_steps}"
+        np.testing.assert_array_almost_equal(
+            var.data, temporal_data,
+            err_msg="Temporal data should survive round-trip",
+        )

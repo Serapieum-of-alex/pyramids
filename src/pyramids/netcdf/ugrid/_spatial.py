@@ -206,22 +206,19 @@ class MeshSpatialIndex:
         Returns:
             Array of face indices, -1 for points outside mesh.
         """
-        from shapely.geometry import Point
+        import shapely
 
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
         result = np.full(len(x), -1, dtype=np.intp)
 
+        points = shapely.points(x, y)
         strtree = self.face_strtree
-        polygons = self.face_polygons
+        geom_idx, point_idx = strtree.query(points, predicate="within")
 
-        for i in range(len(x)):
-            pt = Point(x[i], y[i])
-            candidates = strtree.query(pt)
-            for idx in candidates:
-                if polygons[idx].contains(pt):
-                    result[i] = idx
-                    break
+        for gi, pi in zip(geom_idx, point_idx):
+            if result[pi] == -1:
+                result[pi] = gi
 
         return result
 
@@ -258,17 +255,16 @@ def clip_mesh(
     else:
         mask_geom = mask
 
-    selected_faces: list[int] = []
-    for i in range(mesh.n_face):
-        coords = mesh.get_face_polygon(i)
-        closed = np.vstack([coords, coords[0:1]])
-        face_poly = Polygon(closed)
-        if touch:
-            if face_poly.intersects(mask_geom):
-                selected_faces.append(i)
-        else:
-            if mask_geom.contains(face_poly):
-                selected_faces.append(i)
+    from shapely import STRtree
+
+    spatial_idx = MeshSpatialIndex(mesh)
+    face_polys = spatial_idx.face_polygons
+    tree = STRtree(face_polys)
+
+    predicate = "intersects" if touch else "contains"
+    candidates = tree.query(mask_geom, predicate=predicate)
+
+    selected_faces = sorted(int(c) for c in candidates)
 
     result = _subset_mesh_by_face_indices(dataset, selected_faces)
     return result
