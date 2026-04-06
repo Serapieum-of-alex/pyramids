@@ -12,9 +12,11 @@ from pyramids.netcdf.models import (
     StructuralInfo,
 )
 from pyramids.netcdf.netcdf import NetCDF
+from pyramids.netcdf.ugrid import UgridDataset
 
 __all__ = [
     "NetCDF",
+    "UgridDataset",
     "NetCDFMetadata",
     "CFInfo",
     "DimensionInfo",
