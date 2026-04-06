@@ -619,7 +619,7 @@ class Config:
         The YAML file is expected to live under pyramids/base/<config_file>.
 
         Returns:
-            dict: Parsed configuration values.
+            dict[str, Any]: Parsed configuration values.
 
         Raises:
             FileNotFoundError: If the configuration file is not found.

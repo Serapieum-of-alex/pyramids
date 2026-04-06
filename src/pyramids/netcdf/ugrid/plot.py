@@ -29,7 +29,7 @@ def plot_mesh_data(
     edgecolor: str = "none",
     colorbar: bool = True,
     title: str | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> Any:
     """Plot mesh data using matplotlib triangulation.
 
@@ -128,7 +128,7 @@ def plot_mesh_outline(
     ax: Any = None,
     color: str = "black",
     linewidth: float = 0.3,
-    **kwargs,
+    **kwargs: Any,
 ) -> Any:
     """Plot mesh edges as a wireframe.
 

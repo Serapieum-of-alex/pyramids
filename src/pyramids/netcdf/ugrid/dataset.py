@@ -644,7 +644,7 @@ class UgridDataset:
         ax: Any = None,
         cmap: str = "viridis",
         title: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Any:
         """Plot a mesh data variable.
 
@@ -672,7 +672,7 @@ class UgridDataset:
         )
         return result
 
-    def plot_outline(self, ax: Any = None, **kwargs) -> Any:
+    def plot_outline(self, ax: Any = None, **kwargs: Any) -> Any:
         """Plot mesh wireframe.
 
         Args:

@@ -20,7 +20,9 @@ from pyramids.netcdf.cf import (
     write_attributes_to_md_array,
     write_global_attributes,
 )
-from pyramids.netcdf.ugrid.models import MeshTopologyInfo
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.mesh import Mesh2d
+from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable
 from pyramids.netcdf.utils import _read_attributes
 
 
@@ -221,7 +223,7 @@ def _detect_crs(rg: gdal.Group, node_x_var: str) -> str | None:
 
 def write_ugrid_topology(
     rg: gdal.Group,
-    mesh: "Mesh2d",
+    mesh: Mesh2d,
     mesh_name: str = "mesh2d",
     crs_wkt: str | None = None,
 ) -> dict[str, Any]:
@@ -345,7 +347,7 @@ def _write_connectivity_array(
     rg: gdal.Group,
     name: str,
     dims: list,
-    conn: "Connectivity",
+    conn: Connectivity,
 ) -> None:
     """Write a connectivity array to the GDAL group.
 
@@ -375,7 +377,7 @@ def _write_connectivity_array(
 
 def write_ugrid_data_variable(
     rg: gdal.Group,
-    var: "MeshVariable",
+    var: MeshVariable,
     mesh_name: str,
     dims: dict[str, Any],
 ) -> None:

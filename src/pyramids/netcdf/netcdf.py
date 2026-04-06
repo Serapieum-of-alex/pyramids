@@ -280,7 +280,7 @@ class NetCDF(Dataset):
         """File path, with the ``NETCDF:"path":var`` prefix stripped if present.
 
         Returns:
-            str: Clean file path.
+            str: Clean file path without the NETCDF prefix.
         """
         if self._file_name.startswith("NETCDF"):
             name = self._file_name.split(":")[1][1:-1]
@@ -293,8 +293,8 @@ class NetCDF(Dataset):
         """Time coordinate values parsed from the CF-compliant ``time`` variable.
 
         Returns:
-            list[str] or None: Formatted time strings, or None if no time
-            dimension with a ``units`` attribute is found.
+            list[str] | None: Formatted time strings, or None if no time
+                dimension with a ``units`` attribute is found.
         """
         return self.get_time_variable()
 
@@ -318,7 +318,10 @@ class NetCDF(Dataset):
         return super().plot(band=band, **kwargs)
 
     def read_array(
-        self, band: int | None = None, window=None, unpack: bool = False
+        self,
+        band: int | None = None,
+        window: list[int] | None = None,
+        unpack: bool = False,
     ) -> np.ndarray:
         """Read array from the dataset.
 
@@ -393,7 +396,7 @@ class NetCDF(Dataset):
         wrapped._gdal_rg_ref = None
         return wrapped
 
-    def crop(self, mask, touch: bool = True):
+    def crop(self, mask: Any, touch: bool = True) -> "NetCDF":
         """Crop the dataset using a polygon or raster mask.
 
         On a **root MDIM container** this crops every variable and
@@ -481,10 +484,10 @@ class NetCDF(Dataset):
 
     def to_crs(
         self,
-        to_epsg,
-        method="nearest neighbor",
-        maintain_alignment=False,
-    ):
+        to_epsg: int,
+        method: str = "nearest neighbor",
+        maintain_alignment: bool = False,
+    ) -> "NetCDF":
         """Reproject the dataset to a different CRS.
 
         On a **root MDIM container** this reprojects every variable
@@ -518,9 +521,9 @@ class NetCDF(Dataset):
 
     def resample(
         self,
-        cell_size,
-        method="nearest neighbor",
-    ):
+        cell_size: float,
+        method: str = "nearest neighbor",
+    ) -> "NetCDF":
         """Resample the dataset to a different cell size.
 
         On a **root MDIM container** this resamples every variable
@@ -547,7 +550,7 @@ class NetCDF(Dataset):
             result = self._preserve_netcdf_metadata(result)
         return result
 
-    def sel(self, **kwargs) -> NetCDF:
+    def sel(self, **kwargs: Any) -> NetCDF:
         """Select a subset of bands by coordinate values.
 
         Extracts bands whose coordinate values match the given
@@ -671,7 +674,7 @@ class NetCDF(Dataset):
     def read_file(  # type: ignore[override]
         cls,
         path: str | Path,
-        read_only=True,
+        read_only: bool = True,
         open_as_multi_dimensional: bool = True,
     ) -> NetCDF:
         """Open a NetCDF file from disk.
@@ -744,7 +747,9 @@ class NetCDF(Dataset):
         result = get_metadata(self._raster, open_options)
         return result
 
-    def get_time_variable(self, var_name="time", time_format: str = "%Y-%m-%d"):
+    def get_time_variable(
+        self, var_name: str = "time", time_format: str = "%Y-%m-%d"
+    ) -> list[str] | None:
         """Parse the time coordinate variable into formatted date strings.
 
         Reads the ``units`` attribute (e.g., ``"days since 1979-01-01"``)
@@ -1305,7 +1310,7 @@ class NetCDF(Dataset):
         """Whether this dataset was opened in multidimensional mode.
 
         Returns:
-            bool: True if the dataset was opened with
+            bool: True if the dataset was opened via
                 ``gdal.OF_MULTIDIM_RASTER`` and supports groups,
                 MDArrays, and dimensions.
         """
@@ -1314,7 +1319,7 @@ class NetCDF(Dataset):
     def to_file(  # type: ignore[override]
         self,
         path: str | Path,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Save the dataset to disk.
 
@@ -2005,7 +2010,7 @@ class NetCDF(Dataset):
         self._invalidate_caches()
 
     def crop_variable(
-        self, variable_name: str, mask, touch: bool = True
+        self, variable_name: str, mask: Any, touch: bool = True
     ) -> NetCDF:
         """Crop a single variable and store the result back.
 

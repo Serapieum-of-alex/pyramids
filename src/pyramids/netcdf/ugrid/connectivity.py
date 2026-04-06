@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from osgeo import gdal
 
 from pyramids.netcdf.utils import _read_attributes
 
@@ -37,7 +38,7 @@ class Connectivity:
     original_start_index: int
 
     @classmethod
-    def from_gdal_array(cls, md_arr, cf_role: str) -> Connectivity:
+    def from_gdal_array(cls, md_arr: gdal.MDArray, cf_role: str) -> Connectivity:
         """Read connectivity from a GDAL MDArray, normalizing start_index.
 
         Reads the raw index array, subtracts start_index if it is 1,

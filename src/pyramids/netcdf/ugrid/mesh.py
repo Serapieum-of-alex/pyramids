@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+from osgeo import gdal
 
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo
@@ -347,7 +348,7 @@ class Mesh2d:
     @classmethod
     def from_gdal_group(
         cls,
-        rg,
+        rg: gdal.Group,
         topo_info: MeshTopologyInfo,
     ) -> Mesh2d:
         """Build Mesh2d from a GDAL root group and parsed topology info.
