@@ -405,7 +405,7 @@ class DatasetCollection:
                 Index of the dataset to access.
 
         Returns:
-            Dataset: Dataset object.
+            Dataset: The dataset at position ``i``.
         """
         if not hasattr(self, "values"):
             raise DatasetNotFoundError("please read the dataset first")

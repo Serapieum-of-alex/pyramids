@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
+from collections.abc import Callable
 from typing import Any, TypeAlias, cast
 
 from osgeo import gdal, osr
@@ -444,7 +445,7 @@ def create_time_conversion_func(
     units: str,
     out_format: str = "%Y-%m-%d %H:%M:%S",
     calendar: str = "standard",
-):
+) -> Callable:
     """Create a converter that maps numeric CF time offsets to date strings.
 
     Parses CF-compliant time unit strings (e.g.,

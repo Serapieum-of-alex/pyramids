@@ -34,6 +34,7 @@ dependencies = [
     "pyproj >=3.7.0",
     "PyYAML >=6.0.0",
     "Shapely >=2.0.0",
+    "scipy >=1.10.0",
 ]
 
 [project.optional-dependencies]
@@ -229,6 +230,9 @@ python = "3.12.*"
 python = "3.13.*"
 [tool.pixi.feature.py314.dependencies]
 python = "3.14.*"
+
+[tool.pixi.feature.dev.dependencies]
+scipy = ">=1.17.1,<2"
 
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"
