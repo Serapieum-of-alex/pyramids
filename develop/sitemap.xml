@@ -129,6 +129,66 @@
          <lastmod>2026-04-06</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/dimensions/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/metadata/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/models/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/utils/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/cf/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/connectivity/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/dataset/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/interpolation/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/io/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/mesh/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/models/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/plot/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/spatial/</loc>
+         <lastmod>2026-04-06</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/datacube-basics/</loc>
          <lastmod>2026-04-06</lastmod>
     </url>
