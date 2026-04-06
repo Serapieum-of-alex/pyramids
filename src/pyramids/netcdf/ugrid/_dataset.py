@@ -307,6 +307,131 @@ class UgridDataset:
         result = subset_by_bounds(self, xmin, ymin, xmax, ymax)
         return result
 
+    def to_crs(self, to_epsg: int) -> "UgridDataset":
+        """Reproject all node coordinates to a new CRS.
+
+        Uses pyproj.Transformer to reproject node coordinates.
+        Face/edge center coordinates are recomputed after reprojection.
+        Data values are preserved — only coordinates change.
+
+        Args:
+            to_epsg: Target EPSG code.
+
+        Returns:
+            New UgridDataset with reprojected coordinates.
+        """
+        from osgeo import osr
+        from pyproj import Transformer
+
+        from pyramids.netcdf.ugrid._connectivity import Connectivity
+
+        source_epsg = self.epsg
+        if source_epsg is None:
+            raise ValueError(
+                "Cannot reproject: source CRS is unknown. "
+                "Set CRS before calling to_crs()."
+            )
+
+        transformer = Transformer.from_crs(
+            f"EPSG:{source_epsg}", f"EPSG:{to_epsg}", always_xy=True,
+        )
+        new_node_x, new_node_y = transformer.transform(
+            self._mesh.node_x, self._mesh.node_y,
+        )
+
+        new_mesh = Mesh2d(
+            node_x=new_node_x,
+            node_y=new_node_y,
+            face_node_connectivity=self._mesh.face_node_connectivity,
+            edge_node_connectivity=self._mesh.edge_node_connectivity,
+        )
+
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(to_epsg)
+        new_crs_wkt = srs.ExportToWkt()
+
+        result = UgridDataset(
+            mesh=new_mesh,
+            data_variables=self._data_variables,
+            global_attributes=self._global_attributes,
+            topology_info=self._topology_info,
+            crs_wkt=new_crs_wkt,
+        )
+        return result
+
+    @property
+    def time_values(self) -> list | None:
+        """Parsed time coordinate values from the first temporal variable.
+
+        Returns None if no variables have a time dimension.
+        """
+        for var in self._data_variables.values():
+            if var.has_time:
+                time_attr = var.attributes.get("time_values")
+                if time_attr is not None:
+                    return list(time_attr)
+                return list(range(var.n_time_steps))
+        result = None
+        return result
+
+    def sel_time(self, index: int) -> "UgridDataset":
+        """Select a single time step from all temporal variables.
+
+        Non-temporal variables are kept unchanged.
+
+        Args:
+            index: Time step index.
+
+        Returns:
+            New UgridDataset with single time step data.
+        """
+        new_data_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if var.has_time:
+                sliced_data = var.sel_time(index)
+                new_data_vars[name] = MeshVariable(
+                    name=var.name, location=var.location,
+                    mesh_name=var.mesh_name, shape=sliced_data.shape,
+                    attributes=var.attributes, nodata=var.nodata,
+                    units=var.units, standard_name=var.standard_name,
+                    _data=sliced_data,
+                )
+            else:
+                new_data_vars[name] = var
+
+        result = UgridDataset(
+            mesh=self._mesh, data_variables=new_data_vars,
+            global_attributes=self._global_attributes,
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+        )
+        return result
+
+    def sel_time_range(self, start: int, stop: int) -> "UgridDataset":
+        """Select a time range from all temporal variables.
+
+        Args:
+            start: Start index (inclusive).
+            stop: Stop index (exclusive).
+
+        Returns:
+            New UgridDataset with the selected time range.
+        """
+        new_data_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if var.has_time:
+                new_data_vars[name] = var.sel_time_range(start, stop)
+            else:
+                new_data_vars[name] = var
+
+        result = UgridDataset(
+            mesh=self._mesh, data_variables=new_data_vars,
+            global_attributes=self._global_attributes,
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+        )
+        return result
+
     def to_file(self, path: str | Path) -> None:
         """Write to a UGRID-compliant NetCDF file.
 
