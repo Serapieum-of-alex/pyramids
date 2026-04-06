@@ -1,0 +1,450 @@
+"""2D unstructured mesh topology class.
+
+Provides the Mesh2d class that holds node coordinates, face/edge
+connectivity arrays, and derived geometric properties (centroids,
+areas, triangulation) for UGRID 2D meshes.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import numpy as np
+
+from pyramids.netcdf.ugrid._connectivity import Connectivity
+from pyramids.netcdf.ugrid._models import MeshTopologyInfo
+from pyramids.netcdf.utils import _read_attributes
+
+
+class Mesh2d:
+    """2D unstructured mesh topology.
+
+    Holds node coordinates, connectivity arrays, and optional face/edge
+    center coordinates. Provides lazy-computed geometric properties
+    (centroids, areas, triangulation) and element access methods.
+
+    This class does NOT inherit from Dataset or AbstractDataset.
+    It holds pure numpy arrays and Connectivity wrappers, with no
+    reference to GDAL objects.
+    """
+
+    def __init__(
+        self,
+        node_x: np.ndarray,
+        node_y: np.ndarray,
+        face_node_connectivity: Connectivity,
+        edge_node_connectivity: Connectivity | None = None,
+        face_edge_connectivity: Connectivity | None = None,
+        face_face_connectivity: Connectivity | None = None,
+        edge_face_connectivity: Connectivity | None = None,
+        face_x: np.ndarray | None = None,
+        face_y: np.ndarray | None = None,
+        edge_x: np.ndarray | None = None,
+        edge_y: np.ndarray | None = None,
+        crs: Any = None,
+    ):
+        self._node_x = np.asarray(node_x, dtype=np.float64)
+        self._node_y = np.asarray(node_y, dtype=np.float64)
+        self._face_node_connectivity = face_node_connectivity
+        self._edge_node_connectivity = edge_node_connectivity
+        self._face_edge_connectivity = face_edge_connectivity
+        self._face_face_connectivity = face_face_connectivity
+        self._edge_face_connectivity = edge_face_connectivity
+        self._face_x = face_x
+        self._face_y = face_y
+        self._edge_x = edge_x
+        self._edge_y = edge_y
+        self._crs = crs
+        self._cached_face_centroids: tuple[np.ndarray, np.ndarray] | None = None
+        self._cached_face_areas: np.ndarray | None = None
+        self._cached_triangulation: Any = None
+
+    @property
+    def node_x(self) -> np.ndarray:
+        """Node x-coordinates array (n_node,)."""
+        return self._node_x
+
+    @property
+    def node_y(self) -> np.ndarray:
+        """Node y-coordinates array (n_node,)."""
+        return self._node_y
+
+    @property
+    def face_node_connectivity(self) -> Connectivity:
+        """Face-to-node connectivity array."""
+        return self._face_node_connectivity
+
+    @property
+    def edge_node_connectivity(self) -> Connectivity | None:
+        """Edge-to-node connectivity array, or None if not available."""
+        return self._edge_node_connectivity
+
+    @property
+    def face_edge_connectivity(self) -> Connectivity | None:
+        """Face-to-edge connectivity array, or None."""
+        return self._face_edge_connectivity
+
+    @property
+    def face_face_connectivity(self) -> Connectivity | None:
+        """Face-to-face (neighbor) connectivity array, or None."""
+        return self._face_face_connectivity
+
+    @property
+    def edge_face_connectivity(self) -> Connectivity | None:
+        """Edge-to-face connectivity array, or None."""
+        return self._edge_face_connectivity
+
+    @property
+    def n_node(self) -> int:
+        """Number of nodes in the mesh."""
+        return len(self._node_x)
+
+    @property
+    def n_face(self) -> int:
+        """Number of faces in the mesh."""
+        return self._face_node_connectivity.n_elements
+
+    @property
+    def n_edge(self) -> int:
+        """Number of edges in the mesh. Returns 0 if edge connectivity is not available."""
+        result = self._edge_node_connectivity.n_elements if self._edge_node_connectivity is not None else 0
+        return result
+
+    @property
+    def bounds(self) -> tuple[float, float, float, float]:
+        """Mesh bounding box as (xmin, ymin, xmax, ymax)."""
+        result = (
+            float(self._node_x.min()),
+            float(self._node_y.min()),
+            float(self._node_x.max()),
+            float(self._node_y.max()),
+        )
+        return result
+
+    @property
+    def face_centroids(self) -> tuple[np.ndarray, np.ndarray]:
+        """Face centroid coordinates (cx, cy).
+
+        If face center coordinates were provided at construction,
+        those are returned. Otherwise, centroids are computed as
+        the mean of each face's node coordinates.
+        """
+        if self._cached_face_centroids is not None:
+            return self._cached_face_centroids
+
+        if self._face_x is not None and self._face_y is not None:
+            self._cached_face_centroids = (self._face_x, self._face_y)
+            return self._cached_face_centroids
+
+        cx = np.empty(self.n_face, dtype=np.float64)
+        cy = np.empty(self.n_face, dtype=np.float64)
+
+        fnc = self._face_node_connectivity
+        for i in range(self.n_face):
+            nodes = fnc.get_element(i)
+            cx[i] = self._node_x[nodes].mean()
+            cy[i] = self._node_y[nodes].mean()
+
+        self._cached_face_centroids = (cx, cy)
+        return self._cached_face_centroids
+
+    @property
+    def face_areas(self) -> np.ndarray:
+        """Face areas computed using the shoelace formula.
+
+        Returns a 1D array of length n_face with the area of each face.
+        """
+        if self._cached_face_areas is not None:
+            return self._cached_face_areas
+
+        areas = np.empty(self.n_face, dtype=np.float64)
+        fnc = self._face_node_connectivity
+
+        for i in range(self.n_face):
+            nodes = fnc.get_element(i)
+            x = self._node_x[nodes]
+            y = self._node_y[nodes]
+            n = len(nodes)
+            area = 0.0
+            for j in range(n):
+                j_next = (j + 1) % n
+                area += x[j] * y[j_next] - x[j_next] * y[j]
+            areas[i] = abs(area) * 0.5
+
+        self._cached_face_areas = areas
+        return self._cached_face_areas
+
+    @property
+    def triangulation(self) -> Any:
+        """Matplotlib Triangulation for rendering mixed meshes.
+
+        Uses fan triangulation: each face with N nodes is decomposed
+        into (N-2) triangles by fanning from the first vertex.
+
+        Returns:
+            matplotlib.tri.Triangulation instance.
+        """
+        if self._cached_triangulation is not None:
+            return self._cached_triangulation
+
+        import matplotlib.tri as mtri
+
+        fnc = self._face_node_connectivity
+        triangles = []
+
+        for i in range(self.n_face):
+            nodes = fnc.get_element(i)
+            n = len(nodes)
+            if n < 3:
+                continue
+            for j in range(1, n - 1):
+                triangles.append([int(nodes[0]), int(nodes[j]), int(nodes[j + 1])])
+
+        tri_array = np.array(triangles, dtype=np.intp)
+        self._cached_triangulation = mtri.Triangulation(
+            self._node_x, self._node_y, tri_array
+        )
+        return self._cached_triangulation
+
+    def get_face_nodes(self, face_idx: int) -> np.ndarray:
+        """Return valid node indices for a single face.
+
+        Args:
+            face_idx: Face index.
+
+        Returns:
+            1D array of node indices (excluding fill values).
+        """
+        result = self._face_node_connectivity.get_element(face_idx)
+        return result
+
+    def get_face_polygon(self, face_idx: int) -> np.ndarray:
+        """Return the coordinate array for a face's boundary.
+
+        Args:
+            face_idx: Face index.
+
+        Returns:
+            (N, 2) array of (x, y) coordinates for the face vertices.
+        """
+        nodes = self.get_face_nodes(face_idx)
+        coords = np.column_stack([self._node_x[nodes], self._node_y[nodes]])
+        return coords
+
+    def get_edge_coords(self, edge_idx: int) -> tuple[np.ndarray, np.ndarray]:
+        """Return start and end coordinates for an edge.
+
+        Args:
+            edge_idx: Edge index.
+
+        Returns:
+            Tuple of (start_xy, end_xy) where each is a (2,) array.
+
+        Raises:
+            ValueError: If edge connectivity is not available.
+        """
+        if self._edge_node_connectivity is None:
+            raise ValueError("Edge connectivity is not available.")
+        nodes = self._edge_node_connectivity.get_element(edge_idx)
+        start = np.array([self._node_x[nodes[0]], self._node_y[nodes[0]]])
+        end = np.array([self._node_x[nodes[1]], self._node_y[nodes[1]]])
+        return start, end
+
+    def build_edge_connectivity(self) -> None:
+        """Derive edge_node_connectivity from face_node_connectivity.
+
+        Iterates all face edges, deduplicates by sorted node pairs,
+        and builds an edge-to-node connectivity array. Updates the
+        internal edge_node_connectivity attribute.
+        """
+        seen_edges: dict[tuple[int, int], int] = {}
+        edges: list[tuple[int, int]] = []
+        fnc = self._face_node_connectivity
+
+        for i in range(self.n_face):
+            nodes = fnc.get_element(i)
+            n = len(nodes)
+            for j in range(n):
+                n1 = int(nodes[j])
+                n2 = int(nodes[(j + 1) % n])
+                edge_key = (min(n1, n2), max(n1, n2))
+                if edge_key not in seen_edges:
+                    seen_edges[edge_key] = len(edges)
+                    edges.append(edge_key)
+
+        edge_data = np.array(edges, dtype=np.intp)
+        self._edge_node_connectivity = Connectivity(
+            data=edge_data,
+            fill_value=-1,
+            cf_role="edge_node_connectivity",
+            original_start_index=0,
+        )
+
+    def build_face_face_connectivity(self) -> None:
+        """Derive face neighbors from shared edges.
+
+        Two faces are neighbors if they share an edge (two nodes).
+        Builds the face_face_connectivity array where each row
+        contains the indices of neighboring faces, padded with -1.
+        """
+        edge_to_faces: dict[tuple[int, int], list[int]] = {}
+        fnc = self._face_node_connectivity
+
+        for i in range(self.n_face):
+            nodes = fnc.get_element(i)
+            n = len(nodes)
+            for j in range(n):
+                n1 = int(nodes[j])
+                n2 = int(nodes[(j + 1) % n])
+                edge_key = (min(n1, n2), max(n1, n2))
+                if edge_key not in edge_to_faces:
+                    edge_to_faces[edge_key] = []
+                edge_to_faces[edge_key].append(i)
+
+        neighbors: list[list[int]] = [[] for _ in range(self.n_face)]
+        for faces_list in edge_to_faces.values():
+            if len(faces_list) == 2:
+                f1, f2 = faces_list
+                if f2 not in neighbors[f1]:
+                    neighbors[f1].append(f2)
+                if f1 not in neighbors[f2]:
+                    neighbors[f2].append(f1)
+
+        max_neighbors = max(len(n) for n in neighbors) if neighbors else 0
+        if max_neighbors == 0:
+            max_neighbors = 1
+
+        ff_data = np.full((self.n_face, max_neighbors), -1, dtype=np.intp)
+        for i, neigh in enumerate(neighbors):
+            for j, f_idx in enumerate(neigh):
+                ff_data[i, j] = f_idx
+
+        self._face_face_connectivity = Connectivity(
+            data=ff_data,
+            fill_value=-1,
+            cf_role="face_face_connectivity",
+            original_start_index=0,
+        )
+
+    @classmethod
+    def from_gdal_group(
+        cls,
+        rg,
+        topo_info: MeshTopologyInfo,
+    ) -> Mesh2d:
+        """Build Mesh2d from a GDAL root group and parsed topology info.
+
+        Reads node coordinates, connectivity arrays, and optional
+        face/edge center coordinates from the GDAL group using the
+        variable names specified in the MeshTopologyInfo.
+
+        Args:
+            rg: GDAL root group from a multidimensional NetCDF file.
+            topo_info: Parsed UGRID topology metadata.
+
+        Returns:
+            Mesh2d instance with all available mesh components.
+
+        Raises:
+            ValueError: If required node coordinate arrays cannot be read.
+        """
+        node_x_arr = rg.OpenMDArray(topo_info.node_x_var)
+        node_y_arr = rg.OpenMDArray(topo_info.node_y_var)
+        if node_x_arr is None or node_y_arr is None:
+            raise ValueError(
+                f"Cannot read node coordinate arrays: "
+                f"{topo_info.node_x_var}, {topo_info.node_y_var}"
+            )
+        node_x = node_x_arr.ReadAsArray().astype(np.float64)
+        node_y = node_y_arr.ReadAsArray().astype(np.float64)
+
+        face_node_conn = None
+        if topo_info.face_node_var:
+            fnc_arr = rg.OpenMDArray(topo_info.face_node_var)
+            if fnc_arr is not None:
+                face_node_conn = Connectivity.from_gdal_array(
+                    fnc_arr, "face_node_connectivity"
+                )
+
+        edge_node_conn = None
+        if topo_info.edge_node_var:
+            enc_arr = rg.OpenMDArray(topo_info.edge_node_var)
+            if enc_arr is not None:
+                edge_node_conn = Connectivity.from_gdal_array(
+                    enc_arr, "edge_node_connectivity"
+                )
+
+        face_edge_conn = None
+        if topo_info.face_edge_var:
+            fec_arr = rg.OpenMDArray(topo_info.face_edge_var)
+            if fec_arr is not None:
+                face_edge_conn = Connectivity.from_gdal_array(
+                    fec_arr, "face_edge_connectivity"
+                )
+
+        face_face_conn = None
+        if topo_info.face_face_var:
+            ffc_arr = rg.OpenMDArray(topo_info.face_face_var)
+            if ffc_arr is not None:
+                face_face_conn = Connectivity.from_gdal_array(
+                    ffc_arr, "face_face_connectivity"
+                )
+
+        edge_face_conn = None
+        if topo_info.edge_face_var:
+            efc_arr = rg.OpenMDArray(topo_info.edge_face_var)
+            if efc_arr is not None:
+                edge_face_conn = Connectivity.from_gdal_array(
+                    efc_arr, "edge_face_connectivity"
+                )
+
+        face_x = None
+        face_y = None
+        if topo_info.face_x_var:
+            fx_arr = rg.OpenMDArray(topo_info.face_x_var)
+            if fx_arr is not None:
+                face_x = fx_arr.ReadAsArray().astype(np.float64)
+        if topo_info.face_y_var:
+            fy_arr = rg.OpenMDArray(topo_info.face_y_var)
+            if fy_arr is not None:
+                face_y = fy_arr.ReadAsArray().astype(np.float64)
+
+        edge_x = None
+        edge_y = None
+        if topo_info.edge_x_var:
+            ex_arr = rg.OpenMDArray(topo_info.edge_x_var)
+            if ex_arr is not None:
+                edge_x = ex_arr.ReadAsArray().astype(np.float64)
+        if topo_info.edge_y_var:
+            ey_arr = rg.OpenMDArray(topo_info.edge_y_var)
+            if ey_arr is not None:
+                edge_y = ey_arr.ReadAsArray().astype(np.float64)
+
+        crs = None
+        if topo_info.crs_wkt:
+            try:
+                from pyproj import CRS
+                crs = CRS.from_wkt(topo_info.crs_wkt)
+            except Exception:
+                crs = None
+
+        if face_node_conn is None:
+            raise ValueError(
+                f"Cannot read face_node_connectivity for mesh '{topo_info.mesh_name}'."
+            )
+
+        result = cls(
+            node_x=node_x,
+            node_y=node_y,
+            face_node_connectivity=face_node_conn,
+            edge_node_connectivity=edge_node_conn,
+            face_edge_connectivity=face_edge_conn,
+            face_face_connectivity=face_face_conn,
+            edge_face_connectivity=edge_face_conn,
+            face_x=face_x,
+            face_y=face_y,
+            edge_x=edge_x,
+            edge_y=edge_y,
+            crs=crs,
+        )
+        return result
