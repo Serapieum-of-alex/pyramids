@@ -1,0 +1,217 @@
+"""Unit tests for UGRID write, GeoDataFrame interop, and create_from_arrays.
+
+Covers UGRID-15 (write), UGRID-16 (GeoDataFrame), UGRID-17 (create from arrays).
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from pyramids.netcdf.ugrid._dataset import UgridDataset
+from pyramids.netcdf.ugrid._models import MeshVariable
+
+
+class TestWriteUgrid:
+    """Tests for UgridDataset.to_file() (UGRID-15)."""
+
+    def test_write_and_read_round_trip(self, tmp_path):
+        """Test write then read produces consistent data.
+
+        Test scenario:
+            Create a simple mesh, write to file, read back,
+            verify topology and data match.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+            data={"elevation": np.array([5.0])},
+            data_locations={"elevation": "face"},
+            epsg=4326,
+        )
+        out_path = tmp_path / "test_ugrid.nc"
+        ds.to_file(out_path)
+        assert out_path.exists(), "Output file should exist"
+
+        ds2 = UgridDataset.read_file(out_path)
+        assert ds2.n_node == 3, f"Expected 3 nodes, got {ds2.n_node}"
+        assert ds2.n_face == 1, f"Expected 1 face, got {ds2.n_face}"
+        assert "elevation" in ds2.data_variable_names, (
+            f"Expected 'elevation', got {ds2.data_variable_names}"
+        )
+
+    def test_write_mixed_mesh(self, tmp_path, mixed_mesh):
+        """Test writing a mixed mesh (quad + triangles).
+
+        Test scenario:
+            Write and read back a mixed mesh to verify connectivity
+            round-trip with fill values.
+        """
+        data_vars = {
+            "temp": MeshVariable(
+                name="temp", location="face", mesh_name="mesh2d",
+                shape=(3,), _data=np.array([1.0, 2.0, 3.0]),
+                units="K",
+            ),
+        }
+        from pyramids.netcdf.ugrid._models import MeshTopologyInfo
+        topo = MeshTopologyInfo(
+            mesh_name="mesh2d", topology_dimension=2,
+            node_x_var="mesh2d_node_x", node_y_var="mesh2d_node_y",
+            face_node_var="mesh2d_face_nodes",
+            data_variables={"temp": "face"},
+        )
+        ds = UgridDataset(
+            mesh=mixed_mesh, data_variables=data_vars,
+            global_attributes={"Conventions": "CF-1.8 UGRID-1.0"},
+            topology_info=topo,
+        )
+        out_path = tmp_path / "mixed.nc"
+        ds.to_file(out_path)
+
+        ds2 = UgridDataset.read_file(out_path)
+        assert ds2.n_face == 3, f"Expected 3 faces, got {ds2.n_face}"
+        assert ds2.n_node == 6, f"Expected 6 nodes, got {ds2.n_node}"
+
+    def test_western_scheldt_round_trip(self, western_scheldt_path, tmp_path):
+        """Test read-write-read round trip on real data.
+
+        Test scenario:
+            Read Western Scheldt, write to new file, read back,
+            verify node/face counts match.
+        """
+        ds1 = UgridDataset.read_file(western_scheldt_path)
+        out_path = tmp_path / "ws_roundtrip.nc"
+        ds1.to_file(out_path)
+
+        ds2 = UgridDataset.read_file(out_path)
+        assert ds2.n_node == ds1.n_node, (
+            f"Node count mismatch: {ds2.n_node} vs {ds1.n_node}"
+        )
+        assert ds2.n_face == ds1.n_face, (
+            f"Face count mismatch: {ds2.n_face} vs {ds1.n_face}"
+        )
+
+
+class TestToGeoDataFrame:
+    """Tests for UgridDataset.to_geodataframe() (UGRID-16)."""
+
+    def test_face_geodataframe(self):
+        """Test converting faces to GeoDataFrame.
+
+        Test scenario:
+            Each face should become a Polygon row.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2, 3]]),
+            data={"temp": np.array([25.0])},
+            data_locations={"temp": "face"},
+        )
+        gdf = ds.to_geodataframe("temp", location="face")
+        assert len(gdf) == 1, f"Expected 1 row, got {len(gdf)}"
+        assert gdf.geometry.iloc[0].geom_type == "Polygon", (
+            f"Expected Polygon, got {gdf.geometry.iloc[0].geom_type}"
+        )
+        assert "temp" in gdf.columns, f"Expected 'temp' column, got {list(gdf.columns)}"
+
+    def test_node_geodataframe(self):
+        """Test converting nodes to GeoDataFrame.
+
+        Test scenario:
+            Each node should become a Point row.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+        )
+        gdf = ds.to_geodataframe(location="node")
+        assert len(gdf) == 3, f"Expected 3 rows, got {len(gdf)}"
+        assert gdf.geometry.iloc[0].geom_type == "Point", (
+            f"Expected Point, got {gdf.geometry.iloc[0].geom_type}"
+        )
+
+    def test_no_variable(self):
+        """Test GeoDataFrame without data variable.
+
+        Test scenario:
+            Should produce a GeoDataFrame with geometry only.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+        )
+        gdf = ds.to_geodataframe(location="face")
+        assert len(gdf) == 1, f"Expected 1 row, got {len(gdf)}"
+        assert "geometry" in gdf.columns, "Should have geometry column"
+
+
+class TestCreateFromArrays:
+    """Tests for UgridDataset.create_from_arrays() (UGRID-17)."""
+
+    def test_basic_creation(self):
+        """Test creating a UgridDataset from raw arrays.
+
+        Test scenario:
+            Create a single triangle mesh.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+        )
+        assert ds.n_node == 3, f"Expected 3 nodes, got {ds.n_node}"
+        assert ds.n_face == 1, f"Expected 1 face, got {ds.n_face}"
+
+    def test_with_data(self):
+        """Test creating with data variables.
+
+        Test scenario:
+            Create mesh with temperature data on faces.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2, 3]]),
+            data={"temperature": np.array([20.0])},
+            data_locations={"temperature": "face"},
+        )
+        assert "temperature" in ds.data_variable_names, "Should have temperature variable"
+        assert ds["temperature"].data[0] == 20.0, "Temperature should be 20.0"
+
+    def test_mixed_mesh(self):
+        """Test creating a mixed mesh from arrays.
+
+        Test scenario:
+            Create mesh with tri and quad faces using -1 fill.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0]),
+            node_y=np.array([0.0, 0.0, 0.0, 1.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([
+                [0, 1, 4, 3],
+                [1, 2, 5, -1],
+            ]),
+        )
+        assert ds.n_face == 2, f"Expected 2 faces, got {ds.n_face}"
+        assert ds.n_node == 6, f"Expected 6 nodes, got {ds.n_node}"
+
+    def test_epsg_set(self):
+        """Test that EPSG is correctly set.
+
+        Test scenario:
+            Create with EPSG 32631 and verify.
+        """
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([500000.0, 500100.0, 500050.0]),
+            node_y=np.array([5600000.0, 5600000.0, 5600100.0]),
+            face_node_connectivity=np.array([[0, 1, 2]]),
+            epsg=32631,
+        )
+        assert ds.epsg == 32631, f"Expected EPSG 32631, got {ds.epsg}"

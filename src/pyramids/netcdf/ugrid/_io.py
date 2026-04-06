@@ -15,7 +15,11 @@ from typing import Any
 import numpy as np
 from osgeo import gdal
 
-from pyramids.netcdf.cf import grid_mapping_to_srs
+from pyramids.netcdf.cf import (
+    grid_mapping_to_srs,
+    write_attributes_to_md_array,
+    write_global_attributes,
+)
 from pyramids.netcdf.ugrid._models import MeshTopologyInfo
 from pyramids.netcdf.utils import _read_attributes
 
@@ -193,7 +197,10 @@ def _detect_crs(rg: gdal.Group, node_x_var: str) -> str | None:
         return crs_wkt
 
     for candidate in ("projected_coordinate_system", "crs", "spatial_ref"):
-        crs_arr = rg.OpenMDArray(candidate)
+        try:
+            crs_arr = rg.OpenMDArray(candidate)
+        except RuntimeError:
+            continue
         if crs_arr is None:
             continue
         crs_attrs = _read_attributes(crs_arr)
@@ -211,3 +218,188 @@ def _detect_crs(rg: gdal.Group, node_x_var: str) -> str | None:
             break
 
     return crs_wkt
+
+
+def write_ugrid_topology(
+    rg: gdal.Group,
+    mesh: Any,
+    mesh_name: str = "mesh2d",
+    crs_wkt: str | None = None,
+) -> dict[str, Any]:
+    """Write UGRID topology to a GDAL root group.
+
+    Creates the topology variable, node coordinate arrays,
+    connectivity arrays, and optional face/edge center coordinates.
+    Uses cf.write_attributes_to_md_array for all attribute writing.
+
+    Args:
+        rg: GDAL root group to write into.
+        mesh: Mesh2d instance.
+        mesh_name: Name for the topology variable.
+        crs_wkt: WKT CRS string (optional).
+
+    Returns:
+        Dict mapping dimension names to GDAL dimension objects,
+        for use when writing data variables.
+    """
+    dims: dict[str, Any] = {}
+
+    n_node_dim = rg.CreateDimension(f"{mesh_name}_nNodes", None, None, mesh.n_node)
+    n_face_dim = rg.CreateDimension(f"{mesh_name}_nFaces", None, None, mesh.n_face)
+    dims[f"{mesh_name}_nNodes"] = n_node_dim
+    dims[f"{mesh_name}_nFaces"] = n_face_dim
+
+    fnc = mesh.face_node_connectivity
+    max_fn_dim = rg.CreateDimension(
+        f"{mesh_name}_nMaxFaceNodes", None, None, fnc.max_nodes_per_element,
+    )
+    two_dim = rg.CreateDimension("Two", None, None, 2)
+
+    topo_dim = rg.CreateDimension(f"{mesh_name}_scalar", None, None, 1)
+    topo_arr = rg.CreateMDArray(
+        mesh_name, [topo_dim],
+        gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+    )
+    topo_attrs = {
+        "cf_role": "mesh_topology",
+        "topology_dimension": 2,
+        "node_coordinates": f"{mesh_name}_node_x {mesh_name}_node_y",
+        "face_node_connectivity": f"{mesh_name}_face_nodes",
+    }
+    if mesh.edge_node_connectivity is not None:
+        topo_attrs["edge_node_connectivity"] = f"{mesh_name}_edge_nodes"
+    if mesh._face_x is not None and mesh._face_y is not None:
+        topo_attrs["face_coordinates"] = f"{mesh_name}_face_x {mesh_name}_face_y"
+    write_attributes_to_md_array(topo_arr, topo_attrs)
+    topo_arr.Write(np.array([0], dtype=np.int32))
+
+    _write_coord_array(rg, f"{mesh_name}_node_x", [n_node_dim], mesh.node_x)
+    _write_coord_array(rg, f"{mesh_name}_node_y", [n_node_dim], mesh.node_y)
+
+    _write_connectivity_array(
+        rg, f"{mesh_name}_face_nodes",
+        [n_face_dim, max_fn_dim], fnc,
+    )
+
+    if mesh.edge_node_connectivity is not None:
+        enc = mesh.edge_node_connectivity
+        n_edge_dim = rg.CreateDimension(
+            f"{mesh_name}_nEdges", None, None, enc.n_elements,
+        )
+        dims[f"{mesh_name}_nEdges"] = n_edge_dim
+        _write_connectivity_array(
+            rg, f"{mesh_name}_edge_nodes",
+            [n_edge_dim, two_dim], enc,
+        )
+
+    if mesh._face_x is not None and mesh._face_y is not None:
+        _write_coord_array(rg, f"{mesh_name}_face_x", [n_face_dim], mesh._face_x)
+        _write_coord_array(rg, f"{mesh_name}_face_y", [n_face_dim], mesh._face_y)
+
+    return dims
+
+
+def _write_coord_array(
+    rg: gdal.Group,
+    name: str,
+    dims: list,
+    data: np.ndarray,
+) -> None:
+    """Write a coordinate array to the GDAL group.
+
+    Args:
+        rg: GDAL root group.
+        name: Variable name.
+        dims: List of GDAL dimensions.
+        data: 1D numpy array of coordinate values.
+    """
+    md_arr = rg.CreateMDArray(
+        name, dims, gdal.ExtendedDataType.Create(gdal.GDT_Float64),
+    )
+    md_arr.Write(data.astype(np.float64))
+
+
+def _write_connectivity_array(
+    rg: gdal.Group,
+    name: str,
+    dims: list,
+    conn: Any,
+) -> None:
+    """Write a connectivity array to the GDAL group.
+
+    Args:
+        rg: GDAL root group.
+        name: Variable name.
+        dims: List of GDAL dimensions.
+        conn: Connectivity instance.
+    """
+    md_arr = rg.CreateMDArray(
+        name, dims, gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+    )
+    out_data = conn.data.copy().astype(np.int32)
+    file_fill = -999
+    out_data[out_data == conn.fill_value] = file_fill
+    if conn.original_start_index != 0:
+        valid = out_data != file_fill
+        out_data[valid] += conn.original_start_index
+
+    md_arr.Write(out_data)
+    write_attributes_to_md_array(md_arr, {
+        "cf_role": conn.cf_role,
+        "start_index": conn.original_start_index,
+        "_FillValue": file_fill,
+    })
+
+
+def write_ugrid_data_variable(
+    rg: gdal.Group,
+    var: Any,
+    mesh_name: str,
+    dims: dict[str, Any],
+) -> None:
+    """Write a single data variable to the GDAL group.
+
+    Args:
+        rg: GDAL root group.
+        var: MeshVariable instance.
+        mesh_name: Name of the mesh topology variable.
+        dims: Dict mapping dimension names to GDAL dimension objects.
+    """
+    if var.data is None:
+        return
+
+    dim_list = []
+    if var.has_time and "time" in dims:
+        dim_list.append(dims["time"])
+
+    loc_dim_name = f"{mesh_name}_n{var.location.capitalize()}s"
+    if loc_dim_name in dims:
+        dim_list.append(dims[loc_dim_name])
+    else:
+        loc_dim = rg.CreateDimension(loc_dim_name, None, None, var.n_elements)
+        dims[loc_dim_name] = loc_dim
+        dim_list.append(loc_dim)
+
+    dtype_map = {
+        np.dtype("float64"): gdal.GDT_Float64,
+        np.dtype("float32"): gdal.GDT_Float32,
+        np.dtype("int32"): gdal.GDT_Int32,
+        np.dtype("int16"): gdal.GDT_Int16,
+    }
+    gdal_dt = dtype_map.get(var.dtype, gdal.GDT_Float64)
+
+    md_arr = rg.CreateMDArray(
+        var.name, dim_list,
+        gdal.ExtendedDataType.Create(gdal_dt),
+    )
+    md_arr.Write(var.data)
+
+    var_attrs = {"mesh": mesh_name, "location": var.location}
+    if var.units:
+        var_attrs["units"] = var.units
+    if var.standard_name:
+        var_attrs["standard_name"] = var.standard_name
+    if var.nodata is not None:
+        var_attrs["_FillValue"] = var.nodata
+
+    write_attributes_to_md_array(md_arr, var_attrs)

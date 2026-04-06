@@ -307,6 +307,199 @@ class UgridDataset:
         result = subset_by_bounds(self, xmin, ymin, xmax, ymax)
         return result
 
+    def to_file(self, path: str | Path) -> None:
+        """Write to a UGRID-compliant NetCDF file.
+
+        Creates a NetCDF file with topology variable, node coordinates,
+        connectivity arrays, face/edge centers, data variables, and
+        global attributes following the UGRID convention.
+
+        Args:
+            path: Output file path.
+        """
+        from pyramids.netcdf.ugrid._io import (
+            write_ugrid_data_variable,
+            write_ugrid_topology,
+        )
+        from pyramids.netcdf.cf import write_global_attributes
+
+        path = Path(path)
+        drv = gdal.GetDriverByName("netCDF")
+        ds = drv.CreateMultiDimensional(str(path))
+        rg = ds.GetRootGroup()
+
+        mesh_name = self.mesh_name
+        dims = write_ugrid_topology(rg, self._mesh, mesh_name, self._crs_wkt)
+
+        for var in self._data_variables.values():
+            write_ugrid_data_variable(rg, var, mesh_name, dims)
+
+        global_attrs = dict(self._global_attributes)
+        if "Conventions" not in global_attrs:
+            global_attrs["Conventions"] = "CF-1.8 UGRID-1.0"
+        write_global_attributes(rg, global_attrs)
+
+        ds = None
+
+    def to_geodataframe(
+        self,
+        variable_name: str | None = None,
+        location: str = "face",
+    ) -> Any:
+        """Convert mesh to a GeoDataFrame.
+
+        For faces: each row is a Polygon with data columns.
+        For nodes: each row is a Point.
+        For edges: each row is a LineString.
+
+        Args:
+            variable_name: Optional data variable to include as a column.
+            location: Mesh location ("face", "node", or "edge").
+
+        Returns:
+            geopandas GeoDataFrame.
+        """
+        import geopandas as gpd
+        from shapely.geometry import LineString, Point, Polygon
+
+        geometries = []
+        if location == "face":
+            for i in range(self.n_face):
+                coords = self._mesh.get_face_polygon(i)
+                closed = np.vstack([coords, coords[0:1]])
+                geometries.append(Polygon(closed))
+        elif location == "node":
+            for i in range(self.n_node):
+                geometries.append(
+                    Point(self._mesh.node_x[i], self._mesh.node_y[i])
+                )
+        elif location == "edge":
+            if self._mesh.edge_node_connectivity is None:
+                raise ValueError("Edge connectivity not available.")
+            enc = self._mesh.edge_node_connectivity
+            for i in range(enc.n_elements):
+                nodes = enc.get_element(i)
+                coords = [
+                    (self._mesh.node_x[n], self._mesh.node_y[n])
+                    for n in nodes
+                ]
+                geometries.append(LineString(coords))
+        else:
+            raise ValueError(f"Unknown location: {location}")
+
+        data_dict: dict[str, Any] = {}
+        if variable_name is not None:
+            var = self.get_data(variable_name)
+            if var.location == location:
+                var_data = var.data
+                if var.has_time:
+                    var_data = var_data[0]
+                data_dict[variable_name] = var_data
+
+        gdf = gpd.GeoDataFrame(data_dict, geometry=geometries)
+        if self.crs is not None:
+            gdf = gdf.set_crs(self.crs)
+
+        result = gdf
+        return result
+
+    def to_feature_collection(
+        self,
+        variable_name: str | None = None,
+        location: str = "face",
+    ) -> Any:
+        """Convert mesh to a pyramids FeatureCollection.
+
+        Args:
+            variable_name: Optional data variable to include.
+            location: Mesh location ("face", "node", or "edge").
+
+        Returns:
+            pyramids FeatureCollection.
+        """
+        from pyramids.featurecollection import FeatureCollection
+
+        gdf = self.to_geodataframe(variable_name, location)
+        result = FeatureCollection(gdf)
+        return result
+
+    @classmethod
+    def create_from_arrays(
+        cls,
+        node_x: np.ndarray,
+        node_y: np.ndarray,
+        face_node_connectivity: np.ndarray,
+        data: dict[str, np.ndarray] | None = None,
+        data_locations: dict[str, str] | None = None,
+        epsg: int = 4326,
+        mesh_name: str = "mesh2d",
+    ) -> "UgridDataset":
+        """Create a UgridDataset programmatically from arrays.
+
+        Args:
+            node_x: Node x-coordinates.
+            node_y: Node y-coordinates.
+            face_node_connectivity: (n_faces, max_nodes) array of node
+                indices. Use -1 as fill value for mixed meshes.
+            data: Optional dict mapping variable name to data array.
+            data_locations: Optional dict mapping variable name to
+                location ("face", "node", "edge"). Defaults to "face".
+            epsg: EPSG code for the CRS.
+            mesh_name: Name for the topology variable.
+
+        Returns:
+            UgridDataset instance.
+        """
+        from osgeo import osr
+
+        from pyramids.netcdf.ugrid._connectivity import Connectivity
+
+        fnc = Connectivity(
+            data=np.asarray(face_node_connectivity, dtype=np.intp),
+            fill_value=-1,
+            cf_role="face_node_connectivity",
+            original_start_index=0,
+        )
+        mesh = Mesh2d(
+            node_x=np.asarray(node_x, dtype=np.float64),
+            node_y=np.asarray(node_y, dtype=np.float64),
+            face_node_connectivity=fnc,
+        )
+
+        data_variables: dict[str, MeshVariable] = {}
+        topo_data_vars: dict[str, str] = {}
+        if data is not None:
+            if data_locations is None:
+                data_locations = {}
+            for name, arr in data.items():
+                loc = data_locations.get(name, "face")
+                topo_data_vars[name] = loc
+                data_variables[name] = MeshVariable(
+                    name=name, location=loc,
+                    mesh_name=mesh_name,
+                    shape=arr.shape, _data=arr,
+                )
+
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(epsg)
+        crs_wkt = srs.ExportToWkt()
+
+        topo_info = MeshTopologyInfo(
+            mesh_name=mesh_name, topology_dimension=2,
+            node_x_var=f"{mesh_name}_node_x",
+            node_y_var=f"{mesh_name}_node_y",
+            face_node_var=f"{mesh_name}_face_nodes",
+            data_variables=topo_data_vars,
+            crs_wkt=crs_wkt,
+        )
+
+        result = cls(
+            mesh=mesh, data_variables=data_variables,
+            global_attributes={"Conventions": "CF-1.8 UGRID-1.0"},
+            topology_info=topo_info, crs_wkt=crs_wkt,
+        )
+        return result
+
     def plot(
         self,
         variable_name: str,
