@@ -322,3 +322,77 @@ class TestMesh2dTriangulation:
         t1 = triangle_mesh.triangulation
         t2 = triangle_mesh.triangulation
         assert t1 is t2, "Triangulation should be cached"
+
+
+class TestMesh2dEdgeCases:
+    """Tests for edge cases and error handling in Mesh2d."""
+
+    def test_triangulation_empty_mesh_raises(self):
+        """Test triangulation raises ValueError when no valid faces.
+
+        Test scenario:
+            A mesh where all faces have < 3 nodes should raise ValueError.
+        """
+        node_x = np.array([0.0, 1.0])
+        node_y = np.array([0.0, 0.0])
+        faces = np.array([[0, 1, -1]], dtype=np.intp)
+        mesh = Mesh2d(
+            node_x=node_x, node_y=node_y,
+            face_node_connectivity=Connectivity(
+                data=faces, fill_value=-1,
+                cf_role="face_node_connectivity", original_start_index=0,
+            ),
+        )
+        with pytest.raises(ValueError, match="no faces with 3 or more nodes"):
+            _ = mesh.triangulation
+
+    def test_get_face_polygon_mixed_mesh(self, mixed_mesh):
+        """Test get_face_polygon for a triangle in a mixed mesh.
+
+        Test scenario:
+            Face 1 in the mixed mesh is a triangle (fill=-1 in 4th position).
+            Should return a (3, 2) coordinate array.
+        """
+        coords = mixed_mesh.get_face_polygon(1)
+        assert coords.shape == (3, 2), f"Expected (3, 2), got {coords.shape}"
+
+    def test_face_areas_mixed_mesh(self, mixed_mesh):
+        """Test face areas for mixed mesh (quad + triangles).
+
+        Test scenario:
+            The quad face (0,0)-(1,0)-(1,1)-(0,1) has area 1.0.
+        """
+        areas = mixed_mesh.face_areas
+        assert len(areas) == 3, f"Expected 3 areas, got {len(areas)}"
+        assert abs(areas[0] - 1.0) < 1e-10, f"Quad area should be 1.0, got {areas[0]}"
+
+    def test_build_edge_connectivity_count(self, triangle_mesh):
+        """Test edge count after building edge connectivity.
+
+        Test scenario:
+            2-triangle mesh with 5 nodes should produce exactly 5 unique edges.
+        """
+        triangle_mesh.build_edge_connectivity()
+        enc = triangle_mesh.edge_node_connectivity
+        assert enc.n_elements == 6, f"Expected 6 edges, got {enc.n_elements}"
+
+    def test_face_face_neighbor_values(self):
+        """Test that face-face connectivity has correct neighbor indices.
+
+        Test scenario:
+            2 triangles sharing edge (1,2): face 0 and face 1 are neighbors.
+        """
+        node_x = np.array([0.0, 1.0, 0.5, 1.5])
+        node_y = np.array([0.0, 0.0, 1.0, 1.0])
+        faces = np.array([[0, 1, 2], [1, 3, 2]], dtype=np.intp)
+        mesh = Mesh2d(
+            node_x=node_x, node_y=node_y,
+            face_node_connectivity=Connectivity(
+                data=faces, fill_value=-1,
+                cf_role="face_node_connectivity", original_start_index=0,
+            ),
+        )
+        mesh.build_face_face_connectivity()
+        ffc = mesh.face_face_connectivity
+        assert 1 in ffc.get_element(0), "Face 0 should have face 1 as neighbor"
+        assert 0 in ffc.get_element(1), "Face 1 should have face 0 as neighbor"

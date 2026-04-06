@@ -356,3 +356,65 @@ class TestSpatialWithWesternScheldt:
             f"Subset should have fewer faces: {result.n_face} vs {ws_dataset.n_face}"
         )
         assert result.n_face > 0, "Subset should have at least 1 face"
+
+
+class TestSpatialEdgeCases:
+    """Tests for spatial operation edge cases (Issue #7)."""
+
+    def test_clip_non_intersecting_polygon(self, unit_square_dataset):
+        """Test clipping with a polygon that does not intersect the mesh.
+
+        Test scenario:
+            Polygon far from mesh should produce 0 faces.
+        """
+        from shapely.geometry import box
+        mask = box(100.0, 100.0, 200.0, 200.0)
+        result = clip_mesh(unit_square_dataset, mask, touch=True)
+        assert result.n_face == 0, f"Expected 0 faces, got {result.n_face}"
+
+    def test_subset_fully_outside_bounds(self, unit_square_dataset):
+        """Test subset_by_bounds with bounds entirely outside mesh.
+
+        Test scenario:
+            Bounds far from mesh should produce 0 faces.
+        """
+        result = subset_by_bounds(unit_square_dataset, 100.0, 100.0, 200.0, 200.0)
+        assert result.n_face == 0, f"Expected 0 faces, got {result.n_face}"
+
+    def test_locate_faces_all_outside(self, unit_square_mesh):
+        """Test locate_faces where all points are outside the mesh.
+
+        Test scenario:
+            All points far from mesh should return -1.
+        """
+        idx = MeshSpatialIndex(unit_square_mesh)
+        result = idx.locate_faces(
+            np.array([100.0, 200.0]),
+            np.array([100.0, 200.0]),
+        )
+        assert np.all(result == -1), f"All outside points should be -1, got {result}"
+
+    def test_clip_preserves_node_data(self):
+        """Test that clip_mesh correctly subsets node-centered data.
+
+        Test scenario:
+            Clip a mesh with node data and verify node count matches data length.
+        """
+        from shapely.geometry import box
+
+        ds = UgridDataset.create_from_arrays(
+            node_x=np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0, 0.0, 1.0, 2.0]),
+            node_y=np.array([0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0]),
+            face_node_connectivity=np.array([
+                [0, 1, 4, 3], [1, 2, 5, 4],
+                [3, 4, 7, 6], [4, 5, 8, 7],
+            ]),
+            data={"altitude": np.arange(9, dtype=np.float64)},
+            data_locations={"altitude": "node"},
+        )
+        mask = box(-0.1, -0.1, 1.1, 1.1)
+        clipped = ds.clip(mask, touch=False)
+        var = clipped["altitude"]
+        assert var.n_elements == clipped.n_node, (
+            f"Node data length {var.n_elements} should match n_node {clipped.n_node}"
+        )

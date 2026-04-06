@@ -138,3 +138,56 @@ class TestParseUgridTopology:
         rg = ds.GetRootGroup()
         topologies = parse_ugrid_topology(rg)
         assert topologies == [], f"Expected empty list, got {topologies}"
+
+
+class TestTopologyParsingEdgeCases:
+    """Tests for topology parsing edge cases (Issue #4)."""
+
+    def test_optional_connectivity_detected(self, western_scheldt_path):
+        """Test that optional connectivity variables are parsed.
+
+        Test scenario:
+            Western Scheldt has edge_node_connectivity. Verify it is
+            detected and stored in the topology info.
+        """
+        ds = gdal.OpenEx(str(western_scheldt_path), gdal.OF_MULTIDIM_RASTER)
+        rg = ds.GetRootGroup()
+        topologies = parse_ugrid_topology(rg)
+        topo = topologies[0]
+        assert topo.edge_node_var is not None, (
+            "Expected edge_node_connectivity to be detected"
+        )
+
+    def test_data_variable_locations(self, western_scheldt_path):
+        """Test that data variable locations are correctly parsed.
+
+        Test scenario:
+            mesh2d_node_z should be 'node', mesh2d_edge_type should be 'edge'.
+        """
+        ds = gdal.OpenEx(str(western_scheldt_path), gdal.OF_MULTIDIM_RASTER)
+        rg = ds.GetRootGroup()
+        topologies = parse_ugrid_topology(rg)
+        topo = topologies[0]
+        assert topo.data_variables.get("mesh2d_node_z") == "node", (
+            f"Expected 'node', got '{topo.data_variables.get('mesh2d_node_z')}'"
+        )
+        assert topo.data_variables.get("mesh2d_edge_type") == "edge", (
+            f"Expected 'edge', got '{topo.data_variables.get('mesh2d_edge_type')}'"
+        )
+
+    def test_parse_single_topology_no_topo_dim_returns_none(
+        self, western_scheldt_path
+    ):
+        """Test that a variable without topology_dimension returns None.
+
+        Test scenario:
+            Open a data variable (not topology) and try to parse it.
+            Should return None.
+        """
+        from pyramids.netcdf.ugrid.io import _parse_single_topology
+
+        ds = gdal.OpenEx(str(western_scheldt_path), gdal.OF_MULTIDIM_RASTER)
+        rg = ds.GetRootGroup()
+        md_arr = rg.OpenMDArray("mesh2d_node_x")
+        result = _parse_single_topology(rg, "mesh2d_node_x", md_arr)
+        assert result is None, f"Expected None for non-topology variable, got {result}"

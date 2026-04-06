@@ -226,3 +226,38 @@ class TestToDataset:
         ds = UgridDataset.read_file(western_scheldt_path)
         with pytest.raises(KeyError):
             ds.to_dataset("nonexistent", cell_size=500.0)
+
+
+class TestInterpolationEdgeCases:
+    """Tests for edge cases in interpolation."""
+
+    def test_nan_in_data(self, grid_mesh):
+        """Test interpolation with NaN values in source data.
+
+        Test scenario:
+            NaN values in source should propagate to nearest grid cells.
+        """
+        mesh, _ = grid_mesh
+        data_with_nan = np.array([np.nan, 20.0, 30.0, 40.0])
+        grid, _ = mesh_to_grid(mesh, data_with_nan, "face", cell_size=1.0)
+        assert np.any(np.isnan(grid)), "NaN should propagate to output"
+
+    def test_edge_location_missing_coords_raises(self, grid_mesh):
+        """Test that edge location raises when edge coords unavailable.
+
+        Test scenario:
+            Mesh without edge_x/edge_y should raise ValueError.
+        """
+        mesh, data = grid_mesh
+        with pytest.raises(ValueError, match="Edge coordinates not available"):
+            mesh_to_grid(mesh, data, "edge", cell_size=0.5)
+
+    def test_cell_size_larger_than_mesh(self, grid_mesh):
+        """Test interpolation with cell_size larger than mesh extent.
+
+        Test scenario:
+            cell_size=10 on a [0,2]x[0,2] mesh should produce a 1x1 grid.
+        """
+        mesh, data = grid_mesh
+        grid, geo = mesh_to_grid(mesh, data, "face", cell_size=10.0)
+        assert grid.shape == (1, 1), f"Expected (1, 1), got {grid.shape}"

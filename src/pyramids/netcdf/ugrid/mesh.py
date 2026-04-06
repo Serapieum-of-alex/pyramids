@@ -130,27 +130,24 @@ class Mesh2d:
         those are returned. Otherwise, centroids are computed as
         the mean of each face's node coordinates.
         """
-        if self._cached_face_centroids is not None:
-            return self._cached_face_centroids
+        if self._cached_face_centroids is None:
+            if self._face_x is not None and self._face_y is not None:
+                self._cached_face_centroids = (self._face_x, self._face_y)
+            else:
+                fnc = self._face_node_connectivity
+                masked = fnc.as_masked()
+                valid_counts = fnc.nodes_per_element().astype(np.float64)
 
-        if self._face_x is not None and self._face_y is not None:
-            self._cached_face_centroids = (self._face_x, self._face_y)
-            return self._cached_face_centroids
+                padded_idx = np.where(masked.mask, 0, masked.data)
+                all_x = self._node_x[padded_idx]
+                all_y = self._node_y[padded_idx]
+                all_x[masked.mask] = 0.0
+                all_y[masked.mask] = 0.0
 
-        fnc = self._face_node_connectivity
-        masked = fnc.as_masked()
-        valid_counts = fnc.nodes_per_element().astype(np.float64)
+                cx = all_x.sum(axis=1) / valid_counts
+                cy = all_y.sum(axis=1) / valid_counts
+                self._cached_face_centroids = (cx, cy)
 
-        padded_idx = np.where(masked.mask, 0, masked.data)
-        all_x = self._node_x[padded_idx]
-        all_y = self._node_y[padded_idx]
-        all_x[masked.mask] = 0.0
-        all_y[masked.mask] = 0.0
-
-        cx = all_x.sum(axis=1) / valid_counts
-        cy = all_y.sum(axis=1) / valid_counts
-
-        self._cached_face_centroids = (cx, cy)
         return self._cached_face_centroids
 
     @property
@@ -159,34 +156,32 @@ class Mesh2d:
 
         Returns a 1D array of length n_face with the area of each face.
         """
-        if self._cached_face_areas is not None:
-            return self._cached_face_areas
+        if self._cached_face_areas is None:
+            fnc = self._face_node_connectivity
+            masked = fnc.as_masked()
+            padded_idx = np.where(masked.mask, 0, masked.data)
 
-        fnc = self._face_node_connectivity
-        masked = fnc.as_masked()
-        padded_idx = np.where(masked.mask, 0, masked.data)
+            x = self._node_x[padded_idx]
+            y = self._node_y[padded_idx]
+            x[masked.mask] = 0.0
+            y[masked.mask] = 0.0
 
-        x = self._node_x[padded_idx]
-        y = self._node_y[padded_idx]
-        x[masked.mask] = 0.0
-        y[masked.mask] = 0.0
+            x_next = np.roll(x, -1, axis=1)
+            y_next = np.roll(y, -1, axis=1)
 
-        x_next = np.roll(x, -1, axis=1)
-        y_next = np.roll(y, -1, axis=1)
+            cross = x * y_next - x_next * y
+            cross[masked.mask] = 0.0
 
-        cross = x * y_next - x_next * y
-        cross[masked.mask] = 0.0
+            last_valid = fnc.nodes_per_element() - 1
+            for i in range(self.n_face):
+                li = last_valid[i]
+                if li < fnc.max_nodes_per_element - 1:
+                    cross[i, li] = (
+                        x[i, li] * y[i, 0] - x[i, 0] * y[i, li]
+                    )
 
-        last_valid = fnc.nodes_per_element() - 1
-        for i in range(self.n_face):
-            li = last_valid[i]
-            if li < fnc.max_nodes_per_element - 1:
-                cross[i, li] = (
-                    x[i, li] * y[i, 0] - x[i, 0] * y[i, li]
-                )
+            self._cached_face_areas = np.abs(cross.sum(axis=1)) * 0.5
 
-        areas = np.abs(cross.sum(axis=1)) * 0.5
-        self._cached_face_areas = areas
         return self._cached_face_areas
 
     @property
@@ -199,30 +194,29 @@ class Mesh2d:
         Returns:
             matplotlib.tri.Triangulation instance.
         """
-        if self._cached_triangulation is not None:
-            return self._cached_triangulation
+        if self._cached_triangulation is None:
+            import matplotlib.tri as mtri
 
-        import matplotlib.tri as mtri
+            fnc = self._face_node_connectivity
+            triangles = []
 
-        fnc = self._face_node_connectivity
-        triangles = []
+            for i in range(self.n_face):
+                nodes = fnc.get_element(i)
+                n = len(nodes)
+                if n < 3:
+                    continue
+                for j in range(1, n - 1):
+                    triangles.append([int(nodes[0]), int(nodes[j]), int(nodes[j + 1])])
 
-        for i in range(self.n_face):
-            nodes = fnc.get_element(i)
-            n = len(nodes)
-            if n < 3:
-                continue
-            for j in range(1, n - 1):
-                triangles.append([int(nodes[0]), int(nodes[j]), int(nodes[j + 1])])
-
-        if not triangles:
-            raise ValueError(
-                "Cannot create triangulation: no faces with 3 or more nodes."
+            if not triangles:
+                raise ValueError(
+                    "Cannot create triangulation: no faces with 3 or more nodes."
+                )
+            tri_array = np.array(triangles, dtype=np.intp)
+            self._cached_triangulation = mtri.Triangulation(
+                self._node_x, self._node_y, tri_array
             )
-        tri_array = np.array(triangles, dtype=np.intp)
-        self._cached_triangulation = mtri.Triangulation(
-            self._node_x, self._node_y, tri_array
-        )
+
         return self._cached_triangulation
 
     def get_face_nodes(self, face_idx: int) -> np.ndarray:

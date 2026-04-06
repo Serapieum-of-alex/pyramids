@@ -296,3 +296,56 @@ class TestConnectivityFromGdalArray:
         assert conn.fill_value == -1, f"Expected fill_value -1, got {conn.fill_value}"
         expected = np.array([[0, 1, 2, -1], [1, 3, 2, -1]], dtype=np.intp)
         np.testing.assert_array_equal(conn.data, expected)
+
+
+class TestConnectivity1D:
+    """Tests for 1D connectivity arrays (boundary node lists)."""
+
+    @pytest.fixture
+    def conn_1d(self):
+        """1D connectivity array (e.g., boundary node list).
+
+        Returns:
+            Connectivity with shape (3,).
+        """
+        data = np.array([0, 1, 2], dtype=np.intp)
+        return Connectivity(
+            data=data, fill_value=-1,
+            cf_role="boundary_node_connectivity", original_start_index=0,
+        )
+
+    def test_n_elements_1d(self, conn_1d):
+        """Test n_elements for 1D connectivity.
+
+        Test scenario:
+            A 1D array with 3 elements should report n_elements=3.
+        """
+        assert conn_1d.n_elements == 3, f"Expected 3, got {conn_1d.n_elements}"
+
+    def test_max_nodes_per_element_1d(self, conn_1d):
+        """Test max_nodes_per_element returns 1 for 1D arrays.
+
+        Test scenario:
+            1D arrays have no column dimension, so max is 1.
+        """
+        assert conn_1d.max_nodes_per_element == 1, (
+            f"Expected 1, got {conn_1d.max_nodes_per_element}"
+        )
+
+    def test_get_element_1d(self, conn_1d):
+        """Test get_element for 1D connectivity returns the scalar value.
+
+        Test scenario:
+            Element 0 of a 1D array [0, 1, 2] should return 0.
+        """
+        result = conn_1d.get_element(0)
+        assert result == 0, f"Expected 0, got {result}"
+
+    def test_nodes_per_element_1d(self, conn_1d):
+        """Test nodes_per_element returns all ones for 1D array.
+
+        Test scenario:
+            Each element in a 1D array has exactly 1 node.
+        """
+        counts = conn_1d.nodes_per_element()
+        np.testing.assert_array_equal(counts, [1, 1, 1])

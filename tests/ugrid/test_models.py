@@ -334,6 +334,22 @@ class TestMeshVariable:
         var = MeshVariable(name="v", location="face", mesh_name="m", shape=(3,))
         assert var.dtype == np.dtype("float64"), f"Expected float64 default, got {var.dtype}"
 
+    def test_dtype_explicit_without_data(self):
+        """Test dtype returns explicit _dtype when data is not loaded.
+
+        Test scenario:
+            Variable with _dtype=int32 but _data=None should return int32
+            without triggering a lazy load.
+        """
+        var = MeshVariable(
+            name="v", location="face", mesh_name="m",
+            shape=(3,), _dtype=np.dtype("int32"),
+        )
+        assert var.dtype == np.dtype("int32"), (
+            f"Expected explicit int32, got {var.dtype}"
+        )
+        assert var._data is None, "Data should NOT be loaded by dtype access"
+
     def test_sel_time_valid(self, temporal_var):
         """Test sel_time returns correct time step.
 

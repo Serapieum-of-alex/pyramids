@@ -110,67 +110,65 @@ def _parse_single_topology(
     result = None
     attrs = _read_attributes(md_arr)
     topo_dim = attrs.get("topology_dimension")
-    if topo_dim is None:
-        return result
-    topo_dim = int(topo_dim)
 
     node_coords_str = attrs.get("node_coordinates", "")
     node_parts = node_coords_str.split() if isinstance(node_coords_str, str) else []
     node_x_var = node_parts[0] if len(node_parts) > 0 else None
     node_y_var = node_parts[1] if len(node_parts) > 1 else None
 
-    if node_x_var is None or node_y_var is None:
-        return result
+    if topo_dim is not None and node_x_var is not None and node_y_var is not None:
+        topo_dim = int(topo_dim)
 
-    face_node_var = attrs.get("face_node_connectivity")
-    edge_node_var = attrs.get("edge_node_connectivity")
-    face_edge_var = attrs.get("face_edge_connectivity")
-    face_face_var = attrs.get("face_face_connectivity")
-    edge_face_var = attrs.get("edge_face_connectivity")
-    boundary_node_var = attrs.get("boundary_node_connectivity")
+        face_node_var = attrs.get("face_node_connectivity")
+        edge_node_var = attrs.get("edge_node_connectivity")
+        face_edge_var = attrs.get("face_edge_connectivity")
+        face_face_var = attrs.get("face_face_connectivity")
+        edge_face_var = attrs.get("edge_face_connectivity")
+        boundary_node_var = attrs.get("boundary_node_connectivity")
 
-    face_coords_str = attrs.get("face_coordinates", "")
-    face_parts = face_coords_str.split() if isinstance(face_coords_str, str) else []
-    face_x_var = face_parts[0] if len(face_parts) > 0 else None
-    face_y_var = face_parts[1] if len(face_parts) > 1 else None
+        face_coords_str = attrs.get("face_coordinates", "")
+        face_parts = face_coords_str.split() if isinstance(face_coords_str, str) else []
+        face_x_var = face_parts[0] if len(face_parts) > 0 else None
+        face_y_var = face_parts[1] if len(face_parts) > 1 else None
 
-    edge_coords_str = attrs.get("edge_coordinates", "")
-    edge_parts = edge_coords_str.split() if isinstance(edge_coords_str, str) else []
-    edge_x_var = edge_parts[0] if len(edge_parts) > 0 else None
-    edge_y_var = edge_parts[1] if len(edge_parts) > 1 else None
+        edge_coords_str = attrs.get("edge_coordinates", "")
+        edge_parts = edge_coords_str.split() if isinstance(edge_coords_str, str) else []
+        edge_x_var = edge_parts[0] if len(edge_parts) > 0 else None
+        edge_y_var = edge_parts[1] if len(edge_parts) > 1 else None
 
-    data_variables: dict[str, str] = {}
-    all_array_names = rg.GetMDArrayNames() or []
-    for var_name in all_array_names:
-        var_arr = rg.OpenMDArray(var_name)
-        if var_arr is None:
-            continue
-        var_attrs = _read_attributes(var_arr)
-        if var_attrs.get("mesh") == mesh_name:
-            location = var_attrs.get("location", "unknown")
-            if isinstance(location, str):
-                data_variables[var_name] = location
+        data_variables: dict[str, str] = {}
+        all_array_names = rg.GetMDArrayNames() or []
+        for var_name in all_array_names:
+            var_arr = rg.OpenMDArray(var_name)
+            if var_arr is None:
+                continue
+            var_attrs = _read_attributes(var_arr)
+            if var_attrs.get("mesh") == mesh_name:
+                location = var_attrs.get("location", "unknown")
+                if isinstance(location, str):
+                    data_variables[var_name] = location
 
-    crs_wkt = _detect_crs(rg, node_x_var)
+        crs_wkt = _detect_crs(rg, node_x_var)
 
-    result = MeshTopologyInfo(
-        mesh_name=mesh_name,
-        topology_dimension=topo_dim,
-        node_x_var=node_x_var,
-        node_y_var=node_y_var,
-        face_node_var=face_node_var,
-        edge_node_var=edge_node_var,
-        face_edge_var=face_edge_var,
-        face_face_var=face_face_var,
-        edge_face_var=edge_face_var,
-        boundary_node_var=boundary_node_var,
-        face_x_var=face_x_var,
-        face_y_var=face_y_var,
-        edge_x_var=edge_x_var,
-        edge_y_var=edge_y_var,
-        data_variables=data_variables,
-        crs_wkt=crs_wkt,
-    )
+        result = MeshTopologyInfo(
+            mesh_name=mesh_name,
+            topology_dimension=topo_dim,
+            node_x_var=node_x_var,
+            node_y_var=node_y_var,
+            face_node_var=face_node_var,
+            edge_node_var=edge_node_var,
+            face_edge_var=face_edge_var,
+            face_face_var=face_face_var,
+            edge_face_var=edge_face_var,
+            boundary_node_var=boundary_node_var,
+            face_x_var=face_x_var,
+            face_y_var=face_y_var,
+            edge_x_var=edge_x_var,
+            edge_y_var=edge_y_var,
+            data_variables=data_variables,
+            crs_wkt=crs_wkt,
+        )
+
     return result
 
 
