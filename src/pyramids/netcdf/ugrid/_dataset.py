@@ -307,6 +307,55 @@ class UgridDataset:
         result = subset_by_bounds(self, xmin, ymin, xmax, ymax)
         return result
 
+    def plot(
+        self,
+        variable_name: str,
+        ax: Any = None,
+        cmap: str = "viridis",
+        title: str | None = None,
+        **kwargs,
+    ) -> Any:
+        """Plot a mesh data variable.
+
+        Args:
+            variable_name: Name of the data variable to plot.
+            ax: matplotlib Axes. Created if None.
+            cmap: Colormap name.
+            title: Plot title. Defaults to variable name.
+            **kwargs: Additional arguments passed to plot_mesh_data.
+
+        Returns:
+            matplotlib Axes with the plot.
+        """
+        from pyramids.netcdf.ugrid._plot import plot_mesh_data
+
+        var = self.get_data(variable_name)
+        data = var.data
+        if var.has_time:
+            data = data[0]
+        if title is None:
+            title = variable_name
+        result = plot_mesh_data(
+            self._mesh, data, location=var.location,
+            ax=ax, cmap=cmap, title=title, **kwargs,
+        )
+        return result
+
+    def plot_outline(self, ax: Any = None, **kwargs) -> Any:
+        """Plot mesh wireframe.
+
+        Args:
+            ax: matplotlib Axes. Created if None.
+            **kwargs: Additional arguments passed to plot_mesh_outline.
+
+        Returns:
+            matplotlib Axes with the wireframe plot.
+        """
+        from pyramids.netcdf.ugrid._plot import plot_mesh_outline
+
+        result = plot_mesh_outline(self._mesh, ax=ax, **kwargs)
+        return result
+
     def __str__(self) -> str:
         """Human-readable summary of the dataset."""
         lines = [
