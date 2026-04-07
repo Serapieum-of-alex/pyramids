@@ -1,4 +1,4 @@
-"""Tests for pyramids.basemap._warp module.
+"""Tests for pyramids.basemap.warp module.
 
 Tests _warp_tile_image using synthetic RGBA images and GDAL-based
 reprojection between EPSG:3857 and EPSG:4326. No network calls.
@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, PropertyMock
 import numpy as np
 import pytest
 
-from pyramids.basemap._warp import _warp_tile_image
+from pyramids.basemap.warp import _warp_tile_image
 
 
 def _make_rgba_image(

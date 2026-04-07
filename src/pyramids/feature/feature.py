@@ -1016,7 +1016,7 @@ class FeatureCollection:
         ax = self.feature.plot(column=column, **kwargs)
 
         if basemap is not None:
-            from pyramids.basemap._basemap import add_basemap
+            from pyramids.basemap.basemap import add_basemap
 
             source = basemap if isinstance(basemap, str) else None
             add_basemap(ax, crs=self.epsg, source=source)

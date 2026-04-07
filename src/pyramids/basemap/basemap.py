@@ -208,8 +208,8 @@ def add_basemap(
     import_basemap(_BASEMAP_MSG)
     import mercantile
 
-    from pyramids.basemap import _tiles as _tiles_mod
-    from pyramids.basemap import _warp as _warp_mod
+    from pyramids.basemap import tiles as tiles_mod
+    from pyramids.basemap import warp as warp_mod
 
     x0, x1 = ax.get_xlim()
     y0, y1 = ax.get_ylim()
@@ -250,7 +250,7 @@ def add_basemap(
     bounds_4326 = (w4326, s4326, e4326, n4326)
 
     if zoom == "auto":
-        tile_zoom = _tiles_mod._auto_zoom(bounds_4326)
+        tile_zoom = tiles_mod._auto_zoom(bounds_4326)
     else:
         tile_zoom = int(zoom)
 
@@ -258,18 +258,18 @@ def add_basemap(
         w4326, s4326, e4326, n4326, zooms=tile_zoom
     ))
 
-    while len(tiles) > _tiles_mod.MAX_TILES and tile_zoom > 0:
+    while len(tiles) > tiles_mod.MAX_TILES and tile_zoom > 0:
         tile_zoom -= 1
         tiles = list(mercantile.tiles(
             w4326, s4326, e4326, n4326, zooms=tile_zoom
         ))
 
-    tile_data = _tiles_mod._fetch_tiles(tiles, provider)
+    tile_data = tiles_mod._fetch_tiles(tiles, provider)
 
-    image, extent_3857 = _tiles_mod._stitch_tiles(tile_data, tiles, tile_zoom)
+    image, extent_3857 = tiles_mod._stitch_tiles(tile_data, tiles, tile_zoom)
 
     if not is_3857:
-        image, extent = _warp_mod._warp_tile_image(
+        image, extent = warp_mod._warp_tile_image(
             image,
             extent_3857,
             target_crs=crs_str,

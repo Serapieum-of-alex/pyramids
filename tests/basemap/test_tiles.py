@@ -1,4 +1,4 @@
-"""Tests for pyramids.basemap._tiles module.
+"""Tests for pyramids.basemap.tiles module.
 
 Covers _auto_zoom, _fetch_single_tile, _fetch_tiles, and _stitch_tiles
 with mocked HTTP and synthetic tile images (no real network calls).
@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from pyramids.basemap._tiles import (
+from pyramids.basemap.tiles import (
     MAX_TILES,
     USER_AGENT,
     _auto_zoom,
@@ -205,7 +205,7 @@ class TestFetchSingleTile:
         mock_response = MagicMock()
         mock_response.read.return_value = expected_bytes
 
-        with patch("pyramids.basemap._tiles.urllib.request.urlopen", return_value=mock_response):
+        with patch("pyramids.basemap.tiles.urllib.request.urlopen", return_value=mock_response):
             result_tile, result_bytes = _fetch_single_tile(
                 tile, mock_provider, timeout=5, retries=2
             )
@@ -227,7 +227,7 @@ class TestFetchSingleTile:
         mock_response.read.return_value = b"data"
 
         with patch(
-            "pyramids.basemap._tiles.urllib.request.urlopen",
+            "pyramids.basemap.tiles.urllib.request.urlopen",
             return_value=mock_response,
         ) as mock_urlopen:
             _fetch_single_tile(tile, mock_provider, timeout=5, retries=0)
@@ -252,7 +252,7 @@ class TestFetchSingleTile:
         mock_response.read.return_value = expected
 
         with patch(
-            "pyramids.basemap._tiles.urllib.request.urlopen",
+            "pyramids.basemap.tiles.urllib.request.urlopen",
             side_effect=[
                 ConnectionError("timeout"),
                 ConnectionError("refused"),
@@ -283,7 +283,7 @@ class TestFetchSingleTile:
         tile = Tile(x=1, y=1, z=5)
 
         with patch(
-            "pyramids.basemap._tiles.urllib.request.urlopen",
+            "pyramids.basemap.tiles.urllib.request.urlopen",
             side_effect=ConnectionError("network down"),
         ):
             with pytest.raises(ConnectionError, match=r"z=5/x=1/y=1") as exc_info:
@@ -303,7 +303,7 @@ class TestFetchSingleTile:
         tile = Tile(x=0, y=0, z=0)
 
         with patch(
-            "pyramids.basemap._tiles.urllib.request.urlopen",
+            "pyramids.basemap.tiles.urllib.request.urlopen",
             side_effect=ConnectionError("fail"),
         ) as mock_urlopen:
             with pytest.raises(ConnectionError, match=r"1 attempts"):
@@ -327,7 +327,7 @@ class TestFetchSingleTile:
         mock_response.read.return_value = b"data"
 
         with patch(
-            "pyramids.basemap._tiles.urllib.request.urlopen",
+            "pyramids.basemap.tiles.urllib.request.urlopen",
             return_value=mock_response,
         ):
             _fetch_single_tile(tile, mock_provider, timeout=5, retries=0)
@@ -359,7 +359,7 @@ class TestFetchTiles:
             return resp
 
         with patch(
-            "pyramids.basemap._tiles.urllib.request.urlopen",
+            "pyramids.basemap.tiles.urllib.request.urlopen",
             side_effect=mock_urlopen,
         ):
             result = _fetch_tiles(
@@ -381,7 +381,7 @@ class TestFetchTiles:
         mock_response.read.return_value = b"data"
 
         with patch(
-            "pyramids.basemap._tiles.urllib.request.urlopen",
+            "pyramids.basemap.tiles.urllib.request.urlopen",
             return_value=mock_response,
         ):
             result = _fetch_tiles(
@@ -400,7 +400,7 @@ class TestFetchTiles:
         tiles = [Tile(x=0, y=0, z=0)]
 
         with patch(
-            "pyramids.basemap._tiles.urllib.request.urlopen",
+            "pyramids.basemap.tiles.urllib.request.urlopen",
             side_effect=ConnectionError("fail"),
         ):
             with pytest.raises(ConnectionError):

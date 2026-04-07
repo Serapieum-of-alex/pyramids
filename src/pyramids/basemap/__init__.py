@@ -18,15 +18,15 @@ Examples
 
 
 def add_basemap(*args, **kwargs):
-    """Add a basemap to a matplotlib Axes. See _basemap.add_basemap."""
-    from pyramids.basemap._basemap import add_basemap as _impl
+    """Add a basemap to a matplotlib Axes. See basemap.add_basemap."""
+    from pyramids.basemap.basemap import add_basemap as _impl
 
     return _impl(*args, **kwargs)
 
 
 def get_provider(*args, **kwargs):
-    """Resolve a tile provider by name. See _basemap.get_provider."""
-    from pyramids.basemap._basemap import get_provider as _impl
+    """Resolve a tile provider by name. See basemap.get_provider."""
+    from pyramids.basemap.basemap import get_provider as _impl
 
     return _impl(*args, **kwargs)
 

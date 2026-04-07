@@ -15,7 +15,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from pyramids.basemap import add_basemap, get_provider
-from pyramids.basemap._tiles import _fetch_tiles, _stitch_tiles
+from pyramids.basemap.tiles import _fetch_tiles, _stitch_tiles
 
 
 @pytest.fixture

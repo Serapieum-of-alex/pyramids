@@ -1,4 +1,4 @@
-"""Tests for pyramids.basemap._basemap module.
+"""Tests for pyramids.basemap.basemap module.
 
 Covers get_provider, _densify_and_reproject_bounds, and add_basemap
 with mocked tile fetching (no real network calls).
@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from pyramids.basemap._basemap import (
+from pyramids.basemap.basemap import (
     _densify_and_reproject_bounds,
     add_basemap,
     get_provider,
@@ -242,16 +242,16 @@ class TestAddBasemap:
         fake_image = np.zeros((256, 256, 4), dtype=np.uint8)
         with (
             patch.object(
-                __import__("pyramids.basemap._tiles", fromlist=["_auto_zoom"]),
+                __import__("pyramids.basemap.tiles", fromlist=["_auto_zoom"]),
                 "_auto_zoom", return_value=10,
             ) as mock_zoom,
             patch.object(
-                __import__("pyramids.basemap._tiles", fromlist=["_fetch_tiles"]),
+                __import__("pyramids.basemap.tiles", fromlist=["_fetch_tiles"]),
                 "_fetch_tiles",
                 return_value={Tile(0, 0, 10): _make_tile_png()},
             ) as mock_fetch,
             patch.object(
-                __import__("pyramids.basemap._tiles", fromlist=["_stitch_tiles"]),
+                __import__("pyramids.basemap.tiles", fromlist=["_stitch_tiles"]),
                 "_stitch_tiles",
                 return_value=(
                     fake_image,
@@ -272,7 +272,7 @@ class TestAddBasemap:
             imshow.
         """
         warp_mod = __import__(
-            "pyramids.basemap._warp", fromlist=["_warp_tile_image"]
+            "pyramids.basemap.warp", fromlist=["_warp_tile_image"]
         )
         with patch.object(warp_mod, "_warp_tile_image") as mock_warp:
             result = add_basemap(mock_ax, crs=3857)
@@ -295,7 +295,7 @@ class TestAddBasemap:
 
         fake_image = np.zeros((256, 256, 4), dtype=np.uint8)
         warp_mod = __import__(
-            "pyramids.basemap._warp", fromlist=["_warp_tile_image"]
+            "pyramids.basemap.warp", fromlist=["_warp_tile_image"]
         )
         with patch.object(
             warp_mod, "_warp_tile_image",

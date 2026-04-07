@@ -73,7 +73,7 @@ class TestFeatureCollectionPlot:
         with pytest.raises(TypeError, match="GeoDataFrame"):
             fc.plot()
 
-    @patch("pyramids.basemap._basemap.add_basemap")
+    @patch("pyramids.basemap.basemap.add_basemap")
     def test_plot_with_basemap_calls_add_basemap(
         self, mock_add_basemap: MagicMock, gdf_fc: FeatureCollection
     ):
@@ -94,7 +94,7 @@ class TestFeatureCollectionPlot:
             f"Expected crs=4326, got {call_kwargs[1]['crs']}"
         )
 
-    @patch("pyramids.basemap._basemap.add_basemap")
+    @patch("pyramids.basemap.basemap.add_basemap")
     def test_plot_with_basemap_string_passes_source(
         self, mock_add_basemap: MagicMock, gdf_fc: FeatureCollection
     ):
