@@ -91,6 +91,12 @@ def _warp_tile_image(
     warp_options = gdal.WarpOptions(**warp_kwargs)
     dst_ds = gdal.Warp("", src_ds, options=warp_options)
 
+    if dst_ds is None:
+        raise RuntimeError(
+            "GDAL Warp failed to reproject tile image "
+            f"to {target_crs}."
+        )
+
     out_bands = min(dst_ds.RasterCount, 4)
     warped = np.stack(
         [dst_ds.GetRasterBand(i + 1).ReadAsArray() for i in range(out_bands)],
