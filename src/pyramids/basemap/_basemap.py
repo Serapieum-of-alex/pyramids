@@ -296,9 +296,12 @@ def add_basemap(
     ax.set_ylim(ylim)
 
     if attribution is True:
-        attr_text = getattr(provider, "attribution", None) or getattr(
+        import re
+
+        raw = getattr(provider, "attribution", None) or getattr(
             provider, "html_attribution", ""
         )
+        attr_text = re.sub(r"<[^>]+>", "", raw) if raw else None
     elif isinstance(attribution, str):
         attr_text = attribution
     else:
