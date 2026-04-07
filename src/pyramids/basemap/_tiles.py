@@ -21,11 +21,6 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-TILE_FETCH_MSG = (
-    "Basemap tile fetching requires mercantile, xyzservices, and Pillow. "
-    "Install with: pip install pyramids-gis[viz]"
-)
-
 USER_AGENT = "pyramids-gis/Python"
 MAX_TILES = 256
 
