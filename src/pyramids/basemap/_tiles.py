@@ -12,6 +12,7 @@ from __future__ import annotations
 import io
 import logging
 import math
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
@@ -101,7 +102,7 @@ def _fetch_single_tile(
             response = urllib.request.urlopen(request, timeout=timeout)
             png_bytes = response.read()
             return tile, png_bytes
-        except Exception as e:
+        except (OSError, urllib.error.URLError, ConnectionError) as e:
             last_error = e
             logger.debug(
                 "Tile fetch attempt %d/%d failed for %s: %s",
