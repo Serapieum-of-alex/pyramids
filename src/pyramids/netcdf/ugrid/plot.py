@@ -11,7 +11,14 @@ from typing import Any
 
 import numpy as np
 
+from pyramids.base._utils import import_cleopatra
 from pyramids.netcdf.ugrid.mesh import Mesh2d
+
+_CLEOPATRA_MSG = (
+    "Mesh plotting requires the cleopatra package. "
+    "Install it with: pip install pyramids-gis[viz] "
+    "or see https://github.com/serapeum-org/cleopatra"
+)
 
 
 def _mesh_to_glyph(mesh: Mesh2d) -> Any:
@@ -22,7 +29,11 @@ def _mesh_to_glyph(mesh: Mesh2d) -> Any:
 
     Returns:
         cleopatra.mesh_glyph.MeshGlyph instance.
+
+    Raises:
+        OptionalPackageDoesNotExist: If cleopatra is not installed.
     """
+    import_cleopatra(_CLEOPATRA_MSG)
     from cleopatra.mesh_glyph import MeshGlyph
 
     edge_nodes = None
