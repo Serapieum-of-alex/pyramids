@@ -1,1 +1,316 @@
-"""Core basemap functions: add_basemap and get_provider."""
+"""Core basemap functions: add_basemap and get_provider.
+
+Provides the public API for adding web tile basemaps to matplotlib
+axes. Tiles are fetched from XYZ providers (OpenStreetMap, CartoDB,
+Esri, etc.), stitched into a single image, optionally warped to the
+data's CRS via GDAL, and rendered underneath the data layer.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import numpy as np
+from pyproj import Transformer
+
+from pyramids.base._utils import import_basemap
+
+logger = logging.getLogger(__name__)
+
+_BASEMAP_MSG = (
+    "Basemap support requires mercantile, xyzservices, and Pillow. "
+    "Install with: pip install pyramids-gis[viz]"
+)
+
+
+def get_provider(name: str | None = None) -> Any:
+    """Resolve a tile provider by name.
+
+    Parameters
+    ----------
+    name : str or None, optional
+        Dot-separated provider name (e.g. ``"OpenStreetMap.Mapnik"``,
+        ``"CartoDB.Positron"``, ``"Esri.WorldImagery"``). ``None``
+        returns the default (OpenStreetMap.Mapnik).
+
+    Returns
+    -------
+    xyzservices.TileProvider
+        The resolved tile provider object with url template and
+        attribution.
+
+    Raises
+    ------
+    ValueError
+        If the provider name cannot be resolved.
+
+    Examples
+    --------
+    >>> provider = get_provider("CartoDB.Positron")
+    >>> provider = get_provider()  # default: OpenStreetMap.Mapnik
+    """
+    import_basemap(_BASEMAP_MSG)
+    import xyzservices.providers as xyz
+
+    if name is None:
+        result = xyz.OpenStreetMap.Mapnik
+        return result
+
+    parts = name.split(".")
+    provider: Any = xyz
+    for part in parts:
+        try:
+            provider = provider[part]
+        except (KeyError, TypeError) as e:
+            raise ValueError(
+                f"Unknown tile provider: '{name}'. Failed at '{part}'. "
+                f"Use xyzservices.providers to list available providers."
+            ) from e
+    return provider
+
+
+def _densify_and_reproject_bounds(
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+    src_crs: str,
+    dst_crs: str,
+    n_points: int = 21,
+) -> tuple[float, float, float, float]:
+    """Reproject bounds with edge densification.
+
+    Samples points along all four edges of the bounding box before
+    reprojecting, then takes the min/max of the reprojected points.
+    This handles non-conformal projections where corners alone would
+    underestimate the true extent.
+
+    Parameters
+    ----------
+    west : float
+        Western bound in source CRS.
+    south : float
+        Southern bound in source CRS.
+    east : float
+        Eastern bound in source CRS.
+    north : float
+        Northern bound in source CRS.
+    src_crs : str
+        Source CRS identifier (e.g. ``"EPSG:4326"``).
+    dst_crs : str
+        Target CRS identifier (e.g. ``"EPSG:3857"``).
+    n_points : int, optional
+        Number of sample points per edge. Default is 21.
+
+    Returns
+    -------
+    tuple[float, float, float, float]
+        ``(west, south, east, north)`` in the target CRS.
+    """
+    transformer = Transformer.from_crs(src_crs, dst_crs, always_xy=True)
+
+    xs: list[float] = []
+    ys: list[float] = []
+    t_values = np.linspace(0, 1, n_points).tolist()
+
+    for t in t_values:
+        xs.extend([
+            west + t * (east - west),
+            east,
+            east - t * (east - west),
+            west,
+        ])
+        ys.extend([
+            south,
+            south + t * (north - south),
+            north,
+            north - t * (north - south),
+        ])
+
+    tx, ty = transformer.transform(xs, ys)
+
+    tx_list = list(tx) if not isinstance(tx, list) else tx
+    ty_list = list(ty) if not isinstance(ty, list) else ty
+
+    result = (min(tx_list), min(ty_list), max(tx_list), max(ty_list))
+    return result
+
+
+def add_basemap(
+    ax: Any,
+    crs: int | str = 3857,
+    source: str | Any | None = None,
+    zoom: int | str = "auto",
+    alpha: float = 1.0,
+    attribution: str | bool = True,
+    zorder: int = -1,
+    interpolation: str = "bilinear",
+) -> Any:
+    """Add a basemap to a matplotlib Axes.
+
+    Fetches XYZ web tiles for the axes' geographic extent, stitches
+    them into a single image, optionally reprojects to the data's CRS,
+    and renders the image underneath the data layer.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to add the basemap to. Must have data already plotted
+        so that axis limits define the geographic extent.
+    crs : int or str, optional
+        CRS of the data on the axes. Can be an EPSG integer (e.g.
+        ``4326``) or a WKT/proj4 string. Default is ``3857`` (Web
+        Mercator, no warping needed).
+    source : str, TileProvider, or None, optional
+        Tile provider. Can be:
+        - ``None``: defaults to OpenStreetMap.Mapnik
+        - A dot-separated string: ``"CartoDB.Positron"``
+        - An ``xyzservices.TileProvider`` object
+    zoom : int or "auto", optional
+        Tile zoom level. ``"auto"`` computes from the axes extent.
+        Default is ``"auto"``.
+    alpha : float, optional
+        Opacity of the basemap (0.0 = transparent, 1.0 = opaque).
+        Default is ``1.0``.
+    attribution : str or bool, optional
+        If ``True``, add the provider's default attribution text.
+        If a string, use that text. If ``False``, no attribution.
+        Default is ``True``.
+    zorder : int, optional
+        Matplotlib zorder. ``-1`` places the basemap behind all data.
+        Default is ``-1``.
+    interpolation : str, optional
+        Interpolation method for ``ax.imshow()``. Default is
+        ``"bilinear"``.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes with the basemap added.
+
+    Raises
+    ------
+    ValueError
+        If the axes have no data extent (default limits 0-1).
+    ConnectionError
+        If tiles cannot be fetched from the provider.
+
+    Examples
+    --------
+    >>> from pyramids.basemap import add_basemap
+    >>> from pyramids.dataset import Dataset
+    >>> ds = Dataset.read_file("dem.tif")
+    >>> glyph = ds.plot(band=0)
+    >>> add_basemap(glyph.ax, crs=ds.epsg)
+    """
+    import_basemap(_BASEMAP_MSG)
+    import mercantile
+
+    from pyramids.basemap import _tiles as _tiles_mod
+    from pyramids.basemap import _warp as _warp_mod
+
+    x0, x1 = ax.get_xlim()
+    y0, y1 = ax.get_ylim()
+    west, east = min(x0, x1), max(x0, x1)
+    south, north = min(y0, y1), max(y0, y1)
+
+    if (west, east) == (0.0, 1.0) and (south, north) == (0.0, 1.0):
+        raise ValueError(
+            "Axes have no data extent. Plot data before adding a basemap."
+        )
+
+    if isinstance(source, str):
+        provider = get_provider(source)
+    elif source is None:
+        provider = get_provider()
+    else:
+        provider = source
+
+    crs_str = f"EPSG:{crs}" if isinstance(crs, int) else str(crs)
+    is_3857 = (isinstance(crs, int) and crs == 3857) or crs_str == "EPSG:3857"
+
+    if is_3857:
+        w3857, s3857, e3857, n3857 = west, south, east, north
+    else:
+        w3857, s3857, e3857, n3857 = _densify_and_reproject_bounds(
+            west, south, east, north, crs_str, "EPSG:3857"
+        )
+
+    transformer_to_4326 = Transformer.from_crs(
+        "EPSG:3857", "EPSG:4326", always_xy=True
+    )
+    w4326, s4326 = transformer_to_4326.transform(w3857, s3857)
+    e4326, n4326 = transformer_to_4326.transform(e3857, n3857)
+
+    s4326 = max(s4326, -85.06)
+    n4326 = min(n4326, 85.06)
+
+    bounds_4326 = (w4326, s4326, e4326, n4326)
+
+    if zoom == "auto":
+        tile_zoom = _tiles_mod._auto_zoom(bounds_4326)
+    else:
+        tile_zoom = int(zoom)
+
+    tiles = list(mercantile.tiles(
+        w4326, s4326, e4326, n4326, zooms=tile_zoom
+    ))
+
+    while len(tiles) > _tiles_mod.MAX_TILES and tile_zoom > 0:
+        tile_zoom -= 1
+        tiles = list(mercantile.tiles(
+            w4326, s4326, e4326, n4326, zooms=tile_zoom
+        ))
+
+    tile_data = _tiles_mod._fetch_tiles(tiles, provider)
+
+    image, extent_3857 = _tiles_mod._stitch_tiles(tile_data, tiles, tile_zoom)
+
+    if not is_3857:
+        image, extent = _warp_mod._warp_tile_image(
+            image,
+            extent_3857,
+            target_crs=crs_str,
+            target_extent=(west, south, east, north),
+            ax=ax,
+        )
+    else:
+        extent = extent_3857
+
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    current_aspect = ax.get_aspect()
+
+    ax.imshow(
+        image,
+        extent=[extent[0], extent[2], extent[1], extent[3]],
+        interpolation=interpolation,
+        alpha=alpha,
+        zorder=zorder,
+        aspect=current_aspect,
+    )
+
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+
+    if attribution is True:
+        attr_text = getattr(provider, "attribution", None) or getattr(
+            provider, "html_attribution", ""
+        )
+    elif isinstance(attribution, str):
+        attr_text = attribution
+    else:
+        attr_text = None
+
+    if attr_text:
+        ax.text(
+            0.99, 0.01, attr_text,
+            transform=ax.transAxes,
+            fontsize=6,
+            ha="right", va="bottom",
+            alpha=0.7,
+            bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.5),
+        )
+
+    return ax
