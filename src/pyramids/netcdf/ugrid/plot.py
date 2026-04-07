@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-
 from pyramids.base._utils import import_cleopatra
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 

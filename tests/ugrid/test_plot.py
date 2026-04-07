@@ -6,11 +6,8 @@ MeshGlyph and returns MeshGlyph instances (not raw Axes).
 
 from __future__ import annotations
 
-import matplotlib
 import numpy as np
 import pytest
-
-matplotlib.use("Agg")
 
 from cleopatra.mesh_glyph import MeshGlyph
 from pyramids.netcdf.ugrid.dataset import UgridDataset
