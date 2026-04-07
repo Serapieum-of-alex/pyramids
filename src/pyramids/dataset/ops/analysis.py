@@ -807,6 +807,7 @@ class Analysis:
         overview: bool | None = False,
         overview_index: int | None = 0,
         percentile: int | None = None,
+        basemap: bool | str | None = None,
         **kwargs: Any,
     ) -> ArrayGlyph:
         """Plot the values/overviews of a given band.
@@ -835,6 +836,10 @@ class Analysis:
                 Index of the overview. Default is 0.
             percentile: int
                 The percentile value to be used for scaling.
+            basemap (bool or str, optional):
+                If ``True``, add an OpenStreetMap basemap underneath the plot. If a string, use it as
+                the tile provider name (e.g. ``"CartoDB.Positron"``). Default is ``None`` (no basemap).
+                Requires the ``[viz]`` extra (mercantile, xyzservices, Pillow).
         kwargs:
                 | Parameter                   | Type                | Description |
                 |-----------------------------|---------------------|-------------|
@@ -946,7 +951,15 @@ class Analysis:
             **kwargs,
         )
         cleo.plot(**kwargs)
+
+        if basemap is not None:
+            from pyramids.basemap._basemap import add_basemap
+
+            source = basemap if isinstance(basemap, str) else None
+            add_basemap(cleo.ax, crs=self.epsg, source=source)
+
         return cleo
+
     @staticmethod
     def _process_color_table(color_table: DataFrame) -> DataFrame:
         import_cleopatra(
