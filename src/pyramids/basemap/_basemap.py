@@ -54,19 +54,20 @@ def get_provider(name: str | None = None) -> Any:
     import xyzservices.providers as xyz
 
     if name is None:
-        result = xyz.OpenStreetMap.Mapnik
-        return result
-
-    parts = name.split(".")
-    provider: Any = xyz
-    for part in parts:
-        try:
-            provider = provider[part]
-        except (KeyError, TypeError) as e:
-            raise ValueError(
-                f"Unknown tile provider: '{name}'. Failed at '{part}'. "
-                f"Use xyzservices.providers to list available providers."
-            ) from e
+        provider = xyz.OpenStreetMap.Mapnik
+    else:
+        parts = name.split(".")
+        provider: Any = xyz
+        for part in parts:
+            try:
+                provider = provider[part]
+            except (KeyError, TypeError) as e:
+                raise ValueError(
+                    f"Unknown tile provider: '{name}'. "
+                    f"Failed at '{part}'. Use "
+                    f"xyzservices.providers to list "
+                    f"available providers."
+                ) from e
     return provider
 
 
