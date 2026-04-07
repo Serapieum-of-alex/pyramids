@@ -664,7 +664,9 @@ class UgridDataset:
             **kwargs: Additional arguments passed to plot_mesh_data.
 
         Returns:
-            matplotlib Axes with the plot.
+            cleopatra.mesh_glyph.MeshGlyph instance with the plot
+                rendered. Use the returned object to access Figure/Axes
+                or call additional MeshGlyph methods.
         """
         from pyramids.netcdf.ugrid.plot import plot_mesh_data
 
@@ -688,7 +690,8 @@ class UgridDataset:
             **kwargs: Additional arguments passed to plot_mesh_outline.
 
         Returns:
-            matplotlib Axes with the wireframe plot.
+            cleopatra.mesh_glyph.MeshGlyph instance with the wireframe
+                rendered.
         """
         from pyramids.netcdf.ugrid.plot import plot_mesh_outline
 

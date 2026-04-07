@@ -72,18 +72,20 @@ def plot_mesh_data(
             matplotlib tripcolor/tricontourf call.
 
     Returns:
-        matplotlib Axes with the plot.
+        cleopatra.mesh_glyph.MeshGlyph instance with the plot rendered.
+            Use the returned object to access the underlying Figure/Axes
+            or to call additional MeshGlyph methods.
 
     Raises:
         ValueError: If location is not "face" or "node".
     """
     glyph = _mesh_to_glyph(mesh)
-    _, ax_out = glyph.plot(
+    glyph.plot(
         data, location=location, ax=ax, cmap=cmap,
         vmin=vmin, vmax=vmax, edgecolor=edgecolor,
         colorbar=colorbar, title=title, **kwargs,
     )
-    return ax_out
+    return glyph
 
 
 def plot_mesh_outline(
@@ -103,10 +105,10 @@ def plot_mesh_outline(
         **kwargs: Additional keyword arguments passed to LineCollection.
 
     Returns:
-        matplotlib Axes with the wireframe plot.
+        cleopatra.mesh_glyph.MeshGlyph instance with the wireframe rendered.
     """
     glyph = _mesh_to_glyph(mesh)
-    _, ax_out = glyph.plot_outline(
+    glyph.plot_outline(
         ax=ax, color=color, linewidth=linewidth, **kwargs,
     )
-    return ax_out
+    return glyph
