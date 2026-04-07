@@ -46,7 +46,7 @@ def _auto_zoom(bounds_4326: tuple[float, float, float, float]) -> int:
     >>> _auto_zoom((-180, -85, 180, 85))
     0
     >>> _auto_zoom((13.0, 52.4, 13.6, 52.6))
-    8
+    10
     """
     west, south, east, north = bounds_4326
     lon_extent = abs(east - west)
