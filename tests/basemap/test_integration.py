@@ -7,12 +7,9 @@ default test suite. Run with: ``pytest -m slow``.
 
 from __future__ import annotations
 
-import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 from pyramids.basemap import add_basemap, get_provider
 from pyramids.basemap.tiles import _fetch_tiles, _stitch_tiles
@@ -65,15 +62,13 @@ class TestNetworkTileFetching:
 
         provider = get_provider("OpenStreetMap.Mapnik")
         tiles = [mercantile.Tile(0, 0, 1)]
-        tile_data = _fetch_tiles(tiles, provider, max_workers=1, timeout=15)
+        tile_data = _fetch_tiles(tiles, provider, max_workers=1)
 
-        assert len(tile_data) == 1, (
-            f"Expected 1 tile, got {len(tile_data)}"
-        )
+        assert len(tile_data) == 1, f"Expected 1 tile, got {len(tile_data)}"
         png_bytes = list(tile_data.values())[0]
-        assert len(png_bytes) > 100, (
-            f"Tile PNG should be >100 bytes, got {len(png_bytes)}"
-        )
+        assert (
+            len(png_bytes) > 100
+        ), f"Tile PNG should be >100 bytes, got {len(png_bytes)}"
 
     def test_fetch_and_stitch_2x2_grid(self):
         """Test fetching and stitching a 2x2 tile grid.
@@ -86,16 +81,12 @@ class TestNetworkTileFetching:
 
         provider = get_provider("OpenStreetMap.Mapnik")
         tiles = list(mercantile.tiles(-10, 40, 10, 55, zooms=2))
-        tile_data = _fetch_tiles(tiles, provider, max_workers=4, timeout=15)
+        tile_data = _fetch_tiles(tiles, provider, max_workers=4)
         image, extent = _stitch_tiles(tile_data, tiles, zoom=2)
 
         assert image.ndim == 3, f"Expected 3D array, got {image.ndim}D"
-        assert image.shape[2] == 4, (
-            f"Expected 4 channels (RGBA), got {image.shape[2]}"
-        )
-        assert image.dtype == np.uint8, (
-            f"Expected uint8, got {image.dtype}"
-        )
+        assert image.shape[2] == 4, f"Expected 4 channels (RGBA), got {image.shape[2]}"
+        assert image.dtype == np.uint8, f"Expected uint8, got {image.dtype}"
         west, south, east, north = extent
         assert west < east, f"West ({west}) should be < East ({east})"
         assert south < north, f"South ({south}) should be < North ({north})"
@@ -117,9 +108,7 @@ class TestAddBasemapIntegration:
 
         assert result is ax_3857, "Should return the same axes"
         images = ax_3857.get_images()
-        assert len(images) >= 1, (
-            f"Expected at least 1 image on axes, got {len(images)}"
-        )
+        assert len(images) >= 1, f"Expected at least 1 image on axes, got {len(images)}"
 
     def test_add_basemap_4326_with_warping(self, ax_4326):
         """Test adding a basemap to EPSG:4326 axes (requires CRS warp).
@@ -133,9 +122,7 @@ class TestAddBasemapIntegration:
 
         assert result is ax_4326, "Should return the same axes"
         images = ax_4326.get_images()
-        assert len(images) >= 1, (
-            f"Expected at least 1 image on axes, got {len(images)}"
-        )
+        assert len(images) >= 1, f"Expected at least 1 image on axes, got {len(images)}"
 
     def test_add_basemap_custom_provider(self, ax_3857):
         """Test adding a basemap with CartoDB.Positron provider.
@@ -144,14 +131,10 @@ class TestAddBasemapIntegration:
             Use a non-default provider. The basemap should render
             successfully.
         """
-        result = add_basemap(
-            ax_3857, crs=3857, source="CartoDB.Positron"
-        )
+        result = add_basemap(ax_3857, crs=3857, source="CartoDB.Positron")
 
         images = ax_3857.get_images()
-        assert len(images) >= 1, (
-            f"Expected at least 1 image on axes, got {len(images)}"
-        )
+        assert len(images) >= 1, f"Expected at least 1 image on axes, got {len(images)}"
 
     def test_add_basemap_preserves_data_limits(self, ax_3857):
         """Test that adding a basemap preserves the original axis limits.
@@ -167,12 +150,8 @@ class TestAddBasemapIntegration:
 
         xlim_after = ax_3857.get_xlim()
         ylim_after = ax_3857.get_ylim()
-        assert xlim_before == xlim_after, (
-            f"xlim changed: {xlim_before} -> {xlim_after}"
-        )
-        assert ylim_before == ylim_after, (
-            f"ylim changed: {ylim_before} -> {ylim_after}"
-        )
+        assert xlim_before == xlim_after, f"xlim changed: {xlim_before} -> {xlim_after}"
+        assert ylim_before == ylim_after, f"ylim changed: {ylim_before} -> {ylim_after}"
 
     def test_add_basemap_with_alpha(self, ax_3857):
         """Test adding a semi-transparent basemap.

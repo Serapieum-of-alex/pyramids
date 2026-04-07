@@ -684,6 +684,11 @@ class UgridDataset:
         )
 
         if basemap is not None:
+            if self.epsg is None:
+                raise ValueError(
+                    "UgridDataset must have a CRS (epsg) to "
+                    "use basemap."
+                )
             from pyramids.basemap.basemap import add_basemap
 
             source = basemap if isinstance(basemap, str) else None

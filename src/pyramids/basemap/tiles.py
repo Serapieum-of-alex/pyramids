@@ -22,6 +22,8 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 USER_AGENT = "pyramids-gis/Python"
+# Maximum tiles per request; auto-zoom decreases if exceeded to
+# prevent excessive memory and network usage (16x16 grid = 256).
 MAX_TILES = 256
 
 
@@ -150,17 +152,20 @@ def _fetch_tiles(
     ConnectionError
         If any tile cannot be fetched after all retries.
     """
-    tile_data: dict = {}
+    tile_data: dict[Any, bytes] = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(
-                _fetch_single_tile, tile, provider, timeout, retries
-            ): tile
+            executor.submit(_fetch_single_tile, tile, provider, timeout, retries): tile
             for tile in tiles
         }
-        for future in as_completed(futures):
-            tile_obj, png_bytes = future.result()
-            tile_data[tile_obj] = png_bytes
+        try:
+            for future in as_completed(futures):
+                tile_obj, png_bytes = future.result()
+                tile_data[tile_obj] = png_bytes
+        except Exception:
+            for f in futures:
+                f.cancel()
+            raise
     return tile_data
 
 
@@ -196,9 +201,8 @@ def _stitch_tiles(
     extent_3857 : tuple[float, float, float, float]
         ``(west, south, east, north)`` in EPSG:3857 meters.
     """
-    from PIL import Image
-
     import mercantile
+    from PIL import Image
 
     first_img = Image.open(io.BytesIO(next(iter(tile_data.values()))))
     tile_size = first_img.width
@@ -217,12 +221,8 @@ def _stitch_tiles(
 
     image = np.array(merged)
 
-    tl = mercantile.xy_bounds(
-        mercantile.Tile(x_indices[0], y_indices[0], zoom)
-    )
-    br = mercantile.xy_bounds(
-        mercantile.Tile(x_indices[-1], y_indices[-1], zoom)
-    )
+    tl = mercantile.xy_bounds(mercantile.Tile(x_indices[0], y_indices[0], zoom))
+    br = mercantile.xy_bounds(mercantile.Tile(x_indices[-1], y_indices[-1], zoom))
     extent_3857 = (tl.left, br.bottom, br.right, tl.top)
 
     return image, extent_3857

@@ -37,13 +37,12 @@ class TestFeatureCollectionPlot:
             from GeoDataFrame.plot().
         """
         import matplotlib
+
         matplotlib.use("Agg")
 
         ax = gdf_fc.plot()
         assert ax is not None, "plot() should return an Axes"
-        assert hasattr(ax, "get_xlim"), (
-            "Returned object should be a matplotlib Axes"
-        )
+        assert hasattr(ax, "get_xlim"), "Returned object should be a matplotlib Axes"
 
     def test_plot_with_column(self, gdf_fc: FeatureCollection):
         """Test that column parameter is forwarded to GeoDataFrame.plot.
@@ -53,6 +52,7 @@ class TestFeatureCollectionPlot:
             an Axes.
         """
         import matplotlib
+
         matplotlib.use("Agg")
 
         ax = gdf_fc.plot(column="name")
@@ -84,15 +84,16 @@ class TestFeatureCollectionPlot:
             add_basemap with the axes and the FC's EPSG.
         """
         import matplotlib
+
         matplotlib.use("Agg")
 
         gdf_fc.plot(basemap=True)
 
         mock_add_basemap.assert_called_once()
         call_kwargs = mock_add_basemap.call_args
-        assert call_kwargs[1]["crs"] == 4326, (
-            f"Expected crs=4326, got {call_kwargs[1]['crs']}"
-        )
+        assert (
+            call_kwargs[1]["crs"] == 4326
+        ), f"Expected crs=4326, got {call_kwargs[1]['crs']}"
 
     @patch("pyramids.basemap.basemap.add_basemap")
     def test_plot_with_basemap_string_passes_source(
@@ -105,6 +106,7 @@ class TestFeatureCollectionPlot:
             parameter to add_basemap.
         """
         import matplotlib
+
         matplotlib.use("Agg")
 
         gdf_fc.plot(basemap="CartoDB.Positron")
@@ -115,9 +117,7 @@ class TestFeatureCollectionPlot:
             f"got {call_kwargs[1].get('source')}"
         )
 
-    def test_plot_without_basemap_skips_basemap(
-        self, gdf_fc: FeatureCollection
-    ):
+    def test_plot_without_basemap_skips_basemap(self, gdf_fc: FeatureCollection):
         """Test that basemap=None (default) does not call add_basemap.
 
         Test scenario:
@@ -125,6 +125,7 @@ class TestFeatureCollectionPlot:
             without any basemap-related calls.
         """
         import matplotlib
+
         matplotlib.use("Agg")
 
         ax = gdf_fc.plot()

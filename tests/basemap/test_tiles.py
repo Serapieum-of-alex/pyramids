@@ -123,9 +123,9 @@ class TestAutoZoom:
             match the expected zoom.
         """
         result = _auto_zoom(bounds)
-        assert result == expected_zoom, (
-            f"Expected zoom {expected_zoom} for bounds {bounds}, got {result}"
-        )
+        assert (
+            result == expected_zoom
+        ), f"Expected zoom {expected_zoom} for bounds {bounds}, got {result}"
 
     def test_zoom_clamped_to_zero_for_oversized_extent(self):
         """Test that zoom never goes below 0.
@@ -158,9 +158,9 @@ class TestAutoZoom:
         """
         bounds = (10.0, 50.0, 10.0, 50.0)
         result = _auto_zoom(bounds)
-        assert 0 <= result <= 19, (
-            f"Expected zoom in [0, 19] for zero extent, got {result}"
-        )
+        assert (
+            0 <= result <= 19
+        ), f"Expected zoom in [0, 19] for zero extent, got {result}"
 
     def test_return_type_is_int(self):
         """Test that zoom is always an int.
@@ -169,9 +169,7 @@ class TestAutoZoom:
             The function should return a plain int, not float.
         """
         result = _auto_zoom((0.0, 0.0, 10.0, 10.0))
-        assert isinstance(result, int), (
-            f"Expected int return type, got {type(result)}"
-        )
+        assert isinstance(result, int), f"Expected int return type, got {type(result)}"
 
     def test_lat_dominant_extent(self):
         """Test zoom when latitude extent exceeds longitude extent.
@@ -183,9 +181,9 @@ class TestAutoZoom:
         bounds = (10.0, 40.0, 10.5, 50.0)
         result = _auto_zoom(bounds)
         expected = 6
-        assert result == expected, (
-            f"Expected zoom {expected} for lat-dominant extent, got {result}"
-        )
+        assert (
+            result == expected
+        ), f"Expected zoom {expected} for lat-dominant extent, got {result}"
 
 
 class TestFetchSingleTile:
@@ -205,15 +203,17 @@ class TestFetchSingleTile:
         mock_response = MagicMock()
         mock_response.read.return_value = expected_bytes
 
-        with patch("pyramids.basemap.tiles.urllib.request.urlopen", return_value=mock_response):
+        with patch(
+            "pyramids.basemap.tiles.urllib.request.urlopen", return_value=mock_response
+        ):
             result_tile, result_bytes = _fetch_single_tile(
                 tile, mock_provider, timeout=5, retries=2
             )
 
         assert result_tile == tile, f"Expected tile {tile}, got {result_tile}"
-        assert result_bytes == expected_bytes, (
-            f"Expected {expected_bytes!r}, got {result_bytes!r}"
-        )
+        assert (
+            result_bytes == expected_bytes
+        ), f"Expected {expected_bytes!r}, got {result_bytes!r}"
 
     def test_user_agent_header_is_set(self, mock_provider: MagicMock):
         """Test that requests include the pyramids User-Agent header.
@@ -234,9 +234,9 @@ class TestFetchSingleTile:
 
         called_request = mock_urlopen.call_args[0][0]
         actual_ua = called_request.get_header("User-agent")
-        assert actual_ua == USER_AGENT, (
-            f"Expected User-Agent '{USER_AGENT}', got '{actual_ua}'"
-        )
+        assert (
+            actual_ua == USER_AGENT
+        ), f"Expected User-Agent '{USER_AGENT}', got '{actual_ua}'"
 
     def test_retries_on_failure_then_succeeds(self, mock_provider: MagicMock):
         """Test retry logic: fail twice, succeed on third attempt.
@@ -263,12 +263,12 @@ class TestFetchSingleTile:
                 tile, mock_provider, timeout=5, retries=2
             )
 
-        assert result_bytes == expected, (
-            f"Expected tile data after retries, got {result_bytes!r}"
-        )
-        assert mock_urlopen.call_count == 3, (
-            f"Expected 3 attempts (1 + 2 retries), got {mock_urlopen.call_count}"
-        )
+        assert (
+            result_bytes == expected
+        ), f"Expected tile data after retries, got {result_bytes!r}"
+        assert (
+            mock_urlopen.call_count == 3
+        ), f"Expected 3 attempts (1 + 2 retries), got {mock_urlopen.call_count}"
 
     def test_raises_connection_error_after_all_retries_exhausted(
         self, mock_provider: MagicMock
@@ -289,9 +289,9 @@ class TestFetchSingleTile:
             with pytest.raises(ConnectionError, match=r"z=5/x=1/y=1") as exc_info:
                 _fetch_single_tile(tile, mock_provider, timeout=5, retries=2)
 
-        assert "3 attempts" in str(exc_info.value), (
-            f"Error message should mention attempt count: {exc_info.value}"
-        )
+        assert "3 attempts" in str(
+            exc_info.value
+        ), f"Error message should mention attempt count: {exc_info.value}"
 
     def test_zero_retries_means_single_attempt(self, mock_provider: MagicMock):
         """Test that retries=0 makes exactly one attempt.
@@ -309,13 +309,11 @@ class TestFetchSingleTile:
             with pytest.raises(ConnectionError, match=r"1 attempts"):
                 _fetch_single_tile(tile, mock_provider, timeout=5, retries=0)
 
-        assert mock_urlopen.call_count == 1, (
-            f"Expected exactly 1 attempt, got {mock_urlopen.call_count}"
-        )
+        assert (
+            mock_urlopen.call_count == 1
+        ), f"Expected exactly 1 attempt, got {mock_urlopen.call_count}"
 
-    def test_provider_build_url_called_with_tile_coords(
-        self, mock_provider: MagicMock
-    ):
+    def test_provider_build_url_called_with_tile_coords(self, mock_provider: MagicMock):
         """Test that provider.build_url receives the tile coordinates.
 
         Test scenario:
@@ -404,9 +402,7 @@ class TestFetchTiles:
             side_effect=ConnectionError("fail"),
         ):
             with pytest.raises(ConnectionError):
-                _fetch_tiles(
-                    tiles, mock_provider, max_workers=1, timeout=5, retries=0
-                )
+                _fetch_tiles(tiles, mock_provider, max_workers=1, timeout=5, retries=0)
 
 
 class TestStitchTiles:
@@ -425,12 +421,12 @@ class TestStitchTiles:
 
         image, extent = _stitch_tiles(tile_data, [tile], zoom=0)
 
-        assert image.shape == (256, 256, 4), (
-            f"Expected shape (256, 256, 4), got {image.shape}"
-        )
-        assert image.dtype == np.uint8, (
-            f"Expected dtype uint8, got {image.dtype}"
-        )
+        assert image.shape == (
+            256,
+            256,
+            4,
+        ), f"Expected shape (256, 256, 4), got {image.shape}"
+        assert image.dtype == np.uint8, f"Expected dtype uint8, got {image.dtype}"
 
     def test_2x2_grid_produces_correct_shape(self):
         """Test stitching a 2x2 grid of 256px tiles.
@@ -449,9 +445,11 @@ class TestStitchTiles:
 
         image, extent = _stitch_tiles(tile_data, tiles, zoom=1)
 
-        assert image.shape == (512, 512, 4), (
-            f"Expected shape (512, 512, 4), got {image.shape}"
-        )
+        assert image.shape == (
+            512,
+            512,
+            4,
+        ), f"Expected shape (512, 512, 4), got {image.shape}"
 
     def test_512px_tiles_produce_correct_shape(self):
         """Test stitching tiles with non-standard 512px size.
@@ -465,9 +463,11 @@ class TestStitchTiles:
 
         image, extent = _stitch_tiles(tile_data, tiles, zoom=1)
 
-        assert image.shape == (512, 1024, 4), (
-            f"Expected shape (512, 1024, 4), got {image.shape}"
-        )
+        assert image.shape == (
+            512,
+            1024,
+            4,
+        ), f"Expected shape (512, 1024, 4), got {image.shape}"
 
     def test_rgb_tiles_converted_to_rgba(self):
         """Test that RGB (3-channel) tiles are converted to RGBA.
@@ -482,9 +482,7 @@ class TestStitchTiles:
 
         image, extent = _stitch_tiles(tile_data, [tile], zoom=0)
 
-        assert image.shape[2] == 4, (
-            f"Expected 4 channels (RGBA), got {image.shape[2]}"
-        )
+        assert image.shape[2] == 4, f"Expected 4 channels (RGBA), got {image.shape[2]}"
 
     def test_extent_is_in_epsg_3857(self):
         """Test that the returned extent is in EPSG:3857 meters.
@@ -514,9 +512,7 @@ class TestStitchTiles:
         """
         single_tile = Tile(x=0, y=0, z=1)
         single_data = {single_tile: _make_tile_png(size=256)}
-        _, single_extent = _stitch_tiles(
-            single_data, [single_tile], zoom=1
-        )
+        _, single_extent = _stitch_tiles(single_data, [single_tile], zoom=1)
 
         grid_tiles = [
             Tile(x=0, y=0, z=1),
@@ -551,18 +547,16 @@ class TestStitchTiles:
             tile_right: _make_tile_png(size=256, color=blue),
         }
 
-        image, _ = _stitch_tiles(
-            tile_data, [tile_left, tile_right], zoom=1
-        )
+        image, _ = _stitch_tiles(tile_data, [tile_left, tile_right], zoom=1)
 
         left_pixel = tuple(image[128, 128])
         right_pixel = tuple(image[128, 384])
-        assert left_pixel == red, (
-            f"Left tile pixel should be red {red}, got {left_pixel}"
-        )
-        assert right_pixel == blue, (
-            f"Right tile pixel should be blue {blue}, got {right_pixel}"
-        )
+        assert (
+            left_pixel == red
+        ), f"Left tile pixel should be red {red}, got {left_pixel}"
+        assert (
+            right_pixel == blue
+        ), f"Right tile pixel should be blue {blue}, got {right_pixel}"
 
 
 class TestModuleConstants:
@@ -575,9 +569,9 @@ class TestModuleConstants:
             The constant must be a descriptive string suitable for
             HTTP headers.
         """
-        assert isinstance(USER_AGENT, str), (
-            f"USER_AGENT should be str, got {type(USER_AGENT)}"
-        )
+        assert isinstance(
+            USER_AGENT, str
+        ), f"USER_AGENT should be str, got {type(USER_AGENT)}"
         assert len(USER_AGENT) > 0, "USER_AGENT should not be empty"
 
     def test_max_tiles_is_positive_int(self):
@@ -586,7 +580,7 @@ class TestModuleConstants:
         Test scenario:
             MAX_TILES guards against excessive tile downloads.
         """
-        assert isinstance(MAX_TILES, int), (
-            f"MAX_TILES should be int, got {type(MAX_TILES)}"
-        )
+        assert isinstance(
+            MAX_TILES, int
+        ), f"MAX_TILES should be int, got {type(MAX_TILES)}"
         assert MAX_TILES > 0, f"MAX_TILES should be positive, got {MAX_TILES}"

@@ -60,9 +60,7 @@ def _warp_tile_image(
 
     x_res = (extent_3857[2] - extent_3857[0]) / width
     y_res = (extent_3857[3] - extent_3857[1]) / height
-    src_ds.SetGeoTransform(
-        [extent_3857[0], x_res, 0, extent_3857[3], 0, -y_res]
-    )
+    src_ds.SetGeoTransform([extent_3857[0], x_res, 0, extent_3857[3], 0, -y_res])
 
     src_srs = osr.SpatialReference()
     src_srs.ImportFromEPSG(3857)
@@ -93,8 +91,9 @@ def _warp_tile_image(
 
     if dst_ds is None:
         raise RuntimeError(
-            "GDAL Warp failed to reproject tile image "
-            f"to {target_crs}."
+            f"GDAL Warp failed to reproject tile image from "
+            f"EPSG:3857 to {target_crs}. Source extent (3857): "
+            f"{extent_3857}, Target extent: {target_extent}"
         )
 
     out_bands = min(dst_ds.RasterCount, 4)
@@ -104,9 +103,7 @@ def _warp_tile_image(
     )
 
     if warped.shape[2] == 3:
-        alpha = np.full(
-            (warped.shape[0], warped.shape[1], 1), 255, dtype=np.uint8
-        )
+        alpha = np.full((warped.shape[0], warped.shape[1], 1), 255, dtype=np.uint8)
         warped = np.concatenate([warped, alpha], axis=-1)
 
     gt = dst_ds.GetGeoTransform()
@@ -117,6 +114,8 @@ def _warp_tile_image(
         gt[3],
     )
 
+    # MEM driver datasets are released when Python refcount drops to
+    # zero -- no explicit Close() or file cleanup needed.
     src_ds = None
     dst_ds = None
 

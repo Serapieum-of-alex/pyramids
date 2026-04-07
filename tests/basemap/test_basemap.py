@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import io
 from collections import namedtuple
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import numpy as np
 import pytest
@@ -53,9 +53,9 @@ class TestGetProvider:
             the default OpenStreetMap Mapnik provider.
         """
         provider = get_provider(None)
-        assert "openstreetmap" in provider.name.lower() or "OpenStreetMap" in str(provider), (
-            f"Default provider should be OpenStreetMap, got {provider}"
-        )
+        assert "openstreetmap" in provider.name.lower() or "OpenStreetMap" in str(
+            provider
+        ), f"Default provider should be OpenStreetMap, got {provider}"
 
     def test_resolve_cartodb_positron(self):
         """Test resolving CartoDB.Positron by dot-separated name.
@@ -65,9 +65,9 @@ class TestGetProvider:
             provider with a URL template.
         """
         provider = get_provider("CartoDB.Positron")
-        assert hasattr(provider, "build_url"), (
-            f"Provider should have build_url method: {provider}"
-        )
+        assert hasattr(
+            provider, "build_url"
+        ), f"Provider should have build_url method: {provider}"
 
     def test_resolve_esri_world_imagery(self):
         """Test resolving Esri.WorldImagery by dot-separated name.
@@ -111,13 +111,15 @@ class TestDensifyAndReprojectBounds:
             with values in the millions range (Web Mercator).
         """
         result = _densify_and_reproject_bounds(
-            10.0, 50.0, 11.0, 51.0,
-            "EPSG:4326", "EPSG:3857",
+            10.0,
+            50.0,
+            11.0,
+            51.0,
+            "EPSG:4326",
+            "EPSG:3857",
         )
         west, south, east, north = result
-        assert abs(west) > 100000, (
-            f"West should be in meters (large value), got {west}"
-        )
+        assert abs(west) > 100000, f"West should be in meters (large value), got {west}"
         assert west < east, f"West ({west}) should be < East ({east})"
         assert south < north, f"South ({south}) should be < North ({north})"
 
@@ -129,8 +131,12 @@ class TestDensifyAndReprojectBounds:
             values in the range -180 to 180 (lon) and -90 to 90 (lat).
         """
         result = _densify_and_reproject_bounds(
-            1000000.0, 6000000.0, 1200000.0, 6200000.0,
-            "EPSG:3857", "EPSG:4326",
+            1000000.0,
+            6000000.0,
+            1200000.0,
+            6200000.0,
+            "EPSG:3857",
+            "EPSG:4326",
         )
         west, south, east, north = result
         assert -180 <= west <= 180, f"West should be in degrees, got {west}"
@@ -149,16 +155,19 @@ class TestDensifyAndReprojectBounds:
         west_utm, south_utm = 200000.0, 5400000.0
         east_utm, north_utm = 800000.0, 6200000.0
 
-        transformer = Transformer.from_crs(
-            "EPSG:32633", "EPSG:4326", always_xy=True
-        )
+        transformer = Transformer.from_crs("EPSG:32633", "EPSG:4326", always_xy=True)
         cw, cs = transformer.transform(west_utm, south_utm)
         ce, cn = transformer.transform(east_utm, north_utm)
         corner_width = ce - cw
 
         densified = _densify_and_reproject_bounds(
-            west_utm, south_utm, east_utm, north_utm,
-            "EPSG:32633", "EPSG:4326", n_points=21,
+            west_utm,
+            south_utm,
+            east_utm,
+            north_utm,
+            "EPSG:32633",
+            "EPSG:4326",
+            n_points=21,
         )
         densified_width = densified[2] - densified[0]
 
@@ -175,9 +184,7 @@ class TestDensifyAndReprojectBounds:
             the same bounds.
         """
         bounds = (10.0, 50.0, 11.0, 51.0)
-        result = _densify_and_reproject_bounds(
-            *bounds, "EPSG:4326", "EPSG:4326"
-        )
+        result = _densify_and_reproject_bounds(*bounds, "EPSG:4326", "EPSG:4326")
         for orig, reprojected in zip(bounds, result):
             assert abs(orig - reprojected) < 0.001, (
                 f"Identity transform should preserve bounds: "
@@ -205,9 +212,7 @@ class TestAddBasemap:
         mock_transform.inverted.return_value = mock_transform
         mock_fig = MagicMock()
         mock_fig.dpi = 100.0
-        type(mock_fig).dpi_scale_trans = PropertyMock(
-            return_value=mock_transform
-        )
+        type(mock_fig).dpi_scale_trans = PropertyMock(return_value=mock_transform)
 
         mock_bbox = MagicMock()
         mock_bbox.width = 6.0
@@ -243,7 +248,8 @@ class TestAddBasemap:
         with (
             patch.object(
                 __import__("pyramids.basemap.tiles", fromlist=["_auto_zoom"]),
-                "_auto_zoom", return_value=10,
+                "_auto_zoom",
+                return_value=10,
             ) as mock_zoom,
             patch.object(
                 __import__("pyramids.basemap.tiles", fromlist=["_fetch_tiles"]),
@@ -261,9 +267,7 @@ class TestAddBasemap:
         ):
             yield mock_zoom, mock_fetch, mock_stitch
 
-    def test_basemap_3857_skips_warping(
-        self, mock_ax: MagicMock, _patch_tiles
-    ):
+    def test_basemap_3857_skips_warping(self, mock_ax: MagicMock, _patch_tiles):
         """Test that CRS=3857 skips the warping step.
 
         Test scenario:
@@ -271,9 +275,7 @@ class TestAddBasemap:
             occur. The stitched image should be passed directly to
             imshow.
         """
-        warp_mod = __import__(
-            "pyramids.basemap.warp", fromlist=["_warp_tile_image"]
-        )
+        warp_mod = __import__("pyramids.basemap.warp", fromlist=["_warp_tile_image"])
         with patch.object(warp_mod, "_warp_tile_image") as mock_warp:
             result = add_basemap(mock_ax, crs=3857)
 
@@ -281,9 +283,7 @@ class TestAddBasemap:
         mock_ax.imshow.assert_called_once()
         assert result is mock_ax, "add_basemap should return the axes"
 
-    def test_basemap_4326_triggers_warping(
-        self, mock_ax: MagicMock, _patch_tiles
-    ):
+    def test_basemap_4326_triggers_warping(self, mock_ax: MagicMock, _patch_tiles):
         """Test that CRS=4326 triggers the GDAL warping step.
 
         Test scenario:
@@ -294,11 +294,10 @@ class TestAddBasemap:
         mock_ax.get_ylim.return_value = (50.0, 51.0)
 
         fake_image = np.zeros((256, 256, 4), dtype=np.uint8)
-        warp_mod = __import__(
-            "pyramids.basemap.warp", fromlist=["_warp_tile_image"]
-        )
+        warp_mod = __import__("pyramids.basemap.warp", fromlist=["_warp_tile_image"])
         with patch.object(
-            warp_mod, "_warp_tile_image",
+            warp_mod,
+            "_warp_tile_image",
             return_value=(fake_image, (10.0, 50.0, 11.0, 51.0)),
         ) as mock_warp:
             add_basemap(mock_ax, crs=4326)
@@ -306,9 +305,7 @@ class TestAddBasemap:
         mock_warp.assert_called_once()
         mock_ax.imshow.assert_called_once()
 
-    def test_restores_axis_limits_after_imshow(
-        self, mock_ax: MagicMock, _patch_tiles
-    ):
+    def test_restores_axis_limits_after_imshow(self, mock_ax: MagicMock, _patch_tiles):
         """Test that original axis limits are restored after adding basemap.
 
         Test scenario:
@@ -320,9 +317,7 @@ class TestAddBasemap:
         mock_ax.set_xlim.assert_called_once_with((1000000.0, 1200000.0))
         mock_ax.set_ylim.assert_called_once_with((6000000.0, 6200000.0))
 
-    def test_attribution_false_skips_text(
-        self, mock_ax: MagicMock, _patch_tiles
-    ):
+    def test_attribution_false_skips_text(self, mock_ax: MagicMock, _patch_tiles):
         """Test that attribution=False does not add text to axes.
 
         Test scenario:
@@ -333,9 +328,7 @@ class TestAddBasemap:
 
         mock_ax.text.assert_not_called()
 
-    def test_custom_attribution_string(
-        self, mock_ax: MagicMock, _patch_tiles
-    ):
+    def test_custom_attribution_string(self, mock_ax: MagicMock, _patch_tiles):
         """Test that a custom attribution string is used.
 
         Test scenario:
@@ -351,9 +344,7 @@ class TestAddBasemap:
             f"got {call_args[0][2]}"
         )
 
-    def test_imshow_receives_correct_kwargs(
-        self, mock_ax: MagicMock, _patch_tiles
-    ):
+    def test_imshow_receives_correct_kwargs(self, mock_ax: MagicMock, _patch_tiles):
         """Test that imshow is called with correct alpha and zorder.
 
         Test scenario:
@@ -363,9 +354,9 @@ class TestAddBasemap:
         add_basemap(mock_ax, crs=3857, alpha=0.5, zorder=-2)
 
         call_kwargs = mock_ax.imshow.call_args[1]
-        assert call_kwargs["alpha"] == 0.5, (
-            f"Expected alpha=0.5, got {call_kwargs['alpha']}"
-        )
-        assert call_kwargs["zorder"] == -2, (
-            f"Expected zorder=-2, got {call_kwargs['zorder']}"
-        )
+        assert (
+            call_kwargs["alpha"] == 0.5
+        ), f"Expected alpha=0.5, got {call_kwargs['alpha']}"
+        assert (
+            call_kwargs["zorder"] == -2
+        ), f"Expected zorder=-2, got {call_kwargs['zorder']}"

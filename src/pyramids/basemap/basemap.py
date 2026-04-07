@@ -102,7 +102,8 @@ def _densify_and_reproject_bounds(
     dst_crs : str
         Target CRS identifier (e.g. ``"EPSG:3857"``).
     n_points : int, optional
-        Number of sample points per edge. Default is 21.
+        Number of sample points per edge. 21 balances accuracy
+        vs performance for typical CRS warps. Default is 21.
 
     Returns
     -------
@@ -116,25 +117,26 @@ def _densify_and_reproject_bounds(
     t_values = np.linspace(0, 1, n_points).tolist()
 
     for t in t_values:
-        xs.extend([
-            west + t * (east - west),
-            east,
-            east - t * (east - west),
-            west,
-        ])
-        ys.extend([
-            south,
-            south + t * (north - south),
-            north,
-            north - t * (north - south),
-        ])
+        xs.extend(
+            [
+                west + t * (east - west),
+                east,
+                east - t * (east - west),
+                west,
+            ]
+        )
+        ys.extend(
+            [
+                south,
+                south + t * (north - south),
+                north,
+                north - t * (north - south),
+            ]
+        )
 
     tx, ty = transformer.transform(xs, ys)
 
-    tx_list = list(tx) if not isinstance(tx, list) else tx
-    ty_list = list(ty) if not isinstance(ty, list) else ty
-
-    result = (min(tx_list), min(ty_list), max(tx_list), max(ty_list))
+    result = (min(tx), min(ty), max(tx), max(ty))
     return result
 
 
@@ -147,6 +149,8 @@ def add_basemap(
     attribution: str | bool = True,
     zorder: int = -1,
     interpolation: str = "bilinear",
+    timeout: int = 10,
+    retries: int = 2,
 ) -> Any:
     """Add a basemap to a matplotlib Axes.
 
@@ -184,6 +188,10 @@ def add_basemap(
     interpolation : str, optional
         Interpolation method for ``ax.imshow()``. Default is
         ``"bilinear"``.
+    timeout : int, optional
+        HTTP request timeout in seconds per tile. Default is ``10``.
+    retries : int, optional
+        Number of retry attempts per failed tile. Default is ``2``.
 
     Returns
     -------
@@ -211,15 +219,18 @@ def add_basemap(
     from pyramids.basemap import tiles as tiles_mod
     from pyramids.basemap import warp as warp_mod
 
+    if not hasattr(ax, "get_xlim") or not hasattr(ax, "get_ylim"):
+        raise TypeError(
+            "ax must be a matplotlib.axes.Axes instance, " f"got {type(ax).__name__}"
+        )
+
     x0, x1 = ax.get_xlim()
     y0, y1 = ax.get_ylim()
     west, east = min(x0, x1), max(x0, x1)
     south, north = min(y0, y1), max(y0, y1)
 
     if (west, east) == (0.0, 1.0) and (south, north) == (0.0, 1.0):
-        raise ValueError(
-            "Axes have no data extent. Plot data before adding a basemap."
-        )
+        raise ValueError("Axes have no data extent. Plot data before adding a basemap.")
 
     if isinstance(source, str):
         provider = get_provider(source)
@@ -238,9 +249,7 @@ def add_basemap(
             west, south, east, north, crs_str, "EPSG:3857"
         )
 
-    transformer_to_4326 = Transformer.from_crs(
-        "EPSG:3857", "EPSG:4326", always_xy=True
-    )
+    transformer_to_4326 = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
     w4326, s4326 = transformer_to_4326.transform(w3857, s3857)
     e4326, n4326 = transformer_to_4326.transform(e3857, n3857)
 
@@ -252,19 +261,22 @@ def add_basemap(
     if zoom == "auto":
         tile_zoom = tiles_mod._auto_zoom(bounds_4326)
     else:
-        tile_zoom = int(zoom)
+        try:
+            tile_zoom = int(zoom)
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"zoom must be 'auto' or int 0-19, got {zoom!r}") from e
+        if not 0 <= tile_zoom <= 19:
+            raise ValueError(f"zoom must be 0-19, got {tile_zoom}")
 
-    tiles = list(mercantile.tiles(
-        w4326, s4326, e4326, n4326, zooms=tile_zoom
-    ))
+    tiles = list(mercantile.tiles(w4326, s4326, e4326, n4326, zooms=tile_zoom))
 
     while len(tiles) > tiles_mod.MAX_TILES and tile_zoom > 0:
         tile_zoom -= 1
-        tiles = list(mercantile.tiles(
-            w4326, s4326, e4326, n4326, zooms=tile_zoom
-        ))
+        tiles = list(mercantile.tiles(w4326, s4326, e4326, n4326, zooms=tile_zoom))
 
-    tile_data = tiles_mod._fetch_tiles(tiles, provider)
+    tile_data = tiles_mod._fetch_tiles(
+        tiles, provider, timeout=timeout, retries=retries
+    )
 
     image, extent_3857 = tiles_mod._stitch_tiles(tile_data, tiles, tile_zoom)
 
@@ -309,10 +321,13 @@ def add_basemap(
 
     if attr_text:
         ax.text(
-            0.99, 0.01, attr_text,
+            0.99,
+            0.01,
+            attr_text,
             transform=ax.transAxes,
             fontsize=6,
-            ha="right", va="bottom",
+            ha="right",
+            va="bottom",
             alpha=0.7,
             bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.5),
         )
