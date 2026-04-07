@@ -59,7 +59,7 @@ class Mesh2d:
         self._crs = crs
         self._cached_face_centroids: tuple[np.ndarray, np.ndarray] | None = None
         self._cached_face_areas: np.ndarray | None = None
-        self._cached_triangulation: Any = None
+        self._cached_fan_triangles: np.ndarray | None = None
 
     @property
     def node_x(self) -> np.ndarray:
@@ -187,20 +187,22 @@ class Mesh2d:
         return self._cached_face_areas
 
     @property
-    def triangulation(self) -> Any:
-        """Matplotlib Triangulation for rendering mixed meshes.
+    def fan_triangles(self) -> np.ndarray:
+        """Fan triangulation as a raw numpy array.
 
-        Uses fan triangulation: each face with N nodes is decomposed
-        into (N-2) triangles by fanning from the first vertex.
+        Each face with N valid nodes is decomposed into (N-2)
+        triangles by fanning from the first vertex. Faces with
+        fewer than 3 valid nodes are skipped.
 
         Returns:
-            matplotlib.tri.Triangulation instance.
-        """
-        if self._cached_triangulation is None:
-            import matplotlib.tri as mtri
+            (n_triangles, 3) integer array of node indices.
 
+        Raises:
+            ValueError: If no faces have 3 or more valid nodes.
+        """
+        if self._cached_fan_triangles is None:
             fnc = self._face_node_connectivity
-            triangles = []
+            triangles: list[list[int]] = []
 
             for i in range(self.n_face):
                 nodes = fnc.get_element(i)
@@ -208,18 +210,17 @@ class Mesh2d:
                 if n < 3:
                     continue
                 for j in range(1, n - 1):
-                    triangles.append([int(nodes[0]), int(nodes[j]), int(nodes[j + 1])])
+                    triangles.append(
+                        [int(nodes[0]), int(nodes[j]), int(nodes[j + 1])]
+                    )
 
             if not triangles:
                 raise ValueError(
                     "Cannot create triangulation: no faces with 3 or more nodes."
                 )
-            tri_array = np.array(triangles, dtype=np.intp)
-            self._cached_triangulation = mtri.Triangulation(
-                self._node_x, self._node_y, tri_array
-            )
+            self._cached_fan_triangles = np.array(triangles, dtype=np.intp)
 
-        return self._cached_triangulation
+        return self._cached_fan_triangles
 
     def get_face_nodes(self, face_idx: int) -> np.ndarray:
         """Return valid node indices for a single face.
