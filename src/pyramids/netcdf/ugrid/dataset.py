@@ -652,6 +652,7 @@ class UgridDataset:
         ax: Any = None,
         cmap: str = "viridis",
         title: str | None = None,
+        basemap: bool | str | None = None,
         **kwargs: Any,
     ) -> Any:
         """Plot a mesh data variable.
@@ -661,6 +662,9 @@ class UgridDataset:
             ax: matplotlib Axes. Created if None.
             cmap: Colormap name.
             title: Plot title. Defaults to variable name.
+            basemap: If True, add an OpenStreetMap basemap. If a string,
+                use it as the tile provider name (e.g. "CartoDB.Positron").
+                Default is None (no basemap). Requires the [viz] extra.
             **kwargs: Additional arguments passed to plot_mesh_data.
 
         Returns:
@@ -678,6 +682,13 @@ class UgridDataset:
             self._mesh, data, location=var.location,
             ax=ax, cmap=cmap, title=title, **kwargs,
         )
+
+        if basemap is not None:
+            from pyramids.basemap._basemap import add_basemap
+
+            source = basemap if isinstance(basemap, str) else None
+            add_basemap(result, crs=self.epsg, source=source)
+
         return result
 
     def plot_outline(self, ax: Any = None, **kwargs: Any) -> Any:
