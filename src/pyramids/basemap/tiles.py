@@ -90,6 +90,7 @@ def _fetch_single_tile(
     """
     url = provider.build_url(x=tile.x, y=tile.y, z=tile.z)
     last_error = None
+    result_bytes: bytes | None = None
     for attempt in range(retries + 1):
         try:
             request = urllib.request.Request(
@@ -97,8 +98,8 @@ def _fetch_single_tile(
                 headers={"User-Agent": USER_AGENT},
             )
             response = urllib.request.urlopen(request, timeout=timeout)
-            png_bytes = response.read()
-            return tile, png_bytes
+            result_bytes = response.read()
+            break
         except (OSError, urllib.error.URLError, ConnectionError) as e:
             last_error = e
             logger.debug(
@@ -108,10 +109,12 @@ def _fetch_single_tile(
                 url,
                 e,
             )
-    raise ConnectionError(
-        f"Failed to fetch tile z={tile.z}/x={tile.x}/y={tile.y} "
-        f"after {retries + 1} attempts: {last_error}"
-    )
+    if result_bytes is None:
+        raise ConnectionError(
+            f"Failed to fetch tile z={tile.z}/x={tile.x}/y={tile.y} "
+            f"after {retries + 1} attempts: {last_error}"
+        )
+    return tile, result_bytes
 
 
 def _fetch_tiles(

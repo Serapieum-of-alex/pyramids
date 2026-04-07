@@ -237,6 +237,36 @@ class TestAddBasemap:
         with pytest.raises(ValueError, match="no data extent"):
             add_basemap(ax)
 
+    @pytest.mark.parametrize(
+        "bad_ax",
+        [None, "not_an_axes", 42, {}],
+        ids=["none", "string", "int", "dict"],
+    )
+    def test_raises_on_invalid_ax_type(self, bad_ax):
+        """Test that non-Axes objects raise TypeError.
+
+        Test scenario:
+            Objects without get_xlim/get_ylim should raise TypeError
+            with a clear message indicating the expected type.
+        """
+        with pytest.raises(TypeError, match="matplotlib.axes.Axes"):
+            add_basemap(bad_ax)
+
+    @pytest.mark.parametrize(
+        "bad_zoom",
+        [-1, 20, 100, "invalid"],
+        ids=["negative", "too_high", "way_too_high", "string"],
+    )
+    def test_raises_on_invalid_zoom(self, bad_zoom, mock_ax: MagicMock):
+        """Test that invalid zoom values raise ValueError.
+
+        Test scenario:
+            Zoom must be 'auto' or an int 0-19. Values outside this
+            range or non-numeric strings should raise ValueError.
+        """
+        with pytest.raises(ValueError, match="zoom"):
+            add_basemap(mock_ax, crs=3857, zoom=bad_zoom)
+
     @pytest.fixture
     def _patch_tiles(self):
         """Patch tile functions with sensible defaults.

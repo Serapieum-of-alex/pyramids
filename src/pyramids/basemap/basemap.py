@@ -9,6 +9,7 @@ data's CRS via GDAL, and rendered underneath the data layer.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import numpy as np
@@ -308,8 +309,6 @@ def add_basemap(
     ax.set_ylim(ylim)
 
     if attribution is True:
-        import re
-
         raw = getattr(provider, "attribution", None) or getattr(
             provider, "html_attribution", ""
         )
