@@ -3987,7 +3987,20 @@ apply to unstructured meshes.</p>
 <span class="normal"><a href="#__codelineno-0-720">720</a></span>
 <span class="normal"><a href="#__codelineno-0-721">721</a></span>
 <span class="normal"><a href="#__codelineno-0-722">722</a></span>
-<span class="normal"><a href="#__codelineno-0-723">723</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="k">class</span><span class="w"> </span><span class="nc">UgridDataset</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-723">723</a></span>
+<span class="normal"><a href="#__codelineno-0-724">724</a></span>
+<span class="normal"><a href="#__codelineno-0-725">725</a></span>
+<span class="normal"><a href="#__codelineno-0-726">726</a></span>
+<span class="normal"><a href="#__codelineno-0-727">727</a></span>
+<span class="normal"><a href="#__codelineno-0-728">728</a></span>
+<span class="normal"><a href="#__codelineno-0-729">729</a></span>
+<span class="normal"><a href="#__codelineno-0-730">730</a></span>
+<span class="normal"><a href="#__codelineno-0-731">731</a></span>
+<span class="normal"><a href="#__codelineno-0-732">732</a></span>
+<span class="normal"><a href="#__codelineno-0-733">733</a></span>
+<span class="normal"><a href="#__codelineno-0-734">734</a></span>
+<span class="normal"><a href="#__codelineno-0-735">735</a></span>
+<span class="normal"><a href="#__codelineno-0-736">736</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="k">class</span><span class="w"> </span><span class="nc">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Container for UGRID NetCDF mesh data.</span>
 <a id="__codelineno-0-36" name="__codelineno-0-36"></a>
 <a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">    Combines mesh topology, data variables, and global attributes</span>
@@ -4608,75 +4621,88 @@ apply to unstructured meshes.</p>
 <a id="__codelineno-0-652" name="__codelineno-0-652"></a>        <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-653" name="__codelineno-0-653"></a>        <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;viridis&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-654" name="__codelineno-0-654"></a>        <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot a mesh data variable.</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">            variable_name: Name of the data variable to plot.</span>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">            ax: matplotlib Axes. Created if None.</span>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">            cmap: Colormap name.</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">            title: Plot title. Defaults to variable name.</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">            **kwargs: Additional arguments passed to plot_mesh_data.</span>
-<a id="__codelineno-0-665" name="__codelineno-0-665"></a>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">            cleopatra.mesh_glyph.MeshGlyph instance with the plot</span>
-<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">                rendered. Use the returned object to access Figure/Axes</span>
-<a id="__codelineno-0-669" name="__codelineno-0-669"></a><span class="sd">                or call additional MeshGlyph methods.</span>
-<a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_mesh_data</span>
-<a id="__codelineno-0-672" name="__codelineno-0-672"></a>
-<a id="__codelineno-0-673" name="__codelineno-0-673"></a>        <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
-<a id="__codelineno-0-674" name="__codelineno-0-674"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">data</span>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a>        <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a>            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-677" name="__codelineno-0-677"></a>        <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a>            <span class="n">title</span> <span class="o">=</span> <span class="n">variable_name</span>
-<a id="__codelineno-0-679" name="__codelineno-0-679"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">plot_mesh_data</span><span class="p">(</span>
-<a id="__codelineno-0-680" name="__codelineno-0-680"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="n">var</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
-<a id="__codelineno-0-681" name="__codelineno-0-681"></a>            <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a>        <span class="p">)</span>
-<a id="__codelineno-0-683" name="__codelineno-0-683"></a>        <span class="k">return</span> <span class="n">result</span>
-<a id="__codelineno-0-684" name="__codelineno-0-684"></a>
-<a id="__codelineno-0-685" name="__codelineno-0-685"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">plot_outline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-686" name="__codelineno-0-686"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot mesh wireframe.</span>
-<a id="__codelineno-0-687" name="__codelineno-0-687"></a>
-<a id="__codelineno-0-688" name="__codelineno-0-688"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-689" name="__codelineno-0-689"></a><span class="sd">            ax: matplotlib Axes. Created if None.</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="sd">            **kwargs: Additional arguments passed to plot_mesh_outline.</span>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a><span class="sd">            cleopatra.mesh_glyph.MeshGlyph instance with the wireframe</span>
-<a id="__codelineno-0-694" name="__codelineno-0-694"></a><span class="sd">                rendered.</span>
-<a id="__codelineno-0-695" name="__codelineno-0-695"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-696" name="__codelineno-0-696"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_mesh_outline</span>
-<a id="__codelineno-0-697" name="__codelineno-0-697"></a>
-<a id="__codelineno-0-698" name="__codelineno-0-698"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">plot_mesh_outline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-699" name="__codelineno-0-699"></a>        <span class="k">return</span> <span class="n">result</span>
-<a id="__codelineno-0-700" name="__codelineno-0-700"></a>
-<a id="__codelineno-0-701" name="__codelineno-0-701"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-702" name="__codelineno-0-702"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Human-readable summary of the dataset.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-703" name="__codelineno-0-703"></a>        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-704" name="__codelineno-0-704"></a>            <span class="sa">f</span><span class="s2">&quot;UgridDataset: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_file_name</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(in-memory)&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-705" name="__codelineno-0-705"></a>            <span class="sa">f</span><span class="s2">&quot;  Mesh: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-706" name="__codelineno-0-706"></a>            <span class="sa">f</span><span class="s2">&quot;  Nodes: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_node</span><span class="si">}</span><span class="s2">, Faces: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">, Edges: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_edge</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-707" name="__codelineno-0-707"></a>            <span class="sa">f</span><span class="s2">&quot;  Bounds: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-708" name="__codelineno-0-708"></a>            <span class="sa">f</span><span class="s2">&quot;  CRS: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-709" name="__codelineno-0-709"></a>            <span class="sa">f</span><span class="s2">&quot;  Data variables (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data_variables</span><span class="p">)</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-710" name="__codelineno-0-710"></a>        <span class="p">]</span>
-<a id="__codelineno-0-711" name="__codelineno-0-711"></a>        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-712" name="__codelineno-0-712"></a>            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: location=</span><span class="si">{</span><span class="n">var</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">, shape=</span><span class="si">{</span><span class="n">var</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-713" name="__codelineno-0-713"></a>        <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
-<a id="__codelineno-0-714" name="__codelineno-0-714"></a>        <span class="k">return</span> <span class="n">result</span>
-<a id="__codelineno-0-715" name="__codelineno-0-715"></a>
-<a id="__codelineno-0-716" name="__codelineno-0-716"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-717" name="__codelineno-0-717"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Repr string for the dataset.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-718" name="__codelineno-0-718"></a>        <span class="n">result</span> <span class="o">=</span> <span class="p">(</span>
-<a id="__codelineno-0-719" name="__codelineno-0-719"></a>            <span class="sa">f</span><span class="s2">&quot;UgridDataset(mesh=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">&#39;, &quot;</span>
-<a id="__codelineno-0-720" name="__codelineno-0-720"></a>            <span class="sa">f</span><span class="s2">&quot;n_node=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_node</span><span class="si">}</span><span class="s2">, n_face=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">, n_edge=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_edge</span><span class="si">}</span><span class="s2">, &quot;</span>
-<a id="__codelineno-0-721" name="__codelineno-0-721"></a>            <span class="sa">f</span><span class="s2">&quot;variables=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">data_variable_names</span><span class="si">}</span><span class="s2">)&quot;</span>
-<a id="__codelineno-0-722" name="__codelineno-0-722"></a>        <span class="p">)</span>
-<a id="__codelineno-0-723" name="__codelineno-0-723"></a>        <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="n">basemap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-657" name="__codelineno-0-657"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-658" name="__codelineno-0-658"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot a mesh data variable.</span>
+<a id="__codelineno-0-659" name="__codelineno-0-659"></a>
+<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">            variable_name: Name of the data variable to plot.</span>
+<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">            ax: matplotlib Axes. Created if None.</span>
+<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">            cmap: Colormap name.</span>
+<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">            title: Plot title. Defaults to variable name.</span>
+<a id="__codelineno-0-665" name="__codelineno-0-665"></a><span class="sd">            basemap: If True, add an OpenStreetMap basemap. If a string,</span>
+<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">                use it as the tile provider name (e.g. &quot;CartoDB.Positron&quot;).</span>
+<a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">                Default is None (no basemap). Requires the [viz] extra.</span>
+<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">            **kwargs: Additional arguments passed to plot_mesh_data.</span>
+<a id="__codelineno-0-669" name="__codelineno-0-669"></a>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">            matplotlib Axes with the plot.</span>
+<a id="__codelineno-0-672" name="__codelineno-0-672"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_mesh_data</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a>        <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">data</span>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a>        <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a>            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-679" name="__codelineno-0-679"></a>        <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-680" name="__codelineno-0-680"></a>            <span class="n">title</span> <span class="o">=</span> <span class="n">variable_name</span>
+<a id="__codelineno-0-681" name="__codelineno-0-681"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">plot_mesh_data</span><span class="p">(</span>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="n">var</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+<a id="__codelineno-0-683" name="__codelineno-0-683"></a>            <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<a id="__codelineno-0-684" name="__codelineno-0-684"></a>        <span class="p">)</span>
+<a id="__codelineno-0-685" name="__codelineno-0-685"></a>
+<a id="__codelineno-0-686" name="__codelineno-0-686"></a>        <span class="k">if</span> <span class="n">basemap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-687" name="__codelineno-0-687"></a>            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a>                    <span class="s2">&quot;UgridDataset must have a CRS (epsg) to &quot;</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a>                    <span class="s2">&quot;use basemap.&quot;</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a>                <span class="p">)</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a>            <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.basemap.basemap</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_basemap</span>
+<a id="__codelineno-0-693" name="__codelineno-0-693"></a>
+<a id="__codelineno-0-694" name="__codelineno-0-694"></a>            <span class="n">source</span> <span class="o">=</span> <span class="n">basemap</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">basemap</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+<a id="__codelineno-0-695" name="__codelineno-0-695"></a>            <span class="n">add_basemap</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
+<a id="__codelineno-0-696" name="__codelineno-0-696"></a>
+<a id="__codelineno-0-697" name="__codelineno-0-697"></a>        <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-698" name="__codelineno-0-698"></a>
+<a id="__codelineno-0-699" name="__codelineno-0-699"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">plot_outline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-700" name="__codelineno-0-700"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot mesh wireframe.</span>
+<a id="__codelineno-0-701" name="__codelineno-0-701"></a>
+<a id="__codelineno-0-702" name="__codelineno-0-702"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-703" name="__codelineno-0-703"></a><span class="sd">            ax: matplotlib Axes. Created if None.</span>
+<a id="__codelineno-0-704" name="__codelineno-0-704"></a><span class="sd">            **kwargs: Additional arguments passed to plot_mesh_outline.</span>
+<a id="__codelineno-0-705" name="__codelineno-0-705"></a>
+<a id="__codelineno-0-706" name="__codelineno-0-706"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-707" name="__codelineno-0-707"></a><span class="sd">            matplotlib Axes with the wireframe plot.</span>
+<a id="__codelineno-0-708" name="__codelineno-0-708"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-709" name="__codelineno-0-709"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_mesh_outline</span>
+<a id="__codelineno-0-710" name="__codelineno-0-710"></a>
+<a id="__codelineno-0-711" name="__codelineno-0-711"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">plot_mesh_outline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-712" name="__codelineno-0-712"></a>        <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-713" name="__codelineno-0-713"></a>
+<a id="__codelineno-0-714" name="__codelineno-0-714"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-715" name="__codelineno-0-715"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Human-readable summary of the dataset.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-716" name="__codelineno-0-716"></a>        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-717" name="__codelineno-0-717"></a>            <span class="sa">f</span><span class="s2">&quot;UgridDataset: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_file_name</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(in-memory)&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-718" name="__codelineno-0-718"></a>            <span class="sa">f</span><span class="s2">&quot;  Mesh: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-719" name="__codelineno-0-719"></a>            <span class="sa">f</span><span class="s2">&quot;  Nodes: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_node</span><span class="si">}</span><span class="s2">, Faces: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">, Edges: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_edge</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-720" name="__codelineno-0-720"></a>            <span class="sa">f</span><span class="s2">&quot;  Bounds: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-721" name="__codelineno-0-721"></a>            <span class="sa">f</span><span class="s2">&quot;  CRS: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-722" name="__codelineno-0-722"></a>            <span class="sa">f</span><span class="s2">&quot;  Data variables (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data_variables</span><span class="p">)</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-723" name="__codelineno-0-723"></a>        <span class="p">]</span>
+<a id="__codelineno-0-724" name="__codelineno-0-724"></a>        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-725" name="__codelineno-0-725"></a>            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: location=</span><span class="si">{</span><span class="n">var</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">, shape=</span><span class="si">{</span><span class="n">var</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-726" name="__codelineno-0-726"></a>        <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+<a id="__codelineno-0-727" name="__codelineno-0-727"></a>        <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-728" name="__codelineno-0-728"></a>
+<a id="__codelineno-0-729" name="__codelineno-0-729"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-730" name="__codelineno-0-730"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Repr string for the dataset.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-731" name="__codelineno-0-731"></a>        <span class="n">result</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-732" name="__codelineno-0-732"></a>            <span class="sa">f</span><span class="s2">&quot;UgridDataset(mesh=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">&#39;, &quot;</span>
+<a id="__codelineno-0-733" name="__codelineno-0-733"></a>            <span class="sa">f</span><span class="s2">&quot;n_node=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_node</span><span class="si">}</span><span class="s2">, n_face=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">, n_edge=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_edge</span><span class="si">}</span><span class="s2">, &quot;</span>
+<a id="__codelineno-0-734" name="__codelineno-0-734"></a>            <span class="sa">f</span><span class="s2">&quot;variables=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">data_variable_names</span><span class="si">}</span><span class="s2">)&quot;</span>
+<a id="__codelineno-0-735" name="__codelineno-0-735"></a>        <span class="p">)</span>
+<a id="__codelineno-0-736" name="__codelineno-0-736"></a>        <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -7183,7 +7209,7 @@ location ("face", "node", "edge"). Defaults to "face".</p>
 
 
 <h4 id="pyramids.netcdf.ugrid.UgridDataset.plot" class="doc doc-heading"><a href="#pyramids.netcdf.ugrid.UgridDataset.plot" class="toclink">
-            <code class="highlight language-python"><span class="n">plot</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">plot</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">basemap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
 </a><a href="#pyramids.netcdf.ugrid.UgridDataset.plot" class="headerlink" title="Permanent link">#</a></h4>
 
@@ -7270,6 +7296,24 @@ location ("face", "node", "edge"). Defaults to "face".</p>
           </tr>
           <tr class="doc-section-item">
             <td>
+                <code>basemap</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span> | <span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, add an OpenStreetMap basemap. If a string,
+use it as the tile provider name (e.g. "CartoDB.Positron").
+Default is None (no basemap). Requires the [viz] extra.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
                 <code>**kwargs</code>
             </td>
             <td>
@@ -7303,9 +7347,7 @@ location ("face", "node", "edge"). Defaults to "face".</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>cleopatra.mesh_glyph.MeshGlyph instance with the plot
-rendered. Use the returned object to access Figure/Axes
-or call additional MeshGlyph methods.</p>
+                <p>matplotlib Axes with the plot.</p>
               </div>
             </td>
           </tr>
@@ -7349,41 +7391,69 @@ or call additional MeshGlyph methods.</p>
 <span class="normal"><a href="#__codelineno-0-680">680</a></span>
 <span class="normal"><a href="#__codelineno-0-681">681</a></span>
 <span class="normal"><a href="#__codelineno-0-682">682</a></span>
-<span class="normal"><a href="#__codelineno-0-683">683</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-683">683</a></span>
+<span class="normal"><a href="#__codelineno-0-684">684</a></span>
+<span class="normal"><a href="#__codelineno-0-685">685</a></span>
+<span class="normal"><a href="#__codelineno-0-686">686</a></span>
+<span class="normal"><a href="#__codelineno-0-687">687</a></span>
+<span class="normal"><a href="#__codelineno-0-688">688</a></span>
+<span class="normal"><a href="#__codelineno-0-689">689</a></span>
+<span class="normal"><a href="#__codelineno-0-690">690</a></span>
+<span class="normal"><a href="#__codelineno-0-691">691</a></span>
+<span class="normal"><a href="#__codelineno-0-692">692</a></span>
+<span class="normal"><a href="#__codelineno-0-693">693</a></span>
+<span class="normal"><a href="#__codelineno-0-694">694</a></span>
+<span class="normal"><a href="#__codelineno-0-695">695</a></span>
+<span class="normal"><a href="#__codelineno-0-696">696</a></span>
+<span class="normal"><a href="#__codelineno-0-697">697</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
 <a id="__codelineno-0-650" name="__codelineno-0-650"></a>    <span class="bp">self</span><span class="p">,</span>
 <a id="__codelineno-0-651" name="__codelineno-0-651"></a>    <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <a id="__codelineno-0-652" name="__codelineno-0-652"></a>    <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-653" name="__codelineno-0-653"></a>    <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;viridis&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-654" name="__codelineno-0-654"></a>    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot a mesh data variable.</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">        variable_name: Name of the data variable to plot.</span>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">        ax: matplotlib Axes. Created if None.</span>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">        cmap: Colormap name.</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">        title: Plot title. Defaults to variable name.</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">        **kwargs: Additional arguments passed to plot_mesh_data.</span>
-<a id="__codelineno-0-665" name="__codelineno-0-665"></a>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">        cleopatra.mesh_glyph.MeshGlyph instance with the plot</span>
-<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">            rendered. Use the returned object to access Figure/Axes</span>
-<a id="__codelineno-0-669" name="__codelineno-0-669"></a><span class="sd">            or call additional MeshGlyph methods.</span>
-<a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_mesh_data</span>
-<a id="__codelineno-0-672" name="__codelineno-0-672"></a>
-<a id="__codelineno-0-673" name="__codelineno-0-673"></a>    <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
-<a id="__codelineno-0-674" name="__codelineno-0-674"></a>    <span class="n">data</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">data</span>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a>    <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-677" name="__codelineno-0-677"></a>    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a>        <span class="n">title</span> <span class="o">=</span> <span class="n">variable_name</span>
-<a id="__codelineno-0-679" name="__codelineno-0-679"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">plot_mesh_data</span><span class="p">(</span>
-<a id="__codelineno-0-680" name="__codelineno-0-680"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="n">var</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
-<a id="__codelineno-0-681" name="__codelineno-0-681"></a>        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a>    <span class="p">)</span>
-<a id="__codelineno-0-683" name="__codelineno-0-683"></a>    <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a>    <span class="n">basemap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-656" name="__codelineno-0-656"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-658" name="__codelineno-0-658"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot a mesh data variable.</span>
+<a id="__codelineno-0-659" name="__codelineno-0-659"></a>
+<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">        variable_name: Name of the data variable to plot.</span>
+<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">        ax: matplotlib Axes. Created if None.</span>
+<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">        cmap: Colormap name.</span>
+<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">        title: Plot title. Defaults to variable name.</span>
+<a id="__codelineno-0-665" name="__codelineno-0-665"></a><span class="sd">        basemap: If True, add an OpenStreetMap basemap. If a string,</span>
+<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">            use it as the tile provider name (e.g. &quot;CartoDB.Positron&quot;).</span>
+<a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">            Default is None (no basemap). Requires the [viz] extra.</span>
+<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">        **kwargs: Additional arguments passed to plot_mesh_data.</span>
+<a id="__codelineno-0-669" name="__codelineno-0-669"></a>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">        matplotlib Axes with the plot.</span>
+<a id="__codelineno-0-672" name="__codelineno-0-672"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_mesh_data</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a>    <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a>    <span class="n">data</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">data</span>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a>    <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-679" name="__codelineno-0-679"></a>    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-680" name="__codelineno-0-680"></a>        <span class="n">title</span> <span class="o">=</span> <span class="n">variable_name</span>
+<a id="__codelineno-0-681" name="__codelineno-0-681"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">plot_mesh_data</span><span class="p">(</span>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="n">var</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+<a id="__codelineno-0-683" name="__codelineno-0-683"></a>        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<a id="__codelineno-0-684" name="__codelineno-0-684"></a>    <span class="p">)</span>
+<a id="__codelineno-0-685" name="__codelineno-0-685"></a>
+<a id="__codelineno-0-686" name="__codelineno-0-686"></a>    <span class="k">if</span> <span class="n">basemap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-687" name="__codelineno-0-687"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a>                <span class="s2">&quot;UgridDataset must have a CRS (epsg) to &quot;</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a>                <span class="s2">&quot;use basemap.&quot;</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a>            <span class="p">)</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.basemap.basemap</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_basemap</span>
+<a id="__codelineno-0-693" name="__codelineno-0-693"></a>
+<a id="__codelineno-0-694" name="__codelineno-0-694"></a>        <span class="n">source</span> <span class="o">=</span> <span class="n">basemap</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">basemap</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+<a id="__codelineno-0-695" name="__codelineno-0-695"></a>        <span class="n">add_basemap</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
+<a id="__codelineno-0-696" name="__codelineno-0-696"></a>
+<a id="__codelineno-0-697" name="__codelineno-0-697"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7466,8 +7536,7 @@ or call additional MeshGlyph methods.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>cleopatra.mesh_glyph.MeshGlyph instance with the wireframe
-rendered.</p>
+                <p>matplotlib Axes with the wireframe plot.</p>
               </div>
             </td>
           </tr>
@@ -7477,35 +7546,33 @@ rendered.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/dataset.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-685">685</a></span>
-<span class="normal"><a href="#__codelineno-0-686">686</a></span>
-<span class="normal"><a href="#__codelineno-0-687">687</a></span>
-<span class="normal"><a href="#__codelineno-0-688">688</a></span>
-<span class="normal"><a href="#__codelineno-0-689">689</a></span>
-<span class="normal"><a href="#__codelineno-0-690">690</a></span>
-<span class="normal"><a href="#__codelineno-0-691">691</a></span>
-<span class="normal"><a href="#__codelineno-0-692">692</a></span>
-<span class="normal"><a href="#__codelineno-0-693">693</a></span>
-<span class="normal"><a href="#__codelineno-0-694">694</a></span>
-<span class="normal"><a href="#__codelineno-0-695">695</a></span>
-<span class="normal"><a href="#__codelineno-0-696">696</a></span>
-<span class="normal"><a href="#__codelineno-0-697">697</a></span>
-<span class="normal"><a href="#__codelineno-0-698">698</a></span>
-<span class="normal"><a href="#__codelineno-0-699">699</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-685" name="__codelineno-0-685"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot_outline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-686" name="__codelineno-0-686"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot mesh wireframe.</span>
-<a id="__codelineno-0-687" name="__codelineno-0-687"></a>
-<a id="__codelineno-0-688" name="__codelineno-0-688"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-689" name="__codelineno-0-689"></a><span class="sd">        ax: matplotlib Axes. Created if None.</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="sd">        **kwargs: Additional arguments passed to plot_mesh_outline.</span>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a><span class="sd">        cleopatra.mesh_glyph.MeshGlyph instance with the wireframe</span>
-<a id="__codelineno-0-694" name="__codelineno-0-694"></a><span class="sd">            rendered.</span>
-<a id="__codelineno-0-695" name="__codelineno-0-695"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-696" name="__codelineno-0-696"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_mesh_outline</span>
-<a id="__codelineno-0-697" name="__codelineno-0-697"></a>
-<a id="__codelineno-0-698" name="__codelineno-0-698"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">plot_mesh_outline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-699" name="__codelineno-0-699"></a>    <span class="k">return</span> <span class="n">result</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-699">699</a></span>
+<span class="normal"><a href="#__codelineno-0-700">700</a></span>
+<span class="normal"><a href="#__codelineno-0-701">701</a></span>
+<span class="normal"><a href="#__codelineno-0-702">702</a></span>
+<span class="normal"><a href="#__codelineno-0-703">703</a></span>
+<span class="normal"><a href="#__codelineno-0-704">704</a></span>
+<span class="normal"><a href="#__codelineno-0-705">705</a></span>
+<span class="normal"><a href="#__codelineno-0-706">706</a></span>
+<span class="normal"><a href="#__codelineno-0-707">707</a></span>
+<span class="normal"><a href="#__codelineno-0-708">708</a></span>
+<span class="normal"><a href="#__codelineno-0-709">709</a></span>
+<span class="normal"><a href="#__codelineno-0-710">710</a></span>
+<span class="normal"><a href="#__codelineno-0-711">711</a></span>
+<span class="normal"><a href="#__codelineno-0-712">712</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-699" name="__codelineno-0-699"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot_outline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-700" name="__codelineno-0-700"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot mesh wireframe.</span>
+<a id="__codelineno-0-701" name="__codelineno-0-701"></a>
+<a id="__codelineno-0-702" name="__codelineno-0-702"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-703" name="__codelineno-0-703"></a><span class="sd">        ax: matplotlib Axes. Created if None.</span>
+<a id="__codelineno-0-704" name="__codelineno-0-704"></a><span class="sd">        **kwargs: Additional arguments passed to plot_mesh_outline.</span>
+<a id="__codelineno-0-705" name="__codelineno-0-705"></a>
+<a id="__codelineno-0-706" name="__codelineno-0-706"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-707" name="__codelineno-0-707"></a><span class="sd">        matplotlib Axes with the wireframe plot.</span>
+<a id="__codelineno-0-708" name="__codelineno-0-708"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-709" name="__codelineno-0-709"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_mesh_outline</span>
+<a id="__codelineno-0-710" name="__codelineno-0-710"></a>
+<a id="__codelineno-0-711" name="__codelineno-0-711"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">plot_mesh_outline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-712" name="__codelineno-0-712"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7528,33 +7595,33 @@ rendered.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/dataset.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-701">701</a></span>
-<span class="normal"><a href="#__codelineno-0-702">702</a></span>
-<span class="normal"><a href="#__codelineno-0-703">703</a></span>
-<span class="normal"><a href="#__codelineno-0-704">704</a></span>
-<span class="normal"><a href="#__codelineno-0-705">705</a></span>
-<span class="normal"><a href="#__codelineno-0-706">706</a></span>
-<span class="normal"><a href="#__codelineno-0-707">707</a></span>
-<span class="normal"><a href="#__codelineno-0-708">708</a></span>
-<span class="normal"><a href="#__codelineno-0-709">709</a></span>
-<span class="normal"><a href="#__codelineno-0-710">710</a></span>
-<span class="normal"><a href="#__codelineno-0-711">711</a></span>
-<span class="normal"><a href="#__codelineno-0-712">712</a></span>
-<span class="normal"><a href="#__codelineno-0-713">713</a></span>
-<span class="normal"><a href="#__codelineno-0-714">714</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-702" name="__codelineno-0-702"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Human-readable summary of the dataset.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-703" name="__codelineno-0-703"></a>    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-704" name="__codelineno-0-704"></a>        <span class="sa">f</span><span class="s2">&quot;UgridDataset: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_file_name</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(in-memory)&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-705" name="__codelineno-0-705"></a>        <span class="sa">f</span><span class="s2">&quot;  Mesh: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-706" name="__codelineno-0-706"></a>        <span class="sa">f</span><span class="s2">&quot;  Nodes: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_node</span><span class="si">}</span><span class="s2">, Faces: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">, Edges: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_edge</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-707" name="__codelineno-0-707"></a>        <span class="sa">f</span><span class="s2">&quot;  Bounds: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-708" name="__codelineno-0-708"></a>        <span class="sa">f</span><span class="s2">&quot;  CRS: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-709" name="__codelineno-0-709"></a>        <span class="sa">f</span><span class="s2">&quot;  Data variables (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data_variables</span><span class="p">)</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-710" name="__codelineno-0-710"></a>    <span class="p">]</span>
-<a id="__codelineno-0-711" name="__codelineno-0-711"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-712" name="__codelineno-0-712"></a>        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: location=</span><span class="si">{</span><span class="n">var</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">, shape=</span><span class="si">{</span><span class="n">var</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-713" name="__codelineno-0-713"></a>    <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
-<a id="__codelineno-0-714" name="__codelineno-0-714"></a>    <span class="k">return</span> <span class="n">result</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-714">714</a></span>
+<span class="normal"><a href="#__codelineno-0-715">715</a></span>
+<span class="normal"><a href="#__codelineno-0-716">716</a></span>
+<span class="normal"><a href="#__codelineno-0-717">717</a></span>
+<span class="normal"><a href="#__codelineno-0-718">718</a></span>
+<span class="normal"><a href="#__codelineno-0-719">719</a></span>
+<span class="normal"><a href="#__codelineno-0-720">720</a></span>
+<span class="normal"><a href="#__codelineno-0-721">721</a></span>
+<span class="normal"><a href="#__codelineno-0-722">722</a></span>
+<span class="normal"><a href="#__codelineno-0-723">723</a></span>
+<span class="normal"><a href="#__codelineno-0-724">724</a></span>
+<span class="normal"><a href="#__codelineno-0-725">725</a></span>
+<span class="normal"><a href="#__codelineno-0-726">726</a></span>
+<span class="normal"><a href="#__codelineno-0-727">727</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-714" name="__codelineno-0-714"></a><span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-715" name="__codelineno-0-715"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Human-readable summary of the dataset.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-716" name="__codelineno-0-716"></a>    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-717" name="__codelineno-0-717"></a>        <span class="sa">f</span><span class="s2">&quot;UgridDataset: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_file_name</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(in-memory)&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-718" name="__codelineno-0-718"></a>        <span class="sa">f</span><span class="s2">&quot;  Mesh: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-719" name="__codelineno-0-719"></a>        <span class="sa">f</span><span class="s2">&quot;  Nodes: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_node</span><span class="si">}</span><span class="s2">, Faces: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">, Edges: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_edge</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-720" name="__codelineno-0-720"></a>        <span class="sa">f</span><span class="s2">&quot;  Bounds: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-721" name="__codelineno-0-721"></a>        <span class="sa">f</span><span class="s2">&quot;  CRS: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-722" name="__codelineno-0-722"></a>        <span class="sa">f</span><span class="s2">&quot;  Data variables (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data_variables</span><span class="p">)</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-723" name="__codelineno-0-723"></a>    <span class="p">]</span>
+<a id="__codelineno-0-724" name="__codelineno-0-724"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-725" name="__codelineno-0-725"></a>        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: location=</span><span class="si">{</span><span class="n">var</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">, shape=</span><span class="si">{</span><span class="n">var</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-726" name="__codelineno-0-726"></a>    <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+<a id="__codelineno-0-727" name="__codelineno-0-727"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7577,21 +7644,21 @@ rendered.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/dataset.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-716">716</a></span>
-<span class="normal"><a href="#__codelineno-0-717">717</a></span>
-<span class="normal"><a href="#__codelineno-0-718">718</a></span>
-<span class="normal"><a href="#__codelineno-0-719">719</a></span>
-<span class="normal"><a href="#__codelineno-0-720">720</a></span>
-<span class="normal"><a href="#__codelineno-0-721">721</a></span>
-<span class="normal"><a href="#__codelineno-0-722">722</a></span>
-<span class="normal"><a href="#__codelineno-0-723">723</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-716" name="__codelineno-0-716"></a><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-717" name="__codelineno-0-717"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Repr string for the dataset.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-718" name="__codelineno-0-718"></a>    <span class="n">result</span> <span class="o">=</span> <span class="p">(</span>
-<a id="__codelineno-0-719" name="__codelineno-0-719"></a>        <span class="sa">f</span><span class="s2">&quot;UgridDataset(mesh=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">&#39;, &quot;</span>
-<a id="__codelineno-0-720" name="__codelineno-0-720"></a>        <span class="sa">f</span><span class="s2">&quot;n_node=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_node</span><span class="si">}</span><span class="s2">, n_face=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">, n_edge=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_edge</span><span class="si">}</span><span class="s2">, &quot;</span>
-<a id="__codelineno-0-721" name="__codelineno-0-721"></a>        <span class="sa">f</span><span class="s2">&quot;variables=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">data_variable_names</span><span class="si">}</span><span class="s2">)&quot;</span>
-<a id="__codelineno-0-722" name="__codelineno-0-722"></a>    <span class="p">)</span>
-<a id="__codelineno-0-723" name="__codelineno-0-723"></a>    <span class="k">return</span> <span class="n">result</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-729">729</a></span>
+<span class="normal"><a href="#__codelineno-0-730">730</a></span>
+<span class="normal"><a href="#__codelineno-0-731">731</a></span>
+<span class="normal"><a href="#__codelineno-0-732">732</a></span>
+<span class="normal"><a href="#__codelineno-0-733">733</a></span>
+<span class="normal"><a href="#__codelineno-0-734">734</a></span>
+<span class="normal"><a href="#__codelineno-0-735">735</a></span>
+<span class="normal"><a href="#__codelineno-0-736">736</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-729" name="__codelineno-0-729"></a><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-730" name="__codelineno-0-730"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Repr string for the dataset.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-731" name="__codelineno-0-731"></a>    <span class="n">result</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-732" name="__codelineno-0-732"></a>        <span class="sa">f</span><span class="s2">&quot;UgridDataset(mesh=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">&#39;, &quot;</span>
+<a id="__codelineno-0-733" name="__codelineno-0-733"></a>        <span class="sa">f</span><span class="s2">&quot;n_node=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_node</span><span class="si">}</span><span class="s2">, n_face=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">, n_edge=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_edge</span><span class="si">}</span><span class="s2">, &quot;</span>
+<a id="__codelineno-0-734" name="__codelineno-0-734"></a>        <span class="sa">f</span><span class="s2">&quot;variables=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">data_variable_names</span><span class="si">}</span><span class="s2">)&quot;</span>
+<a id="__codelineno-0-735" name="__codelineno-0-735"></a>    <span class="p">)</span>
+<a id="__codelineno-0-736" name="__codelineno-0-736"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
