@@ -38,7 +38,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-viz = ["cleopatra>=0.6.0", "mercantile>=1.2.0", "xyzservices>=2024.4.0", "Pillow>=9.0.0"]
+viz = ["cleopatra>=0.7.0", "mercantile>=1.2.0", "xyzservices>=2024.4.0", "Pillow>=9.0.0"]
 xarray = ["xarray>=2023.1.0", "netCDF4>=1.6.0", "h5netcdf>=1.0.0", "cftime>=1.6.0"]
 
 [dependency-groups]
