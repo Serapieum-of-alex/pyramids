@@ -72,19 +72,137 @@ class FeatureCollection:
         new = FeatureCollection(gdf)
         self.__dict__.update(new.__dict__)
 
-    def __str__(self):
-        """__str__."""
-        message = f"""
-            Feature: {self.feature}
+    def __str__(self) -> str:
+        """Return a human-readable summary of the FeatureCollection."""
+        n = len(self)
+        cols = self.column
+        epsg = self._get_epsg() if self._feature is not None else None
+        result = (
+            f"FeatureCollection({n} features, "
+            f"columns={cols}, epsg={epsg})"
+        )
+        return result
+
+    def __repr__(self) -> str:
+        """Return a detailed repr of the FeatureCollection."""
+        result = (
+            f"FeatureCollection(n_features={len(self)}, "
+            f"columns={self.column}, epsg={self._get_epsg()})"
+        )
+        return result
+
+    def __len__(self) -> int:
+        """Return the number of features (rows).
+
+        Returns:
+            int: Number of features in the collection.
+
+        Examples:
+            >>> fc = FeatureCollection.read_file("polygons.geojson")
+            >>> len(fc)
+            42
         """
-        # EPSG: {self.epsg}
-        # Variables: {self.variables}
-        # Number of Bands: {self.band_count}
-        # Band names: {self.band_names}
-        # Dimension: {self.rows * self.columns}
-        # Mask: {self._no_data_value[0]}
-        # Data type: {self.dtype[0]}
-        return message
+        if isinstance(self._feature, GeoDataFrame):
+            result = len(self._feature)
+        elif isinstance(self._feature, (DataSource, gdal.Dataset)):
+            layer = self._feature.GetLayer(0)
+            result = layer.GetFeatureCount() if layer is not None else 0
+        else:
+            result = 0
+        return result
+
+    def __iter__(self):
+        """Iterate over features as GeoDataFrame rows.
+
+        Yields:
+            tuple: Index and row (as a pandas Series) for each feature.
+
+        Examples:
+            >>> for idx, row in fc:
+            ...     print(idx, row.geometry.area)
+        """
+        if isinstance(self._feature, GeoDataFrame):
+            yield from self._feature.iterrows()
+        else:
+            gdf = self._ds_to_gdf()
+            yield from gdf.iterrows()
+
+    def __getitem__(self, key):
+        """Access features by index, slice, or column name.
+
+        Args:
+            key: Integer index, slice, list of indices, or column name string.
+
+        Returns:
+            FeatureCollection for row selection, or pandas Series/DataFrame
+            for column selection.
+
+        Examples:
+            >>> first = fc[0]          # single feature
+            >>> subset = fc[0:10]      # slice
+            >>> col = fc["area"]       # column
+        """
+        if not isinstance(self._feature, GeoDataFrame):
+            gdf = self._ds_to_gdf()
+        else:
+            gdf = self._feature
+
+        if isinstance(key, str):
+            result = gdf[key]
+        elif isinstance(key, int):
+            result = FeatureCollection(gdf.iloc[[key]].copy())
+        elif isinstance(key, (slice, list, np.ndarray)):
+            result = FeatureCollection(gdf.iloc[key].copy())
+        else:
+            result = gdf[key]
+        return result
+
+    def __contains__(self, column_name: str) -> bool:
+        """Check if a column exists in the FeatureCollection.
+
+        Args:
+            column_name: Name of the column to check.
+
+        Returns:
+            bool: True if the column exists.
+
+        Examples:
+            >>> "area" in fc
+            True
+        """
+        result = column_name in self.column
+        return result
+
+    def __bool__(self) -> bool:
+        """Return True if the FeatureCollection is non-empty.
+
+        Returns:
+            bool: True if len > 0.
+        """
+        result = len(self) > 0
+        return result
+
+    def __eq__(self, other: object) -> bool:
+        """Check equality with another FeatureCollection.
+
+        Two FeatureCollections are equal if their underlying GeoDataFrames
+        are identical (same geometry and attributes).
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            bool: True if equal.
+        """
+        if not isinstance(other, FeatureCollection):
+            return NotImplemented
+        if isinstance(self._feature, GeoDataFrame) and isinstance(
+            other._feature, GeoDataFrame
+        ):
+            result = self._feature.equals(other._feature)
+        else:
+            result = False
+        return result
 
     @property
     def feature(self) -> GeoDataFrame | DataSource:
