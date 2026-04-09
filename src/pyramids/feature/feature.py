@@ -76,7 +76,10 @@ class FeatureCollection:
         """Return a human-readable summary of the FeatureCollection."""
         n = len(self)
         cols = self.column
-        epsg = self._get_epsg() if self._feature is not None else None
+        try:
+            epsg = self._get_epsg() if self._feature is not None else None
+        except (AttributeError, TypeError):
+            epsg = None
         result = (
             f"FeatureCollection({n} features, "
             f"columns={cols}, epsg={epsg})"
@@ -85,9 +88,13 @@ class FeatureCollection:
 
     def __repr__(self) -> str:
         """Return a detailed repr of the FeatureCollection."""
+        try:
+            epsg = self._get_epsg()
+        except (AttributeError, TypeError):
+            epsg = None
         result = (
             f"FeatureCollection(n_features={len(self)}, "
-            f"columns={self.column}, epsg={self._get_epsg()})"
+            f"columns={self.column}, epsg={epsg})"
         )
         return result
 
