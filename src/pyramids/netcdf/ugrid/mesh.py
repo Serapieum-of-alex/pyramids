@@ -188,17 +188,67 @@ class Mesh2d:
 
     @property
     def fan_triangles(self) -> np.ndarray:
-        """Fan triangulation as a raw numpy array.
+        """Fan triangulation as a pure numpy array (no matplotlib).
 
-        Each face with N valid nodes is decomposed into (N-2)
-        triangles by fanning from the first vertex. Faces with
-        fewer than 3 valid nodes are skipped.
+        Decomposes each mesh face into triangles using fan
+        triangulation from the first vertex. A face with N valid
+        nodes produces (N-2) triangles. Faces with fewer than 3
+        valid nodes are silently skipped.
+
+        The result is cached after the first access.
 
         Returns:
-            (n_triangles, 3) integer array of node indices.
+            np.ndarray: Integer array of shape ``(n_triangles, 3)``
+                where each row contains the three node indices of
+                one triangle.
 
         Raises:
-            ValueError: If no faces have 3 or more valid nodes.
+            ValueError: If no faces in the mesh have 3 or more
+                valid nodes (i.e., no triangles can be formed).
+
+        Examples:
+            - Triangulate a simple 2-triangle mesh:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import Mesh2d, Connectivity
+                >>> mesh = Mesh2d(
+                ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=Connectivity(
+                ...         data=np.array([[0, 1, 2], [1, 3, 2]]),
+                ...         fill_value=-1,
+                ...         cf_role="face_node_connectivity",
+                ...         original_start_index=0,
+                ...     ),
+                ... )
+                >>> mesh.fan_triangles.shape
+                (2, 3)
+                >>> mesh.fan_triangles[0].tolist()
+                [0, 1, 2]
+
+                ```
+            - A quad face produces 2 triangles via fan decomposition:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import Mesh2d, Connectivity
+                >>> mesh = Mesh2d(
+                ...     node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=Connectivity(
+                ...         data=np.array([[0, 1, 2, 3]]),
+                ...         fill_value=-1,
+                ...         cf_role="face_node_connectivity",
+                ...         original_start_index=0,
+                ...     ),
+                ... )
+                >>> mesh.fan_triangles.shape
+                (2, 3)
+
+                ```
+
+        See Also:
+            Mesh2d.face_node_connectivity: The raw connectivity array
+                that this property decomposes.
         """
         if self._cached_fan_triangles is None:
             fnc = self._face_node_connectivity
