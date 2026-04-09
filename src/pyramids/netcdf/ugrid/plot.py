@@ -19,11 +19,12 @@ _CLEOPATRA_MSG = (
 )
 
 
-def _mesh_to_glyph(mesh: Mesh2d) -> Any:
+def _mesh_to_glyph(mesh: Mesh2d, **kwargs: Any) -> Any:
     """Convert a Mesh2d to a cleopatra MeshGlyph.
 
     Args:
         mesh: pyramids Mesh2d topology object.
+        **kwargs: Forwarded to MeshGlyph constructor (fig, ax, etc.).
 
     Returns:
         cleopatra.mesh_glyph.MeshGlyph instance.
@@ -44,13 +45,14 @@ def _mesh_to_glyph(mesh: Mesh2d) -> Any:
         face_node_connectivity=mesh.face_node_connectivity.data,
         fill_value=mesh.face_node_connectivity.fill_value,
         edge_node_connectivity=edge_nodes,
+        **kwargs,
     )
     return result
 
 
 def plot_mesh_data(
     mesh: Mesh2d,
-    data: np.ndarray,
+    data: Any,
     location: str = "face",
     ax: Any = None,
     cmap: str = "viridis",
@@ -77,8 +79,9 @@ def plot_mesh_data(
         edgecolor: Edge color for face rendering.
         colorbar: Whether to add a colorbar.
         title: Plot title.
-        **kwargs: Additional keyword arguments passed to the underlying
-            matplotlib tripcolor/tricontourf call.
+        **kwargs: Additional keyword arguments forwarded to MeshGlyph.plot
+            (color_scale, gamma, midpoint, bounds, ticks_spacing,
+            cbar_orientation, cbar_label, figsize, etc.).
 
     Returns:
         cleopatra.mesh_glyph.MeshGlyph instance with the plot rendered.
@@ -89,10 +92,19 @@ def plot_mesh_data(
         ValueError: If location is not "face" or "node".
     """
     glyph = _mesh_to_glyph(mesh)
+    plot_kwargs: dict[str, Any] = {}
+    if cmap != "viridis":
+        plot_kwargs["cmap"] = cmap
+    if vmin is not None:
+        plot_kwargs["vmin"] = vmin
+    if vmax is not None:
+        plot_kwargs["vmax"] = vmax
+    plot_kwargs.update(kwargs)
+
     glyph.plot(
-        data, location=location, ax=ax, cmap=cmap,
-        vmin=vmin, vmax=vmax, edgecolor=edgecolor,
-        colorbar=colorbar, title=title, **kwargs,
+        data, location=location, ax=ax,
+        edgecolor=edgecolor, colorbar=colorbar,
+        title=title, **plot_kwargs,
     )
     return glyph
 
