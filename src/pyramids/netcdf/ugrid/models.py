@@ -153,7 +153,7 @@ class MeshVariable:
         result = self.data[index]
         return result
 
-    def sel_time_range(self, start: int, stop: int) -> "MeshVariable":
+    def sel_time_range(self, start: int, stop: int) -> MeshVariable:
         """Select a time range, returning a new MeshVariable.
 
         Args:

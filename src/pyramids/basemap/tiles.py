@@ -258,8 +258,8 @@ def stitch_tiles(
         ) from e
     tile_size = first_img.width
 
-    x_indices = sorted(set(t.x for t in tiles))
-    y_indices = sorted(set(t.y for t in tiles))
+    x_indices = sorted({t.x for t in tiles})
+    y_indices = sorted({t.y for t in tiles})
     width = len(x_indices) * tile_size
     height = len(y_indices) * tile_size
 

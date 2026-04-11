@@ -1,6 +1,6 @@
 """Tests for pyramids.basemap.warp module.
 
-Tests _warp_tile_image using synthetic RGBA images and GDAL-based
+Tests warp_tile_image using synthetic RGBA images and GDAL-based
 reprojection between EPSG:3857 and EPSG:4326. No network calls.
 """
 
@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, PropertyMock
 import numpy as np
 import pytest
 
-from pyramids.basemap.warp import _warp_tile_image
+from pyramids.basemap.warp import warp_tile_image
 
 
 def _make_rgba_image(
@@ -58,7 +58,7 @@ def _make_rgb_image(width: int = 64, height: int = 64) -> np.ndarray:
 
 
 class TestWarpTileImage:
-    """Tests for _warp_tile_image function."""
+    """Tests for warp_tile_image function."""
 
     @pytest.fixture
     def epsg_3857_extent(self) -> tuple[float, float, float, float]:
@@ -90,7 +90,7 @@ class TestWarpTileImage:
             The result should be a 4-channel uint8 array.
         """
         image = _make_rgba_image(64, 64)
-        warped, extent = _warp_tile_image(
+        warped, extent = warp_tile_image(
             image,
             epsg_3857_extent,
             target_crs="EPSG:4326",
@@ -118,7 +118,7 @@ class TestWarpTileImage:
         image = _make_rgb_image(64, 64)
         assert image.shape[2] == 3, "Precondition: input must be 3-channel"
 
-        warped, extent = _warp_tile_image(
+        warped, extent = warp_tile_image(
             image,
             epsg_3857_extent,
             target_crs="EPSG:4326",
@@ -142,7 +142,7 @@ class TestWarpTileImage:
             rounding.
         """
         image = _make_rgba_image(64, 64)
-        warped, extent = _warp_tile_image(
+        warped, extent = warp_tile_image(
             image,
             epsg_3857_extent,
             target_crs="EPSG:4326",
@@ -171,7 +171,7 @@ class TestWarpTileImage:
             extent tuple.
         """
         image = _make_rgba_image(64, 64)
-        warped, extent = _warp_tile_image(
+        warped, extent = warp_tile_image(
             image,
             epsg_3857_extent,
             target_crs="EPSG:4326",
@@ -212,7 +212,7 @@ class TestWarpTileImage:
         mock_ax.get_window_extent.return_value = mock_bbox
         mock_bbox.transformed.return_value = mock_bbox
 
-        warped, extent = _warp_tile_image(
+        warped, extent = warp_tile_image(
             image,
             epsg_3857_extent,
             target_crs="EPSG:4326",
@@ -235,7 +235,7 @@ class TestWarpTileImage:
             dimensions determined by GDAL's default behavior.
         """
         image = _make_rgba_image(64, 64)
-        warped, extent = _warp_tile_image(
+        warped, extent = warp_tile_image(
             image,
             epsg_3857_extent,
             target_crs="EPSG:4326",
@@ -257,7 +257,7 @@ class TestWarpTileImage:
         extent_3857 = (0.0, 0.0, 100000.0, 100000.0)
         image = _make_rgba_image(32, 32, color=(100, 150, 200, 255))
 
-        warped, warped_extent = _warp_tile_image(
+        warped, warped_extent = warp_tile_image(
             image,
             extent_3857,
             target_crs="EPSG:3857",

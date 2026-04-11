@@ -23,4 +23,3 @@ cropped_3.bounds.to_file("tests/bug/bounds.geojson")
 # cropped.to_file("tests/bug/touch_true.tif")
 # print(dataset.count_domain_cells())
 # print(cropped.count_domain_cells())
-

@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from pyramids.basemap import add_basemap, get_provider
-from pyramids.basemap.tiles import _fetch_tiles, _stitch_tiles
+from pyramids.basemap.tiles import fetch_tiles, stitch_tiles
 
 
 @pytest.fixture
@@ -62,7 +62,7 @@ class TestNetworkTileFetching:
 
         provider = get_provider("OpenStreetMap.Mapnik")
         tiles = [mercantile.Tile(0, 0, 1)]
-        tile_data = _fetch_tiles(tiles, provider, max_workers=1)
+        tile_data = fetch_tiles(tiles, provider, max_workers=1)
 
         assert len(tile_data) == 1, f"Expected 1 tile, got {len(tile_data)}"
         png_bytes = list(tile_data.values())[0]
@@ -81,8 +81,8 @@ class TestNetworkTileFetching:
 
         provider = get_provider("OpenStreetMap.Mapnik")
         tiles = list(mercantile.tiles(-10, 40, 10, 55, zooms=2))
-        tile_data = _fetch_tiles(tiles, provider, max_workers=4)
-        image, extent = _stitch_tiles(tile_data, tiles, zoom=2)
+        tile_data = fetch_tiles(tiles, provider, max_workers=4)
+        image, extent = stitch_tiles(tile_data, tiles, zoom=2)
 
         assert image.ndim == 3, f"Expected 3D array, got {image.ndim}D"
         assert image.shape[2] == 4, f"Expected 4 channels (RGBA), got {image.shape[2]}"

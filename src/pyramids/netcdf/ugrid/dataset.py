@@ -279,7 +279,7 @@ class UgridDataset:
         )
         return result
 
-    def clip(self, mask: Any, touch: bool = True) -> "UgridDataset":
+    def clip(self, mask: Any, touch: bool = True) -> UgridDataset:
         """Clip the mesh to a polygon mask.
 
         Selects faces that intersect (touch=True) or are fully
@@ -303,7 +303,7 @@ class UgridDataset:
         ymin: float,
         xmax: float,
         ymax: float,
-    ) -> "UgridDataset":
+    ) -> UgridDataset:
         """Subset mesh to faces within a bounding box.
 
         Args:
@@ -319,7 +319,7 @@ class UgridDataset:
         result = subset_by_bounds(self, xmin, ymin, xmax, ymax)
         return result
 
-    def to_crs(self, to_epsg: int) -> "UgridDataset":
+    def to_crs(self, to_epsg: int) -> UgridDataset:
         """Reproject all node coordinates to a new CRS.
 
         Uses pyproj.Transformer to reproject node coordinates.
@@ -409,7 +409,7 @@ class UgridDataset:
                 break
         return result
 
-    def sel_time(self, index: int) -> "UgridDataset":
+    def sel_time(self, index: int) -> UgridDataset:
         """Select a single time step from all temporal variables.
 
         Non-temporal variables are kept unchanged.
@@ -442,7 +442,7 @@ class UgridDataset:
         )
         return result
 
-    def sel_time_range(self, start: int, stop: int) -> "UgridDataset":
+    def sel_time_range(self, start: int, stop: int) -> UgridDataset:
         """Select a time range from all temporal variables.
 
         Args:
@@ -584,7 +584,7 @@ class UgridDataset:
         data_locations: dict[str, str] | None = None,
         epsg: int = 4326,
         mesh_name: str = "mesh2d",
-    ) -> "UgridDataset":
+    ) -> UgridDataset:
         """Create a UgridDataset programmatically from arrays.
 
         Args:

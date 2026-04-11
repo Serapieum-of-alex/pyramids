@@ -83,5 +83,3 @@ def mixed_mesh():
             cf_role="face_node_connectivity", original_start_index=0,
         ),
     )
-
-

@@ -15,7 +15,6 @@ from pyproj import CRS as PyProjCRS
 
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo
-from pyramids.netcdf.utils import _read_attributes
 
 
 class Mesh2d:

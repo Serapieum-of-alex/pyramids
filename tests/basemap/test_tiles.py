@@ -1,6 +1,6 @@
 """Tests for pyramids.basemap.tiles module.
 
-Covers _auto_zoom, _fetch_single_tile, _fetch_tiles, and _stitch_tiles
+Covers auto_zoom, fetch_single_tile, fetch_tiles, and stitch_tiles
 with mocked HTTP and synthetic tile images (no real network calls).
 """
 
@@ -18,10 +18,10 @@ from PIL import Image
 from pyramids.basemap.tiles import (
     MAX_TILES,
     USER_AGENT,
-    _auto_zoom,
-    _fetch_single_tile,
-    _fetch_tiles,
-    _stitch_tiles,
+    auto_zoom,
+    fetch_single_tile,
+    fetch_tiles,
+    stitch_tiles,
 )
 
 Tile = namedtuple("Tile", ["x", "y", "z"])
@@ -94,7 +94,7 @@ def mock_provider() -> MagicMock:
 
 
 class TestAutoZoom:
-    """Tests for _auto_zoom function."""
+    """Tests for auto_zoom function."""
 
     @pytest.mark.parametrize(
         "bounds, expected_zoom",
@@ -125,7 +125,7 @@ class TestAutoZoom:
             ceil(log2(360 / max_extent)). The result is verified to
             match the expected zoom.
         """
-        result = _auto_zoom(bounds)
+        result = auto_zoom(bounds)
         assert (
             result == expected_zoom
         ), f"Expected zoom {expected_zoom} for bounds {bounds}, got {result}"
@@ -138,7 +138,7 @@ class TestAutoZoom:
             zoom. The function should clamp the result to 0.
         """
         bounds = (-360.0, -90.0, 360.0, 90.0)
-        result = _auto_zoom(bounds)
+        result = auto_zoom(bounds)
         assert result == 0, f"Expected zoom 0 for oversized extent, got {result}"
 
     def test_zoom_clamped_to_19_for_tiny_extent(self):
@@ -149,7 +149,7 @@ class TestAutoZoom:
             >19. The function should clamp to 19.
         """
         bounds = (0.0, 0.0, 1e-8, 1e-8)
-        result = _auto_zoom(bounds)
+        result = auto_zoom(bounds)
         assert result == 19, f"Expected zoom 19 for tiny extent, got {result}"
 
     def test_zoom_with_zero_extent_does_not_crash(self):
@@ -160,7 +160,7 @@ class TestAutoZoom:
             back to 1e-10 via the epsilon guard, preventing log2(inf).
         """
         bounds = (10.0, 50.0, 10.0, 50.0)
-        result = _auto_zoom(bounds)
+        result = auto_zoom(bounds)
         assert (
             0 <= result <= 19
         ), f"Expected zoom in [0, 19] for zero extent, got {result}"
@@ -171,7 +171,7 @@ class TestAutoZoom:
         Test scenario:
             The function should return a plain int, not float.
         """
-        result = _auto_zoom((0.0, 0.0, 10.0, 10.0))
+        result = auto_zoom((0.0, 0.0, 10.0, 10.0))
         assert isinstance(result, int), f"Expected int return type, got {type(result)}"
 
     def test_lat_dominant_extent(self):
@@ -182,7 +182,7 @@ class TestAutoZoom:
             dominates the zoom calculation.
         """
         bounds = (10.0, 40.0, 10.5, 50.0)
-        result = _auto_zoom(bounds)
+        result = auto_zoom(bounds)
         expected = 6
         assert (
             result == expected
@@ -190,7 +190,7 @@ class TestAutoZoom:
 
 
 class TestFetchSingleTile:
-    """Tests for _fetch_single_tile function."""
+    """Tests for fetch_single_tile function."""
 
     def test_successful_fetch_on_first_attempt(self, mock_provider: MagicMock):
         """Test that a successful HTTP response returns tile data.
@@ -209,7 +209,7 @@ class TestFetchSingleTile:
         with patch(
             "pyramids.basemap.tiles.urllib.request.urlopen", return_value=mock_response
         ):
-            result_tile, result_bytes = _fetch_single_tile(
+            result_tile, result_bytes = fetch_single_tile(
                 tile, mock_provider, timeout=5, retries=2
             )
 
@@ -233,7 +233,7 @@ class TestFetchSingleTile:
             "pyramids.basemap.tiles.urllib.request.urlopen",
             return_value=mock_response,
         ) as mock_urlopen:
-            _fetch_single_tile(tile, mock_provider, timeout=5, retries=0)
+            fetch_single_tile(tile, mock_provider, timeout=5, retries=0)
 
         called_request = mock_urlopen.call_args[0][0]
         actual_ua = called_request.get_header("User-agent")
@@ -262,7 +262,7 @@ class TestFetchSingleTile:
                 mock_response,
             ],
         ) as mock_urlopen:
-            result_tile, result_bytes = _fetch_single_tile(
+            result_tile, result_bytes = fetch_single_tile(
                 tile, mock_provider, timeout=5, retries=2
             )
 
@@ -290,7 +290,7 @@ class TestFetchSingleTile:
             side_effect=ConnectionError("network down"),
         ):
             with pytest.raises(ConnectionError, match=r"z=5/x=1/y=1") as exc_info:
-                _fetch_single_tile(tile, mock_provider, timeout=5, retries=2)
+                fetch_single_tile(tile, mock_provider, timeout=5, retries=2)
 
         assert "3 attempts" in str(
             exc_info.value
@@ -310,7 +310,7 @@ class TestFetchSingleTile:
             side_effect=ConnectionError("fail"),
         ) as mock_urlopen:
             with pytest.raises(ConnectionError, match=r"1 attempts"):
-                _fetch_single_tile(tile, mock_provider, timeout=5, retries=0)
+                fetch_single_tile(tile, mock_provider, timeout=5, retries=0)
 
         assert (
             mock_urlopen.call_count == 1
@@ -331,13 +331,13 @@ class TestFetchSingleTile:
             "pyramids.basemap.tiles.urllib.request.urlopen",
             return_value=mock_response,
         ):
-            _fetch_single_tile(tile, mock_provider, timeout=5, retries=0)
+            fetch_single_tile(tile, mock_provider, timeout=5, retries=0)
 
         mock_provider.build_url.assert_called_once_with(x=42, y=99, z=15)
 
 
 class TestFetchTiles:
-    """Tests for _fetch_tiles function."""
+    """Tests for fetch_tiles function."""
 
     def test_fetch_multiple_tiles_in_parallel(self, mock_provider: MagicMock):
         """Test parallel fetching of multiple tiles.
@@ -363,7 +363,7 @@ class TestFetchTiles:
             "pyramids.basemap.tiles.urllib.request.urlopen",
             side_effect=mock_urlopen,
         ):
-            result = _fetch_tiles(
+            result = fetch_tiles(
                 tiles, mock_provider, max_workers=2, timeout=5, retries=0
             )
 
@@ -371,7 +371,7 @@ class TestFetchTiles:
         for tile in tiles:
             assert tile in result, f"Tile {tile} missing from result"
 
-    def test_fetch_single_tile_list(self, mock_provider: MagicMock):
+    def testfetch_single_tile_list(self, mock_provider: MagicMock):
         """Test fetching a list with a single tile.
 
         Test scenario:
@@ -385,18 +385,18 @@ class TestFetchTiles:
             "pyramids.basemap.tiles.urllib.request.urlopen",
             return_value=mock_response,
         ):
-            result = _fetch_tiles(
+            result = fetch_tiles(
                 tiles, mock_provider, max_workers=1, timeout=5, retries=0
             )
 
         assert len(result) == 1, f"Expected 1 tile, got {len(result)}"
 
     def test_propagates_connection_error(self, mock_provider: MagicMock):
-        """Test that ConnectionError from _fetch_single_tile propagates.
+        """Test that ConnectionError from fetch_single_tile propagates.
 
         Test scenario:
             When a tile fetch fails after all retries, the
-            ConnectionError should bubble up from _fetch_tiles.
+            ConnectionError should bubble up from fetch_tiles.
         """
         tiles = [Tile(x=0, y=0, z=0)]
 
@@ -405,11 +405,11 @@ class TestFetchTiles:
             side_effect=ConnectionError("fail"),
         ):
             with pytest.raises(ConnectionError):
-                _fetch_tiles(tiles, mock_provider, max_workers=1, timeout=5, retries=0)
+                fetch_tiles(tiles, mock_provider, max_workers=1, timeout=5, retries=0)
 
 
 class TestStitchTiles:
-    """Tests for _stitch_tiles function."""
+    """Tests for stitch_tiles function."""
 
     def test_single_tile_produces_correct_shape(self):
         """Test stitching a single 256x256 tile.
@@ -422,7 +422,7 @@ class TestStitchTiles:
         png = _make_tile_png(size=256)
         tile_data = {tile: png}
 
-        image, extent = _stitch_tiles(tile_data, [tile], zoom=0)
+        image, extent = stitch_tiles(tile_data, [tile], zoom=0)
 
         assert image.shape == (
             256,
@@ -446,7 +446,7 @@ class TestStitchTiles:
         ]
         tile_data = {t: _make_tile_png(size=256) for t in tiles}
 
-        image, extent = _stitch_tiles(tile_data, tiles, zoom=1)
+        image, extent = stitch_tiles(tile_data, tiles, zoom=1)
 
         assert image.shape == (
             512,
@@ -464,7 +464,7 @@ class TestStitchTiles:
         tiles = [Tile(x=0, y=0, z=1), Tile(x=1, y=0, z=1)]
         tile_data = {t: _make_tile_png(size=512) for t in tiles}
 
-        image, extent = _stitch_tiles(tile_data, tiles, zoom=1)
+        image, extent = stitch_tiles(tile_data, tiles, zoom=1)
 
         assert image.shape == (
             512,
@@ -483,7 +483,7 @@ class TestStitchTiles:
         png = _make_rgb_tile_png(size=256)
         tile_data = {tile: png}
 
-        image, extent = _stitch_tiles(tile_data, [tile], zoom=0)
+        image, extent = stitch_tiles(tile_data, [tile], zoom=0)
 
         assert image.shape[2] == 4, f"Expected 4 channels (RGBA), got {image.shape[2]}"
 
@@ -498,7 +498,7 @@ class TestStitchTiles:
         png = _make_tile_png(size=256)
         tile_data = {tile: png}
 
-        image, extent = _stitch_tiles(tile_data, [tile], zoom=0)
+        image, extent = stitch_tiles(tile_data, [tile], zoom=0)
         west, south, east, north = extent
 
         assert west < east, f"West ({west}) should be < East ({east})"
@@ -515,7 +515,7 @@ class TestStitchTiles:
         """
         single_tile = Tile(x=0, y=0, z=1)
         single_data = {single_tile: _make_tile_png(size=256)}
-        _, single_extent = _stitch_tiles(single_data, [single_tile], zoom=1)
+        _, single_extent = stitch_tiles(single_data, [single_tile], zoom=1)
 
         grid_tiles = [
             Tile(x=0, y=0, z=1),
@@ -524,7 +524,7 @@ class TestStitchTiles:
             Tile(x=1, y=1, z=1),
         ]
         grid_data = {t: _make_tile_png(size=256) for t in grid_tiles}
-        _, grid_extent = _stitch_tiles(grid_data, grid_tiles, zoom=1)
+        _, grid_extent = stitch_tiles(grid_data, grid_tiles, zoom=1)
 
         single_width = single_extent[2] - single_extent[0]
         grid_width = grid_extent[2] - grid_extent[0]
@@ -550,7 +550,7 @@ class TestStitchTiles:
             tile_right: _make_tile_png(size=256, color=blue),
         }
 
-        image, _ = _stitch_tiles(tile_data, [tile_left, tile_right], zoom=1)
+        image, _ = stitch_tiles(tile_data, [tile_left, tile_right], zoom=1)
 
         left_pixel = tuple(image[128, 128])
         right_pixel = tuple(image[128, 384])

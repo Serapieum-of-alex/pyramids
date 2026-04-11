@@ -272,21 +272,21 @@ class TestAddBasemap:
         """Patch tile functions with sensible defaults.
 
         Yields:
-            tuple: (mock_auto_zoom, mock_fetch, mock_stitch) mocks.
+            tuple: (mockauto_zoom, mock_fetch, mock_stitch) mocks.
         """
         from pyramids.basemap import tiles as tiles_mod
 
         fake_image = np.zeros((256, 256, 4), dtype=np.uint8)
         with (
             patch.object(
-                tiles_mod, "_auto_zoom", return_value=10,
+                tiles_mod, "auto_zoom", return_value=10,
             ) as mock_zoom,
             patch.object(
-                tiles_mod, "_fetch_tiles",
+                tiles_mod, "fetch_tiles",
                 return_value={Tile(0, 0, 10): _make_tile_png()},
             ) as mock_fetch,
             patch.object(
-                tiles_mod, "_stitch_tiles",
+                tiles_mod, "stitch_tiles",
                 return_value=(
                     fake_image,
                     (1000000.0, 6000000.0, 1200000.0, 6200000.0),
@@ -304,7 +304,7 @@ class TestAddBasemap:
             imshow.
         """
         from pyramids.basemap import warp as warp_mod
-        with patch.object(warp_mod, "_warp_tile_image") as mock_warp:
+        with patch.object(warp_mod, "warp_tile_image") as mock_warp:
             result = add_basemap(mock_ax, crs=3857)
 
         mock_warp.assert_not_called()
@@ -315,7 +315,7 @@ class TestAddBasemap:
         """Test that CRS=4326 triggers the GDAL warping step.
 
         Test scenario:
-            When data is in EPSG:4326, _warp_tile_image should be
+            When data is in EPSG:4326, warp_tile_image should be
             called to reproject the basemap tiles.
         """
         mock_ax.get_xlim.return_value = (10.0, 11.0)
@@ -325,7 +325,7 @@ class TestAddBasemap:
         from pyramids.basemap import warp as warp_mod
         with patch.object(
             warp_mod,
-            "_warp_tile_image",
+            "warp_tile_image",
             return_value=(fake_image, (10.0, 50.0, 11.0, 51.0)),
         ) as mock_warp:
             add_basemap(mock_ax, crs=4326)
@@ -405,13 +405,13 @@ class TestAddBasemap:
         few_tiles = [Tile(x=i, y=j, z=9) for i in range(10) for j in range(10)]
 
         with (
-            patch.object(tiles_mod, "_auto_zoom", return_value=10),
+            patch.object(tiles_mod, "auto_zoom", return_value=10),
             patch.object(
-                tiles_mod, "_fetch_tiles",
+                tiles_mod, "fetch_tiles",
                 return_value={Tile(0, 0, 9): _make_tile_png()},
             ),
             patch.object(
-                tiles_mod, "_stitch_tiles",
+                tiles_mod, "stitch_tiles",
                 return_value=(
                     fake_image,
                     (1000000.0, 6000000.0, 1200000.0, 6200000.0),

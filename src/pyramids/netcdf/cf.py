@@ -11,7 +11,6 @@ import logging
 import re
 from typing import Any
 
-import numpy as np
 from osgeo import gdal, osr
 
 logger = logging.getLogger(__name__)
