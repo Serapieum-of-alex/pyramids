@@ -292,7 +292,7 @@ class TestMesh2dBuildConnectivity:
 
 
 class TestMesh2dTriangulation:
-    """Tests for Mesh2d.triangulation property."""
+    """Tests for Mesh2d.fan_triangles property."""
 
     def test_triangulation_pure_triangles(self, triangle_mesh):
         """Test triangulation for pure triangle mesh.
@@ -300,9 +300,9 @@ class TestMesh2dTriangulation:
         Test scenario:
             2 triangular faces should produce 2 triangles in the triangulation.
         """
-        tri = triangle_mesh.triangulation
-        assert tri.triangles.shape[0] == 2, f"Expected 2 triangles, got {tri.triangles.shape[0]}"
-        assert tri.triangles.shape[1] == 3, "Each triangle has 3 vertices"
+        tri = triangle_mesh.fan_triangles
+        assert tri.shape[0] == 2, f"Expected 2 triangles, got {tri.shape[0]}"
+        assert tri.shape[1] == 3, "Each triangle has 3 vertices"
 
     def test_triangulation_mixed_mesh(self, mixed_mesh):
         """Test triangulation for mixed mesh with quad.
@@ -310,8 +310,8 @@ class TestMesh2dTriangulation:
         Test scenario:
             1 quad (2 tris) + 2 triangles = 4 triangles total.
         """
-        tri = mixed_mesh.triangulation
-        assert tri.triangles.shape[0] == 4, f"Expected 4 triangles, got {tri.triangles.shape[0]}"
+        tri = mixed_mesh.fan_triangles
+        assert tri.shape[0] == 4, f"Expected 4 triangles, got {tri.shape[0]}"
 
     def test_triangulation_cached(self, triangle_mesh):
         """Test triangulation is cached after first computation.
@@ -319,8 +319,8 @@ class TestMesh2dTriangulation:
         Test scenario:
             Accessing triangulation twice should return the same object.
         """
-        t1 = triangle_mesh.triangulation
-        t2 = triangle_mesh.triangulation
+        t1 = triangle_mesh.fan_triangles
+        t2 = triangle_mesh.fan_triangles
         assert t1 is t2, "Triangulation should be cached"
 
 
@@ -344,7 +344,7 @@ class TestMesh2dEdgeCases:
             ),
         )
         with pytest.raises(ValueError, match="no faces with 3 or more nodes"):
-            _ = mesh.triangulation
+            _ = mesh.fan_triangles
 
     def test_get_face_polygon_mixed_mesh(self, mixed_mesh):
         """Test get_face_polygon for a triangle in a mixed mesh.

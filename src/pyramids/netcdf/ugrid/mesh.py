@@ -59,7 +59,7 @@ class Mesh2d:
         self._crs = crs
         self._cached_face_centroids: tuple[np.ndarray, np.ndarray] | None = None
         self._cached_face_areas: np.ndarray | None = None
-        self._cached_triangulation: Any = None
+        self._cached_fan_triangles: np.ndarray | None = None
 
     @property
     def node_x(self) -> np.ndarray:
@@ -187,20 +187,72 @@ class Mesh2d:
         return self._cached_face_areas
 
     @property
-    def triangulation(self) -> Any:
-        """Matplotlib Triangulation for rendering mixed meshes.
+    def fan_triangles(self) -> np.ndarray:
+        """Fan triangulation as a pure numpy array (no matplotlib).
 
-        Uses fan triangulation: each face with N nodes is decomposed
-        into (N-2) triangles by fanning from the first vertex.
+        Decomposes each mesh face into triangles using fan
+        triangulation from the first vertex. A face with N valid
+        nodes produces (N-2) triangles. Faces with fewer than 3
+        valid nodes are silently skipped.
+
+        The result is cached after the first access.
 
         Returns:
-            matplotlib.tri.Triangulation instance.
-        """
-        if self._cached_triangulation is None:
-            import matplotlib.tri as mtri
+            np.ndarray: Integer array of shape ``(n_triangles, 3)``
+                where each row contains the three node indices of
+                one triangle.
 
+        Raises:
+            ValueError: If no faces in the mesh have 3 or more
+                valid nodes (i.e., no triangles can be formed).
+
+        Examples:
+            - Triangulate a simple 2-triangle mesh:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import Mesh2d, Connectivity
+                >>> mesh = Mesh2d(
+                ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=Connectivity(
+                ...         data=np.array([[0, 1, 2], [1, 3, 2]]),
+                ...         fill_value=-1,
+                ...         cf_role="face_node_connectivity",
+                ...         original_start_index=0,
+                ...     ),
+                ... )
+                >>> mesh.fan_triangles.shape
+                (2, 3)
+                >>> mesh.fan_triangles[0].tolist()
+                [0, 1, 2]
+
+                ```
+            - A quad face produces 2 triangles via fan decomposition:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import Mesh2d, Connectivity
+                >>> mesh = Mesh2d(
+                ...     node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=Connectivity(
+                ...         data=np.array([[0, 1, 2, 3]]),
+                ...         fill_value=-1,
+                ...         cf_role="face_node_connectivity",
+                ...         original_start_index=0,
+                ...     ),
+                ... )
+                >>> mesh.fan_triangles.shape
+                (2, 3)
+
+                ```
+
+        See Also:
+            Mesh2d.face_node_connectivity: The raw connectivity array
+                that this property decomposes.
+        """
+        if self._cached_fan_triangles is None:
             fnc = self._face_node_connectivity
-            triangles = []
+            triangles: list[list[int]] = []
 
             for i in range(self.n_face):
                 nodes = fnc.get_element(i)
@@ -208,18 +260,17 @@ class Mesh2d:
                 if n < 3:
                     continue
                 for j in range(1, n - 1):
-                    triangles.append([int(nodes[0]), int(nodes[j]), int(nodes[j + 1])])
+                    triangles.append(
+                        [int(nodes[0]), int(nodes[j]), int(nodes[j + 1])]
+                    )
 
             if not triangles:
                 raise ValueError(
                     "Cannot create triangulation: no faces with 3 or more nodes."
                 )
-            tri_array = np.array(triangles, dtype=np.intp)
-            self._cached_triangulation = mtri.Triangulation(
-                self._node_x, self._node_y, tri_array
-            )
+            self._cached_fan_triangles = np.array(triangles, dtype=np.intp)
 
-        return self._cached_triangulation
+        return self._cached_fan_triangles
 
     def get_face_nodes(self, face_idx: int) -> np.ndarray:
         """Return valid node indices for a single face.

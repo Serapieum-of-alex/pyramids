@@ -72,19 +72,372 @@ class FeatureCollection:
         new = FeatureCollection(gdf)
         self.__dict__.update(new.__dict__)
 
-    def __str__(self):
-        """__str__."""
-        message = f"""
-            Feature: {self.feature}
+    def __str__(self) -> str:
+        """Return a human-readable summary of the FeatureCollection.
+
+        Includes feature count, column names, and EPSG code.
+        Handles edge cases like empty collections or missing CRS
+        gracefully (shows ``epsg=None``).
+
+        Returns:
+            str: Summary string in the format
+                ``FeatureCollection(N features, columns=[...], epsg=XXXX)``.
+
+        Examples:
+            - Create a point collection and inspect its string form:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"name": ["A", "B"]},
+                ...     geometry=[Point(0, 0), Point(1, 1)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> fc = FeatureCollection(gdf)
+                >>> s = str(fc)
+                >>> "2 features" in s
+                True
+                >>> "4326" in s
+                True
+
+                ```
         """
-        # EPSG: {self.epsg}
-        # Variables: {self.variables}
-        # Number of Bands: {self.band_count}
-        # Band names: {self.band_names}
-        # Dimension: {self.rows * self.columns}
-        # Mask: {self._no_data_value[0]}
-        # Data type: {self.dtype[0]}
-        return message
+        n = len(self)
+        cols = self.column
+        try:
+            epsg = self._get_epsg() if self._feature is not None else None
+        except (AttributeError, TypeError):
+            epsg = None
+        result = (
+            f"FeatureCollection({n} features, "
+            f"columns={cols}, epsg={epsg})"
+        )
+        return result
+
+    def __repr__(self) -> str:
+        """Return a detailed repr of the FeatureCollection.
+
+        Similar to ``__str__`` but uses ``n_features=`` prefix for
+        the feature count, matching the constructor-style repr convention.
+
+        Returns:
+            str: Repr string in the format
+                ``FeatureCollection(n_features=N, columns=[...], epsg=XXXX)``.
+
+        Examples:
+            - Inspect the repr of a collection:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"val": [1]},
+                ...     geometry=[Point(0, 0)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> fc = FeatureCollection(gdf)
+                >>> r = repr(fc)
+                >>> "n_features=1" in r
+                True
+
+                ```
+        """
+        try:
+            epsg = self._get_epsg()
+        except (AttributeError, TypeError):
+            epsg = None
+        result = (
+            f"FeatureCollection(n_features={len(self)}, "
+            f"columns={self.column}, epsg={epsg})"
+        )
+        return result
+
+    def __len__(self) -> int:
+        """Return the number of features (rows).
+
+        Works with both GeoDataFrame and OGR DataSource backends.
+        Returns 0 for empty collections or unsupported backends.
+
+        Returns:
+            int: Number of features in the collection.
+
+        Examples:
+            - Count features in a GeoDataFrame-backed collection:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"id": [1, 2, 3]},
+                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
+                ... )
+                >>> fc = FeatureCollection(gdf)
+                >>> len(fc)
+                3
+
+                ```
+            - Empty collection returns 0:
+                ```python
+                >>> import geopandas as gpd
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(gpd.GeoDataFrame({"a": []}))
+                >>> len(fc)
+                0
+
+                ```
+        """
+        if isinstance(self._feature, GeoDataFrame):
+            result = len(self._feature)
+        elif isinstance(self._feature, (DataSource, gdal.Dataset)):
+            layer = self._feature.GetLayer(0)
+            result = layer.GetFeatureCount() if layer is not None else 0
+        else:
+            result = 0
+        return result
+
+    def __iter__(self):
+        """Iterate over features as (index, row) tuples.
+
+        Each yielded row is a ``pandas.Series`` with access to all
+        attribute columns and the ``geometry`` field. For OGR
+        DataSource backends, the data is first converted to a
+        GeoDataFrame.
+
+        Yields:
+            tuple[int, pandas.Series]: Index and row for each feature.
+
+        Examples:
+            - Iterate and collect attribute values:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"city": ["Cairo", "Berlin"]},
+                ...     geometry=[Point(31.2, 30.0), Point(13.4, 52.5)],
+                ... )
+                >>> fc = FeatureCollection(gdf)
+                >>> cities = [row["city"] for _, row in fc]
+                >>> cities
+                ['Cairo', 'Berlin']
+
+                ```
+        """
+        if isinstance(self._feature, GeoDataFrame):
+            yield from self._feature.iterrows()
+        else:
+            gdf = self._ds_to_gdf()
+            yield from gdf.iterrows()
+
+    def __getitem__(self, key):
+        """Access features by index, slice, or column name.
+
+        Supports four access patterns:
+
+        - **Integer** (``fc[0]``): Returns a single-feature
+          FeatureCollection.
+        - **Slice** (``fc[0:5]``): Returns a subset FeatureCollection.
+        - **List/array** (``fc[[0, 2, 4]]``): Returns selected features.
+        - **String** (``fc["column_name"]``): Returns the column as a
+          pandas Series.
+
+        Row selections return copies, so modifying the result does
+        not affect the original collection.
+
+        Args:
+            key: Integer index, slice, list of indices, numpy array
+                of indices, or column name string.
+
+        Returns:
+            FeatureCollection: For row-based selections (int, slice,
+                list, array).
+            pandas.Series: For string column selection.
+
+        Examples:
+            - Select a single feature by index:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"name": ["A", "B", "C"]},
+                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
+                ... )
+                >>> fc = FeatureCollection(gdf)
+                >>> single = fc[0]
+                >>> len(single)
+                1
+
+                ```
+            - Slice a range of features:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"name": ["A", "B", "C"]},
+                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
+                ... )
+                >>> fc = FeatureCollection(gdf)
+                >>> subset = fc[0:2]
+                >>> len(subset)
+                2
+
+                ```
+            - Access a column by name:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"name": ["A", "B", "C"]},
+                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
+                ... )
+                >>> fc = FeatureCollection(gdf)
+                >>> list(fc["name"])
+                ['A', 'B', 'C']
+
+                ```
+        """
+        if not isinstance(self._feature, GeoDataFrame):
+            gdf = self._ds_to_gdf()
+        else:
+            gdf = self._feature
+
+        if isinstance(key, str):
+            result = gdf[key]
+        elif isinstance(key, int):
+            result = FeatureCollection(gdf.iloc[[key]].copy())
+        elif isinstance(key, (slice, list, np.ndarray)):
+            result = FeatureCollection(gdf.iloc[key].copy())
+        else:
+            result = gdf[key]
+        return result
+
+    def __contains__(self, column_name: str) -> bool:
+        """Check if a column exists in the FeatureCollection.
+
+        Uses the ``column`` property which lists all attribute columns
+        plus ``"geometry"``.
+
+        Args:
+            column_name: Name of the column to check for.
+
+        Returns:
+            bool: True if the column exists in the collection.
+
+        Examples:
+            - Check for existing and missing columns:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"depth": [5.0]},
+                ...     geometry=[Point(0, 0)],
+                ... )
+                >>> fc = FeatureCollection(gdf)
+                >>> "depth" in fc
+                True
+                >>> "missing" in fc
+                False
+                >>> "geometry" in fc
+                True
+
+                ```
+        """
+        result = column_name in self.column
+        return result
+
+    def __bool__(self) -> bool:
+        """Return True if the FeatureCollection is non-empty.
+
+        Enables natural usage in ``if`` statements and boolean
+        contexts. An empty collection (zero features) is falsy.
+
+        Returns:
+            bool: True if the collection has at least one feature.
+
+        Examples:
+            - Non-empty collection is truthy:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame({"a": [1]}, geometry=[Point(0, 0)])
+                ... )
+                >>> bool(fc)
+                True
+
+                ```
+            - Empty collection is falsy:
+                ```python
+                >>> import geopandas as gpd
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(gpd.GeoDataFrame({"a": []}))
+                >>> bool(fc)
+                False
+
+                ```
+        """
+        result = len(self) > 0
+        return result
+
+    def __eq__(self, other: object) -> bool:
+        """Check equality with another FeatureCollection.
+
+        Two FeatureCollections are equal if their underlying
+        GeoDataFrames are identical (same geometry, attributes, and
+        index). Returns ``NotImplemented`` when compared with
+        non-FeatureCollection objects, allowing Python to try the
+        reverse comparison.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            bool: True if both collections have identical GeoDataFrames.
+            NotImplemented: If ``other`` is not a FeatureCollection.
+
+        Examples:
+            - Two collections from the same data are equal:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ... )
+                >>> fc1 = FeatureCollection(gdf)
+                >>> fc2 = FeatureCollection(gdf.copy())
+                >>> fc1 == fc2
+                True
+
+                ```
+            - Comparison with non-FeatureCollection returns NotImplemented:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame({"v": [1]}, geometry=[Point(0, 0)])
+                ... )
+                >>> fc.__eq__("not a fc") is NotImplemented
+                True
+
+                ```
+        """
+        if not isinstance(other, FeatureCollection):
+            return NotImplemented
+        if isinstance(self._feature, GeoDataFrame) and isinstance(
+            other._feature, GeoDataFrame
+        ):
+            result = self._feature.equals(other._feature)
+        else:
+            result = False
+        return result
 
     @property
     def feature(self) -> GeoDataFrame | DataSource:

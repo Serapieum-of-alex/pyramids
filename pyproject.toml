@@ -38,7 +38,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-viz = ["cleopatra>=0.6.0"]
+viz = ["cleopatra>=0.7.1"]
 xarray = ["xarray>=2023.1.0", "netCDF4>=1.6.0", "h5netcdf>=1.0.0", "cftime>=1.6.0"]
 
 [dependency-groups]
@@ -203,6 +203,7 @@ plot = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'plot' --cov-report=xml", 
 xarray-tests = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'xarray' --cov-report=xml", description = "Run xarray interop tests" }
 test-all = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'not xarray' --cov-report=xml --cov-report=term-missing", description = "Run all testsuite" }
 notebooks = { cmd = "pytest --nbval --nbval-lax --verbose examples/notebooks", description = "check notebooks" }
+jupyter = { cmd = "jupyter lab --no-browser --IdentityProvider.token='' --ServerApp.password='' --port=8889", description = "check notebooks" }
 build-dist = { cmd = "python -m build", description = "Build sdist and wheel for PyPI" }
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
 cz-changelog = { cmd = "cz changelog", description = "Generate changelog using Commitizen" }

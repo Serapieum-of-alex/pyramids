@@ -1,26 +1,70 @@
-"""UGRID mesh visualization.
+"""UGRID mesh visualization (delegates to cleopatra.mesh_glyph).
 
-Provides functions for plotting mesh data using matplotlib
-triangulation (tripcolor/tricontourf) and mesh wireframe
-rendering using LineCollection.
-
-Depends on:
-    - mesh.py: Mesh2d (uses mesh.triangulation property)
-    - matplotlib (optional dependency via cleopatra/viz extra)
+Thin wrapper around ``cleopatra.mesh_glyph.MeshGlyph`` that accepts
+pyramids ``Mesh2d`` objects and delegates all rendering to cleopatra.
+Requires the ``viz`` optional extra (``pip install pyramids-gis[viz]``).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-
+from pyramids.base._utils import import_cleopatra
 from pyramids.netcdf.ugrid.mesh import Mesh2d
+
+_CLEOPATRA_MSG = (
+    "Mesh plotting requires the cleopatra package. "
+    "Install it with: pip install pyramids-gis[viz] "
+    "or see https://github.com/serapeum-org/cleopatra"
+)
+
+
+def _mesh_to_glyph(mesh: Mesh2d, **kwargs: Any) -> Any:
+    """Convert a pyramids Mesh2d to a cleopatra MeshGlyph.
+
+    Extracts node coordinates, face-node connectivity, fill value,
+    and (optionally) edge-node connectivity from the ``Mesh2d`` and
+    passes them to the ``MeshGlyph`` constructor. The
+    ``import_cleopatra`` guard ensures a helpful error message if
+    cleopatra is not installed.
+
+    Args:
+        mesh: Mesh2d topology object containing node coordinates
+            and connectivity arrays.
+        **kwargs: Forwarded to the ``MeshGlyph`` constructor. Common
+            options include ``fig``, ``ax``, ``figsize``, ``cmap``,
+            and any key in ``MeshGlyph.default_options``.
+
+    Returns:
+        cleopatra.mesh_glyph.MeshGlyph: A MeshGlyph instance ready
+            for plotting. Call ``.plot()`` or ``.plot_outline()``
+            on the returned object.
+
+    Raises:
+        OptionalPackageDoesNotExist: If cleopatra is not installed.
+            The error message includes install instructions.
+    """
+    import_cleopatra(_CLEOPATRA_MSG)
+    from cleopatra.mesh_glyph import MeshGlyph
+
+    edge_nodes = None
+    if mesh.edge_node_connectivity is not None:
+        edge_nodes = mesh.edge_node_connectivity.data
+
+    result = MeshGlyph(
+        node_x=mesh.node_x,
+        node_y=mesh.node_y,
+        face_node_connectivity=mesh.face_node_connectivity.data,
+        fill_value=mesh.face_node_connectivity.fill_value,
+        edge_node_connectivity=edge_nodes,
+        **kwargs,
+    )
+    return result
 
 
 def plot_mesh_data(
     mesh: Mesh2d,
-    data: np.ndarray,
+    data: Any,
     location: str = "face",
     ax: Any = None,
     cmap: str = "viridis",
@@ -31,101 +75,79 @@ def plot_mesh_data(
     title: str | None = None,
     **kwargs: Any,
 ) -> Any:
-    """Plot mesh data using matplotlib triangulation.
+    """Plot mesh data using cleopatra MeshGlyph.
 
-    For face-centered data: uses tripcolor (each triangle colored
-    by value). For node-centered data: uses tricontourf (interpolated
-    contours). The mesh.triangulation property handles mixed meshes
-    by decomposing each polygon into triangles.
+    Renders unstructured mesh data on a matplotlib figure. For
+    face-centered data, uses ``tripcolor`` (each triangle colored
+    by the value of its parent face). For node-centered data, uses
+    ``tricontourf`` (smooth interpolated contours). All rendering
+    is delegated to ``cleopatra.mesh_glyph.MeshGlyph.plot``.
+
+    The returned ``MeshGlyph`` instance gives access to the
+    underlying ``Figure``/``Axes`` and all cleopatra capabilities
+    (color scales, animations, etc.).
 
     Args:
-        mesh: Mesh2d topology.
-        data: 1D data array matching the mesh location count.
-        location: "face" or "node".
-        ax: matplotlib Axes. Created if None.
-        cmap: Colormap name.
-        vmin: Minimum color scale value.
-        vmax: Maximum color scale value.
-        edgecolor: Edge color for face rendering.
-        colorbar: Whether to add a colorbar.
-        title: Plot title.
-        **kwargs: Additional keyword arguments passed to tripcolor/tricontourf.
-            Do not pass ``cmap``, ``levels``, ``vmin``, or ``vmax`` here;
-            use the dedicated parameters instead.
+        mesh: Mesh2d topology object containing node coordinates
+            and face-node connectivity.
+        data: 1D data array. Length must match ``mesh.n_face`` when
+            ``location="face"`` or ``mesh.n_node`` when
+            ``location="node"``.
+        location: Mesh element location for the data. Either
+            ``"face"`` (face-centered) or ``"node"`` (node-centered).
+            Defaults to ``"face"``.
+        ax: Matplotlib Axes to plot on. If None, a new figure and
+            axes are created. Defaults to None.
+        cmap: Matplotlib colormap name. Only forwarded if different
+            from the default ``"viridis"``. Defaults to ``"viridis"``.
+        vmin: Minimum value for the color scale. If None, computed
+            from the data. Defaults to None.
+        vmax: Maximum value for the color scale. If None, computed
+            from the data. Defaults to None.
+        edgecolor: Edge color for face rendering. Use ``"none"`` for
+            no edges or ``"gray"`` for visible mesh lines.
+            Defaults to ``"none"``.
+        colorbar: Whether to add a colorbar to the plot. Defaults
+            to True.
+        title: Plot title string. Defaults to None (no title).
+        **kwargs: Additional keyword arguments forwarded to
+            ``MeshGlyph.plot``. Common options include
+            ``color_scale`` (``"linear"``, ``"power"``,
+            ``"sym-lognorm"``, ``"boundary-norm"``, ``"midpoint"``),
+            ``gamma``, ``midpoint``, ``bounds``, ``ticks_spacing``,
+            ``cbar_orientation``, ``cbar_label``, and ``figsize``.
 
     Returns:
-        matplotlib Axes with the plot.
+        cleopatra.mesh_glyph.MeshGlyph: The MeshGlyph instance with
+            the plot rendered. Access ``glyph.fig`` and ``glyph.ax``
+            for the matplotlib Figure and Axes.
 
     Raises:
-        ValueError: If location is not "face" or "node".
+        ValueError: If ``location`` is not ``"face"`` or ``"node"``,
+            or if the data length does not match the mesh topology.
+        OptionalPackageDoesNotExist: If cleopatra is not installed.
+
+    See Also:
+        plot_mesh_outline: Plot mesh edges as a wireframe.
+        UgridDataset.plot: Dataset-level convenience method that
+            calls this function.
     """
-    import matplotlib.pyplot as plt
+    glyph = _mesh_to_glyph(mesh)
+    plot_kwargs: dict[str, Any] = {}
+    if cmap != "viridis":
+        plot_kwargs["cmap"] = cmap
+    if vmin is not None:
+        plot_kwargs["vmin"] = vmin
+    if vmax is not None:
+        plot_kwargs["vmax"] = vmax
+    plot_kwargs.update(kwargs)
 
-    if ax is None:
-        _, ax = plt.subplots(1, 1, figsize=(10, 8))
-
-    tri = mesh.triangulation
-
-    if location == "face":
-        tri_values = _map_face_to_triangle_values(mesh, data)
-        tpc = ax.tripcolor(
-            tri, facecolors=tri_values, cmap=cmap,
-            vmin=vmin, vmax=vmax, edgecolors=edgecolor, **kwargs
-        )
-    elif location == "node":
-        contour_kw = {"cmap": cmap, "levels": 20}
-        if vmin is not None:
-            contour_kw["vmin"] = vmin
-        if vmax is not None:
-            contour_kw["vmax"] = vmax
-        tpc = ax.tricontourf(tri, data, **contour_kw, **kwargs)
-    else:
-        raise ValueError(
-            f"Plotting not supported for location='{location}'. "
-            f"Use 'face' or 'node'."
-        )
-
-    if colorbar:
-        plt.colorbar(tpc, ax=ax)
-    if title:
-        ax.set_title(title)
-    ax.set_aspect("equal")
-
-    result = ax
-    return result
-
-
-def _map_face_to_triangle_values(
-    mesh: Mesh2d,
-    face_values: np.ndarray,
-) -> np.ndarray:
-    """Map per-face values to per-triangle values after fan decomposition.
-
-    The fan decomposition creates (nodes_per_face - 2) triangles per
-    face. All triangles from the same face get the same data value.
-
-    Args:
-        mesh: Mesh2d topology.
-        face_values: 1D array of values, one per face.
-
-    Returns:
-        1D array of values, one per triangle in the triangulation.
-    """
-    fnc = mesh.face_node_connectivity
-    counts = fnc.nodes_per_element()
-    valid = counts >= 3
-    n_triangles = int(np.sum(counts[valid] - 2))
-    tri_values = np.empty(n_triangles)
-
-    tri_idx = 0
-    for face_idx in range(mesh.n_face):
-        if counts[face_idx] < 3:
-            continue
-        n_tris = counts[face_idx] - 2
-        tri_values[tri_idx:tri_idx + n_tris] = face_values[face_idx]
-        tri_idx += n_tris
-
-    return tri_values
+    glyph.plot(
+        data, location=location, ax=ax,
+        edgecolor=edgecolor, colorbar=colorbar,
+        title=title, **plot_kwargs,
+    )
+    return glyph
 
 
 def plot_mesh_outline(
@@ -135,57 +157,35 @@ def plot_mesh_outline(
     linewidth: float = 0.3,
     **kwargs: Any,
 ) -> Any:
-    """Plot mesh edges as a wireframe.
+    """Plot mesh edges as a wireframe using cleopatra MeshGlyph.
 
-    Uses matplotlib LineCollection for efficient rendering of
-    thousands of edges.
+    Renders the mesh structure as a wireframe showing all edges.
+    If the mesh has pre-built ``edge_node_connectivity``, edges
+    are drawn directly. Otherwise, unique edges are derived from
+    the face-node connectivity.
 
     Args:
-        mesh: Mesh2d topology.
-        ax: matplotlib Axes. Created if None.
-        color: Edge color.
-        linewidth: Edge line width.
-        **kwargs: Additional keyword arguments passed to LineCollection.
+        mesh: Mesh2d topology object containing node coordinates
+            and connectivity arrays.
+        ax: Matplotlib Axes to plot on. If None, a new figure and
+            axes are created. Defaults to None.
+        color: Edge color as a matplotlib color string. Defaults
+            to ``"black"``.
+        linewidth: Edge line width in points. Defaults to ``0.3``.
+        **kwargs: Additional keyword arguments passed to
+            ``matplotlib.collections.LineCollection``.
 
     Returns:
-        matplotlib Axes with the wireframe plot.
+        cleopatra.mesh_glyph.MeshGlyph: The MeshGlyph instance with
+            the wireframe rendered. Access ``glyph.fig`` and
+            ``glyph.ax`` for the matplotlib Figure and Axes.
+
+    See Also:
+        plot_mesh_data: Plot data values on the mesh.
+        UgridDataset.plot_outline: Dataset-level convenience method.
     """
-    import matplotlib.pyplot as plt
-    from matplotlib.collections import LineCollection
-
-    if ax is None:
-        _, ax = plt.subplots(1, 1, figsize=(10, 8))
-
-    segments: list[list[tuple[float, float]]] = []
-
-    if mesh.edge_node_connectivity is not None:
-        enc = mesh.edge_node_connectivity
-        for i in range(enc.n_elements):
-            nodes = enc.get_element(i)
-            n1, n2 = int(nodes[0]), int(nodes[1])
-            segments.append([
-                (mesh.node_x[n1], mesh.node_y[n1]),
-                (mesh.node_x[n2], mesh.node_y[n2]),
-            ])
-    else:
-        seen_edges: set[tuple[int, int]] = set()
-        for i in range(mesh.n_face):
-            nodes = mesh.face_node_connectivity.get_element(i)
-            n = len(nodes)
-            for j in range(n):
-                n1, n2 = int(nodes[j]), int(nodes[(j + 1) % n])
-                edge_key = (min(n1, n2), max(n1, n2))
-                if edge_key not in seen_edges:
-                    seen_edges.add(edge_key)
-                    segments.append([
-                        (mesh.node_x[n1], mesh.node_y[n1]),
-                        (mesh.node_x[n2], mesh.node_y[n2]),
-                    ])
-
-    lc = LineCollection(segments, colors=color, linewidths=linewidth, **kwargs)
-    ax.add_collection(lc)
-    ax.autoscale()
-    ax.set_aspect("equal")
-
-    result = ax
-    return result
+    glyph = _mesh_to_glyph(mesh)
+    glyph.plot_outline(
+        ax=ax, color=color, linewidth=linewidth, **kwargs,
+    )
+    return glyph

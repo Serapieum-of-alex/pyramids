@@ -935,6 +935,8 @@ class Analysis:
             if exclude_value is not None
             else [no_data_value[band]]
         )
+        ax = kwargs.pop("ax", None)
+        fig = kwargs.pop("fig", None)
         cleo = ArrayGlyph(
             arr,
             exclude_value=exclude_value,
@@ -943,6 +945,8 @@ class Analysis:
             surface_reflectance=surface_reflectance,
             cutoff=cutoff,
             percentile=percentile,
+            ax=ax,
+            fig=fig,
             **kwargs,
         )
         cleo.plot(**kwargs)
