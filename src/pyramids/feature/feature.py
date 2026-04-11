@@ -1363,7 +1363,7 @@ class FeatureCollection:
         if not isinstance(self.feature, GeoDataFrame):
             raise TypeError(
                 "plot() requires a GeoDataFrame-backed FeatureCollection. "
-                "Convert with to_gdf() first."
+                "Convert the OGR DataSource to a GeoDataFrame first."
             )
 
         ax = self.feature.plot(column=column, **kwargs)
