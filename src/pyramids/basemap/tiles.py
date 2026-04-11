@@ -15,7 +15,10 @@ import math
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import mercantile
 
 import numpy as np
 
@@ -73,11 +76,11 @@ def _auto_zoom(bounds_4326: tuple[float, float, float, float]) -> int:
 
 
 def _fetch_single_tile(
-    tile: Any,
+    tile: mercantile.Tile,
     provider: Any,
     timeout: int,
     retries: int,
-) -> tuple[Any, bytes]:
+) -> tuple[mercantile.Tile, bytes]:
     """Fetch a single tile with retries.
 
     Args:
