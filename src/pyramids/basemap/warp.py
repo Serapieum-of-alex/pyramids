@@ -106,10 +106,18 @@ def _warp_tile_image(
         )
 
     out_bands = min(dst_ds.RasterCount, 4)
-    warped = np.stack(
-        [dst_ds.GetRasterBand(i + 1).ReadAsArray() for i in range(out_bands)],
-        axis=-1,
-    )
+    bands = []
+    for i in range(out_bands):
+        band = dst_ds.GetRasterBand(i + 1)
+        arr = band.ReadAsArray() if band is not None else None
+        if arr is None:
+            raise RuntimeError(
+                f"GDAL ReadAsArray returned None for band {i + 1}. "
+                f"The warped dataset may be too large for available "
+                f"memory."
+            )
+        bands.append(arr)
+    warped = np.stack(bands, axis=-1)
 
     if warped.shape[2] == 3:
         alpha = np.full((warped.shape[0], warped.shape[1], 1), 255, dtype=np.uint8)
