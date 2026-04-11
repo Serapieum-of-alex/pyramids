@@ -30,7 +30,7 @@ USER_AGENT = "pyramids-gis/Python"
 MAX_TILES = 256
 
 
-def _auto_zoom(bounds_4326: tuple[float, float, float, float]) -> int:
+def auto_zoom(bounds_4326: tuple[float, float, float, float]) -> int:
     """Compute an appropriate zoom level from bounds in EPSG:4326.
 
     Uses the formula ``zoom = ceil(log2(360 / max(lon_extent, lat_extent)))``
@@ -46,25 +46,25 @@ def _auto_zoom(bounds_4326: tuple[float, float, float, float]) -> int:
     Examples:
         - Global extent produces the lowest zoom:
             ```python
-            >>> _auto_zoom((-180, -85, 180, 85))
+            >>> auto_zoom((-180, -85, 180, 85))
             0
 
             ```
         - City-scale extent produces a higher zoom:
             ```python
-            >>> _auto_zoom((13.0, 52.4, 13.6, 52.6))
+            >>> auto_zoom((13.0, 52.4, 13.6, 52.6))
             10
 
             ```
         - Very small extent is clamped to zoom 19:
             ```python
-            >>> _auto_zoom((0.0, 0.0, 1e-8, 1e-8))
+            >>> auto_zoom((0.0, 0.0, 1e-8, 1e-8))
             19
 
             ```
 
     See Also:
-        add_basemap: Uses _auto_zoom when zoom="auto".
+        add_basemap: Uses auto_zoom when zoom="auto".
     """
     west, south, east, north = bounds_4326
     lon_extent = abs(east - west)
@@ -75,7 +75,7 @@ def _auto_zoom(bounds_4326: tuple[float, float, float, float]) -> int:
     return result
 
 
-def _fetch_single_tile(
+def fetch_single_tile(
     tile: mercantile.Tile,
     provider: Any,
     timeout: int,
@@ -102,7 +102,7 @@ def _fetch_single_tile(
             If the tile cannot be fetched after all retries.
 
     See Also:
-        _fetch_tiles: Parallel wrapper that calls this function for
+        fetch_tiles: Parallel wrapper that calls this function for
             each tile in a list.
     """
     url = provider.build_url(x=tile.x, y=tile.y, z=tile.z)
@@ -143,7 +143,7 @@ def _fetch_single_tile(
     return tile, result_bytes
 
 
-def _fetch_tiles(
+def fetch_tiles(
     tiles: list,
     provider: Any,
     max_workers: int = 8,
@@ -180,14 +180,14 @@ def _fetch_tiles(
             If any tile cannot be fetched after all retries.
 
     See Also:
-        _fetch_single_tile: Fetches one tile with retry logic.
-        _stitch_tiles: Stitches fetched tile bytes into a single
+        fetch_single_tile: Fetches one tile with retry logic.
+        stitch_tiles: Stitches fetched tile bytes into a single
             image.
     """
     tile_data: dict[Any, bytes] = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(_fetch_single_tile, tile, provider, timeout, retries): tile
+            executor.submit(fetch_single_tile, tile, provider, timeout, retries): tile
             for tile in tiles
         }
         try:
@@ -206,7 +206,7 @@ def _fetch_tiles(
     return tile_data
 
 
-def _stitch_tiles(
+def stitch_tiles(
     tile_data: dict,
     tiles: list,
     zoom: int,
@@ -221,7 +221,7 @@ def _stitch_tiles(
 
     Args:
         tile_data (dict[mercantile.Tile, bytes]):
-            Mapping of Tile to PNG bytes (from ``_fetch_tiles``).
+            Mapping of Tile to PNG bytes (from ``fetch_tiles``).
         tiles (list[mercantile.Tile]):
             All tiles in the grid (defines the grid dimensions).
         zoom (int):
@@ -235,7 +235,7 @@ def _stitch_tiles(
               meters.
 
     See Also:
-        _fetch_tiles: Fetches the tile bytes that this function
+        fetch_tiles: Fetches the tile bytes that this function
             stitches.
         pyramids.basemap.warp._warp_tile_image: Warps the stitched
             image to a different CRS.

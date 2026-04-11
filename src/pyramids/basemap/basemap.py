@@ -342,7 +342,7 @@ def add_basemap(
     bounds_4326 = (w4326, s4326, e4326, n4326)
 
     if zoom == "auto":
-        tile_zoom = tiles_mod._auto_zoom(bounds_4326)
+        tile_zoom = tiles_mod.auto_zoom(bounds_4326)
     else:
         try:
             tile_zoom = int(zoom)
@@ -373,14 +373,14 @@ def add_basemap(
             f"coverage."
         )
 
-    tile_data = tiles_mod._fetch_tiles(
+    tile_data = tiles_mod.fetch_tiles(
         tiles, provider, timeout=timeout, retries=retries
     )
 
-    image, extent_3857 = tiles_mod._stitch_tiles(tile_data, tiles, tile_zoom)
+    image, extent_3857 = tiles_mod.stitch_tiles(tile_data, tiles, tile_zoom)
 
     if not is_3857:
-        image, extent = warp_mod._warp_tile_image(
+        image, extent = warp_mod.warp_tile_image(
             image,
             extent_3857,
             target_crs=crs_str,

@@ -12,7 +12,7 @@ import numpy as np
 from osgeo import gdal, osr
 
 
-def _warp_tile_image(
+def warp_tile_image(
     image: np.ndarray,
     extent_3857: tuple[float, float, float, float],
     target_crs: str,
@@ -55,7 +55,7 @@ def _warp_tile_image(
             If GDAL Warp fails to reproject the tile image.
 
     See Also:
-        pyramids.basemap.tiles._stitch_tiles: Produces the input
+        pyramids.basemap.tiles._tiles.stitch_tiles: Produces the input
             image for this function.
         pyramids.basemap.basemap.add_basemap: Orchestrates the full
             tile fetch, stitch, warp, render pipeline.
