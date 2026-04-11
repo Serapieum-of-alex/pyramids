@@ -1,6 +1,13 @@
 ﻿# Change log
 
 
+## 0.12.0 (2026-04-11)
+
+### Feat
+
+- delegate UGRID plotting to cleopatra and add dunder methods to FeatureCollection (#230)
+- **netcdf**: add UGRID unstructured mesh support (#224)
+
 ## 0.11.0 (2026-04-05)
 
 ### Feat
