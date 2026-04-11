@@ -43,8 +43,32 @@ def get_provider(name: str | None = None) -> Any:
         ValueError: If the provider name cannot be resolved.
 
     Examples:
-        >>> provider = get_provider("CartoDB.Positron")
-        >>> provider = get_provider()  # default: OpenStreetMap.Mapnik
+        - Resolve the default OpenStreetMap provider:
+            ```python
+            >>> provider = get_provider()
+            >>> provider.name
+            'OpenStreetMap.Mapnik'
+
+            ```
+        - Resolve a specific provider and inspect its URL:
+            ```python
+            >>> provider = get_provider("CartoDB.Positron")
+            >>> "basemaps.cartocdn.com" in provider.url
+            True
+
+            ```
+        - Invalid provider name raises ValueError:
+            ```python
+            >>> get_provider("NonExistent.Provider")
+            Traceback (most recent call last):
+                ...
+            ValueError: Unknown tile provider: 'NonExistent.Provider'...
+
+            ```
+
+    See Also:
+        add_basemap: Uses get_provider internally when source is a
+            string.
     """
     import_basemap(_BASEMAP_MSG)
     import xyzservices.providers as xyz
@@ -101,6 +125,32 @@ def _densify_and_reproject_bounds(
     Raises:
         ValueError:
             If the reprojection produces infinite or NaN coordinates.
+
+    Examples:
+        - Reproject a small WGS84 box to Web Mercator:
+            ```python
+            >>> w, s, e, n = _densify_and_reproject_bounds(
+            ...     10.0, 50.0, 11.0, 51.0, "EPSG:4326", "EPSG:3857"
+            ... )
+            >>> w < e and s < n
+            True
+            >>> abs(w) > 100000
+            True
+
+            ```
+        - Identity transform preserves bounds:
+            ```python
+            >>> result = _densify_and_reproject_bounds(
+            ...     10.0, 50.0, 11.0, 51.0, "EPSG:4326", "EPSG:4326"
+            ... )
+            >>> abs(result[0] - 10.0) < 0.001
+            True
+
+            ```
+
+    See Also:
+        add_basemap: Calls this function when data CRS is not
+            EPSG:3857.
     """
     transformer = Transformer.from_crs(src_crs, dst_crs, always_xy=True)
 
@@ -197,11 +247,32 @@ def add_basemap(
             provider.
 
     Examples:
-        >>> from pyramids.basemap import add_basemap
-        >>> from pyramids.dataset import Dataset
-        >>> ds = Dataset.read_file("dem.tif")
-        >>> glyph = ds.plot(band=0)
-        >>> add_basemap(glyph.ax, crs=ds.epsg)
+        - Add a default OpenStreetMap basemap to a Dataset plot:
+            ```python
+            >>> from pyramids.basemap import add_basemap
+            >>> from pyramids.dataset import Dataset
+            >>> ds = Dataset.read_file("dem.tif")
+            >>> glyph = ds.plot(band=0)
+            >>> add_basemap(glyph.ax, crs=ds.epsg)
+
+            ```
+        - Use a different tile provider with transparency:
+            ```python
+            >>> add_basemap(
+            ...     glyph.ax,
+            ...     crs=ds.epsg,
+            ...     source="CartoDB.Positron",
+            ...     alpha=0.5,
+            ... )
+
+            ```
+
+    See Also:
+        get_provider: Resolve a tile provider name to a TileProvider
+            object.
+        pyramids.basemap.tiles: Tile fetching and stitching
+            internals.
+        pyramids.basemap.warp: GDAL-based CRS warping internals.
     """
     import_basemap(_BASEMAP_MSG)
     import mercantile

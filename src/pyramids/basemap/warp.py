@@ -54,6 +54,12 @@ def _warp_tile_image(
     Raises:
         RuntimeError:
             If GDAL Warp fails to reproject the tile image.
+
+    See Also:
+        pyramids.basemap.tiles._stitch_tiles: Produces the input
+            image for this function.
+        pyramids.basemap.basemap.add_basemap: Orchestrates the full
+            tile fetch, stitch, warp, render pipeline.
     """
     n_bands = image.shape[2]
     height, width = image.shape[:2]

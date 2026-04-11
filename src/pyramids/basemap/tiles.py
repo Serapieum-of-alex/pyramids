@@ -41,10 +41,27 @@ def _auto_zoom(bounds_4326: tuple[float, float, float, float]) -> int:
         int: Zoom level between 0 and 19.
 
     Examples:
-        >>> _auto_zoom((-180, -85, 180, 85))
-        0
-        >>> _auto_zoom((13.0, 52.4, 13.6, 52.6))
-        10
+        - Global extent produces the lowest zoom:
+            ```python
+            >>> _auto_zoom((-180, -85, 180, 85))
+            0
+
+            ```
+        - City-scale extent produces a higher zoom:
+            ```python
+            >>> _auto_zoom((13.0, 52.4, 13.6, 52.6))
+            10
+
+            ```
+        - Very small extent is clamped to zoom 19:
+            ```python
+            >>> _auto_zoom((0.0, 0.0, 1e-8, 1e-8))
+            19
+
+            ```
+
+    See Also:
+        add_basemap: Uses _auto_zoom when zoom="auto".
     """
     west, south, east, north = bounds_4326
     lon_extent = abs(east - west)
@@ -80,6 +97,10 @@ def _fetch_single_tile(
     Raises:
         ConnectionError:
             If the tile cannot be fetched after all retries.
+
+    See Also:
+        _fetch_tiles: Parallel wrapper that calls this function for
+            each tile in a list.
     """
     url = provider.build_url(x=tile.x, y=tile.y, z=tile.z)
     last_error = None
@@ -145,6 +166,11 @@ def _fetch_tiles(
     Raises:
         ConnectionError:
             If any tile cannot be fetched after all retries.
+
+    See Also:
+        _fetch_single_tile: Fetches one tile with retry logic.
+        _stitch_tiles: Stitches fetched tile bytes into a single
+            image.
     """
     tile_data: dict[Any, bytes] = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -190,6 +216,12 @@ def _stitch_tiles(
               uint8.
             - extent_3857: (west, south, east, north) in EPSG:3857
               meters.
+
+    See Also:
+        _fetch_tiles: Fetches the tile bytes that this function
+            stitches.
+        pyramids.basemap.warp._warp_tile_image: Warps the stitched
+            image to a different CRS.
     """
     import mercantile
     from PIL import Image
