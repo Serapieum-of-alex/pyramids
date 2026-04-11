@@ -33,22 +33,18 @@ def _auto_zoom(bounds_4326: tuple[float, float, float, float]) -> int:
     Uses the formula ``zoom = ceil(log2(360 / max(lon_extent, lat_extent)))``
     clamped to the range 0--19.
 
-    Parameters
-    ----------
-    bounds_4326 : tuple[float, float, float, float]
-        ``(west, south, east, north)`` in EPSG:4326 degrees.
+    Args:
+        bounds_4326 (tuple[float, float, float, float]):
+            (west, south, east, north) in EPSG:4326 degrees.
 
-    Returns
-    -------
-    int
-        Zoom level between 0 and 19.
+    Returns:
+        int: Zoom level between 0 and 19.
 
-    Examples
-    --------
-    >>> _auto_zoom((-180, -85, 180, 85))
-    0
-    >>> _auto_zoom((13.0, 52.4, 13.6, 52.6))
-    10
+    Examples:
+        >>> _auto_zoom((-180, -85, 180, 85))
+        0
+        >>> _auto_zoom((13.0, 52.4, 13.6, 52.6))
+        10
     """
     west, south, east, north = bounds_4326
     lon_extent = abs(east - west)
@@ -67,26 +63,23 @@ def _fetch_single_tile(
 ) -> tuple[Any, bytes]:
     """Fetch a single tile with retries.
 
-    Parameters
-    ----------
-    tile : mercantile.Tile
-        Tile to fetch (has x, y, z attributes).
-    provider : xyzservices.TileProvider
-        Tile provider with url template.
-    timeout : int
-        HTTP request timeout in seconds.
-    retries : int
-        Number of retry attempts.
+    Args:
+        tile (mercantile.Tile):
+            Tile to fetch (has x, y, z attributes).
+        provider (xyzservices.TileProvider):
+            Tile provider with url template.
+        timeout (int):
+            HTTP request timeout in seconds.
+        retries (int):
+            Number of retry attempts.
 
-    Returns
-    -------
-    tuple[mercantile.Tile, bytes]
-        The tile and its PNG image bytes.
+    Returns:
+        tuple[mercantile.Tile, bytes]:
+            The tile and its PNG image bytes.
 
-    Raises
-    ------
-    ConnectionError
-        If the tile cannot be fetched after all retries.
+    Raises:
+        ConnectionError:
+            If the tile cannot be fetched after all retries.
     """
     url = provider.build_url(x=tile.x, y=tile.y, z=tile.z)
     last_error = None
@@ -126,34 +119,32 @@ def _fetch_tiles(
 ) -> dict:
     """Fetch tile PNG images over HTTP in parallel.
 
-    Uses ``concurrent.futures.ThreadPoolExecutor`` for parallel downloads.
-    Each tile URL is constructed from the provider's URL template by
-    substituting ``{x}``, ``{y}``, ``{z}`` placeholders. A ``User-Agent``
-    header (``pyramids-gis/Python``) is set on all requests to comply with
-    tile provider requirements.
+    Uses ``concurrent.futures.ThreadPoolExecutor`` for parallel
+    downloads. Each tile URL is constructed via the provider's
+    ``build_url()`` method. A ``User-Agent`` header
+    (``pyramids-gis/Python``) is set on all requests to comply
+    with tile provider requirements.
 
-    Parameters
-    ----------
-    tiles : list[mercantile.Tile]
-        Tiles to fetch (each has x, y, z attributes).
-    provider : xyzservices.TileProvider
-        Tile provider with a url template and optional subdomains.
-    max_workers : int, optional
-        Maximum concurrent HTTP connections. Default is 8.
-    timeout : int, optional
-        HTTP request timeout in seconds per tile. Default is 10.
-    retries : int, optional
-        Number of retry attempts per failed tile. Default is 2.
+    Args:
+        tiles (list[mercantile.Tile]):
+            Tiles to fetch (each has x, y, z attributes).
+        provider (xyzservices.TileProvider):
+            Tile provider with a url template and optional
+            subdomains.
+        max_workers (int, optional):
+            Maximum concurrent HTTP connections. Default is 8.
+        timeout (int, optional):
+            HTTP request timeout in seconds per tile. Default is 10.
+        retries (int, optional):
+            Number of retry attempts per failed tile. Default is 2.
 
-    Returns
-    -------
-    dict[mercantile.Tile, bytes]
-        Mapping of Tile to PNG bytes.
+    Returns:
+        dict[mercantile.Tile, bytes]:
+            Mapping of Tile to PNG bytes.
 
-    Raises
-    ------
-    ConnectionError
-        If any tile cannot be fetched after all retries.
+    Raises:
+        ConnectionError:
+            If any tile cannot be fetched after all retries.
     """
     tile_data: dict[Any, bytes] = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -181,28 +172,24 @@ def _stitch_tiles(
 
     Arranges tiles in a grid based on their x, y positions. The tile
     size is read from the first fetched image (typically 256 or 512px).
-    The output array has shape ``(height, width, 3 or 4)`` with dtype
-    ``uint8``.
-
     Also computes the geographic extent of the stitched image in
-    EPSG:3857 coordinates using ``mercantile.xy_bounds()`` on the corner
-    tiles.
+    EPSG:3857 coordinates using ``mercantile.xy_bounds()`` on the
+    corner tiles.
 
-    Parameters
-    ----------
-    tile_data : dict[mercantile.Tile, bytes]
-        Mapping of Tile to PNG bytes (from ``_fetch_tiles``).
-    tiles : list[mercantile.Tile]
-        All tiles in the grid (defines the grid dimensions).
-    zoom : int
-        Zoom level of the tiles.
+    Args:
+        tile_data (dict[mercantile.Tile, bytes]):
+            Mapping of Tile to PNG bytes (from ``_fetch_tiles``).
+        tiles (list[mercantile.Tile]):
+            All tiles in the grid (defines the grid dimensions).
+        zoom (int):
+            Zoom level of the tiles.
 
-    Returns
-    -------
-    image : numpy.ndarray
-        Stitched image, shape ``(H, W, 3 or 4)``, dtype ``uint8``.
-    extent_3857 : tuple[float, float, float, float]
-        ``(west, south, east, north)`` in EPSG:3857 meters.
+    Returns:
+        tuple[numpy.ndarray, tuple[float, float, float, float]]:
+            - image: Stitched RGBA image, shape (H, W, 4), dtype
+              uint8.
+            - extent_3857: (west, south, east, north) in EPSG:3857
+              meters.
     """
     import mercantile
     from PIL import Image

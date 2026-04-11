@@ -28,29 +28,32 @@ def _warp_tile_image(
     ``gdal.WarpOptions`` so GDAL auto-generates an alpha mask for areas
     outside the source extent, preventing black borders.
 
-    Parameters
-    ----------
-    image : numpy.ndarray
-        Source image, shape ``(H, W, 3)`` or ``(H, W, 4)``, dtype ``uint8``.
-    extent_3857 : tuple[float, float, float, float]
-        ``(west, south, east, north)`` of the source image in EPSG:3857.
-    target_crs : str
-        Target CRS as ``"EPSG:XXXX"`` or WKT string.
-    target_extent : tuple[float, float, float, float]
-        ``(west, south, east, north)`` of the target axes in target CRS.
-        Used to set the output bounds so the warped image aligns with
-        the plot.
-    ax : matplotlib.axes.Axes or None, optional
-        If provided, the output resolution is matched to the axes' pixel
-        dimensions for optimal display quality. If ``None``, GDAL
-        auto-computes the output resolution.
+    Args:
+        image (numpy.ndarray):
+            Source image, shape (H, W, 3) or (H, W, 4), dtype uint8.
+        extent_3857 (tuple[float, float, float, float]):
+            (west, south, east, north) of the source image in
+            EPSG:3857.
+        target_crs (str):
+            Target CRS as "EPSG:XXXX" or WKT string.
+        target_extent (tuple[float, float, float, float]):
+            (west, south, east, north) of the target axes in target
+            CRS. Used to set the output bounds so the warped image
+            aligns with the plot.
+        ax (matplotlib.axes.Axes or None, optional):
+            If provided, the output resolution is matched to the
+            axes' pixel dimensions for optimal display quality. If
+            None, GDAL auto-computes the output resolution.
 
-    Returns
-    -------
-    warped_image : numpy.ndarray
-        Reprojected RGBA image, shape ``(H', W', 4)``, dtype ``uint8``.
-    warped_extent : tuple[float, float, float, float]
-        ``(west, south, east, north)`` in target CRS.
+    Returns:
+        tuple[numpy.ndarray, tuple[float, float, float, float]]:
+            - warped_image: Reprojected RGBA image, shape
+              (H', W', 4), dtype uint8.
+            - warped_extent: (west, south, east, north) in target CRS.
+
+    Raises:
+        RuntimeError:
+            If GDAL Warp fails to reproject the tile image.
     """
     n_bands = image.shape[2]
     height, width = image.shape[:2]

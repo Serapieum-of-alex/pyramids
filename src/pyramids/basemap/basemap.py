@@ -28,28 +28,23 @@ _BASEMAP_MSG = (
 def get_provider(name: str | None = None) -> Any:
     """Resolve a tile provider by name.
 
-    Parameters
-    ----------
-    name : str or None, optional
-        Dot-separated provider name (e.g. ``"OpenStreetMap.Mapnik"``,
-        ``"CartoDB.Positron"``, ``"Esri.WorldImagery"``). ``None``
-        returns the default (OpenStreetMap.Mapnik).
+    Args:
+        name (str or None, optional):
+            Dot-separated provider name (e.g. "OpenStreetMap.Mapnik",
+            "CartoDB.Positron", "Esri.WorldImagery"). None returns
+            the default (OpenStreetMap.Mapnik).
 
-    Returns
-    -------
-    xyzservices.TileProvider
-        The resolved tile provider object with url template and
-        attribution.
+    Returns:
+        xyzservices.TileProvider:
+            The resolved tile provider object with url template and
+            attribution.
 
-    Raises
-    ------
-    ValueError
-        If the provider name cannot be resolved.
+    Raises:
+        ValueError: If the provider name cannot be resolved.
 
-    Examples
-    --------
-    >>> provider = get_provider("CartoDB.Positron")
-    >>> provider = get_provider()  # default: OpenStreetMap.Mapnik
+    Examples:
+        >>> provider = get_provider("CartoDB.Positron")
+        >>> provider = get_provider()  # default: OpenStreetMap.Mapnik
     """
     import_basemap(_BASEMAP_MSG)
     import xyzservices.providers as xyz
@@ -88,28 +83,24 @@ def _densify_and_reproject_bounds(
     This handles non-conformal projections where corners alone would
     underestimate the true extent.
 
-    Parameters
-    ----------
-    west : float
-        Western bound in source CRS.
-    south : float
-        Southern bound in source CRS.
-    east : float
-        Eastern bound in source CRS.
-    north : float
-        Northern bound in source CRS.
-    src_crs : str
-        Source CRS identifier (e.g. ``"EPSG:4326"``).
-    dst_crs : str
-        Target CRS identifier (e.g. ``"EPSG:3857"``).
-    n_points : int, optional
-        Number of sample points per edge. 21 balances accuracy
-        vs performance for typical CRS warps. Default is 21.
+    Args:
+        west (float): Western bound in source CRS.
+        south (float): Southern bound in source CRS.
+        east (float): Eastern bound in source CRS.
+        north (float): Northern bound in source CRS.
+        src_crs (str): Source CRS identifier (e.g. "EPSG:4326").
+        dst_crs (str): Target CRS identifier (e.g. "EPSG:3857").
+        n_points (int, optional):
+            Number of sample points per edge. 21 balances accuracy
+            vs performance for typical CRS warps. Default is 21.
 
-    Returns
-    -------
-    tuple[float, float, float, float]
-        ``(west, south, east, north)`` in the target CRS.
+    Returns:
+        tuple[float, float, float, float]:
+            (west, south, east, north) in the target CRS.
+
+    Raises:
+        ValueError:
+            If the reprojection produces infinite or NaN coordinates.
     """
     transformer = Transformer.from_crs(src_crs, dst_crs, always_xy=True)
 
@@ -161,60 +152,56 @@ def add_basemap(
     them into a single image, optionally reprojects to the data's CRS,
     and renders the image underneath the data layer.
 
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axes to add the basemap to. Must have data already plotted
-        so that axis limits define the geographic extent.
-    crs : int or str, optional
-        CRS of the data on the axes. Can be an EPSG integer (e.g.
-        ``4326``) or a WKT/proj4 string. Default is ``3857`` (Web
-        Mercator, no warping needed).
-    source : str, TileProvider, or None, optional
-        Tile provider. Can be:
-        - ``None``: defaults to OpenStreetMap.Mapnik
-        - A dot-separated string: ``"CartoDB.Positron"``
-        - An ``xyzservices.TileProvider`` object
-    zoom : int or "auto", optional
-        Tile zoom level. ``"auto"`` computes from the axes extent.
-        Default is ``"auto"``.
-    alpha : float, optional
-        Opacity of the basemap (0.0 = transparent, 1.0 = opaque).
-        Default is ``1.0``.
-    attribution : str or bool, optional
-        If ``True``, add the provider's default attribution text.
-        If a string, use that text. If ``False``, no attribution.
-        Default is ``True``.
-    zorder : int, optional
-        Matplotlib zorder. ``-1`` places the basemap behind all data.
-        Default is ``-1``.
-    interpolation : str, optional
-        Interpolation method for ``ax.imshow()``. Default is
-        ``"bilinear"``.
-    timeout : int, optional
-        HTTP request timeout in seconds per tile. Default is ``10``.
-    retries : int, optional
-        Number of retry attempts per failed tile. Default is ``2``.
+    Args:
+        ax (matplotlib.axes.Axes):
+            The axes to add the basemap to. Must have data already
+            plotted so that axis limits define the geographic extent.
+        crs (int or str, optional):
+            CRS of the data on the axes. Can be an EPSG integer
+            (e.g. 4326) or a WKT/proj4 string. Default is 3857
+            (Web Mercator, no warping needed).
+        source (str, TileProvider, or None, optional):
+            Tile provider. None defaults to OpenStreetMap.Mapnik.
+            A dot-separated string like "CartoDB.Positron" is
+            resolved via get_provider(). An xyzservices.TileProvider
+            object is used directly.
+        zoom (int or "auto", optional):
+            Tile zoom level. "auto" computes from the axes extent.
+            Default is "auto".
+        alpha (float, optional):
+            Opacity of the basemap (0.0 transparent, 1.0 opaque).
+            Default is 1.0.
+        attribution (str or bool, optional):
+            If True, add the provider's default attribution text.
+            If a string, use that text. If False, no attribution.
+            Default is True.
+        zorder (int, optional):
+            Matplotlib zorder. -1 places the basemap behind all
+            data. Default is -1.
+        interpolation (str, optional):
+            Interpolation method for ax.imshow(). Default is
+            "bilinear".
+        timeout (int, optional):
+            HTTP request timeout in seconds per tile. Default is 10.
+        retries (int, optional):
+            Number of retry attempts per failed tile. Default is 2.
 
-    Returns
-    -------
-    matplotlib.axes.Axes
-        The axes with the basemap added.
+    Returns:
+        matplotlib.axes.Axes: The axes with the basemap added.
 
-    Raises
-    ------
-    ValueError
-        If the axes have no data extent (default limits 0-1).
-    ConnectionError
-        If tiles cannot be fetched from the provider.
+    Raises:
+        TypeError: If ax is not a matplotlib Axes instance.
+        ValueError: If the axes have no data extent or zoom is
+            invalid.
+        ConnectionError: If tiles cannot be fetched from the
+            provider.
 
-    Examples
-    --------
-    >>> from pyramids.basemap import add_basemap
-    >>> from pyramids.dataset import Dataset
-    >>> ds = Dataset.read_file("dem.tif")
-    >>> glyph = ds.plot(band=0)
-    >>> add_basemap(glyph.ax, crs=ds.epsg)
+    Examples:
+        >>> from pyramids.basemap import add_basemap
+        >>> from pyramids.dataset import Dataset
+        >>> ds = Dataset.read_file("dem.tif")
+        >>> glyph = ds.plot(band=0)
+        >>> add_basemap(glyph.ax, crs=ds.epsg)
     """
     import_basemap(_BASEMAP_MSG)
     import mercantile
