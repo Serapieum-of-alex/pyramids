@@ -16,6 +16,8 @@ import numpy as np
 from pyproj import Transformer
 
 from pyramids.base._utils import import_basemap
+from pyramids.basemap import tiles as tiles_mod
+from pyramids.basemap import warp as warp_mod
 
 logger = logging.getLogger(__name__)
 
@@ -276,9 +278,6 @@ def add_basemap(
     """
     import_basemap(_BASEMAP_MSG)
     import mercantile
-
-    from pyramids.basemap import tiles as tiles_mod
-    from pyramids.basemap import warp as warp_mod
 
     if not hasattr(ax, "get_xlim") or not hasattr(ax, "get_ylim"):
         raise TypeError(

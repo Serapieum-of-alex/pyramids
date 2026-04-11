@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 
 import numpy as np
 
+from pyramids.base._utils import import_basemap
+
 logger = logging.getLogger(__name__)
 
 USER_AGENT = "pyramids-gis/Python"
@@ -240,6 +242,10 @@ def stitch_tiles(
         pyramids.basemap.warp._warp_tile_image: Warps the stitched
             image to a different CRS.
     """
+    import_basemap(
+        "Basemap tile stitching requires mercantile, xyzservices, "
+        "and Pillow. Install the viz extra: pyramids-gis[viz]"
+    )
     import mercantile
     from PIL import Image
 
