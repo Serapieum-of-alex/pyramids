@@ -1,8 +1,7 @@
 """GDAL-based CRS warping of tile images.
 
 Reprojects a stitched basemap tile image from EPSG:3857 (Web Mercator)
-to any target CRS using the GDAL MEM driver. Uses pure GDAL operations
-to avoid dependency on rasterio.
+to any target CRS using the GDAL MEM driver.
 """
 
 from __future__ import annotations
