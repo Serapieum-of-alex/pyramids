@@ -28,49 +28,25 @@ pyramids - GIS utility package
 vector data (shapefiles, GeoJSON), and multi-temporal datacubes.
 
 ```mermaid
-graph TD
-    subgraph IO["I/O Formats"]
-        GeoTIFF["GeoTIFF"]
-        NC["NetCDF"]
-        UGRID_NC["UGRID NetCDF"]
-        SHP["Shapefile / GeoJSON"]
-        ZIP["Compressed (zip/gzip/tar)"]
+graph LR
+    GeoTIFF & NetCDF & Shapefile & UGRID -->|read| pyramids
+    subgraph pyramids
+        Dataset
+        NetCDF_class[NetCDF]
+        UgridDataset
+        DatasetCollection
+        FeatureCollection
     end
-
-    subgraph Core["Core Components"]
-        DS["<b>Dataset</b><br/>Single raster<br/>read · write · crop<br/>reproject · align"]
-        NCD["<b>NetCDF</b><br/>extends Dataset<br/>time/variable dimensions<br/>CF conventions"]
-        UGDS["<b>UgridDataset</b><br/>Unstructured mesh<br/>UGRID-1.0 conventions"]
-        DC["<b>DatasetCollection</b><br/>Temporal raster stack<br/>multi-temporal analysis"]
-        FC["<b>FeatureCollection</b><br/>Vector data<br/>GeoDataFrame + OGR"]
-    end
-
-    subgraph Ops["Operations"]
-        Spatial["Spatial<br/>crop · reproject · align"]
-        Math["Array / Band<br/>math · statistics · no-data"]
-        Convert["Convert<br/>raster ↔ vector<br/>raster ↔ NetCDF"]
-    end
-
-    GeoTIFF --> DS
-    NC --> NCD
-    UGRID_NC --> UGDS
-    SHP --> FC
-    ZIP --> DS
-    ZIP --> NCD
-
-    DS --> Spatial
-    DS --> Math
-    DS --> Convert
-    NCD --> Spatial
-    NCD --> Math
-    UGDS --> |"mesh-to-raster"| DS
-    UGDS --> |"mesh-to-vector"| FC
-    DC --> |"contains aligned<br/>Dataset stack"| DS
-    FC --> Convert
-    FC --> |"rasterize"| DS
-    Convert --> FC
-    Convert --> DS
+    Dataset -->|crop · reproject · align| Dataset
+    FeatureCollection -->|rasterize| Dataset
+    UgridDataset -->|interpolate| Dataset
+    Dataset -->|vectorize| FeatureCollection
+    DatasetCollection -->|temporal stack| Dataset
+    NetCDF_class -->|extends| Dataset
 ```
+
+For detailed architecture diagrams, see
+[docs/overview/architecture.md](docs/overview/architecture.md).
 
 Main Features
 -------------
