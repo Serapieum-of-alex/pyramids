@@ -112,7 +112,16 @@ def _fetch_single_tile(
                 headers={"User-Agent": USER_AGENT},
             )
             response = urllib.request.urlopen(request, timeout=timeout)
-            result_bytes = response.read()
+            data = response.read()
+            if not data or data[:4] not in (
+                b"\x89PNG", b"\xff\xd8\xff\xe0", b"\xff\xd8\xff\xe1"
+            ):
+                raise OSError(
+                    f"Tile response is not a valid image "
+                    f"({len(data)} bytes, starts with "
+                    f"{data[:8]!r})"
+                )
+            result_bytes = data
             break
         except (OSError, urllib.error.URLError, ConnectionError) as e:
             last_error = e
@@ -231,7 +240,13 @@ def _stitch_tiles(
     import mercantile
     from PIL import Image
 
-    first_img = Image.open(io.BytesIO(next(iter(tile_data.values()))))
+    try:
+        first_img = Image.open(io.BytesIO(next(iter(tile_data.values()))))
+    except Exception as e:
+        raise ValueError(
+            f"Failed to decode tile image: {e}. The tile server "
+            f"may have returned invalid data."
+        ) from e
     tile_size = first_img.width
 
     x_indices = sorted(set(t.x for t in tiles))
@@ -241,7 +256,13 @@ def _stitch_tiles(
 
     merged = Image.new("RGBA", (width, height))
     for tile, png_bytes in tile_data.items():
-        img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+        try:
+            img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+        except Exception as e:
+            raise ValueError(
+                f"Failed to decode tile z={tile.z}/x={tile.x}/"
+                f"y={tile.y}: {e}"
+            ) from e
         x_offset = (tile.x - x_indices[0]) * tile_size
         y_offset = (tile.y - y_indices[0]) * tile_size
         merged.paste(img, (x_offset, y_offset))

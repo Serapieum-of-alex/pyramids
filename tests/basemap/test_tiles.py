@@ -75,6 +75,9 @@ def _make_rgb_tile_png(
     return buf.getvalue()
 
 
+VALID_PNG = _make_tile_png(size=8)
+
+
 @pytest.fixture
 def mock_provider() -> MagicMock:
     """Create a mock xyzservices.TileProvider.
@@ -198,7 +201,7 @@ class TestFetchSingleTile:
             retrying.
         """
         tile = Tile(x=1, y=2, z=3)
-        expected_bytes = b"fake-png-data"
+        expected_bytes = _make_tile_png(size=256)
 
         mock_response = MagicMock()
         mock_response.read.return_value = expected_bytes
@@ -224,7 +227,7 @@ class TestFetchSingleTile:
         """
         tile = Tile(x=0, y=0, z=0)
         mock_response = MagicMock()
-        mock_response.read.return_value = b"data"
+        mock_response.read.return_value = VALID_PNG
 
         with patch(
             "pyramids.basemap.tiles.urllib.request.urlopen",
@@ -247,7 +250,7 @@ class TestFetchSingleTile:
             the function succeeds.
         """
         tile = Tile(x=5, y=5, z=10)
-        expected = b"tile-data"
+        expected = VALID_PNG
         mock_response = MagicMock()
         mock_response.read.return_value = expected
 
@@ -322,7 +325,7 @@ class TestFetchSingleTile:
         """
         tile = Tile(x=42, y=99, z=15)
         mock_response = MagicMock()
-        mock_response.read.return_value = b"data"
+        mock_response.read.return_value = VALID_PNG
 
         with patch(
             "pyramids.basemap.tiles.urllib.request.urlopen",
@@ -345,9 +348,9 @@ class TestFetchTiles:
         """
         tiles = [Tile(x=0, y=0, z=1), Tile(x=1, y=0, z=1), Tile(x=0, y=1, z=1)]
         responses = {
-            "https://tile.example.com/1/0/0.png": b"tile-0-0",
-            "https://tile.example.com/1/1/0.png": b"tile-1-0",
-            "https://tile.example.com/1/0/1.png": b"tile-0-1",
+            "https://tile.example.com/1/0/0.png": VALID_PNG,
+            "https://tile.example.com/1/1/0.png": VALID_PNG,
+            "https://tile.example.com/1/0/1.png": VALID_PNG,
         }
 
         def mock_urlopen(request, timeout=None):
@@ -376,7 +379,7 @@ class TestFetchTiles:
         """
         tiles = [Tile(x=0, y=0, z=0)]
         mock_response = MagicMock()
-        mock_response.read.return_value = b"data"
+        mock_response.read.return_value = VALID_PNG
 
         with patch(
             "pyramids.basemap.tiles.urllib.request.urlopen",
