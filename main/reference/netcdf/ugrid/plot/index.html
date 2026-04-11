@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2576,11 +2576,15 @@ tricontourf) and wireframe rendering via LineCollection.</p>
 
     <div class="doc doc-contents first">
 
-        <p>Plot mesh data using matplotlib triangulation.</p>
-<p>For face-centered data: uses tripcolor (each triangle colored
-by value). For node-centered data: uses tricontourf (interpolated
-contours). The mesh.triangulation property handles mixed meshes
-by decomposing each polygon into triangles.</p>
+        <p>Plot mesh data using cleopatra MeshGlyph.</p>
+<p>Renders unstructured mesh data on a matplotlib figure. For
+face-centered data, uses <code>tripcolor</code> (each triangle colored
+by the value of its parent face). For node-centered data, uses
+<code>tricontourf</code> (smooth interpolated contours). All rendering
+is delegated to <code>cleopatra.mesh_glyph.MeshGlyph.plot</code>.</p>
+<p>The returned <code>MeshGlyph</code> instance gives access to the
+underlying <code>Figure</code>/<code>Axes</code> and all cleopatra capabilities
+(color scales, animations, etc.).</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2603,7 +2607,8 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Mesh2d topology.</p>
+                <p>Mesh2d topology object containing node coordinates
+and face-node connectivity.</p>
               </div>
             </td>
             <td>
@@ -2615,11 +2620,13 @@ by decomposing each polygon into triangles.</p>
                 <code>data</code>
             </td>
             <td>
-                  <code><span title="numpy.ndarray">ndarray</span></code>
+                  <code><span title="typing.Any">Any</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>1D data array matching the mesh location count.</p>
+                <p>1D data array. Length must match <code>mesh.n_face</code> when
+<code>location="face"</code> or <code>mesh.n_node</code> when
+<code>location="node"</code>.</p>
               </div>
             </td>
             <td>
@@ -2635,7 +2642,9 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>"face" or "node".</p>
+                <p>Mesh element location for the data. Either
+<code>"face"</code> (face-centered) or <code>"node"</code> (node-centered).
+Defaults to <code>"face"</code>.</p>
               </div>
             </td>
             <td>
@@ -2651,7 +2660,8 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>matplotlib Axes. Created if None.</p>
+                <p>Matplotlib Axes to plot on. If None, a new figure and
+axes are created. Defaults to None.</p>
               </div>
             </td>
             <td>
@@ -2667,7 +2677,8 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Colormap name.</p>
+                <p>Matplotlib colormap name. Only forwarded if different
+from the default <code>"viridis"</code>. Defaults to <code>"viridis"</code>.</p>
               </div>
             </td>
             <td>
@@ -2683,7 +2694,8 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Minimum color scale value.</p>
+                <p>Minimum value for the color scale. If None, computed
+from the data. Defaults to None.</p>
               </div>
             </td>
             <td>
@@ -2699,7 +2711,8 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Maximum color scale value.</p>
+                <p>Maximum value for the color scale. If None, computed
+from the data. Defaults to None.</p>
               </div>
             </td>
             <td>
@@ -2715,7 +2728,9 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Edge color for face rendering.</p>
+                <p>Edge color for face rendering. Use <code>"none"</code> for
+no edges or <code>"gray"</code> for visible mesh lines.
+Defaults to <code>"none"</code>.</p>
               </div>
             </td>
             <td>
@@ -2731,7 +2746,8 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Whether to add a colorbar.</p>
+                <p>Whether to add a colorbar to the plot. Defaults
+to True.</p>
               </div>
             </td>
             <td>
@@ -2747,7 +2763,7 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Plot title.</p>
+                <p>Plot title string. Defaults to None (no title).</p>
               </div>
             </td>
             <td>
@@ -2763,9 +2779,12 @@ by decomposing each polygon into triangles.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Additional keyword arguments passed to tripcolor/tricontourf.
-Do not pass <code>cmap</code>, <code>levels</code>, <code>vmin</code>, or <code>vmax</code> here;
-use the dedicated parameters instead.</p>
+                <p>Additional keyword arguments forwarded to
+<code>MeshGlyph.plot</code>. Common options include
+<code>color_scale</code> (<code>"linear"</code>, <code>"power"</code>,
+<code>"sym-lognorm"</code>, <code>"boundary-norm"</code>, <code>"midpoint"</code>),
+<code>gamma</code>, <code>midpoint</code>, <code>bounds</code>, <code>ticks_spacing</code>,
+<code>cbar_orientation</code>, <code>cbar_label</code>, and <code>figsize</code>.</p>
               </div>
             </td>
             <td>
@@ -2791,7 +2810,9 @@ use the dedicated parameters instead.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>matplotlib Axes with the plot.</p>
+                <p>cleopatra.mesh_glyph.MeshGlyph: The MeshGlyph instance with
+the plot rendered. Access <code>glyph.fig</code> and <code>glyph.ax</code>
+for the matplotlib Figure and Axes.</p>
               </div>
             </td>
           </tr>
@@ -2814,7 +2835,18 @@ use the dedicated parameters instead.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If location is not "face" or "node".</p>
+                <p>If <code>location</code> is not <code>"face"</code> or <code>"node"</code>,
+or if the data length does not match the mesh topology.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="OptionalPackageDoesNotExist">OptionalPackageDoesNotExist</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If cleopatra is not installed.</p>
               </div>
             </td>
           </tr>
@@ -2822,157 +2854,186 @@ use the dedicated parameters instead.</p>
     </table>
 
 
+<details class="see-also" open>
+  <summary>See Also</summary>
+  <p>plot_mesh_outline: Plot mesh edges as a wireframe.
+UgridDataset.plot: Dataset-level convenience method that
+    calls this function.</p>
+</details>
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/plot.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-21">21</a></span>
-<span class="normal"><a href="#__codelineno-0-22">22</a></span>
-<span class="normal"><a href="#__codelineno-0-23">23</a></span>
-<span class="normal"><a href="#__codelineno-0-24">24</a></span>
-<span class="normal"><a href="#__codelineno-0-25">25</a></span>
-<span class="normal"><a href="#__codelineno-0-26">26</a></span>
-<span class="normal"><a href="#__codelineno-0-27">27</a></span>
-<span class="normal"><a href="#__codelineno-0-28">28</a></span>
-<span class="normal"><a href="#__codelineno-0-29">29</a></span>
-<span class="normal"><a href="#__codelineno-0-30">30</a></span>
-<span class="normal"><a href="#__codelineno-0-31">31</a></span>
-<span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
-<span class="normal"><a href="#__codelineno-0-34">34</a></span>
-<span class="normal"><a href="#__codelineno-0-35">35</a></span>
-<span class="normal"><a href="#__codelineno-0-36">36</a></span>
-<span class="normal"><a href="#__codelineno-0-37">37</a></span>
-<span class="normal"><a href="#__codelineno-0-38">38</a></span>
-<span class="normal"><a href="#__codelineno-0-39">39</a></span>
-<span class="normal"><a href="#__codelineno-0-40">40</a></span>
-<span class="normal"><a href="#__codelineno-0-41">41</a></span>
-<span class="normal"><a href="#__codelineno-0-42">42</a></span>
-<span class="normal"><a href="#__codelineno-0-43">43</a></span>
-<span class="normal"><a href="#__codelineno-0-44">44</a></span>
-<span class="normal"><a href="#__codelineno-0-45">45</a></span>
-<span class="normal"><a href="#__codelineno-0-46">46</a></span>
-<span class="normal"><a href="#__codelineno-0-47">47</a></span>
-<span class="normal"><a href="#__codelineno-0-48">48</a></span>
-<span class="normal"><a href="#__codelineno-0-49">49</a></span>
-<span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span>
-<span class="normal"><a href="#__codelineno-0-53">53</a></span>
-<span class="normal"><a href="#__codelineno-0-54">54</a></span>
-<span class="normal"><a href="#__codelineno-0-55">55</a></span>
-<span class="normal"><a href="#__codelineno-0-56">56</a></span>
-<span class="normal"><a href="#__codelineno-0-57">57</a></span>
-<span class="normal"><a href="#__codelineno-0-58">58</a></span>
-<span class="normal"><a href="#__codelineno-0-59">59</a></span>
-<span class="normal"><a href="#__codelineno-0-60">60</a></span>
-<span class="normal"><a href="#__codelineno-0-61">61</a></span>
-<span class="normal"><a href="#__codelineno-0-62">62</a></span>
-<span class="normal"><a href="#__codelineno-0-63">63</a></span>
-<span class="normal"><a href="#__codelineno-0-64">64</a></span>
-<span class="normal"><a href="#__codelineno-0-65">65</a></span>
-<span class="normal"><a href="#__codelineno-0-66">66</a></span>
-<span class="normal"><a href="#__codelineno-0-67">67</a></span>
-<span class="normal"><a href="#__codelineno-0-68">68</a></span>
-<span class="normal"><a href="#__codelineno-0-69">69</a></span>
-<span class="normal"><a href="#__codelineno-0-70">70</a></span>
-<span class="normal"><a href="#__codelineno-0-71">71</a></span>
-<span class="normal"><a href="#__codelineno-0-72">72</a></span>
-<span class="normal"><a href="#__codelineno-0-73">73</a></span>
-<span class="normal"><a href="#__codelineno-0-74">74</a></span>
-<span class="normal"><a href="#__codelineno-0-75">75</a></span>
-<span class="normal"><a href="#__codelineno-0-76">76</a></span>
-<span class="normal"><a href="#__codelineno-0-77">77</a></span>
-<span class="normal"><a href="#__codelineno-0-78">78</a></span>
-<span class="normal"><a href="#__codelineno-0-79">79</a></span>
-<span class="normal"><a href="#__codelineno-0-80">80</a></span>
-<span class="normal"><a href="#__codelineno-0-81">81</a></span>
-<span class="normal"><a href="#__codelineno-0-82">82</a></span>
-<span class="normal"><a href="#__codelineno-0-83">83</a></span>
-<span class="normal"><a href="#__codelineno-0-84">84</a></span>
-<span class="normal"><a href="#__codelineno-0-85">85</a></span>
-<span class="normal"><a href="#__codelineno-0-86">86</a></span>
-<span class="normal"><a href="#__codelineno-0-87">87</a></span>
-<span class="normal"><a href="#__codelineno-0-88">88</a></span>
-<span class="normal"><a href="#__codelineno-0-89">89</a></span>
-<span class="normal"><a href="#__codelineno-0-90">90</a></span>
-<span class="normal"><a href="#__codelineno-0-91">91</a></span>
-<span class="normal"><a href="#__codelineno-0-92">92</a></span>
-<span class="normal"><a href="#__codelineno-0-93">93</a></span>
-<span class="normal"><a href="#__codelineno-0-94">94</a></span>
-<span class="normal"><a href="#__codelineno-0-95">95</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-21" name="__codelineno-0-21"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot_mesh_data</span><span class="p">(</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23"></a>    <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24"></a>    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;face&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25"></a>    <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26"></a>    <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;viridis&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27"></a>    <span class="n">vmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28"></a>    <span class="n">vmax</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29"></a>    <span class="n">edgecolor</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="n">colorbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a>    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot mesh data using matplotlib triangulation.</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a>
-<a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">    For face-centered data: uses tripcolor (each triangle colored</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">    by value). For node-centered data: uses tricontourf (interpolated</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">    contours). The mesh.triangulation property handles mixed meshes</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">    by decomposing each polygon into triangles.</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">        mesh: Mesh2d topology.</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">        data: 1D data array matching the mesh location count.</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="sd">        location: &quot;face&quot; or &quot;node&quot;.</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="sd">        ax: matplotlib Axes. Created if None.</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">        cmap: Colormap name.</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">        vmin: Minimum color scale value.</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="sd">        vmax: Maximum color scale value.</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="sd">        edgecolor: Edge color for face rendering.</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="sd">        colorbar: Whether to add a colorbar.</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">        title: Plot title.</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="sd">        **kwargs: Additional keyword arguments passed to tripcolor/tricontourf.</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">            Do not pass ``cmap``, ``levels``, ``vmin``, or ``vmax`` here;</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">            use the dedicated parameters instead.</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">        matplotlib Axes with the plot.</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">        ValueError: If location is not &quot;face&quot; or &quot;node&quot;.</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a>        <span class="n">_</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="n">tri</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">triangulation</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="k">if</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">&quot;face&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>        <span class="n">tri_values</span> <span class="o">=</span> <span class="n">_map_face_to_triangle_values</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>        <span class="n">tpc</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">tripcolor</span><span class="p">(</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>            <span class="n">tri</span><span class="p">,</span> <span class="n">facecolors</span><span class="o">=</span><span class="n">tri_values</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a>            <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="n">edgecolor</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>        <span class="p">)</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>    <span class="k">elif</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">&quot;node&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>        <span class="n">contour_kw</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;cmap&quot;</span><span class="p">:</span> <span class="n">cmap</span><span class="p">,</span> <span class="s2">&quot;levels&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">}</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>        <span class="k">if</span> <span class="n">vmin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a>            <span class="n">contour_kw</span><span class="p">[</span><span class="s2">&quot;vmin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vmin</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a>        <span class="k">if</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a>            <span class="n">contour_kw</span><span class="p">[</span><span class="s2">&quot;vmax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vmax</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a>        <span class="n">tpc</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">tricontourf</span><span class="p">(</span><span class="n">tri</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">contour_kw</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a>            <span class="sa">f</span><span class="s2">&quot;Plotting not supported for location=&#39;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a>            <span class="sa">f</span><span class="s2">&quot;Use &#39;face&#39; or &#39;node&#39;.&quot;</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a>        <span class="p">)</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>    <span class="k">if</span> <span class="n">colorbar</span><span class="p">:</span>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a>        <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">tpc</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a>    <span class="k">if</span> <span class="n">title</span><span class="p">:</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a>        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s2">&quot;equal&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">ax</span>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a>    <span class="k">return</span> <span class="n">result</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-65"> 65</a></span>
+<span class="normal"><a href="#__codelineno-0-66"> 66</a></span>
+<span class="normal"><a href="#__codelineno-0-67"> 67</a></span>
+<span class="normal"><a href="#__codelineno-0-68"> 68</a></span>
+<span class="normal"><a href="#__codelineno-0-69"> 69</a></span>
+<span class="normal"><a href="#__codelineno-0-70"> 70</a></span>
+<span class="normal"><a href="#__codelineno-0-71"> 71</a></span>
+<span class="normal"><a href="#__codelineno-0-72"> 72</a></span>
+<span class="normal"><a href="#__codelineno-0-73"> 73</a></span>
+<span class="normal"><a href="#__codelineno-0-74"> 74</a></span>
+<span class="normal"><a href="#__codelineno-0-75"> 75</a></span>
+<span class="normal"><a href="#__codelineno-0-76"> 76</a></span>
+<span class="normal"><a href="#__codelineno-0-77"> 77</a></span>
+<span class="normal"><a href="#__codelineno-0-78"> 78</a></span>
+<span class="normal"><a href="#__codelineno-0-79"> 79</a></span>
+<span class="normal"><a href="#__codelineno-0-80"> 80</a></span>
+<span class="normal"><a href="#__codelineno-0-81"> 81</a></span>
+<span class="normal"><a href="#__codelineno-0-82"> 82</a></span>
+<span class="normal"><a href="#__codelineno-0-83"> 83</a></span>
+<span class="normal"><a href="#__codelineno-0-84"> 84</a></span>
+<span class="normal"><a href="#__codelineno-0-85"> 85</a></span>
+<span class="normal"><a href="#__codelineno-0-86"> 86</a></span>
+<span class="normal"><a href="#__codelineno-0-87"> 87</a></span>
+<span class="normal"><a href="#__codelineno-0-88"> 88</a></span>
+<span class="normal"><a href="#__codelineno-0-89"> 89</a></span>
+<span class="normal"><a href="#__codelineno-0-90"> 90</a></span>
+<span class="normal"><a href="#__codelineno-0-91"> 91</a></span>
+<span class="normal"><a href="#__codelineno-0-92"> 92</a></span>
+<span class="normal"><a href="#__codelineno-0-93"> 93</a></span>
+<span class="normal"><a href="#__codelineno-0-94"> 94</a></span>
+<span class="normal"><a href="#__codelineno-0-95"> 95</a></span>
+<span class="normal"><a href="#__codelineno-0-96"> 96</a></span>
+<span class="normal"><a href="#__codelineno-0-97"> 97</a></span>
+<span class="normal"><a href="#__codelineno-0-98"> 98</a></span>
+<span class="normal"><a href="#__codelineno-0-99"> 99</a></span>
+<span class="normal"><a href="#__codelineno-0-100">100</a></span>
+<span class="normal"><a href="#__codelineno-0-101">101</a></span>
+<span class="normal"><a href="#__codelineno-0-102">102</a></span>
+<span class="normal"><a href="#__codelineno-0-103">103</a></span>
+<span class="normal"><a href="#__codelineno-0-104">104</a></span>
+<span class="normal"><a href="#__codelineno-0-105">105</a></span>
+<span class="normal"><a href="#__codelineno-0-106">106</a></span>
+<span class="normal"><a href="#__codelineno-0-107">107</a></span>
+<span class="normal"><a href="#__codelineno-0-108">108</a></span>
+<span class="normal"><a href="#__codelineno-0-109">109</a></span>
+<span class="normal"><a href="#__codelineno-0-110">110</a></span>
+<span class="normal"><a href="#__codelineno-0-111">111</a></span>
+<span class="normal"><a href="#__codelineno-0-112">112</a></span>
+<span class="normal"><a href="#__codelineno-0-113">113</a></span>
+<span class="normal"><a href="#__codelineno-0-114">114</a></span>
+<span class="normal"><a href="#__codelineno-0-115">115</a></span>
+<span class="normal"><a href="#__codelineno-0-116">116</a></span>
+<span class="normal"><a href="#__codelineno-0-117">117</a></span>
+<span class="normal"><a href="#__codelineno-0-118">118</a></span>
+<span class="normal"><a href="#__codelineno-0-119">119</a></span>
+<span class="normal"><a href="#__codelineno-0-120">120</a></span>
+<span class="normal"><a href="#__codelineno-0-121">121</a></span>
+<span class="normal"><a href="#__codelineno-0-122">122</a></span>
+<span class="normal"><a href="#__codelineno-0-123">123</a></span>
+<span class="normal"><a href="#__codelineno-0-124">124</a></span>
+<span class="normal"><a href="#__codelineno-0-125">125</a></span>
+<span class="normal"><a href="#__codelineno-0-126">126</a></span>
+<span class="normal"><a href="#__codelineno-0-127">127</a></span>
+<span class="normal"><a href="#__codelineno-0-128">128</a></span>
+<span class="normal"><a href="#__codelineno-0-129">129</a></span>
+<span class="normal"><a href="#__codelineno-0-130">130</a></span>
+<span class="normal"><a href="#__codelineno-0-131">131</a></span>
+<span class="normal"><a href="#__codelineno-0-132">132</a></span>
+<span class="normal"><a href="#__codelineno-0-133">133</a></span>
+<span class="normal"><a href="#__codelineno-0-134">134</a></span>
+<span class="normal"><a href="#__codelineno-0-135">135</a></span>
+<span class="normal"><a href="#__codelineno-0-136">136</a></span>
+<span class="normal"><a href="#__codelineno-0-137">137</a></span>
+<span class="normal"><a href="#__codelineno-0-138">138</a></span>
+<span class="normal"><a href="#__codelineno-0-139">139</a></span>
+<span class="normal"><a href="#__codelineno-0-140">140</a></span>
+<span class="normal"><a href="#__codelineno-0-141">141</a></span>
+<span class="normal"><a href="#__codelineno-0-142">142</a></span>
+<span class="normal"><a href="#__codelineno-0-143">143</a></span>
+<span class="normal"><a href="#__codelineno-0-144">144</a></span>
+<span class="normal"><a href="#__codelineno-0-145">145</a></span>
+<span class="normal"><a href="#__codelineno-0-146">146</a></span>
+<span class="normal"><a href="#__codelineno-0-147">147</a></span>
+<span class="normal"><a href="#__codelineno-0-148">148</a></span>
+<span class="normal"><a href="#__codelineno-0-149">149</a></span>
+<span class="normal"><a href="#__codelineno-0-150">150</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot_mesh_data</span><span class="p">(</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;face&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;viridis&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="n">vmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>    <span class="n">vmax</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="n">edgecolor</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="n">colorbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a>    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot mesh data using cleopatra MeshGlyph.</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">    Renders unstructured mesh data on a matplotlib figure. For</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">    face-centered data, uses ``tripcolor`` (each triangle colored</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">    by the value of its parent face). For node-centered data, uses</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">    ``tricontourf`` (smooth interpolated contours). All rendering</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">    is delegated to ``cleopatra.mesh_glyph.MeshGlyph.plot``.</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">    The returned ``MeshGlyph`` instance gives access to the</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">    underlying ``Figure``/``Axes`` and all cleopatra capabilities</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">    (color scales, animations, etc.).</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        mesh: Mesh2d topology object containing node coordinates</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">            and face-node connectivity.</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">        data: 1D data array. Length must match ``mesh.n_face`` when</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">            ``location=&quot;face&quot;`` or ``mesh.n_node`` when</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">            ``location=&quot;node&quot;``.</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">        location: Mesh element location for the data. Either</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">            ``&quot;face&quot;`` (face-centered) or ``&quot;node&quot;`` (node-centered).</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">            Defaults to ``&quot;face&quot;``.</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">        ax: Matplotlib Axes to plot on. If None, a new figure and</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">            axes are created. Defaults to None.</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">        cmap: Matplotlib colormap name. Only forwarded if different</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">            from the default ``&quot;viridis&quot;``. Defaults to ``&quot;viridis&quot;``.</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">        vmin: Minimum value for the color scale. If None, computed</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="sd">            from the data. Defaults to None.</span>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">        vmax: Maximum value for the color scale. If None, computed</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">            from the data. Defaults to None.</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">        edgecolor: Edge color for face rendering. Use ``&quot;none&quot;`` for</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">            no edges or ``&quot;gray&quot;`` for visible mesh lines.</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">            Defaults to ``&quot;none&quot;``.</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        colorbar: Whether to add a colorbar to the plot. Defaults</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">            to True.</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        title: Plot title string. Defaults to None (no title).</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        **kwargs: Additional keyword arguments forwarded to</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">            ``MeshGlyph.plot``. Common options include</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">            ``color_scale`` (``&quot;linear&quot;``, ``&quot;power&quot;``,</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">            ``&quot;sym-lognorm&quot;``, ``&quot;boundary-norm&quot;``, ``&quot;midpoint&quot;``),</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">            ``gamma``, ``midpoint``, ``bounds``, ``ticks_spacing``,</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">            ``cbar_orientation``, ``cbar_label``, and ``figsize``.</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">        cleopatra.mesh_glyph.MeshGlyph: The MeshGlyph instance with</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">            the plot rendered. Access ``glyph.fig`` and ``glyph.ax``</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="sd">            for the matplotlib Figure and Axes.</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a>
+<a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a><span class="sd">        ValueError: If ``location`` is not ``&quot;face&quot;`` or ``&quot;node&quot;``,</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="sd">            or if the data length does not match the mesh topology.</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="sd">        OptionalPackageDoesNotExist: If cleopatra is not installed.</span>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a>
+<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">    See Also:</span>
+<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">        plot_mesh_outline: Plot mesh edges as a wireframe.</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">        UgridDataset.plot: Dataset-level convenience method that</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a><span class="sd">            calls this function.</span>
+<a id="__codelineno-0-134" name="__codelineno-0-134"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="n">glyph</span> <span class="o">=</span> <span class="n">_mesh_to_glyph</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a>    <span class="n">plot_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a>    <span class="k">if</span> <span class="n">cmap</span> <span class="o">!=</span> <span class="s2">&quot;viridis&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a>        <span class="n">plot_kwargs</span><span class="p">[</span><span class="s2">&quot;cmap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cmap</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a>    <span class="k">if</span> <span class="n">vmin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a>        <span class="n">plot_kwargs</span><span class="p">[</span><span class="s2">&quot;vmin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vmin</span>
+<a id="__codelineno-0-141" name="__codelineno-0-141"></a>    <span class="k">if</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-142" name="__codelineno-0-142"></a>        <span class="n">plot_kwargs</span><span class="p">[</span><span class="s2">&quot;vmax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vmax</span>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a>    <span class="n">plot_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a>
+<a id="__codelineno-0-145" name="__codelineno-0-145"></a>    <span class="n">glyph</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+<a id="__codelineno-0-146" name="__codelineno-0-146"></a>        <span class="n">data</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a>        <span class="n">edgecolor</span><span class="o">=</span><span class="n">edgecolor</span><span class="p">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="n">colorbar</span><span class="p">,</span>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a>        <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="o">**</span><span class="n">plot_kwargs</span><span class="p">,</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a>    <span class="p">)</span>
+<a id="__codelineno-0-150" name="__codelineno-0-150"></a>    <span class="k">return</span> <span class="n">glyph</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2990,9 +3051,11 @@ use the dedicated parameters instead.</p>
 
     <div class="doc doc-contents first">
 
-        <p>Plot mesh edges as a wireframe.</p>
-<p>Uses matplotlib LineCollection for efficient rendering of
-thousands of edges.</p>
+        <p>Plot mesh edges as a wireframe using cleopatra MeshGlyph.</p>
+<p>Renders the mesh structure as a wireframe showing all edges.
+If the mesh has pre-built <code>edge_node_connectivity</code>, edges
+are drawn directly. Otherwise, unique edges are derived from
+the face-node connectivity.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -3015,7 +3078,8 @@ thousands of edges.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Mesh2d topology.</p>
+                <p>Mesh2d topology object containing node coordinates
+and connectivity arrays.</p>
               </div>
             </td>
             <td>
@@ -3031,7 +3095,8 @@ thousands of edges.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>matplotlib Axes. Created if None.</p>
+                <p>Matplotlib Axes to plot on. If None, a new figure and
+axes are created. Defaults to None.</p>
               </div>
             </td>
             <td>
@@ -3047,7 +3112,8 @@ thousands of edges.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Edge color.</p>
+                <p>Edge color as a matplotlib color string. Defaults
+to <code>"black"</code>.</p>
               </div>
             </td>
             <td>
@@ -3063,7 +3129,7 @@ thousands of edges.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Edge line width.</p>
+                <p>Edge line width in points. Defaults to <code>0.3</code>.</p>
               </div>
             </td>
             <td>
@@ -3079,7 +3145,8 @@ thousands of edges.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Additional keyword arguments passed to LineCollection.</p>
+                <p>Additional keyword arguments passed to
+<code>matplotlib.collections.LineCollection</code>.</p>
               </div>
             </td>
             <td>
@@ -3105,7 +3172,9 @@ thousands of edges.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>matplotlib Axes with the wireframe plot.</p>
+                <p>cleopatra.mesh_glyph.MeshGlyph: The MeshGlyph instance with
+the wireframe rendered. Access <code>glyph.fig</code> and
+<code>glyph.ax</code> for the matplotlib Figure and Axes.</p>
               </div>
             </td>
           </tr>
@@ -3113,31 +3182,15 @@ thousands of edges.</p>
     </table>
 
 
+<details class="see-also" open>
+  <summary>See Also</summary>
+  <p>plot_mesh_data: Plot data values on the mesh.
+UgridDataset.plot_outline: Dataset-level convenience method.</p>
+</details>
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/plot.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-131">131</a></span>
-<span class="normal"><a href="#__codelineno-0-132">132</a></span>
-<span class="normal"><a href="#__codelineno-0-133">133</a></span>
-<span class="normal"><a href="#__codelineno-0-134">134</a></span>
-<span class="normal"><a href="#__codelineno-0-135">135</a></span>
-<span class="normal"><a href="#__codelineno-0-136">136</a></span>
-<span class="normal"><a href="#__codelineno-0-137">137</a></span>
-<span class="normal"><a href="#__codelineno-0-138">138</a></span>
-<span class="normal"><a href="#__codelineno-0-139">139</a></span>
-<span class="normal"><a href="#__codelineno-0-140">140</a></span>
-<span class="normal"><a href="#__codelineno-0-141">141</a></span>
-<span class="normal"><a href="#__codelineno-0-142">142</a></span>
-<span class="normal"><a href="#__codelineno-0-143">143</a></span>
-<span class="normal"><a href="#__codelineno-0-144">144</a></span>
-<span class="normal"><a href="#__codelineno-0-145">145</a></span>
-<span class="normal"><a href="#__codelineno-0-146">146</a></span>
-<span class="normal"><a href="#__codelineno-0-147">147</a></span>
-<span class="normal"><a href="#__codelineno-0-148">148</a></span>
-<span class="normal"><a href="#__codelineno-0-149">149</a></span>
-<span class="normal"><a href="#__codelineno-0-150">150</a></span>
-<span class="normal"><a href="#__codelineno-0-151">151</a></span>
-<span class="normal"><a href="#__codelineno-0-152">152</a></span>
-<span class="normal"><a href="#__codelineno-0-153">153</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-153">153</a></span>
 <span class="normal"><a href="#__codelineno-0-154">154</a></span>
 <span class="normal"><a href="#__codelineno-0-155">155</a></span>
 <span class="normal"><a href="#__codelineno-0-156">156</a></span>
@@ -3175,67 +3228,45 @@ thousands of edges.</p>
 <span class="normal"><a href="#__codelineno-0-188">188</a></span>
 <span class="normal"><a href="#__codelineno-0-189">189</a></span>
 <span class="normal"><a href="#__codelineno-0-190">190</a></span>
-<span class="normal"><a href="#__codelineno-0-191">191</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot_mesh_outline</span><span class="p">(</span>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-134" name="__codelineno-0-134"></a>    <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;black&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="n">linewidth</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span>
-<a id="__codelineno-0-136" name="__codelineno-0-136"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot mesh edges as a wireframe.</span>
-<a id="__codelineno-0-139" name="__codelineno-0-139"></a>
-<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="sd">    Uses matplotlib LineCollection for efficient rendering of</span>
-<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="sd">    thousands of edges.</span>
-<a id="__codelineno-0-142" name="__codelineno-0-142"></a>
-<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">        mesh: Mesh2d topology.</span>
-<a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="sd">        ax: matplotlib Axes. Created if None.</span>
-<a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">        color: Edge color.</span>
-<a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">        linewidth: Edge line width.</span>
-<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        **kwargs: Additional keyword arguments passed to LineCollection.</span>
-<a id="__codelineno-0-149" name="__codelineno-0-149"></a>
-<a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-151" name="__codelineno-0-151"></a><span class="sd">        matplotlib Axes with the wireframe plot.</span>
-<a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-153" name="__codelineno-0-153"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<a id="__codelineno-0-154" name="__codelineno-0-154"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">LineCollection</span>
-<a id="__codelineno-0-155" name="__codelineno-0-155"></a>
-<a id="__codelineno-0-156" name="__codelineno-0-156"></a>    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-157" name="__codelineno-0-157"></a>        <span class="n">_</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a>
-<a id="__codelineno-0-159" name="__codelineno-0-159"></a>    <span class="n">segments</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-160" name="__codelineno-0-160"></a>
-<a id="__codelineno-0-161" name="__codelineno-0-161"></a>    <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">edge_node_connectivity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-162" name="__codelineno-0-162"></a>        <span class="n">enc</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">edge_node_connectivity</span>
-<a id="__codelineno-0-163" name="__codelineno-0-163"></a>        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">enc</span><span class="o">.</span><span class="n">n_elements</span><span class="p">):</span>
-<a id="__codelineno-0-164" name="__codelineno-0-164"></a>            <span class="n">nodes</span> <span class="o">=</span> <span class="n">enc</span><span class="o">.</span><span class="n">get_element</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-<a id="__codelineno-0-165" name="__codelineno-0-165"></a>            <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-<a id="__codelineno-0-166" name="__codelineno-0-166"></a>            <span class="n">segments</span><span class="o">.</span><span class="n">append</span><span class="p">([</span>
-<a id="__codelineno-0-167" name="__codelineno-0-167"></a>                <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">n1</span><span class="p">],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">n1</span><span class="p">]),</span>
-<a id="__codelineno-0-168" name="__codelineno-0-168"></a>                <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">n2</span><span class="p">],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">n2</span><span class="p">]),</span>
-<a id="__codelineno-0-169" name="__codelineno-0-169"></a>            <span class="p">])</span>
-<a id="__codelineno-0-170" name="__codelineno-0-170"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-171" name="__codelineno-0-171"></a>        <span class="n">seen_edges</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-<a id="__codelineno-0-172" name="__codelineno-0-172"></a>        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="p">):</span>
-<a id="__codelineno-0-173" name="__codelineno-0-173"></a>            <span class="n">nodes</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span><span class="o">.</span><span class="n">get_element</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-<a id="__codelineno-0-174" name="__codelineno-0-174"></a>            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
-<a id="__codelineno-0-175" name="__codelineno-0-175"></a>            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-<a id="__codelineno-0-176" name="__codelineno-0-176"></a>                <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="n">j</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">nodes</span><span class="p">[(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">n</span><span class="p">])</span>
-<a id="__codelineno-0-177" name="__codelineno-0-177"></a>                <span class="n">edge_key</span> <span class="o">=</span> <span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">))</span>
-<a id="__codelineno-0-178" name="__codelineno-0-178"></a>                <span class="k">if</span> <span class="n">edge_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen_edges</span><span class="p">:</span>
-<a id="__codelineno-0-179" name="__codelineno-0-179"></a>                    <span class="n">seen_edges</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">edge_key</span><span class="p">)</span>
-<a id="__codelineno-0-180" name="__codelineno-0-180"></a>                    <span class="n">segments</span><span class="o">.</span><span class="n">append</span><span class="p">([</span>
-<a id="__codelineno-0-181" name="__codelineno-0-181"></a>                        <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">n1</span><span class="p">],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">n1</span><span class="p">]),</span>
-<a id="__codelineno-0-182" name="__codelineno-0-182"></a>                        <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">n2</span><span class="p">],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">n2</span><span class="p">]),</span>
-<a id="__codelineno-0-183" name="__codelineno-0-183"></a>                    <span class="p">])</span>
-<a id="__codelineno-0-184" name="__codelineno-0-184"></a>
-<a id="__codelineno-0-185" name="__codelineno-0-185"></a>    <span class="n">lc</span> <span class="o">=</span> <span class="n">LineCollection</span><span class="p">(</span><span class="n">segments</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="n">linewidth</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-186" name="__codelineno-0-186"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">add_collection</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
-<a id="__codelineno-0-187" name="__codelineno-0-187"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">autoscale</span><span class="p">()</span>
-<a id="__codelineno-0-188" name="__codelineno-0-188"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s2">&quot;equal&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-189" name="__codelineno-0-189"></a>
-<a id="__codelineno-0-190" name="__codelineno-0-190"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">ax</span>
-<a id="__codelineno-0-191" name="__codelineno-0-191"></a>    <span class="k">return</span> <span class="n">result</span>
+<span class="normal"><a href="#__codelineno-0-191">191</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot_mesh_outline</span><span class="p">(</span>
+<a id="__codelineno-0-154" name="__codelineno-0-154"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-155" name="__codelineno-0-155"></a>    <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-156" name="__codelineno-0-156"></a>    <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;black&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-157" name="__codelineno-0-157"></a>    <span class="n">linewidth</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-160" name="__codelineno-0-160"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot mesh edges as a wireframe using cleopatra MeshGlyph.</span>
+<a id="__codelineno-0-161" name="__codelineno-0-161"></a>
+<a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">    Renders the mesh structure as a wireframe showing all edges.</span>
+<a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="sd">    If the mesh has pre-built ``edge_node_connectivity``, edges</span>
+<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">    are drawn directly. Otherwise, unique edges are derived from</span>
+<a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">    the face-node connectivity.</span>
+<a id="__codelineno-0-166" name="__codelineno-0-166"></a>
+<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="sd">        mesh: Mesh2d topology object containing node coordinates</span>
+<a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">            and connectivity arrays.</span>
+<a id="__codelineno-0-170" name="__codelineno-0-170"></a><span class="sd">        ax: Matplotlib Axes to plot on. If None, a new figure and</span>
+<a id="__codelineno-0-171" name="__codelineno-0-171"></a><span class="sd">            axes are created. Defaults to None.</span>
+<a id="__codelineno-0-172" name="__codelineno-0-172"></a><span class="sd">        color: Edge color as a matplotlib color string. Defaults</span>
+<a id="__codelineno-0-173" name="__codelineno-0-173"></a><span class="sd">            to ``&quot;black&quot;``.</span>
+<a id="__codelineno-0-174" name="__codelineno-0-174"></a><span class="sd">        linewidth: Edge line width in points. Defaults to ``0.3``.</span>
+<a id="__codelineno-0-175" name="__codelineno-0-175"></a><span class="sd">        **kwargs: Additional keyword arguments passed to</span>
+<a id="__codelineno-0-176" name="__codelineno-0-176"></a><span class="sd">            ``matplotlib.collections.LineCollection``.</span>
+<a id="__codelineno-0-177" name="__codelineno-0-177"></a>
+<a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">        cleopatra.mesh_glyph.MeshGlyph: The MeshGlyph instance with</span>
+<a id="__codelineno-0-180" name="__codelineno-0-180"></a><span class="sd">            the wireframe rendered. Access ``glyph.fig`` and</span>
+<a id="__codelineno-0-181" name="__codelineno-0-181"></a><span class="sd">            ``glyph.ax`` for the matplotlib Figure and Axes.</span>
+<a id="__codelineno-0-182" name="__codelineno-0-182"></a>
+<a id="__codelineno-0-183" name="__codelineno-0-183"></a><span class="sd">    See Also:</span>
+<a id="__codelineno-0-184" name="__codelineno-0-184"></a><span class="sd">        plot_mesh_data: Plot data values on the mesh.</span>
+<a id="__codelineno-0-185" name="__codelineno-0-185"></a><span class="sd">        UgridDataset.plot_outline: Dataset-level convenience method.</span>
+<a id="__codelineno-0-186" name="__codelineno-0-186"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-187" name="__codelineno-0-187"></a>    <span class="n">glyph</span> <span class="o">=</span> <span class="n">_mesh_to_glyph</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-188" name="__codelineno-0-188"></a>    <span class="n">glyph</span><span class="o">.</span><span class="n">plot_outline</span><span class="p">(</span>
+<a id="__codelineno-0-189" name="__codelineno-0-189"></a>        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="n">linewidth</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<a id="__codelineno-0-190" name="__codelineno-0-190"></a>    <span class="p">)</span>
+<a id="__codelineno-0-191" name="__codelineno-0-191"></a>    <span class="k">return</span> <span class="n">glyph</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
