@@ -837,9 +837,9 @@ class Analysis:
             percentile: int
                 The percentile value to be used for scaling.
             basemap (bool or str, optional):
-                If ``True``, add an OpenStreetMap basemap underneath the plot. If a string, use it as
-                the tile provider name (e.g. ``"CartoDB.Positron"``). Default is ``None`` (no basemap).
-                Requires the ``[viz]`` extra (mercantile, xyzservices, Pillow).
+                If True, add an OpenStreetMap basemap underneath the plot. If a string, use it as
+                the tile provider name (e.g. "CartoDB.Positron"). Default is None (no basemap).
+                Requires the [viz] extra (mercantile, xyzservices, Pillow).
         kwargs:
                 | Parameter                   | Type                | Description |
                 |-----------------------------|---------------------|-------------|
