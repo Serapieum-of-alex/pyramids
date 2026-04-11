@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3460,7 +3460,7 @@ callable that defers reading until data is first accessed.</p>
 <a id="__codelineno-0-153" name="__codelineno-0-153"></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
 <a id="__codelineno-0-154" name="__codelineno-0-154"></a>        <span class="k">return</span> <span class="n">result</span>
 <a id="__codelineno-0-155" name="__codelineno-0-155"></a>
-<a id="__codelineno-0-156" name="__codelineno-0-156"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;MeshVariable&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-156" name="__codelineno-0-156"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
 <a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Select a time range, returning a new MeshVariable.</span>
 <a id="__codelineno-0-158" name="__codelineno-0-158"></a>
 <a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">        Args:</span>
@@ -3836,7 +3836,12 @@ the loaded data's dtype, and defaults to float64.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>&#39;MeshVariable&#39;</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.netcdf.ugrid.MeshVariable&lt;/code&gt;
+
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;pyramids.netcdf.ugrid.models.MeshVariable&lt;/code&gt;)" href="#pyramids.netcdf.ugrid.MeshVariable">MeshVariable</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3902,7 +3907,7 @@ the loaded data's dtype, and defaults to float64.</p>
 <span class="normal"><a href="#__codelineno-0-182">182</a></span>
 <span class="normal"><a href="#__codelineno-0-183">183</a></span>
 <span class="normal"><a href="#__codelineno-0-184">184</a></span>
-<span class="normal"><a href="#__codelineno-0-185">185</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-156" name="__codelineno-0-156"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;MeshVariable&quot;</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-185">185</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-156" name="__codelineno-0-156"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
 <a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Select a time range, returning a new MeshVariable.</span>
 <a id="__codelineno-0-158" name="__codelineno-0-158"></a>
 <a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">    Args:</span>

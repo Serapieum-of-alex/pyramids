@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -4249,7 +4249,7 @@ apply to unstructured meshes.</p>
 <a id="__codelineno-0-279" name="__codelineno-0-279"></a>        <span class="p">)</span>
 <a id="__codelineno-0-280" name="__codelineno-0-280"></a>        <span class="k">return</span> <span class="n">result</span>
 <a id="__codelineno-0-281" name="__codelineno-0-281"></a>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">clip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">touch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">clip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">touch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Clip the mesh to a polygon mask.</span>
 <a id="__codelineno-0-284" name="__codelineno-0-284"></a>
 <a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">        Selects faces that intersect (touch=True) or are fully</span>
@@ -4273,7 +4273,7 @@ apply to unstructured meshes.</p>
 <a id="__codelineno-0-303" name="__codelineno-0-303"></a>        <span class="n">ymin</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <a id="__codelineno-0-304" name="__codelineno-0-304"></a>        <span class="n">xmax</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <a id="__codelineno-0-305" name="__codelineno-0-305"></a>        <span class="n">ymax</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Subset mesh to faces within a bounding box.</span>
 <a id="__codelineno-0-308" name="__codelineno-0-308"></a>
 <a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">        Args:</span>
@@ -4289,7 +4289,7 @@ apply to unstructured meshes.</p>
 <a id="__codelineno-0-319" name="__codelineno-0-319"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">subset_by_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xmin</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymax</span><span class="p">)</span>
 <a id="__codelineno-0-320" name="__codelineno-0-320"></a>        <span class="k">return</span> <span class="n">result</span>
 <a id="__codelineno-0-321" name="__codelineno-0-321"></a>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_crs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_epsg</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_crs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_epsg</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Reproject all node coordinates to a new CRS.</span>
 <a id="__codelineno-0-324" name="__codelineno-0-324"></a>
 <a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">        Uses pyproj.Transformer to reproject node coordinates.</span>
@@ -4379,7 +4379,7 @@ apply to unstructured meshes.</p>
 <a id="__codelineno-0-409" name="__codelineno-0-409"></a>                <span class="k">break</span>
 <a id="__codelineno-0-410" name="__codelineno-0-410"></a>        <span class="k">return</span> <span class="n">result</span>
 <a id="__codelineno-0-411" name="__codelineno-0-411"></a>
-<a id="__codelineno-0-412" name="__codelineno-0-412"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-412" name="__codelineno-0-412"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Select a single time step from all temporal variables.</span>
 <a id="__codelineno-0-414" name="__codelineno-0-414"></a>
 <a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">        Non-temporal variables are kept unchanged.</span>
@@ -4412,7 +4412,7 @@ apply to unstructured meshes.</p>
 <a id="__codelineno-0-442" name="__codelineno-0-442"></a>        <span class="p">)</span>
 <a id="__codelineno-0-443" name="__codelineno-0-443"></a>        <span class="k">return</span> <span class="n">result</span>
 <a id="__codelineno-0-444" name="__codelineno-0-444"></a>
-<a id="__codelineno-0-445" name="__codelineno-0-445"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-445" name="__codelineno-0-445"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Select a time range from all temporal variables.</span>
 <a id="__codelineno-0-447" name="__codelineno-0-447"></a>
 <a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">        Args:</span>
@@ -4554,7 +4554,7 @@ apply to unstructured meshes.</p>
 <a id="__codelineno-0-584" name="__codelineno-0-584"></a>        <span class="n">data_locations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-585" name="__codelineno-0-585"></a>        <span class="n">epsg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4326</span><span class="p">,</span>
 <a id="__codelineno-0-586" name="__codelineno-0-586"></a>        <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mesh2d&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a UgridDataset programmatically from arrays.</span>
 <a id="__codelineno-0-589" name="__codelineno-0-589"></a>
 <a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="sd">        Args:</span>
@@ -5721,7 +5721,7 @@ or Shapely geometry).</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>&#39;UgridDataset&#39;</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.netcdf.ugrid.UgridDataset&lt;/code&gt; (&lt;code&gt;pyramids.netcdf.ugrid.dataset.UgridDataset&lt;/code&gt;)" href="#pyramids.netcdf.ugrid.UgridDataset">UgridDataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -5751,7 +5751,7 @@ or Shapely geometry).</p>
 <span class="normal"><a href="#__codelineno-0-295">295</a></span>
 <span class="normal"><a href="#__codelineno-0-296">296</a></span>
 <span class="normal"><a href="#__codelineno-0-297">297</a></span>
-<span class="normal"><a href="#__codelineno-0-298">298</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="k">def</span><span class="w"> </span><span class="nf">clip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">touch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-298">298</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="k">def</span><span class="w"> </span><span class="nf">clip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">touch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Clip the mesh to a polygon mask.</span>
 <a id="__codelineno-0-284" name="__codelineno-0-284"></a>
 <a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">    Selects faces that intersect (touch=True) or are fully</span>
@@ -5878,7 +5878,7 @@ or Shapely geometry).</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>&#39;UgridDataset&#39;</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.netcdf.ugrid.UgridDataset&lt;/code&gt; (&lt;code&gt;pyramids.netcdf.ugrid.dataset.UgridDataset&lt;/code&gt;)" href="#pyramids.netcdf.ugrid.UgridDataset">UgridDataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -5918,7 +5918,7 @@ or Shapely geometry).</p>
 <a id="__codelineno-0-303" name="__codelineno-0-303"></a>    <span class="n">ymin</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <a id="__codelineno-0-304" name="__codelineno-0-304"></a>    <span class="n">xmax</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <a id="__codelineno-0-305" name="__codelineno-0-305"></a>    <span class="n">ymax</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Subset mesh to faces within a bounding box.</span>
 <a id="__codelineno-0-308" name="__codelineno-0-308"></a>
 <a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">    Args:</span>
@@ -5998,7 +5998,7 @@ Data values are preserved — only coordinates change.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>&#39;UgridDataset&#39;</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.netcdf.ugrid.UgridDataset&lt;/code&gt; (&lt;code&gt;pyramids.netcdf.ugrid.dataset.UgridDataset&lt;/code&gt;)" href="#pyramids.netcdf.ugrid.UgridDataset">UgridDataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6083,7 +6083,7 @@ Data values are preserved — only coordinates change.</p>
 <span class="normal"><a href="#__codelineno-0-390">390</a></span>
 <span class="normal"><a href="#__codelineno-0-391">391</a></span>
 <span class="normal"><a href="#__codelineno-0-392">392</a></span>
-<span class="normal"><a href="#__codelineno-0-393">393</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_crs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_epsg</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-393">393</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_crs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_epsg</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reproject all node coordinates to a new CRS.</span>
 <a id="__codelineno-0-324" name="__codelineno-0-324"></a>
 <a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">    Uses pyproj.Transformer to reproject node coordinates.</span>
@@ -6218,7 +6218,7 @@ Data values are preserved — only coordinates change.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>&#39;UgridDataset&#39;</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.netcdf.ugrid.UgridDataset&lt;/code&gt; (&lt;code&gt;pyramids.netcdf.ugrid.dataset.UgridDataset&lt;/code&gt;)" href="#pyramids.netcdf.ugrid.UgridDataset">UgridDataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6263,7 +6263,7 @@ Data values are preserved — only coordinates change.</p>
 <span class="normal"><a href="#__codelineno-0-440">440</a></span>
 <span class="normal"><a href="#__codelineno-0-441">441</a></span>
 <span class="normal"><a href="#__codelineno-0-442">442</a></span>
-<span class="normal"><a href="#__codelineno-0-443">443</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-443">443</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Select a single time step from all temporal variables.</span>
 <a id="__codelineno-0-414" name="__codelineno-0-414"></a>
 <a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">    Non-temporal variables are kept unchanged.</span>
@@ -6373,7 +6373,7 @@ Data values are preserved — only coordinates change.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>&#39;UgridDataset&#39;</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.netcdf.ugrid.UgridDataset&lt;/code&gt; (&lt;code&gt;pyramids.netcdf.ugrid.dataset.UgridDataset&lt;/code&gt;)" href="#pyramids.netcdf.ugrid.UgridDataset">UgridDataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6410,7 +6410,7 @@ Data values are preserved — only coordinates change.</p>
 <span class="normal"><a href="#__codelineno-0-465">465</a></span>
 <span class="normal"><a href="#__codelineno-0-466">466</a></span>
 <span class="normal"><a href="#__codelineno-0-467">467</a></span>
-<span class="normal"><a href="#__codelineno-0-468">468</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-468">468</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Select a time range from all temporal variables.</span>
 <a id="__codelineno-0-447" name="__codelineno-0-447"></a>
 <a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">    Args:</span>
@@ -7046,7 +7046,7 @@ location ("face", "node", "edge"). Defaults to "face".</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>&#39;UgridDataset&#39;</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.netcdf.ugrid.UgridDataset&lt;/code&gt; (&lt;code&gt;pyramids.netcdf.ugrid.dataset.UgridDataset&lt;/code&gt;)" href="#pyramids.netcdf.ugrid.UgridDataset">UgridDataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7141,7 +7141,7 @@ location ("face", "node", "edge"). Defaults to "face".</p>
 <a id="__codelineno-0-584" name="__codelineno-0-584"></a>    <span class="n">data_locations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-585" name="__codelineno-0-585"></a>    <span class="n">epsg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4326</span><span class="p">,</span>
 <a id="__codelineno-0-586" name="__codelineno-0-586"></a>    <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mesh2d&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;UgridDataset&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
 <a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a UgridDataset programmatically from arrays.</span>
 <a id="__codelineno-0-589" name="__codelineno-0-589"></a>
 <a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="sd">    Args:</span>
