@@ -36,10 +36,6 @@ class TestFeatureCollectionPlot:
             Calling plot() without basemap should return an Axes
             from GeoDataFrame.plot().
         """
-        import matplotlib
-
-        matplotlib.use("Agg")
-
         ax = gdf_fc.plot()
         assert ax is not None, "plot() should return an Axes"
         assert hasattr(ax, "get_xlim"), "Returned object should be a matplotlib Axes"
@@ -51,10 +47,6 @@ class TestFeatureCollectionPlot:
             Passing column='name' should not raise and should return
             an Axes.
         """
-        import matplotlib
-
-        matplotlib.use("Agg")
-
         ax = gdf_fc.plot(column="name")
         assert ax is not None, "plot(column=...) should return an Axes"
 
@@ -83,10 +75,6 @@ class TestFeatureCollectionPlot:
             When basemap=True is passed, the plot method should call
             add_basemap with the axes and the FC's EPSG.
         """
-        import matplotlib
-
-        matplotlib.use("Agg")
-
         gdf_fc.plot(basemap=True)
 
         mock_add_basemap.assert_called_once()
@@ -105,10 +93,6 @@ class TestFeatureCollectionPlot:
             A string basemap value should be forwarded as the source
             parameter to add_basemap.
         """
-        import matplotlib
-
-        matplotlib.use("Agg")
-
         gdf_fc.plot(basemap="CartoDB.Positron")
 
         call_kwargs = mock_add_basemap.call_args
@@ -124,9 +108,5 @@ class TestFeatureCollectionPlot:
             When basemap is not specified, the plot should succeed
             without any basemap-related calls.
         """
-        import matplotlib
-
-        matplotlib.use("Agg")
-
         ax = gdf_fc.plot()
         assert ax is not None, "plot() without basemap should work"
