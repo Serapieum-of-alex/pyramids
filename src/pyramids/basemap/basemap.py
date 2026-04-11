@@ -75,11 +75,12 @@ def get_provider(name: str | None = None) -> Any:
     import_basemap(_BASEMAP_MSG)
     import xyzservices.providers as xyz
 
+    provider: Any
     if name is None:
         provider = xyz.OpenStreetMap.Mapnik
     else:
         parts = name.split(".")
-        provider: Any = xyz
+        provider = xyz
         for part in parts:
             try:
                 provider = provider[part]
