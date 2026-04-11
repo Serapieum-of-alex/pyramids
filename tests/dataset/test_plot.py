@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -49,6 +51,33 @@ class TestPlotDataSet:
         array_glyph = dataset.plot(band=0, overview=True, overview_index=0)
 
         assert isinstance(array_glyph, ArrayGlyph)
+
+    @pytest.mark.plot
+    def test_basemap_true_calls_add_basemap(self, src: Dataset):
+        """Test that basemap=True calls add_basemap with correct args."""
+        dataset = Dataset(src)
+        with patch("pyramids.basemap.basemap.add_basemap") as mock_add:
+            dataset.plot(band=0, basemap=True)
+            mock_add.assert_called_once()
+            call_kwargs = mock_add.call_args[1]
+            assert call_kwargs["crs"] == dataset.epsg
+
+    @pytest.mark.plot
+    def test_basemap_string_passes_source(self, src: Dataset):
+        """Test that basemap='CartoDB.Positron' passes source."""
+        dataset = Dataset(src)
+        with patch("pyramids.basemap.basemap.add_basemap") as mock_add:
+            dataset.plot(band=0, basemap="CartoDB.Positron")
+            call_kwargs = mock_add.call_args[1]
+            assert call_kwargs["source"] == "CartoDB.Positron"
+
+    @pytest.mark.plot
+    def test_basemap_false_skips(self, src: Dataset):
+        """Test that basemap=False does not call add_basemap."""
+        dataset = Dataset(src)
+        with patch("pyramids.basemap.basemap.add_basemap") as mock_add:
+            dataset.plot(band=0, basemap=False)
+            mock_add.assert_not_called()
 
 
 class TestPlotDatasetCollection:
