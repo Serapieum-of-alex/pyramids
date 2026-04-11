@@ -130,7 +130,16 @@ def _densify_and_reproject_bounds(
 
     tx, ty = transformer.transform(xs, ys)
 
-    result = (min(tx), min(ty), max(tx), max(ty))
+    tx_arr = np.asarray(tx)
+    ty_arr = np.asarray(ty)
+    if not (np.all(np.isfinite(tx_arr)) and np.all(np.isfinite(ty_arr))):
+        raise ValueError(
+            f"CRS reprojection from {src_crs} to {dst_crs} produced "
+            f"infinite or NaN coordinates. The data extent may be "
+            f"outside the valid domain for this CRS transformation."
+        )
+
+    result = (float(tx_arr.min()), float(ty_arr.min()), float(tx_arr.max()), float(ty_arr.max()))
     return result
 
 
@@ -244,6 +253,15 @@ def add_basemap(
     transformer_to_4326 = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
     w4326, s4326 = transformer_to_4326.transform(w3857, s3857)
     e4326, n4326 = transformer_to_4326.transform(e3857, n3857)
+
+    if not all(
+        np.isfinite(v) for v in (w4326, s4326, e4326, n4326)
+    ):
+        raise ValueError(
+            "Reprojection to EPSG:4326 produced infinite or NaN "
+            "coordinates. The data extent may be outside the valid "
+            "Web Mercator domain."
+        )
 
     s4326 = max(s4326, -85.06)
     n4326 = min(n4326, 85.06)
