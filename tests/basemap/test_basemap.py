@@ -274,21 +274,19 @@ class TestAddBasemap:
         Yields:
             tuple: (mock_auto_zoom, mock_fetch, mock_stitch) mocks.
         """
+        from pyramids.basemap import tiles as tiles_mod
+
         fake_image = np.zeros((256, 256, 4), dtype=np.uint8)
         with (
             patch.object(
-                __import__("pyramids.basemap.tiles", fromlist=["_auto_zoom"]),
-                "_auto_zoom",
-                return_value=10,
+                tiles_mod, "_auto_zoom", return_value=10,
             ) as mock_zoom,
             patch.object(
-                __import__("pyramids.basemap.tiles", fromlist=["_fetch_tiles"]),
-                "_fetch_tiles",
+                tiles_mod, "_fetch_tiles",
                 return_value={Tile(0, 0, 10): _make_tile_png()},
             ) as mock_fetch,
             patch.object(
-                __import__("pyramids.basemap.tiles", fromlist=["_stitch_tiles"]),
-                "_stitch_tiles",
+                tiles_mod, "_stitch_tiles",
                 return_value=(
                     fake_image,
                     (1000000.0, 6000000.0, 1200000.0, 6200000.0),
@@ -305,7 +303,7 @@ class TestAddBasemap:
             occur. The stitched image should be passed directly to
             imshow.
         """
-        warp_mod = __import__("pyramids.basemap.warp", fromlist=["_warp_tile_image"])
+        from pyramids.basemap import warp as warp_mod
         with patch.object(warp_mod, "_warp_tile_image") as mock_warp:
             result = add_basemap(mock_ax, crs=3857)
 
@@ -324,7 +322,7 @@ class TestAddBasemap:
         mock_ax.get_ylim.return_value = (50.0, 51.0)
 
         fake_image = np.zeros((256, 256, 4), dtype=np.uint8)
-        warp_mod = __import__("pyramids.basemap.warp", fromlist=["_warp_tile_image"])
+        from pyramids.basemap import warp as warp_mod
         with patch.object(
             warp_mod,
             "_warp_tile_image",
@@ -401,9 +399,7 @@ class TestAddBasemap:
         """
         import mercantile as merc_mod
 
-        tiles_mod = __import__(
-            "pyramids.basemap.tiles", fromlist=["_stitch_tiles"]
-        )
+        from pyramids.basemap import tiles as tiles_mod
         fake_image = np.zeros((256, 256, 4), dtype=np.uint8)
         many_tiles = [Tile(x=i, y=j, z=10) for i in range(20) for j in range(20)]
         few_tiles = [Tile(x=i, y=j, z=9) for i in range(10) for j in range(10)]
