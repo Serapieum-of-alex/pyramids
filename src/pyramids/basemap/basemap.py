@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 _BASEMAP_MSG = (
     "Basemap support requires mercantile, xyzservices, and Pillow. "
-    "Install with: pip install pyramids-gis[viz]"
+    "Install the viz extra: pyramids-gis[viz]"
 )
 
 
