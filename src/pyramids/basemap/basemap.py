@@ -293,6 +293,13 @@ def add_basemap(
     if (west, east) == (0.0, 1.0) and (south, north) == (0.0, 1.0):
         raise ValueError("Axes have no data extent. Plot data before adding a basemap.")
 
+    if west == east or south == north:
+        raise ValueError(
+            f"Axes have zero-area extent (west={west}, east={east}, "
+            f"south={south}, north={north}). A basemap requires a "
+            f"non-degenerate geographic extent."
+        )
+
     if isinstance(source, str) or source is None:
         provider = get_provider(source)
     else:
@@ -304,9 +311,17 @@ def add_basemap(
     if is_3857:
         w3857, s3857, e3857, n3857 = west, south, east, north
     else:
-        w3857, s3857, e3857, n3857 = _densify_and_reproject_bounds(
-            west, south, east, north, crs_str, "EPSG:3857"
-        )
+        try:
+            w3857, s3857, e3857, n3857 = _densify_and_reproject_bounds(
+                west, south, east, north, crs_str, "EPSG:3857"
+            )
+        except Exception as e:
+            if "CRS" in type(e).__name__ or "Invalid" in str(e):
+                raise ValueError(
+                    f"Invalid CRS: {crs_str!r}. Provide a valid "
+                    f"EPSG code or WKT string."
+                ) from e
+            raise
 
     transformer_to_4326 = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
     w4326, s4326 = transformer_to_4326.transform(w3857, s3857)
