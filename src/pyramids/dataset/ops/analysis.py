@@ -940,6 +940,8 @@ class Analysis:
             if exclude_value is not None
             else [no_data_value[band]]
         )
+        ax = kwargs.pop("ax", None)
+        fig = kwargs.pop("fig", None)
         cleo = ArrayGlyph(
             arr,
             exclude_value=exclude_value,
@@ -948,11 +950,17 @@ class Analysis:
             surface_reflectance=surface_reflectance,
             cutoff=cutoff,
             percentile=percentile,
+            ax=ax,
+            fig=fig,
             **kwargs,
         )
         cleo.plot(**kwargs)
 
-        if basemap is not None:
+        if basemap:
+            if self.epsg is None:
+                raise ValueError(
+                    "Dataset must have a CRS (epsg) to use basemap."
+                )
             from pyramids.basemap.basemap import add_basemap
 
             source = basemap if isinstance(basemap, str) else None

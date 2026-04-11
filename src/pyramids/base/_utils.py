@@ -405,18 +405,7 @@ def import_cleopatra(message: str):
 
 
 def import_basemap(message: str):
-    """Check that basemap dependencies are installed.
-
-    Parameters
-    ----------
-    message : str
-        Error message to display if any basemap dependency is missing.
-
-    Raises
-    ------
-    OptionalPackageDoesNotExist
-        If mercantile, xyzservices, or Pillow is not installed.
-    """
+    """Import basemap dependencies (mercantile, xyzservices, Pillow)."""
     try:
         import mercantile  # noqa
         import xyzservices  # noqa

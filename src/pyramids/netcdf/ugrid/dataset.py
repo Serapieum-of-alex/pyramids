@@ -668,7 +668,9 @@ class UgridDataset:
             **kwargs: Additional arguments passed to plot_mesh_data.
 
         Returns:
-            matplotlib Axes with the plot.
+            cleopatra.mesh_glyph.MeshGlyph instance with the plot
+                rendered. Use the returned object to access Figure/Axes
+                or call additional MeshGlyph methods.
         """
         from pyramids.netcdf.ugrid.plot import plot_mesh_data
 
@@ -683,7 +685,7 @@ class UgridDataset:
             ax=ax, cmap=cmap, title=title, **kwargs,
         )
 
-        if basemap is not None:
+        if basemap:
             if self.epsg is None:
                 raise ValueError(
                     "UgridDataset must have a CRS (epsg) to "
@@ -692,7 +694,8 @@ class UgridDataset:
             from pyramids.basemap.basemap import add_basemap
 
             source = basemap if isinstance(basemap, str) else None
-            add_basemap(result, crs=self.epsg, source=source)
+            ax = result.ax if hasattr(result, "ax") else result
+            add_basemap(ax, crs=self.epsg, source=source)
 
         return result
 
@@ -704,7 +707,8 @@ class UgridDataset:
             **kwargs: Additional arguments passed to plot_mesh_outline.
 
         Returns:
-            matplotlib Axes with the wireframe plot.
+            cleopatra.mesh_glyph.MeshGlyph instance with the wireframe
+                rendered.
         """
         from pyramids.netcdf.ugrid.plot import plot_mesh_outline
 

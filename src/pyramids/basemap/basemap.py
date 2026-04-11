@@ -113,27 +113,20 @@ def _densify_and_reproject_bounds(
     """
     transformer = Transformer.from_crs(src_crs, dst_crs, always_xy=True)
 
-    xs: list[float] = []
-    ys: list[float] = []
-    t_values = np.linspace(0, 1, n_points).tolist()
-
-    for t in t_values:
-        xs.extend(
-            [
-                west + t * (east - west),
-                east,
-                east - t * (east - west),
-                west,
-            ]
-        )
-        ys.extend(
-            [
-                south,
-                south + t * (north - south),
-                north,
-                north - t * (north - south),
-            ]
-        )
+    t = np.linspace(0, 1, n_points)
+    # Sample four edges: south, east, north, west.
+    xs = np.concatenate([
+        west + t * (east - west),
+        np.full_like(t, east),
+        east - t * (east - west),
+        np.full_like(t, west),
+    ])
+    ys = np.concatenate([
+        np.full_like(t, south),
+        south + t * (north - south),
+        np.full_like(t, north),
+        north - t * (north - south),
+    ])
 
     tx, ty = transformer.transform(xs, ys)
 
@@ -233,15 +226,13 @@ def add_basemap(
     if (west, east) == (0.0, 1.0) and (south, north) == (0.0, 1.0):
         raise ValueError("Axes have no data extent. Plot data before adding a basemap.")
 
-    if isinstance(source, str):
+    if isinstance(source, str) or source is None:
         provider = get_provider(source)
-    elif source is None:
-        provider = get_provider()
     else:
         provider = source
 
     crs_str = f"EPSG:{crs}" if isinstance(crs, int) else str(crs)
-    is_3857 = (isinstance(crs, int) and crs == 3857) or crs_str == "EPSG:3857"
+    is_3857 = crs_str == "EPSG:3857"
 
     if is_3857:
         w3857, s3857, e3857, n3857 = west, south, east, north
@@ -269,11 +260,27 @@ def add_basemap(
         if not 0 <= tile_zoom <= 19:
             raise ValueError(f"zoom must be 0-19, got {tile_zoom}")
 
+    original_zoom = tile_zoom
     tiles = list(mercantile.tiles(w4326, s4326, e4326, n4326, zooms=tile_zoom))
 
     while len(tiles) > tiles_mod.MAX_TILES and tile_zoom > 0:
         tile_zoom -= 1
         tiles = list(mercantile.tiles(w4326, s4326, e4326, n4326, zooms=tile_zoom))
+
+    if tile_zoom != original_zoom:
+        logger.warning(
+            "Zoom reduced from %d to %d (extent requires > %d tiles).",
+            original_zoom,
+            tile_zoom,
+            tiles_mod.MAX_TILES,
+        )
+
+    if not tiles:
+        raise ValueError(
+            f"No tiles found for bounds {bounds_4326} at zoom "
+            f"{tile_zoom}. The extent may be outside valid tile "
+            f"coverage."
+        )
 
     tile_data = tiles_mod._fetch_tiles(
         tiles, provider, timeout=timeout, retries=retries
@@ -294,7 +301,6 @@ def add_basemap(
 
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
-    current_aspect = ax.get_aspect()
 
     ax.imshow(
         image,
@@ -302,7 +308,7 @@ def add_basemap(
         interpolation=interpolation,
         alpha=alpha,
         zorder=zorder,
-        aspect=current_aspect,
+        aspect=ax.get_aspect(),
     )
 
     ax.set_xlim(xlim)

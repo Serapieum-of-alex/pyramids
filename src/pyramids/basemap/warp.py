@@ -74,7 +74,7 @@ def _warp_tile_image(
         "dstSRS": target_crs,
         "outputBounds": target_extent,
         "resampleAlg": gdal.GRA_Bilinear,
-        "dstAlpha": True,
+        "dstAlpha": n_bands == 3,
     }
 
     if ax is not None:
