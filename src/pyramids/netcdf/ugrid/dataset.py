@@ -29,6 +29,7 @@ from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable, UgridMetadata
 from pyramids.netcdf.utils import _read_attributes
+from pyramids.basemap.basemap import add_basemap
 
 
 class UgridDataset:
@@ -691,8 +692,6 @@ class UgridDataset:
                     "UgridDataset must have a CRS (epsg) to "
                     "use basemap."
                 )
-            from pyramids.basemap.basemap import add_basemap
-
             source = basemap if isinstance(basemap, str) else None
             ax = result.ax if hasattr(result, "ax") else result
             add_basemap(ax, crs=self.epsg, source=source)
