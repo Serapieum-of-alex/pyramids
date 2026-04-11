@@ -182,9 +182,14 @@ def _fetch_tiles(
             for future in as_completed(futures):
                 tile_obj, png_bytes = future.result()
                 tile_data[tile_obj] = png_bytes
-        except Exception:
+        except ConnectionError:
             for f in futures:
                 f.cancel()
+            raise
+        except Exception as e:
+            for f in futures:
+                f.cancel()
+            logger.error("Unexpected error during tile fetching: %s", e)
             raise
     return tile_data
 
