@@ -9,7 +9,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from cleopatra.mesh_glyph import MeshGlyph
+mesh_glyph = pytest.importorskip("cleopatra.mesh_glyph", reason="cleopatra not installed")
+MeshGlyph = mesh_glyph.MeshGlyph
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.plot import plot_mesh_data, plot_mesh_outline
 

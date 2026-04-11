@@ -7,11 +7,10 @@ from pandas import DataFrame
 from pyramids.dataset import Dataset
 from pyramids.dataset import DatasetCollection
 
-try:
-    from cleopatra.array_glyph import ArrayGlyph
-    from cleopatra.config import Config
-except ImportError:
-    raise ImportError("Cleopatra is not installed")
+_cleo_array = pytest.importorskip("cleopatra.array_glyph", reason="cleopatra not installed")
+ArrayGlyph = _cleo_array.ArrayGlyph
+_cleo_config = pytest.importorskip("cleopatra.config", reason="cleopatra not installed")
+Config = _cleo_config.Config
 
 
 class TestPlotDataSet:
