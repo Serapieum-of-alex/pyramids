@@ -390,3 +390,47 @@ class TestAddBasemap:
         assert (
             call_kwargs["zorder"] == -2
         ), f"Expected zorder=-2, got {call_kwargs['zorder']}"
+
+    def test_max_tiles_reduces_zoom(self, mock_ax: MagicMock):
+        """Test that zoom is reduced when tile count exceeds MAX_TILES.
+
+        Test scenario:
+            Mock mercantile.tiles to return >256 tiles at zoom 10,
+            then fewer at zoom 9. Verify the function settles on
+            zoom 9.
+        """
+        import mercantile as merc_mod
+
+        tiles_mod = __import__(
+            "pyramids.basemap.tiles", fromlist=["_stitch_tiles"]
+        )
+        fake_image = np.zeros((256, 256, 4), dtype=np.uint8)
+        many_tiles = [Tile(x=i, y=j, z=10) for i in range(20) for j in range(20)]
+        few_tiles = [Tile(x=i, y=j, z=9) for i in range(10) for j in range(10)]
+
+        with (
+            patch.object(tiles_mod, "_auto_zoom", return_value=10),
+            patch.object(
+                tiles_mod, "_fetch_tiles",
+                return_value={Tile(0, 0, 9): _make_tile_png()},
+            ),
+            patch.object(
+                tiles_mod, "_stitch_tiles",
+                return_value=(
+                    fake_image,
+                    (1000000.0, 6000000.0, 1200000.0, 6200000.0),
+                ),
+            ),
+            patch.object(
+                merc_mod, "tiles",
+                side_effect=[many_tiles, few_tiles],
+            ) as mock_tiles,
+        ):
+            add_basemap(mock_ax, crs=3857)
+
+            calls = mock_tiles.call_args_list
+            assert len(calls) == 2, (
+                f"Expected 2 calls to mercantile.tiles, got {len(calls)}"
+            )
+            assert calls[0][1]["zooms"] == 10, "First call should use zoom 10"
+            assert calls[1][1]["zooms"] == 9, "Second call should use zoom 9"
