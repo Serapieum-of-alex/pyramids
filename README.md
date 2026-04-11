@@ -32,14 +32,16 @@ graph TD
     subgraph IO["I/O Formats"]
         GeoTIFF["GeoTIFF"]
         NC["NetCDF"]
+        UGRID_NC["UGRID NetCDF"]
         SHP["Shapefile / GeoJSON"]
         ZIP["Compressed (zip/gzip/tar)"]
     end
 
     subgraph Core["Core Components"]
-        DS["<b>Dataset</b><br/>Single raster<br/>read · write · crop<br/>reproject · align · mosaic"]
-        NCD["<b>NetCDF</b><br/>Time/variable dimensions<br/>CF conventions · UGRID"]
-        DC["<b>Datacube</b><br/>Temporal raster stack<br/>multi-temporal analysis"]
+        DS["<b>Dataset</b><br/>Single raster<br/>read · write · crop<br/>reproject · align"]
+        NCD["<b>NetCDF</b><br/>extends Dataset<br/>time/variable dimensions<br/>CF conventions"]
+        UGDS["<b>UgridDataset</b><br/>Unstructured mesh<br/>UGRID-1.0 conventions"]
+        DC["<b>DatasetCollection</b><br/>Temporal raster stack<br/>multi-temporal analysis"]
         FC["<b>FeatureCollection</b><br/>Vector data<br/>GeoDataFrame + OGR"]
     end
 
@@ -51,6 +53,7 @@ graph TD
 
     GeoTIFF --> DS
     NC --> NCD
+    UGRID_NC --> UGDS
     SHP --> FC
     ZIP --> DS
     ZIP --> NCD
@@ -60,6 +63,8 @@ graph TD
     DS --> Convert
     NCD --> Spatial
     NCD --> Math
+    UGDS --> |"mesh-to-raster"| DS
+    UGDS --> |"mesh-to-vector"| FC
     DC --> |"contains aligned<br/>Dataset stack"| DS
     FC --> Convert
     FC --> |"rasterize"| DS
@@ -70,11 +75,14 @@ graph TD
 Main Features
 -------------
 
-- **Dataset** - Read, write, crop, reproject, align, and mosaic single-band and multi-band rasters (GeoTIFF)
+- **Dataset** - Read, write, crop, reproject, and align single-band and multi-band rasters (GeoTIFF)
   with full no-data handling and coordinate reference system support.
-- **NetCDF** - Read and write NetCDF files with time/variable dimensions, CF conventions metadata, and
-  UGRID unstructured mesh support. Optional xarray interoperability.
-- **Datacube** - Manage time-series of co-registered rasters as a temporal stack for multi-temporal analysis.
+- **NetCDF** - Extends Dataset for NetCDF files with time/variable dimensions and CF conventions metadata.
+  Optional xarray interoperability.
+- **UgridDataset** - Read and visualize UGRID-1.0 unstructured meshes (triangles, quads, mixed).
+  Supports mesh-to-raster interpolation and mesh-to-vector export.
+- **DatasetCollection** - Manage time-series of co-registered rasters as a temporal stack for
+  multi-temporal analysis.
 - **FeatureCollection** - Work with vector data (shapefiles, GeoJSON) through a unified GeoDataFrame and
   OGR DataSource interface, including rasterization and geometry operations.
 - **Spatial operations** - Align rasters to a reference grid, reproject between coordinate systems,
