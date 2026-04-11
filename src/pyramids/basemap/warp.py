@@ -72,7 +72,9 @@ def _warp_tile_image(
     src_ds.SetGeoTransform([extent_3857[0], x_res, 0, extent_3857[3], 0, -y_res])
 
     src_srs = osr.SpatialReference()
-    src_srs.ImportFromEPSG(3857)
+    err = src_srs.ImportFromEPSG(3857)
+    if err != 0:
+        raise RuntimeError(f"Failed to create SRS from EPSG:3857 (error {err}).")
     src_ds.SetProjection(src_srs.ExportToWkt())
 
     for i in range(n_bands):
