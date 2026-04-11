@@ -203,5 +203,3 @@ Inside the container you can verify the package is installed:
 ```
 python -c "import pyramids; print('pyramids', pyramids.__version__)"
 ```
-
-![Dataset diagram](./docs/_images/pyramids-dataset.svg)
