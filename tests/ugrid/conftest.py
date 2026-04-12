@@ -21,9 +21,9 @@ def western_scheldt_path():
     """Path to the Western Scheldt UGRID test file.
 
     Returns:
-        Path: Absolute path to westernscheldt01_waqgeom.nc.
+        Path: Absolute path to ugrid.nc.
     """
-    p = Path("tests/mo/netcdf/westernscheldt01_waqgeom.nc")
+    p = Path("tests/data/netcdf/ugrid/ugrid.nc")
     if not p.exists():
         pytest.skip("Western Scheldt test file not available")
     return p
