@@ -65,15 +65,11 @@
          <lastmod>2026-04-12</lastmod>
     </url>
     <url>
-         <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/01dataset/</loc>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/convert-longitude/</loc>
          <lastmod>2026-04-12</lastmod>
     </url>
     <url>
-         <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/02spatial-operation-methods/</loc>
-         <lastmod>2026-04-12</lastmod>
-    </url>
-    <url>
-         <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/03convert-longitude/</loc>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/dataset/</loc>
          <lastmod>2026-04-12</lastmod>
     </url>
     <url>
@@ -82,6 +78,10 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/south-america/</loc>
+         <lastmod>2026-04-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/spatial-operation-methods/</loc>
          <lastmod>2026-04-12</lastmod>
     </url>
     <url>
