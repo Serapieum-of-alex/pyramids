@@ -287,3 +287,22 @@ class TestToFileDriverCog:
         """to_file returns None regardless of driver (existing contract)."""
         result = small_float_dataset.to_file(tmp_path / "x.tif", driver="COG")
         assert result is None
+
+
+class TestIsCogMissingFile:
+    """Coverage: is_cog returns False when backing file went missing."""
+
+    def test_is_cog_false_when_file_deleted(self, small_float_dataset, tmp_path):
+        """is_cog handles FileNotFoundError from validate() gracefully."""
+        out = small_float_dataset.to_cog(tmp_path / "gone.tif")
+        reopened = Dataset.read_file(out)
+        reopened.close()  # release file handle
+        out.unlink()  # delete the backing file
+        # Reopen from memory (description kept as the path, but file removed)
+        # Recreate a Dataset-like object pointing at a path that no longer
+        # exists by constructing from a fresh MEM copy with the description set.
+        from osgeo import gdal as _gdal
+        src = _gdal.GetDriverByName("MEM").CreateCopy("", small_float_dataset._raster)
+        src.SetDescription(str(out))  # path that does not exist
+        ds = Dataset(src)
+        assert ds.is_cog is False

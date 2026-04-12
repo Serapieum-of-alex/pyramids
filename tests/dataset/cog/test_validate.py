@@ -184,3 +184,65 @@ class TestFallbackValidate:
         _write_plain_stripped_gtiff(p, size=2048)
         errors, warnings, details = _fallback_validate(str(p))
         assert any("tiled" in e or "strip" in e for e in errors)
+
+
+class TestValidateCoverageFill:
+    """Scenarios that cover specific branch / error paths in validate.py."""
+
+    def test_osgeo_validate_exception_is_not_file_not_found(
+        self, monkeypatch, mem_dataset, tmp_path
+    ):
+        """A ValidateCloudOptimizedGeoTIFFException unrelated to a
+        missing file becomes a non-fatal error entry (not an exception)."""
+        from osgeo_utils.samples import validate_cloud_optimized_geotiff as v
+
+        # Write a valid COG first so the Path.exists() pre-check passes.
+        from pyramids.dataset.cog.write import translate_to_cog
+        p = tmp_path / "x.tif"
+        dst = translate_to_cog(mem_dataset, p, {})
+        dst.FlushCache()
+        dst = None
+
+        def fake_validate(*args, **kwargs):
+            raise v.ValidateCloudOptimizedGeoTIFFException("some non-file error")
+
+        monkeypatch.setattr(v, "validate", fake_validate)
+        report = validate(p)
+        assert report.is_valid is False
+        assert any("some non-file error" in e for e in report.errors)
+
+    def test_osgeo_validate_runtime_error_non_fnf(
+        self, monkeypatch, mem_dataset, tmp_path
+    ):
+        """A RuntimeError not about a missing file returns an error entry."""
+        from osgeo_utils.samples import validate_cloud_optimized_geotiff as v
+
+        from pyramids.dataset.cog.write import translate_to_cog
+        p = tmp_path / "x.tif"
+        dst = translate_to_cog(mem_dataset, p, {})
+        dst.FlushCache()
+        dst = None
+
+        def fake_validate(*args, **kwargs):
+            raise RuntimeError("some other error")
+
+        monkeypatch.setattr(v, "validate", fake_validate)
+        report = validate(p)
+        assert report.is_valid is False
+        assert any("some other error" in e for e in report.errors)
+
+    def test_fallback_validate_gdal_open_returns_none(
+        self, monkeypatch, tmp_path
+    ):
+        """_fallback_validate reports "cannot open" when gdal.Open returns None."""
+        import osgeo.gdal as gdal_mod
+        from pyramids.dataset.cog.validate import _fallback_validate
+
+        # Create a placeholder file so the validate() pre-check passes
+        p = tmp_path / "not_a_tiff.txt"
+        p.write_text("garbage")
+
+        # Force gdal.Open to return None
+        monkeypatch.setattr(gdal_mod, "Open", lambda *a, **kw: None)
+        errors, warnings, details = _fallback_validate(str(p))
+        assert any("cannot open" in e for e in errors)

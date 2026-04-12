@@ -155,3 +155,23 @@ class TestFailedToSave:
         monkeypatch.setattr(gdal, "GetDriverByName", fake_get)
         with pytest.raises(FailedToSaveError, match="returned None"):
             translate_to_cog(mem_dataset, tmp_path / "x.tif", {})
+
+
+class TestCreateCopyRuntimeError:
+    def test_runtime_error_wrapped_in_failed_to_save(
+        self, mem_dataset, tmp_path, monkeypatch
+    ):
+        """GDAL CreateCopy RuntimeError is translated to FailedToSaveError."""
+        original = gdal.GetDriverByName("COG")
+
+        class FakeDriver:
+            def CreateCopy(self, *a, **kw):  # noqa: N802
+                raise RuntimeError("simulated write failure")
+
+        def fake_get(name):
+            return FakeDriver() if name == "COG" else original
+
+        monkeypatch.setattr(gdal, "GetDriverByName", fake_get)
+        from pyramids.base._errors import FailedToSaveError
+        with pytest.raises(FailedToSaveError, match="simulated write failure"):
+            translate_to_cog(mem_dataset, tmp_path / "x.tif", {})
