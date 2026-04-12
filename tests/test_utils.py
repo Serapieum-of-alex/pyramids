@@ -89,6 +89,26 @@ class TestCatalog:
         name = catalog.get_driver_name("AAIGrid")
         assert name == "ascii"
 
+    def test_cog_entry_is_creation_capable(self):
+        """Task 10 — gdal_drivers.yaml COG entry was corrected."""
+        catalog = Catalog()
+        # YAML parses `yes` as boolean True.
+        assert catalog.get_driver("cog")["Creation"] is True
+
+    def test_cog_entry_supports_georef(self):
+        catalog = Catalog()
+        assert catalog.get_driver("cog")["Geo-referencing"] is True
+
+    def test_cog_entry_has_no_extension(self):
+        """COG must not claim .tif; GTiff owns that extension."""
+        catalog = Catalog()
+        assert catalog.get_extension("cog") is None
+
+    def test_tif_extension_still_resolves_to_geotiff(self):
+        """Regression guardrail for the COG-vs-GTiff disambiguation rule."""
+        catalog = Catalog()
+        assert catalog.get_driver_name_by_extension("tif") == "geotiff"
+
 
 def test_ogr_ds_togdal_dataset(data_source: ogr.DataSource):
     gdal_ds = ogr_ds_to_gdal_dataset(data_source)

@@ -29,10 +29,12 @@ netcdf:
 cog:
   GDAL Name: COG
   Long name: Cloud Optimized GeoTIFF generator
-  Creation: No
+  Creation: yes
   Copy: yes
-  Geo-referencing: No
+  Geo-referencing: yes
   Build requirements: Built-in by default
+  # Intentionally no 'extension' key -- GTiff owns .tif; COG is
+  # selected explicitly via driver="COG" or Dataset.to_cog().
 
 geo raster:
   GDAL Name: GeoRaster
