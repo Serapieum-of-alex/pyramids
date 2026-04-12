@@ -562,8 +562,7 @@ class DatasetCollection:
             FileExistsError: ``overwrite=False`` and a target path exists.
 
         Examples:
-            >>> # doctest: +SKIP
-            >>> dc.to_cog_stack("out/", compress="ZSTD")
+            >>> dc.to_cog_stack("out/", compress="ZSTD")  # doctest: +SKIP
             [PosixPath('out/slice_0000.tif'), ..., PosixPath('out/slice_0002.tif')]
         """
         if "{t}" in pattern:
