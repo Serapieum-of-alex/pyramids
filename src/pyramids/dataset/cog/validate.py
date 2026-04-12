@@ -41,7 +41,14 @@ class ValidationReport:
     details: dict[str, Any] = field(default_factory=dict)
 
     def __bool__(self) -> bool:
-        """Truthy iff the file validates as a COG."""
+        """Truthy iff the file validates as a COG.
+
+        Examples:
+            >>> bool(ValidationReport(is_valid=True))
+            True
+            >>> bool(ValidationReport(is_valid=False, errors=["bad"]))
+            False
+        """
         return self.is_valid
 
 
