@@ -526,6 +526,68 @@ class DatasetCollection:
             src = self.iloc(i)
             src.to_file(path[i], band=band)
 
+    def to_cog_stack(
+        self,
+        directory: str | Path,
+        *,
+        pattern: str = "{name}_{i:04d}.tif",
+        name: str = "slice",
+        overwrite: bool = False,
+        **cog_kwargs: Any,
+    ) -> list[Path]:
+        """Export each time slice of the collection as an individual COG.
+
+        Args:
+            directory: Output directory; created if missing.
+            pattern: Filename template. Placeholders:
+
+                - ``{name}`` — the ``name`` argument (default ``'slice'``);
+                - ``{i}``    — zero-padded integer index.
+
+                The ``{t}`` placeholder is reserved for a future task
+                that adds a time-coordinate axis; using it now raises
+                :class:`ValueError`.
+            name: Replacement for the ``{name}`` placeholder.
+            overwrite: If ``False``, raise :class:`FileExistsError`
+                when a target path already exists.
+            **cog_kwargs: Forwarded verbatim to
+                :meth:`~pyramids.dataset.ops.cog.COGMixin.to_cog`.
+
+        Returns:
+            List of written file paths, in temporal (index) order.
+
+        Raises:
+            ValueError: ``{t}`` placeholder used but no time coord is
+                available.
+            FileExistsError: ``overwrite=False`` and a target path exists.
+
+        Examples:
+            >>> # doctest: +SKIP
+            >>> dc.to_cog_stack("out/", compress="ZSTD")
+            [PosixPath('out/slice_0000.tif'), ..., PosixPath('out/slice_0002.tif')]
+        """
+        if "{t}" in pattern:
+            raise ValueError(
+                "{t} placeholder not yet supported; DatasetCollection has "
+                "no time-axis coord. Use {i} for integer index."
+            )
+
+        out_dir = Path(directory)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        paths: list[Path] = []
+        for i in range(self.time_length):
+            filename = pattern.format(name=name, i=i)
+            target = out_dir / filename
+            if target.exists() and not overwrite:
+                raise FileExistsError(
+                    f"{target} exists; pass overwrite=True to replace."
+                )
+            slice_ds = self.iloc(i)
+            slice_ds.to_cog(target, **cog_kwargs)
+            paths.append(target)
+        return paths
+
     def to_crs(
         self,
         to_epsg: int = 3857,
