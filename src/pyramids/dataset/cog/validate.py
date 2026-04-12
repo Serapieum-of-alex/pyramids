@@ -157,12 +157,10 @@ def validate(path: str | Path, strict: bool = False) -> ValidationReport:
             through the normal validator surface.
 
     Examples:
-        >>> # doctest: +SKIP
-        >>> from pyramids.dataset.cog import validate
-        >>> report = validate("scene.tif")
-        >>> if report:
-        ...     print("blocksize:", report.details.get("blocksize"))
-        >>> strict_report = validate("scene.tif", strict=True)
+        >>> from pyramids.dataset.cog import validate  # doctest: +SKIP
+        >>> report = validate("scene.tif")  # doctest: +SKIP
+        >>> bool(report)  # doctest: +SKIP
+        True
     """
     p = str(path)
     if not p.startswith("/vsi") and not Path(p).exists():

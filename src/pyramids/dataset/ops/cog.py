@@ -142,14 +142,11 @@ class COGMixin:
             case. A ``UserWarning`` is emitted if both are provided.
 
         Examples:
-            >>> # doctest: +SKIP
-            >>> import numpy as np
-            >>> from pyramids.dataset import Dataset
-            >>> arr = np.random.rand(1, 256, 256).astype("float32")
-            >>> ds = Dataset.create_from_array(
-            ...     arr, top_left_corner=(0, 0), cell_size=0.001, epsg=4326
-            ... )
-            >>> _ = ds.to_cog("out.tif", compress="ZSTD")
+            >>> import numpy as np  # doctest: +SKIP
+            >>> from pyramids.dataset import Dataset  # doctest: +SKIP
+            >>> arr = np.random.rand(256, 256).astype("float32")  # doctest: +SKIP
+            >>> ds = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.001, epsg=4326)  # doctest: +SKIP
+            >>> _ = ds.to_cog("out.tif", compress="ZSTD")  # doctest: +SKIP
 
             Web-optimized COG for a tile server:
 
@@ -215,9 +212,8 @@ class COGMixin:
         datasets (empty :attr:`file_name`).
 
         Examples:
-            >>> # doctest: +SKIP
-            >>> ds = Dataset.read_file("scene.tif")
-            >>> ds.is_cog
+            >>> ds = Dataset.read_file("scene.tif")  # doctest: +SKIP
+            >>> ds.is_cog  # doctest: +SKIP
             True
         """
         result: bool
@@ -245,11 +241,10 @@ class COGMixin:
                 (MEM-only or ``/vsimem/``).
 
         Examples:
-            >>> # doctest: +SKIP
-            >>> ds = Dataset.read_file("scene.tif")
-            >>> report = ds.validate_cog(strict=True)
-            >>> if not report:
-            ...     for err in report.errors: print(err)
+            >>> ds = Dataset.read_file("scene.tif")  # doctest: +SKIP
+            >>> report = ds.validate_cog(strict=True)  # doctest: +SKIP
+            >>> bool(report)  # doctest: +SKIP
+            True
         """
         fn = self.file_name
         if not fn or fn.startswith("/vsimem/"):

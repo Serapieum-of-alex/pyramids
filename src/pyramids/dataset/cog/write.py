@@ -61,13 +61,10 @@ def translate_to_cog(
             ``None`` or raised :class:`RuntimeError`.
 
     Examples:
-        >>> # doctest: +SKIP
-        >>> from osgeo import gdal, osr
-        >>> src = gdal.GetDriverByName("MEM").Create("", 256, 256, 1, gdal.GDT_Float32)
-        >>> src.SetGeoTransform((0, 0.01, 0, 0, 0, -0.01))
-        >>> dst = translate_to_cog(src, "out.tif", {"COMPRESS": "DEFLATE"})
-        >>> dst.FlushCache()
-        >>> dst = None
+        >>> from osgeo import gdal  # doctest: +SKIP
+        >>> src = gdal.GetDriverByName("MEM").Create("", 256, 256, 1, gdal.GDT_Float32)  # doctest: +SKIP
+        >>> dst = translate_to_cog(src, "out.tif", {"COMPRESS": "DEFLATE"})  # doctest: +SKIP
+        >>> dst.FlushCache()  # doctest: +SKIP
     """
     driver = gdal.GetDriverByName("COG")
     if driver is None:

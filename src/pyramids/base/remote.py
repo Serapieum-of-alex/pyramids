@@ -181,10 +181,8 @@ class CloudConfig:
     ================================  ==================================
 
     Examples:
-        >>> # doctest: +SKIP
-        >>> from pyramids.dataset import Dataset
-        >>> from pyramids.base.remote import CloudConfig
-        >>> with CloudConfig(aws_region="us-east-1"):
+        >>> from pyramids.base.remote import CloudConfig  # doctest: +SKIP
+        >>> with CloudConfig(aws_region="us-east-1"):  # doctest: +SKIP
         ...     ds = Dataset.read_file("s3://bucket/scene.tif")
 
         Anonymous access to a public bucket:
