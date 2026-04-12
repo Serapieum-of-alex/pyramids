@@ -199,8 +199,8 @@ pyramids-gis = { path = ".", editable = true }
 
 [tool.pixi.tasks]
 main = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'not plot and not xarray' --cov-report=xml", description = "Run the main test suite" }
-plot = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'plot' --cov-report=xml", description = "Run plot test suite" }
-xarray-tests = { cmd = "pytest -vvv --cov=src/pyramids -sv -m 'xarray' --cov-report=xml", description = "Run xarray interop tests" }
+plot = { cmd = "pytest -vvv --cov=src/pyramids --cov-append -sv -m 'plot' --cov-report=xml", description = "Run plot test suite" }
+xarray-tests = { cmd = "pytest -vvv --cov=src/pyramids --cov-append -sv -m 'xarray' --cov-report=xml", description = "Run xarray interop tests" }
 test-all = { cmd = "pytest -vvv --cov=src/pyramids -sv --cov-report=xml --cov-report=term-missing", description = "Run all testsuite" }
 notebooks = { cmd = "pytest --nbval --nbval-lax --verbose examples/notebooks", description = "check notebooks" }
 jupyter = { cmd = "jupyter lab --no-browser --IdentityProvider.token='' --ServerApp.password='' --port=8889", description = "check notebooks" }
@@ -216,11 +216,10 @@ default = {features = ["viz"], solve-group = "default" }
 dev = { features = ["viz", "dev", "xarray"], solve-group = "default" }
 notebook = { features = ["viz", "notebook"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "docs" }
-py311 = { features = ["py311", "viz", "dev"], solve-group = "py311" }
-py312 = { features = ["py312", "viz", "dev"], solve-group = "py312" }
-py313 = { features = ["py313", "viz", "dev"], solve-group = "py313" }
-py314 = { features = ["py314", "viz", "dev"], solve-group = "py314" }
-xarray-test = { features = ["viz", "dev", "xarray"], solve-group = "default" }
+py311 = { features = ["py311", "viz", "dev", "xarray"], solve-group = "py311" }
+py312 = { features = ["py312", "viz", "dev", "xarray"], solve-group = "py312" }
+py313 = { features = ["py313", "viz", "dev", "xarray"], solve-group = "py313" }
+py314 = { features = ["py314", "viz", "dev", "xarray"], solve-group = "py314" }
 
 
 [tool.pixi.feature.py311.dependencies]

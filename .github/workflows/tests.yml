@@ -30,13 +30,17 @@ jobs:
           activate-environment: ${{ matrix.environment }}
           cache: true
 
-      - name: Run Tests
-        run: |
-          pixi run -e ${{ matrix.environment }} test-all
+      - name: Run main tests (not plot, not xarray)
+        run: pixi run -e ${{ matrix.environment }} main
+
+      - name: Run plot tests
+        run: pixi run -e ${{ matrix.environment }} plot
+
+      - name: Run xarray tests
+        run: pixi run -e ${{ matrix.environment }} xarray-tests
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v5
 
       - name: test Jupyter notebooks
-        run: |
-          pixi run -e ${{ matrix.environment }} notebooks
+        run: pixi run -e ${{ matrix.environment }} notebooks
