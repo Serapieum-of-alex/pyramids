@@ -34,7 +34,6 @@ if _vendored_osgeo.is_dir():
 
 from pyramids.base.config import Config
 
-__all__ = ["dataset", "multidataset", "netcdf", "featurecollection"]
 
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _get_version

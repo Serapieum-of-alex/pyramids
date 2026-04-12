@@ -17,22 +17,18 @@ from osgeo import gdal
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
 
+from tests.netcdf.conftest import make_3d_nc
+
 
 def _make_3d_nc(rows=10, cols=12, bands=3, epsg=4326, variable_name="temperature"):
     """Create a 3D in-memory NetCDF for testing.
 
-    Returns:
-        NetCDF: An in-memory multidimensional NetCDF container.
+    Delegates to the shared ``make_3d_nc`` helper in conftest.
     """
-    arr = np.random.RandomState(42).rand(bands, rows, cols).astype(np.float64)
-    geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
-    return NetCDF.create_from_array(
-        arr=arr,
-        geo=geo,
-        epsg=epsg,
-        no_data_value=-9999.0,
-        path=None,
+    return make_3d_nc(
+        rows=rows, cols=cols, bands=bands, epsg=epsg,
         variable_name=variable_name,
+        arr_type="random", seed=42,
     )
 
 
@@ -741,6 +737,107 @@ class TestCopyEdgeCases:
         assert (
             copied.variable_names == nc.variable_names
         ), f"Expected {nc.variable_names}, got {copied.variable_names}"
+
+
+class TestLazyVariableDict:
+    """Tests for the lazy-loading variables property (_LazyVariableDict)."""
+
+    def test_no_variables_loaded_initially(self):
+        """Accessing .variables should not load any variable eagerly.
+
+        Test scenario:
+            The internal dict should have 0 entries after access.
+        """
+        nc = _make_3d_nc()
+        v = nc.variables
+        loaded = len(dict.keys(v))
+        assert loaded == 0, (
+            f"Expected 0 loaded initially, got {loaded}"
+        )
+
+    def test_loading_one_does_not_load_all(self):
+        """Accessing one key should load only that variable.
+
+        Test scenario:
+            Access 'temperature' → 1 loaded in internal dict.
+        """
+        nc = _make_3d_nc()
+        v = nc.variables
+        _ = v["temperature"]
+        loaded = len(dict.keys(v))
+        assert loaded == 1, (
+            f"Expected 1 loaded, got {loaded}"
+        )
+
+    def test_get_existing_key(self):
+        """v.get('temperature') should return the variable, not None.
+
+        Test scenario:
+            H1 fix — CPython dict.get() bypassed __getitem__
+            before the override was added.
+        """
+        nc = _make_3d_nc()
+        v = nc.variables
+        result = v.get("temperature")
+        assert result is not None, (
+            "get() returned None — lazy loading bypassed"
+        )
+
+    def test_get_nonexistent_returns_none(self):
+        """v.get('nope') should return None.
+
+        Test scenario:
+            Non-existent key with no default → None.
+        """
+        nc = _make_3d_nc()
+        result = nc.variables.get("nope")
+        assert result is None, f"Expected None, got {result}"
+
+    def test_get_nonexistent_with_default(self):
+        """v.get('nope', 42) should return the default.
+
+        Test scenario:
+            Non-existent key with explicit default.
+        """
+        nc = _make_3d_nc()
+        result = nc.variables.get("nope", 42)
+        assert result == 42, f"Expected 42, got {result}"
+
+    def test_contains(self):
+        """'in' should check variable names, not loaded dict.
+
+        Test scenario:
+            'temperature' exists, 'nope' does not.
+        """
+        nc = _make_3d_nc()
+        v = nc.variables
+        assert "temperature" in v, "Expected 'temperature' in variables"
+        assert "nope" not in v, "Expected 'nope' not in variables"
+
+    def test_len(self):
+        """len(v) should return total count, not loaded count.
+
+        Test scenario:
+            1 variable exists regardless of loading state.
+        """
+        nc = _make_3d_nc()
+        assert len(nc.variables) == 1, (
+            f"Expected 1, got {len(nc.variables)}"
+        )
+
+    def test_keys_values_items(self):
+        """keys/values/items should cover all variables.
+
+        Test scenario:
+            Each should have length matching variable count.
+        """
+        nc = _make_3d_nc()
+        v = nc.variables
+        assert list(v.keys()) == ["temperature"], (
+            f"Expected ['temperature'], got {list(v.keys())}"
+        )
+        assert len(v.values()) == 1, "Expected 1 value"
+        assert len(v.items()) == 1, "Expected 1 item"
 
 
 class TestEndToEndRoundTrip:

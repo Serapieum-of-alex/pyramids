@@ -1,6 +1,6 @@
 """Unit tests for pyramids.netcdf.models.
 
-Covers GroupInfo, DimensionInfo, ArrayInfo, StructuralInfo, and
+Covers GroupInfo, DimensionInfo, VariableInfo, StructuralInfo, and
 NetCDFMetadata with mocked GDAL objects. Targets >=95% branch
 coverage of models.py.
 
@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 
 from pyramids.netcdf.models import (
-    ArrayInfo,
+    VariableInfo,
     DimensionInfo,
     GroupInfo,
     NetCDFMetadata,
@@ -146,15 +146,15 @@ class TestGroupInfoFromGroup:
         group = _mock_group(name="root", full_name="/")
         info = GroupInfo.from_group(
             group,
-            arrays=["/temperature"],
+            variables=["/temperature"],
             children=["/forecast"],
             attributes={"Conventions": "CF-1.6"},
         )
         assert info.name == "root", f"Expected name='root', got '{info.name}'"
         assert info.full_name == "/", f"Expected full_name='/', got '{info.full_name}'"
-        assert info.arrays == [
+        assert info.variables == [
             "/temperature"
-        ], f"Expected arrays=['/temperature'], got {info.arrays}"
+        ], f"Expected variables=['/temperature'], got {info.variables}"
         assert info.children == [
             "/forecast"
         ], f"Expected children=['/forecast'], got {info.children}"
@@ -173,7 +173,7 @@ class TestGroupInfoFromGroup:
         group = _mock_group(name="root", full_name="/", attributes=[attr_mock])
         info = GroupInfo.from_group(
             group,
-            arrays=[],
+            variables=[],
             children=[],
             attributes=None,
         )
@@ -189,11 +189,11 @@ class TestGroupInfoFromGroup:
         group = _mock_group()
         info = GroupInfo.from_group(
             group,
-            arrays=[],
+            variables=[],
             children=[],
             attributes={},
         )
-        assert info.arrays == [], f"Expected empty arrays list, got {info.arrays}"
+        assert info.variables == [], f"Expected empty arrays list, got {info.variables}"
         assert info.children == [], f"Expected empty children list, got {info.children}"
 
     def test_none_arrays_and_children_become_empty_lists(self):
@@ -201,11 +201,11 @@ class TestGroupInfoFromGroup:
         group = _mock_group()
         info = GroupInfo.from_group(
             group,
-            arrays=None,
+            variables=None,
             children=None,
             attributes={},
         )
-        assert info.arrays == [], f"Expected empty arrays list, got {info.arrays}"
+        assert info.variables == [], f"Expected empty arrays list, got {info.variables}"
         assert info.children == [], f"Expected empty children list, got {info.children}"
 
     def test_group_get_name_failure_returns_empty_name(self):
@@ -213,7 +213,7 @@ class TestGroupInfoFromGroup:
         group = _mock_group()
         group.GetName.side_effect = RuntimeError("GDAL error")
         group.GetFullName.return_value = "/"
-        info = GroupInfo.from_group(group, arrays=[], children=[], attributes={})
+        info = GroupInfo.from_group(group, variables=[], children=[], attributes={})
         assert info.name == "", f"Expected empty name on failure, got '{info.name}'"
 
     def test_group_get_full_name_failure_uses_fallback(self):
@@ -223,7 +223,7 @@ class TestGroupInfoFromGroup:
         """
         group = _mock_group(name="subgroup")
         group.GetFullName.side_effect = RuntimeError("GDAL error")
-        info = GroupInfo.from_group(group, arrays=[], children=[], attributes={})
+        info = GroupInfo.from_group(group, variables=[], children=[], attributes={})
         assert (
             info.full_name == "/subgroup"
         ), f"Expected fallback full_name='/subgroup', got '{info.full_name}'"
@@ -233,7 +233,7 @@ class TestGroupInfoFromGroup:
         group = _mock_group()
         group.GetName.side_effect = RuntimeError("fail")
         group.GetFullName.side_effect = RuntimeError("fail")
-        info = GroupInfo.from_group(group, arrays=[], children=[], attributes={})
+        info = GroupInfo.from_group(group, variables=[], children=[], attributes={})
         assert (
             info.full_name == "/"
         ), f"Expected full_name='/' when both methods fail, got '{info.full_name}'"
@@ -246,7 +246,7 @@ class TestGroupInfoFromGroup:
         """
         group = _mock_group()
         group.GetAttributes.return_value = []
-        info = GroupInfo.from_group(group, arrays=[], children=[], attributes=None)
+        info = GroupInfo.from_group(group, variables=[], children=[], attributes=None)
         assert (
             info.attributes == {}
         ), f"Expected empty attributes, got {info.attributes}"
@@ -260,7 +260,7 @@ class TestGroupInfoDataclass:
         info = GroupInfo(name="g", full_name="/g")
         assert info.attributes == {}, "Default attributes should be {}"
         assert info.children == [], "Default children should be []"
-        assert info.arrays == [], "Default arrays should be []"
+        assert info.variables == [], "Default arrays should be []"
 
     def test_frozen_prevents_assignment(self):
         """Verify frozen dataclass raises on attribute assignment."""
@@ -438,8 +438,8 @@ class TestDimensionInfoDataclass:
         assert info.attrs == {}, "attrs should default to {}"
 
 
-class TestArrayInfoFromMdArray:
-    """Tests for ArrayInfo.from_md_array class method."""
+class TestVariableInfoFromMdArray:
+    """Tests for VariableInfo.from_md_array class method."""
 
     def test_basic_construction(self):
         """Verify all fields extracted from a fully functional mock array."""
@@ -450,12 +450,12 @@ class TestArrayInfoFromMdArray:
             dim_names=["/time", "/lat", "/lon"],
             unit="K",
         )
-        info = ArrayInfo.from_md_array(arr, "temperature", "/")
+        info = VariableInfo.from_md_array(arr, "temperature", "/")
         assert info.name == "temperature", f"Expected 'temperature', got '{info.name}'"
         assert (
             info.full_name == "/temperature"
         ), f"Expected '/temperature', got '{info.full_name}'"
-        assert info.dtype == "Float32", f"Expected 'Float32', got '{info.dtype}'"
+        assert info.dtype == "float32", f"Expected 'float32', got '{info.dtype}'"
         assert info.shape == [
             365,
             180,
@@ -472,7 +472,7 @@ class TestArrayInfoFromMdArray:
         """Verify fallback name when GetName raises."""
         arr = _mock_md_array(name="temp")
         arr.GetName.side_effect = RuntimeError("fail")
-        info = ArrayInfo.from_md_array(arr, "fallback_name", "/")
+        info = VariableInfo.from_md_array(arr, "fallback_name", "/")
         assert (
             info.name == "fallback_name"
         ), f"Expected 'fallback_name', got '{info.name}'"
@@ -481,7 +481,7 @@ class TestArrayInfoFromMdArray:
         """Verify full_name fallback uses group_full_name/name."""
         arr = _mock_md_array(name="temp")
         arr.GetFullName.side_effect = RuntimeError("fail")
-        info = ArrayInfo.from_md_array(arr, "temp", "/root")
+        info = VariableInfo.from_md_array(arr, "temp", "/root")
         assert (
             info.full_name == "/root/temp"
         ), f"Expected '/root/temp', got '{info.full_name}'"
@@ -490,21 +490,21 @@ class TestArrayInfoFromMdArray:
         """Verify full_name fallback with root group."""
         arr = _mock_md_array(name="temp")
         arr.GetFullName.side_effect = RuntimeError("fail")
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert info.full_name == "/temp", f"Expected '/temp', got '{info.full_name}'"
 
     def test_dtype_failure(self):
         """Verify dtype defaults to 'unknown' when GetDataType raises."""
         arr = _mock_md_array()
         arr.GetDataType.side_effect = RuntimeError("fail")
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert info.dtype == "unknown", f"Expected 'unknown', got '{info.dtype}'"
 
     def test_shape_failure_uses_dimensions_fallback(self):
         """Verify shape fallback reads sizes from dimensions when GetShape fails."""
         arr = _mock_md_array(shape=(10, 20), dim_names=["/lat", "/lon"])
         arr.GetShape.side_effect = RuntimeError("fail")
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert info.shape == [
             10,
             20,
@@ -515,7 +515,7 @@ class TestArrayInfoFromMdArray:
         arr = _mock_md_array(shape=(10, 20))
         arr.GetShape.side_effect = RuntimeError("fail")
         arr.GetDimensions.side_effect = RuntimeError("fail")
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert (
             info.dimensions == []
         ), f"Expected empty dimensions, got {info.dimensions}"
@@ -526,7 +526,7 @@ class TestArrayInfoFromMdArray:
         dim = arr.GetDimensions()[0]
         dim.GetFullName.side_effect = RuntimeError("fail")
         dim.GetName.return_value = "x"
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert (
             "x" in info.dimensions
         ), f"Expected 'x' in dimensions, got {info.dimensions}"
@@ -535,7 +535,7 @@ class TestArrayInfoFromMdArray:
         """Verify unit defaults to None when GetUnit raises."""
         arr = _mock_md_array()
         arr.GetUnit.side_effect = RuntimeError("fail")
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert info.unit is None, f"Expected None, got '{info.unit}'"
 
     def test_spatial_ref_captured(self):
@@ -544,7 +544,7 @@ class TestArrayInfoFromMdArray:
         srs.ExportToWkt.return_value = 'GEOGCS["WGS 84"]'
         srs.ExportToJSON.return_value = '{"type":"GeographicCRS"}'
         arr = _mock_md_array(srs=srs)
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert (
             info.srs_wkt == 'GEOGCS["WGS 84"]'
         ), f"Expected WKT string, got '{info.srs_wkt}'"
@@ -556,7 +556,7 @@ class TestArrayInfoFromMdArray:
         """Verify srs_wkt and srs_projjson are None when GetSpatialRef raises."""
         arr = _mock_md_array()
         arr.GetSpatialRef.side_effect = RuntimeError("fail")
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert info.srs_wkt is None, f"Expected None, got '{info.srs_wkt}'"
         assert info.srs_projjson is None, f"Expected None, got '{info.srs_projjson}'"
 
@@ -564,7 +564,7 @@ class TestArrayInfoFromMdArray:
         """Verify structural_info is read and converted to {str: str}."""
         arr = _mock_md_array()
         arr.GetStructuralInfo.return_value = {"COMPRESS": "DEFLATE", "LEVEL": "6"}
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert info.structural_info == {
             "COMPRESS": "DEFLATE",
             "LEVEL": "6",
@@ -574,7 +574,7 @@ class TestArrayInfoFromMdArray:
         """Verify structural_info is None when GetStructuralInfo raises."""
         arr = _mock_md_array()
         arr.GetStructuralInfo.side_effect = RuntimeError("fail")
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert (
             info.structural_info is None
         ), f"Expected None, got {info.structural_info}"
@@ -583,7 +583,7 @@ class TestArrayInfoFromMdArray:
         """Verify block_size is read and converted to list[int]."""
         arr = _mock_md_array()
         arr.GetBlockSize.return_value = [1, 180, 360]
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert info.block_size == [
             1,
             180,
@@ -596,7 +596,7 @@ class TestArrayInfoFromMdArray:
         cv.GetFullName.return_value = "/lat"
         arr = _mock_md_array()
         arr.GetCoordinateVariables.return_value = [cv]
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert info.coordinate_variables == [
             "/lat"
         ], f"Expected ['/lat'], got {info.coordinate_variables}"
@@ -609,16 +609,16 @@ class TestArrayInfoFromMdArray:
         bad_dim = MagicMock()
         bad_dim.GetSize.side_effect = RuntimeError("fail")
         arr.GetDimensions.return_value = [bad_dim]
-        info = ArrayInfo.from_md_array(arr, "temp", "/")
+        info = VariableInfo.from_md_array(arr, "temp", "/")
         assert info.shape == [], f"Expected [], got {info.shape}"
 
 
-class TestArrayInfoDataclass:
-    """Tests for ArrayInfo dataclass defaults."""
+class TestVariableInfoDataclass:
+    """Tests for VariableInfo dataclass defaults."""
 
     def test_defaults(self):
         """Verify optional fields default to None and empty containers."""
-        info = ArrayInfo(
+        info = VariableInfo(
             name="v",
             full_name="/v",
             dtype="float32",
@@ -706,7 +706,7 @@ class TestStructuralInfoDataclass:
 
 def _make_metadata(
     dims: dict[str, DimensionInfo] | None = None,
-    arrays: dict[str, ArrayInfo] | None = None,
+    arrays: dict[str, VariableInfo] | None = None,
     groups: dict[str, GroupInfo] | None = None,
 ) -> NetCDFMetadata:
     """Create a NetCDFMetadata instance with sensible defaults.
@@ -727,7 +727,7 @@ def _make_metadata(
         }
     if arrays is None:
         arrays = {
-            "/temperature": ArrayInfo(
+            "/temperature": VariableInfo(
                 name="temperature",
                 full_name="/temperature",
                 dtype="float32",
@@ -737,54 +737,19 @@ def _make_metadata(
         }
     if groups is None:
         groups = {
-            "/": GroupInfo(name="root", full_name="/", arrays=["/temperature"]),
+            "/": GroupInfo(name="root", full_name="/", variables=["/temperature"]),
         }
 
     return NetCDFMetadata(
         driver="netCDF",
         root_group="/",
         groups=groups,
-        arrays=arrays,
+        variables=arrays,
         dimensions=dims,
         global_attributes={"Conventions": "CF-1.6"},
         structural=StructuralInfo(driver_name="netCDF"),
         created_with={"library": "GDAL", "version": "3.9.0"},
     )
-
-
-class TestNetCDFMetadataNames:
-    """Tests for NetCDFMetadata.names property."""
-
-    def test_returns_short_names(self):
-        """Verify names property returns short names of all dimensions."""
-        meta = _make_metadata()
-        names = meta.names
-        assert set(names) == {
-            "time",
-            "lat",
-            "lon",
-        }, f"Expected {{'time', 'lat', 'lon'}}, got {set(names)}"
-
-    def test_empty_dimensions(self):
-        """Verify names returns [] when no dimensions exist."""
-        meta = _make_metadata(dims={})
-        assert meta.names == [], f"Expected [], got {meta.names}"
-
-    def test_preserves_order(self):
-        """Verify names preserves insertion order of dimensions dict."""
-        from collections import OrderedDict
-
-        dims = OrderedDict(
-            [
-                ("/b", DimensionInfo(name="b", full_name="/b", size=1)),
-                ("/a", DimensionInfo(name="a", full_name="/a", size=2)),
-            ]
-        )
-        meta = _make_metadata(dims=dims)
-        assert meta.names == [
-            "b",
-            "a",
-        ], f"Expected ['b', 'a'] (insertion order), got {meta.names}"
 
 
 class TestNetCDFMetadataGetDimension:
@@ -835,14 +800,11 @@ class TestNetCDFMetadataDataclass:
     """Tests for NetCDFMetadata dataclass defaults and fields."""
 
     def test_optional_defaults(self):
-        """Verify open_options_used and dimension_overview default to None."""
+        """Verify open_options_used defaults to None."""
         meta = _make_metadata()
         assert (
             meta.open_options_used is None
         ), "open_options_used should default to None"
-        assert (
-            meta.dimension_overview is None
-        ), "dimension_overview should default to None"
 
     def test_all_fields_accessible(self):
         """Verify all expected fields are accessible."""
@@ -850,7 +812,7 @@ class TestNetCDFMetadataDataclass:
         assert meta.driver == "netCDF", f"Expected 'netCDF', got '{meta.driver}'"
         assert meta.root_group == "/", f"Expected '/', got '{meta.root_group}'"
         assert isinstance(meta.groups, dict), f"Expected dict, got {type(meta.groups)}"
-        assert isinstance(meta.arrays, dict), f"Expected dict, got {type(meta.arrays)}"
+        assert isinstance(meta.variables, dict), f"Expected dict, got {type(meta.variables)}"
         assert isinstance(
             meta.dimensions, dict
         ), f"Expected dict, got {type(meta.dimensions)}"

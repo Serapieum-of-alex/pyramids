@@ -19,7 +19,7 @@ flowchart LR
 flowchart TB
   subgraph Process
     A[Dataset]:::c --> B[_io]:::c
-    C[Datacube]:::c --> B
+    C[DatasetCollection]:::c --> B
     D[FeatureCollection]:::c --> B
     A --> E[_utils]
     C --> E
@@ -33,8 +33,8 @@ flowchart TB
 ```mermaid
 flowchart LR
   io[_io: read_file, to_ascii, path parsing]\nutils[_utils: geometry/index helpers]
-  ds[dataset.Dataset]\nabs[abstract_dataset.AbstractDataset]
-  dc[datacube.Datacube]\nfc[featurecollection.FeatureCollection]
+  ds[dataset.Dataset]\nabs[dataset.abstract_dataset.AbstractDataset]
+  dc[dataset.DatasetCollection]\nfc[feature.FeatureCollection]
 
   abs --> ds
   ds --> io
@@ -48,7 +48,7 @@ flowchart LR
 
 1. Input paths are parsed; archives (.zip/.gz/.tar) are handled in `_io`.
 2. Raster inputs are loaded into `Dataset`; vector inputs into `FeatureCollection`.
-3. `Datacube` orchestrates collections of datasets for temporal/spatial ops.
+3. `DatasetCollection` orchestrates collections of datasets for temporal/spatial ops.
 4. Results are exported via `to_file` (GeoTIFF/ASCII/GeoJSON, etc.).
 
 See the diagrams page for UML and sequence flows.

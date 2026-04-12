@@ -1,8 +1,8 @@
 site_name: pyramids
 site_description: GIS package
-site_url: https://serapieum-of-alex.github.io/pyramids/
-repo_url: https://github.com/Serapieum-of-alex/pyramids
-repo_name: Serapieum-of-alex/pyramids
+site_url: https://serapeum-org.github.io/pyramids/
+repo_url: https://github.com/serapeum-org/pyramids
+repo_name: serapeum-org/pyramids
 
 theme:
   name: material
@@ -10,10 +10,10 @@ theme:
   features:
     - navigation.instant
     - navigation.tracking
-    - navigation.expand
-    - navigation.indexes
+    # - navigation.expand
+    # - navigation.indexes
     - navigation.footer
-    - navigation.sections
+    # - navigation.sections
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.top
@@ -53,7 +53,9 @@ theme:
 
 plugins:
   - search
-  - mkdocs-jupyter
+  - mkdocs-jupyter:
+      include_source: true
+      execute: false
   - panzoom:
       hint_location: "top"
       key: "ctrl"
@@ -114,15 +116,51 @@ nav:
   - Architecture:
     - Diagrams: architecture/diagrams.md
   - Reference:
-    - Dataset: reference/dataset.md
-    - Datacube: reference/datacube.md
-    - Feature Collection: reference/featurecollection.md
+    - Dataset:
+      - Overview: reference/dataset/index.md
+      - I/O Operations: reference/dataset/io.md
+      - Spatial Operations: reference/dataset/spatial.md
+      - Analysis Operations: reference/dataset/analysis.md
+      - Vectorize Operations: reference/dataset/vectorize.md
+      - Band Metadata Operations: reference/dataset/band_metadata.md
+      - Cell Operations: reference/dataset/cell.md
+    - DatasetCollection: reference/dataset_collection.md
+    - Feature Collection: reference/feature.md
+    - NetCDF:
+      - NetCDF Class: reference/netcdf/index.md
+      - Data Models: reference/netcdf/models.md
+      - Metadata: reference/netcdf/metadata.md
+      - Dimensions: reference/netcdf/dimensions.md
+      - Utilities: reference/netcdf/utils.md
+      - CF Conventions: reference/netcdf/cf/index.md
+      - UGRID:
+        - Overview: reference/netcdf/ugrid/index.md
+        - UgridDataset: reference/netcdf/ugrid/dataset.md
+        - Mesh2d: reference/netcdf/ugrid/mesh.md
+        - Connectivity: reference/netcdf/ugrid/connectivity.md
+        - Spatial Operations: reference/netcdf/ugrid/spatial.md
+        - Interpolation: reference/netcdf/ugrid/interpolation.md
+        - I/O: reference/netcdf/ugrid/io.md
+        - Data Models: reference/netcdf/ugrid/models.md
+        - Visualization: reference/netcdf/ugrid/plot.md
     - config: reference/config.md
-  - Tutorials:
-      - Dataset: tutorials/dataset.md
-      - Datacube: tutorials/datacube.md
-      - Raster basics: tutorials/raster-basics.md
-      - Datacube basics: tutorials/datacube-basics.md
+  - Examples:
+      - Dataset:
+          - Overview: tutorials/dataset.md
+          - Raster basics: tutorials/raster-basics.md
+          - Datacube basics: tutorials/datacube-basics.md
+          - Dataset basics: examples/dataset/dataset.ipynb
+          - Spatial operations: examples/dataset/spatial-operation-methods.ipynb
+          - Convert longitude: examples/dataset/convert-longitude.ipynb
+          - DatasetCollection (guide): tutorials/dataset_collection.md
+          - Dataset collection: examples/dataset/dataset_collection.ipynb
+          - South America: examples/dataset/south-america.ipynb
+      - Basemap:
+          - Basemap example: examples/basemap/basemap-example.ipynb
+      - NetCDF:
+          - UGRID:
+              - Mesh exploration: examples/netcdf/ugrid/ugrid-mesh-exploration.ipynb
+              - River channel: examples/netcdf/ugrid/ugrid-river-channel.ipynb
   - How-to:
       - Dev Container: how-to/devcontainer.md
       - Docker & GHCR: how-to/docker.md
@@ -145,7 +183,7 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/Serapieum-of-alex/pyramids
+      link: https://github.com/serapeum-org/pyramids
   version:
       provider: mike
   version_selector: true

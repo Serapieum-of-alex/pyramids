@@ -1,13 +1,6 @@
 ﻿# dataset
 
-- dataset module contains Two classes `Dataset` and `DataCube`.
-
-.. digraph:: Linking
-
-    dataset -> Dataset;
-    dataset -> DataCube;
-    dpi=200;
-
+- dataset module contains Two classes `Dataset` and `DatasetCollection`.
 - Dataset represent a raster object which could be created from reading a geotiff, netcdf, ascii or any file
     format/driver supported by gdal.
 - The raster could have single or multi bands.
@@ -1292,5 +1285,5 @@ ReadOnlyError
 ## References
 
 .. target-notes::
-.. _`Digital-Earth`: https://github.com/Serapieum-of-alex/Digital-Earth
+.. _`Digital-Earth`: https://github.com/serapeum-org/Digital-Earth
 .. _`cropAlignedFolder`: https://github.com/MAfarrag/pyramids/tree/main/examples/data/crop_aligned_folder

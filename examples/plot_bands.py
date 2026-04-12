@@ -4,7 +4,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 from pyramids.dataset import Dataset
-from pyramids.multidataset import MultiDataset
+from pyramids.dataset import DatasetCollection
 
 path = "tests/data/raster-folder/1_MSWEP_1979.01.02.tif"
 # %%
@@ -13,7 +13,7 @@ fig, ax = dataset.plot(band=0)
 
 # %%
 rasters_folder_path = "tests/data/raster-folder"
-cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
+cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
 cube.open_multi_dataset()
 # dataset = cube.iloc(0)
 # fig, ax= dataset.plot()

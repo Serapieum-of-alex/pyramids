@@ -4,19 +4,23 @@ from __future__ import annotations
 
 from pyramids.netcdf.metadata import from_json, get_metadata, to_dict, to_json
 from pyramids.netcdf.models import (
-    ArrayInfo,
+    CFInfo,
+    VariableInfo,
     DimensionInfo,
     GroupInfo,
     NetCDFMetadata,
     StructuralInfo,
 )
 from pyramids.netcdf.netcdf import NetCDF
+from pyramids.netcdf.ugrid import UgridDataset
 
 __all__ = [
     "NetCDF",
+    "UgridDataset",
     "NetCDFMetadata",
+    "CFInfo",
     "DimensionInfo",
-    "ArrayInfo",
+    "VariableInfo",
     "GroupInfo",
     "StructuralInfo",
     "get_metadata",

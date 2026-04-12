@@ -19,7 +19,7 @@ flowchart LR
 flowchart TB
   subgraph Runtime Process
     A[Dataset]:::c --> B[_io]
-    C[Datacube]:::c --> B
+    C[DatasetCollection]:::c --> B
     D[FeatureCollection]:::c --> B
     A --> E[_utils]
     C --> E
@@ -35,9 +35,9 @@ flowchart LR
   io[_io: read_file, to_ascii, path parsing]
   utils[_utils: geometry/index helpers]
   ds[dataset.Dataset]
-  abs[abstract_dataset.AbstractDataset]
-  dc[datacube.Datacube]
-  fc[featurecollection.FeatureCollection]
+  abs[dataset.AbstractDataset]
+  dc[dataset.DatasetCollection]
+  fc[feature.FeatureCollection]
 
   abs --> ds
   ds --> io
@@ -99,17 +99,17 @@ sequenceDiagram
   DS-->>U: writes file
 ```
 
-## Sequence: Build Datacube from Folder
+## Sequence: Build DatasetCollection from Folder
 
 ```mermaid
 sequenceDiagram
   participant U as User
-  participant DC as Datacube
+  participant DC as DatasetCollection
   participant DS as Dataset
   U->>DC: from_folder("./rasters/*.tif")
   DC->>DS: open each file
   DS-->>DC: Dataset objects
-  DC-->>U: Datacube
+  DC-->>U: DatasetCollection
 ```
 
 ## Sequence: Zonal Statistics
@@ -142,9 +142,9 @@ flowchart LR
   abstract_dataset --> dataset
   _io --> dataset
   _utils --> dataset
-  dataset --> datacube
-  _io --> featurecollection
-  _utils --> featurecollection
+  dataset --> dataset_collection
+  _io --> feature
+  _utils --> feature
 ```
 
 - brief class diagram for the `Dataset` class and related components:
@@ -201,7 +201,7 @@ classDiagram
     }
 
     %% DataCube: stack of rasters
-    class datacube_Datacube {
+    class collection_DatasetCollection {
         +__init__(src, time_length, files)
         +create_cube(src, dataset_length)
         +read_multiple_files(path, with_order, regex_string, date, file_name_data_fmt, start, end, fmt, extension)
@@ -214,7 +214,7 @@ classDiagram
     }
 
     %% FeatureCollection for vector data
-    class featurecollection_FeatureCollection {
+    class feature_FeatureCollection {
         +__init__(gdf)
         +GetXYCoords()
         +GetPointCoords()
@@ -240,11 +240,11 @@ classDiagram
 
     %% error classes
     class _errors_ReadOnlyError
-    class _errors_DatasetNoFoundError
+    class _errors_DatasetNotFoundError
     class _errors_NoDataValueError
     class _errors_AlignmentError
     class _errors_DriverNotExistError
-    class _errors_FileFormatNotSupported
+    class _errors_FileFormatNotSupportedError
     class _errors_OptionalPackageDoesNotExist
     class _errors_FailedToSaveError
     class _errors_OutOfBoundsError
@@ -254,18 +254,18 @@ classDiagram
     dataset_Dataset <|-- netcdf_NetCDF
 
     %% composition/usage relations
-    datacube_Datacube --> dataset_Dataset : "base raster"
+    collection_DatasetCollection --> dataset_Dataset : "base raster"
     abstract_dataset_AbstractDataset ..> _utils_Catalog : "uses Catalog constant"
-    abstract_dataset_AbstractDataset ..> featurecollection_FeatureCollection : "vector ops"
-    dataset_Dataset ..> featurecollection_FeatureCollection : "vector ops"
-    featurecollection_FeatureCollection ..> _utils_Catalog : "uses drivers"
+    abstract_dataset_AbstractDataset ..> feature_FeatureCollection : "vector ops"
+    dataset_Dataset ..> feature_FeatureCollection : "vector ops"
+    feature_FeatureCollection ..> _utils_Catalog : "uses drivers"
     dataset_Dataset ..> _errors_ReadOnlyError : "raises"
     dataset_Dataset ..> _errors_AlignmentError : "raises"
     dataset_Dataset ..> _errors_NoDataValueError : "raises"
     dataset_Dataset ..> _errors_FailedToSaveError : "raises"
     dataset_Dataset ..> _errors_OutOfBoundsError : "raises"
-    datacube_Datacube ..> _errors_DatasetNoFoundError : "raises"
-    featurecollection_FeatureCollection ..> _errors_DriverNotExistError : "raises"
+    collection_DatasetCollection ..> _errors_DatasetNotFoundError : "raises"
+    feature_FeatureCollection ..> _errors_DriverNotExistError : "raises"
     netcdf_NetCDF ..> _errors_OptionalPackageDoesNotExist : "raises"
     config_Config ..> dataset_Dataset : "initialises raster settings"
 
@@ -403,7 +403,7 @@ classDiagram
     }
 
     %% DataCube: stack of rasters
-    class datacube_Datacube {
+    class collection_DatasetCollection {
         +__init__(src, time_length, files)
         +__str__()
         +__repr__()
@@ -438,7 +438,7 @@ classDiagram
     }
 
     %% FeatureCollection for vector data
-    class featurecollection_FeatureCollection {
+    class feature_FeatureCollection {
         +__init__(gdf)
         +__str__()
         +feature()
@@ -489,11 +489,11 @@ classDiagram
 
     %% error classes
     class _errors_ReadOnlyError
-    class _errors_DatasetNoFoundError
+    class _errors_DatasetNotFoundError
     class _errors_NoDataValueError
     class _errors_AlignmentError
     class _errors_DriverNotExistError
-    class _errors_FileFormatNotSupported
+    class _errors_FileFormatNotSupportedError
     class _errors_OptionalPackageDoesNotExist
     class _errors_FailedToSaveError
     class _errors_OutOfBoundsError
@@ -503,18 +503,18 @@ classDiagram
     dataset_Dataset <|-- netcdf_NetCDF
 
     %% composition/usage relations
-    datacube_Datacube --> dataset_Dataset : "base raster"
+    collection_DatasetCollection --> dataset_Dataset : "base raster"
     abstract_dataset_AbstractDataset ..> _utils_Catalog : "uses Catalog constant"
-    abstract_dataset_AbstractDataset ..> featurecollection_FeatureCollection : "vector ops"
-    dataset_Dataset ..> featurecollection_FeatureCollection : "vector ops"
-    featurecollection_FeatureCollection ..> _utils_Catalog : "uses drivers"
+    abstract_dataset_AbstractDataset ..> feature_FeatureCollection : "vector ops"
+    dataset_Dataset ..> feature_FeatureCollection : "vector ops"
+    feature_FeatureCollection ..> _utils_Catalog : "uses drivers"
     dataset_Dataset ..> _errors_ReadOnlyError : "raises"
     dataset_Dataset ..> _errors_AlignmentError : "raises"
     dataset_Dataset ..> _errors_NoDataValueError : "raises"
     dataset_Dataset ..> _errors_FailedToSaveError : "raises"
     dataset_Dataset ..> _errors_OutOfBoundsError : "raises"
-    datacube_Datacube ..> _errors_DatasetNoFoundError : "raises"
-    featurecollection_FeatureCollection ..> _errors_DriverNotExistError : "raises"
+    collection_DatasetCollection ..> _errors_DatasetNotFoundError : "raises"
+    feature_FeatureCollection ..> _errors_DriverNotExistError : "raises"
     netcdf_NetCDF ..> _errors_OptionalPackageDoesNotExist : "raises"
     config_Config ..> dataset_Dataset : "initialises raster settings"
 

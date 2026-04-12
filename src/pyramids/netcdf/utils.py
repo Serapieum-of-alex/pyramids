@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
+from collections.abc import Callable
 from typing import Any, TypeAlias, cast
 
 from osgeo import gdal, osr
+from pyramids.base._utils import gdal_to_numpy_dtype
 
 # Keep simple, JSON-serializable attribute values only
 AttributeScalar: TypeAlias = bool | int | float | str
@@ -439,12 +441,21 @@ def _parse_units_origin(units: str) -> tuple[str, datetime]:
     return unit.lower(), origin_dt
 
 
-def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S"):
+def create_time_conversion_func(
+    units: str,
+    out_format: str = "%Y-%m-%d %H:%M:%S",
+    calendar: str = "standard",
+) -> Callable:
     """Create a converter that maps numeric CF time offsets to date strings.
 
     Parses CF-compliant time unit strings (e.g.,
     ``"days since 1979-01-01"``) and returns a callable that
     converts numeric offsets to formatted date strings.
+
+    For standard/proleptic_gregorian calendars, uses Python's
+    ``datetime`` + ``timedelta``. For non-standard calendars
+    (``360_day``, ``noleap``, ``all_leap``, ``julian``), uses
+    ``cftime.num2date()`` (optional dependency).
 
     Args:
         units: CF time unit string in the format
@@ -452,6 +463,8 @@ def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S
             days, hours, minutes, and seconds.
         out_format: strftime format for the output strings.
             Defaults to ``"%Y-%m-%d %H:%M:%S"``.
+        calendar: CF calendar type. Defaults to ``"standard"``.
+            Non-standard calendars require the ``cftime`` package.
 
     Returns:
         Callable: A function that takes a numeric value and
@@ -460,6 +473,8 @@ def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S
     Raises:
         ValueError: If the unit string cannot be parsed or
             uses an unsupported time unit.
+        ImportError: If a non-standard calendar is requested
+            and ``cftime`` is not installed.
 
     Examples:
         - Convert day offsets from a 1979 origin:
@@ -493,52 +508,78 @@ def create_time_conversion_func(units: str, out_format: str = "%Y-%m-%d %H:%M:%S
     See Also:
         _parse_units_origin: Parses the unit string.
     """
-    unit, origin = _parse_units_origin(units)
+    converter = None
 
-    if unit.startswith("day"):
-        scale = timedelta(days=1)
-    elif unit.startswith("hour"):
-        scale = timedelta(hours=1)
-    elif unit.startswith("min"):
-        scale = timedelta(minutes=1)
-    elif unit.startswith("sec"):
-        scale = timedelta(seconds=1)
+    if calendar.lower() not in (
+        "standard", "proleptic_gregorian", "gregorian"
+    ):
+        try:
+            import cftime  # noqa: F811 - optional dep, inline import required
+        except ImportError:
+            raise ImportError(
+                f"Calendar '{calendar}' requires the cftime package. "
+                f"Install it with: pixi add cftime"
+            )
+
+        def convert_cftime(value):
+            dt = cftime.num2date(value, units, calendar)
+            return dt.strftime(out_format)
+
+        converter = convert_cftime
     else:
-        raise ValueError(f"Unsupported time unit: {unit!r}")
+        unit, origin = _parse_units_origin(units)
 
-    def convert(value):
-        # value can be int/float; CF allows fractional units
-        dt = origin + value * scale
-        return dt.strftime(out_format)
+        if unit.startswith("day"):
+            scale = timedelta(days=1)
+        elif unit.startswith("hour"):
+            scale = timedelta(hours=1)
+        elif unit.startswith("min"):
+            scale = timedelta(minutes=1)
+        elif unit.startswith("sec"):
+            scale = timedelta(seconds=1)
+        else:
+            raise ValueError(f"Unsupported time unit: {unit!r}")
 
-    return convert
+        def convert(value):
+            dt = origin + value * scale
+            return dt.strftime(out_format)
+
+        converter = convert
+
+    return converter
 
 
 def _dtype_to_str(dt: Any) -> str:
-    """Convert a GDAL extended data type to a string name.
+    """Convert a GDAL extended data type to a numpy dtype string.
 
-    Attempts ``dt.GetName()`` for ``gdal.ExtendedDataType``
-    objects, then falls back to ``str(dt)``.
+    Tries ``dt.GetName()`` first (works for string types), then
+    ``dt.GetNumericDataType()`` which returns a GDAL code that
+    ``gdal_to_numpy_dtype()`` converts to a name like ``"float32"``.
 
     Args:
         dt: A GDAL ``ExtendedDataType`` or similar object.
 
     Returns:
-        A human-readable type name string, or ``"unknown"``
-        if conversion fails entirely.
+        A numpy-compatible dtype name (e.g. ``"float32"``,
+        ``"int16"``), or ``"unknown"`` if conversion fails.
     """
+    result = "unknown"
     try:
-        # gdal.ExtendedDataType in MDIM
+        # gdal.ExtendedDataType in MDIM (works for string types)
         name = dt.GetName()
         if isinstance(name, str) and name:
-            return name
+            result = name.lower()
     except Exception:
         pass  # nosec B110
-    try:
-        # As a fallback, class name
-        return str(dt)
-    except Exception:
-        return "unknown"
+    if result == "unknown":
+        try:
+            # Numeric types: GetName() returns "" but GetNumericDataType()
+            # gives the GDAL code (e.g. 6 = GDT_Float32)
+            gdal_code = dt.GetNumericDataType()
+            result = gdal_to_numpy_dtype(gdal_code)
+        except Exception:
+            pass  # nosec B110
+    return result
 
 
 def _to_py_scalar(x: Any) -> Any:

@@ -13,8 +13,9 @@ jobs:
   main-package:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         environment: [py311, py312, py313]
 
     steps:
@@ -23,19 +24,23 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: Serapieum-of-alex/github-actions/actions/python-setup/pixi@pixi/v1
+        uses: serapeum-org/github-actions/actions/python-setup/pixi@pixi/v1
         with:
           environments: ${{ matrix.environment }}
           activate-environment: ${{ matrix.environment }}
           cache: true
 
-      - name: Run Tests
-        run: |
-          pixi run -e ${{ matrix.environment }} test-all
+      - name: Run main tests (not plot, not xarray)
+        run: pixi run -e ${{ matrix.environment }} main --cov-append --cov-fail-under=88
+
+      - name: Run plot tests
+        run: pixi run -e ${{ matrix.environment }} plot --cov-fail-under=92
+
+      - name: Run xarray tests
+        run: pixi run -e ${{ matrix.environment }} xarray-tests --cov-fail-under=92
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v5
 
       - name: test Jupyter notebooks
-        run: |
-          pixi run -e ${{ matrix.environment }} notebooks
+        run: pixi run -e ${{ matrix.environment }} notebooks

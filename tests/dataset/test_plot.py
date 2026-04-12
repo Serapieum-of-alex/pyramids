@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -5,13 +7,12 @@ from osgeo import gdal
 from pandas import DataFrame
 
 from pyramids.dataset import Dataset
-from pyramids.multidataset import MultiDataset
+from pyramids.dataset import DatasetCollection
 
-try:
-    from cleopatra.array_glyph import ArrayGlyph
-    from cleopatra.config import Config
-except ImportError:
-    raise ImportError("Cleopatra is not installed")
+_cleo_array = pytest.importorskip("cleopatra.array_glyph", reason="cleopatra not installed")
+ArrayGlyph = _cleo_array.ArrayGlyph
+_cleo_config = pytest.importorskip("cleopatra.config", reason="cleopatra not installed")
+Config = _cleo_config.Config
 
 
 class TestPlotDataSet:
@@ -51,8 +52,35 @@ class TestPlotDataSet:
 
         assert isinstance(array_glyph, ArrayGlyph)
 
+    @pytest.mark.plot
+    def test_basemap_true_calls_add_basemap(self, src: Dataset):
+        """Test that basemap=True calls add_basemap with correct args."""
+        dataset = Dataset(src)
+        with patch("pyramids.basemap.basemap.add_basemap") as mock_add:
+            dataset.plot(band=0, basemap=True)
+            mock_add.assert_called_once()
+            call_kwargs = mock_add.call_args[1]
+            assert call_kwargs["crs"] == dataset.epsg
 
-class TestPlotMultiDataset:
+    @pytest.mark.plot
+    def test_basemap_string_passes_source(self, src: Dataset):
+        """Test that basemap='CartoDB.Positron' passes source."""
+        dataset = Dataset(src)
+        with patch("pyramids.basemap.basemap.add_basemap") as mock_add:
+            dataset.plot(band=0, basemap="CartoDB.Positron")
+            call_kwargs = mock_add.call_args[1]
+            assert call_kwargs["source"] == "CartoDB.Positron"
+
+    @pytest.mark.plot
+    def test_basemap_false_skips(self, src: Dataset):
+        """Test that basemap=False does not call add_basemap."""
+        dataset = Dataset(src)
+        with patch("pyramids.basemap.basemap.add_basemap") as mock_add:
+            dataset.plot(band=0, basemap=False)
+            mock_add.assert_not_called()
+
+
+class TestPlotDatasetCollection:
     @pytest.mark.plot
     def test_geotiff(
         self,
@@ -62,7 +90,7 @@ class TestPlotMultiDataset:
     ):
         from cleopatra.array_glyph import ArrayGlyph
 
-        cube = MultiDataset.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
         cube.open_multi_dataset()
         cleo = cube.plot()
         assert isinstance(cleo, ArrayGlyph)

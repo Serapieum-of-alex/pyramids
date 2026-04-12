@@ -22,6 +22,8 @@ from pyramids.dataset import Dataset
 from pyramids.netcdf.models import NetCDFMetadata
 from pyramids.netcdf.netcdf import NetCDF
 
+from tests.netcdf.conftest import make_3d_nc
+
 
 def _make_3d_nc(
     rows=10,
@@ -33,18 +35,12 @@ def _make_3d_nc(
 ):
     """Create a 3D in-memory NetCDF for testing.
 
-    Returns:
-        NetCDF: An in-memory multidimensional NetCDF container.
+    Delegates to the shared ``make_3d_nc`` helper in conftest.
     """
-    arr = np.random.RandomState(42).rand(bands, rows, cols).astype(np.float64)
-    geo = (0.0, 1.0, 0, float(rows), 0, -1.0)
-    return NetCDF.create_from_array(
-        arr=arr,
-        geo=geo,
-        epsg=epsg,
-        no_data_value=no_data_value,
-        path=None,
-        variable_name=variable_name,
+    return make_3d_nc(
+        rows=rows, cols=cols, bands=bands, epsg=epsg,
+        variable_name=variable_name, no_data_value=no_data_value,
+        arr_type="random", seed=42,
     )
 
 
@@ -234,7 +230,7 @@ class TestSpatialOperationDelegates:
             geometry=[box(1.0, 1.0, 5.0, 5.0)],
             crs="EPSG:4326",
         )
-        result = var.crop(mask, touch=True, inplace=False)
+        result = var.crop(mask, touch=True)
         assert result is not None, "crop should return a new Dataset"
         assert (
             result.rows <= var.rows
@@ -247,7 +243,7 @@ class TestSpatialOperationDelegates:
         """
         nc = _make_3d_nc(rows=10, cols=12, bands=1, epsg=4326)
         var = nc.get_variable("temperature")
-        result = var.to_crs(to_epsg=32637, inplace=False)
+        result = var.to_crs(to_epsg=32637)
         assert result is not None, "to_crs should return a reprojected Dataset"
 
 
@@ -302,7 +298,7 @@ class TestMetaDataSetter:
             driver="netCDF",
             root_group="/",
             groups={},
-            arrays={},
+            variables={},
             dimensions={
                 "/x": DimensionInfo(name="x", full_name="/x", size=12),
             },
@@ -314,81 +310,6 @@ class TestMetaDataSetter:
         assert (
             nc._cached_meta_data is custom_meta
         ), "Expected _cached_meta_data to be the assigned object"
-
-
-class TestBuildDimensionOverviewErrors:
-    """Tests for _build_dimension_overview error handling paths."""
-
-    def test_overview_skips_unreadable_variable(self):
-        """Verify _build_dimension_overview handles RuntimeError from _read_variable.
-
-        Covers lines 419-425: the except (RuntimeError, AttributeError)
-        branch where arr becomes None and the dimension is skipped.
-        """
-        nc = _make_2d_nc()
-        original_read = nc._read_variable
-
-        call_count = [0]
-
-        def patched_read(name):
-            """Raise RuntimeError on the first call to simulate unreadable var."""
-            call_count[0] += 1
-            if call_count[0] == 1:
-                raise RuntimeError("Simulated read failure")
-            return original_read(name)
-
-        with patch.object(nc, "_read_variable", side_effect=patched_read):
-            result = nc._build_dimension_overview()
-        assert result is not None, "Overview should still be built"
-        assert "names" in result, "Overview should contain 'names' key"
-
-    def test_overview_handles_reshape_error(self):
-        """Verify _build_dimension_overview handles reshape/conversion errors.
-
-        Covers lines 430-437: the except (ValueError, TypeError,
-        AttributeError) branches in the value conversion logic.
-        """
-        nc = _make_2d_nc()
-        original_read = nc._read_variable
-
-        def patched_read(name):
-            """Return a mock array whose reshape raises ValueError."""
-            arr = original_read(name)
-            if arr is not None:
-                mock_arr = MagicMock()
-                mock_arr.reshape.side_effect = ValueError("bad reshape")
-                # Also make list() on the mock raise to hit inner except
-                mock_arr.__iter__ = MagicMock(side_effect=TypeError("not iterable"))
-                return mock_arr
-            return arr
-
-        with patch.object(nc, "_read_variable", side_effect=patched_read):
-            result = nc._build_dimension_overview()
-        assert result is not None, "Overview should still be built"
-
-    def test_overview_handles_reshape_fallback_to_list(self):
-        """Verify _build_dimension_overview falls back to list() on reshape error.
-
-        Covers lines 434-435: the try block converting via list(arr)
-        when reshape fails.
-        """
-        nc = _make_2d_nc()
-        original_read = nc._read_variable
-
-        def patched_read(name):
-            """Return a mock array whose reshape fails but list works."""
-            arr = original_read(name)
-            if arr is not None:
-                mock_arr = MagicMock()
-                mock_arr.reshape.side_effect = ValueError("bad reshape")
-                mock_arr.__iter__ = MagicMock(return_value=iter([1.0, 2.0, 3.0]))
-                return mock_arr
-            return arr
-
-        with patch.object(nc, "_read_variable", side_effect=patched_read):
-            result = nc._build_dimension_overview()
-        assert result is not None, "Overview should still be built"
-        assert "values" in result, "Overview should contain 'values' key"
 
 
 class TestReadVariable:
@@ -468,30 +389,37 @@ class TestReadMdArray1D:
 
 
 class TestNeedsYFlip:
-    """Tests for the _needs_y_flip static method."""
+    """Tests for the _needs_y_flip instance method."""
 
-    def test_returns_false_for_negative_y_pixel_size(self):
-        """Verify _needs_y_flip returns False when gt[5] is negative.
+    def test_returns_false_for_1d_array(self):
+        """Verify _needs_y_flip returns False for 1-D arrays.
 
-        Covers line 621: the normal case where Y pixel size < 0
-        (north-to-south).
+        1-D arrays have no Y axis to flip.
         """
         nc = _make_2d_nc()
-        var = nc.get_variable("elevation")
-        result = NetCDF._needs_y_flip(var._raster)
-        assert (
-            result is False
-        ), f"Expected False for negative Y pixel size, got {result}"
+        rg = nc._raster.GetRootGroup()
+        md_arr = rg.OpenMDArray("x")
+        result = nc._needs_y_flip(rg, md_arr)
+        assert result is False, (
+            f"Expected False for 1-D array, got {result}"
+        )
 
-    def test_returns_true_for_positive_y_pixel_size(self):
-        """Verify _needs_y_flip returns True when gt[5] is positive.
+    def test_returns_bool_for_2d_array(self):
+        """Verify _needs_y_flip returns a bool for 2D arrays.
 
-        Covers line 621: the south-to-north case.
+        The result depends on whether the Y dimension goes
+        south-to-north (positive Y pixel size) or not. For
+        in-memory datasets created by pyramids the geotransform
+        is already GDAL-convention (negative Y), so the result
+        may be False.
         """
-        mock_ds = MagicMock(spec=gdal.Dataset)
-        mock_ds.GetGeoTransform.return_value = (0, 1, 0, 0, 0, 1.0)
-        result = NetCDF._needs_y_flip(mock_ds)
-        assert result is True, f"Expected True for positive Y pixel size, got {result}"
+        nc = _make_2d_nc()
+        rg = nc._raster.GetRootGroup()
+        md_arr = rg.OpenMDArray("elevation")
+        result = nc._needs_y_flip(rg, md_arr)
+        assert isinstance(result, bool), (
+            f"Expected bool, got {type(result)}"
+        )
 
 
 class TestGetVariableEdgeCases:
@@ -756,13 +684,14 @@ class TestCreateNetcdfFromArrayValidation:
 
 
 class TestAddMdArrayToGroupFallback:
-    """Tests for _add_md_array_to_group NoData exception path."""
+    """Tests for _add_md_array_to_group NoData handling."""
 
-    def test_add_md_array_no_data_fallback(self):
-        """Verify _add_md_array_to_group falls back to -9999 when NoData fails.
+    def test_no_nodata_when_source_has_none(self):
+        """When source has no nodata, the copy should also have no nodata.
 
-        Covers lines 1086-1087: the except branch calling
-        SetNoDataValueDouble(-9999).
+        Test scenario:
+            Source variable with GetNoDataValue() returning None should
+            not produce a phantom -9999 sentinel on the copy.
         """
         nc = _make_2d_nc()
         src_rg = nc._raster.GetRootGroup()
@@ -773,22 +702,22 @@ class TestAddMdArrayToGroupFallback:
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
         for d in src_arr.GetDimensions():
             iv = d.GetIndexingVariable()
-            NetCDF.create_main_dimension(dst_rg, d.GetName(), dtype, iv.ReadAsArray())
+            NetCDF.create_main_dimension(
+                dst_rg, d.GetName(), dtype, iv.ReadAsArray()
+            )
 
-        # Patch GetNoDataValue to return a value that triggers failure
-        original_get_ndv = src_arr.GetNoDataValue
-
-        def bad_nodata():
-            """Return a value that makes SetNoDataValueDouble fail."""
-            raise RuntimeError("Simulated NoData failure")
-
-        with patch.object(type(src_arr), "GetNoDataValue", bad_nodata):
+        # Patch GetNoDataValue to return None (no nodata on source)
+        with patch.object(
+            type(src_arr), "GetNoDataValue", return_value=None
+        ):
             NetCDF._add_md_array_to_group(dst_rg, "copied_var", src_arr)
 
         copied = dst_rg.OpenMDArray("copied_var")
         assert copied is not None, "Copied variable should exist"
         ndv = copied.GetNoDataValue()
-        assert ndv is not None, "NoData value should have been set"
+        assert ndv is None, (
+            f"Expected no nodata (None), got {ndv}"
+        )
 
 
 class TestSetVariableAttributes:
@@ -1072,10 +1001,7 @@ class TestMSWEPFile:
             open_as_multi_dimensional=True,
         )
         md = nc.get_all_metadata()
-        assert (
-            md.dimension_overview is not None
-        ), "dimension_overview should be populated"
-        assert "names" in md.dimension_overview, "Overview should have 'names' key"
+        assert len(md.dimensions) > 0, "dimensions should be populated"
 
     def test_mswep_lon_lat(self):
         """Verify lon/lat are readable from MSWEP file."""

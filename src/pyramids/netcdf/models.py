@@ -25,11 +25,11 @@ class GroupInfo:
 
     All fields are JSON-serializable and use full names
     (e.g. ``"/root/subgroup"``) for stable cross-references
-    between groups, arrays, and dimensions.
+    between groups, variables, and dimensions.
 
     Note:
         ``frozen=True`` prevents field reassignment but container
-        fields (``attributes``, ``children``, ``arrays``) are
+        fields (``attributes``, ``children``, ``variables``) are
         technically mutable.  Treat all contents as **read-only**
         after construction.
 
@@ -40,7 +40,7 @@ class GroupInfo:
         attributes: Key-value mapping of group-level
             attributes read from the NetCDF file.
         children: Full names of direct child groups.
-        arrays: Full names of arrays belonging to this
+        variables: Full names of variables belonging to this
             group.
 
     Examples:
@@ -52,7 +52,7 @@ class GroupInfo:
             ...     full_name="/",
             ...     attributes={"Conventions": "CF-1.6"},
             ...     children=["/forecast"],
-            ...     arrays=["/temperature", "/pressure"],
+            ...     variables=["/temperature", "/pressure"],
             ... )
             >>> info.name
             'root'
@@ -69,7 +69,7 @@ class GroupInfo:
             >>> info = GroupInfo(name="leaf", full_name="/leaf")
             >>> info.children
             []
-            >>> info.arrays
+            >>> info.variables
             []
             >>> info.attributes
             {}
@@ -77,7 +77,7 @@ class GroupInfo:
             ```
 
     See Also:
-        ArrayInfo: Metadata for individual arrays within a group.
+        VariableInfo: Metadata for individual variables within a group.
         StructuralInfo: Driver-level metadata for the dataset.
     """
 
@@ -85,14 +85,14 @@ class GroupInfo:
     full_name: str
     attributes: dict[str, AttributeValue] = field(default_factory=dict)
     children: list[str] = field(default_factory=list)
-    arrays: list[str] = field(default_factory=list)
+    variables: list[str] = field(default_factory=list)
 
     @classmethod
     def from_group(
         cls,
         group: gdal.Group,
         *,
-        arrays: list[str],
+        variables: list[str],
         children: list[str],
         attributes: dict[str, AttributeValue] | None = None,
     ) -> GroupInfo:
@@ -104,8 +104,8 @@ class GroupInfo:
 
         Args:
             group: The GDAL multidimensional group object.
-            arrays: Full names of arrays that belong to this
-                group (e.g. ``["/temperature"]``).
+            variables: Full names of variables that belong to
+                this group (e.g. ``["/temperature"]``).
             children: Full names of direct child groups
                 (e.g. ``["/forecast"]``).
             attributes: Pre-read attributes dictionary. If
@@ -117,14 +117,12 @@ class GroupInfo:
                 group.
 
         See Also:
-            ArrayInfo.from_md_array: Analogous factory for
-                array metadata.
+            VariableInfo.from_md_array: Analogous factory for
+                variable metadata.
         """
         name = _get_group_name(group)
-        # Full name with fallback
         full_name = _full_name_with_fallback(group, name)
 
-        # Attributes
         if attributes is None:
             attributes = _read_attributes(group)
 
@@ -133,7 +131,7 @@ class GroupInfo:
             full_name=full_name,
             attributes=attributes or {},
             children=list(children) if children else [],
-            arrays=list(arrays) if arrays else [],
+            variables=list(variables) if variables else [],
         )
 
 
@@ -205,7 +203,7 @@ class DimensionInfo:
             ```
 
     See Also:
-        ArrayInfo: Metadata for arrays that reference these
+        VariableInfo: Metadata for variables that reference these
             dimensions.
         NetCDFMetadata.get_dimension: Look up a dimension by
             name.
@@ -302,7 +300,7 @@ class DimensionInfo:
 
 
 @dataclass(frozen=True)
-class ArrayInfo:
+class VariableInfo:
     """Immutable metadata for a single MDIM array (variable).
 
     Stores everything needed to describe a NetCDF variable
@@ -349,8 +347,8 @@ class ArrayInfo:
     Examples:
         - Create metadata for a 2-D temperature variable:
             ```python
-            >>> from pyramids.netcdf.models import ArrayInfo
-            >>> arr = ArrayInfo(
+            >>> from pyramids.netcdf.models import VariableInfo
+            >>> arr = VariableInfo(
             ...     name="temperature",
             ...     full_name="/temperature",
             ...     dtype="float32",
@@ -369,8 +367,8 @@ class ArrayInfo:
         - Create metadata for a 3-D variable with scale
           and offset:
             ```python
-            >>> from pyramids.netcdf.models import ArrayInfo
-            >>> arr = ArrayInfo(
+            >>> from pyramids.netcdf.models import VariableInfo
+            >>> arr = VariableInfo(
             ...     name="precip",
             ...     full_name="/precip",
             ...     dtype="int16",
@@ -413,8 +411,8 @@ class ArrayInfo:
     @classmethod
     def from_md_array(
         cls, md_arr: gdal.MDArray, md_arr_name: str, group_full_name: str
-    ) -> ArrayInfo:
-        """Build an ArrayInfo from a live GDAL MDArray.
+    ) -> VariableInfo:
+        """Build a VariableInfo from a live GDAL MDArray.
 
         Extracts name, data type, shape, dimension links,
         attributes, CF conventions (scale, offset, nodata),
@@ -430,7 +428,7 @@ class ArrayInfo:
                 the array's full name).
 
         Returns:
-            ArrayInfo: Constructed metadata instance for the
+            VariableInfo: Constructed metadata instance for the
                 array.
 
         See Also:
@@ -588,7 +586,7 @@ class StructuralInfo:
         See Also:
             NetCDFMetadata: The top-level model that
                 aggregates structural info with groups,
-                arrays, and dimensions.
+                variables, and dimensions.
         """
         try:
             dmd = dataset.GetDriver().GetMetadata_Dict()
@@ -598,18 +596,63 @@ class StructuralInfo:
         return cls(driver_name=driver_name, driver_metadata=dmd)
 
 
+MAX_DISPLAY_VARIABLES = 10
+
+
+@dataclass
+class CFInfo:
+    """CF convention metadata derived by cross-referencing variables.
+
+    Computed as a post-processing step in ``MetadataBuilder.build()``
+    after all variables, dimensions, and attributes are collected.
+
+    Args:
+        cf_version: CF version string parsed from ``Conventions``
+            (e.g. ``"1.8"``). None if not declared.
+        conventions: Parsed ``Conventions`` attribute as
+            ``{name: version}`` dict.
+        classifications: Per-variable CF role classification as
+            ``{var_name: role}`` where role is one of ``"data"``,
+            ``"coordinate"``, ``"grid_mapping"``, ``"bounds"``,
+            ``"cell_measure"``, ``"ancillary"``, ``"mesh_topology"``,
+            ``"connectivity"``, ``"auxiliary_coordinate"``.
+        grid_mappings: Grid mapping variable attributes as
+            ``{var_name: {attr: value}}``.
+        bounds_map: Bounds associations as
+            ``{bounds_var_name: parent_coord_name}``.
+        data_variable_names: Variable names classified as ``"data"``.
+    """
+
+    cf_version: str | None = None
+    conventions: dict[str, str] = field(default_factory=dict)
+    classifications: dict[str, str] = field(default_factory=dict)
+    grid_mappings: dict[str, dict[str, Any]] = field(default_factory=dict)
+    bounds_map: dict[str, str] = field(default_factory=dict)
+    data_variable_names: list[str] = field(default_factory=list)
+
+
 @dataclass
 class NetCDFMetadata:
     """Top-level metadata model for a NetCDF MDIM dataset.
 
     Aggregates all structural and scientific metadata
     extracted from a NetCDF file opened through the GDAL
-    multidimensional API: groups, arrays (variables),
+    multidimensional API: groups, variables,
     dimensions, global attributes, and driver information.
 
     This is the single object returned by the metadata
     extraction pipeline and is intended as a complete,
     JSON-serializable snapshot of the file's structure.
+
+    Note:
+        Dictionary keys for ``groups``, ``variables``, and
+        ``dimensions`` use **short names** with the leading
+        ``/`` stripped (e.g. ``"time"`` not ``"/time"``).
+        The root group keeps ``"/"`` as its key.  The
+        ``full_name`` attribute on each object retains the
+        original GDAL path (e.g. ``"/time"``).  Use
+        ``get_dimension(name)`` for lookups that accept
+        both forms.
 
     Args:
         driver: Short name of the GDAL driver used to
@@ -617,12 +660,12 @@ class NetCDFMetadata:
         root_group: Full name of the root group
             (typically ``"/"``). ``None`` when the file
             has no group hierarchy.
-        groups: Mapping from group full name to its
-            ``GroupInfo`` metadata.
-        arrays: Mapping from array full name to its
-            ``ArrayInfo`` metadata.
-        dimensions: Mapping from dimension full name to
-            its ``DimensionInfo`` metadata.
+        groups: Mapping keyed by short name (or ``"/"``
+            for root) to ``GroupInfo`` metadata.
+        variables: Mapping keyed by short name to
+            ``VariableInfo`` metadata.
+        dimensions: Mapping keyed by short name to
+            ``DimensionInfo`` metadata.
         global_attributes: Key-value mapping of root-level
             NetCDF attributes (e.g. ``Conventions``,
             ``history``).
@@ -634,9 +677,6 @@ class NetCDFMetadata:
         open_options_used: GDAL open options that were
             passed when opening the file. ``None`` when
             no special options were used.
-        dimension_overview: Optional summary dictionary
-            with dimension names as keys and sizes as
-            values.
 
     Examples:
         - Create a minimal NetCDFMetadata instance:
@@ -644,7 +684,7 @@ class NetCDFMetadata:
             >>> from pyramids.netcdf.models import (
             ...     NetCDFMetadata,
             ...     GroupInfo,
-            ...     ArrayInfo,
+            ...     VariableInfo,
             ...     DimensionInfo,
             ... )
             >>> dim = DimensionInfo(
@@ -652,7 +692,7 @@ class NetCDFMetadata:
             ...     full_name="/time",
             ...     size=12,
             ... )
-            >>> arr = ArrayInfo(
+            >>> arr = VariableInfo(
             ...     name="temp",
             ...     full_name="/temp",
             ...     dtype="float32",
@@ -662,13 +702,13 @@ class NetCDFMetadata:
             >>> grp = GroupInfo(
             ...     name="root",
             ...     full_name="/",
-            ...     arrays=["/temp"],
+            ...     variables=["/temp"],
             ... )
             >>> meta = NetCDFMetadata(
             ...     driver="netCDF",
             ...     root_group="/",
             ...     groups={"/": grp},
-            ...     arrays={"/temp": arr},
+            ...     variables={"/temp": arr},
             ...     dimensions={"/time": dim},
             ...     global_attributes={"Conventions": "CF-1.6"},
             ...     structural=None,
@@ -676,8 +716,8 @@ class NetCDFMetadata:
             ... )
             >>> meta.driver
             'netCDF'
-            >>> meta.names
-            ['time']
+            >>> list(meta.dimensions.keys())
+            ['/time']
             >>> meta.get_dimension("time").size
             12
 
@@ -685,7 +725,7 @@ class NetCDFMetadata:
 
     See Also:
         GroupInfo: Metadata for a single group.
-        ArrayInfo: Metadata for a single array.
+        VariableInfo: Metadata for a single array.
         DimensionInfo: Metadata for a single dimension.
         StructuralInfo: Driver-level metadata.
     """
@@ -693,67 +733,73 @@ class NetCDFMetadata:
     driver: str
     root_group: str | None
     groups: dict[str, GroupInfo]
-    arrays: dict[str, ArrayInfo]
+    variables: dict[str, VariableInfo]
     dimensions: dict[str, DimensionInfo]
     global_attributes: dict[str, AttributeValue]
     structural: StructuralInfo | None
     created_with: dict[str, str]
     open_options_used: dict[str, str] | None = None
-    dimension_overview: dict[str, Any] | None = None
+    cf: CFInfo | None = None
 
-    @property
-    def names(self) -> list[str]:
-        """Short names of all dimensions in the dataset.
+    def __str__(self) -> str:
+        """Human-readable summary of the NetCDF structure."""
+        dim_lines = []
+        for dim in self.dimensions.values():
+            dim_lines.append(f"    {dim.name:20s} size={dim.size}")
+        dims_str = "\n".join(dim_lines) if dim_lines else "    (none)"
 
-        Returns a list of dimension short names (e.g.
-        ``["time", "lat", "lon"]``) in the iteration order
-        of the ``dimensions`` dictionary.
+        var_lines = []
+        max_display = MAX_DISPLAY_VARIABLES
+        arr_list = list(self.variables.values())
+        for arr in arr_list[:max_display]:
+            dtype_str = arr.dtype if len(arr.dtype) < 20 else "unknown"
+            var_lines.append(
+                f"    {arr.name:20s} {dtype_str:10s} {list(arr.shape)}"
+            )
+        if len(arr_list) > max_display:
+            var_lines.append(
+                f"    ... and {len(arr_list) - max_display} more"
+            )
+        vars_str = "\n".join(var_lines) if var_lines else "    (none)"
 
-        Returns:
-            List[str]: Short names of every dimension.
+        attr_keys = list(self.global_attributes.keys())
+        attrs_str = ", ".join(attr_keys[:5])
+        if len(attr_keys) > 5:
+            attrs_str += f", ... ({len(attr_keys)} total)"
 
-        Examples:
-            - Retrieve dimension names:
-                ```python
-                >>> from pyramids.netcdf.models import (
-                ...     NetCDFMetadata,
-                ...     DimensionInfo,
-                ... )
-                >>> meta = NetCDFMetadata(
-                ...     driver="netCDF",
-                ...     root_group="/",
-                ...     groups={},
-                ...     arrays={},
-                ...     dimensions={
-                ...         "/lat": DimensionInfo(
-                ...             name="lat",
-                ...             full_name="/lat",
-                ...             size=180,
-                ...         ),
-                ...         "/lon": DimensionInfo(
-                ...             name="lon",
-                ...             full_name="/lon",
-                ...             size=360,
-                ...         ),
-                ...     },
-                ...     global_attributes={},
-                ...     structural=None,
-                ...     created_with={},
-                ... )
-                >>> meta.names
-                ['lat', 'lon']
+        lines = [
+            "NetCDFMetadata",
+            f"  Driver: {self.driver}",
+            f"  Root group: {self.root_group}",
+            f"  Dimensions ({len(self.dimensions)}):",
+            dims_str,
+            f"  Variables ({len(self.variables)}):",
+            vars_str,
+            f"  Global attributes: {attrs_str}",
+        ]
+        return "\n".join(lines)
 
-                ```
-        """
-        return [dim.name for dim in self.dimensions.values()]
+    def __repr__(self) -> str:
+        """Technical representation with counts and driver info."""
+        return (
+            f"NetCDFMetadata("
+            f"driver={self.driver!r}, "
+            f"groups={len(self.groups)}, "
+            f"variables={len(self.variables)}, "
+            f"dimensions={len(self.dimensions)}, "
+            f"attributes={len(self.global_attributes)}"
+            f")"
+        )
 
     def get_dimension(self, name: str) -> DimensionInfo | None:
         """Look up a dimension by short name or full name.
 
         Tries an exact key match against the ``dimensions``
-        dictionary first (which is keyed by full name),
-        then falls back to matching by the dimension's
-        short ``name`` attribute.
+        dictionary first (keys are full names with the leading
+        ``/`` stripped, e.g. ``"/time"`` -> key ``"time"``,
+        ``"/group/time"`` -> key ``"group/time"``), then falls
+        back to matching by the dimension's short ``name``
+        attribute.
 
         Args:
             name: Dimension short name (e.g. ``"time"``)
@@ -780,7 +826,7 @@ class NetCDFMetadata:
                 ...     driver="netCDF",
                 ...     root_group="/",
                 ...     groups={},
-                ...     arrays={},
+                ...     variables={},
                 ...     dimensions={"/time": dim},
                 ...     global_attributes={},
                 ...     structural=None,
@@ -806,7 +852,7 @@ class NetCDFMetadata:
                 ...     driver="netCDF",
                 ...     root_group="/",
                 ...     groups={},
-                ...     arrays={},
+                ...     variables={},
                 ...     dimensions={"/time": dim},
                 ...     global_attributes={},
                 ...     structural=None,
@@ -827,7 +873,7 @@ class NetCDFMetadata:
                 ...     driver="netCDF",
                 ...     root_group="/",
                 ...     groups={},
-                ...     arrays={},
+                ...     variables={},
                 ...     dimensions={},
                 ...     global_attributes={},
                 ...     structural=None,
@@ -839,8 +885,8 @@ class NetCDFMetadata:
                 ```
 
         See Also:
-            NetCDFMetadata.names: List all dimension short
-                names without looking up full metadata.
+            NetCDFMetadata.dimensions: The full dimensions
+                dictionary keyed by full name.
         """
         # Try full name first (exact key lookup)
         if name in self.dimensions:

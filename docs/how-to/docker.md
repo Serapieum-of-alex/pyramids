@@ -142,13 +142,13 @@ Image naming convention for GHCR: `ghcr.io/<owner>/<repo>[:tag]`.
 For this repository, a convenient image name at release time is:
 
 ```
-ghcr.io/serapieum-of-alex/pyramids
+ghcr.io/serapeum-org/pyramids
 ```
 
 Example (adjust owner/repo):
 
 ```bash
-OWNER="Serapieum-of-alex"
+OWNER="serapeum-org"
 REPO="pyramids"
 IMAGE="ghcr.io/${OWNER,,}/${REPO,,}"
 VERSION="<your-version-here>"
@@ -189,12 +189,12 @@ A) Web UI
 
 B) GitHub CLI (`gh`)
 
-The API endpoints differ for user vs organization. Examples below assume the image name is `pyramids` under organization `Serapieum-of-alex`.
+The API endpoints differ for user vs organization. Examples below assume the image name is `pyramids` under organization `serapeum-org`.
 
 List versions (organization):
 
 ```bash
-ORG="Serapieum-of-alex"
+ORG="serapeum-org"
 PKG="pyramids"  # package name in GHCR equals the lowercased repo name by default
 
 gh api -H "Accept: application/vnd.github+json" \

@@ -1,6 +1,52 @@
 ﻿# Change log
 
 
+## 0.13.0 (2026-04-12)
+
+### Feat
+
+- **basemap**: add web tile basemap plotting support (#231)
+
+## 0.12.0 (2026-04-11)
+
+### Feat
+
+- delegate UGRID plotting to cleopatra and add dunder methods to FeatureCollection (#230)
+- **netcdf**: add UGRID unstructured mesh support (#224)
+
+## 0.11.0 (2026-04-05)
+
+### Feat
+
+- **netcdf**: add CF conventions support and xarray interop (#198)
+
+### Fix
+
+- resolve architectural issues across dataset, netcdf, and feature modules (#197)
+
+## 0.10.0 (2026-04-04)
+
+### Feat
+
+- **netcdf**: add variable operations, metadata refinement, and  rename ArrayInfo to VariableInfo (#172)
+- **netcdf**: add variable operations, metadata refinement, and
+  rename ArrayInfo to VariableInfo
+
+### Refactor
+
+- **dataset**: resolve 20 design issues from architectural review (#175)
+- restructure package layout and decompose Dataset into mixins (#170)
+
+## 0.9.1 (2026-03-29)
+
+### Fix
+
+- **packaging**: add GDAL to PyPI deps and fix missing YAML files in wheel (#162)
+
+### Refactor
+
+- **api**: replace os module with pathlib across all public APIs (#157)
+
 ## 0.9.0 (2026-03-27)
 
 ### Feat
