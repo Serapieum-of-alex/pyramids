@@ -36,6 +36,9 @@ Main Features
 - GIS modules to enable the modeler to fully prepare the meteorological inputs and do all the preprocessing
   needed to build the model (align rasters with the DEM), in addition to various methods to manipulate and
   convert different forms of distributed data (rasters, NetCDF, shapefiles)
+- Cloud Optimized GeoTIFF (COG) read, write, and validation, with
+  transparent S3 / GCS / Azure / HTTPS support via GDAL's virtual
+  filesystem. See the [COG cookbook](how-to/cog.md).
 
 ## Installation
 

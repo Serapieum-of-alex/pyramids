@@ -165,6 +165,7 @@ nav:
       - Dev Container: how-to/devcontainer.md
       - Docker & GHCR: how-to/docker.md
       - Recipes: how-to/recipes.md
+      - Cloud Optimized GeoTIFFs: how-to/cog.md
       - FAQ & Troubleshooting: how-to/faq.md
   - About:
     - Change-log: change-log.md
