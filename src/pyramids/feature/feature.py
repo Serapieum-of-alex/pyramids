@@ -1452,37 +1452,6 @@ class FeatureCollection:
 
         return new_gdf
 
-    # @staticmethod
-    # def gcs_distance(coords_1: tuple, coords_2: tuple):
-    #     """GCS_distance.
-    #
-    #     this function calculates the distance between two points that have
-    #     geographic coordinate system
-    #
-    #     parameters:
-    #         coords_1: [Tuple]
-    #             tuple of (long, lat) of the first point
-    #         coords_2: [Tuple]
-    #             tuple of (long, lat) of the second point
-    #
-    #     Returns:
-    #         distance between the two points
-    #
-    #     Examples:
-    #     ```python
-    #     >>> point_1 = (52.22, 21.01)
-    #     >>> point_2 = (52.40, 16.92)
-    #     >>> distance = FeatureCollection.gcs_distance(point_1, point_2)
-    #
-    #     ```
-    #     """
-    #     import_error_msg = f"The triggered function requires geopy package to be install, please install is manually"
-    #     import_geopy(import_error_msg)
-    #     import geopy.distance as distance
-    #     dist = distance.vincenty(coords_1, coords_2).m
-    #
-    #     return dist
-
     @staticmethod
     def reproject_points(
         lat: list,

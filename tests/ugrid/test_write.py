@@ -87,14 +87,14 @@ class TestWriteUgrid:
         assert fnc.nodes_per_element()[0] == 4, "First face (quad) should have 4 nodes"
         assert fnc.nodes_per_element()[1] == 3, "Second face (tri) should have 3 nodes"
 
-    def test_western_scheldt_round_trip(self, western_scheldt_path, tmp_path):
+    def test_ugrid_convention_nc_round_trip(self, ugrid_convention_nc_path, tmp_path):
         """Test read-write-read round trip on real data.
 
         Test scenario:
-            Read Western Scheldt, write to new file, read back,
+            Read UGRID convention NC, write to new file, read back,
             verify node/face counts match.
         """
-        ds1 = UgridDataset.read_file(western_scheldt_path)
+        ds1 = UgridDataset.read_file(ugrid_convention_nc_path)
         out_path = tmp_path / "ws_roundtrip.nc"
         ds1.to_file(out_path)
 

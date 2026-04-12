@@ -7,9 +7,14 @@ default test suite. Run with: ``pytest -m slow``.
 
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+
+pytestmark = [pytest.mark.plot, pytest.mark.slow]
+
+pytest.importorskip("matplotlib", reason="matplotlib not installed (viz extra)")
+pytest.importorskip("mercantile", reason="mercantile not installed (viz extra)")
+import matplotlib.pyplot as plt
 
 from pyramids.basemap import add_basemap, get_provider
 from pyramids.basemap.tiles import fetch_tiles, stitch_tiles
@@ -47,7 +52,6 @@ def ax_4326():
     plt.close(fig)
 
 
-@pytest.mark.slow
 class TestNetworkTileFetching:
     """Integration tests that fetch real tiles from the network."""
 
@@ -92,7 +96,6 @@ class TestNetworkTileFetching:
         assert south < north, f"South ({south}) should be < North ({north})"
 
 
-@pytest.mark.slow
 class TestAddBasemapIntegration:
     """Integration tests for add_basemap with real tile fetching."""
 

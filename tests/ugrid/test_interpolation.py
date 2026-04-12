@@ -180,49 +180,49 @@ class TestMeshToGridLinear:
 class TestToDataset:
     """Tests for UgridDataset.to_dataset() method (UGRID-12)."""
 
-    def test_to_dataset_basic(self, western_scheldt_path):
+    def test_to_dataset_basic(self, ugrid_convention_nc_path):
         """Test to_dataset produces a pyramids Dataset.
 
         Test scenario:
             Should return a Dataset with correct dimensions.
         """
 
-        ds = UgridDataset.read_file(western_scheldt_path)
+        ds = UgridDataset.read_file(ugrid_convention_nc_path)
         raster = ds.to_dataset("mesh2d_node_z", cell_size=500.0)
         assert isinstance(raster, Dataset), f"Expected Dataset, got {type(raster)}"
         assert raster.rows > 0, f"Expected positive rows, got {raster.rows}"
         assert raster.columns > 0, f"Expected positive cols, got {raster.columns}"
 
-    def test_to_dataset_cell_size(self, western_scheldt_path):
+    def test_to_dataset_cell_size(self, ugrid_convention_nc_path):
         """Test that cell size is correctly set on the output Dataset.
 
         Test scenario:
             cell_size=500 should be reflected in the Dataset.
         """
-        ds = UgridDataset.read_file(western_scheldt_path)
+        ds = UgridDataset.read_file(ugrid_convention_nc_path)
         raster = ds.to_dataset("mesh2d_node_z", cell_size=500.0)
         assert abs(raster.cell_size - 500.0) < 1e-6, (
             f"Expected cell_size 500, got {raster.cell_size}"
         )
 
-    def test_to_dataset_linear(self, western_scheldt_path):
+    def test_to_dataset_linear(self, ugrid_convention_nc_path):
         """Test to_dataset with linear interpolation.
 
         Test scenario:
             Linear method should produce a smoother result.
         """
 
-        ds = UgridDataset.read_file(western_scheldt_path)
+        ds = UgridDataset.read_file(ugrid_convention_nc_path)
         raster = ds.to_dataset("mesh2d_node_z", cell_size=1000.0, method="linear")
         assert isinstance(raster, Dataset), f"Expected Dataset, got {type(raster)}"
 
-    def test_to_dataset_invalid_variable(self, western_scheldt_path):
+    def test_to_dataset_invalid_variable(self, ugrid_convention_nc_path):
         """Test to_dataset with invalid variable name.
 
         Test scenario:
             Should raise KeyError.
         """
-        ds = UgridDataset.read_file(western_scheldt_path)
+        ds = UgridDataset.read_file(ugrid_convention_nc_path)
         with pytest.raises(KeyError):
             ds.to_dataset("nonexistent", cell_size=500.0)
 

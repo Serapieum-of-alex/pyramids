@@ -147,42 +147,6 @@ class TestOgrToNumpyDtypeCoverage:
             ogr_to_numpy_dtype(99)
 
 
-class TestImportGeopy:
-    """Tests for import_geopy utility function."""
-
-    def test_import_geopy_does_not_raise_when_installed(self):
-        """If geopy is installed, import_geopy should succeed silently."""
-        from pyramids.base._utils import import_geopy
-
-        try:
-            import geopy  # noqa: F401
-
-            # geopy is installed, so this should not raise
-            import_geopy("geopy is required")
-        except Exception:
-            pytest.skip("geopy not installed, skipping positive test")
-
-    def test_import_geopy_raises_when_missing(self, monkeypatch):
-        """If geopy import fails, OptionalPackageDoesNotExist is raised."""
-        import builtins
-
-        from pyramids.base._errors import OptionalPackageDoesNotExist
-
-        real_import = builtins.__import__
-
-        def mock_import(name, *args, **kwargs):
-            """Block geopy from being imported."""
-            if name == "geopy":
-                raise ImportError("mocked")
-            return real_import(name, *args, **kwargs)
-
-        monkeypatch.setattr(builtins, "__import__", mock_import)
-        from pyramids.base._utils import import_geopy
-
-        with pytest.raises(OptionalPackageDoesNotExist):
-            import_geopy("geopy is required for this test")
-
-
 class TestImportCleopatra:
     """Tests for import_cleopatra utility function."""
 

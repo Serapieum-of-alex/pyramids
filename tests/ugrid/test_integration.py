@@ -109,13 +109,13 @@ class TestFullLifecycle:
         raster = reprojected.to_dataset("salinity", cell_size=0.0005)
         assert raster.rows > 0, f"Expected positive rows, got {raster.rows}"
 
-    def test_western_scheldt_full_pipeline(self, western_scheldt_path):
-        """Test full pipeline on the Western Scheldt real dataset.
+    def test_ugrid_convention_nc_full_pipeline(self, ugrid_convention_nc_path):
+        """Test full pipeline on the UGRID convention NC real dataset.
 
         Test scenario:
             Read -> subset -> to_dataset -> verify raster dimensions.
         """
-        ds = UgridDataset.read_file(western_scheldt_path)
+        ds = UgridDataset.read_file(ugrid_convention_nc_path)
 
         xmin, ymin, xmax, ymax = ds.bounds
         mid_x = (xmin + xmax) / 2

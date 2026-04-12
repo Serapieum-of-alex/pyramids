@@ -346,40 +346,40 @@ class TestSubsetByBounds:
         assert result.n_face == 4, f"Expected 4 faces, got {result.n_face}"
 
 
-class TestSpatialWithWesternScheldt:
-    """Integration tests using the Western Scheldt UGRID file."""
+class TestSpatialWithUgridConventionNc:
+    """Integration tests using the UGRID convention NC UGRID file."""
 
     @pytest.fixture(scope="class")
-    def ws_dataset(self, western_scheldt_path):
-        """Load Western Scheldt dataset once for the class.
+    def ugrid_ds(self, ugrid_convention_nc_path):
+        """Load UGRID convention NC dataset once for the class.
 
         Returns:
-            UgridDataset from the Western Scheldt file.
+            UgridDataset from the UGRID convention NC file.
         """
-        return UgridDataset.read_file(western_scheldt_path)
+        return UgridDataset.read_file(ugrid_convention_nc_path)
 
-    def test_spatial_index_creation(self, ws_dataset):
+    def test_spatial_index_creation(self, ugrid_ds):
         """Test creating a spatial index for a real mesh.
 
         Test scenario:
             Should create index without errors for 8355 faces.
         """
-        idx = MeshSpatialIndex(ws_dataset.mesh)
+        idx = MeshSpatialIndex(ugrid_ds.mesh)
         result = idx.locate_nearest_face(50000.0, 380000.0)
         assert len(result.flatten()) >= 1, "Should find at least 1 nearest face"
 
-    def test_subset_western_scheldt(self, ws_dataset):
-        """Test subsetting the Western Scheldt mesh.
+    def test_subset_ugrid_convention_nc(self, ugrid_ds):
+        """Test subsetting the UGRID convention NC mesh.
 
         Test scenario:
             Subsetting to a smaller box should reduce face count.
         """
-        xmin, ymin, xmax, ymax = ws_dataset.bounds
+        xmin, ymin, xmax, ymax = ugrid_ds.bounds
         mid_x = (xmin + xmax) / 2
         mid_y = (ymin + ymax) / 2
-        result = ws_dataset.subset_by_bounds(xmin, ymin, mid_x, mid_y)
-        assert result.n_face < ws_dataset.n_face, (
-            f"Subset should have fewer faces: {result.n_face} vs {ws_dataset.n_face}"
+        result = ugrid_ds.subset_by_bounds(xmin, ymin, mid_x, mid_y)
+        assert result.n_face < ugrid_ds.n_face, (
+            f"Subset should have fewer faces: {result.n_face} vs {ugrid_ds.n_face}"
         )
         assert result.n_face > 0, "Subset should have at least 1 face"
 

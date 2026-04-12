@@ -388,14 +388,6 @@ class Catalog:
         return result_key
 
 
-def import_geopy(message: str):
-    """Import geopy."""
-    try:
-        import geopy  # noqa
-    except ImportError:
-        raise OptionalPackageDoesNotExist(message)
-
-
 def import_cleopatra(message: str):
     """Import cleopatra."""
     try:

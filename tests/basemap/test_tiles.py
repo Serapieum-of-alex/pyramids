@@ -13,6 +13,10 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+
+pytestmark = pytest.mark.plot
+
+pytest.importorskip("PIL", reason="Pillow not installed (viz extra)")
 from PIL import Image
 
 from pyramids.basemap.tiles import (

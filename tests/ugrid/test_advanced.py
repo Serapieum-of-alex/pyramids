@@ -186,26 +186,26 @@ class TestTimeDimension:
 class TestEdgeNodeData:
     """Tests for edge and node data support (UGRID-20)."""
 
-    def test_node_data_access(self, western_scheldt_path):
+    def test_node_data_access(self, ugrid_convention_nc_path):
         """Test accessing node-centered data.
 
         Test scenario:
             mesh2d_node_z should be accessible and have node location.
         """
-        ds = UgridDataset.read_file(western_scheldt_path)
+        ds = UgridDataset.read_file(ugrid_convention_nc_path)
         var = ds["mesh2d_node_z"]
         assert var.location == "node", f"Expected 'node', got '{var.location}'"
         assert var.n_elements == ds.n_node, (
             f"Node data elements should match n_node: {var.n_elements} vs {ds.n_node}"
         )
 
-    def test_edge_data_access(self, western_scheldt_path):
+    def test_edge_data_access(self, ugrid_convention_nc_path):
         """Test accessing edge-centered data.
 
         Test scenario:
             mesh2d_edge_type should be accessible and have edge location.
         """
-        ds = UgridDataset.read_file(western_scheldt_path)
+        ds = UgridDataset.read_file(ugrid_convention_nc_path)
         var = ds["mesh2d_edge_type"]
         assert var.location == "edge", f"Expected 'edge', got '{var.location}'"
         assert var.n_elements == ds.n_edge, (

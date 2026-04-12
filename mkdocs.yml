@@ -53,7 +53,9 @@ theme:
 
 plugins:
   - search
-  - mkdocs-jupyter
+  - mkdocs-jupyter:
+      include_source: true
+      execute: false
   - panzoom:
       hint_location: "top"
       key: "ctrl"
@@ -142,11 +144,23 @@ nav:
         - Data Models: reference/netcdf/ugrid/models.md
         - Visualization: reference/netcdf/ugrid/plot.md
     - config: reference/config.md
-  - Tutorials:
-      - Dataset: tutorials/dataset.md
-      - DatasetCollection: tutorials/dataset_collection.md
-      - Raster basics: tutorials/raster-basics.md
-      - Datacube basics: tutorials/datacube-basics.md
+  - Examples:
+      - Dataset:
+          - Overview: tutorials/dataset.md
+          - Raster basics: tutorials/raster-basics.md
+          - Datacube basics: tutorials/datacube-basics.md
+          - Dataset basics: examples/dataset/dataset.ipynb
+          - Spatial operations: examples/dataset/spatial-operation-methods.ipynb
+          - Convert longitude: examples/dataset/convert-longitude.ipynb
+          - DatasetCollection (guide): tutorials/dataset_collection.md
+          - Dataset collection: examples/dataset/dataset_collection.ipynb
+          - South America: examples/dataset/south-america.ipynb
+      - Basemap:
+          - Basemap example: examples/basemap/basemap-example.ipynb
+      - NetCDF:
+          - UGRID:
+              - Mesh exploration: examples/netcdf/ugrid/ugrid-mesh-exploration.ipynb
+              - River channel: examples/netcdf/ugrid/ugrid-river-channel.ipynb
   - How-to:
       - Dev Container: how-to/devcontainer.md
       - Docker & GHCR: how-to/docker.md
