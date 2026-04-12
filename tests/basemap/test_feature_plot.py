@@ -11,6 +11,8 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.plot
+
 
 class TestFeatureCollectionPlot:
     """Tests for FeatureCollection.plot method."""
