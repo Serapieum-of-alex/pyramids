@@ -1,0 +1,186 @@
+"""Unit tests for pyramids.dataset.cog.validate."""
+
+from __future__ import annotations
+
+import pytest
+from osgeo import gdal
+
+from pyramids.dataset.cog.validate import (
+    ValidationReport,
+    _fallback_validate,
+    _osgeo_validate,
+    validate,
+)
+from pyramids.dataset.cog.write import translate_to_cog
+
+
+# --- helper: write a plain stripped GTiff that's large enough to fail COG check ---
+
+
+def _write_plain_stripped_gtiff(path, size: int = 2048) -> None:
+    """Write a plain non-tiled, no-overview GTiff > 512px (invalid COG)."""
+    ds = gdal.GetDriverByName("MEM").Create("", size, size, 1, gdal.GDT_Byte)
+    ds.SetGeoTransform((0, 0.01, 0, 0, 0, -0.01))
+    gdal.GetDriverByName("GTiff").CreateCopy(str(path), ds, 0)
+    ds = None
+
+
+# --- tests ---
+
+
+class TestValidationReport:
+    def test_bool_true_when_valid(self):
+        r = ValidationReport(is_valid=True)
+        assert bool(r) is True
+
+    def test_bool_false_when_invalid(self):
+        r = ValidationReport(is_valid=False, errors=["e"])
+        assert bool(r) is False
+
+    def test_defaults(self):
+        r = ValidationReport(is_valid=True)
+        assert r.errors == []
+        assert r.warnings == []
+        assert r.details == {}
+
+    def test_frozen(self):
+        r = ValidationReport(is_valid=True)
+        with pytest.raises(Exception):  # dataclass(frozen=True) -> FrozenInstanceError
+            r.is_valid = False   # type: ignore[misc]
+
+
+class TestValidate:
+    def test_valid_cog(self, mem_dataset, tmp_path):
+        p = tmp_path / "valid.tif"
+        dst = translate_to_cog(mem_dataset, p, {"COMPRESS": "DEFLATE"})
+        dst.FlushCache()
+        dst = None
+
+        report = validate(p)
+        assert report.is_valid is True
+        assert report.errors == []
+        assert isinstance(report.details, dict)
+
+    def test_valid_cog_report_is_truthy(self, mem_dataset, tmp_path):
+        p = tmp_path / "valid.tif"
+        dst = translate_to_cog(mem_dataset, p, {})
+        dst.FlushCache()
+        dst = None
+
+        assert bool(validate(p)) is True
+
+    def test_invalid_stripped_gtiff(self, tmp_path):
+        p = tmp_path / "plain.tif"
+        _write_plain_stripped_gtiff(p, size=2048)
+
+        report = validate(p)
+        assert report.is_valid is False
+        assert any("tiled" in e.lower() or "strip" in e.lower() for e in report.errors)
+
+    def test_tiled_no_overviews_warns(self, tmp_path):
+        """A tiled TIFF without overviews: warning, not error."""
+        ds = gdal.GetDriverByName("MEM").Create("", 2048, 2048, 1, gdal.GDT_Byte)
+        ds.SetGeoTransform((0, 0.01, 0, 0, 0, -0.01))
+        p = tmp_path / "tiled_no_ovr.tif"
+        gdal.GetDriverByName("GTiff").CreateCopy(
+            str(p),
+            ds,
+            0,
+            options=["TILED=YES", "BLOCKXSIZE=512", "BLOCKYSIZE=512"],
+        )
+        ds = None
+
+        report = validate(p)
+        # Either passes with a warning, or is invalid because of overviews.
+        # At minimum: non-empty warnings OR a soft error mentioning overviews.
+        has_ovr_msg = any(
+            "overview" in m.lower()
+            for m in (report.warnings + report.errors)
+        )
+        assert has_ovr_msg
+
+    def test_strict_promotes_warnings_to_errors(self, tmp_path):
+        """strict=True turns warnings into errors."""
+        ds = gdal.GetDriverByName("MEM").Create("", 2048, 2048, 1, gdal.GDT_Byte)
+        ds.SetGeoTransform((0, 0.01, 0, 0, 0, -0.01))
+        p = tmp_path / "tiled_no_ovr.tif"
+        gdal.GetDriverByName("GTiff").CreateCopy(
+            str(p),
+            ds,
+            0,
+            options=["TILED=YES", "BLOCKXSIZE=512", "BLOCKYSIZE=512"],
+        )
+        ds = None
+
+        loose = validate(p, strict=False)
+        strict = validate(p, strict=True)
+        if loose.warnings:
+            # warnings moved into errors under strict
+            assert len(strict.errors) >= len(loose.errors)
+            assert strict.warnings == []
+            assert strict.is_valid is False
+
+    def test_file_not_found_local(self, tmp_path):
+        missing = tmp_path / "does_not_exist.tif"
+        with pytest.raises(FileNotFoundError):
+            validate(missing)
+
+    def test_vsi_path_not_prechecked(self):
+        """/vsi* paths don't trigger FileNotFoundError up-front; GDAL handles them."""
+        # We expect validate() to not raise FileNotFoundError for VSI paths
+        # even if the remote object doesn't exist. It may raise something
+        # else from GDAL, or return an invalid report.
+        try:
+            report = validate("/vsicurl/https://127.0.0.1:1/nope.tif")
+            # If it didn't raise FileNotFoundError up-front, good.
+            assert isinstance(report, ValidationReport)
+        except FileNotFoundError:
+            pytest.fail("VSI paths should not be pre-checked with Path.exists()")
+        except Exception:
+            # Any other GDAL/network error is acceptable — the contract is
+            # only that FileNotFoundError is NOT raised for VSI paths.
+            pass
+
+    def test_accepts_str_and_path(self, mem_dataset, tmp_path):
+        p = tmp_path / "x.tif"
+        dst = translate_to_cog(mem_dataset, p, {})
+        dst.FlushCache()
+        dst = None
+
+        assert validate(str(p)).is_valid is True
+        assert validate(p).is_valid is True
+
+
+class TestOsgeoValidate:
+    def test_returns_triple(self, mem_dataset, tmp_path):
+        p = tmp_path / "x.tif"
+        dst = translate_to_cog(mem_dataset, p, {})
+        dst.FlushCache()
+        dst = None
+
+        errors, warnings, details = _osgeo_validate(str(p))
+        assert isinstance(errors, list)
+        assert isinstance(warnings, list)
+        assert isinstance(details, dict)
+
+    def test_file_not_found_translates_to_oserror(self, tmp_path):
+        missing = tmp_path / "nonexistent_file_xyz_12345.tif"
+        with pytest.raises(FileNotFoundError):
+            _osgeo_validate(str(missing))
+
+
+class TestFallbackValidate:
+    def test_on_real_cog(self, mem_dataset, tmp_path):
+        p = tmp_path / "x.tif"
+        dst = translate_to_cog(mem_dataset, p, {})
+        dst.FlushCache()
+        dst = None
+        errors, warnings, details = _fallback_validate(str(p))
+        assert errors == []
+        assert "blocksize" in details
+
+    def test_on_stripped_gtiff(self, tmp_path):
+        p = tmp_path / "plain.tif"
+        _write_plain_stripped_gtiff(p, size=2048)
+        errors, warnings, details = _fallback_validate(str(p))
+        assert any("tiled" in e or "strip" in e for e in errors)
