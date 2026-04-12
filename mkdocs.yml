@@ -144,16 +144,15 @@ nav:
         - Data Models: reference/netcdf/ugrid/models.md
         - Visualization: reference/netcdf/ugrid/plot.md
     - config: reference/config.md
-  - Tutorials:
-      - Dataset: tutorials/dataset.md
-      - DatasetCollection: tutorials/dataset_collection.md
-      - Raster basics: tutorials/raster-basics.md
-      - Datacube basics: tutorials/datacube-basics.md
-  - Notebooks:
+  - Examples:
       - Dataset:
+          - Overview: tutorials/dataset.md
+          - Raster basics: tutorials/raster-basics.md
+          - Datacube basics: tutorials/datacube-basics.md
           - Dataset basics: examples/dataset/dataset.ipynb
           - Spatial operations: examples/dataset/spatial-operation-methods.ipynb
           - Convert longitude: examples/dataset/convert-longitude.ipynb
+          - DatasetCollection (guide): tutorials/dataset_collection.md
           - Dataset collection: examples/dataset/dataset_collection.ipynb
           - South America: examples/dataset/south-america.ipynb
       - Basemap:
