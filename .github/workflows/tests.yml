@@ -31,13 +31,13 @@ jobs:
           cache: true
 
       - name: Run main tests (not plot, not xarray)
-        run: pixi run -e ${{ matrix.environment }} main
+        run: pixi run -e ${{ matrix.environment }} main --cov-append --cov-fail-under=88
 
       - name: Run plot tests
-        run: pixi run -e ${{ matrix.environment }} plot
+        run: pixi run -e ${{ matrix.environment }} plot --cov-fail-under=92
 
       - name: Run xarray tests
-        run: pixi run -e ${{ matrix.environment }} xarray-tests
+        run: pixi run -e ${{ matrix.environment }} xarray-tests --cov-fail-under=92
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v5
