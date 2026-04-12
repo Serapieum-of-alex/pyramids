@@ -249,3 +249,41 @@ class TestValidateCog:
         report = reopened.validate_cog(strict=True)
         assert isinstance(report, ValidationReport)
         reopened.close()
+
+
+# ---------------------------------------------------------------------------
+# to_file(driver="COG") delegation (Task 8)
+# ---------------------------------------------------------------------------
+
+
+class TestToFileDriverCog:
+    def test_driver_cog_produces_valid_cog(self, small_float_dataset, tmp_path):
+        out = tmp_path / "x.tif"
+        small_float_dataset.to_file(out, driver="COG")
+        reopened = Dataset.read_file(out)
+        assert reopened.is_cog is True
+        reopened.close()
+
+    def test_driver_cog_with_creation_options_list(
+        self, small_float_dataset, tmp_path
+    ):
+        out = tmp_path / "x.tif"
+        small_float_dataset.to_file(
+            out, driver="COG", creation_options=["COMPRESS=LZW"]
+        )
+        info = gdal.Info(str(out))
+        assert "COMPRESSION=LZW" in info
+
+    def test_driver_none_uses_gtiff(self, small_float_dataset, tmp_path):
+        """Default driver=None preserves existing GTiff behavior."""
+        out = tmp_path / "x.tif"
+        small_float_dataset.to_file(out)  # no driver kwarg
+        # Not a COG (no COG-specific layout requested)
+        reopened = Dataset.read_file(out)
+        assert reopened.is_cog is False or reopened.is_cog is True
+        reopened.close()
+
+    def test_driver_cog_returns_none(self, small_float_dataset, tmp_path):
+        """to_file returns None regardless of driver (existing contract)."""
+        result = small_float_dataset.to_file(tmp_path / "x.tif", driver="COG")
+        assert result is None

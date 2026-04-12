@@ -342,6 +342,7 @@ class IO:
         band: int = 0,
         tile_length: int | None = None,
         creation_options: list[str] | None = None,
+        driver: str | None = None,
     ) -> None:
         """Save dataset to tiff file.
 
@@ -358,6 +359,14 @@ class IO:
             creation_options: List[str], Default is None
                 List of strings that will be passed to the GDAL driver during the creation of the dataset.
                 i.e., ['PREDICTOR=2']
+            driver (str, optional):
+                Explicit GDAL driver name to use instead of inferring
+                from the file extension. Use ``driver="COG"`` to write
+                a Cloud Optimized GeoTIFF; the call delegates to
+                :meth:`~pyramids.dataset.ops.cog.COGMixin.to_cog` and
+                any ``creation_options`` list is forwarded as its
+                ``extra`` argument. Default ``None`` preserves the
+                existing extension-based driver selection.
 
         Examples:
             - Create a Dataset with 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0):
@@ -382,6 +391,9 @@ class IO:
 
               ```
         """
+        if driver == "COG":
+            self.to_cog(path, extra=creation_options)
+            return None
         if not isinstance(path, (str, Path)):
             raise TypeError(
                 f"path input should be string or Path type, given: {type(path)}"
