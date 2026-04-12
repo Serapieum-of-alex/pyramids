@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from osgeo import gdal
 
+from pyramids.base import remote
 from pyramids.base._errors import FileFormatNotSupportedError
 
 gdal.UseExceptions()
@@ -144,7 +145,13 @@ def _parse_path(path: str | Path, file_i: int = 0) -> str:
     # Convert to str because the helpers build GDAL virtual filesystem strings
     # (/vsizip/, /vsigzip/, /vsitar/) which are not real filesystem paths.
     path = str(path)
-    if _is_zip(path):
+    # Rewrite URL-scheme paths (s3://, gs://, az://, http(s)://, file://)
+    # to GDAL /vsi* form BEFORE zip/tar/gzip detection so a remote /vsicurl/
+    # path doesn't accidentally get treated as a compressed archive.
+    path = remote._to_vsi(path)
+    if remote.is_remote(path):
+        new_path = path
+    elif _is_zip(path):
         new_path = _get_zip_path(path, file_i=file_i)
     elif _is_tar(path):
         new_path = _get_tar_path(path)
