@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -4074,8 +4074,8 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h1 id="ugrid-unstructured-mesh-exploration">UGRID Unstructured Mesh Exploration<a class="anchor-link" href="#ugrid-unstructured-mesh-exploration">¶</a></h1><p>This notebook demonstrates pyramids' full UGRID support using the
-<strong>Western Scheldt estuary</strong> mesh — a D-Flow FM (Delft3D Flexible Mesh)
-output covering the Western Scheldt river estuary in the Netherlands.</p>
+<strong>UGRID convention NC estuary</strong> mesh — a D-Flow FM (Delft3D Flexible Mesh)
+output covering the UGRID convention NC river estuary in the Netherlands.</p>
 <p>We'll cover:</p>
 <ol>
 <li>Reading a UGRID NetCDF file</li>
@@ -4206,7 +4206,7 @@ print(ds)</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>UgridDataset: ..\..\tests\mo\netcdf\westernscheldt01_waqgeom.nc
+<pre>UgridDataset: ..\..\tests\mo\netcdf\ugrid_convention_nc01_waqgeom.nc
   Mesh: mesh2d
   Nodes: 8916, Faces: 8355, Edges: 17270
   Bounds: (17325.978515625, 359012.23738230974, 86177.27534049794, 392033.78125)
@@ -4714,7 +4714,7 @@ plt.show()</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5-creating-synthetic-bathymetry-velocity-data">5. Creating Synthetic Bathymetry &amp; Velocity Data<a class="anchor-link" href="#5-creating-synthetic-bathymetry-velocity-data">¶</a></h2><p>The Western Scheldt file is geometry-only (all node_z = -999).
+<h2 id="5-creating-synthetic-bathymetry-velocity-data">5. Creating Synthetic Bathymetry &amp; Velocity Data<a class="anchor-link" href="#5-creating-synthetic-bathymetry-velocity-data">¶</a></h2><p>The UGRID convention NC file is geometry-only (all node_z = -999).
 Let's create realistic synthetic data to demonstrate plotting.</p>
 </div>
 </div>
@@ -4912,7 +4912,7 @@ uses <code>tripcolor</code>, node data uses <code>tricontourf</code>.</p>
 <span class="n">glyph</span> <span class="o">=</span> <span class="n">synth_ds</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
     <span class="s2">"bathymetry"</span><span class="p">,</span>
     <span class="n">cmap</span><span class="o">=</span><span class="s2">"terrain"</span><span class="p">,</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">"Western Scheldt Bathymetry (synthetic)"</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">"UGRID convention NC Bathymetry (synthetic)"</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
@@ -4920,7 +4920,7 @@ uses <code>tripcolor</code>, node data uses <code>tricontourf</code>.</p>
 glyph = synth_ds.plot(
     "bathymetry",
     cmap="terrain",
-    title="Western Scheldt Bathymetry (synthetic)",
+    title="UGRID convention NC Bathymetry (synthetic)",
 )
 plt.show()</div>
 </div>
@@ -5072,12 +5072,12 @@ plt.show()</div>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Wireframe only</span>
 <span class="n">glyph</span> <span class="o">=</span> <span class="n">synth_ds</span><span class="o">.</span><span class="n">plot_outline</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">"steelblue"</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">"Western Scheldt Mesh Structure"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">"UGRID convention NC Mesh Structure"</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-15"># Wireframe only
 glyph = synth_ds.plot_outline(color="steelblue", linewidth=0.2)
-plt.title("Western Scheldt Mesh Structure")
+plt.title("UGRID convention NC Mesh Structure")
 plt.show()</div>
 </div>
 </div>
@@ -5963,7 +5963,7 @@ Data preserved: True
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Write the synthetic dataset to a new UGRID NetCDF file</span>
-<span class="n">out_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"western_scheldt_synthetic.nc"</span><span class="p">)</span>
+<span class="n">out_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"ugrid_convention_nc_synthetic.nc"</span><span class="p">)</span>
 <span class="n">synth_ds</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span><span class="n">out_path</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Written to </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">out_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> KB)"</span><span class="p">)</span>
 
@@ -5975,7 +5975,7 @@ Data preserved: True
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Variables: </span><span class="si">{</span><span class="n">ds_roundtrip</span><span class="o">.</span><span class="n">data_variable_names</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-27"># Write the synthetic dataset to a new UGRID NetCDF file
-out_path = Path("western_scheldt_synthetic.nc")
+out_path = Path("ugrid_convention_nc_synthetic.nc")
 synth_ds.to_file(out_path)
 print(f"Written to {out_path} ({out_path.stat().st_size / 1024:.0f} KB)")
 
@@ -5996,7 +5996,7 @@ print(f"  Variables: {ds_roundtrip.data_variable_names}")</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Written to western_scheldt_synthetic.nc (420 KB)
+<pre>Written to ugrid_convention_nc_synthetic.nc (420 KB)
 
 Round-trip verification:
   Nodes: 8916 (expected 8916)
