@@ -30,6 +30,7 @@ from pyramids.feature import FeatureCollection
 from pyramids.dataset.ops import (
     Analysis,
     BandMetadata,
+    COGMixin,
     Cell,
     IO,
     Spatial,
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
 class Dataset(  # type: ignore[misc]
     BandMetadata,
     IO,
+    COGMixin,
     Spatial,
     Analysis,
     Vectorize,
