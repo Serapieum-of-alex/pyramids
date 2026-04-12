@@ -38,7 +38,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-viz = ["cleopatra>=0.7.1"]
+viz = ["cleopatra>=0.7.1", "mercantile>=1.2.0", "xyzservices>=2024.4.0", "Pillow>=9.0.0"]
 xarray = ["xarray>=2023.1.0", "netCDF4>=1.6.0", "h5netcdf>=1.0.0", "cftime>=1.6.0"]
 
 [dependency-groups]
@@ -139,7 +139,7 @@ mypy_path = "src"
 packages = ["pyramids"]
 explicit_package_bases = true
 warn_return_any = true
-warn_unused_configs = true
+warn_unused_configs = false
 disallow_untyped_defs = false
 check_untyped_defs = true
 ignore_missing_imports = true

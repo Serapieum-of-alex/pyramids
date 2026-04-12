@@ -1324,6 +1324,63 @@ class FeatureCollection:
         else:
             return poly
 
+    def plot(
+        self,
+        column: str | None = None,
+        basemap: bool | str | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Plot the feature collection.
+
+        Delegates to ``GeoDataFrame.plot()`` and optionally adds a web
+        tile basemap underneath the vector data.
+
+        Parameters
+        ----------
+        column : str or None, optional
+            Column name to use for coloring features. Passed to
+            ``GeoDataFrame.plot(column=...)``.
+        basemap : bool, str, or None, optional
+            If ``True``, add an OpenStreetMap basemap. If a string,
+            use it as the tile provider name (e.g.
+            ``"CartoDB.Positron"``). Default is ``None`` (no basemap).
+            Requires the ``[viz]`` extra.
+        **kwargs
+            Additional keyword arguments passed to
+            ``GeoDataFrame.plot()``.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The matplotlib axes with the plot.
+
+        Raises
+        ------
+        TypeError
+            If the underlying feature is an OGR DataSource (not a
+            GeoDataFrame).
+        """
+        if not isinstance(self.feature, GeoDataFrame):
+            raise TypeError(
+                "plot() requires a GeoDataFrame-backed FeatureCollection. "
+                "Convert the OGR DataSource to a GeoDataFrame first."
+            )
+
+        ax = self.feature.plot(column=column, **kwargs)
+
+        if basemap:
+            if self.epsg is None:
+                raise ValueError(
+                    "FeatureCollection must have a CRS (epsg) to "
+                    "use basemap."
+                )
+            from pyramids.basemap.basemap import add_basemap
+
+            source = basemap if isinstance(basemap, str) else None
+            add_basemap(ax, crs=self.epsg, source=source)
+
+        return ax
+
     @staticmethod
     def create_point(
         coords: Iterable[tuple[float, ...]], epsg: int | None = None

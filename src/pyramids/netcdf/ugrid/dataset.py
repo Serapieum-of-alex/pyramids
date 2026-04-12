@@ -29,6 +29,7 @@ from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable, UgridMetadata
 from pyramids.netcdf.utils import _read_attributes
+from pyramids.basemap.basemap import add_basemap
 
 
 class UgridDataset:
@@ -278,7 +279,7 @@ class UgridDataset:
         )
         return result
 
-    def clip(self, mask: Any, touch: bool = True) -> "UgridDataset":
+    def clip(self, mask: Any, touch: bool = True) -> UgridDataset:
         """Clip the mesh to a polygon mask.
 
         Selects faces that intersect (touch=True) or are fully
@@ -302,7 +303,7 @@ class UgridDataset:
         ymin: float,
         xmax: float,
         ymax: float,
-    ) -> "UgridDataset":
+    ) -> UgridDataset:
         """Subset mesh to faces within a bounding box.
 
         Args:
@@ -318,7 +319,7 @@ class UgridDataset:
         result = subset_by_bounds(self, xmin, ymin, xmax, ymax)
         return result
 
-    def to_crs(self, to_epsg: int) -> "UgridDataset":
+    def to_crs(self, to_epsg: int) -> UgridDataset:
         """Reproject all node coordinates to a new CRS.
 
         Uses pyproj.Transformer to reproject node coordinates.
@@ -408,7 +409,7 @@ class UgridDataset:
                 break
         return result
 
-    def sel_time(self, index: int) -> "UgridDataset":
+    def sel_time(self, index: int) -> UgridDataset:
         """Select a single time step from all temporal variables.
 
         Non-temporal variables are kept unchanged.
@@ -441,7 +442,7 @@ class UgridDataset:
         )
         return result
 
-    def sel_time_range(self, start: int, stop: int) -> "UgridDataset":
+    def sel_time_range(self, start: int, stop: int) -> UgridDataset:
         """Select a time range from all temporal variables.
 
         Args:
@@ -583,7 +584,7 @@ class UgridDataset:
         data_locations: dict[str, str] | None = None,
         epsg: int = 4326,
         mesh_name: str = "mesh2d",
-    ) -> "UgridDataset":
+    ) -> UgridDataset:
         """Create a UgridDataset programmatically from arrays.
 
         Args:
@@ -652,6 +653,7 @@ class UgridDataset:
         ax: Any = None,
         cmap: str = "viridis",
         title: str | None = None,
+        basemap: bool | str | None = None,
         **kwargs: Any,
     ) -> Any:
         """Plot a mesh data variable.
@@ -661,6 +663,9 @@ class UgridDataset:
             ax: matplotlib Axes. Created if None.
             cmap: Colormap name.
             title: Plot title. Defaults to variable name.
+            basemap: If True, add an OpenStreetMap basemap. If a string,
+                use it as the tile provider name (e.g. "CartoDB.Positron").
+                Default is None (no basemap). Requires the [viz] extra.
             **kwargs: Additional arguments passed to plot_mesh_data.
 
         Returns:
@@ -680,6 +685,17 @@ class UgridDataset:
             self._mesh, data, location=var.location,
             ax=ax, cmap=cmap, title=title, **kwargs,
         )
+
+        if basemap:
+            if self.epsg is None:
+                raise ValueError(
+                    "UgridDataset must have a CRS (epsg) to "
+                    "use basemap."
+                )
+            source = basemap if isinstance(basemap, str) else None
+            ax = result.ax if hasattr(result, "ax") else result
+            add_basemap(ax, crs=self.epsg, source=source)
+
         return result
 
     def plot_outline(self, ax: Any = None, **kwargs: Any) -> Any:

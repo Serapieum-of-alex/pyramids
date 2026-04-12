@@ -768,7 +768,7 @@ class NetCDFMetadata:
             attrs_str += f", ... ({len(attr_keys)} total)"
 
         lines = [
-            f"NetCDFMetadata",
+            "NetCDFMetadata",
             f"  Driver: {self.driver}",
             f"  Root group: {self.root_group}",
             f"  Dimensions ({len(self.dimensions)}):",

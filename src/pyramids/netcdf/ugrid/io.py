@@ -18,7 +18,6 @@ from osgeo import gdal
 from pyramids.netcdf.cf import (
     grid_mapping_to_srs,
     write_attributes_to_md_array,
-    write_global_attributes,
 )
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d

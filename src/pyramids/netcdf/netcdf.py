@@ -396,7 +396,7 @@ class NetCDF(Dataset):
         wrapped._gdal_rg_ref = None
         return wrapped
 
-    def crop(self, mask: Any, touch: bool = True) -> "NetCDF":
+    def crop(self, mask: Any, touch: bool = True) -> NetCDF:
         """Crop the dataset using a polygon or raster mask.
 
         On a **root MDIM container** this crops every variable and
@@ -487,7 +487,7 @@ class NetCDF(Dataset):
         to_epsg: int,
         method: str = "nearest neighbor",
         maintain_alignment: bool = False,
-    ) -> "NetCDF":
+    ) -> NetCDF:
         """Reproject the dataset to a different CRS.
 
         On a **root MDIM container** this reprojects every variable
@@ -523,7 +523,7 @@ class NetCDF(Dataset):
         self,
         cell_size: float,
         method: str = "nearest neighbor",
-    ) -> "NetCDF":
+    ) -> NetCDF:
         """Resample the dataset to a different cell size.
 
         On a **root MDIM container** this resamples every variable

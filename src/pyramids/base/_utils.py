@@ -404,6 +404,16 @@ def import_cleopatra(message: str):
         raise OptionalPackageDoesNotExist(message)
 
 
+def import_basemap(message: str):
+    """Import basemap dependencies (mercantile, xyzservices, Pillow)."""
+    try:
+        import mercantile  # noqa
+        import xyzservices  # noqa
+        from PIL import Image  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNotExist(message)
+
+
 def ogr_ds_to_gdal_dataset(ogr_ds: ogr.DataSource) -> gdal.Dataset:
     """Convert ogr.DataSource object to a gdal.Dataset.
 

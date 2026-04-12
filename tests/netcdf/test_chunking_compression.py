@@ -292,7 +292,7 @@ class TestChunkingViaMetadataAPI:
             get_metadata(), verify VariableInfo.block_size matches.
         """
         from pyramids.netcdf.metadata import get_metadata
-        
+
         arr = np.random.RandomState(SEED).rand(5, 60, 80).astype(np.float64)
         path = str(tmp_path / "chunked_meta.nc")
         NetCDF.create_from_array(
@@ -317,7 +317,7 @@ class TestChunkingViaMetadataAPI:
             VariableInfo.block_size.
         """
         from pyramids.netcdf.metadata import get_metadata
-        
+
         arr = np.random.RandomState(SEED).rand(40, 60).astype(np.float64)
         path = str(tmp_path / "2d_chunked_meta.nc")
         NetCDF.create_from_array(
@@ -338,7 +338,7 @@ class TestChunkingViaMetadataAPI:
             or reflects GDAL's default chunking (if any).
         """
         from pyramids.netcdf.metadata import get_metadata
-        
+
         arr = np.random.RandomState(SEED).rand(3, 25, 25).astype(np.float64)
         path = str(tmp_path / "no_chunk_meta.nc")
         NetCDF.create_from_array(
@@ -361,7 +361,7 @@ class TestChunkingViaMetadataAPI:
             compression details.
         """
         from pyramids.netcdf.metadata import get_metadata
-        
+
         arr = np.random.RandomState(SEED).rand(4, 80, 100).astype(np.float64)
         path = str(tmp_path / "chunk_compress_meta.nc")
         NetCDF.create_from_array(
@@ -387,7 +387,7 @@ class TestChunkingViaMetadataAPI:
             metadata from the NetCDF instance, verify block_size.
         """
         from pyramids.netcdf.metadata import get_metadata
-        
+
         arr = np.random.RandomState(SEED).rand(3, 45, 55).astype(np.float64)
         path = str(tmp_path / "read_chunk.nc")
         NetCDF.create_from_array(
