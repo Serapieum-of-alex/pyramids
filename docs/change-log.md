@@ -1,6 +1,12 @@
 ﻿# Change log
 
 
+## 0.13.0 (2026-04-12)
+
+### Feat
+
+- **basemap**: add web tile basemap plotting support (#231)
+
 ## 0.12.0 (2026-04-11)
 
 ### Feat
