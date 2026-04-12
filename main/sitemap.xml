@@ -61,6 +61,38 @@
          <lastmod>2026-04-12</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/examples/basemap/basemap-example/</loc>
+         <lastmod>2026-04-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/examples/dataset/convert-longitude/</loc>
+         <lastmod>2026-04-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/examples/dataset/dataset/</loc>
+         <lastmod>2026-04-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/examples/dataset/dataset_collection/</loc>
+         <lastmod>2026-04-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/examples/dataset/south-america/</loc>
+         <lastmod>2026-04-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/examples/dataset/spatial-operation-methods/</loc>
+         <lastmod>2026-04-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/examples/netcdf/ugrid/ugrid-mesh-exploration/</loc>
+         <lastmod>2026-04-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/examples/netcdf/ugrid/ugrid-river-channel/</loc>
+         <lastmod>2026-04-12</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids/main/how-to/devcontainer/</loc>
          <lastmod>2026-04-12</lastmod>
     </url>
