@@ -123,6 +123,18 @@ def _to_vsi(path: str) -> str:
     Returns:
         The VSI-rewritten path if a rewrite applies; otherwise
         ``path`` unchanged.
+
+    Examples:
+        >>> _to_vsi("s3://bucket/scene.tif")
+        '/vsis3/bucket/scene.tif'
+        >>> _to_vsi("gs://bucket/a/b/c.tif")
+        '/vsigs/bucket/a/b/c.tif'
+        >>> _to_vsi("https://example.com/scene.tif")
+        '/vsicurl/https://example.com/scene.tif'
+        >>> _to_vsi("/vsis3/bucket/x.tif")
+        '/vsis3/bucket/x.tif'
+        >>> _to_vsi("C:/data/x.tif")
+        'C:/data/x.tif'
     """
     new_path: str
     if path.startswith(_VSI_PREFIXES):
