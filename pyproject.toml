@@ -377,26 +377,29 @@ MACOSX_DEPLOYMENT_TARGET = "11.0"
 # ---------------------------------------------------------------------------
 [tool.cibuildwheel.windows]
 before-all = [
-    "powershell -File ci\\setup-gdal-from-pixi.ps1",
+    "powershell -File ci/setup-gdal-from-pixi.ps1",
 ]
 before-build = [
     "pip install --upgrade pip setuptools wheel numpy delvewheel",
-    "python ci\\install-and-vendor-osgeo.py",
+    "python ci/install-and-vendor-osgeo.py",
 ]
 # delvewheel is the Windows equivalent of auditwheel: it bundles required
 # DLLs into the wheel. --add-path tells it where to find the DLLs to bundle.
 repair-wheel-command = [
-    "delvewheel repair --add-path C:\\gdal-prefix\\Library\\bin -w {dest_dir} {wheel}",
+    "delvewheel repair --add-path C:/gdal-prefix/Library/bin -w {dest_dir} {wheel}",
 ]
 
 [tool.cibuildwheel.windows.environment]
 GDAL_VERSION = "3.12.3"
 # Windows pixi envs put DLLs/headers under .pixi/envs/<env>/Library/
 # following conda/Anaconda Windows conventions.
-BUILD_PREFIX = "C:\\gdal-prefix"
-GDAL_DATA = "C:\\gdal-prefix\\Library\\share\\gdal"
-PROJ_DATA = "C:\\gdal-prefix\\Library\\share\\proj"
-PROJ_LIB = "C:\\gdal-prefix\\Library\\share\\proj"
+# NOTE: Use forward slashes so the values survive bash/PowerShell/cmd
+# interpolation without double-backslash escaping surprises. Windows
+# treats /, \, and mixed paths equivalently for built-in APIs.
+BUILD_PREFIX = "C:/gdal-prefix"
+GDAL_DATA = "C:/gdal-prefix/Library/share/gdal"
+PROJ_DATA = "C:/gdal-prefix/Library/share/proj"
+PROJ_LIB = "C:/gdal-prefix/Library/share/proj"
 PACKAGE_DATA = "1"
-PATH = "C:\\gdal-prefix\\Library\\bin;$PATH"
+PATH = "C:/gdal-prefix/Library/bin;$PATH"
 PIXI_NO_PATH_UPDATE = "1"

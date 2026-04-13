@@ -69,6 +69,19 @@ jobs:
           CIBW_BUILD: "cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
 
+      - name: Report wheel sizes
+        shell: bash
+        run: |
+          for whl in wheelhouse/*.whl; do
+            size=$(stat -c%s "$whl")
+            size_mb=$(awk "BEGIN {printf \"%.1f\", $size/1048576}")
+            echo "::notice::$(basename $whl): ${size_mb} MB"
+            if [ "$size" -gt $((120 * 1024 * 1024)) ]; then
+              echo "::error::Wheel exceeds 120 MB size budget — see planning/bundle/wheel-size-analysis.md"
+              exit 1
+            fi
+          done
+
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.arch }}

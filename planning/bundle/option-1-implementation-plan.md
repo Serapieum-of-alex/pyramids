@@ -1368,9 +1368,9 @@ gh workflow run build-wheels.yml
 | 5.2  | Write `ci/setup-gdal-from-pixi.ps1` (PowerShell)         | 5     | P1       | Solved |
 | 5.3  | Add Windows to `[tool.cibuildwheel]`                     | 5     | P1       | Solved |
 | 5.4  | Verify `os.add_dll_directory` bootstrap works            | 5     | P1       | Solved |
-| 5.5  | Smoke-test Windows wheel                                 | 5     | P1       | Open   |
-| 6.1  | Measure and optimize wheel sizes                         | 6     | P1       | Open   |
-| 6.2  | Document release process in `release-process.md`         | 6     | P1       | Open   |
+| 5.5  | Smoke-test Windows wheel                                 | 5     | P1       | Solved |
+| 6.1  | Measure and optimize wheel sizes                         | 6     | P1       | Solved |
+| 6.2  | Document release process in `release-process.md`         | 6     | P1       | Solved |
 | 6.3  | Wire `build-wheels.yml` to PyPI trusted publishing       | 6     | P0       | Open   |
 | 6.4  | Update user-facing installation docs                     | 6     | P1       | Open   |
 | 6.5  | Namespace collision mitigation (if needed)               | 6     | P2       | Open   |
