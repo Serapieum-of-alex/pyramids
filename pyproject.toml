@@ -269,28 +269,46 @@ libgdal-hdf4 = ">=3.10.0,<4"
 # cibuildwheel: platform wheel builds with bundled GDAL
 # ---------------------------------------------------------------------------
 [tool.cibuildwheel]
-skip = ["*pp* *musllinux*"]
+skip = ["*pp*", "*musllinux*", "cp310-*", "cp39-*", "cp38-*", "cp314t-*"]
 archs = ["auto64"]
 build-verbosity = 3
-test-command = "python -c \"from osgeo import gdal; print(f'GDAL {gdal.__version__} OK')\""
+test-command = [
+    "python -c \"import pyramids; print(f'pyramids {pyramids.__version__}')\"",
+    "python -c \"from osgeo import gdal; print(f'GDAL {gdal.__version__}')\"",
+]
 
 [tool.cibuildwheel.linux]
+# manylinux2014 == glibc 2.17; covers Ubuntu 16.04+, RHEL 7+
 manylinux-x86_64-image = "manylinux2014"
+# CIBW_BEFORE_ALL runs ONCE per platform (shared across Python versions).
+# Installs pixi, runs pixi install -e wheel-build, extracts conda-forge
+# binaries into /usr/local.
 before-all = [
-    "yum install -y wget cmake3 perl-core automake libtool",
-    "ln -sf /usr/bin/cmake3 /usr/bin/cmake || true",
-    "/opt/python/cp312-cp312/bin/pip install setuptools wheel numpy",
-    "bash ./ci/build-gdal-linux.sh",
+    "bash ./ci/setup-gdal-from-pixi.sh",
 ]
-before-build = "PACKAGE_DATA=1 python ./ci/vendor-osgeo.py"
+# CIBW_BEFORE_BUILD runs per Python version. Builds the GDAL SWIG Python
+# bindings for the target interpreter, then vendors osgeo/ and
+# GDAL_DATA/PROJ_DATA into the pyramids source tree so setuptools
+# includes them in the wheel.
+before-build = [
+    "pip install --upgrade pip setuptools wheel numpy",
+    "python ./ci/install-and-vendor-osgeo.py",
+]
+# Linux wheel repair: auditwheel walks the .so dep graph, bundles
+# libgdal and all transitive native deps into pyramids_gis.libs/,
+# and patches RPATH so the extensions find their bundled libs at runtime.
 repair-wheel-command = [
     "LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 auditwheel repair -w {dest_dir} {wheel}",
 ]
 
 [tool.cibuildwheel.linux.environment]
-GDAL_VERSION = "3.12.1"
+# GDAL_VERSION must match the version conda-forge ships for the pin in
+# [tool.pixi.feature.wheel-build.dependencies]. Currently GDAL 3.12.3.
+GDAL_VERSION = "3.12.3"
 BUILD_PREFIX = "/usr/local"
 GDAL_DATA = "/usr/local/share/gdal"
 PROJ_DATA = "/usr/local/share/proj"
+PROJ_LIB = "/usr/local/share/proj"
 PACKAGE_DATA = "1"
 LD_LIBRARY_PATH = "/usr/local/lib:/usr/local/lib64"
+PIXI_NO_PATH_UPDATE = "1"
