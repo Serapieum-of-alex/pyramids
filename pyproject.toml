@@ -111,6 +111,7 @@ pyramids = [
     "_vendor/osgeo_utils/**/*",
     "_data/gdal_data/*",
     "_data/proj_data/*",
+    "_data/gdalplugins/*",
 ]
 
 [tool.flake8]
@@ -331,4 +332,71 @@ PROJ_DATA = "/usr/local/share/proj"
 PROJ_LIB = "/usr/local/share/proj"
 PACKAGE_DATA = "1"
 LD_LIBRARY_PATH = "/usr/local/lib:/usr/local/lib64"
+PIXI_NO_PATH_UPDATE = "1"
+
+
+# ---------------------------------------------------------------------------
+# macOS configuration (Phase 4). Uses same pixi/conda-forge approach as
+# Linux, but with .dylib libs + delocate-wheel for repair + install_name_tool
+# for @loader_path patching.
+# ---------------------------------------------------------------------------
+[tool.cibuildwheel.macos]
+before-all = [
+    "bash ./ci/setup-gdal-from-pixi.sh",
+]
+before-build = [
+    "pip install --upgrade pip setuptools wheel numpy",
+    "python ./ci/install-and-vendor-osgeo.py",
+]
+# delocate-wheel is the macOS equivalent of auditwheel: it walks the
+# .dylib dep graph, bundles transitive deps into the wheel, and patches
+# @loader_path install names so dylibs find each other at runtime.
+repair-wheel-command = [
+    "DYLD_LIBRARY_PATH=$BUILD_PREFIX/lib delocate-wheel --require-archs {delocate_archs} -w {dest_dir} {wheel}",
+]
+
+[tool.cibuildwheel.macos.environment]
+GDAL_VERSION = "3.12.3"
+# macOS can't write to /usr/local without sudo on GitHub runners; use a
+# writable prefix under $HOME instead.
+BUILD_PREFIX = "/Users/runner/gdal-prefix"
+GDAL_DATA = "/Users/runner/gdal-prefix/share/gdal"
+PROJ_DATA = "/Users/runner/gdal-prefix/share/proj"
+PROJ_LIB = "/Users/runner/gdal-prefix/share/proj"
+PACKAGE_DATA = "1"
+DYLD_LIBRARY_PATH = "/Users/runner/gdal-prefix/lib"
+PIXI_NO_PATH_UPDATE = "1"
+# Minimum macOS version: 11.0 for arm64, 10.15 for x86_64.
+# cibuildwheel sets this based on runner; these are safe defaults.
+MACOSX_DEPLOYMENT_TARGET = "11.0"
+
+
+# ---------------------------------------------------------------------------
+# Windows configuration (Phase 5). Uses pixi-pack's Library/ layout
+# (Windows conda packages nest under Library/) and delvewheel.
+# ---------------------------------------------------------------------------
+[tool.cibuildwheel.windows]
+before-all = [
+    "powershell -File ci\\setup-gdal-from-pixi.ps1",
+]
+before-build = [
+    "pip install --upgrade pip setuptools wheel numpy delvewheel",
+    "python ci\\install-and-vendor-osgeo.py",
+]
+# delvewheel is the Windows equivalent of auditwheel: it bundles required
+# DLLs into the wheel. --add-path tells it where to find the DLLs to bundle.
+repair-wheel-command = [
+    "delvewheel repair --add-path C:\\gdal-prefix\\Library\\bin -w {dest_dir} {wheel}",
+]
+
+[tool.cibuildwheel.windows.environment]
+GDAL_VERSION = "3.12.3"
+# Windows pixi envs put DLLs/headers under .pixi/envs/<env>/Library/
+# following conda/Anaconda Windows conventions.
+BUILD_PREFIX = "C:\\gdal-prefix"
+GDAL_DATA = "C:\\gdal-prefix\\Library\\share\\gdal"
+PROJ_DATA = "C:\\gdal-prefix\\Library\\share\\proj"
+PROJ_LIB = "C:\\gdal-prefix\\Library\\share\\proj"
+PACKAGE_DATA = "1"
+PATH = "C:\\gdal-prefix\\Library\\bin;$PATH"
 PIXI_NO_PATH_UPDATE = "1"

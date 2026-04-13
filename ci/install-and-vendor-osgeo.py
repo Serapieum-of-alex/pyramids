@@ -122,6 +122,12 @@ def vendor_osgeo_into_package() -> None:
         raise RuntimeError(f"PROJ_DATA not found at {proj_data_src}")
     _copy_tree_replacing(proj_data_src, src_pyramids / "_data" / "proj_data")
 
+    # 4. Vendor GDAL plugins (NetCDF / HDF4 / HDF5 drivers).
+    # GDAL loads these at runtime when GDAL_DRIVER_PATH points here.
+    plugins_src = prefix / "lib" / "gdalplugins"
+    if plugins_src.is_dir():
+        _copy_tree_replacing(plugins_src, src_pyramids / "_data" / "gdalplugins")
+
 
 def main() -> None:
     if os.environ.get("PACKAGE_DATA") != "1":

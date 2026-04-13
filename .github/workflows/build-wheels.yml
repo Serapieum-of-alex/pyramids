@@ -75,16 +75,96 @@ jobs:
           path: wheelhouse/*.whl
 
   # -------------------------------------------------------------------------
-  # Test the built wheels in a clean environment (no conda, no system GDAL).
-  # Uses python:3.X-slim images that only have libexpat1 preinstalled.
+  # Build macOS platform wheels (x86_64 + arm64) via pixi + conda-forge.
+  # x86_64 runs on macos-13 (Intel), arm64 runs on macos-14 (Apple Silicon).
   # -------------------------------------------------------------------------
-  test-linux-wheels:
-    needs: build-linux-wheels
-    runs-on: ubuntu-latest
+  build-macos-wheels:
     strategy:
       fail-fast: false
       matrix:
+        include:
+          - os: macos-13
+            arch: x86_64
+          - os: macos-14
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22
+        env:
+          CIBW_BUILD: "cp311-macosx_${{ matrix.arch }} cp312-macosx_${{ matrix.arch }} cp313-macosx_${{ matrix.arch }}"
+          CIBW_ARCHS_MACOS: ${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+
+  # -------------------------------------------------------------------------
+  # Build Windows platform wheels via pixi + conda-forge.
+  # -------------------------------------------------------------------------
+  build-windows-wheels:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [AMD64]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22
+        env:
+          CIBW_BUILD: "cp311-win_amd64 cp312-win_amd64 cp313-win_amd64"
+          CIBW_ARCHS_WINDOWS: ${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+
+  # -------------------------------------------------------------------------
+  # Test the built wheels in a clean environment (no conda, no system GDAL).
+  # Covers Linux / macOS / Windows across cp311/cp312/cp313.
+  # -------------------------------------------------------------------------
+  test-wheels:
+    needs: [build-linux-wheels, build-macos-wheels, build-windows-wheels]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            artifact: wheels-linux-x86_64
+            wheel-tag: manylinux
+          - os: macos-13
+            arch: x86_64
+            artifact: wheels-macos-x86_64
+            wheel-tag: macosx
+          - os: macos-14
+            arch: arm64
+            artifact: wheels-macos-arm64
+            wheel-tag: macosx
+          - os: windows-2022
+            arch: AMD64
+            artifact: wheels-windows-AMD64
+            wheel-tag: win_amd64
         python-version: ["3.11", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
 
@@ -94,16 +174,14 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: wheels-linux-x86_64
+          name: ${{ matrix.artifact }}
           path: dist/
 
-      - name: Compute Python tag
-        id: pytag
-        run: echo "tag=cp${{ matrix.python-version }}" | sed 's/\.//' >> $GITHUB_OUTPUT
-
       - name: Install wheel (no conda, no system GDAL)
+        shell: bash
         run: |
-          WHEEL=$(ls dist/pyramids_gis-*-${{ steps.pytag.outputs.tag }}-${{ steps.pytag.outputs.tag }}-manylinux_*_x86_64.whl)
+          PYTAG=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
+          WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*${{ matrix.wheel-tag }}*.whl | head -1)
           echo "Installing: $WHEEL"
           pip install "$WHEEL"
           pip install pytest pytest-env pytest-mock
@@ -115,21 +193,19 @@ jobs:
           from osgeo import gdal, ogr, osr
           print(f'pyramids {pyramids.__version__}')
           print(f'GDAL {gdal.__version__}')
-          # EPSG lookup — proves PROJ_DATA bundled
           sr = osr.SpatialReference(); sr.ImportFromEPSG(4326)
           assert sr.GetAttrValue('AUTHORITY', 1) == '4326'
-          # MEM raster — proves GDAL_DATA bundled
           ds = gdal.GetDriverByName('MEM').Create('', 10, 10, 1, gdal.GDT_Byte)
           ds.SetGeoTransform([0, 1, 0, 0, 0, -1])
           ds.SetProjection(sr.ExportToWkt())
-          # osgeo must come from the vendored copy
           import osgeo
           assert '_vendor' in osgeo.__file__, f'osgeo not from vendor: {osgeo.__file__}'
           print('All runtime checks passed.')
           "
 
       - name: Run test suite (non-plot)
-        run: pytest -vvv -sv -m "not plot and not xarray" --ignore=tests/dataset/test_plot.py tests/
+        shell: bash
+        run: pytest -vvv -sv -o "pythonpath=" -m "not plot and not xarray" --ignore=tests/dataset/test_plot.py tests/
 
   # -------------------------------------------------------------------------
   # Publish to PyPI (disabled — enable in Phase 6)

@@ -1358,16 +1358,16 @@ gh workflow run build-wheels.yml
 | 2.2  | Smoke-test each Python wheel                             | 2     | P1       | Solved |
 | 3.1  | Add platform-wheel test job to `wheel-test.yml`          | 3     | P0       | Solved |
 | 3.2  | Run test suite locally against platform wheel            | 3     | P0       | Solved |
-| 3.3  | Fix tests that break under platform-wheel install        | 3     | P1       | Open   |
-| 4.1  | Confirm pixi works on macOS runners                      | 4     | P1       | Open   |
-| 4.2  | Write `ci/setup-gdal-from-pixi-macos.sh`                 | 4     | P1       | Open   |
-| 4.3  | Add macOS to `[tool.cibuildwheel]`                       | 4     | P1       | Open   |
-| 4.4  | Handle macOS arm64 vs x86_64 separately                  | 4     | P1       | Open   |
+| 3.3  | Fix tests that break under platform-wheel install        | 3     | P1       | Solved |
+| 4.1  | Confirm pixi works on macOS runners                      | 4     | P1       | Solved |
+| 4.2  | Write `ci/setup-gdal-from-pixi-macos.sh`                 | 4     | P1       | Solved |
+| 4.3  | Add macOS to `[tool.cibuildwheel]`                       | 4     | P1       | Solved |
+| 4.4  | Handle macOS arm64 vs x86_64 separately                  | 4     | P1       | Solved |
 | 4.5  | Smoke-test macOS wheels                                  | 4     | P1       | Open   |
-| 5.1  | Confirm pixi works on Windows runners                    | 5     | P1       | Open   |
-| 5.2  | Write `ci/setup-gdal-from-pixi.ps1` (PowerShell)         | 5     | P1       | Open   |
-| 5.3  | Add Windows to `[tool.cibuildwheel]`                     | 5     | P1       | Open   |
-| 5.4  | Verify `os.add_dll_directory` bootstrap works            | 5     | P1       | Open   |
+| 5.1  | Confirm pixi works on Windows runners                    | 5     | P1       | Solved |
+| 5.2  | Write `ci/setup-gdal-from-pixi.ps1` (PowerShell)         | 5     | P1       | Solved |
+| 5.3  | Add Windows to `[tool.cibuildwheel]`                     | 5     | P1       | Solved |
+| 5.4  | Verify `os.add_dll_directory` bootstrap works            | 5     | P1       | Solved |
 | 5.5  | Smoke-test Windows wheel                                 | 5     | P1       | Open   |
 | 6.1  | Measure and optimize wheel sizes                         | 6     | P1       | Open   |
 | 6.2  | Document release process in `release-process.md`         | 6     | P1       | Open   |

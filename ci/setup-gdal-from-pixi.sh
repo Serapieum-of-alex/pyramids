@@ -54,10 +54,13 @@ mkdir -p "${BUILD_PREFIX}/lib" "${BUILD_PREFIX}/lib64" \
          "${BUILD_PREFIX}/include" "${BUILD_PREFIX}/share" \
          "${BUILD_PREFIX}/bin"
 
-# Shared libraries — preserve symlinks with -a
+# Shared libraries — preserve symlinks with -a.
+# Linux uses .so, macOS uses .dylib; glob both so the script is cross-platform.
 cp -a "${PIXI_ENV}/lib/"*.so* "${BUILD_PREFIX}/lib/" 2>/dev/null || true
+cp -a "${PIXI_ENV}/lib/"*.dylib* "${BUILD_PREFIX}/lib/" 2>/dev/null || true
 if [ -d "${PIXI_ENV}/lib64" ]; then
     cp -a "${PIXI_ENV}/lib64/"*.so* "${BUILD_PREFIX}/lib64/" 2>/dev/null || true
+    cp -a "${PIXI_ENV}/lib64/"*.dylib* "${BUILD_PREFIX}/lib64/" 2>/dev/null || true
 fi
 
 # Headers
@@ -66,6 +69,14 @@ cp -a "${PIXI_ENV}/include/." "${BUILD_PREFIX}/include/"
 # GDAL_DATA + PROJ_DATA — required at runtime
 cp -a "${PIXI_ENV}/share/gdal" "${BUILD_PREFIX}/share/"
 cp -a "${PIXI_ENV}/share/proj" "${BUILD_PREFIX}/share/"
+
+# GDAL plugins (libgdal-netcdf / libgdal-hdf4) live in a separate
+# subdirectory and are loaded at runtime via GDAL_DRIVER_PATH. These
+# MUST be bundled or NetCDF/HDF4/HDF5 drivers will be unavailable.
+if [ -d "${PIXI_ENV}/lib/gdalplugins" ]; then
+    mkdir -p "${BUILD_PREFIX}/lib/gdalplugins"
+    cp -a "${PIXI_ENV}/lib/gdalplugins/." "${BUILD_PREFIX}/lib/gdalplugins/"
+fi
 
 # Build tooling needed downstream
 for tool in gdal-config swig ogrinfo gdalinfo; do
@@ -83,10 +94,18 @@ fi
 
 # ---------------------------------------------------------------------------
 # 4. Strip debug symbols to reduce wheel size
+#
+# `strip --strip-unneeded` is Linux/GNU. macOS strip uses `-S` for the
+# equivalent "strip debug symbols only, keep the dynamic symbol table".
 # ---------------------------------------------------------------------------
 echo "--- Stripping shared libraries ---"
-find "${BUILD_PREFIX}/lib" "${BUILD_PREFIX}/lib64" -name '*.so*' -type f \
-    -exec strip --strip-unneeded {} + 2>/dev/null || true
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    find "${BUILD_PREFIX}/lib" -name '*.dylib*' -type f \
+        -exec strip -S {} + 2>/dev/null || true
+else
+    find "${BUILD_PREFIX}/lib" "${BUILD_PREFIX}/lib64" -name '*.so*' -type f \
+        -exec strip --strip-unneeded {} + 2>/dev/null || true
+fi
 
 # ---------------------------------------------------------------------------
 # 5. Diagnostic output
