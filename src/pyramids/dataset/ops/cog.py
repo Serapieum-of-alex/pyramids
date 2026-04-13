@@ -92,9 +92,22 @@ class COGMixin:
 
         Args:
             path: Destination path. Parent directory must exist.
-            compress: Compression method — ``DEFLATE``, ``LZW``,
-                ``ZSTD``, ``WEBP``, ``JPEG``, ``LERC``,
-                ``LERC_DEFLATE``, ``LERC_ZSTD``, or ``NONE``.
+            compress: Compression method. ``DEFLATE``, ``LZW``, and
+                ``NONE`` are guaranteed by every GDAL build. ``JPEG``
+                is almost always available. ``ZSTD``, ``WEBP``,
+                ``LERC``, ``LERC_DEFLATE``, and ``LERC_ZSTD`` require
+                the GDAL build to have been compiled with the
+                corresponding library (libzstd / libwebp / LERC); on
+                a GDAL build lacking them, the COG driver will raise
+                at write time. To probe what your GDAL supports:
+
+                ```python
+                from osgeo import gdal
+                meta = gdal.GetDriverByName("GTiff").GetMetadataItem(
+                    "DMD_CREATIONOPTIONLIST"
+                )
+                print("ZSTD" in (meta or ""))
+                ```
             level: Compression level (e.g., 1-12 for DEFLATE, 1-22 ZSTD).
             quality: Lossy-compression quality 1-100 (JPEG/WEBP).
             blocksize: Internal tile size; power of 2 in [64, 4096].
