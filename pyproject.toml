@@ -227,9 +227,11 @@ py313 = { features = ["py313", "viz", "dev", "xarray"], solve-group = "py313" }
 py314 = { features = ["py314", "viz", "dev", "xarray"], solve-group = "py314" }
 # wheel-build: minimal env used inside the cibuildwheel container to
 # obtain GDAL + native deps as conda-forge binaries. Kept separate from
-# dev so it stays lean (no pytest, docs tooling, etc.). See
-# planning/bundle/option-1-implementation-plan.md.
-wheel-build = { features = ["wheel-build"], solve-group = "wheel-build" }
+# dev so it stays lean (no pytest, docs tooling, etc.). Uses
+# `no-default-feature = true` so we DON'T pull in pyramids-gis itself
+# (which would drag in pandas/numpy wheels that may not be manylinux2014
+# compatible). See planning/bundle/option-1-implementation-plan.md.
+wheel-build = { features = ["wheel-build"], solve-group = "wheel-build", no-default-feature = true }
 
 
 [tool.pixi.feature.py311.dependencies]
