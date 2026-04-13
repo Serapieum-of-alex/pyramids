@@ -84,20 +84,34 @@ def _raise_if_missing(path: str) -> None:
         FileNotFoundError: When the path cannot be resolved.
 
     Examples:
-        - Local path that does not exist:
+        - An existing local file returns ``None`` silently:
             ```python
-            >>> _raise_if_missing("definitely-does-not-exist-12345.tif")  # doctest: +IGNORE_EXCEPTION_DETAIL
-            Traceback (most recent call last):
-            ...
-            FileNotFoundError: definitely-does-not-exist-12345.tif
+            >>> import os, tempfile, pathlib
+            >>> fd, name = tempfile.mkstemp(suffix=".txt")
+            >>> os.close(fd)
+            >>> p = pathlib.Path(name)
+            >>> _ = p.write_text("hi")
+            >>> _raise_if_missing(str(p)) is None
+            True
+            >>> p.unlink()
 
             ```
-        - ``/vsi*`` path delegation to :func:`gdal.VSIStatL`:
+        - A missing local file raises ``FileNotFoundError``:
             ```python
-            >>> _raise_if_missing("/vsimem/unreachable.tif")  # doctest: +SKIP
-            Traceback (most recent call last):
-            ...
-            FileNotFoundError: /vsimem/unreachable.tif
+            >>> try:
+            ...     _raise_if_missing("definitely-does-not-exist-12345.tif")
+            ... except FileNotFoundError as exc:
+            ...     print("missing:", exc)
+            missing: definitely-does-not-exist-12345.tif
+
+            ```
+        - ``/vsi*`` paths delegate to ``gdal.VSIStatL``:
+            ```python
+            >>> try:
+            ...     _raise_if_missing("/vsimem/unreachable_doctest_xyz.tif")
+            ... except FileNotFoundError as exc:
+            ...     print("missing:", exc)
+            missing: /vsimem/unreachable_doctest_xyz.tif
 
             ```
     """
