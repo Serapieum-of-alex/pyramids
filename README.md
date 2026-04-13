@@ -67,40 +67,49 @@ Main Features
 Installing pyramids
 ===============
 
-Installing `pyramids` from the `conda-forge` channel can be achieved by:
+### pip (recommended)
 
-```
-conda install -c conda-forge pyramids
-```
-
-It is possible to list all the versions of `pyramids` available on your platform with:
-
-```
-conda search pyramids --channel conda-forge
-```
-
-## Install from GitHub
-
-To install the latest development version, you can install the library from GitHub:
-
-```
-pip install git+https://github.com/serapeum-org/pyramids
-```
-
-## pip
-
-To install the latest release from PyPI:
+pyramids-gis ships **self-contained platform wheels** on PyPI that
+bundle GDAL, PROJ, GEOS, HDF4/5, NetCDF, and all native dependencies.
+No system GDAL required.
 
 ```
 pip install pyramids-gis
 ```
 
-## Optional extras
+Supported platforms: Linux (glibc ≥ 2.39, i.e. Ubuntu 24.04+, RHEL 10+),
+macOS 11+ (Intel + Apple Silicon), Windows 10+ (x64).
+
+Optional extras:
 
 ```
-pip install pyramids-gis[viz]      # cleopatra plotting support
-pip install pyramids-gis[xarray]   # xarray/NetCDF4 interoperability
+pip install "pyramids-gis[viz]"      # cleopatra plotting support
+pip install "pyramids-gis[xarray]"   # xarray / NetCDF4 interop
 ```
+
+### conda-forge
+
+```
+conda install -c conda-forge pyramids
+```
+
+List available versions:
+
+```
+conda search pyramids --channel conda-forge
+```
+
+### Install from GitHub (development)
+
+To install the latest development version from `main`:
+
+```
+pip install git+https://github.com/Serapieum-of-alex/pyramids
+```
+
+Note: installing from GitHub uses the sdist and requires a pre-installed
+system GDAL. See the full [installation guide](docs/installation.md)
+and [troubleshooting](docs/troubleshooting.md) for details.
 
 Quick start
 ===========
