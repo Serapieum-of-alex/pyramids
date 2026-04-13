@@ -69,6 +69,46 @@ class ValidationReport:
         return self.is_valid
 
 
+def _raise_if_missing(path: str) -> None:
+    """Raise :class:`FileNotFoundError` if ``path`` does not resolve.
+
+    Uses :func:`Path.exists` for local paths and :func:`gdal.VSIStatL`
+    for ``/vsi*`` paths — both locale-independent. This replaces the
+    previous substring matching against GDAL's error message, which
+    was brittle across GDAL versions and non-English locales.
+
+    Args:
+        path: Local path or ``/vsi*`` path to probe.
+
+    Raises:
+        FileNotFoundError: When the path cannot be resolved.
+
+    Examples:
+        - Local path that does not exist:
+            ```python
+            >>> _raise_if_missing("definitely-does-not-exist-12345.tif")  # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+            ...
+            FileNotFoundError: definitely-does-not-exist-12345.tif
+
+            ```
+        - ``/vsi*`` path delegation to :func:`gdal.VSIStatL`:
+            ```python
+            >>> _raise_if_missing("/vsimem/unreachable.tif")  # doctest: +SKIP
+            Traceback (most recent call last):
+            ...
+            FileNotFoundError: /vsimem/unreachable.tif
+
+            ```
+    """
+    if path.startswith("/vsi"):
+        stat = gdal.VSIStatL(path)
+        if stat is None:
+            raise FileNotFoundError(path)
+    elif not Path(path).exists():
+        raise FileNotFoundError(path)
+
+
 def _osgeo_validate(
     path: str,
 ) -> tuple[list[str], list[str], dict[str, Any]]:
@@ -93,20 +133,21 @@ def _osgeo_validate(
     """
     from osgeo_utils.samples import validate_cloud_optimized_geotiff as v
 
+    # Structural pre-check before invoking the validator — avoids
+    # depending on GDAL's error-message phrasing (which varies by
+    # version and locale) to detect "file not found".
+    _raise_if_missing(path)
+
     try:
         result = v.validate(path, full_check=True)
     except v.ValidateCloudOptimizedGeoTIFFException as exc:
-        # Translate "no such file" into FileNotFoundError for parity
-        # with local path semantics; let other failures bubble up as
-        # errors in the report rather than exceptions.
-        if "No such file" in str(exc):
-            raise FileNotFoundError(path) from exc
+        # If a ValidateCloudOptimizedGeoTIFFException escapes despite
+        # the pre-check, it's not about a missing file — surface it
+        # as a validation error rather than letting it propagate.
         return [str(exc)], [], {}
     except RuntimeError as exc:
-        # gdal.Open inside the sample validator raises RuntimeError
-        # when exceptions are enabled; translate "no such file" similarly.
-        if "No such file" in str(exc) or "not recognized" in str(exc):
-            raise FileNotFoundError(path) from exc
+        # Same rationale as above for RuntimeErrors from gdal.Open
+        # inside the sample validator (locale-independent fallback).
         return [str(exc)], [], {}
 
     errors: list[str]
@@ -206,8 +247,7 @@ def validate(path: str | Path, strict: bool = False) -> ValidationReport:
             ```
     """
     p = str(path)
-    if not p.startswith("/vsi") and not Path(p).exists():
-        raise FileNotFoundError(p)
+    _raise_if_missing(p)
 
     try:
         errors, warnings, details = _osgeo_validate(p)

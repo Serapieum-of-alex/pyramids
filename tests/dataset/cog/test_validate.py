@@ -164,9 +164,76 @@ class TestOsgeoValidate:
         assert isinstance(details, dict)
 
     def test_file_not_found_translates_to_oserror(self, tmp_path):
+        """Missing file raises FileNotFoundError from the pre-check.
+
+        Test scenario:
+            After the H1 refactor, file-existence is checked up-front
+            via _raise_if_missing (locale-independent), not by
+            substring-matching GDAL's error message.
+        """
         missing = tmp_path / "nonexistent_file_xyz_12345.tif"
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError) as exc_info:
             _osgeo_validate(str(missing))
+        assert str(missing) in str(exc_info.value), (
+            f"FileNotFoundError must name the missing path; got: {exc_info.value}"
+        )
+
+
+class TestRaiseIfMissing:
+    """Tests for the H1 _raise_if_missing helper (locale-independent FNF)."""
+
+    def test_existing_local_file_silent(self, tmp_path):
+        """Existing local file returns silently.
+
+        Test scenario:
+            A real file on disk must not raise.
+        """
+        from pyramids.dataset.cog.validate import _raise_if_missing
+
+        p = tmp_path / "real.txt"
+        p.write_text("hello")
+        _raise_if_missing(str(p))
+
+    def test_missing_local_file_raises(self, tmp_path):
+        """Missing local file raises FileNotFoundError.
+
+        Test scenario:
+            Path.exists() returns False -> FileNotFoundError named
+            with the input path.
+        """
+        from pyramids.dataset.cog.validate import _raise_if_missing
+
+        missing = tmp_path / "nope.tif"
+        with pytest.raises(FileNotFoundError, match="nope.tif"):
+            _raise_if_missing(str(missing))
+
+    def test_existing_vsimem_file_silent(self):
+        """Existing /vsimem/ file returns silently.
+
+        Test scenario:
+            Write a file into the GDAL in-memory filesystem and confirm
+            the VSIStatL path accepts it.
+        """
+        from osgeo import gdal
+        from pyramids.dataset.cog.validate import _raise_if_missing
+
+        p = "/vsimem/raise_if_missing_test.bin"
+        gdal.FileFromMemBuffer(p, b"x" * 64)
+        try:
+            _raise_if_missing(p)
+        finally:
+            gdal.Unlink(p)
+
+    def test_missing_vsi_path_raises(self):
+        """Non-existent /vsi* path raises FileNotFoundError.
+
+        Test scenario:
+            VSIStatL returns None for a non-existent VSI path.
+        """
+        from pyramids.dataset.cog.validate import _raise_if_missing
+
+        with pytest.raises(FileNotFoundError, match="unreachable"):
+            _raise_if_missing("/vsimem/unreachable_xyz_12345.tif")
 
 
 class TestFallbackValidate:
