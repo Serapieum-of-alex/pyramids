@@ -187,9 +187,57 @@ def _to_vsi(path: str) -> str:
         else:  # pragma: no cover — all schemes above covered
             new_path = path
 
+        new_path = _chain_archive_vsi(new_path)
+
         if new_path != path:
             logger.info("cloud path rewritten: %r -> %r", path, new_path)
     return new_path
+
+
+def _chain_archive_vsi(path: str) -> str:
+    """Prepend archive VSI prefix to a cloud/VSI path that points inside an archive.
+
+    Handles the case where a user passes a URL like
+    ``https://host/archive.tar/inner.tif`` — after the initial
+    :func:`_to_vsi` rewrite, the path reads
+    ``/vsicurl/https://host/archive.tar/inner.tif``; GDAL needs this
+    to become ``/vsitar//vsicurl/https://host/archive.tar/inner.tif``
+    to actually read the inner file.
+
+    Only rewrites when BOTH of the following hold:
+
+    1. The outer path is a cloud VSI path (``/vsicurl/``, ``/vsis3/``,
+       ``/vsigs/``, ``/vsiaz/``).
+    2. A ``.zip``, ``.tar``, or ``.gz`` segment appears in the path
+       followed by a ``/`` (i.e. the user is reaching *into* the archive,
+       not just naming it).
+
+    Plain local archive paths are left for :func:`pyramids._io._parse_path`
+    to handle via its existing zip/tar/gzip dispatch.
+
+    Args:
+        path: Path that has already been through the initial scheme
+            rewrite (or was already in ``/vsi*`` form).
+
+    Returns:
+        Chained VSI path if archive traversal is detected; otherwise
+        ``path`` unchanged.
+    """
+    cloud_prefixes = ("/vsicurl/", "/vsis3/", "/vsigs/", "/vsiaz/")
+    if not path.startswith(cloud_prefixes):
+        return path
+
+    archive_markers = (
+        (".zip/", "/vsizip/"),
+        (".tar/", "/vsitar/"),
+        (".tar.gz/", "/vsitar/"),
+        (".tgz/", "/vsitar/"),
+        (".gz/", "/vsigzip/"),
+    )
+    for marker, archive_prefix in archive_markers:
+        if marker in path:
+            return f"{archive_prefix}{path}"
+    return path
 
 
 @dataclass

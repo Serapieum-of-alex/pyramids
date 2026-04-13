@@ -279,3 +279,82 @@ class TestS3UrlRewriteNoNetwork:
 
 # Need numpy import for the HTTP tests
 import numpy as np  # noqa: E402
+
+
+class TestChainArchiveVsi:
+    """M3: archive-inside-URL paths get chained VSI prefix.
+
+    Covers the pre-existing gap where
+    ``https://host/archive.tar/inner.tif`` -> ``/vsicurl/...`` lost
+    access to the inner file because GDAL needs ``/vsitar//vsicurl/...``.
+    """
+
+    def test_tar_inside_https(self):
+        """HTTPS URL pointing into .tar archive gets /vsitar/ prefix."""
+        url = "https://example.com/archive.tar/inner.tif"
+        result = _to_vsi(url)
+        assert result == "/vsitar//vsicurl/https://example.com/archive.tar/inner.tif", (
+            f"Expected chained /vsitar/ + /vsicurl/, got: {result}"
+        )
+
+    def test_zip_inside_s3(self):
+        """S3 URL pointing into .zip archive gets /vsizip/ prefix."""
+        url = "s3://bucket/archive.zip/inner.tif"
+        result = _to_vsi(url)
+        assert result == "/vsizip//vsis3/bucket/archive.zip/inner.tif", (
+            f"Expected chained /vsizip/ + /vsis3/, got: {result}"
+        )
+
+    def test_gz_inside_https(self):
+        """HTTPS URL pointing into .gz file gets /vsigzip/ prefix."""
+        url = "https://example.com/data.gz/inner.asc"
+        result = _to_vsi(url)
+        assert result == "/vsigzip//vsicurl/https://example.com/data.gz/inner.asc", (
+            f"Expected chained /vsigzip/ + /vsicurl/, got: {result}"
+        )
+
+    def test_tar_gz_inside_https(self):
+        """HTTPS URL pointing into .tar.gz archive routes via /vsitar/."""
+        url = "https://example.com/archive.tar.gz/inner.tif"
+        result = _to_vsi(url)
+        assert "/vsitar/" in result, (
+            f".tar.gz must route through /vsitar/, got: {result}"
+        )
+
+    def test_tgz_inside_gs(self):
+        """GCS URL pointing into .tgz archive routes via /vsitar/."""
+        url = "gs://bucket/data.tgz/inner.tif"
+        result = _to_vsi(url)
+        assert result.startswith("/vsitar//vsigs/"), (
+            f".tgz must chain /vsitar/ + /vsigs/, got: {result}"
+        )
+
+    def test_plain_tif_over_https_no_chain(self):
+        """URL without an archive segment is not chained."""
+        url = "https://example.com/scene.tif"
+        result = _to_vsi(url)
+        assert result == "/vsicurl/https://example.com/scene.tif", (
+            f"Non-archive URL must not chain; got: {result}"
+        )
+
+    def test_archive_named_in_url_but_not_traversed(self):
+        """URL ending at archive name (no trailing /) is not chained.
+
+        Test scenario:
+            If the user points at the archive file itself rather than
+            a member inside it, GDAL can download and inspect the
+            archive — no chained VSI needed.
+        """
+        url = "https://example.com/archive.tar"
+        result = _to_vsi(url)
+        assert result == "/vsicurl/https://example.com/archive.tar", (
+            f"Archive-name-only URL must not chain; got: {result}"
+        )
+
+    def test_local_zip_path_unchanged_by_chain(self):
+        """Local .zip/foo.tif is left for pyramids._io._parse_path to handle."""
+        p = "/local/path/archive.zip/inner.tif"
+        result = _to_vsi(p)
+        assert result == p, (
+            f"Local archive paths must be left to _parse_path, got: {result}"
+        )
