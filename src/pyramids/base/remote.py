@@ -19,6 +19,7 @@ Two concerns live in this module:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 from urllib.parse import urlparse
@@ -26,6 +27,37 @@ from urllib.parse import urlparse
 from osgeo import gdal
 
 logger = logging.getLogger(__name__)
+
+
+# Module-scope tuple of cloud VSI prefixes; referenced by _chain_archive_vsi
+# to decide whether a path is eligible for archive-chaining. Keep in sync
+# with URL_SCHEMES below.
+_CLOUD_VSI_PREFIXES: tuple[str, ...] = (
+    "/vsicurl/",
+    "/vsis3/",
+    "/vsigs/",
+    "/vsiaz/",
+)
+
+# Map archive extensions to GDAL's matching VSI prefix. Ordered longest-
+# first so the regex alternation prefers `.tar.gz` over `.gz` — see
+# _ARCHIVE_MARKER_RE below.
+_ARCHIVE_EXT_TO_VSI: dict[str, str] = {
+    "tar.gz": "/vsitar/",
+    "tgz": "/vsitar/",
+    "zip": "/vsizip/",
+    "tar": "/vsitar/",
+    "gz": "/vsigzip/",
+}
+
+# Match ``.<ext>/`` where ``<ext>`` is an archive extension (longest
+# alternatives first) and the match is followed by ``/`` (lookahead).
+# The leading literal ``.`` anchors the match to a file-extension
+# boundary so hostnames that happen to include the token
+# (``host.gz/...``) are matched only when they also look like a path
+# archive segment — see ``_extract_archive_search_region`` which
+# strips the hostname before this regex is applied.
+_ARCHIVE_MARKER_RE = re.compile(r"\.(tar\.gz|tgz|zip|tar|gz)(?=/)", re.IGNORECASE)
 
 
 URL_SCHEMES: dict[str, str] = {
@@ -194,6 +226,43 @@ def _to_vsi(path: str) -> str:
     return new_path
 
 
+def _extract_archive_search_region(path: str) -> str | None:
+    """Return the portion of ``path`` to scan for archive markers.
+
+    For ``/vsicurl/http(s)://...`` paths, returns only the URL's path
+    component (stripping the scheme, hostname, and query string) so
+    that a hostname like ``host.gz`` or a query value like
+    ``?key=archive.tar/...`` cannot false-trigger archive detection.
+
+    For ``/vsis3/``, ``/vsigs/``, ``/vsiaz/`` paths, returns everything
+    after the prefix — these VSI schemes have no hostname/query
+    structure, only ``<bucket>/<key>``.
+
+    Args:
+        path: A VSI path that has already been rewritten by
+            :func:`_to_vsi`.
+
+    Returns:
+        The search region (string) or ``None`` when ``path`` is not a
+        cloud VSI path eligible for archive chaining.
+    """
+    result: str | None
+    if path.startswith("/vsicurl/"):
+        url = path[len("/vsicurl/"):]
+        parsed = urlparse(url)
+        # Only the path component — excludes scheme, hostname, and query.
+        result = parsed.path if parsed.scheme in {"http", "https"} else url
+    elif path.startswith("/vsis3/"):
+        result = path[len("/vsis3/"):]
+    elif path.startswith("/vsigs/"):
+        result = path[len("/vsigs/"):]
+    elif path.startswith("/vsiaz/"):
+        result = path[len("/vsiaz/"):]
+    else:
+        result = None
+    return result
+
+
 def _chain_archive_vsi(path: str) -> str:
     """Prepend archive VSI prefix to a cloud/VSI path that points inside an archive.
 
@@ -204,16 +273,25 @@ def _chain_archive_vsi(path: str) -> str:
     to become ``/vsitar//vsicurl/https://host/archive.tar/inner.tif``
     to actually read the inner file.
 
-    Only rewrites when BOTH of the following hold:
+    The marker detection is boundary-anchored (not a plain substring
+    search) so the following edge cases are correctly rejected:
 
-    1. The outer path is a cloud VSI path (``/vsicurl/``, ``/vsis3/``,
-       ``/vsigs/``, ``/vsiaz/``).
-    2. A ``.zip``, ``.tar``, or ``.gz`` segment appears in the path
-       followed by a ``/`` (i.e. the user is reaching *into* the archive,
-       not just naming it).
+    * Hostname ending in ``.gz`` (e.g. ``https://host.gz/file.tif``) —
+      the hostname is stripped before the search region is scanned.
+    * Query strings that happen to contain ``.tar/`` (e.g. a presigned
+      URL with ``?key=archive.tar/inner``) — the query string is
+      excluded from the search.
+    * Non-archive extensions at a path-segment boundary are ignored
+      because the regex requires a literal ``.`` before the
+      extension AND a ``/`` after it.
 
-    Plain local archive paths are left for :func:`pyramids._io._parse_path`
-    to handle via its existing zip/tar/gzip dispatch.
+    Single-layer only: nested archives like
+    ``outer.zip/inner.tar/file.tif`` are chained with the *outermost*
+    archive's VSI prefix only. GDAL's chained-VSI syntax does not
+    compose through arbitrary nesting without explicit intermediate
+    VSI URLs, so attempting to recurse would usually produce an
+    un-openable path. Callers that need nested archives must
+    construct the chain by hand.
 
     Args:
         path: Path that has already been through the initial scheme
@@ -223,21 +301,19 @@ def _chain_archive_vsi(path: str) -> str:
         Chained VSI path if archive traversal is detected; otherwise
         ``path`` unchanged.
     """
-    cloud_prefixes = ("/vsicurl/", "/vsis3/", "/vsigs/", "/vsiaz/")
-    if not path.startswith(cloud_prefixes):
+    if not path.startswith(_CLOUD_VSI_PREFIXES):
         return path
 
-    archive_markers = (
-        (".zip/", "/vsizip/"),
-        (".tar/", "/vsitar/"),
-        (".tar.gz/", "/vsitar/"),
-        (".tgz/", "/vsitar/"),
-        (".gz/", "/vsigzip/"),
-    )
-    for marker, archive_prefix in archive_markers:
-        if marker in path:
-            return f"{archive_prefix}{path}"
-    return path
+    search_region = _extract_archive_search_region(path)
+    if search_region is None:
+        return path
+
+    match = _ARCHIVE_MARKER_RE.search(search_region)
+    if match is None:
+        return path
+
+    ext = match.group(1).lower()
+    return f"{_ARCHIVE_EXT_TO_VSI[ext]}{path}"
 
 
 @dataclass

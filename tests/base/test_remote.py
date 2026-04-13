@@ -397,3 +397,134 @@ class TestCloudConfigCtxAttribute:
                 f"CloudConfigs with equal public fields must compare equal "
                 f"regardless of _ctx state; got a={a!r}, b={b!r}"
             )
+
+
+class TestChainArchiveVsiEdgeCases:
+    """M1 (2nd review): boundary-anchored archive marker detection.
+
+    These scenarios used to FALSE-POSITIVE under the substring-only
+    implementation: query-string injection, hostname ending in an
+    archive extension, and nested archives. The boundary-anchored
+    regex + path-component extraction in ``_extract_archive_search_region``
+    must correctly handle them.
+    """
+
+    def test_query_string_with_dot_tar_not_chained(self):
+        """Presigned URL containing ``.tar/`` in the query must not chain.
+
+        Test scenario:
+            A presigned URL may embed ``archive.tar`` in the query
+            value (e.g. as part of a signed key). The file itself is
+            a plain GeoTIFF; prepending /vsitar/ would break the read.
+        """
+        url = "https://foo.com/x.tif?key=archive.tar/inner&sig=abc"
+        result = _to_vsi(url)
+        assert result == f"/vsicurl/{url}", (
+            f"Query-string .tar/ must not trigger archive chaining; got: {result}"
+        )
+
+    def test_query_string_with_dot_zip_not_chained(self):
+        """Same protection for .zip inside a query string."""
+        url = "https://foo.com/scene.tif?asset=pkg.zip/inner.tif"
+        result = _to_vsi(url)
+        assert result == f"/vsicurl/{url}", (
+            f"Query-string .zip/ must not trigger archive chaining; got: {result}"
+        )
+
+    def test_query_string_with_dot_gz_not_chained(self):
+        """Same protection for .gz inside a query string."""
+        url = "https://foo.com/scene.tif?backup=data.gz/inner"
+        result = _to_vsi(url)
+        assert result == f"/vsicurl/{url}", (
+            f"Query-string .gz/ must not trigger archive chaining; got: {result}"
+        )
+
+    def test_hostname_ending_in_gz_not_chained(self):
+        """Hostname whose label ends in .gz must not trigger archive chaining.
+
+        Test scenario:
+            A hostname like ``data.gz.example.com`` or ``weird.gz`` is
+            legitimate and unrelated to gzip archives. The URL's path
+            component is the only authoritative source for archive
+            markers.
+        """
+        url = "https://weird.gz/file.tif"
+        result = _to_vsi(url)
+        assert result == f"/vsicurl/{url}", (
+            f"Hostname ending in .gz must not trigger archive chaining; got: {result}"
+        )
+
+    def test_hostname_with_dot_tar_not_chained(self):
+        """Hostname containing .tar (e.g. tar.example.com) is not an archive."""
+        url = "https://tar.example.com/file.tif"
+        result = _to_vsi(url)
+        assert result == f"/vsicurl/{url}", (
+            f"Hostname containing .tar must not trigger archive chaining; got: {result}"
+        )
+
+    def test_nested_outer_archive_wins(self):
+        """Nested archive path only applies the outermost archive prefix.
+
+        Test scenario:
+            ``outer.zip/inner.tar/file.tif`` — only the OUTER .zip
+            marker is honored; GDAL's chained-VSI syntax doesn't
+            compose through arbitrary nesting, so silently applying
+            /vsitar//vsizip/... would produce un-openable paths in
+            most real cases. Documented single-layer limitation.
+        """
+        url = "https://foo.com/outer.zip/inner.tar/file.tif"
+        result = _to_vsi(url)
+        expected = "/vsizip//vsicurl/https://foo.com/outer.zip/inner.tar/file.tif"
+        assert result == expected, (
+            f"Nested archive: only outermost (.zip) should chain; got: {result}"
+        )
+
+    def test_path_with_dot_tar_in_directory_name_chained(self):
+        """A legitimate ``archive.tar/`` segment in the path IS chained.
+
+        Test scenario:
+            Regression guard that the boundary-anchored regex still
+            catches the common case: a path segment named
+            ``something.tar/`` points INTO an archive and must be
+            chained.
+        """
+        url = "https://foo.com/path/archive.tar/inner.tif"
+        result = _to_vsi(url)
+        assert result.startswith("/vsitar//vsicurl/"), (
+            f"Legitimate archive segment must chain; got: {result}"
+        )
+
+    def test_s3_key_with_dot_zip_segment_chained(self):
+        """S3 key that traverses a .zip segment is correctly chained."""
+        url = "s3://bucket/folder/archive.zip/inner.tif"
+        result = _to_vsi(url)
+        assert result == "/vsizip//vsis3/bucket/folder/archive.zip/inner.tif", (
+            f"S3 archive segment must chain; got: {result}"
+        )
+
+    def test_tar_gz_prefers_vsitar_over_vsigzip(self):
+        """.tar.gz/ must match before .gz/ in the regex alternation."""
+        url = "https://foo.com/archive.tar.gz/inner.tif"
+        result = _to_vsi(url)
+        assert result.startswith("/vsitar//vsicurl/"), (
+            f".tar.gz/ must route through /vsitar/, got: {result}"
+        )
+        assert not result.startswith("/vsigzip/"), (
+            f".tar.gz/ must NOT route through /vsigzip/, got: {result}"
+        )
+
+    def test_uppercase_archive_extension_matched(self):
+        """Case-insensitive matching — ``.ZIP/`` is treated like ``.zip/``."""
+        url = "https://foo.com/ARCHIVE.ZIP/INNER.TIF"
+        result = _to_vsi(url)
+        assert result.startswith("/vsizip//vsicurl/"), (
+            f"Uppercase .ZIP/ must still chain; got: {result}"
+        )
+
+    def test_non_archive_extension_not_chained(self):
+        """Non-archive extensions at path boundaries are not chained."""
+        url = "https://foo.com/container.tif/inner.tif"
+        result = _to_vsi(url)
+        assert result == f"/vsicurl/{url}", (
+            f".tif/ is not an archive; must not chain; got: {result}"
+        )
