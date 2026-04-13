@@ -358,3 +358,42 @@ class TestChainArchiveVsi:
         assert result == p, (
             f"Local archive paths must be left to _parse_path, got: {result}"
         )
+
+
+class TestCloudConfigCtxAttribute:
+    """L2: CloudConfig._ctx is a typed field and is cleared on exit."""
+
+    def test_ctx_is_none_before_enter(self):
+        """Fresh CloudConfig has _ctx as None, not an undefined attribute."""
+        cfg = CloudConfig(aws_region="us-east-1")
+        assert cfg._ctx is None, (
+            f"Fresh CloudConfig must have _ctx is None, got: {cfg._ctx!r}"
+        )
+
+    def test_ctx_is_cleared_after_exit(self):
+        """After __exit__, _ctx returns to None (no lingering reference)."""
+        cfg = CloudConfig(aws_region="us-east-1")
+        with cfg:
+            assert cfg._ctx is not None, (
+                "_ctx must be set inside the with block"
+            )
+        assert cfg._ctx is None, (
+            f"_ctx must be cleared after exit, got: {cfg._ctx!r}"
+        )
+
+    def test_ctx_not_in_repr(self):
+        """_ctx is declared repr=False so it does not leak into repr()."""
+        cfg = CloudConfig(aws_region="us-east-1")
+        assert "_ctx" not in repr(cfg), (
+            f"_ctx must be excluded from repr; got: {repr(cfg)}"
+        )
+
+    def test_ctx_not_in_equality_comparison(self):
+        """_ctx is compare=False so __eq__ still works across with-blocks."""
+        a = CloudConfig(aws_region="us-east-1")
+        b = CloudConfig(aws_region="us-east-1")
+        with a:
+            assert a == b, (
+                f"CloudConfigs with equal public fields must compare equal "
+                f"regardless of _ctx state; got a={a!r}, b={b!r}"
+            )

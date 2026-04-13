@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Mapping
+from typing import Any, Mapping
 from urllib.parse import urlparse
 
 from osgeo import gdal
@@ -306,6 +306,7 @@ class CloudConfig:
     azure_storage_access_key: str | None = None
     azure_storage_sas_token: str | None = None
     extra: Mapping[str, str] = field(default_factory=dict)
+    _ctx: Any = field(default=None, init=False, repr=False, compare=False)
 
     def as_gdal_config(self) -> dict[str, str]:
         """Map dataclass fields to GDAL config option keys.
@@ -367,7 +368,8 @@ class CloudConfig:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool | None:
-        """Exit the context and restore the previous GDAL config."""
+        """Exit the context, restore the previous GDAL config, and clear _ctx."""
         result = self._ctx.__exit__(exc_type, exc_val, exc_tb)
+        self._ctx = None
         logger.debug("CloudConfig exited")
         return result
