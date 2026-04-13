@@ -32,6 +32,11 @@ if _vendored_osgeo.is_dir():
         if _libs_dir.is_dir():
             _os.add_dll_directory(str(_libs_dir))
 
+    if _os.environ.get("PYRAMIDS_DEBUG_BOOTSTRAP"):  # pragma: no cover
+        print(f"[pyramids] vendor dir: {_vendor_str}")
+        print(f"[pyramids] GDAL_DATA: {_os.environ.get('GDAL_DATA')}")
+        print(f"[pyramids] PROJ_DATA: {_os.environ.get('PROJ_DATA')}")
+
 from pyramids.base.config import Config
 
 

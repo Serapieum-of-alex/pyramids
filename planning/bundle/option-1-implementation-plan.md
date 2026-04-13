@@ -1347,7 +1347,7 @@ gh workflow run build-wheels.yml
 | 1.4  | Smoke-test setup script in manylinux container           | 1     | P0       | Solved |
 | 1.5  | Create `ci/install-and-vendor-osgeo.py`                  | 1     | P0       | Solved |
 | 1.6  | Wire cibuildwheel config in `pyproject.toml`             | 1     | P0       | Solved |
-| 1.7  | Verify pyramids runtime bootstrap                        | 1     | P1       | Open   |
+| 1.7  | Verify pyramids runtime bootstrap                        | 1     | P1       | Solved |
 | 1.8  | Archive `ci/build-gdal-linux.sh` with deprecation header | 1     | P2       | Open   |
 | 1.9  | Delete/inline `ci/vendor-osgeo.py`                       | 1     | P2       | Open   |
 | 1.10 | Run cibuildwheel for cp312 locally                       | 1     | P0       | Open   |
