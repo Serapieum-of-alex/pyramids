@@ -1343,7 +1343,7 @@ gh workflow run build-wheels.yml
 |------|----------------------------------------------------------|-------|----------|--------|
 | 1.1  | Add `wheel-build` pixi feature + env to `pyproject.toml` | 1     | P0       | Solved |
 | 1.2  | Verify pixi wheel-build env resolves locally             | 1     | P0       | Solved |
-| 1.3  | Design `ci/setup-gdal-from-pixi.sh`                      | 1     | P0       | Open  |
+| 1.3  | Design `ci/setup-gdal-from-pixi.sh`                      | 1     | P0       | Solved |
 | 1.4  | Smoke-test setup script in manylinux container           | 1     | P0       | Open  |
 | 1.5  | Create `ci/install-and-vendor-osgeo.py`                  | 1     | P0       | Open  |
 | 1.6  | Wire cibuildwheel config in `pyproject.toml`             | 1     | P0       | Open  |
