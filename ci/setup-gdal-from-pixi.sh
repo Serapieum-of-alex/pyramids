@@ -30,14 +30,14 @@ fi
 pixi --version
 
 # ---------------------------------------------------------------------------
-# 2. Install the wheel-build environment
+# 2. Install the wheel-build environment using the committed pixi.lock.
 #
-# NOTE: We deliberately do NOT use --frozen yet because pixi.lock may not
-# yet contain the wheel-build env on first run. After the first successful
-# `pixi lock` checkin, switch this to `--frozen` for reproducibility.
+# `--frozen` forces pixi to use exactly what's in pixi.lock (no re-solving)
+# which (a) keeps builds reproducible and (b) avoids pixi trying to solve
+# other envs like 'docs' for platforms not available in the container.
 # ---------------------------------------------------------------------------
 echo "--- Resolving wheel-build environment ---"
-pixi install -e wheel-build
+pixi install -e wheel-build --frozen
 
 PIXI_ENV="$(pwd)/.pixi/envs/wheel-build"
 if [ ! -d "${PIXI_ENV}" ]; then

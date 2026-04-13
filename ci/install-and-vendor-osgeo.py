@@ -44,20 +44,38 @@ def _build_prefix() -> Path:
 
 
 def install_gdal_python_bindings() -> None:
-    """pip install ``GDAL==$GDAL_VERSION`` linking against $BUILD_PREFIX."""
+    """pip install ``GDAL==$GDAL_VERSION`` linking against $BUILD_PREFIX.
+
+    Uses environment variables (CPPFLAGS / LDFLAGS / GDAL_CONFIG) rather
+    than pip's deprecated ``--global-option``. GDAL's setup.py consults
+    ``gdal-config`` first, so as long as that points at our extracted
+    binary, headers and libs are discovered correctly.
+    """
     version = _gdal_version()
     prefix = _build_prefix()
+
+    env = os.environ.copy()
+    env["GDAL_CONFIG"] = str(prefix / "bin" / "gdal-config")
+    env["CPPFLAGS"] = f"-I{prefix}/include " + env.get("CPPFLAGS", "")
+    env["LDFLAGS"] = f"-L{prefix}/lib " + env.get("LDFLAGS", "")
+    # numpy's include path is needed by GDAL's swig/python/setup.py.
+    try:
+        import numpy
+        env["CPPFLAGS"] = f"-I{numpy.get_include()} " + env["CPPFLAGS"]
+    except ImportError:  # pragma: no cover — numpy is pre-installed by CIBW_BEFORE_BUILD
+        pass
+
     cmd = [
         sys.executable, "-m", "pip", "install",
         "--no-cache-dir",
         "--no-build-isolation",
         f"GDAL=={version}",
-        "--global-option=build_ext",
-        f"--global-option=--include-dirs={prefix}/include",
-        f"--global-option=--library-dirs={prefix}/lib",
     ]
     print(f"[install-and-vendor-osgeo] running: {' '.join(cmd)}", flush=True)
-    subprocess.check_call(cmd)
+    print(f"[install-and-vendor-osgeo] GDAL_CONFIG={env['GDAL_CONFIG']}", flush=True)
+    print(f"[install-and-vendor-osgeo] CPPFLAGS={env['CPPFLAGS']}", flush=True)
+    print(f"[install-and-vendor-osgeo] LDFLAGS={env['LDFLAGS']}", flush=True)
+    subprocess.check_call(cmd, env=env)
 
 
 def _copy_tree_replacing(src: Path, dst: Path) -> None:

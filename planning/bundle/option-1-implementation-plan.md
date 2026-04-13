@@ -1350,10 +1350,10 @@ gh workflow run build-wheels.yml
 | 1.7  | Verify pyramids runtime bootstrap                        | 1     | P1       | Solved |
 | 1.8  | Archive `ci/build-gdal-linux.sh` with deprecation header | 1     | P2       | Solved |
 | 1.9  | Delete/inline `ci/vendor-osgeo.py`                       | 1     | P2       | Solved |
-| 1.10 | Run cibuildwheel for cp312 locally                       | 1     | P0       | Open   |
-| 1.11 | Debug first-build failures                               | 1     | P0       | Open   |
-| 1.12 | Verify wheel layout via `python -m zipfile -l`           | 1     | P0       | Open   |
-| 1.13 | Smoke-test wheel in `python:3.12-slim`                   | 1     | P0       | Open   |
+| 1.10 | Run cibuildwheel for cp312 locally                       | 1     | P0       | Solved |
+| 1.11 | Debug first-build failures                               | 1     | P0       | Solved |
+| 1.12 | Verify wheel layout via `python -m zipfile -l`           | 1     | P0       | Solved |
+| 1.13 | Smoke-test wheel in `python:3.12-slim`                   | 1     | P0       | Solved |
 | 2.1  | Enable multi-Python matrix (cp311/cp312/cp313)           | 2     | P1       | Open   |
 | 2.2  | Smoke-test each Python wheel                             | 2     | P1       | Open   |
 | 3.1  | Add platform-wheel test job to `wheel-test.yml`          | 3     | P0       | Open   |

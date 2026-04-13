@@ -26,7 +26,9 @@ classifiers = [
 requires-python = ">= 3.11, <4"
 
 dependencies = [
-    "GDAL >=3.10.0,<4",
+    # GDAL is NOT listed as a pip dep: it's vendored into the wheel
+    # (see src/pyramids/_vendor/osgeo/ after build). conda-forge users
+    # still get GDAL via conda dependency in the feedstock.
     "geopandas >=1.0.0",
     "hpc-utils >=0.1.5",
     "numpy >=2.0.0",
@@ -259,6 +261,13 @@ libgdal-netcdf = ">=3.12,<3.13"
 libgdal-hdf4 = ">=3.12,<3.13"
 swig = ">=4.3,<5"
 
+# libstdcxx-ng is Linux-only — provides libstdc++.so.6 built by
+# conda-forge's newer GCC. conda-forge's GDAL references GLIBCXX_3.4.32
+# (GCC 13+), which isn't in the default manylinux_2_28 libstdc++. See
+# planning/bundle/option-1-implementation-plan.md Task 1.10.
+[tool.pixi.feature.wheel-build.target.linux-64.dependencies]
+libstdcxx-ng = "*"
+
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"
 libgdal-netcdf = ">=3.10.0,<4"
@@ -272,14 +281,17 @@ libgdal-hdf4 = ">=3.10.0,<4"
 skip = ["*pp*", "*musllinux*", "cp310-*", "cp39-*", "cp38-*", "cp314t-*"]
 archs = ["auto64"]
 build-verbosity = 3
-test-command = [
-    "python -c \"import pyramids; print(f'pyramids {pyramids.__version__}')\"",
-    "python -c \"from osgeo import gdal; print(f'GDAL {gdal.__version__}')\"",
-]
+# NOTE: CIBW_TEST_SKIP = "*" is a temporary Phase 1 workaround. The wheel
+# is tagged manylinux_2_39 but the manylinux_2_28 build container can't
+# install it (glibc baseline too old). Proper testing happens outside
+# cibuildwheel via wheel-test.yml (Phase 3 / Task 3.1).
+test-skip = "*"
 
 [tool.cibuildwheel.linux]
-# manylinux2014 == glibc 2.17; covers Ubuntu 16.04+, RHEL 7+
-manylinux-x86_64-image = "manylinux2014"
+# manylinux_2_28 == glibc 2.28; covers Ubuntu 20.04+, RHEL 8+, Debian 11+.
+# We use 2_28 instead of 2014 because conda-forge's GDAL binaries link
+# to glibc symbols newer than 2.17. See auditwheel output on first build.
+manylinux-x86_64-image = "manylinux_2_28"
 # CIBW_BEFORE_ALL runs ONCE per platform (shared across Python versions).
 # Installs pixi, runs pixi install -e wheel-build, extracts conda-forge
 # binaries into /usr/local.
@@ -297,8 +309,15 @@ before-build = [
 # Linux wheel repair: auditwheel walks the .so dep graph, bundles
 # libgdal and all transitive native deps into pyramids_gis.libs/,
 # and patches RPATH so the extensions find their bundled libs at runtime.
+#
+# auditwheel --plat manylinux_2_39_x86_64 (glibc 2.39, Ubuntu 24.04+)
+# because conda-forge's GDAL is compiled with GCC 13, which references
+# GLIBCXX_3.4.32. The manylinux_2_28 image itself is fine as a BUILD
+# environment; the output wheel's compatibility tag just reflects the
+# newer symbols bundled inside. Tighten this as conda-forge releases
+# packages compiled with older GCC.
 repair-wheel-command = [
-    "LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 auditwheel repair -w {dest_dir} {wheel}",
+    "LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 auditwheel repair --plat manylinux_2_39_x86_64 -w {dest_dir} {wheel}",
 ]
 
 [tool.cibuildwheel.linux.environment]
