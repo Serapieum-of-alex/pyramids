@@ -194,7 +194,7 @@ def _parse_list_extra(items: list[str]) -> dict[str, Any]:
         if "=" not in entry:
             raise ValueError(f"creation_options entry missing '=': {entry!r}")
         k, _, v = entry.partition("=")
-        parsed[k.upper()] = v
+        parsed[str(k).upper()] = v
     return parsed
 
 
