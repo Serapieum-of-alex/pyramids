@@ -562,8 +562,32 @@ class DatasetCollection:
             FileExistsError: ``overwrite=False`` and a target path exists.
 
         Examples:
-            >>> dc.to_cog_stack("out/", compress="ZSTD")  # doctest: +SKIP
-            [PosixPath('out/slice_0000.tif'), ..., PosixPath('out/slice_0002.tif')]
+            - Default naming — one COG per slice:
+                ```python
+                >>> dc.to_cog_stack("out/", compress="ZSTD")  # doctest: +SKIP
+                [PosixPath('out/slice_0000.tif'), ..., PosixPath('out/slice_0002.tif')]
+
+                ```
+            - Custom filename pattern and name prefix:
+                ```python
+                >>> dc.to_cog_stack(  # doctest: +SKIP
+                ...     "band4/",
+                ...     pattern="B04_{i:03d}.tif",
+                ...     name="B04",
+                ... )
+                [PosixPath('band4/B04_000.tif'), ...]
+
+                ```
+            - Overwrite existing outputs and forward COG options:
+                ```python
+                >>> dc.to_cog_stack(  # doctest: +SKIP
+                ...     "out/",
+                ...     overwrite=True,
+                ...     compress="DEFLATE",
+                ...     blocksize=256,
+                ... )
+
+                ```
         """
         if "{t}" in pattern:
             raise ValueError(

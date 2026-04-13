@@ -61,10 +61,33 @@ def translate_to_cog(
             ``None`` or raised :class:`RuntimeError`.
 
     Examples:
-        >>> from osgeo import gdal  # doctest: +SKIP
-        >>> src = gdal.GetDriverByName("MEM").Create("", 256, 256, 1, gdal.GDT_Float32)  # doctest: +SKIP
-        >>> dst = translate_to_cog(src, "out.tif", {"COMPRESS": "DEFLATE"})  # doctest: +SKIP
-        >>> dst.FlushCache()  # doctest: +SKIP
+        - Write a minimal COG from an in-memory source:
+            ```python
+            >>> from osgeo import gdal  # doctest: +SKIP
+            >>> src = gdal.GetDriverByName("MEM").Create("", 256, 256, 1, gdal.GDT_Float32)  # doctest: +SKIP
+            >>> dst = translate_to_cog(src, "out.tif", {"COMPRESS": "DEFLATE"})  # doctest: +SKIP
+            >>> dst.FlushCache()  # doctest: +SKIP
+            >>> dst = None  # doctest: +SKIP
+
+            ```
+        - Override the default blocksize and compression level:
+            ```python
+            >>> dst = translate_to_cog(  # doctest: +SKIP
+            ...     src,
+            ...     "out.tif",
+            ...     {"COMPRESS": "ZSTD", "LEVEL": 18, "BLOCKSIZE": 256},
+            ... )
+            >>> dst.FlushCache()  # doctest: +SKIP
+
+            ```
+        - Unknown option keys are rejected up-front:
+            ```python
+            >>> translate_to_cog(src, "out.tif", {"NONSENSE": "x"})  # doctest: +SKIP
+            Traceback (most recent call last):
+                ...
+            ValueError: Unknown COG driver option(s): ['NONSENSE']...
+
+            ```
     """
     driver = gdal.GetDriverByName("COG")
     if driver is None:

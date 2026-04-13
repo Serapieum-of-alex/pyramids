@@ -142,15 +142,36 @@ class COGMixin:
             case. A ``UserWarning`` is emitted if both are provided.
 
         Examples:
-            >>> import numpy as np  # doctest: +SKIP
-            >>> from pyramids.dataset import Dataset  # doctest: +SKIP
-            >>> arr = np.random.rand(256, 256).astype("float32")  # doctest: +SKIP
-            >>> ds = Dataset.create_from_array(arr, top_left_corner=(0, 0), cell_size=0.001, epsg=4326)  # doctest: +SKIP
-            >>> _ = ds.to_cog("out.tif", compress="ZSTD")  # doctest: +SKIP
+            - Write a compressed COG from an in-memory Dataset:
+                ```python
+                >>> import numpy as np  # doctest: +SKIP
+                >>> from pyramids.dataset import Dataset  # doctest: +SKIP
+                >>> arr = np.random.rand(256, 256).astype("float32")  # doctest: +SKIP
+                >>> ds = Dataset.create_from_array(  # doctest: +SKIP
+                ...     arr, top_left_corner=(0, 0), cell_size=0.001, epsg=4326,
+                ... )
+                >>> out = ds.to_cog("out.tif", compress="ZSTD")  # doctest: +SKIP
+                >>> out.name  # doctest: +SKIP
+                'out.tif'
 
-            Web-optimized COG for a tile server:
+                ```
+            - Produce a web-optimized COG for a tile server:
+                ```python
+                >>> web = ds.to_cog("web.tif", tiling_scheme="GoogleMapsCompatible")  # doctest: +SKIP
+                >>> reopened = Dataset.read_file(web)  # doctest: +SKIP
+                >>> reopened.epsg  # doctest: +SKIP
+                3857
 
-            >>> _ = ds.to_cog("web.tif", tiling_scheme="GoogleMapsCompatible")   # doctest: +SKIP
+                ```
+            - Forward additional GDAL options through `extra`:
+                ```python
+                >>> _ = ds.to_cog(  # doctest: +SKIP
+                ...     "precise.tif",
+                ...     compress="LERC",
+                ...     extra={"MAX_Z_ERROR": 0.001},
+                ... )
+
+                ```
         """
         validate_blocksize(blocksize)
         self._warn_if_categorical_with_averaging(overview_resampling)
@@ -212,9 +233,27 @@ class COGMixin:
         datasets (empty :attr:`file_name`).
 
         Examples:
-            >>> ds = Dataset.read_file("scene.tif")  # doctest: +SKIP
-            >>> ds.is_cog  # doctest: +SKIP
-            True
+            - Check the backing file of a newly-opened COG:
+                ```python
+                >>> from pyramids.dataset import Dataset  # doctest: +SKIP
+                >>> ds = Dataset.read_file("scene.tif")  # doctest: +SKIP
+                >>> ds.is_cog  # doctest: +SKIP
+                True
+
+                ```
+            - Plain GeoTIFFs and MEM datasets return False:
+                ```python
+                >>> plain = Dataset.read_file("plain.tif")  # doctest: +SKIP
+                >>> plain.is_cog  # doctest: +SKIP
+                False
+
+                ```
+            - Use in a conditional pipeline:
+                ```python
+                >>> if not ds.is_cog:  # doctest: +SKIP
+                ...     ds.to_cog("fixed.tif")
+
+                ```
         """
         result: bool
         fn = self.file_name
@@ -241,10 +280,28 @@ class COGMixin:
                 (MEM-only or ``/vsimem/``).
 
         Examples:
-            >>> ds = Dataset.read_file("scene.tif")  # doctest: +SKIP
-            >>> report = ds.validate_cog(strict=True)  # doctest: +SKIP
-            >>> bool(report)  # doctest: +SKIP
-            True
+            - Validate and branch on the result:
+                ```python
+                >>> from pyramids.dataset import Dataset  # doctest: +SKIP
+                >>> ds = Dataset.read_file("scene.tif")  # doctest: +SKIP
+                >>> report = ds.validate_cog()  # doctest: +SKIP
+                >>> bool(report)  # doctest: +SKIP
+                True
+
+                ```
+            - Strict mode promotes warnings to errors:
+                ```python
+                >>> strict = ds.validate_cog(strict=True)  # doctest: +SKIP
+                >>> if not strict:  # doctest: +SKIP
+                ...     for err in strict.errors: print(err)
+
+                ```
+            - Inspect structural details from the report:
+                ```python
+                >>> report.details.get("blocksize")  # doctest: +SKIP
+                [512, 512]
+
+                ```
         """
         fn = self.file_name
         if not fn or fn.startswith("/vsimem/"):
@@ -276,6 +333,27 @@ class COGMixin:
             Silent when ``overview_resampling`` is ``nearest`` or
             ``mode`` (both category-safe) or when the source is
             floating-point and has no color table (continuous data).
+
+        Examples:
+            - Integer dataset + averaging method emits a warning:
+                ```python
+                >>> import warnings  # doctest: +SKIP
+                >>> with warnings.catch_warnings(record=True) as caught:  # doctest: +SKIP
+                ...     warnings.simplefilter("always")
+                ...     byte_ds._warn_if_categorical_with_averaging("average")
+                ...     [str(w.message) for w in caught if issubclass(w.category, UserWarning)]
+                ['overview_resampling=\\'average\\' averages pixel values, ...']
+
+                ```
+            - Nearest resampling is always silent:
+                ```python
+                >>> with warnings.catch_warnings(record=True) as caught:  # doctest: +SKIP
+                ...     warnings.simplefilter("always")
+                ...     byte_ds._warn_if_categorical_with_averaging("nearest")
+                ...     len(caught)
+                0
+
+                ```
         """
         if overview_resampling.lower() not in _AVERAGING_RESAMPLERS:
             return
