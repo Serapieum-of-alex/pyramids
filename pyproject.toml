@@ -225,6 +225,11 @@ py311 = { features = ["py311", "viz", "dev", "xarray"], solve-group = "py311" }
 py312 = { features = ["py312", "viz", "dev", "xarray"], solve-group = "py312" }
 py313 = { features = ["py313", "viz", "dev", "xarray"], solve-group = "py313" }
 py314 = { features = ["py314", "viz", "dev", "xarray"], solve-group = "py314" }
+# wheel-build: minimal env used inside the cibuildwheel container to
+# obtain GDAL + native deps as conda-forge binaries. Kept separate from
+# dev so it stays lean (no pytest, docs tooling, etc.). See
+# planning/bundle/option-1-implementation-plan.md.
+wheel-build = { features = ["wheel-build"], solve-group = "wheel-build" }
 
 
 [tool.pixi.feature.py311.dependencies]
@@ -238,6 +243,19 @@ python = "3.14.*"
 
 [tool.pixi.feature.dev.dependencies]
 scipy = ">=1.17.1,<2"
+
+# ---------------------------------------------------------------------------
+# wheel-build feature: native deps we need inside the cibuildwheel container.
+# Deliberately pinned tighter than the runtime [tool.pixi.dependencies] block
+# because the SWIG Python bindings are version-locked to libgdal. Keep
+# GDAL_VERSION in the cibuildwheel environment aligned with what conda-forge
+# delivers for these pins.
+# ---------------------------------------------------------------------------
+[tool.pixi.feature.wheel-build.dependencies]
+gdal = ">=3.12,<3.13"
+libgdal-netcdf = ">=3.12,<3.13"
+libgdal-hdf4 = ">=3.12,<3.13"
+swig = ">=4.3,<5"
 
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"
@@ -259,6 +277,7 @@ manylinux-x86_64-image = "manylinux2014"
 before-all = [
     "yum install -y wget cmake3 perl-core automake libtool",
     "ln -sf /usr/bin/cmake3 /usr/bin/cmake || true",
+    "/opt/python/cp312-cp312/bin/pip install setuptools wheel numpy",
     "bash ./ci/build-gdal-linux.sh",
 ]
 before-build = "PACKAGE_DATA=1 python ./ci/vendor-osgeo.py"
