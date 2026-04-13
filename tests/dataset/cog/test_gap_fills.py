@@ -219,19 +219,19 @@ class TestCloudConfigExitContract:
                 raise RuntimeError("boom")
 
 
-class TestToCogStackBoundaries:
-    """Gap: DatasetCollection.to_cog_stack with zero-length / single-length."""
+class TestToCogPathHandling:
+    """Gap: Dataset.to_cog path handling — literal filenames with no templating."""
 
-    def test_empty_pattern_placeholders_ok(
+    def test_literal_filename_passes_through(
         self, small_float_dataset, tmp_path
     ):
-        """Test to_cog with a fully-literal path (no placeholders).
+        """to_cog accepts a fully-literal path with no placeholders.
 
         Test scenario:
-            A user may pass a path template with no ``{name}`` / ``{i}``
-            placeholders. Since ``to_cog`` (not ``to_cog_stack``) takes
-            a literal path, this is the single-file analog. The file
-            writes regardless of name format.
+            Dataset.to_cog (single-file) takes a literal path; template
+            placeholders like ``{name}`` / ``{i}`` are a concern only of
+            DatasetCollection.to_cog_stack. Verify the filename is used
+            verbatim.
         """
         out = small_float_dataset.to_cog(tmp_path / "fixed_name.tif")
         assert out.name == "fixed_name.tif", (
