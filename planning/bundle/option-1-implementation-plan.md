@@ -1371,6 +1371,6 @@ gh workflow run build-wheels.yml
 | 5.5  | Smoke-test Windows wheel                                 | 5     | P1       | Solved |
 | 6.1  | Measure and optimize wheel sizes                         | 6     | P1       | Solved |
 | 6.2  | Document release process in `release-process.md`         | 6     | P1       | Solved |
-| 6.3  | Wire `build-wheels.yml` to PyPI trusted publishing       | 6     | P0       | Open   |
+| 6.3  | Wire `build-wheels.yml` to PyPI publishing (token-based) | 6     | P0       | Solved |
 | 6.4  | Update user-facing installation docs                     | 6     | P1       | Solved |
 | 6.5  | Namespace collision mitigation (if needed)               | 6     | P2       | Open   |

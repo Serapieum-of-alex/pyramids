@@ -3,8 +3,11 @@
 This document covers the release flow once Phase 6 automation is in place
 (PyPI trusted publishing, build-wheels.yml publish job enabled).
 
-Prerequisites: Phase 1–5 complete, PyPI trusted publishing configured
-(see [`pypi-trusted-publishing.md`](./pypi-trusted-publishing.md) once written).
+Prerequisites: Phase 1–5 complete, `PYPI_PUBLISH` token secret present
+in GitHub (same token the old `pypi-release.yml` used — no change), and
+the `publish:` job in `build-wheels.yml` uncommented. See
+[`task-6.3-pypi-trusted-publishing.md`](./task-6.3-pypi-trusted-publishing.md)
+for the token-based wiring and the future Trusted Publishing upgrade path.
 
 ## Regular release (patch / minor)
 
