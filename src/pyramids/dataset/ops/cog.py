@@ -259,7 +259,24 @@ class COGMixin:
     def _warn_if_categorical_with_averaging(
         self: "Dataset", overview_resampling: str
     ) -> None:
-        """Emit a ``UserWarning`` if an averaging resampler is used on categorical data."""
+        """Emit a ``UserWarning`` if an averaging resampler is used on categorical data.
+
+        Args:
+            overview_resampling: The resampling method requested by the
+                caller. Case-insensitive. Only averaging-family methods
+                (``average``, ``bilinear``, ``cubic``, ``cubicspline``,
+                ``lanczos``) trigger the check.
+
+        Warns:
+            UserWarning: When ``overview_resampling`` is an averaging
+                method and the source has a color table OR integer
+                dtype — both strong signals of categorical data.
+
+        Note:
+            Silent when ``overview_resampling`` is ``nearest`` or
+            ``mode`` (both category-safe) or when the source is
+            floating-point and has no color table (continuous data).
+        """
         if overview_resampling.lower() not in _AVERAGING_RESAMPLERS:
             return
         first_band = self._raster.GetRasterBand(1)

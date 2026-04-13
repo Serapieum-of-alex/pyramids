@@ -77,6 +77,16 @@ def _stringify(value: Any) -> str:
 
     Returns:
         The GDAL-style string form.
+
+    Examples:
+        >>> _stringify(True)
+        'YES'
+        >>> _stringify(False)
+        'NO'
+        >>> _stringify(512)
+        '512'
+        >>> _stringify("DEFLATE")
+        'DEFLATE'
     """
     result: str
     if isinstance(value, bool):
@@ -132,6 +142,14 @@ def _parse_list_extra(items: list[str]) -> dict[str, Any]:
 
     Raises:
         ValueError: If any item lacks an ``=``.
+
+    Examples:
+        >>> _parse_list_extra(["COMPRESS=DEFLATE", "LEVEL=9"])
+        {'COMPRESS': 'DEFLATE', 'LEVEL': '9'}
+        >>> _parse_list_extra(["compress=lzw"])
+        {'COMPRESS': 'lzw'}
+        >>> _parse_list_extra([])
+        {}
     """
     parsed: dict[str, Any] = {}
     for entry in items:
