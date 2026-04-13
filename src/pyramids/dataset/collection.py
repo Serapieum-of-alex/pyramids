@@ -557,6 +557,8 @@ class DatasetCollection:
             List of written file paths, in temporal (index) order.
 
         Raises:
+            DatasetNotFoundError: :meth:`open_multi_dataset` has not been
+                called, so per-slice arrays are not loaded.
             ValueError: ``{t}`` placeholder used but no time coord is
                 available.
             FileExistsError: ``overwrite=False`` and a target path exists.
@@ -589,6 +591,22 @@ class DatasetCollection:
 
                 ```
         """
+        # Check the backing attribute directly rather than going through
+        # the `values` property: the property getter raises AttributeError
+        # on unpopulated collections, which hasattr catches silently, but
+        # a future refactor that changes the exception type would break
+        # the guard. Matches the pattern used by `iloc` elsewhere in this
+        # module and correctly accepts either code path that populates
+        # `_values` (open_multi_dataset OR direct `.values = arr` assignment).
+        if not hasattr(self, "_values"):
+            raise DatasetNotFoundError(
+                "to_cog_stack requires the per-slice arrays to be loaded. "
+                "Populate them by calling open_multi_dataset(band=...) OR "
+                "by assigning directly to `.values`. Example:\n"
+                "    dc = DatasetCollection.read_multiple_files(...)\n"
+                "    dc.open_multi_dataset(band=0)\n"
+                "    dc.to_cog_stack('out/')"
+            )
         if "{t}" in pattern:
             raise ValueError(
                 "{t} placeholder not yet supported; DatasetCollection has "
