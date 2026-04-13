@@ -281,8 +281,12 @@ class TestS3UrlRewriteNoNetwork:
 import numpy as np  # noqa: E402
 
 
-class TestChainArchiveVsi:
-    """M3: archive-inside-URL paths get chained VSI prefix.
+class TestToVsiArchiveChaining:
+    """Tests for ``_to_vsi``'s archive-chaining behavior.
+
+    Named after the public entry point (``_to_vsi``) rather than the
+    internal helper (``_chain_archive_vsi``) so the test class name
+    remains stable if the helper is later renamed or inlined.
 
     Covers the pre-existing gap where
     ``https://host/archive.tar/inner.tif`` -> ``/vsicurl/...`` lost
@@ -399,7 +403,7 @@ class TestCloudConfigCtxAttribute:
             )
 
 
-class TestChainArchiveVsiEdgeCases:
+class TestToVsiArchiveChainingEdgeCases:
     """M1 (2nd review): boundary-anchored archive marker detection.
 
     These scenarios used to FALSE-POSITIVE under the substring-only
