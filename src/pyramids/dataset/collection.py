@@ -557,6 +557,8 @@ class DatasetCollection:
             List of written file paths, in temporal (index) order.
 
         Raises:
+            DatasetNotFoundError: :meth:`open_multi_dataset` has not been
+                called, so per-slice arrays are not loaded.
             ValueError: ``{t}`` placeholder used but no time coord is
                 available.
             FileExistsError: ``overwrite=False`` and a target path exists.
@@ -589,6 +591,14 @@ class DatasetCollection:
 
                 ```
         """
+        if not hasattr(self, "values"):
+            raise DatasetNotFoundError(
+                "to_cog_stack requires open_multi_dataset(band=...) to be "
+                "called first so that per-slice arrays are loaded. Example:\n"
+                "    dc = DatasetCollection.read_multiple_files(...)\n"
+                "    dc.open_multi_dataset(band=0)\n"
+                "    dc.to_cog_stack('out/')"
+            )
         if "{t}" in pattern:
             raise ValueError(
                 "{t} placeholder not yet supported; DatasetCollection has "
