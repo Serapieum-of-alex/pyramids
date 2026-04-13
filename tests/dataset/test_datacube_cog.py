@@ -146,3 +146,59 @@ class TestToCogStackPrecondition:
         assert len(paths) == dc.time_length, (
             f"Expected {dc.time_length} outputs, got {len(paths)}"
         )
+
+
+class TestToCogStackPreconditionDirectSetter:
+    """L1: to_cog_stack accepts either open_multi_dataset OR direct .values=."""
+
+    def test_succeeds_after_direct_values_assignment(
+        self, rasters_folder_path: str, tmp_path
+    ):
+        """Direct .values setter also unblocks to_cog_stack.
+
+        Test scenario:
+            The M1 precondition check now targets the backing `_values`
+            attribute, not just the `open_multi_dataset` code path.
+            Users who populate `.values` directly (e.g. from a
+            pre-computed numpy array) must also be able to call
+            to_cog_stack without hitting the guardrail.
+        """
+        import numpy as np
+
+        dc = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
+        # Populate via open_multi_dataset FIRST to get the right shape
+        dc.open_multi_dataset(band=0)
+        synthetic = np.zeros(dc.values.shape, dtype=dc.values.dtype)
+        dc.values = synthetic
+        paths = dc.to_cog_stack(tmp_path / "out")
+        assert len(paths) == dc.time_length, (
+            f"Expected {dc.time_length} outputs, got {len(paths)}"
+        )
+
+    def test_error_message_mentions_direct_assignment(
+        self, rasters_folder_path: str, tmp_path
+    ):
+        """Error message documents both remediation paths.
+
+        Test scenario:
+            Post-L1: the guardrail error names both
+            open_multi_dataset AND direct `.values` assignment, so a
+            user who populated via the setter but hit an unrelated
+            edge case isn't misled.
+        """
+        from pyramids.base._errors import DatasetNotFoundError
+
+        dc = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
+        with pytest.raises(DatasetNotFoundError) as exc_info:
+            dc.to_cog_stack(tmp_path / "out")
+        msg = str(exc_info.value)
+        assert "open_multi_dataset" in msg, (
+            f"Error must mention open_multi_dataset: {msg}"
+        )
+        assert ".values" in msg, (
+            f"Error must mention .values setter path: {msg}"
+        )
