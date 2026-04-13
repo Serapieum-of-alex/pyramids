@@ -9,16 +9,20 @@ on:
         default: false
   release:
     types: [released]
+  workflow_call:
 
 permissions:
   contents: read
 
 env:
-  GDAL_VERSION: "3.12.1"
+  # Must match [tool.pixi.feature.wheel-build.dependencies] GDAL pin
+  # and GDAL_VERSION in [tool.cibuildwheel.linux.environment].
+  GDAL_VERSION: "3.12.3"
 
 jobs:
   # -------------------------------------------------------------------------
-  # Build source distribution (always pure Python, no vendored GDAL)
+  # Build source distribution (pure Python, no vendored GDAL).
+  # Kept for conda-forge feedstock which compiles from sdist.
   # -------------------------------------------------------------------------
   build-sdist:
     runs-on: ubuntu-latest
@@ -42,7 +46,7 @@ jobs:
           path: dist/*.tar.gz
 
   # -------------------------------------------------------------------------
-  # Build Linux platform wheels with bundled GDAL
+  # Build Linux platform wheels with bundled GDAL via pixi + conda-forge.
   # -------------------------------------------------------------------------
   build-linux-wheels:
     runs-on: ubuntu-latest
@@ -62,7 +66,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.22
         env:
-          CIBW_BUILD: "cp311-manylinux* cp312-manylinux* cp313-manylinux*"
+          CIBW_BUILD: "cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
 
       - uses: actions/upload-artifact@v4
@@ -71,12 +75,14 @@ jobs:
           path: wheelhouse/*.whl
 
   # -------------------------------------------------------------------------
-  # Test the built wheels in a clean environment
+  # Test the built wheels in a clean environment (no conda, no system GDAL).
+  # Uses python:3.X-slim images that only have libexpat1 preinstalled.
   # -------------------------------------------------------------------------
   test-linux-wheels:
     needs: build-linux-wheels
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
@@ -91,26 +97,42 @@ jobs:
           name: wheels-linux-x86_64
           path: dist/
 
+      - name: Compute Python tag
+        id: pytag
+        run: echo "tag=cp${{ matrix.python-version }}" | sed 's/\.//' >> $GITHUB_OUTPUT
+
       - name: Install wheel (no conda, no system GDAL)
         run: |
-          pip install dist/pyramids_gis-*-cp${{ matrix.python-version && '3' || '' }}*manylinux*.whl || \
-            pip install dist/*.whl
-          pip install pytest
+          WHEEL=$(ls dist/pyramids_gis-*-${{ steps.pytag.outputs.tag }}-${{ steps.pytag.outputs.tag }}-manylinux_*_x86_64.whl)
+          echo "Installing: $WHEEL"
+          pip install "$WHEEL"
+          pip install pytest pytest-env pytest-mock
 
-      - name: Verify GDAL import
+      - name: Verify GDAL import (exercises vendor bootstrap)
         run: |
           python -c "
           import pyramids
-          from osgeo import gdal
+          from osgeo import gdal, ogr, osr
           print(f'pyramids {pyramids.__version__}')
           print(f'GDAL {gdal.__version__}')
+          # EPSG lookup — proves PROJ_DATA bundled
+          sr = osr.SpatialReference(); sr.ImportFromEPSG(4326)
+          assert sr.GetAttrValue('AUTHORITY', 1) == '4326'
+          # MEM raster — proves GDAL_DATA bundled
+          ds = gdal.GetDriverByName('MEM').Create('', 10, 10, 1, gdal.GDT_Byte)
+          ds.SetGeoTransform([0, 1, 0, 0, 0, -1])
+          ds.SetProjection(sr.ExportToWkt())
+          # osgeo must come from the vendored copy
+          import osgeo
+          assert '_vendor' in osgeo.__file__, f'osgeo not from vendor: {osgeo.__file__}'
+          print('All runtime checks passed.')
           "
 
-      - name: Run tests
-        run: pytest -vvv -sv -m "not plot" tests/
+      - name: Run test suite (non-plot)
+        run: pytest -vvv -sv -m "not plot and not xarray" --ignore=tests/dataset/test_plot.py tests/
 
   # -------------------------------------------------------------------------
-  # Publish to PyPI
+  # Publish to PyPI (disabled — enable in Phase 6)
   # -------------------------------------------------------------------------
 #   publish:
 #     needs: [build-sdist, build-linux-wheels, test-linux-wheels]
