@@ -197,7 +197,6 @@ class TestValidateCoverageFill:
         from osgeo_utils.samples import validate_cloud_optimized_geotiff as v
 
         # Write a valid COG first so the Path.exists() pre-check passes.
-        from pyramids.dataset.cog.write import translate_to_cog
         p = tmp_path / "x.tif"
         dst = translate_to_cog(mem_dataset, p, {})
         dst.FlushCache()
@@ -217,7 +216,6 @@ class TestValidateCoverageFill:
         """A RuntimeError not about a missing file returns an error entry."""
         from osgeo_utils.samples import validate_cloud_optimized_geotiff as v
 
-        from pyramids.dataset.cog.write import translate_to_cog
         p = tmp_path / "x.tif"
         dst = translate_to_cog(mem_dataset, p, {})
         dst.FlushCache()
