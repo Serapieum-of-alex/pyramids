@@ -88,7 +88,7 @@ def _copy_tree_replacing(src: Path, dst: Path) -> None:
 
 
 def vendor_osgeo_into_package() -> None:
-    """Copy osgeo module + GDAL/PROJ data files into src/pyramids/."""
+    """Copy osgeo and osgeo_utils modules + GDAL/PROJ data files into src/pyramids/."""
     import osgeo  # imported lazily so install step runs first
 
     src_pyramids = REPO_ROOT / "src" / "pyramids"
@@ -99,6 +99,16 @@ def vendor_osgeo_into_package() -> None:
     vendor_dir = src_pyramids / "_vendor"
     _copy_tree_replacing(osgeo_src, vendor_dir / "osgeo")
     (vendor_dir / "__init__.py").touch()
+
+    # 1b. Vendor osgeo_utils/ — GDAL's pip package ships a sibling
+    # top-level package for utility scripts (gdal_polygonize, etc.).
+    # Some of pyramids' tests / third-party code imports it.
+    try:
+        import osgeo_utils
+        osgeo_utils_src = Path(osgeo_utils.__file__).parent
+        _copy_tree_replacing(osgeo_utils_src, vendor_dir / "osgeo_utils")
+    except ImportError:
+        print("[install-and-vendor-osgeo] osgeo_utils not found; skipping", flush=True)
 
     # 2. Vendor GDAL_DATA
     gdal_data_src = prefix / "share" / "gdal"

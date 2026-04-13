@@ -2,6 +2,10 @@ import random
 from pathlib import Path
 from typing import List, Tuple
 
+# Import pyramids FIRST so its vendor bootstrap adds _vendor/ to sys.path
+# when running against a platform wheel. No-op on editable/dev installs.
+import pyramids  # noqa: F401
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd

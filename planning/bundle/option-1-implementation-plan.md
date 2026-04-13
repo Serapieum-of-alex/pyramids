@@ -1357,7 +1357,7 @@ gh workflow run build-wheels.yml
 | 2.1  | Enable multi-Python matrix (cp311/cp312/cp313)           | 2     | P1       | Solved |
 | 2.2  | Smoke-test each Python wheel                             | 2     | P1       | Solved |
 | 3.1  | Add platform-wheel test job to `wheel-test.yml`          | 3     | P0       | Solved |
-| 3.2  | Run test suite locally against platform wheel            | 3     | P0       | Open   |
+| 3.2  | Run test suite locally against platform wheel            | 3     | P0       | Solved |
 | 3.3  | Fix tests that break under platform-wheel install        | 3     | P1       | Open   |
 | 4.1  | Confirm pixi works on macOS runners                      | 4     | P1       | Open   |
 | 4.2  | Write `ci/setup-gdal-from-pixi-macos.sh`                 | 4     | P1       | Open   |

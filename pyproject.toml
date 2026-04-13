@@ -108,6 +108,7 @@ include = ["pyramids", "pyramids.*"]
 pyramids = [
     "**/*.yaml",
     "_vendor/osgeo/**/*",
+    "_vendor/osgeo_utils/**/*",
     "_data/gdal_data/*",
     "_data/proj_data/*",
 ]
