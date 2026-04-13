@@ -1344,33 +1344,33 @@ gh workflow run build-wheels.yml
 | 1.1  | Add `wheel-build` pixi feature + env to `pyproject.toml` | 1     | P0       | Solved |
 | 1.2  | Verify pixi wheel-build env resolves locally             | 1     | P0       | Solved |
 | 1.3  | Design `ci/setup-gdal-from-pixi.sh`                      | 1     | P0       | Solved |
-| 1.4  | Smoke-test setup script in manylinux container           | 1     | P0       | Open  |
-| 1.5  | Create `ci/install-and-vendor-osgeo.py`                  | 1     | P0       | Open  |
-| 1.6  | Wire cibuildwheel config in `pyproject.toml`             | 1     | P0       | Open  |
-| 1.7  | Verify pyramids runtime bootstrap                        | 1     | P1       | Open  |
-| 1.8  | Archive `ci/build-gdal-linux.sh` with deprecation header | 1     | P2       | Open  |
-| 1.9  | Delete/inline `ci/vendor-osgeo.py`                       | 1     | P2       | Open  |
-| 1.10 | Run cibuildwheel for cp312 locally                       | 1     | P0       | Open  |
-| 1.11 | Debug first-build failures                               | 1     | P0       | Open  |
-| 1.12 | Verify wheel layout via `python -m zipfile -l`           | 1     | P0       | Open  |
-| 1.13 | Smoke-test wheel in `python:3.12-slim`                   | 1     | P0       | Open  |
-| 2.1  | Enable multi-Python matrix (cp311/cp312/cp313)           | 2     | P1       | Open  |
-| 2.2  | Smoke-test each Python wheel                             | 2     | P1       | Open  |
-| 3.1  | Add platform-wheel test job to `wheel-test.yml`          | 3     | P0       | Open  |
-| 3.2  | Run test suite locally against platform wheel            | 3     | P0       | Open  |
-| 3.3  | Fix tests that break under platform-wheel install        | 3     | P1       | Open  |
-| 4.1  | Confirm pixi works on macOS runners                      | 4     | P1       | Open  |
-| 4.2  | Write `ci/setup-gdal-from-pixi-macos.sh`                 | 4     | P1       | Open  |
-| 4.3  | Add macOS to `[tool.cibuildwheel]`                       | 4     | P1       | Open  |
-| 4.4  | Handle macOS arm64 vs x86_64 separately                  | 4     | P1       | Open  |
-| 4.5  | Smoke-test macOS wheels                                  | 4     | P1       | Open  |
-| 5.1  | Confirm pixi works on Windows runners                    | 5     | P1       | Open  |
-| 5.2  | Write `ci/setup-gdal-from-pixi.ps1` (PowerShell)         | 5     | P1       | Open  |
-| 5.3  | Add Windows to `[tool.cibuildwheel]`                     | 5     | P1       | Open  |
-| 5.4  | Verify `os.add_dll_directory` bootstrap works            | 5     | P1       | Open  |
-| 5.5  | Smoke-test Windows wheel                                 | 5     | P1       | Open  |
-| 6.1  | Measure and optimize wheel sizes                         | 6     | P1       | Open  |
-| 6.2  | Document release process in `release-process.md`         | 6     | P1       | Open  |
-| 6.3  | Wire `build-wheels.yml` to PyPI trusted publishing       | 6     | P0       | Open  |
-| 6.4  | Update user-facing installation docs                     | 6     | P1       | Open  |
-| 6.5  | Namespace collision mitigation (if needed)               | 6     | P2       | Open  |
+| 1.4  | Smoke-test setup script in manylinux container           | 1     | P0       | Solved |
+| 1.5  | Create `ci/install-and-vendor-osgeo.py`                  | 1     | P0       | Open   |
+| 1.6  | Wire cibuildwheel config in `pyproject.toml`             | 1     | P0       | Open   |
+| 1.7  | Verify pyramids runtime bootstrap                        | 1     | P1       | Open   |
+| 1.8  | Archive `ci/build-gdal-linux.sh` with deprecation header | 1     | P2       | Open   |
+| 1.9  | Delete/inline `ci/vendor-osgeo.py`                       | 1     | P2       | Open   |
+| 1.10 | Run cibuildwheel for cp312 locally                       | 1     | P0       | Open   |
+| 1.11 | Debug first-build failures                               | 1     | P0       | Open   |
+| 1.12 | Verify wheel layout via `python -m zipfile -l`           | 1     | P0       | Open   |
+| 1.13 | Smoke-test wheel in `python:3.12-slim`                   | 1     | P0       | Open   |
+| 2.1  | Enable multi-Python matrix (cp311/cp312/cp313)           | 2     | P1       | Open   |
+| 2.2  | Smoke-test each Python wheel                             | 2     | P1       | Open   |
+| 3.1  | Add platform-wheel test job to `wheel-test.yml`          | 3     | P0       | Open   |
+| 3.2  | Run test suite locally against platform wheel            | 3     | P0       | Open   |
+| 3.3  | Fix tests that break under platform-wheel install        | 3     | P1       | Open   |
+| 4.1  | Confirm pixi works on macOS runners                      | 4     | P1       | Open   |
+| 4.2  | Write `ci/setup-gdal-from-pixi-macos.sh`                 | 4     | P1       | Open   |
+| 4.3  | Add macOS to `[tool.cibuildwheel]`                       | 4     | P1       | Open   |
+| 4.4  | Handle macOS arm64 vs x86_64 separately                  | 4     | P1       | Open   |
+| 4.5  | Smoke-test macOS wheels                                  | 4     | P1       | Open   |
+| 5.1  | Confirm pixi works on Windows runners                    | 5     | P1       | Open   |
+| 5.2  | Write `ci/setup-gdal-from-pixi.ps1` (PowerShell)         | 5     | P1       | Open   |
+| 5.3  | Add Windows to `[tool.cibuildwheel]`                     | 5     | P1       | Open   |
+| 5.4  | Verify `os.add_dll_directory` bootstrap works            | 5     | P1       | Open   |
+| 5.5  | Smoke-test Windows wheel                                 | 5     | P1       | Open   |
+| 6.1  | Measure and optimize wheel sizes                         | 6     | P1       | Open   |
+| 6.2  | Document release process in `release-process.md`         | 6     | P1       | Open   |
+| 6.3  | Wire `build-wheels.yml` to PyPI trusted publishing       | 6     | P0       | Open   |
+| 6.4  | Update user-facing installation docs                     | 6     | P1       | Open   |
+| 6.5  | Namespace collision mitigation (if needed)               | 6     | P2       | Open   |
