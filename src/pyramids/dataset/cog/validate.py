@@ -129,6 +129,31 @@ def _fallback_validate(
     full extent); at least one overview present. Does NOT check the
     IFD-before-data layout; recommends upgrading GDAL if used.
 
+    Heuristic limitations:
+        The "is stripped" check compares the block shape reported by
+        :func:`GetBlockSize` — stripped TIFFs typically return
+        ``(width, small_N)`` (e.g. ``(512, 4)``) while tiled files
+        return ``(tile, tile)``. The rule used is ``by != bx and
+        by * 4 < bx``, which:
+
+        - Correctly flags standard stripped layouts (``(W, 1)``,
+          ``(W, 4)``, ``(W, 8)``).
+        - Correctly passes square-tiled COGs (``(256, 256)``,
+          ``(512, 512)``).
+        - Can FALSE-NEGATIVE on pathological cases such as
+          near-square strips (``by == bx``) — extremely rare in
+          practice.
+        - Can FALSE-POSITIVE on legitimately non-square TIFF tiles
+          (e.g. ``(512, 128)`` used for tall elongated rasters) —
+          also rare; the GTiff driver requires square tiles for COG.
+
+        The authoritative check is the TIFF ``TILEWIDTH`` /
+        ``STRIPBYTECOUNTS`` tag, but reading it requires either
+        :mod:`tifffile` or a direct ``libtiff`` binding. We accept
+        the heuristic because this fallback runs only when
+        :mod:`osgeo_utils.samples.validate_cloud_optimized_geotiff`
+        is unavailable — which, in practice, is never on GDAL >= 3.4.
+
     Args:
         path: File path or ``/vsi*`` path.
 
@@ -147,9 +172,7 @@ def _fallback_validate(
         bx, by = band.GetBlockSize()
         details["blocksize"] = [bx, by]
         details["overview_count"] = band.GetOverviewCount()
-        # Heuristic: GDAL returns (width, small_N) for stripped TIFFs
-        # (e.g., (512, 4)) and (tile, tile) for tiled. A block with
-        # by != bx and by much smaller than bx signals a stripped layout.
+        # See the "Heuristic limitations" note in the docstring.
         is_stripped = by != bx and by * 4 < bx
         if is_stripped:
             errors.append("not tiled (stripped layout)")
