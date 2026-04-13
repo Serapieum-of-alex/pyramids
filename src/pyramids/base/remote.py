@@ -74,14 +74,30 @@ def is_remote(path: str) -> bool:
         and for compressed-archive paths that don't start with ``/vsi``.
 
     Examples:
-        >>> is_remote("s3://bucket/key.tif")
-        True
-        >>> is_remote("/vsicurl/https://foo/x.tif")
-        True
-        >>> is_remote("/home/user/data.tif")
-        False
-        >>> is_remote("C:/data/x.tif")
-        False
+        - Cloud URL schemes are recognized as remote:
+            ```python
+            >>> is_remote("s3://bucket/key.tif")
+            True
+            >>> is_remote("gs://bucket/key.tif")
+            True
+
+            ```
+        - Already-rewritten VSI paths are also remote:
+            ```python
+            >>> is_remote("/vsicurl/https://foo/x.tif")
+            True
+            >>> is_remote("/vsimem/temp.tif")
+            True
+
+            ```
+        - Local POSIX and Windows-drive paths are not remote:
+            ```python
+            >>> is_remote("/home/user/data.tif")
+            False
+            >>> is_remote("C:/data/x.tif")
+            False
+
+            ```
     """
     result: bool
     if path.startswith(_VSI_PREFIXES):
@@ -125,16 +141,28 @@ def _to_vsi(path: str) -> str:
         ``path`` unchanged.
 
     Examples:
-        >>> _to_vsi("s3://bucket/scene.tif")
-        '/vsis3/bucket/scene.tif'
-        >>> _to_vsi("gs://bucket/a/b/c.tif")
-        '/vsigs/bucket/a/b/c.tif'
-        >>> _to_vsi("https://example.com/scene.tif")
-        '/vsicurl/https://example.com/scene.tif'
-        >>> _to_vsi("/vsis3/bucket/x.tif")
-        '/vsis3/bucket/x.tif'
-        >>> _to_vsi("C:/data/x.tif")
-        'C:/data/x.tif'
+        - Cloud-object-store URLs get the matching /vsi prefix:
+            ```python
+            >>> _to_vsi("s3://bucket/scene.tif")
+            '/vsis3/bucket/scene.tif'
+            >>> _to_vsi("gs://bucket/a/b/c.tif")
+            '/vsigs/bucket/a/b/c.tif'
+
+            ```
+        - HTTP(S) URLs are wrapped in /vsicurl/ with the full URL intact:
+            ```python
+            >>> _to_vsi("https://example.com/scene.tif")
+            '/vsicurl/https://example.com/scene.tif'
+
+            ```
+        - Already-VSI and plain local paths pass through unchanged:
+            ```python
+            >>> _to_vsi("/vsis3/bucket/x.tif")
+            '/vsis3/bucket/x.tif'
+            >>> _to_vsi("C:/data/x.tif")
+            'C:/data/x.tif'
+
+            ```
     """
     new_path: str
     if path.startswith(_VSI_PREFIXES):
@@ -193,14 +221,25 @@ class CloudConfig:
     ================================  ==================================
 
     Examples:
-        >>> from pyramids.base.remote import CloudConfig  # doctest: +SKIP
-        >>> with CloudConfig(aws_region="us-east-1"):  # doctest: +SKIP
-        ...     ds = Dataset.read_file("s3://bucket/scene.tif")
+        - Override the AWS region for a single operation:
+            ```python
+            >>> from pyramids.base.remote import CloudConfig  # doctest: +SKIP
+            >>> with CloudConfig(aws_region="us-east-1"):  # doctest: +SKIP
+            ...     ds = Dataset.read_file("s3://bucket/scene.tif")
 
-        Anonymous access to a public bucket:
+            ```
+        - Anonymous access to a public bucket:
+            ```python
+            >>> with CloudConfig(aws_no_sign_request=True):  # doctest: +SKIP
+            ...     ds = Dataset.read_file("s3://public/x.tif")
 
-        >>> with CloudConfig(aws_no_sign_request=True):   # doctest: +SKIP
-        ...     ds = Dataset.read_file("s3://public/x.tif")
+            ```
+        - Inspect the config dict without entering the block:
+            ```python
+            >>> CloudConfig(aws_region="eu-west-1").as_gdal_config()
+            {'AWS_REGION': 'eu-west-1'}
+
+            ```
 
     Note:
         :func:`gdal.config_options` is thread-local; each thread that
@@ -230,11 +269,28 @@ class CloudConfig:
             in verbatim and override explicit fields on conflict.
 
         Examples:
-            >>> cfg = CloudConfig(aws_region="us-east-1")
-            >>> cfg.as_gdal_config()
-            {'AWS_REGION': 'us-east-1'}
-            >>> CloudConfig(aws_no_sign_request=True).as_gdal_config()
-            {'AWS_NO_SIGN_REQUEST': 'YES'}
+            - A single AWS field produces a one-entry config:
+                ```python
+                >>> CloudConfig(aws_region="us-east-1").as_gdal_config()
+                {'AWS_REGION': 'us-east-1'}
+
+                ```
+            - Anonymous access maps to AWS_NO_SIGN_REQUEST=YES:
+                ```python
+                >>> CloudConfig(aws_no_sign_request=True).as_gdal_config()
+                {'AWS_NO_SIGN_REQUEST': 'YES'}
+
+                ```
+            - None-valued fields are dropped; extras pass through:
+                ```python
+                >>> cfg = CloudConfig(
+                ...     aws_region="eu-west-1",
+                ...     extra={"VSI_CACHE": "TRUE"},
+                ... ).as_gdal_config()
+                >>> sorted(cfg.items())
+                [('AWS_REGION', 'eu-west-1'), ('VSI_CACHE', 'TRUE')]
+
+                ```
         """
         mapping: dict[str, str | None] = {
             "AWS_ACCESS_KEY_ID": self.aws_access_key_id,

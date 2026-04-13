@@ -44,10 +44,27 @@ class ValidationReport:
         """Truthy iff the file validates as a COG.
 
         Examples:
-            >>> bool(ValidationReport(is_valid=True))
-            True
-            >>> bool(ValidationReport(is_valid=False, errors=["bad"]))
-            False
+            - A valid report is truthy:
+                ```python
+                >>> bool(ValidationReport(is_valid=True))
+                True
+
+                ```
+            - An invalid report (with errors) is falsy:
+                ```python
+                >>> bool(ValidationReport(is_valid=False, errors=["bad"]))
+                False
+
+                ```
+            - The report is usable directly in conditionals:
+                ```python
+                >>> report = ValidationReport(is_valid=True, details={"blocksize": [512, 512]})
+                >>> "OK" if report else "bad"
+                'OK'
+                >>> report.details["blocksize"]
+                [512, 512]
+
+                ```
         """
         return self.is_valid
 
@@ -164,10 +181,29 @@ def validate(path: str | Path, strict: bool = False) -> ValidationReport:
             through the normal validator surface.
 
     Examples:
-        >>> from pyramids.dataset.cog import validate  # doctest: +SKIP
-        >>> report = validate("scene.tif")  # doctest: +SKIP
-        >>> bool(report)  # doctest: +SKIP
-        True
+        - Validate a local COG and inspect the report:
+            ```python
+            >>> from pyramids.dataset.cog import validate  # doctest: +SKIP
+            >>> report = validate("scene.tif")  # doctest: +SKIP
+            >>> bool(report)  # doctest: +SKIP
+            True
+            >>> report.details.get("blocksize")  # doctest: +SKIP
+            [512, 512]
+
+            ```
+        - Strict mode promotes warnings (e.g. "no overviews") to errors:
+            ```python
+            >>> strict = validate("scene.tif", strict=True)  # doctest: +SKIP
+            >>> if not strict:  # doctest: +SKIP
+            ...     for err in strict.errors: print(err)
+
+            ```
+        - Validate a cloud-hosted COG via VSI path:
+            ```python
+            >>> validate("/vsis3/public-bucket/scene.tif").is_valid  # doctest: +SKIP
+            True
+
+            ```
     """
     p = str(path)
     if not p.startswith("/vsi") and not Path(p).exists():

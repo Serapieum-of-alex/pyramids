@@ -79,14 +79,28 @@ def _stringify(value: Any) -> str:
         The GDAL-style string form.
 
     Examples:
-        >>> _stringify(True)
-        'YES'
-        >>> _stringify(False)
-        'NO'
-        >>> _stringify(512)
-        '512'
-        >>> _stringify("DEFLATE")
-        'DEFLATE'
+        - Booleans translate to GDAL's YES/NO convention:
+            ```python
+            >>> _stringify(True)
+            'YES'
+            >>> _stringify(False)
+            'NO'
+
+            ```
+        - Non-bool scalars defer to str():
+            ```python
+            >>> _stringify(512)
+            '512'
+            >>> _stringify(3.14)
+            '3.14'
+
+            ```
+        - Strings are passed through unchanged:
+            ```python
+            >>> _stringify("DEFLATE")
+            'DEFLATE'
+
+            ```
     """
     result: str
     if isinstance(value, bool):
@@ -110,14 +124,26 @@ def to_gdal_options(opts: CreationOptions | None) -> list[str]:
         List of ``"KEY=VALUE"`` strings. Empty list when ``opts`` is ``None``.
 
     Examples:
-        >>> to_gdal_options({"COMPRESS": "DEFLATE", "LEVEL": 9})
-        ['COMPRESS=DEFLATE', 'LEVEL=9']
-        >>> to_gdal_options({"STATISTICS": True, "SPARSE_OK": False})
-        ['STATISTICS=YES', 'SPARSE_OK=NO']
-        >>> to_gdal_options({"COMPRESS": "LZW", "LEVEL": None})
-        ['COMPRESS=LZW']
-        >>> to_gdal_options(None)
-        []
+        - Serialize a compression config:
+            ```python
+            >>> to_gdal_options({"COMPRESS": "DEFLATE", "LEVEL": 9})
+            ['COMPRESS=DEFLATE', 'LEVEL=9']
+
+            ```
+        - Booleans become GDAL's YES/NO convention:
+            ```python
+            >>> to_gdal_options({"STATISTICS": True, "SPARSE_OK": False})
+            ['STATISTICS=YES', 'SPARSE_OK=NO']
+
+            ```
+        - None values are dropped so optional kwargs flow through unchanged:
+            ```python
+            >>> to_gdal_options({"COMPRESS": "LZW", "LEVEL": None})
+            ['COMPRESS=LZW']
+            >>> to_gdal_options(None)
+            []
+
+            ```
     """
     result: list[str]
     if opts is None:
@@ -144,12 +170,24 @@ def _parse_list_extra(items: list[str]) -> dict[str, Any]:
         ValueError: If any item lacks an ``=``.
 
     Examples:
-        >>> _parse_list_extra(["COMPRESS=DEFLATE", "LEVEL=9"])
-        {'COMPRESS': 'DEFLATE', 'LEVEL': '9'}
-        >>> _parse_list_extra(["compress=lzw"])
-        {'COMPRESS': 'lzw'}
-        >>> _parse_list_extra([])
-        {}
+        - Parse a multi-entry list:
+            ```python
+            >>> _parse_list_extra(["COMPRESS=DEFLATE", "LEVEL=9"])
+            {'COMPRESS': 'DEFLATE', 'LEVEL': '9'}
+
+            ```
+        - Keys are uppercased; values are preserved verbatim:
+            ```python
+            >>> _parse_list_extra(["compress=lzw"])
+            {'COMPRESS': 'lzw'}
+
+            ```
+        - Empty input yields an empty dict:
+            ```python
+            >>> _parse_list_extra([])
+            {}
+
+            ```
     """
     parsed: dict[str, Any] = {}
     for entry in items:
@@ -185,12 +223,24 @@ def merge_options(
         ValueError: When a legacy list-form entry lacks ``=``.
 
     Examples:
-        >>> merge_options({"COMPRESS": "DEFLATE"}, {"COMPRESS": "ZSTD"})
-        {'COMPRESS': 'ZSTD'}
-        >>> merge_options({"COMPRESS": "DEFLATE"}, ["LEVEL=9"])
-        {'COMPRESS': 'DEFLATE', 'LEVEL': '9'}
-        >>> merge_options({"COMPRESS": "DEFLATE"}, None)
-        {'COMPRESS': 'DEFLATE'}
+        - Dict extras override defaults on conflict:
+            ```python
+            >>> merge_options({"COMPRESS": "DEFLATE"}, {"COMPRESS": "ZSTD"})
+            {'COMPRESS': 'ZSTD'}
+
+            ```
+        - Legacy list-of-string form is also accepted for back-compat:
+            ```python
+            >>> merge_options({"COMPRESS": "DEFLATE"}, ["LEVEL=9"])
+            {'COMPRESS': 'DEFLATE', 'LEVEL': '9'}
+
+            ```
+        - None extras returns a copy of the defaults:
+            ```python
+            >>> merge_options({"COMPRESS": "DEFLATE"}, None)
+            {'COMPRESS': 'DEFLATE'}
+
+            ```
     """
     merged: dict[str, Any] = {
         str(k).upper(): v for k, v in defaults.items() if v is not None
@@ -219,11 +269,28 @@ def validate_blocksize(value: int) -> None:
         ValueError: If ``value`` is outside the allowed set.
 
     Examples:
-        >>> validate_blocksize(512)  # no error
-        >>> validate_blocksize(500)   # doctest: +IGNORE_EXCEPTION_DETAIL
-        Traceback (most recent call last):
-        ...
-        ValueError: blocksize must be a power of 2 in [64, 4096]; got 500...
+        - Valid power-of-2 blocksizes return silently:
+            ```python
+            >>> validate_blocksize(512)
+            >>> validate_blocksize(256)
+
+            ```
+        - Non-power-of-2 is rejected:
+            ```python
+            >>> validate_blocksize(500)   # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+            ...
+            ValueError: blocksize must be a power of 2 in [64, 4096]; got 500...
+
+            ```
+        - Out-of-range values are rejected:
+            ```python
+            >>> validate_blocksize(32)    # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+            ...
+            ValueError: blocksize must be a power of 2 in [64, 4096]; got 32...
+
+            ```
     """
     if value not in _VALID_BLOCKSIZES:
         raise ValueError(
@@ -244,11 +311,25 @@ def validate_option_keys(opts: CreationOptions) -> None:
         ValueError: If any key is not a recognized COG driver option.
 
     Examples:
-        >>> validate_option_keys({"COMPRESS": "DEFLATE"})  # no error
-        >>> validate_option_keys({"NONSENSE": "x"})  # doctest: +IGNORE_EXCEPTION_DETAIL
-        Traceback (most recent call last):
-        ...
-        ValueError: Unknown COG driver option(s): ['NONSENSE']...
+        - Known keys return silently:
+            ```python
+            >>> validate_option_keys({"COMPRESS": "DEFLATE"})
+            >>> validate_option_keys({"BLOCKSIZE": 512, "BIGTIFF": "IF_SAFER"})
+
+            ```
+        - Unknown keys raise ValueError naming the offender:
+            ```python
+            >>> validate_option_keys({"NONSENSE": "x"})  # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+            ...
+            ValueError: Unknown COG driver option(s): ['NONSENSE']...
+
+            ```
+        - Empty mapping is accepted:
+            ```python
+            >>> validate_option_keys({})
+
+            ```
     """
     unknown = {str(k).upper() for k in opts.keys()} - COG_DRIVER_OPTIONS
     if unknown:
