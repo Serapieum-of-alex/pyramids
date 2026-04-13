@@ -306,3 +306,68 @@ class TestIsCogMissingFile:
         src.SetDescription(str(out))  # path that does not exist
         ds = Dataset(src)
         assert ds.is_cog is False
+
+
+class TestToFileDriverCogArgForwarding:
+    """M2: to_file(driver="COG") must forward/reject kwargs explicitly."""
+
+    def test_tile_length_forwarded_as_blocksize(
+        self, small_float_dataset, tmp_path
+    ):
+        """tile_length reaches the COG driver as BLOCKSIZE.
+
+        Test scenario:
+            Pre-fix: tile_length was silently ignored on the COG branch.
+            Post-fix: it is forwarded to to_cog(blocksize=...).
+        """
+        out = tmp_path / "x.tif"
+        small_float_dataset.to_file(out, driver="COG", tile_length=256)
+        reopened = gdal.Open(str(out))
+        bx, by = reopened.GetRasterBand(1).GetBlockSize()
+        reopened = None
+        assert bx == 256 and by == 256, (
+            f"Expected blocksize (256, 256), got ({bx}, {by})"
+        )
+
+    def test_band_nonzero_raises(self, small_float_dataset, tmp_path):
+        """driver='COG' with band != 0 is rejected loudly.
+
+        Test scenario:
+            COG writes all bands; pretending to subset via `band` is
+            a silent footgun. Raise ValueError with actionable message.
+        """
+        with pytest.raises(ValueError, match="band") as exc_info:
+            small_float_dataset.to_file(tmp_path / "x.tif", band=1, driver="COG")
+        msg = str(exc_info.value)
+        assert "band" in msg.lower() and "COG" in msg, (
+            f"Error must mention 'band' and 'COG'; got: {msg}"
+        )
+
+    def test_band_zero_is_accepted(self, small_float_dataset, tmp_path):
+        """band=0 (the default) must continue to work with driver='COG'.
+
+        Test scenario:
+            Regression guard: band=0 is the only legal value and should
+            still write a COG without error.
+        """
+        out = tmp_path / "x.tif"
+        small_float_dataset.to_file(out, band=0, driver="COG")
+        assert out.exists(), f"Output missing: {out}"
+
+    def test_creation_options_still_forwarded(
+        self, small_float_dataset, tmp_path
+    ):
+        """Existing list[str] creation_options contract is preserved.
+
+        Test scenario:
+            Back-compat: passing creation_options=['COMPRESS=LZW']
+            together with driver='COG' still honors the list.
+        """
+        out = tmp_path / "x.tif"
+        small_float_dataset.to_file(
+            out, driver="COG", creation_options=["COMPRESS=LZW"]
+        )
+        info = gdal.Info(str(out))
+        assert "COMPRESSION=LZW" in info, (
+            f"Expected LZW in gdal.Info output: {info[:200]}"
+        )
