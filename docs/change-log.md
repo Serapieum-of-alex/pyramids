@@ -1,6 +1,12 @@
 ﻿# Change log
 
 
+## 0.14.0 (2026-04-14)
+
+### Feat
+
+- **cog**: add Cloud Optimized GeoTIFF support (write, validate, cloud I/O, stack export) (#249)
+
 ## 0.13.0 (2026-04-12)
 
 ### Feat
