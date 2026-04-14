@@ -342,6 +342,7 @@ class IO:
         band: int = 0,
         tile_length: int | None = None,
         creation_options: list[str] | None = None,
+        driver: str | None = None,
     ) -> None:
         """Save dataset to tiff file.
 
@@ -358,6 +359,21 @@ class IO:
             creation_options: List[str], Default is None
                 List of strings that will be passed to the GDAL driver during the creation of the dataset.
                 i.e., ['PREDICTOR=2']
+            driver (str, optional):
+                Explicit GDAL driver name to use instead of inferring
+                from the file extension. Use ``driver="COG"`` to write
+                a Cloud Optimized GeoTIFF; the call delegates to
+                :meth:`~pyramids.dataset.ops.cog.COGMixin.to_cog`:
+
+                - ``creation_options`` (list form) is forwarded as the
+                  ``extra`` argument.
+                - ``tile_length`` is forwarded as the COG
+                  ``blocksize`` parameter.
+                - ``band`` must be ``0`` (COG writes all bands); any
+                  other value raises :class:`ValueError`.
+
+                Default ``None`` preserves the existing
+                extension-based driver selection.
 
         Examples:
             - Create a Dataset with 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0):
@@ -382,6 +398,19 @@ class IO:
 
               ```
         """
+        if driver == "COG":
+            if band != 0:
+                raise ValueError(
+                    "driver='COG' does not support the 'band' argument — "
+                    "COG always writes all source bands. Subset the "
+                    "dataset first (e.g. Dataset.get_band_subset) if you "
+                    "need a single-band output."
+                )
+            cog_kwargs: dict[str, Any] = {"extra": creation_options}
+            if tile_length is not None:
+                cog_kwargs["blocksize"] = tile_length
+            self.to_cog(path, **cog_kwargs)
+            return None
         if not isinstance(path, (str, Path)):
             raise TypeError(
                 f"path input should be string or Path type, given: {type(path)}"

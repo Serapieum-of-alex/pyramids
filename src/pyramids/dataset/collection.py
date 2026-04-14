@@ -526,6 +526,109 @@ class DatasetCollection:
             src = self.iloc(i)
             src.to_file(path[i], band=band)
 
+    def to_cog_stack(
+        self,
+        directory: str | Path,
+        *,
+        pattern: str = "{name}_{i:04d}.tif",
+        name: str = "slice",
+        overwrite: bool = False,
+        **cog_kwargs: Any,
+    ) -> list[Path]:
+        """Export each time slice of the collection as an individual COG.
+
+        Args:
+            directory: Output directory; created if missing.
+            pattern: Filename template. Placeholders:
+
+                - ``{name}`` — the ``name`` argument (default ``'slice'``);
+                - ``{i}``    — zero-padded integer index.
+
+                The ``{t}`` placeholder is reserved for a future task
+                that adds a time-coordinate axis; using it now raises
+                :class:`ValueError`.
+            name: Replacement for the ``{name}`` placeholder.
+            overwrite: If ``False``, raise :class:`FileExistsError`
+                when a target path already exists.
+            **cog_kwargs: Forwarded verbatim to
+                :meth:`~pyramids.dataset.ops.cog.COGMixin.to_cog`.
+
+        Returns:
+            List of written file paths, in temporal (index) order.
+
+        Raises:
+            DatasetNotFoundError: :meth:`open_multi_dataset` has not been
+                called, so per-slice arrays are not loaded.
+            ValueError: ``{t}`` placeholder used but no time coord is
+                available.
+            FileExistsError: ``overwrite=False`` and a target path exists.
+
+        Examples:
+            - Default naming — one COG per slice:
+                ```python
+                >>> dc.to_cog_stack("out/", compress="ZSTD")  # doctest: +SKIP
+                [PosixPath('out/slice_0000.tif'), ..., PosixPath('out/slice_0002.tif')]
+
+                ```
+            - Custom filename pattern and name prefix:
+                ```python
+                >>> dc.to_cog_stack(  # doctest: +SKIP
+                ...     "band4/",
+                ...     pattern="B04_{i:03d}.tif",
+                ...     name="B04",
+                ... )
+                [PosixPath('band4/B04_000.tif'), ...]
+
+                ```
+            - Overwrite existing outputs and forward COG options:
+                ```python
+                >>> dc.to_cog_stack(  # doctest: +SKIP
+                ...     "out/",
+                ...     overwrite=True,
+                ...     compress="DEFLATE",
+                ...     blocksize=256,
+                ... )
+
+                ```
+        """
+        # Check the backing attribute directly rather than going through
+        # the `values` property: the property getter raises AttributeError
+        # on unpopulated collections, which hasattr catches silently, but
+        # a future refactor that changes the exception type would break
+        # the guard. Matches the pattern used by `iloc` elsewhere in this
+        # module and correctly accepts either code path that populates
+        # `_values` (open_multi_dataset OR direct `.values = arr` assignment).
+        if not hasattr(self, "_values"):
+            raise DatasetNotFoundError(
+                "to_cog_stack requires the per-slice arrays to be loaded. "
+                "Populate them by calling open_multi_dataset(band=...) OR "
+                "by assigning directly to `.values`. Example:\n"
+                "    dc = DatasetCollection.read_multiple_files(...)\n"
+                "    dc.open_multi_dataset(band=0)\n"
+                "    dc.to_cog_stack('out/')"
+            )
+        if "{t}" in pattern:
+            raise ValueError(
+                "{t} placeholder not yet supported; DatasetCollection has "
+                "no time-axis coord. Use {i} for integer index."
+            )
+
+        out_dir = Path(directory)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        paths: list[Path] = []
+        for i in range(self.time_length):
+            filename = pattern.format(name=name, i=i)
+            target = out_dir / filename
+            if target.exists() and not overwrite:
+                raise FileExistsError(
+                    f"{target} exists; pass overwrite=True to replace."
+                )
+            slice_ds = self.iloc(i)
+            slice_ds.to_cog(target, **cog_kwargs)
+            paths.append(target)
+        return paths
+
     def to_crs(
         self,
         to_epsg: int = 3857,

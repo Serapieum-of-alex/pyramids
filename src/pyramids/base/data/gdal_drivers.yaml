@@ -29,9 +29,9 @@ netcdf:
 cog:
   GDAL Name: COG
   Long name: Cloud Optimized GeoTIFF generator
-  Creation: No
+  Creation: yes
   Copy: yes
-  Geo-referencing: No
+  Geo-referencing: yes
   Build requirements: Built-in by default
 
 geo raster:
