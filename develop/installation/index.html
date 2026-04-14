@@ -16,7 +16,7 @@
         <link rel="prev" href="..">
       
       
-        <link rel="next" href="../troubleshooting/">
+        <link rel="next" href="../overview/codebase-map/">
       
       
         
@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -268,25 +268,6 @@
     
   
   Installation
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../troubleshooting/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Troubleshooting
 
       </a>
     </li>
@@ -578,22 +559,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-install-recommended-for-most-users" class="md-nav__link">
+  <a href="#dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick install (recommended for most users)
+        Dependencies
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Quick install (recommended for most users)">
+    <nav class="md-nav" aria-label="Dependencies">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#with-pip-pypi-platform-wheels" class="md-nav__link">
+  <a href="#core-runtime-pypi" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With pip (PyPI platform wheels)
+        Core runtime (PyPI)
       
     </span>
   </a>
@@ -601,10 +582,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#with-conda-forge" class="md-nav__link">
+  <a href="#native-gdal-libraries-conda-forge-only" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With conda-forge
+        Native GDAL libraries (conda-forge only)
       
     </span>
   </a>
@@ -612,10 +593,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#with-pixi" class="md-nav__link">
+  <a href="#optional-extras" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With pixi
+        Optional extras
       
     </span>
   </a>
@@ -628,70 +609,66 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verify-the-install" class="md-nav__link">
+  <a href="#recommended-pixiconda-environment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verify the install
+        Recommended: Pixi/Conda environment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended: Pixi/Conda environment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-pixi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Pixi
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#platform-support-matrix" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#using-condamamba-directly" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Platform support matrix
+        Using conda/mamba directly
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#system-dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        System dependencies
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#editable-development-install" class="md-nav__link">
+  <a href="#installing-with-pip" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Editable / development install
+        Installing with pip
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#install-from-source-no-pixi" class="md-nav__link">
+    <nav class="md-nav" aria-label="Installing with pip">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installing-gdal-for-pip-users" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install from source (no pixi)
+        Installing GDAL for pip users
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#platform-specific-no-wheel-available" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Platform-specific: no wheel available
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Platform-specific: no wheel available">
+    <nav class="md-nav" aria-label="Installing GDAL for pip users">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -706,10 +683,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#linux-fedorarhelrocky" class="md-nav__link">
+  <a href="#linux-fedorarhel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Linux (Fedora/RHEL/Rocky)
+        Linux (Fedora/RHEL)
       
     </span>
   </a>
@@ -728,10 +705,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#windows-without-a-wheel" class="md-nav__link">
+  <a href="#macos-macports" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Windows without a wheel
+        macOS (MacPorts)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-conda-for-gdal-only-hybrid-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using conda for GDAL only (hybrid approach)
       
     </span>
   </a>
@@ -742,12 +741,17 @@
     </nav>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#install-directly-from-github" class="md-nav__link">
+  <a href="#install-from-source" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install directly from GitHub
+        Install from source
       
     </span>
   </a>
@@ -755,10 +759,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
+  <a href="#quick-check" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Troubleshooting
+        Quick check
       
     </span>
   </a>
@@ -766,10 +770,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#further-reading" class="md-nav__link">
+  <a href="#notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Further reading
+        Notes
       
     </span>
   </a>
@@ -780,33 +784,6 @@
   
 </nav>
       
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Troubleshooting
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -829,10 +806,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -850,8 +827,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -942,10 +919,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -963,8 +940,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1027,10 +1004,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -1048,8 +1025,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1077,10 +1054,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
         
           
-          <label class="md-nav__link" for="__nav_6_1" id="__nav_6_1_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
             
   
   
@@ -1098,8 +1075,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_1">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1387,10 +1364,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
         
           
-          <label class="md-nav__link" for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
             
   
   
@@ -1408,8 +1385,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1605,10 +1582,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_4_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4_7" >
         
           
-          <label class="md-nav__link" for="__nav_6_4_7" id="__nav_6_4_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_4_7" id="__nav_5_4_7_label" tabindex="0">
             
   
   
@@ -1626,8 +1603,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_6_4_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_4_7">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1958,10 +1935,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1979,8 +1956,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2008,10 +1985,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_1" >
         
           
-          <label class="md-nav__link" for="__nav_7_1" id="__nav_7_1_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_1" id="__nav_6_1_label" tabindex="0">
             
   
   
@@ -2029,8 +2006,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_1">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2292,6 +2269,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/cog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Optimized GeoTIFFs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2318,10 +2323,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" >
         
           
-          <label class="md-nav__link" for="__nav_7_2" id="__nav_7_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
             
   
   
@@ -2339,8 +2344,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2404,10 +2409,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_3" >
         
           
-          <label class="md-nav__link" for="__nav_7_3" id="__nav_7_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
             
   
   
@@ -2425,8 +2430,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2454,10 +2459,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_3_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_3_1" >
         
           
-          <label class="md-nav__link" for="__nav_7_3_1" id="__nav_7_3_1_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_3_1" id="__nav_6_3_1_label" tabindex="0">
             
   
   
@@ -2475,8 +2480,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_3_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_3_1">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_6_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_3_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2583,10 +2588,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -2604,8 +2609,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2706,34 +2711,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../how-to/cog/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Cloud Optimized GeoTIFFs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../how-to/faq/" class="md-nav__link">
         
   
@@ -2780,10 +2757,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
             
   
   
@@ -2801,8 +2778,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2970,10 +2947,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_6" >
         
           
-          <label class="md-nav__link" for="__nav_9_6" id="__nav_9_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_8_6" id="__nav_8_6_label" tabindex="0">
             
   
   
@@ -2991,8 +2968,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3212,22 +3189,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-install-recommended-for-most-users" class="md-nav__link">
+  <a href="#dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick install (recommended for most users)
+        Dependencies
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Quick install (recommended for most users)">
+    <nav class="md-nav" aria-label="Dependencies">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#with-pip-pypi-platform-wheels" class="md-nav__link">
+  <a href="#core-runtime-pypi" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With pip (PyPI platform wheels)
+        Core runtime (PyPI)
       
     </span>
   </a>
@@ -3235,10 +3212,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#with-conda-forge" class="md-nav__link">
+  <a href="#native-gdal-libraries-conda-forge-only" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With conda-forge
+        Native GDAL libraries (conda-forge only)
       
     </span>
   </a>
@@ -3246,10 +3223,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#with-pixi" class="md-nav__link">
+  <a href="#optional-extras" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With pixi
+        Optional extras
       
     </span>
   </a>
@@ -3262,70 +3239,66 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verify-the-install" class="md-nav__link">
+  <a href="#recommended-pixiconda-environment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verify the install
+        Recommended: Pixi/Conda environment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended: Pixi/Conda environment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-pixi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Pixi
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#platform-support-matrix" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#using-condamamba-directly" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Platform support matrix
+        Using conda/mamba directly
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#system-dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        System dependencies
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#editable-development-install" class="md-nav__link">
+  <a href="#installing-with-pip" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Editable / development install
+        Installing with pip
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#install-from-source-no-pixi" class="md-nav__link">
+    <nav class="md-nav" aria-label="Installing with pip">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installing-gdal-for-pip-users" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install from source (no pixi)
+        Installing GDAL for pip users
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#platform-specific-no-wheel-available" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Platform-specific: no wheel available
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Platform-specific: no wheel available">
+    <nav class="md-nav" aria-label="Installing GDAL for pip users">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3340,10 +3313,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#linux-fedorarhelrocky" class="md-nav__link">
+  <a href="#linux-fedorarhel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Linux (Fedora/RHEL/Rocky)
+        Linux (Fedora/RHEL)
       
     </span>
   </a>
@@ -3362,10 +3335,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#windows-without-a-wheel" class="md-nav__link">
+  <a href="#macos-macports" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Windows without a wheel
+        macOS (MacPorts)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-conda-for-gdal-only-hybrid-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using conda for GDAL only (hybrid approach)
       
     </span>
   </a>
@@ -3376,12 +3371,17 @@
     </nav>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#install-directly-from-github" class="md-nav__link">
+  <a href="#install-from-source" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install directly from GitHub
+        Install from source
       
     </span>
   </a>
@@ -3389,10 +3389,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
+  <a href="#quick-check" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Troubleshooting
+        Quick check
       
     </span>
   </a>
@@ -3400,10 +3400,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#further-reading" class="md-nav__link">
+  <a href="#notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Further reading
+        Notes
       
     </span>
   </a>
@@ -3444,201 +3444,161 @@
 
 
 <h1 id="installation"><a class="toclink" href="#installation">Installation</a><a class="headerlink" href="#installation" title="Permanent link">#</a></h1>
-<p>pyramids-gis ships <strong>self-contained platform wheels</strong> on PyPI that bundle
-the GDAL/OGR/PROJ/GEOS native libraries. <code>pip install pyramids-gis</code>
-works out of the box on Linux, macOS, and Windows — no system GDAL
-installation required.</p>
-<p><strong>Package name:</strong> <code>pyramids-gis</code>
-<strong>Supported Python versions:</strong> 3.11, 3.12, 3.13 (requires <code>&gt;=3.11,&lt;4</code>)</p>
-<h2 id="quick-install-recommended-for-most-users"><a class="toclink" href="#quick-install-recommended-for-most-users">Quick install (recommended for most users)</a><a class="headerlink" href="#quick-install-recommended-for-most-users" title="Permanent link">#</a></h2>
-<h3 id="with-pip-pypi-platform-wheels"><a class="toclink" href="#with-pip-pypi-platform-wheels">With pip (PyPI platform wheels)</a><a class="headerlink" href="#with-pip-pypi-platform-wheels" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">pip install pyramids-gis</span>
-</code></pre></div>
-<p>That's it. The wheel includes GDAL 3.12, PROJ, GEOS, HDF4/5, NetCDF,
-libtiff, and all other native dependencies. No <code>gdal-config</code>, no
-<code>apt install libgdal-dev</code>, no OSGeo4W installer needed.</p>
-<p>Optional extras:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">pip install &quot;pyramids-gis[viz]&quot;      # cleopatra plotting support</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">pip install &quot;pyramids-gis[xarray]&quot;   # xarray / NetCDF4 interop</span>
-</code></pre></div>
-<h3 id="with-conda-forge"><a class="toclink" href="#with-conda-forge">With conda-forge</a><a class="headerlink" href="#with-conda-forge" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">conda install -c conda-forge pyramids</span>
-</code></pre></div>
-<p>conda-forge gets native GDAL via conda itself (not bundled in the
-package). Use this if you're already in a conda/mamba environment.</p>
-<h3 id="with-pixi"><a class="toclink" href="#with-pixi">With pixi</a><a class="headerlink" href="#with-pixi" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="go">pixi add pyramids-gis</span>
-</code></pre></div>
-<h2 id="verify-the-install"><a class="toclink" href="#verify-the-install">Verify the install</a><a class="headerlink" href="#verify-the-install" title="Permanent link">#</a></h2>
-<p>Open Python and run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyramids</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">osgeo</span><span class="w"> </span><span class="kn">import</span> <span class="n">gdal</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">pyramids</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">gdal</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>          <span class="c1"># should print 3.12.x</span>
-</code></pre></div>
-<h2 id="platform-support-matrix"><a class="toclink" href="#platform-support-matrix">Platform support matrix</a><a class="headerlink" href="#platform-support-matrix" title="Permanent link">#</a></h2>
-<table>
-<thead>
-<tr>
-<th>Platform</th>
-<th>Architecture</th>
-<th>Wheel tag</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Linux (glibc ≥ 2.39)</td>
-<td>x86_64</td>
-<td><code>manylinux_2_39_x86_64</code></td>
-<td>✅ Supported</td>
-</tr>
-<tr>
-<td>Linux (glibc &lt; 2.39)</td>
-<td>x86_64</td>
-<td>—</td>
-<td>❌ Fall back to conda</td>
-</tr>
-<tr>
-<td>Linux</td>
-<td>aarch64</td>
-<td>—</td>
-<td>🔵 Planned</td>
-</tr>
-<tr>
-<td>macOS 11+</td>
-<td>x86_64</td>
-<td><code>macosx_11_0_x86_64</code></td>
-<td>✅ Supported</td>
-</tr>
-<tr>
-<td>macOS 11+</td>
-<td>arm64 (Apple Silicon)</td>
-<td><code>macosx_11_0_arm64</code></td>
-<td>✅ Supported</td>
-</tr>
-<tr>
-<td>Windows 10+</td>
-<td>x64</td>
-<td><code>win_amd64</code></td>
-<td>✅ Supported</td>
-</tr>
-<tr>
-<td>Alpine (musl)</td>
-<td>any</td>
-<td>—</td>
-<td>🔵 Planned</td>
-</tr>
-</tbody>
-</table>
-<p>Distros covered by the Linux wheel out of the box:</p>
+<p>This page explains how to install pyramids-gis and its dependencies using Pixi/conda or pip. The instructions and versions below are aligned with the project’s pyproject.toml.</p>
+<p>Package name: pyramids-gis
+Supported Python versions: 3.11+ (requires Python &gt;=3.11,&lt;4)</p>
+<h2 id="dependencies"><a class="toclink" href="#dependencies">Dependencies</a><a class="headerlink" href="#dependencies" title="Permanent link">#</a></h2>
+<h3 id="core-runtime-pypi"><a class="toclink" href="#core-runtime-pypi">Core runtime (PyPI)</a><a class="headerlink" href="#core-runtime-pypi" title="Permanent link">#</a></h3>
 <ul>
-<li>Ubuntu 24.04 LTS and newer</li>
-<li>Debian 13 (trixie) and newer</li>
-<li>RHEL / Rocky / Alma Linux 10 and newer</li>
-<li>Fedora 39 and newer</li>
-<li>Arch Linux (rolling)</li>
+<li>GDAL &gt;=3.10.0,&lt;4</li>
+<li>numpy &gt;=2.0.0</li>
+<li>pandas &gt;=2.0.0</li>
+<li>geopandas &gt;=1.0.0</li>
+<li>Shapely &gt;=2.0.0</li>
+<li>pyproj &gt;=3.7.0</li>
+<li>PyYAML &gt;=6.0.0</li>
+<li>hpc-utils &gt;=0.1.5</li>
 </ul>
-<p>If your distro has <strong>glibc &lt; 2.39</strong>, use the conda-forge path instead.</p>
-<h2 id="system-dependencies"><a class="toclink" href="#system-dependencies">System dependencies</a><a class="headerlink" href="#system-dependencies" title="Permanent link">#</a></h2>
-<p>The wheel bundles nearly everything. The only system dependencies are
-standard C runtime libraries that every Linux distro ships:</p>
+<h3 id="native-gdal-libraries-conda-forge-only"><a class="toclink" href="#native-gdal-libraries-conda-forge-only">Native GDAL libraries (conda-forge only)</a><a class="headerlink" href="#native-gdal-libraries-conda-forge-only" title="Permanent link">#</a></h3>
 <ul>
-<li><code>libc.so.6</code>, <code>libm.so.6</code>, <code>libpthread.so.0</code>, <code>libdl.so.2</code> (glibc)</li>
-<li><code>libexpat.so.1</code> (XML parsing — on <strong>minimal</strong> Debian/Alpine images this
-  may need <code>apt-get install libexpat1</code>; full distros have it)</li>
-<li><code>libgcc_s.so.1</code>, <code>libstdc++.so.6</code> (GCC runtime)</li>
+<li>libgdal-netcdf &gt;=3.10,&lt;4</li>
+<li>libgdal-hdf4 &gt;=3.10,&lt;4</li>
 </ul>
-<p>On Docker <code>python:3.12-slim</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="go">apt-get update &amp;&amp; apt-get install -y libexpat1</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">pip install pyramids-gis</span>
-</code></pre></div>
-<p>No other system packages are required.</p>
-<h2 id="editable-development-install"><a class="toclink" href="#editable-development-install">Editable / development install</a><a class="headerlink" href="#editable-development-install" title="Permanent link">#</a></h2>
-<p>For contributing to pyramids-gis, use pixi (which manages GDAL via
-conda-forge for development):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">git clone https://github.com/Serapieum-of-alex/pyramids.git</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">cd pyramids</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">pixi install -e dev</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="go">pixi run -e dev pip install -e .</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="go">pixi run -e dev main      # runs the main test suite</span>
-</code></pre></div>
-<p>Pixi environments available:</p>
-<table>
-<thead>
-<tr>
-<th>Environment</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>dev</code></td>
-<td>Default development env (includes viz + xarray + test tooling)</td>
-</tr>
-<tr>
-<td><code>docs</code></td>
-<td>Documentation toolchain (mkdocs + plugins)</td>
-</tr>
-<tr>
-<td><code>py311</code>, <code>py312</code>, <code>py313</code>, <code>py314</code></td>
-<td>Single-Python-version test envs</td>
-</tr>
-<tr>
-<td><code>wheel-build</code></td>
-<td>Minimal env used by cibuildwheel to obtain native GDAL</td>
-</tr>
-</tbody>
-</table>
-<h2 id="install-from-source-no-pixi"><a class="toclink" href="#install-from-source-no-pixi">Install from source (no pixi)</a><a class="headerlink" href="#install-from-source-no-pixi" title="Permanent link">#</a></h2>
-<p>If you're not using pixi and want to install from source, you'll need
-the native GDAL library available at configure time (because the sdist
-does <strong>not</strong> include it — only the PyPI wheel does).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gp"># </span><span class="m">1</span>.<span class="w"> </span>Install<span class="w"> </span>native<span class="w"> </span>GDAL<span class="w"> </span>via<span class="w"> </span>your<span class="w"> </span>system<span class="w"> </span>package<span class="w"> </span>manager<span class="w"> </span>first
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="gp"># </span><span class="o">(</span>see<span class="w"> </span>Platform-specific:<span class="w"> </span>no<span class="w"> </span>wheel<span class="w"> </span>available<span class="w"> </span>below<span class="o">)</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="gp"># </span><span class="m">2</span>.<span class="w"> </span>Then<span class="w"> </span>install<span class="w"> </span>pyramids-gis<span class="w"> </span>from<span class="w"> </span><span class="nb">source</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="go">git clone https://github.com/Serapieum-of-alex/pyramids.git</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="go">cd pyramids</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="go">pip install .</span>
-</code></pre></div>
-<h2 id="platform-specific-no-wheel-available"><a class="toclink" href="#platform-specific-no-wheel-available">Platform-specific: no wheel available</a><a class="headerlink" href="#platform-specific-no-wheel-available" title="Permanent link">#</a></h2>
-<p>If you're on a platform we don't ship a wheel for (e.g., Linux aarch64,
-musllinux/Alpine, glibc &lt; 2.39), pip will try to build pyramids-gis
-from the sdist. That requires a pre-installed native GDAL:</p>
-<h3 id="linux-debianubuntu"><a class="toclink" href="#linux-debianubuntu">Linux (Debian/Ubuntu)</a><a class="headerlink" href="#linux-debianubuntu" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">sudo apt update</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="go">sudo apt install gdal-bin libgdal-dev</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="go">pip install pyramids-gis</span>
-</code></pre></div>
-<h3 id="linux-fedorarhelrocky"><a class="toclink" href="#linux-fedorarhelrocky">Linux (Fedora/RHEL/Rocky)</a><a class="headerlink" href="#linux-fedorarhelrocky" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="go">sudo dnf install gdal gdal-devel</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="go">pip install pyramids-gis</span>
-</code></pre></div>
-<h3 id="macos-homebrew"><a class="toclink" href="#macos-homebrew">macOS (Homebrew)</a><a class="headerlink" href="#macos-homebrew" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="go">brew install gdal</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="go">pip install pyramids-gis</span>
-</code></pre></div>
-<h3 id="windows-without-a-wheel"><a class="toclink" href="#windows-without-a-wheel">Windows without a wheel</a><a class="headerlink" href="#windows-without-a-wheel" title="Permanent link">#</a></h3>
-<p>Use conda or pixi — installing GDAL natively on Windows is impractical.</p>
-<h2 id="install-directly-from-github"><a class="toclink" href="#install-directly-from-github">Install directly from GitHub</a><a class="headerlink" href="#install-directly-from-github" title="Permanent link">#</a></h2>
-<p>Latest <code>main</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="go">pip install &quot;git+https://github.com/Serapieum-of-alex/pyramids.git&quot;</span>
-</code></pre></div>
-<p>A specific tagged release:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="go">pip install &quot;git+https://github.com/Serapieum-of-alex/pyramids.git@&lt;version&gt;&quot;</span>
-</code></pre></div>
-<p>Note: this installs from the sdist, not a wheel, so the same
-pre-installed-native-GDAL caveat applies.</p>
-<h2 id="troubleshooting"><a class="toclink" href="#troubleshooting">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
-<p>See <a href="../troubleshooting/">troubleshooting.md</a> for common install and
-runtime issues.</p>
-<h2 id="further-reading"><a class="toclink" href="#further-reading">Further reading</a><a class="headerlink" href="#further-reading" title="Permanent link">#</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">GDAL requires the native C/C++ library</p>
+<p>GDAL is listed as a PyPI dependency, but the GDAL Python bindings
+<strong>require the native GDAL library to be installed on your system first</strong>.
+If you install via <code>pip install pyramids-gis</code> without the native library,
+the installation will fail when pip tries to build the GDAL wheel.
+See the <a href="#installing-gdal-for-pip-users">Installing GDAL for pip users</a>
+section below for platform-specific instructions.</p>
+</div>
+<h3 id="optional-extras"><a class="toclink" href="#optional-extras">Optional extras</a><a class="headerlink" href="#optional-extras" title="Permanent link">#</a></h3>
 <ul>
-<li>Documentation: <a href="https://serapeum-org.github.io/pyramids/latest">https://serapeum-org.github.io/pyramids/latest</a></li>
-<li>Source: <a href="https://github.com/Serapieum-of-alex/pyramids">https://github.com/Serapieum-of-alex/pyramids</a></li>
-<li>PyPI: <a href="https://pypi.org/project/pyramids-gis/">https://pypi.org/project/pyramids-gis/</a></li>
-<li>conda-forge: <a href="https://anaconda.org/conda-forge/pyramids">https://anaconda.org/conda-forge/pyramids</a></li>
+<li>viz: cleopatra &gt;=0.6.0</li>
+<li>dev: nbval, pre-commit, pytest, coverage, build, twine, etc.</li>
+<li>docs: mkdocs, mkdocs-material, mkdocstrings, mike, etc.</li>
+</ul>
+<h2 id="recommended-pixiconda-environment"><a class="toclink" href="#recommended-pixiconda-environment">Recommended: Pixi/Conda environment</a><a class="headerlink" href="#recommended-pixiconda-environment" title="Permanent link">#</a></h2>
+<p>This repository includes a Pixi configuration to create fully-solvable environments with the right GDAL build from conda-forge.</p>
+<p>Prerequisites: Install Pixi (https://pixi.sh/) or have conda/mamba with the conda-forge channel available.</p>
+<h3 id="using-pixi"><a class="toclink" href="#using-pixi">Using Pixi</a><a class="headerlink" href="#using-pixi" title="Permanent link">#</a></h3>
+<p>From the project root:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">pixi run main          # runs the main test suite to ensure the env is solvable</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="go">pixi shell             # enter the Pixi environment</span>
+</code></pre></div>
+<p>Pixi environments provided:
+- default: includes dev + viz extras
+- docs: documentation toolchain
+- py3XX: pinned Python versions (one per supported minor version)</p>
+<p>To install the package in editable mode inside the Pixi environment:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">pip install -e .</span>
+</code></pre></div>
+<h3 id="using-condamamba-directly"><a class="toclink" href="#using-condamamba-directly">Using conda/mamba directly</a><a class="headerlink" href="#using-condamamba-directly" title="Permanent link">#</a></h3>
+<p>Create and activate an environment (example with Python 3.12):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">mamba create -n pyramids -c conda-forge python=3.12 gdal libgdal-netcdf libgdal-hdf4</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">mamba activate pyramids</span>
+</code></pre></div>
+<p>Then install the package from PyPI (release):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="go">pip install pyramids-gis</span>
+</code></pre></div>
+<p>Optionally include extras (examples):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="go">pip install &quot;pyramids-gis[viz]&quot;        # installs cleopatra</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">pip install &quot;pyramids-gis[dev]&quot;        # developer tools</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="go">pip install &quot;pyramids-gis[docs]&quot;       # docs toolchain</span>
+</code></pre></div>
+<h2 id="installing-with-pip"><a class="toclink" href="#installing-with-pip">Installing with pip</a><a class="headerlink" href="#installing-with-pip" title="Permanent link">#</a></h2>
+<p>GDAL is declared as a PyPI dependency. When you run <code>pip install pyramids-gis</code>,
+pip will automatically try to install the GDAL Python bindings. However, the
+GDAL Python package <strong>compiles against the native GDAL C/C++ library</strong>, which
+must already be present on your system.</p>
+<p>If the native library is missing, pip will fail with errors like
+<code>gdal-config: command not found</code> or missing header files.</p>
+<h3 id="installing-gdal-for-pip-users"><a class="toclink" href="#installing-gdal-for-pip-users">Installing GDAL for pip users</a><a class="headerlink" href="#installing-gdal-for-pip-users" title="Permanent link">#</a></h3>
+<p>Install the native GDAL library for your platform <strong>before</strong> running
+<code>pip install pyramids-gis</code>.</p>
+<h4 id="linux-debianubuntu"><a class="toclink" href="#linux-debianubuntu">Linux (Debian/Ubuntu)</a><a class="headerlink" href="#linux-debianubuntu" title="Permanent link">#</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="go">sudo apt update</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">sudo apt install gdal-bin libgdal-dev</span>
+</code></pre></div>
+<p>Verify the installed version:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">gdal-config --version</span>
+</code></pre></div>
+<p>Then install pyramids-gis (pip will build the GDAL Python bindings against
+the system library):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="go">pip install pyramids-gis</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If <code>pip install</code> fails with a version mismatch, pin the GDAL Python
+package to match your system version:
+<code>pip install GDAL==$(gdal-config --version)</code>
+then <code>pip install pyramids-gis</code>.</p>
+</div>
+<h4 id="linux-fedorarhel"><a class="toclink" href="#linux-fedorarhel">Linux (Fedora/RHEL)</a><a class="headerlink" href="#linux-fedorarhel" title="Permanent link">#</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">sudo dnf install gdal gdal-devel</span>
+</code></pre></div>
+<h4 id="macos-homebrew"><a class="toclink" href="#macos-homebrew">macOS (Homebrew)</a><a class="headerlink" href="#macos-homebrew" title="Permanent link">#</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="go">brew install gdal</span>
+</code></pre></div>
+<p>After installation, verify with <code>gdal-config --version</code>, then:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="go">pip install pyramids-gis</span>
+</code></pre></div>
+<h4 id="macos-macports"><a class="toclink" href="#macos-macports">macOS (MacPorts)</a><a class="headerlink" href="#macos-macports" title="Permanent link">#</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="go">sudo port install gdal</span>
+</code></pre></div>
+<h4 id="windows"><a class="toclink" href="#windows">Windows</a><a class="headerlink" href="#windows" title="Permanent link">#</a></h4>
+<p>On Windows, installing GDAL natively is more involved. The recommended
+approaches in order of preference:</p>
+<ol>
+<li><strong>Use conda/pixi</strong> (strongly recommended, see above sections).</li>
+<li><strong>OSGeo4W installer</strong>: Download from https://trac.osgeo.org/osgeo4w/ and
+   install the GDAL package. Then run pip from within the OSGeo4W shell.</li>
+<li><strong>Pre-built wheels</strong>: Christoph Gohlke historically provided pre-built
+   Windows wheels. Check if a compatible wheel is available for your Python
+   version and install it manually before installing pyramids-gis.</li>
+</ol>
+<h4 id="using-conda-for-gdal-only-hybrid-approach"><a class="toclink" href="#using-conda-for-gdal-only-hybrid-approach">Using conda for GDAL only (hybrid approach)</a><a class="headerlink" href="#using-conda-for-gdal-only-hybrid-approach" title="Permanent link">#</a></h4>
+<p>If you prefer pip for everything else but want a reliable GDAL installation,
+you can install only GDAL from conda-forge:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="go">conda install -c conda-forge gdal libgdal-netcdf libgdal-hdf4</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="go">pip install pyramids-gis</span>
+</code></pre></div>
+<p>This gives you conda-managed native libraries with pip-managed Python packages.</p>
+<h2 id="install-from-source"><a class="toclink" href="#install-from-source">Install from source</a><a class="headerlink" href="#install-from-source" title="Permanent link">#</a></h2>
+<p>Clone the repository and install:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="go">git clone https://github.com/serapeum-org/pyramids.git</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="go">cd pyramids</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="go">python -m pip install .</span>
+</code></pre></div>
+<p>Editable (development) install:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="go">git clone https://github.com/serapeum-org/pyramids.git</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="go">cd pyramids</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="go">pip install -e .[dev]</span>
+</code></pre></div>
+<p>Install directly from GitHub (latest main):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="go">pip install &quot;git+https://github.com/serapeum-org/pyramids.git&quot;</span>
+</code></pre></div>
+<p>Install a specific tagged release from GitHub:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="go">pip install &quot;git+https://github.com/serapeum-org/pyramids.git@&lt;version&gt;&quot;</span>
+</code></pre></div>
+<h2 id="quick-check"><a class="toclink" href="#quick-check">Quick check</a><a class="headerlink" href="#quick-check" title="Permanent link">#</a></h2>
+<p>After installation, open Python and run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyramids</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">pyramids</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
+</code></pre></div>
+<p>You can also run the test suite via Pixi:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="go">pixi run -e dev pytest -m &quot;not plot&quot; -q</span>
+</code></pre></div></p>
+<p>To run a specific test file:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="go">pixi run -e dev pytest tests/netcdf/test_dimensions.py</span>
+</code></pre></div></p>
+<h2 id="notes"><a class="toclink" href="#notes">Notes</a><a class="headerlink" href="#notes" title="Permanent link">#</a></h2>
+<ul>
+<li>Supported Python versions are 3.11+.</li>
+<li>Prefer conda-forge for GDAL and related libraries.</li>
+<li>Documentation: https://serapeum-org.github.io/pyramids/latest</li>
+<li>Source repository: https://github.com/serapeum-org/pyramids</li>
 </ul>
 
 
@@ -3692,13 +3652,13 @@ runtime issues.</p>
         
         
           
-          <a href="../troubleshooting/" class="md-footer__link md-footer__link--next" aria-label="Next: Troubleshooting">
+          <a href="../overview/codebase-map/" class="md-footer__link md-footer__link--next" aria-label="Next: Codebase Map">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Troubleshooting
+                Codebase Map
               </div>
             </div>
             <div class="md-footer__button md-icon">
