@@ -125,21 +125,43 @@ class TestValidate:
         with pytest.raises(FileNotFoundError):
             validate(missing)
 
-    def test_vsi_path_not_prechecked(self):
-        """/vsi* paths don't trigger FileNotFoundError up-front; GDAL handles them."""
-        # We expect validate() to not raise FileNotFoundError for VSI paths
-        # even if the remote object doesn't exist. It may raise something
-        # else from GDAL, or return an invalid report.
-        try:
-            report = validate("/vsicurl/https://127.0.0.1:1/nope.tif")
-            # If it didn't raise FileNotFoundError up-front, good.
-            assert isinstance(report, ValidationReport)
-        except FileNotFoundError:
-            pytest.fail("VSI paths should not be pre-checked with Path.exists()")
-        except Exception:
-            # Any other GDAL/network error is acceptable — the contract is
-            # only that FileNotFoundError is NOT raised for VSI paths.
-            pass
+    def test_vsi_path_uses_vsistatl_not_path_exists(self, monkeypatch):
+        """VSI paths are pre-checked via gdal.VSIStatL, NOT Path.exists.
+
+        Test scenario:
+            Post-H1 contract: ``_raise_if_missing`` (called from
+            ``validate``) uses :func:`gdal.VSIStatL` for ``/vsi*``
+            paths and :func:`pathlib.Path.exists` only for local
+            paths. Confirm that ``Path.exists`` is never consulted
+            for a ``/vsi*`` path even when VSIStatL reports the
+            target as missing.
+        """
+        from pathlib import Path as _Path
+
+        path_exists_calls: list[str] = []
+        original_exists = _Path.exists
+
+        def spy_exists(self):
+            path_exists_calls.append(str(self))
+            return original_exists(self)
+
+        monkeypatch.setattr(_Path, "exists", spy_exists)
+
+        # Force VSIStatL to report "missing" without any network I/O.
+        from osgeo import gdal as gdal_mod
+        monkeypatch.setattr(gdal_mod, "VSIStatL", lambda p: None)
+
+        with pytest.raises(FileNotFoundError):
+            validate("/vsicurl/https://127.0.0.1:1/nope.tif")
+
+        vsi_calls = [
+            p for p in path_exists_calls
+            if p.startswith("/vsi") or p.startswith("\\vsi")
+        ]
+        assert vsi_calls == [], (
+            f"Path.exists must not be called on /vsi* paths; "
+            f"observed calls: {vsi_calls}"
+        )
 
     def test_accepts_str_and_path(self, mem_dataset, tmp_path):
         p = tmp_path / "x.tif"
