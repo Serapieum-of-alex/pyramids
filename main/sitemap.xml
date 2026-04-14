@@ -93,10 +93,6 @@
          <lastmod>2026-04-14</lastmod>
     </url>
     <url>
-         <loc>https://serapeum-org.github.io/pyramids/main/how-to/cog/</loc>
-         <lastmod>2026-04-14</lastmod>
-    </url>
-    <url>
          <loc>https://serapeum-org.github.io/pyramids/main/how-to/devcontainer/</loc>
          <lastmod>2026-04-14</lastmod>
     </url>
@@ -222,6 +218,10 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/spatial/</loc>
+         <lastmod>2026-04-14</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/tutorials/cog/</loc>
          <lastmod>2026-04-14</lastmod>
     </url>
     <url>
