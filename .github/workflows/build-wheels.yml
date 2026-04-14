@@ -1,0 +1,266 @@
+name: Build Platform Wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload-to-pypi:
+        description: "Upload to PyPI"
+        type: boolean
+        default: false
+  release:
+    types: [released]
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  # Must match [tool.pixi.feature.wheel-build.dependencies] GDAL pin
+  # and GDAL_VERSION in [tool.cibuildwheel.linux.environment].
+  GDAL_VERSION: "3.12.3"
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Build source distribution (pure Python, no vendored GDAL).
+  # Kept for conda-forge feedstock which compiles from sdist.
+  # -------------------------------------------------------------------------
+  build-sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist
+        run: |
+          pip install build
+          python -m build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  # -------------------------------------------------------------------------
+  # Build Linux platform wheels with bundled GDAL via pixi + conda-forge.
+  # -------------------------------------------------------------------------
+  build-linux-wheels:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22
+        env:
+          CIBW_BUILD: "cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
+          CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+
+      - name: Report wheel sizes
+        shell: bash
+        run: |
+          for whl in wheelhouse/*.whl; do
+            size=$(stat -c%s "$whl")
+            size_mb=$(awk "BEGIN {printf \"%.1f\", $size/1048576}")
+            echo "::notice::$(basename $whl): ${size_mb} MB"
+            if [ "$size" -gt $((120 * 1024 * 1024)) ]; then
+              echo "::error::Wheel exceeds 120 MB size budget — see planning/bundle/wheel-size-analysis.md"
+              exit 1
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+
+  # -------------------------------------------------------------------------
+  # Build macOS platform wheels (x86_64 + arm64) via pixi + conda-forge.
+  # x86_64 runs on macos-13 (Intel), arm64 runs on macos-14 (Apple Silicon).
+  # -------------------------------------------------------------------------
+  build-macos-wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-13
+            arch: x86_64
+          - os: macos-14
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22
+        env:
+          CIBW_BUILD: "cp311-macosx_${{ matrix.arch }} cp312-macosx_${{ matrix.arch }} cp313-macosx_${{ matrix.arch }}"
+          CIBW_ARCHS_MACOS: ${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+
+  # -------------------------------------------------------------------------
+  # Build Windows platform wheels via pixi + conda-forge.
+  # -------------------------------------------------------------------------
+  build-windows-wheels:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [AMD64]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22
+        env:
+          CIBW_BUILD: "cp311-win_amd64 cp312-win_amd64 cp313-win_amd64"
+          CIBW_ARCHS_WINDOWS: ${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+
+  # -------------------------------------------------------------------------
+  # Test the built wheels in a clean environment (no conda, no system GDAL).
+  # Covers Linux / macOS / Windows across cp311/cp312/cp313.
+  # -------------------------------------------------------------------------
+  test-wheels:
+    needs: [build-linux-wheels, build-macos-wheels, build-windows-wheels]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            artifact: wheels-linux-x86_64
+            wheel-tag: manylinux
+          - os: macos-13
+            arch: x86_64
+            artifact: wheels-macos-x86_64
+            wheel-tag: macosx
+          - os: macos-14
+            arch: arm64
+            artifact: wheels-macos-arm64
+            wheel-tag: macosx
+          - os: windows-2022
+            arch: AMD64
+            artifact: wheels-windows-AMD64
+            wheel-tag: win_amd64
+        python-version: ["3.11", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/
+
+      - name: Install wheel (no conda, no system GDAL)
+        shell: bash
+        run: |
+          PYTAG=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
+          WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*${{ matrix.wheel-tag }}*.whl | head -1)
+          echo "Installing: $WHEEL"
+          pip install "$WHEEL"
+          pip install pytest pytest-env pytest-mock
+
+      - name: Verify GDAL import (exercises vendor bootstrap)
+        run: |
+          python -c "
+          import pyramids
+          from osgeo import gdal, ogr, osr
+          print(f'pyramids {pyramids.__version__}')
+          print(f'GDAL {gdal.__version__}')
+          sr = osr.SpatialReference(); sr.ImportFromEPSG(4326)
+          assert sr.GetAttrValue('AUTHORITY', 1) == '4326'
+          ds = gdal.GetDriverByName('MEM').Create('', 10, 10, 1, gdal.GDT_Byte)
+          ds.SetGeoTransform([0, 1, 0, 0, 0, -1])
+          ds.SetProjection(sr.ExportToWkt())
+          import osgeo
+          assert '_vendor' in osgeo.__file__, f'osgeo not from vendor: {osgeo.__file__}'
+          print('All runtime checks passed.')
+          "
+
+      - name: Run test suite (non-plot)
+        shell: bash
+        run: pytest -vvv -sv -o "pythonpath=" -m "not plot and not xarray" --ignore=tests/dataset/test_plot.py tests/
+
+  # -------------------------------------------------------------------------
+  # Publish to PyPI using the PYPI_PUBLISH token (same secret as
+  # pypi-release.yml, same tooling pattern — twine via pixi).
+  #
+  # Gate: only runs on `release` events or `workflow_dispatch` with
+  # `upload-to-pypi=true`. Disabled by default — uncomment to enable.
+  # -------------------------------------------------------------------------
+#   publish:
+#     needs: [build-sdist, build-linux-wheels, build-macos-wheels, build-windows-wheels, test-wheels]
+#     if: >-
+#       github.event_name == 'release' ||
+#       (github.event_name == 'workflow_dispatch' && inputs.upload-to-pypi)
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v5
+#         with:
+#           fetch-depth: 0
+#
+#       - name: Download all build artifacts (sdist + all platform wheels)
+#         uses: actions/download-artifact@v4
+#         with:
+#           pattern: "*"
+#           merge-multiple: true
+#           path: dist/
+#
+#       - name: List artifacts to be published
+#         run: ls -la dist/
+#
+#       # Use the same pixi + twine pattern as pypi-release.yml's custom
+#       # action, but WITHOUT the `python -m build` step (wheels are
+#       # already built by cibuildwheel above).
+#       - name: Set up Pixi
+#         uses: serapeum-org/github-actions/actions/python-setup/pixi@pixi/v1
+#         with:
+#           environments: dev
+#           activate-environment: dev
+#           verify-lock: 'false'
+#
+#       - name: Publish pre-built wheels + sdist to PyPI
+#         env:
+#           TWINE_USERNAME: __token__
+#           TWINE_PASSWORD: ${{ secrets.PYPI_PUBLISH }}
+#         run: |
+#           pixi run -e dev twine upload --non-interactive dist/*

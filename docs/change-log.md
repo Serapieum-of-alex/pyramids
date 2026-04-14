@@ -1,6 +1,29 @@
 ﻿# Change log
 
 
+## Unreleased
+
+### Distribution
+
+- `pip install pyramids-gis` now ships **self-contained platform wheels**
+  on PyPI with GDAL, PROJ, GEOS, HDF4/5, NetCDF, and all native deps
+  bundled. No pre-installed system GDAL required on Linux (glibc ≥ 2.39),
+  macOS 11+ (Intel + Apple Silicon), or Windows 10+ (x64).
+- The conda-forge package continues to receive GDAL via conda (not
+  bundled) and is the preferred path on older Linux distros.
+- See [installation.md](installation.md) and
+  [troubleshooting.md](troubleshooting.md) for platform coverage and
+  troubleshooting.
+
+### Internal
+
+- Build infrastructure migrated from pure-Python wheels to cibuildwheel
+  + pixi + conda-forge binary extraction. Build iteration time reduced
+  from ~45–60 min to ~5 min per wheel. See
+  [planning/bundle/option-1-implementation-plan.md](../planning/bundle/option-1-implementation-plan.md)
+  for the full architecture.
+
+
 ## 0.13.0 (2026-04-12)
 
 ### Feat

@@ -26,7 +26,9 @@ classifiers = [
 requires-python = ">= 3.11, <4"
 
 dependencies = [
-    "GDAL >=3.10.0,<4",
+    # GDAL is NOT listed as a pip dep: it's vendored into the wheel
+    # (see src/pyramids/_vendor/osgeo/ after build). conda-forge users
+    # still get GDAL via conda dependency in the feedstock.
     "geopandas >=1.0.0",
     "hpc-utils >=0.1.5",
     "numpy >=2.0.0",
@@ -103,7 +105,14 @@ where = ["src"]
 include = ["pyramids", "pyramids.*"]
 
 [tool.setuptools.package-data]
-pyramids = ["base/data/*.yaml"]
+pyramids = [
+    "**/*.yaml",
+    "_vendor/osgeo/**/*",
+    "_vendor/osgeo_utils/**/*",
+    "_data/gdal_data/*",
+    "_data/proj_data/*",
+    "_data/gdalplugins/*",
+]
 
 [tool.flake8]
 ignore = ["E203", "E266", "E501", "W503", "E722", "C901", "E741", "E731"]
@@ -220,6 +229,13 @@ py311 = { features = ["py311", "viz", "dev", "xarray"], solve-group = "py311" }
 py312 = { features = ["py312", "viz", "dev", "xarray"], solve-group = "py312" }
 py313 = { features = ["py313", "viz", "dev", "xarray"], solve-group = "py313" }
 py314 = { features = ["py314", "viz", "dev", "xarray"], solve-group = "py314" }
+# wheel-build: minimal env used inside the cibuildwheel container to
+# obtain GDAL + native deps as conda-forge binaries. Kept separate from
+# dev so it stays lean (no pytest, docs tooling, etc.). Uses
+# `no-default-feature = true` so we DON'T pull in pyramids-gis itself
+# (which would drag in pandas/numpy wheels that may not be manylinux2014
+# compatible). See planning/bundle/option-1-implementation-plan.md.
+wheel-build = { features = ["wheel-build"], solve-group = "wheel-build", no-default-feature = true }
 
 
 [tool.pixi.feature.py311.dependencies]
@@ -234,7 +250,156 @@ python = "3.14.*"
 [tool.pixi.feature.dev.dependencies]
 scipy = ">=1.17.1,<2"
 
+# ---------------------------------------------------------------------------
+# wheel-build feature: native deps we need inside the cibuildwheel container.
+# Deliberately pinned tighter than the runtime [tool.pixi.dependencies] block
+# because the SWIG Python bindings are version-locked to libgdal. Keep
+# GDAL_VERSION in the cibuildwheel environment aligned with what conda-forge
+# delivers for these pins.
+# ---------------------------------------------------------------------------
+[tool.pixi.feature.wheel-build.dependencies]
+gdal = ">=3.12,<3.13"
+libgdal-netcdf = ">=3.12,<3.13"
+libgdal-hdf4 = ">=3.12,<3.13"
+swig = ">=4.3,<5"
+
+# libstdcxx-ng is Linux-only — provides libstdc++.so.6 built by
+# conda-forge's newer GCC. conda-forge's GDAL references GLIBCXX_3.4.32
+# (GCC 13+), which isn't in the default manylinux_2_28 libstdc++. See
+# planning/bundle/option-1-implementation-plan.md Task 1.10.
+[tool.pixi.feature.wheel-build.target.linux-64.dependencies]
+libstdcxx-ng = "*"
+
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"
 libgdal-netcdf = ">=3.10.0,<4"
 libgdal-hdf4 = ">=3.10.0,<4"
+
+
+# ---------------------------------------------------------------------------
+# cibuildwheel: platform wheel builds with bundled GDAL
+# ---------------------------------------------------------------------------
+[tool.cibuildwheel]
+skip = ["*pp*", "*musllinux*", "cp310-*", "cp39-*", "cp38-*", "cp314t-*"]
+archs = ["auto64"]
+build-verbosity = 3
+# NOTE: CIBW_TEST_SKIP = "*" is a temporary Phase 1 workaround. The wheel
+# is tagged manylinux_2_39 but the manylinux_2_28 build container can't
+# install it (glibc baseline too old). Proper testing happens outside
+# cibuildwheel via wheel-test.yml (Phase 3 / Task 3.1).
+test-skip = "*"
+
+[tool.cibuildwheel.linux]
+# manylinux_2_28 == glibc 2.28; covers Ubuntu 20.04+, RHEL 8+, Debian 11+.
+# We use 2_28 instead of 2014 because conda-forge's GDAL binaries link
+# to glibc symbols newer than 2.17. See auditwheel output on first build.
+manylinux-x86_64-image = "manylinux_2_28"
+# CIBW_BEFORE_ALL runs ONCE per platform (shared across Python versions).
+# Installs pixi, runs pixi install -e wheel-build, extracts conda-forge
+# binaries into /usr/local.
+before-all = [
+    "bash ./ci/setup-gdal-from-pixi.sh",
+]
+# CIBW_BEFORE_BUILD runs per Python version. Builds the GDAL SWIG Python
+# bindings for the target interpreter, then vendors osgeo/ and
+# GDAL_DATA/PROJ_DATA into the pyramids source tree so setuptools
+# includes them in the wheel.
+before-build = [
+    "pip install --upgrade pip setuptools wheel numpy",
+    "python ./ci/install-and-vendor-osgeo.py",
+]
+# Linux wheel repair: auditwheel walks the .so dep graph, bundles
+# libgdal and all transitive native deps into pyramids_gis.libs/,
+# and patches RPATH so the extensions find their bundled libs at runtime.
+#
+# auditwheel --plat manylinux_2_39_x86_64 (glibc 2.39, Ubuntu 24.04+)
+# because conda-forge's GDAL is compiled with GCC 13, which references
+# GLIBCXX_3.4.32. The manylinux_2_28 image itself is fine as a BUILD
+# environment; the output wheel's compatibility tag just reflects the
+# newer symbols bundled inside. Tighten this as conda-forge releases
+# packages compiled with older GCC.
+repair-wheel-command = [
+    "LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 auditwheel repair --plat manylinux_2_39_x86_64 -w {dest_dir} {wheel}",
+]
+
+[tool.cibuildwheel.linux.environment]
+# GDAL_VERSION must match the version conda-forge ships for the pin in
+# [tool.pixi.feature.wheel-build.dependencies]. Currently GDAL 3.12.3.
+GDAL_VERSION = "3.12.3"
+BUILD_PREFIX = "/usr/local"
+GDAL_DATA = "/usr/local/share/gdal"
+PROJ_DATA = "/usr/local/share/proj"
+PROJ_LIB = "/usr/local/share/proj"
+PACKAGE_DATA = "1"
+LD_LIBRARY_PATH = "/usr/local/lib:/usr/local/lib64"
+PIXI_NO_PATH_UPDATE = "1"
+
+
+# ---------------------------------------------------------------------------
+# macOS configuration (Phase 4). Uses same pixi/conda-forge approach as
+# Linux, but with .dylib libs + delocate-wheel for repair + install_name_tool
+# for @loader_path patching.
+# ---------------------------------------------------------------------------
+[tool.cibuildwheel.macos]
+before-all = [
+    "bash ./ci/setup-gdal-from-pixi.sh",
+]
+before-build = [
+    "pip install --upgrade pip setuptools wheel numpy",
+    "python ./ci/install-and-vendor-osgeo.py",
+]
+# delocate-wheel is the macOS equivalent of auditwheel: it walks the
+# .dylib dep graph, bundles transitive deps into the wheel, and patches
+# @loader_path install names so dylibs find each other at runtime.
+repair-wheel-command = [
+    "DYLD_LIBRARY_PATH=$BUILD_PREFIX/lib delocate-wheel --require-archs {delocate_archs} -w {dest_dir} {wheel}",
+]
+
+[tool.cibuildwheel.macos.environment]
+GDAL_VERSION = "3.12.3"
+# macOS can't write to /usr/local without sudo on GitHub runners; use a
+# writable prefix under $HOME instead.
+BUILD_PREFIX = "/Users/runner/gdal-prefix"
+GDAL_DATA = "/Users/runner/gdal-prefix/share/gdal"
+PROJ_DATA = "/Users/runner/gdal-prefix/share/proj"
+PROJ_LIB = "/Users/runner/gdal-prefix/share/proj"
+PACKAGE_DATA = "1"
+DYLD_LIBRARY_PATH = "/Users/runner/gdal-prefix/lib"
+PIXI_NO_PATH_UPDATE = "1"
+# Minimum macOS version: 11.0 for arm64, 10.15 for x86_64.
+# cibuildwheel sets this based on runner; these are safe defaults.
+MACOSX_DEPLOYMENT_TARGET = "11.0"
+
+
+# ---------------------------------------------------------------------------
+# Windows configuration (Phase 5). Uses pixi-pack's Library/ layout
+# (Windows conda packages nest under Library/) and delvewheel.
+# ---------------------------------------------------------------------------
+[tool.cibuildwheel.windows]
+before-all = [
+    "powershell -File ci/setup-gdal-from-pixi.ps1",
+]
+before-build = [
+    "pip install --upgrade pip setuptools wheel numpy delvewheel",
+    "python ci/install-and-vendor-osgeo.py",
+]
+# delvewheel is the Windows equivalent of auditwheel: it bundles required
+# DLLs into the wheel. --add-path tells it where to find the DLLs to bundle.
+repair-wheel-command = [
+    "delvewheel repair --add-path C:/gdal-prefix/Library/bin -w {dest_dir} {wheel}",
+]
+
+[tool.cibuildwheel.windows.environment]
+GDAL_VERSION = "3.12.3"
+# Windows pixi envs put DLLs/headers under .pixi/envs/<env>/Library/
+# following conda/Anaconda Windows conventions.
+# NOTE: Use forward slashes so the values survive bash/PowerShell/cmd
+# interpolation without double-backslash escaping surprises. Windows
+# treats /, \, and mixed paths equivalently for built-in APIs.
+BUILD_PREFIX = "C:/gdal-prefix"
+GDAL_DATA = "C:/gdal-prefix/Library/share/gdal"
+PROJ_DATA = "C:/gdal-prefix/Library/share/proj"
+PROJ_LIB = "C:/gdal-prefix/Library/share/proj"
+PACKAGE_DATA = "1"
+PATH = "C:/gdal-prefix/Library/bin;$PATH"
+PIXI_NO_PATH_UPDATE = "1"
