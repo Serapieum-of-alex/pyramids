@@ -155,6 +155,7 @@ nav:
           - DatasetCollection (guide): tutorials/dataset_collection.md
           - Dataset collection: examples/dataset/dataset_collection.ipynb
           - South America: examples/dataset/south-america.ipynb
+          - Cloud Optimized GeoTIFFs: tutorials/cog.md
       - Basemap:
           - Basemap example: examples/basemap/basemap-example.ipynb
       - NetCDF:
@@ -165,7 +166,6 @@ nav:
       - Dev Container: how-to/devcontainer.md
       - Docker & GHCR: how-to/docker.md
       - Recipes: how-to/recipes.md
-      - Cloud Optimized GeoTIFFs: how-to/cog.md
       - FAQ & Troubleshooting: how-to/faq.md
   - About:
     - Change-log: change-log.md
