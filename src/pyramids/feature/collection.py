@@ -459,7 +459,7 @@ class FeatureCollection(GeoDataFrame):
 
         return ax
 
-    def concate(
+    def concatenate(
         self, gdf: GeoDataFrame, inplace: bool = False
     ) -> GeoDataFrame | None:
         """Concatenate another GeoDataFrame onto this FeatureCollection.
@@ -467,6 +467,15 @@ class FeatureCollection(GeoDataFrame):
         Under the GeoDataFrame-subclass design you can also use the
         standard idiom ``pd.concat([fc, other])`` which returns a
         ``FeatureCollection`` because of the ``_constructor`` hook.
+
+        Args:
+            gdf (GeoDataFrame): The rows to append.
+            inplace (bool): If ``True``, replace ``self``'s rows with
+                the concatenation and return ``None``. Default ``False``.
+
+        Returns:
+            GeoDataFrame | None: The concatenated result, or ``None``
+            when ``inplace=True``.
         """
         import pandas as pd
 
@@ -477,6 +486,24 @@ class FeatureCollection(GeoDataFrame):
             self._update_inplace(FeatureCollection(new_gdf))
             return None
         return new_gdf
+
+    def concate(
+        self, gdf: GeoDataFrame, inplace: bool = False
+    ) -> GeoDataFrame | None:
+        """Deprecated alias for :meth:`concatenate` (ARC-11).
+
+        ``concate`` was a misspelling. Use :meth:`concatenate` directly.
+        This shim will be removed in a future release.
+        """
+        import warnings as _w
+
+        _w.warn(
+            "FeatureCollection.concate is deprecated (misspelling) — "
+            "use FeatureCollection.concatenate instead (ARC-11).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.concatenate(gdf, inplace=inplace)
 
     def center_point(self) -> GeoDataFrame:
         """Compute per-feature centers as extra columns on ``self``.

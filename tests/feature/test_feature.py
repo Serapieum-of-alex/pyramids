@@ -283,19 +283,36 @@ class TestXY:
         ]
 
 
-class TestConcate:
+class TestConcatenate:
+    """ARC-11: concatenate() is the canonical spelling; concate is a deprecated alias."""
+
     def test_return_new_gdf(self, geometry_collection_gdf: GeoDataFrame):
         feature = FeatureCollection(geometry_collection_gdf)
-        gdf = feature.concate(geometry_collection_gdf)
+        gdf = feature.concatenate(geometry_collection_gdf)
         assert len(gdf) == 2
         assert gdf.loc[0, "geometry"].geom_type == "GeometryCollection"
 
     def test_inplace(self, geometry_collection_gdf: GeoDataFrame):
         feature = FeatureCollection(geometry_collection_gdf)
-        result = feature.concate(geometry_collection_gdf, inplace=True)
+        result = feature.concatenate(geometry_collection_gdf, inplace=True)
         assert result is None
         assert len(feature) == 2
         assert feature.loc[0, "geometry"].geom_type == "GeometryCollection"
+
+    def test_concate_is_deprecated_alias(self, geometry_collection_gdf: GeoDataFrame):
+        """``concate`` (the old misspelling) still works but warns."""
+        import warnings as _w
+
+        feature = FeatureCollection(geometry_collection_gdf)
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            gdf = feature.concate(geometry_collection_gdf)
+        deprecated = [
+            w for w in caught if issubclass(w.category, DeprecationWarning)
+        ]
+        assert deprecated, "concate should emit a DeprecationWarning"
+        assert "concatenate" in str(deprecated[0].message)
+        assert len(gdf) == 2  # behavior still correct
 
 
 def test_center_point(polygons_gdf: GeoDataFrame):
