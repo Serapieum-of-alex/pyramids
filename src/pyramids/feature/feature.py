@@ -114,6 +114,43 @@ class FeatureCollection(GeoDataFrame):
             )
         super().__init__(data, *args, **kwargs)
 
+    def __enter__(self) -> FeatureCollection:
+        """Enter a context-managed block (ARC-5).
+
+        Returns ``self`` so callers can use the fiona-style idiom::
+
+            with FeatureCollection.read_file(path) as fc:
+                ...
+
+        Returns:
+            FeatureCollection: ``self``.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        """Exit the context-managed block and release resources (ARC-5).
+
+        Calls :meth:`close` and propagates any exception (returns
+        ``False``).
+        """
+        self.close()
+        return False
+
+    def close(self) -> None:
+        """Release resources held by this FeatureCollection (ARC-5).
+
+        Currently a no-op: the class stores no ``/vsimem/`` paths of its
+        own — the internal OGR bridge in
+        :mod:`pyramids.feature._ogr` is entirely self-cleaning. The
+        method exists so that the context-manager protocol has a
+        well-defined release point and so that future resource-holding
+        features (e.g. a lazy remote-file handle) have an idiomatic
+        place to plug in.
+
+        Safe to call multiple times.
+        """
+        return None
+
     @classmethod
     def read_file(cls, path: str | Path) -> FeatureCollection:
         """Read a vector file into a FeatureCollection.

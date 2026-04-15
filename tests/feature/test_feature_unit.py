@@ -106,6 +106,43 @@ def utm_proj4() -> str:
     return srs.ExportToProj4()
 
 
+class TestContextManager:
+    """ARC-5: FeatureCollection supports the ``with`` protocol."""
+
+    def test_with_yields_self(self, simple_polygon_gdf: GeoDataFrame):
+        """``with fc as x`` must yield ``fc`` itself (not a copy)."""
+        fc = FeatureCollection(simple_polygon_gdf)
+        with fc as entered:
+            assert entered is fc
+
+    def test_close_is_noop_and_idempotent(self, simple_polygon_gdf: GeoDataFrame):
+        """``close()`` is a safe no-op and can be called multiple times."""
+        fc = FeatureCollection(simple_polygon_gdf)
+        assert fc.close() is None
+        assert fc.close() is None
+        # FC remains usable after close (no resources were actually released).
+        assert len(fc) == 1
+
+    def test_exit_propagates_exceptions(self, simple_polygon_gdf: GeoDataFrame):
+        """``__exit__`` returns False so exceptions propagate out."""
+        fc = FeatureCollection(simple_polygon_gdf)
+        with pytest.raises(RuntimeError, match="inside"):
+            with fc:
+                raise RuntimeError("inside")
+
+    def test_read_file_usable_with_context(self, tmp_path):
+        """``with FeatureCollection.read_file(path) as fc:`` is the idiom."""
+        poly = box(0.0, 0.0, 1.0, 1.0)
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[poly], crs="EPSG:4326"
+        )
+        p = tmp_path / "x.geojson"
+        gdf.to_file(p, driver="GeoJSON")
+        with FeatureCollection.read_file(p) as fc:
+            assert isinstance(fc, FeatureCollection)
+            assert len(fc) == 1
+
+
 class TestSubclassContract:
     """FeatureCollection subclasses GeoDataFrame and preserves identity."""
 
