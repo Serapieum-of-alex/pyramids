@@ -152,7 +152,11 @@ class Dataset(  # type: ignore[misc]
     def epsg(self) -> int:
         """EPSG number."""
         crs = self.raster.GetProjection()
-        return FeatureCollection.get_epsg_from_prj(crs)
+        # ARC-7: get_epsg_from_prj now raises on empty input; preserve
+        # the historical 4326 fallback here so rasters with an empty
+        # projection (common for in-memory NetCDF slices) still report
+        # a stable EPSG.
+        return FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
 
     @epsg.setter
     def epsg(self, value: int):

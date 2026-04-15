@@ -524,7 +524,12 @@ class AbstractDataset(ABC):
         else:
             if crs is not None:
                 self.raster.SetProjection(crs)
-                self._epsg = FeatureCollection.get_epsg_from_prj(crs)
+                # ARC-7: get_epsg_from_prj now raises on empty input;
+                # preserve the historical 4326 fallback explicitly so
+                # datasets with a missing projection still get tagged.
+                self._epsg = (
+                    FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
+                )
             elif epsg is not None:
                 sr = AbstractDataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())

@@ -432,9 +432,15 @@ class TestGetEpsgFromPrj:
     def test_valid_wkt(self, wgs84_wkt: str):
         assert FeatureCollection.get_epsg_from_prj(wgs84_wkt) == 4326
 
-    def test_empty_prj(self):
-        """Empty string defaults to 4326 (legacy behavior)."""
-        assert FeatureCollection.get_epsg_from_prj("") == 4326
+    def test_empty_prj_raises(self):
+        """ARC-7: empty string raises ValueError instead of silently returning 4326.
+
+        The old behavior masked real configuration errors (a vector
+        with a missing projection would be assumed WGS84). Callers
+        that want a fallback should catch the error explicitly.
+        """
+        with pytest.raises(ValueError, match="empty projection string"):
+            FeatureCollection.get_epsg_from_prj("")
 
 
 class TestGetCoords:

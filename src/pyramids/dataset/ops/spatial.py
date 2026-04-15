@@ -57,7 +57,11 @@ class Spatial:
         else:
             if crs is not None:
                 self.raster.SetProjection(crs)
-                self._epsg = FeatureCollection.get_epsg_from_prj(crs)
+                # ARC-7: fallback to 4326 when crs is an empty string
+                # (get_epsg_from_prj now raises in that case).
+                self._epsg = (
+                    FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
+                )
             elif epsg is not None:
                 sr = type(self)._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
@@ -168,7 +172,9 @@ class Spatial:
             int: EPSG number.
         """
         prj = self._get_crs()
-        epsg = FeatureCollection.get_epsg_from_prj(prj)
+        # ARC-7: get_epsg_from_prj now raises on empty input; keep the
+        # historical 4326 fallback for datasets without a projection.
+        epsg = FeatureCollection.get_epsg_from_prj(prj) if prj else 4326
 
         return epsg
 

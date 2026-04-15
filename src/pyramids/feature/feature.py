@@ -436,29 +436,40 @@ class FeatureCollection(GeoDataFrame):
         """Return the EPSG code identified by a projection string.
 
         Auto-identifies the EPSG from a WKT / ESRI WKT / Proj4 string.
-        For the legacy behavior, an empty input string returns 4326;
-        callers that want strict validation should check for empty input
-        themselves.
+
+        ARC-7: an empty input string is no longer silently mapped to
+        ``4326``. That legacy default masked real configuration
+        errors (a raster with a missing projection would be assumed
+        to be in WGS84). Callers that genuinely want 4326 as a
+        fallback should handle the ``ValueError`` themselves.
 
         Args:
             prj (str): Projection string (WKT / ESRI WKT / Proj4).
 
         Returns:
             int: The resolved EPSG code.
-        """
-        if prj != "":
-            srs = FeatureCollection._create_sr_from_proj(prj)
-            try:
-                response = srs.AutoIdentifyEPSG()
-            except RuntimeError:
-                response = 6
 
-            if response == 0:
-                epsg = int(srs.GetAuthorityCode(None))
-            else:
-                epsg = int(srs.GetAttrValue("AUTHORITY", 1))
+        Raises:
+            ValueError: If ``prj`` is an empty string.
+        """
+        if prj == "":
+            raise ValueError(
+                "get_epsg_from_prj received an empty projection string. "
+                "An empty projection is ambiguous and is no longer "
+                "silently defaulted to EPSG:4326 (ARC-7). If you want "
+                "a fallback EPSG, catch ValueError and supply it at "
+                "the call site."
+            )
+        srs = FeatureCollection._create_sr_from_proj(prj)
+        try:
+            response = srs.AutoIdentifyEPSG()
+        except RuntimeError:
+            response = 6
+
+        if response == 0:
+            epsg = int(srs.GetAuthorityCode(None))
         else:
-            epsg = 4326
+            epsg = int(srs.GetAttrValue("AUTHORITY", 1))
         return epsg
 
 
