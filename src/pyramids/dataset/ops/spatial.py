@@ -802,16 +802,11 @@ class Spatial:
                     f"The function takes only a FeatureCollection or GeoDataFrame, given {type(feature)}"
                 )
 
-        feature = feature._gdf_to_ds()
-        warp_options = gdal.WarpOptions(
-            format="VRT",
-            # outputBounds=feature.total_bounds,
-            cropToCutline=not touch,
-            cutlineDSName=feature.file_name,
-            # cutlineLayer=feature.layer_names[0],
-            multithread=True,
-        )
-        dst = gdal.Warp("", self.raster, options=warp_options)
+        # gdal.Warp's cutlineDSName needs a *path*; stage the vector in
+        # /vsimem/ through the internal OGR bridge. The path is unlinked
+        # automatically when the with-block exits.
+        from pyramids.feature import _ogr as _feature_ogr
+
         # Use the base Dataset class (not a subclass like NetCDF) for intermediate GDAL warp results
         # because _correct_wrap_cutline_error calls create_from_array which has different behavior in
         # subclasses.
@@ -819,10 +814,21 @@ class Spatial:
             c for c in type(self).__mro__
             if AbstractDataset in getattr(c, "__bases__", ())
         )
-        dst_obj = base_cls(dst)
 
-        if touch:
-            dst_obj = base_cls._correct_wrap_cutline_error(dst_obj)
+        # The warp output (VRT) may resolve the cutline lazily, so we must
+        # complete every access that could touch the cutline path inside
+        # the with-block that keeps that path alive.
+        with _feature_ogr.as_vsimem_path(feature) as cutline_path:
+            warp_options = gdal.WarpOptions(
+                format="VRT",
+                cropToCutline=not touch,
+                cutlineDSName=cutline_path,
+                multithread=True,
+            )
+            dst = gdal.Warp("", self.raster, options=warp_options)
+            dst_obj = base_cls(dst)
+            if touch:
+                dst_obj = base_cls._correct_wrap_cutline_error(dst_obj)
 
         return dst_obj
 

@@ -1,21 +1,30 @@
-"""
-FeatureCollection.
+"""FeatureCollection — a GeoDataFrame with pyramids-specific GIS methods.
 
-ogr classes: https://gdal.org/java/org/gdal/ogr/package-summary.html
-ogr tree: https://gdal.org/java/org/gdal/ogr/package-tree.html.
+``FeatureCollection`` is a direct subclass of :class:`geopandas.GeoDataFrame`.
+It is an *extension* of GeoDataFrame, not a replacement: every GeoDataFrame
+method (``to_crs``, ``clip``, ``buffer``, ``dissolve``, ``overlay``,
+``sjoin``, ``sindex``, ``query``, ``explode``, ``centroid``, ``area``,
+``length``, ``make_valid``, ``plot``, …) is inherited and works directly on
+a ``FeatureCollection`` instance. On top of that, FeatureCollection adds
+pyramids-specific capabilities that no pure GeoDataFrame offers:
 
-drivers available in geopandas
-gpd.io.file._EXTENSION_TO_DRIVER
+- Rasterization to a :class:`pyramids.dataset.Dataset` (:meth:`to_dataset`).
+- Pyramids-specific spatial metadata (:attr:`epsg`, :attr:`top_left_corner`).
+- Geometry-factory helpers (:meth:`create_polygon`, :meth:`create_point`).
+- Vertex extraction (:meth:`xy`, :meth:`center_point`).
+- EPSG / SR helpers (:meth:`get_epsg_from_prj`, :meth:`reproject_points`,
+  :meth:`reproject_points2`).
+
+The ``ogr.DataSource`` object is **not** part of the public API of this
+module. It is used only inside methods that must call GDAL/OGR
+(rasterization), and only via the private bridge in
+:mod:`pyramids.feature._ogr`. It is never accepted by a public
+constructor, never returned, and never stored as instance state.
 """
 
 from __future__ import annotations
 
-import json
-import shutil
-import tempfile
-import uuid
 import warnings
-import weakref
 from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable
@@ -26,799 +35,265 @@ if TYPE_CHECKING:
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from geopandas.geodataframe import GeoDataFrame
+from geopandas import GeoDataFrame
 from osgeo import gdal, ogr, osr
-from osgeo.ogr import DataSource
-from pyproj import Proj, transform
+from pyproj import Proj, transform as _pyproj_transform
 from shapely.geometry import LineString, Point, Polygon
 from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
 from pyramids.base._errors import DriverNotExistError
-from pyramids.base._utils import (
-    Catalog,
-    ogr_ds_to_gdal_dataset,
-    ogr_to_numpy_dtype,
-)
+from pyramids.base._utils import Catalog
+from pyramids.feature import _ogr
 
 CATALOG = Catalog(raster_driver=False)
 gdal.UseExceptions()
 
 
-class FeatureCollection:
-    """FeatureCollection.
+class FeatureCollection(GeoDataFrame):
+    """A :class:`geopandas.GeoDataFrame` with pyramids-specific GIS methods.
 
-    Utilities for working with vector datasets (GeoDataFrames/OGR DataSources), such as:
-    - Reading/writing files
-    - Converting between GeoDataFrame and OGR DataSource
-    - Creating simple geometries (points, polygons)
-    - Exploding multi-geometries, extracting coordinates
-    - Rasterization to a Dataset
-    - Reprojecting point coordinates
-    - Computing center points
+    ``FeatureCollection`` *is a* ``GeoDataFrame`` — ``isinstance(fc,
+    GeoDataFrame)`` is ``True`` — so every geopandas method is available
+    directly. Pyramids adds rasterization, Dataset interop, vertex
+    extraction, and CRS helpers on top.
+
+    The OGR/GDAL backend is internal only; see :mod:`pyramids.feature._ogr`.
     """
 
-    def __init__(self, gdf: GeoDataFrame | DataSource):
-        """Create a FeatureCollection object."""
-        self._feature = gdf
+    # ── pandas / geopandas subclass contract ──
+    # Override ``_constructor`` so pandas returns FeatureCollection (not
+    # plain GeoDataFrame) through slicing, filtering, copy(), concat(),
+    # groupby().apply(), etc. Do NOT override ``_constructor_sliced``:
+    # GeoDataFrame's implementation already returns GeoSeries for the
+    # geometry column and Series for non-geometry columns. Replacing it
+    # with a hardcoded GeoSeries breaks internals like ``self.dtypes``
+    # which builds a non-geometry Series via ``_constructor_sliced``.
 
-    def _update_inplace(self, gdf: GeoDataFrame | DataSource) -> None:
-        """Swap internal state from a new feature source.
+    @property
+    def _constructor(self):
+        """Return the type pandas uses when constructing new frames."""
+        return FeatureCollection
 
-        Creates a fresh FeatureCollection and copies its internal data
-        into this instance, similar to pandas' _update_inplace.
-        """
-        new = FeatureCollection(gdf)
-        self.__dict__.update(new.__dict__)
+    _metadata: list[str] = []
+    """Instance attributes pandas must preserve across copy/slice.
 
-    def __str__(self) -> str:
-        """Return a human-readable summary of the FeatureCollection.
+    Currently empty — ``FeatureCollection`` keeps no per-instance state
+    beyond the GeoDataFrame data itself. Extend this list if you add
+    an instance attribute that must survive pandas operations.
+    """
 
-        Includes feature count, column names, and EPSG code.
-        Handles edge cases like empty collections or missing CRS
-        gracefully (shows ``epsg=None``).
+    # ── construction ──
 
-        Returns:
-            str: Summary string in the format
-                ``FeatureCollection(N features, columns=[...], epsg=XXXX)``.
+    def __init__(self, data: Any = None, *args: Any, **kwargs: Any) -> None:
+        """Construct a FeatureCollection.
 
-        Examples:
-            - Create a point collection and inspect its string form:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> gdf = gpd.GeoDataFrame(
-                ...     {"name": ["A", "B"]},
-                ...     geometry=[Point(0, 0), Point(1, 1)],
-                ...     crs="EPSG:4326",
-                ... )
-                >>> fc = FeatureCollection(gdf)
-                >>> s = str(fc)
-                >>> "2 features" in s
-                True
-                >>> "4326" in s
-                True
-
-                ```
-        """
-        n = len(self)
-        cols = self.column
-        try:
-            epsg = self._get_epsg() if self._feature is not None else None
-        except (AttributeError, TypeError):
-            epsg = None
-        result = (
-            f"FeatureCollection({n} features, "
-            f"columns={cols}, epsg={epsg})"
-        )
-        return result
-
-    def __repr__(self) -> str:
-        """Return a detailed repr of the FeatureCollection.
-
-        Similar to ``__str__`` but uses ``n_features=`` prefix for
-        the feature count, matching the constructor-style repr convention.
-
-        Returns:
-            str: Repr string in the format
-                ``FeatureCollection(n_features=N, columns=[...], epsg=XXXX)``.
-
-        Examples:
-            - Inspect the repr of a collection:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> gdf = gpd.GeoDataFrame(
-                ...     {"val": [1]},
-                ...     geometry=[Point(0, 0)],
-                ...     crs="EPSG:4326",
-                ... )
-                >>> fc = FeatureCollection(gdf)
-                >>> r = repr(fc)
-                >>> "n_features=1" in r
-                True
-
-                ```
-        """
-        try:
-            epsg = self._get_epsg()
-        except (AttributeError, TypeError):
-            epsg = None
-        result = (
-            f"FeatureCollection(n_features={len(self)}, "
-            f"columns={self.column}, epsg={epsg})"
-        )
-        return result
-
-    def __len__(self) -> int:
-        """Return the number of features (rows).
-
-        Works with both GeoDataFrame and OGR DataSource backends.
-        Returns 0 for empty collections or unsupported backends.
-
-        Returns:
-            int: Number of features in the collection.
-
-        Examples:
-            - Count features in a GeoDataFrame-backed collection:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> gdf = gpd.GeoDataFrame(
-                ...     {"id": [1, 2, 3]},
-                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
-                ... )
-                >>> fc = FeatureCollection(gdf)
-                >>> len(fc)
-                3
-
-                ```
-            - Empty collection returns 0:
-                ```python
-                >>> import geopandas as gpd
-                >>> from pyramids.feature import FeatureCollection
-                >>> fc = FeatureCollection(gpd.GeoDataFrame({"a": []}))
-                >>> len(fc)
-                0
-
-                ```
-        """
-        if isinstance(self._feature, GeoDataFrame):
-            result = len(self._feature)
-        elif isinstance(self._feature, (DataSource, gdal.Dataset)):
-            layer = self._feature.GetLayer(0)
-            result = layer.GetFeatureCount() if layer is not None else 0
-        else:
-            result = 0
-        return result
-
-    def __iter__(self):
-        """Iterate over features as (index, row) tuples.
-
-        Each yielded row is a ``pandas.Series`` with access to all
-        attribute columns and the ``geometry`` field. For OGR
-        DataSource backends, the data is first converted to a
-        GeoDataFrame.
-
-        Yields:
-            tuple[int, pandas.Series]: Index and row for each feature.
-
-        Examples:
-            - Iterate and collect attribute values:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> gdf = gpd.GeoDataFrame(
-                ...     {"city": ["Cairo", "Berlin"]},
-                ...     geometry=[Point(31.2, 30.0), Point(13.4, 52.5)],
-                ... )
-                >>> fc = FeatureCollection(gdf)
-                >>> cities = [row["city"] for _, row in fc]
-                >>> cities
-                ['Cairo', 'Berlin']
-
-                ```
-        """
-        if isinstance(self._feature, GeoDataFrame):
-            yield from self._feature.iterrows()
-        else:
-            gdf = self._ds_to_gdf()
-            yield from gdf.iterrows()
-
-    def __getitem__(self, key):
-        """Access features by index, slice, or column name.
-
-        Supports four access patterns:
-
-        - **Integer** (``fc[0]``): Returns a single-feature
-          FeatureCollection.
-        - **Slice** (``fc[0:5]``): Returns a subset FeatureCollection.
-        - **List/array** (``fc[[0, 2, 4]]``): Returns selected features.
-        - **String** (``fc["column_name"]``): Returns the column as a
-          pandas Series.
-
-        Row selections return copies, so modifying the result does
-        not affect the original collection.
+        Accepts anything :class:`geopandas.GeoDataFrame` accepts. Rejects
+        ``ogr.DataSource`` / ``gdal.Dataset`` with a clear error — those
+        objects are pyramids-internal and must not appear in public APIs.
 
         Args:
-            key: Integer index, slice, list of indices, numpy array
-                of indices, or column name string.
+            data:
+                A ``GeoDataFrame`` / ``DataFrame`` / dict / records
+                iterable — anything ``GeoDataFrame.__init__`` accepts.
+            *args:
+                Positional args forwarded to ``GeoDataFrame.__init__``.
+            **kwargs:
+                Keyword args (``geometry=``, ``crs=``, ``columns=``, …)
+                forwarded to ``GeoDataFrame.__init__``.
 
-        Returns:
-            FeatureCollection: For row-based selections (int, slice,
-                list, array).
-            pandas.Series: For string column selection.
-
-        Examples:
-            - Select a single feature by index:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> gdf = gpd.GeoDataFrame(
-                ...     {"name": ["A", "B", "C"]},
-                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
-                ... )
-                >>> fc = FeatureCollection(gdf)
-                >>> single = fc[0]
-                >>> len(single)
-                1
-
-                ```
-            - Slice a range of features:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> gdf = gpd.GeoDataFrame(
-                ...     {"name": ["A", "B", "C"]},
-                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
-                ... )
-                >>> fc = FeatureCollection(gdf)
-                >>> subset = fc[0:2]
-                >>> len(subset)
-                2
-
-                ```
-            - Access a column by name:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> gdf = gpd.GeoDataFrame(
-                ...     {"name": ["A", "B", "C"]},
-                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
-                ... )
-                >>> fc = FeatureCollection(gdf)
-                >>> list(fc["name"])
-                ['A', 'B', 'C']
-
-                ```
+        Raises:
+            TypeError: If ``data`` is an ``ogr.DataSource`` or a
+                ``gdal.Dataset``. These types are internal-only; use
+                :meth:`read_file` or a ``GeoDataFrame`` instead.
         """
-        if not isinstance(self._feature, GeoDataFrame):
-            gdf = self._ds_to_gdf()
-        else:
-            gdf = self._feature
-
-        if isinstance(key, str):
-            result = gdf[key]
-        elif isinstance(key, int):
-            result = FeatureCollection(gdf.iloc[[key]].copy())
-        elif isinstance(key, (slice, list, np.ndarray)):
-            result = FeatureCollection(gdf.iloc[key].copy())
-        else:
-            result = gdf[key]
-        return result
-
-    def __contains__(self, column_name: str) -> bool:
-        """Check if a column exists in the FeatureCollection.
-
-        Uses the ``column`` property which lists all attribute columns
-        plus ``"geometry"``.
-
-        Args:
-            column_name: Name of the column to check for.
-
-        Returns:
-            bool: True if the column exists in the collection.
-
-        Examples:
-            - Check for existing and missing columns:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> gdf = gpd.GeoDataFrame(
-                ...     {"depth": [5.0]},
-                ...     geometry=[Point(0, 0)],
-                ... )
-                >>> fc = FeatureCollection(gdf)
-                >>> "depth" in fc
-                True
-                >>> "missing" in fc
-                False
-                >>> "geometry" in fc
-                True
-
-                ```
-        """
-        result = column_name in self.column
-        return result
-
-    def __bool__(self) -> bool:
-        """Return True if the FeatureCollection is non-empty.
-
-        Enables natural usage in ``if`` statements and boolean
-        contexts. An empty collection (zero features) is falsy.
-
-        Returns:
-            bool: True if the collection has at least one feature.
-
-        Examples:
-            - Non-empty collection is truthy:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> fc = FeatureCollection(
-                ...     gpd.GeoDataFrame({"a": [1]}, geometry=[Point(0, 0)])
-                ... )
-                >>> bool(fc)
-                True
-
-                ```
-            - Empty collection is falsy:
-                ```python
-                >>> import geopandas as gpd
-                >>> from pyramids.feature import FeatureCollection
-                >>> fc = FeatureCollection(gpd.GeoDataFrame({"a": []}))
-                >>> bool(fc)
-                False
-
-                ```
-        """
-        result = len(self) > 0
-        return result
-
-    def __eq__(self, other: object) -> bool:
-        """Check equality with another FeatureCollection.
-
-        Two FeatureCollections are equal if their underlying
-        GeoDataFrames are identical (same geometry, attributes, and
-        index). Returns ``NotImplemented`` when compared with
-        non-FeatureCollection objects, allowing Python to try the
-        reverse comparison.
-
-        Args:
-            other: Object to compare with.
-
-        Returns:
-            bool: True if both collections have identical GeoDataFrames.
-            NotImplemented: If ``other`` is not a FeatureCollection.
-
-        Examples:
-            - Two collections from the same data are equal:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> gdf = gpd.GeoDataFrame(
-                ...     {"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
-                ... )
-                >>> fc1 = FeatureCollection(gdf)
-                >>> fc2 = FeatureCollection(gdf.copy())
-                >>> fc1 == fc2
-                True
-
-                ```
-            - Comparison with non-FeatureCollection returns NotImplemented:
-                ```python
-                >>> import geopandas as gpd
-                >>> from shapely.geometry import Point
-                >>> from pyramids.feature import FeatureCollection
-                >>> fc = FeatureCollection(
-                ...     gpd.GeoDataFrame({"v": [1]}, geometry=[Point(0, 0)])
-                ... )
-                >>> fc.__eq__("not a fc") is NotImplemented
-                True
-
-                ```
-        """
-        if not isinstance(other, FeatureCollection):
-            return NotImplemented
-        if isinstance(self._feature, GeoDataFrame) and isinstance(
-            other._feature, GeoDataFrame
-        ):
-            result = self._feature.equals(other._feature)
-        else:
-            result = False
-        return result
-
-    @property
-    def feature(self) -> GeoDataFrame | DataSource:
-        """Geodataframe or DataSource."""
-        return self._feature
-
-    @property
-    def epsg(self) -> int:
-        """EPSG number."""
-        return self._get_epsg()
-
-    @property
-    def total_bounds(self) -> list[Number]:
-        """Bounding coordinates `min-x`, `min-y`, `max-x`, `maxy`."""
-        if isinstance(self.feature, GeoDataFrame):
-            bounds: list[Number] = self.feature.total_bounds.tolist()
-        else:
-            ext = self.feature.GetLayer().GetExtent()
-            bounds = [ext[0], ext[2], ext[1], ext[3]]
-        return bounds
-
-    @property
-    def top_left_corner(self) -> list[Number]:
-        """Top left corner coordinates."""
-        if isinstance(self.feature, GeoDataFrame):
-            bounds = self.feature.total_bounds.tolist()
-        else:
-            bounds = self.feature.GetLayer().GetExtent()
-
-        bounds = [bounds[0], bounds[3]]
-        return bounds
-
-    @property
-    def layers_count(self) -> int | None:
-        """layers_count.
-
-        Number of layers in a datasource.
-        """
-        result: int | None = None
-        if isinstance(self.feature, DataSource) or isinstance(
-            self.feature, gdal.Dataset
-        ):
-            result = int(self.feature.GetLayerCount())
-        return result
-
-    @property
-    def layer_names(self) -> list[str]:
-        """OGR object layers names'."""
-        names: list[str] = []
-        layer_count = self.layers_count
-        if isinstance(self.feature, DataSource) or isinstance(
-            self.feature, gdal.Dataset
-        ):
-            if layer_count is not None:
-                for i in range(layer_count):
-                    names.append(self.feature.GetLayer(i).GetLayerDefn().GetName())
-
-        return names
-
-    @property
-    def column(self) -> list:
-        """Column Names."""
-        names: list[str] = []
-        layer_count = self.layers_count
-        if isinstance(self.feature, DataSource) or isinstance(
-            self.feature, gdal.Dataset
-        ):
-            if layer_count is not None:
-                for i in range(layer_count):
-                    layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
-                    cols = layer_dfn.GetFieldCount()
-                    names = names + [
-                        layer_dfn.GetFieldDefn(j).GetName() for j in range(cols)
-                    ]
-            names = names + ["geometry"]
-        else:
-            names = self.feature.columns.tolist()
-        return names
-
-    @property
-    def file_name(self) -> str:
-        """Get file name in case of the base object is an ogr.Datasource or gdal.Dataset."""
-        if isinstance(self.feature, gdal.Dataset) or isinstance(
-            self.feature, DataSource
-        ):
-            file_list = self.feature.GetFileList()
-            file_name = str(file_list[0]) if file_list else ""
-        else:
-            file_name = ""
-
-        return file_name
-
-    @property
-    def dtypes(self) -> dict[str, str]:
-        """Data Type.
-
-            - Get the data types of the columns in the vector file.
-
-        Returns:
-            list of the data types (strings/numpy datatypes) of the columns in the vector file, except the geometry
-            column.
-        """
-        if isinstance(self.feature, GeoDataFrame):
-            dtypes: dict[str, str] = self.feature.dtypes.to_dict()
-            # convert the dtype to string as it returns a dtype object in linux instead.
-            dtypes = {key: str(value) for key, value in dtypes.items()}
-        else:
-            dtype_list: list[str] = []
-            layer_count = self.layers_count
-            if layer_count is not None:
-                for i in range(layer_count):
-                    layer_dfn = self.feature.GetLayer(i).GetLayerDefn()
-                    cols = layer_dfn.GetFieldCount()
-                    dtype_list = dtype_list + [
-                        ogr_to_numpy_dtype(layer_dfn.GetFieldDefn(j).GetType()).__name__
-                        for j in range(cols)
-                    ]
-            # the geometry column is not in the returned dictionary if the vector is DataSource
-            dtypes = {col_i: type_i for col_i, type_i in zip(self.column, dtype_list)}
-
-        return dtypes
+        if isinstance(data, (ogr.DataSource, gdal.Dataset)):
+            raise TypeError(
+                "FeatureCollection no longer accepts ogr.DataSource or "
+                "gdal.Dataset objects. OGR is an internal implementation "
+                "detail. Use FeatureCollection.read_file(path) to load a "
+                "file, or pass a GeoDataFrame."
+            )
+        super().__init__(data, *args, **kwargs)
 
     @classmethod
     def read_file(cls, path: str | Path) -> FeatureCollection:
-        """Open a vector dataset using OGR or GeoPandas.
+        """Read a vector file into a FeatureCollection.
+
+        Delegates to :func:`geopandas.read_file` and wraps the result.
 
         Args:
-            path (str): Path to vector file.
+            path (str | Path):
+                Path to any format :mod:`fiona` / :mod:`geopandas`
+                supports (GeoJSON, Shapefile, GeoPackage, …).
 
         Returns:
-            FeatureCollection: A FeatureCollection wrapping the GeoDataFrame.
+            FeatureCollection: A new FeatureCollection with the file's
+            features, columns, and CRS.
+
+        Examples:
+            - Load a GeoJSON file:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection.read_file("tests/data/coello-gauges.geojson")
+                >>> len(fc) > 0
+                True
+
+                ```
         """
         gdf = gpd.read_file(path)
-
-        # update = False if read_only else True
-        # ds = ogr.OpenShared(path, update=update)
-        # # ds = gdal.OpenEx(path)
         return cls(gdf)
 
-    @staticmethod
-    def create_ds(
-        driver: str = "geojson", path: str | Path | None = None
-    ) -> DataSource | None:
-        """Create OGR DataSource.
+    # ── pyramids-specific spatial metadata ──
 
-        Args:
-            driver (str): Driver type ["GeoJSON", "memory"].
-            path (str): Path to save the vector data.
+    @property
+    def epsg(self) -> int | None:
+        """EPSG code of this FeatureCollection's CRS.
 
         Returns:
-            DataSource | None:
-                Created OGR DataSource or None if inplace behavior applies elsewhere.
+            int | None: EPSG code (e.g. 4326) or ``None`` when the CRS
+            is unset or cannot be resolved to an EPSG authority code.
         """
-        driver = driver.lower()
-        gdal_name = CATALOG.get_gdal_name(driver)
+        if self.crs is None:
+            return None
+        code = self.crs.to_epsg()
+        return int(code) if code is not None else None
 
-        if gdal_name is None:
-            raise DriverNotExistError(f"The given driver:{driver} is not supported.")
-
-        if driver == "memory":
-            path = "memData"
-
-        if path is None:
-            raise ValueError("path must be provided for non-memory drivers.")
-
-        ds = FeatureCollection._create_driver(gdal_name, str(path))
-        return ds
-
-    @staticmethod
-    def _create_driver(driver: str, path: str):
-        """Create Driver."""
-        return ogr.GetDriverByName(driver).CreateDataSource(str(path))
-
-    @staticmethod
-    def _copy_driver_to_memory(ds: DataSource, name: str = "memory") -> DataSource:
-        """Copy driver to a memory driver.
-
-        Args:
-            ds (DataSource): OGR datasource.
-            name (str): Datasource name.
+    @property
+    def top_left_corner(self) -> list[Number]:
+        """Top-left corner ``[xmin, ymax]`` of the total bounds.
 
         Returns:
-            DataSource: The copied in-memory OGR DataSource.
+            list[Number]: A two-element list ``[minx, maxy]`` in the
+            FeatureCollection's CRS.
         """
-        return ogr.GetDriverByName("Memory").CopyDataSource(ds, name)
+        bounds = self.total_bounds.tolist()
+        return [bounds[0], bounds[3]]
 
-    def to_file(self, path: str | Path, driver: str = "geojson") -> None:
-        """Save FeatureCollection to disk.
+    @property
+    def column(self) -> list[str]:
+        """Deprecated alias for :attr:`columns` returning a ``list[str]``.
 
-            Currently, saves OGR DataSource to disk.
+        ``columns`` is inherited from :class:`pandas.DataFrame` and is an
+        :class:`pandas.Index`. This alias returns a plain list, matching
+        the original pyramids API.
+
+        Returns:
+            list[str]: Column names, including ``"geometry"``.
+        """
+        return self.columns.tolist()
+
+    # ── dunders (branding only; data-level dunders are inherited) ──
+
+    def __str__(self) -> str:
+        """Return a short, pyramids-branded summary of the collection."""
+        n = len(self)
+        cols = self.columns.tolist()
+        epsg = self.epsg
+        return (
+            f"FeatureCollection({n} features, "
+            f"columns={cols}, epsg={epsg})"
+        )
+
+    def __repr__(self) -> str:
+        """Return a pyramids-branded repr with feature count, columns, EPSG."""
+        return (
+            f"FeatureCollection(n_features={len(self)}, "
+            f"columns={self.columns.tolist()}, epsg={self.epsg})"
+        )
+
+    # ── I/O ──
+
+    def to_file(
+        self, path: str | Path, driver: str = "geojson", **kwargs: Any
+    ) -> None:
+        """Write this FeatureCollection to a vector file.
+
+        Delegates to :meth:`geopandas.GeoDataFrame.to_file` after
+        resolving the pyramids driver short name (e.g. ``"geojson"``) to
+        the GDAL driver name (``"GeoJSON"``) via :class:`Catalog`.
 
         Args:
-            path (str):
-                Path to save the vector.
+            path (str | Path):
+                Destination file path.
             driver (str):
-                Driver type.
+                Driver alias or GDAL driver name. Default ``"geojson"``.
+            **kwargs:
+                Additional keyword arguments forwarded to
+                ``GeoDataFrame.to_file`` (e.g. ``layer=``, ``mode=``,
+                driver creation options).
 
-        Returns:
-            None
-        """
-        driver_gdal_name = CATALOG.get_gdal_name(driver)
-        if isinstance(self.feature, DataSource):
-            ogr.GetDriverByName(driver_gdal_name).CopyDataSource(
-                self.feature, str(path)
-            )
-        else:
-            self.feature.to_file(path, driver=driver_gdal_name)
-
-    def _gdf_to_ds(
-        self, inplace: bool = False, gdal_dataset=False
-    ) -> DataSource | FeatureCollection | None:
-        """Convert a GeoPandas GeoDataFrame into an OGR DataSource.
-
-        Args:
-            inplace (bool):
-                Convert the GeoDataFrame to DataSource in place. Default is False.
-            gdal_dataset (bool):
-                True to convert the GeoDataFrame into a GDAL Dataset (the object created by reading the vector with gdal.OpenEx). Default is False.
-
-        Returns:
-            DataSource | FeatureCollection | None:
-                OGR DataSource, or a FeatureCollection wrapper if not inplace.
-        """
-        if isinstance(self.feature, GeoDataFrame):
-            mem_path = f"/vsimem/{uuid.uuid4()}.geojson"
-            gdf_json = json.loads(self.feature.to_json())
-            geojson_str = json.dumps(gdf_json)
-            gdal.FileFromMemBuffer(mem_path, geojson_str)
-            if not gdal_dataset:
-                drv = ogr.GetDriverByName("GeoJSON")
-                ds = drv.Open(mem_path)
-            else:
-                ds = gdal.OpenEx(mem_path)
-        else:
-            mem_path = None
-            ds = self.feature
-
-        if inplace:
-            self._update_inplace(ds)
-            if mem_path is not None:
-                gdal.Unlink(mem_path)
-            ds = None
-        else:
-            ds = FeatureCollection(ds)
-            if mem_path is not None:
-                ds._vsimem_path = mem_path
-                weakref.finalize(ds, gdal.Unlink, mem_path)
-
-        return ds
-
-    # def _gdf_to_ds_copy(self, inplace=False) -> DataSource:
-    #     """Convert ogr DataSource object to a GeoDataFrame.
-    #
-    #     Returns:
-    #         ogr.DataSource
-    #     """
-    #     # Create a temporary directory for files.
-    #     temp_dir = tempfile.mkdtemp()
-    #     new_vector_path = os.path.join(temp_dir, f"{uuid.uuid1()}.geojson")
-    #     if isinstance(self.feature, GeoDataFrame):
-    #         self.feature.to_file(new_vector_path)
-    #         ds = ogr.Open(new_vector_path)
-    #         # ds = FeatureCollection(ds)
-    #         ds = FeatureCollection._copy_driver_to_memory(ds)
-    #     else:
-    #         ds = FeatureCollection._copy_driver_to_memory(self.feature)
-    #
-    #     if inplace:
-    #         self.__init__(ds)
-    #         ds = None
-    #
-    #     return ds
-
-    def _ds_to_gdf_with_io(self, inplace: bool = False) -> GeoDataFrame:
-        """Convert ogr DataSource object to a GeoDataFrame.
-
-        Returns:
-            GeoDataFrame
-        """
-        # Create a temporary directory for files.
-        temp_dir = Path(tempfile.mkdtemp())
-        new_vector_path = temp_dir / f"{uuid.uuid1()}.geojson"
-        self.to_file(new_vector_path, driver="geojson")
-        gdf = gpd.read_file(new_vector_path)
-
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        if inplace:
-            self._update_inplace(gdf)
-            gdf = None
-
-        return gdf
-
-    def _ds_to_gdf_in_memory(self, inplace: bool = False) -> GeoDataFrame:
-        """Convert ogr DataSource object to a GeoDataFrame.
-
-        Returns:
-            GeoDataFrame
-        """
-        mem_path = f"/vsimem/{uuid.uuid4()}.geojson"
-        try:
-            gdal_ds = ogr_ds_to_gdal_dataset(self.feature)
-            layer_name = gdal_ds.GetLayer().GetName()
-            gdal.VectorTranslate(
-                mem_path,
-                gdal_ds,
-                SQLStatement=f"SELECT * FROM {layer_name}",  # nosec B608 - OGR SQL, not a database
-                layerName=layer_name,
-            )
-            gdf = gpd.read_file(mem_path, layer=layer_name, driver="geojson")
-        finally:
-            gdal.Unlink(mem_path)
-
-        if inplace:
-            self._update_inplace(gdf)
-            gdf = None
-
-        return gdf
-
-    def _ds_to_gdf(self, inplace: bool = False) -> GeoDataFrame:
-        """Convert ogr DataSource object to a GeoDataFrame.
-
-        Returns:
-            GeoDataFrame
+        Raises:
+            DriverNotExistError: If the driver alias is unknown.
         """
         try:
-            gdf = self._ds_to_gdf_in_memory(inplace=inplace)
-        except:  # pragma: no cover
-            # keep the exception unspecified and we want to catch fiona.errors.DriverError but we do not want to
-            # explicitly import fiona here
-            gdf = self._ds_to_gdf_with_io(inplace=inplace)
+            resolved = CATALOG.get_gdal_name(driver) or driver
+        except AttributeError:
+            # Driver isn't in the Catalog alias map — assume ``driver`` is
+            # already a GDAL driver name and pass it through unchanged.
+            resolved = driver
+        super().to_file(path, driver=resolved, **kwargs)
 
-        return gdf
+    # ── rasterization (uses the internal OGR bridge) ──
 
     def to_dataset(
         self,
         cell_size: Any | None = None,
-        dataset=None,
+        dataset: Dataset | None = None,
         column_name: str | list[str] | None = None,
     ) -> Dataset:
-        """Covert a vector into raster.
+        """Rasterize this FeatureCollection to a :class:`pyramids.Dataset`.
 
-            - The raster cell values will be taken from the column name given in the vector_filed in the vector file.
-            - all the new raster geotransform data will be copied from the given raster.
-            - raster and vector should have the same projection
+        Burns the values from ``column_name`` (or every attribute column
+        if ``None``) into a single-band or multi-band raster. When a
+        template ``dataset`` is given, the new raster adopts its
+        geotransform, cell size, row/column count, and no-data value;
+        otherwise the extent is derived from :attr:`total_bounds` and
+        ``cell_size`` controls the resolution.
 
         Args:
-            cell_size (int | None):
-                Cell size for the new raster. Optional if dataset is provided. Default is None.
+            cell_size (int | float | None):
+                Cell size for the new raster. Required if ``dataset`` is
+                not given; ignored otherwise.
             dataset (Dataset | None):
-                Raster object to copy geotransform (projection, rows, columns, location) from. Optional if cell_size is
-                provided. Default is None.
-            column_name (str | List[str] | None):
-                Column name(s) in the vector to burn values from. If None, all columns are considered as bands.
-                Default is None.
+                Optional template raster. When provided, the output
+                raster inherits its geotransform (top-left, cell size,
+                row/column count) and no-data value.
+            column_name (str | list[str] | None):
+                Attribute column(s) to burn as band values. ``None``
+                burns every non-geometry column as a separate band.
 
         Returns:
-            Dataset:
-                Single-band raster with vector geometries burned.
+            Dataset: The burned raster. Single band if ``column_name``
+            is a string or a single-entry list; multi-band (one band per
+            column) otherwise.
+
+        Raises:
+            ValueError: If neither ``cell_size`` nor ``dataset`` is
+                given, if the vector CRS disagrees with the raster CRS,
+                or if the internal OGR conversion fails.
+            TypeError: If ``dataset`` is not a pyramids ``Dataset``.
         """
         from pyramids.dataset import Dataset
 
         if cell_size is None and dataset is None:
-            raise ValueError("You have to enter either cell size of Dataset object")
+            raise ValueError(
+                "You have to enter either cell size or Dataset object."
+            )
 
-        # Check EPSG are same, if not reproject vector.
         ds_epsg = self.epsg
-        if dataset is not None:
-            if dataset.epsg != ds_epsg:
-                raise ValueError(
-                    f"Dataset and vector are not the same EPSG. {dataset.epsg} != {ds_epsg}"
-                )
-
-        # TODO: this case
         if dataset is not None:
             if not isinstance(dataset, Dataset):
                 raise TypeError(
-                    "The second parameter should be a Dataset object (check how to read a raster using the "
-                    "Dataset module)"
+                    "The dataset parameter must be a pyramids Dataset "
+                    "(see pyramids.dataset.Dataset.read_file)."
                 )
-            # if the raster is given, the top left corner of the raster will be taken as the top left corner for
-            # the rasterized polygon
+            if dataset.epsg != ds_epsg:
+                raise ValueError(
+                    f"Dataset and vector are not the same EPSG. "
+                    f"{dataset.epsg} != {ds_epsg}"
+                )
             xmin, ymax = dataset.top_left_corner
             no_data_value = (
                 dataset.no_data_value[0]
@@ -829,17 +304,14 @@ class FeatureCollection:
             columns = dataset.columns
             cell_size = dataset.cell_size
         else:
-            # if a raster is not given, the xmin and ymax will be taken as the top left corner for the rasterized
-            # polygon.
-            xmin, ymin, xmax, ymax = self.feature.total_bounds
+            xmin, ymin, xmax, ymax = self.total_bounds
             no_data_value = Dataset.default_no_data_value
             columns = int(np.ceil((xmax - xmin) / cell_size))
             rows = int(np.ceil((ymax - ymin) / cell_size))
 
         burn_values = None
         if column_name is None:
-            column_name = self.column
-            column_name.remove("geometry")
+            column_name = [c for c in self.columns if c != "geometry"]
 
         if isinstance(column_name, list):
             numpy_dtype = self.dtypes[column_name[0]]
@@ -848,20 +320,10 @@ class FeatureCollection:
 
         dtype = str(numpy_dtype)
         attribute = column_name
-
-        # convert the vector to a gdal Dataset (vector but read by gdal.EX)
-        vector_gdal_ex_obj = self._gdf_to_ds(gdal_dataset=True)
-        if vector_gdal_ex_obj is None or not isinstance(
-            vector_gdal_ex_obj, FeatureCollection
-        ):
-            raise ValueError("Failed to convert vector to GDAL dataset.")
-        vector_gdal_ex: FeatureCollection = vector_gdal_ex_obj
         top_left_corner = (xmin, ymax)
-
         bands_count = 1 if not isinstance(attribute, list) else len(attribute)
-        if cell_size is None:
-            raise ValueError("cell_size must be provided.")
         cell_size_val: int | float = float(cell_size)
+
         dataset_n = Dataset.create(
             cell_size_val,
             rows,
@@ -873,99 +335,74 @@ class FeatureCollection:
             no_data_value,
         )
 
-        bands = list(range(1, bands_count + 1))
-        # loop over bands
-        for ind, band in enumerate(bands):
-            rasterize_opts = gdal.RasterizeOptions(
-                bands=[band],
-                burnValues=burn_values,
-                attribute=attribute[ind] if isinstance(attribute, list) else attribute,
-                allTouched=True,
-            )
-            # if the second parameter to the Rasterize function is str, it will be read using gdal.OpenEX inside the
-            # function, so if the second parameter is not str, it should be a dataset, if you try to use ogr.DataSource
-            # it will give an error.
-            # the second parameter can be given as a path, or read the vector using gdal.OpenEX and use it as a
-            # second parameter.
-            _ = gdal.Rasterize(
-                dataset_n.raster, vector_gdal_ex.feature, options=rasterize_opts
-            )
+        # The internal OGR bridge yields a gdal.Dataset for the duration
+        # of the rasterize call; the /vsimem/ file is unlinked on exit.
+        with _ogr.as_datasource(self, gdal_dataset=True) as vector_ds:
+            bands = list(range(1, bands_count + 1))
+            for ind, band in enumerate(bands):
+                rasterize_opts = gdal.RasterizeOptions(
+                    bands=[band],
+                    burnValues=burn_values,
+                    attribute=(
+                        attribute[ind]
+                        if isinstance(attribute, list)
+                        else attribute
+                    ),
+                    allTouched=True,
+                )
+                gdal.Rasterize(
+                    dataset_n.raster, vector_ds, options=rasterize_opts
+                )
 
         return dataset_n
 
-    @staticmethod
-    def _get_ds_epsg(ds: DataSource) -> int:
-        """Get EPSG for a given OGR DataSource.
-
-        Args:
-            ds (DataSource):
-                OGR datasource (vector file read by OGR).
-
-        Returns:
-            int:
-                EPSG number.
-        """
-        layer = ds.GetLayer(0)
-        spatial_ref = layer.GetSpatialRef()
-        spatial_ref.AutoIdentifyEPSG()
-        epsg = int(spatial_ref.GetAuthorityCode(None))
-        return epsg
+    # ── SR / EPSG helpers (kept as-is for back-compat) ──
 
     @staticmethod
-    def _create_sr_from_proj(prj: str, string_type: str | None = None):
-        r"""Create a spatial reference object from projection.
+    def _create_sr_from_proj(
+        prj: str, string_type: str | None = None
+    ) -> osr.SpatialReference:
+        """Create a :class:`osr.SpatialReference` from a projection string.
 
         Args:
             prj (str):
-                Projection string, e.g.,
-                ```python
-                "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",
-                \"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],
-                UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],
-                AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]"
+                The projection string.
+            string_type (str | None):
+                One of ``"WKT"``, ``"ESRI wkt"``, ``"PROj4"``, or
+                ``None`` for auto-detect (default). Auto-detect uses WKT
+                import, and falls back to ESRI WKT or Proj4 based on the
+                string's prefix.
 
-                ```
-            string_type (str):
-                Type of the string ["ESRI wkt", "WKT", "PROj4"].
+        Returns:
+            osr.SpatialReference: The constructed spatial reference.
         """
         srs = osr.SpatialReference()
-
         if string_type is None:
             srs.ImportFromWkt(prj)
         elif prj.startswith("PROJCS") or prj.startswith("GEOGCS"):
-            # ESRI well know text strings,
             srs.ImportFromESRI([prj])
         else:
-            # Proj4 strings.
             srs.ImportFromProj4(prj)
-
         return srs
 
     @staticmethod
     def get_epsg_from_prj(prj: str) -> int:
-        """Create spatial reference from the projection then auto identify the epsg using the osr object.
+        """Return the EPSG code identified by a projection string.
+
+        Auto-identifies the EPSG from a WKT / ESRI WKT / Proj4 string.
+        For the legacy behavior, an empty input string returns 4326;
+        callers that want strict validation should check for empty input
+        themselves.
 
         Args:
-            prj (str): Projection string.
+            prj (str): Projection string (WKT / ESRI WKT / Proj4).
 
         Returns:
-            int: epsg number
-
-        Examples:
-            - Get EPSG from a dataset projection:
-
-              ```python
-              >>> from pyramids.dataset import Dataset
-              >>> src = Dataset.read_file("path/to/raster.tif")
-              >>> prj = src.GetProjection()
-              >>> epsg = FeatureCollection.get_epsg_from_prj(prj)
-
-              ```
+            int: The resolved EPSG code.
         """
         if prj != "":
             srs = FeatureCollection._create_sr_from_proj(prj)
             try:
-                # if could not identify epsg use the authority code.
                 response = srs.AutoIdentifyEPSG()
             except RuntimeError:
                 response = 6
@@ -973,184 +410,102 @@ class FeatureCollection:
             if response == 0:
                 epsg = int(srs.GetAuthorityCode(None))
             else:
-                # the GetAuthorityCode failed to identify the epsg number https://gdal.org/doxygen/classOGRSpatialReference.html
-                # srs.FindMatches()
                 epsg = int(srs.GetAttrValue("AUTHORITY", 1))
         else:
             epsg = 4326
         return epsg
 
-    @staticmethod
-    def _get_gdf_epsg(gdf: GeoDataFrame) -> int:
-        """Get epsg for a given geodataframe.
-
-        Args:
-            gdf (GeoDataFrame):
-                Vector file read by geopandas.
-
-        Returns:
-            int: epsg number
-        """
-        return int(gdf.crs.to_epsg())
-
-    def _get_epsg(self) -> int:
-        """getEPSG.
-
-        Returns:
-            int: epsg number
-        """
-        vector_obj = self.feature
-        if isinstance(vector_obj, ogr.DataSource):
-            epsg = FeatureCollection._get_ds_epsg(vector_obj)
-        elif isinstance(vector_obj, gpd.GeoDataFrame):
-            epsg = FeatureCollection._get_gdf_epsg(vector_obj)
-        else:
-            raise ValueError(
-                f"Unable to get EPSG from: {type(vector_obj)}, only ogr.Datasource and "
-                "geopandas.GeoDataFrame are supported"
-            )
-        return epsg
+    # ── coordinate extraction (used by xy / center_point) ──
 
     @staticmethod
-    def _get_xy_coords(geometry, coord_type: str) -> list:
-        """getXYCoords.
-
-           Returns either x or y coordinates from geometry coordinate sequence.
-           Used with LineString and Polygon geometries.
+    def _get_xy_coords(geometry: Any, coord_type: str) -> list:
+        """Return x or y coords from a LineString / Polygon boundary.
 
         Args:
-            geometry (LineString):
-                The geometry of a shapefile.
+            geometry:
+                A geometry exposing ``.coords.xy`` (e.g. LineString,
+                LinearRing).
             coord_type (str):
-                Either "x" or "y".
+                Either ``"x"`` or ``"y"``.
 
         Returns:
-            array: Contains x coordinates or y coordinates of all edges of the shapefile
+            list: Coordinate values.
+
+        Raises:
+            ValueError: If ``coord_type`` is not ``"x"`` or ``"y"``.
         """
         if coord_type == "x":
-            coords: list[Any] = list(geometry.coords.xy[0].tolist())
-        elif coord_type == "y":
-            coords = list(geometry.coords.xy[1].tolist())
-        else:
-            raise ValueError("coord_type can only have a value of 'x' or 'y' ")
-
-        return coords
+            return list(geometry.coords.xy[0].tolist())
+        if coord_type == "y":
+            return list(geometry.coords.xy[1].tolist())
+        raise ValueError("coord_type can only have a value of 'x' or 'y'")
 
     @staticmethod
     def _get_point_coords(geometry: Point, coord_type: str) -> float | int:
-        """Get point coordinates for a Point geometry.
-
-        Returns coordinates of a Point object.
+        """Return the x or y coordinate of a shapely :class:`Point`.
 
         Args:
             geometry (Point):
-                The geometry of a shapefile.
+                A shapely Point.
             coord_type (str):
-                Either "x" or "y".
+                ``"x"`` or ``"y"``.
 
         Returns:
-            float | int:
-                The x or y coordinate of the Point according to coord_type.
+            float | int: The requested coordinate.
+
+        Raises:
+            ValueError: If ``coord_type`` is not ``"x"`` or ``"y"``.
         """
         if coord_type == "x":
-            coord: float | int = float(geometry.x)
-        elif coord_type == "y":
-            coord = float(geometry.y)
-        else:
-            raise ValueError("coord_type can only have a value of 'x' or 'y' ")
-
-        return coord
+            return float(geometry.x)
+        if coord_type == "y":
+            return float(geometry.y)
+        raise ValueError("coord_type can only have a value of 'x' or 'y'")
 
     @staticmethod
-    def _get_line_coords(geometry: LineString, coord_type: str):
-        """Get coordinates of a LineString object.
-
-        Args:
-            geometry (LineString):
-                The geometry of a shapefile.
-            coord_type (str):
-                Either "x" or "y".
-
-        Returns:
-            list: Contains x or y coordinates of all edges of the shapefile.
-        """
+    def _get_line_coords(geometry: LineString, coord_type: str) -> list:
+        """Return x or y coordinates of a :class:`LineString`."""
         return FeatureCollection._get_xy_coords(geometry, coord_type)
 
     @staticmethod
     def _get_poly_coords(geometry: Polygon, coord_type: str) -> list:
-        """Get coordinates of a Polygon's exterior.
-
-        Args:
-            geometry (Polygon):
-                The geometry of a shapefile.
-            coord_type (str):
-                Either "x" or "y".
-
-        Returns:
-            list:
-                Contains x or y coordinates of all edges of the shapefile.
-        """
-        # convert the polygon into lines
-        ext = geometry.exterior  # type = LinearRing
-
-        return FeatureCollection._get_xy_coords(ext, coord_type)
+        """Return x or y coordinates of a :class:`Polygon` exterior."""
+        return FeatureCollection._get_xy_coords(geometry.exterior, coord_type)
 
     @staticmethod
-    def _explode_multi_geometry(multi_polygon: MultiPolygon):
-        """Explode a MultiPolygon into its Polygon parts.
+    def _explode_gdf(
+        gdf: GeoDataFrame, geometry: str = "multipolygon"
+    ) -> GeoDataFrame:
+        """Explode multi-geometries into per-row single geometries.
 
-        Args:
-            multi_polygon (MultiPolygon):
-                A MultiPolygon geometry.
-
-        Returns:
-            list:
-                List of Polygon geometries.
-        """
-        # outdf = gpd.GeoDataFrame()
-        # multdf = gpd.GeoDataFrame()
-        # multdf["geometry"] = list(multi_polygon)
-        # n_rows = len(multi_polygon)
-        # multdf = multdf.append([multi_polygon] * n_rows, ignore_index=True)
-        # for i, poly in enumerate(multi_polygon):
-        #     multdf.loc[i, "geometry"] = poly
-        return list(multi_polygon)
-
-    @staticmethod
-    def _explode_gdf(gdf: GeoDataFrame, geometry: str = "multipolygon"):
-        """Explode Multi geometries into single geometries.
-
-        Explodes MultiPolygon (or specified multi-geometry) into separate geometries per row.
+        Rows whose geometry type matches ``geometry`` are expanded so
+        that each child geometry becomes its own row.
 
         Args:
             gdf (GeoDataFrame):
-                GeoDataFrame to explode.
+                The GeoDataFrame to process.
             geometry (str):
-                The multi-geometry type to explode. Default is "multipolygon".
+                The geometry type to explode (``"multipolygon"`` or
+                ``"geometrycollection"``). Default ``"multipolygon"``.
 
         Returns:
-            GeoDataFrame:
-                A new GeoDataFrame with exploded geometries.
+            GeoDataFrame: A new GeoDataFrame with exploded rows first
+            and preserved (non-matching) rows after.
         """
-        # explode the multi_polygon into polygon
         new_gdf = gpd.GeoDataFrame()
-        to_drop = []
+        to_drop: list[int] = []
         for idx, row in gdf.iterrows():
             geom_type = row.geometry.geom_type.lower()
             if geom_type == geometry:
-                # get number of the polygons inside the multipolygon class
                 n_rows = len(row.geometry.geoms)
                 new_gdf = gpd.GeoDataFrame(pd.concat([new_gdf] + [row] * n_rows))
                 new_gdf.reset_index(drop=True, inplace=True)
                 new_gdf.columns = row.index.values
-                # for each rows assign each polygon
                 for geom in range(n_rows):
                     new_gdf.loc[geom, "geometry"] = row.geometry.geoms[geom]
                 to_drop.append(idx)
 
-        # drop the exploded rows
         gdf.drop(labels=to_drop, axis=0, inplace=True)
-        # concatinate the exploded rows
         new_gdf = gpd.GeoDataFrame(pd.concat([gdf] + [new_gdf]))
         new_gdf.reset_index(drop=True, inplace=True)
         new_gdf.columns = gdf.columns
@@ -1161,168 +516,205 @@ class FeatureCollection:
         multi_geometry: MultiPolygon | MultiPoint | MultiLineString,
         coord_type: str,
         geom_type: str,
-    ):
-        """Handle multi-geometries by merging coordinates.
-
-        Function for handling multi-geometries (MultiPoint, MultiLineString, MultiPolygon).
-        Returns a list of coordinates where all parts are merged into a single list; individual geometries are
-        separated with np.nan.
+    ) -> list:
+        """Extract per-part coordinates from a multi-geometry.
 
         Args:
-            multi_geometry (MultiPolygon | MultiPoint | MultiLineString):
-                The geometry of a shapefile.
+            multi_geometry:
+                A shapely ``MultiPoint`` / ``MultiLineString`` /
+                ``MultiPolygon`` instance.
             coord_type (str):
-                Either "x" or "y".
+                ``"x"`` or ``"y"``.
             geom_type (str):
-                "MultiPoint" or "MultiLineString" or "MultiPolygon".
+                One of ``"multipoint"``, ``"multilinestring"``,
+                ``"multipolygon"`` (case-insensitive).
 
         Returns:
-            list: Contains x or y coordinates of all edges of the shapefile.
+            list: A list of per-part coordinate sequences.
         """
         coord_arrays: list[Any] = []
         geom_type = geom_type.lower()
-        if geom_type == "multipoint" or geom_type == "multilinestring":
-            for i, part in enumerate(multi_geometry.geoms):
+        if geom_type in ("multipoint", "multilinestring"):
+            for part in multi_geometry.geoms:
                 if geom_type == "multipoint":
-                    point_vals = FeatureCollection._get_point_coords(part, coord_type)
-                    coord_arrays.append(point_vals)
-                elif geom_type == "multilinestring":
-                    line_vals = FeatureCollection._get_line_coords(part, coord_type)
-                    coord_arrays.append(line_vals)
+                    coord_arrays.append(
+                        FeatureCollection._get_point_coords(part, coord_type)
+                    )
+                else:
+                    coord_arrays.append(
+                        FeatureCollection._get_line_coords(part, coord_type)
+                    )
         elif geom_type == "multipolygon":
-            for i, part in enumerate(multi_geometry.geoms):
-                # multi_2_single = FeatureCollection._explode(part) if part.type.startswith("MULTI") else part
-                poly_vals = FeatureCollection._get_poly_coords(part, coord_type)
-                coord_arrays.append(poly_vals)
+            for part in multi_geometry.geoms:
+                coord_arrays.append(
+                    FeatureCollection._get_poly_coords(part, coord_type)
+                )
 
         return coord_arrays
 
     @staticmethod
     def _geometry_collection(geom: Any, coord_type: str) -> list[Any]:
-        """Get coordinates from a GeometryCollection.
+        """Extract coords from every sub-geometry of a GeometryCollection.
 
         Args:
-            geom: A GeometryCollection geometry.
-            coord_type (str): Either "x" or "y".
+            geom:
+                A shapely ``GeometryCollection``.
+            coord_type (str):
+                ``"x"`` or ``"y"``.
 
         Returns:
-            list[Any]: Merged list of coordinates from all sub-geometries.
+            list: Merged list of coordinates from Point, LineString, and
+            Polygon sub-geometries (in iteration order).
         """
         coords: list[Any] = []
         for sub_geom in geom.geoms:
             gtype = sub_geom.geom_type.lower()
             if gtype == "point":
-                coords.append(FeatureCollection._get_point_coords(sub_geom, coord_type))
+                coords.append(
+                    FeatureCollection._get_point_coords(sub_geom, coord_type)
+                )
             elif gtype == "linestring":
-                coords.extend(FeatureCollection._get_line_coords(sub_geom, coord_type))
+                coords.extend(
+                    FeatureCollection._get_line_coords(sub_geom, coord_type)
+                )
             elif gtype == "polygon":
-                coords.extend(FeatureCollection._get_poly_coords(sub_geom, coord_type))
+                coords.extend(
+                    FeatureCollection._get_poly_coords(sub_geom, coord_type)
+                )
         return coords
 
     @staticmethod
-    def _get_coords(row, geom_col: str, coord_type: str):
-        """Get coordinates ('x' or 'y') of a geometry row.
+    def _get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
+        """Return coordinates for a row, dispatching by geometry type.
 
-        Returns coordinates for Point, LineString, or Polygon as a list. Can also handle Multi geometries
-        (not MultiPolygon) appropriately.
+        Returns ``-9999`` for MultiPolygon rows as a sentinel so the
+        caller (:meth:`xy`) can drop them after the per-row `.apply()`.
 
         Args:
-            row (pd.Series):
-                A whole row of the GeoDataFrame.
+            row (pandas.Series):
+                A row of the GeoDataFrame.
             geom_col (str):
-                Name of the column where the geometry is stored in the dataframe.
+                Name of the geometry column.
             coord_type (str):
-                "x" or "y" to choose which coordinate to get.
+                ``"x"`` or ``"y"``.
 
         Returns:
-            list | int:
-                Coordinates or -9999 for multipolygon to mark for removal.
+            Any: Coordinates as ``list`` / ``float`` / ``int``, or the
+            sentinel ``-9999`` for MultiPolygon rows.
         """
-        # get geometry object
         geom = row[geom_col]
-        # check the geometry type
         gtype = geom.geom_type.lower()
-        # "Normal" geometries
         if gtype == "point":
             return FeatureCollection._get_point_coords(geom, coord_type)
-        elif gtype == "linestring":
+        if gtype == "linestring":
             return list(FeatureCollection._get_line_coords(geom, coord_type))
-        elif gtype == "polygon":
+        if gtype == "polygon":
             return list(FeatureCollection._get_poly_coords(geom, coord_type))
-        elif gtype == "multipolygon":
-            # the multipolygon geometry row will be deleted in the xy method
+        if gtype == "multipolygon":
             return -9999
-        elif gtype == "geometrycollection":
+        if gtype == "geometrycollection":
             return FeatureCollection._geometry_collection(geom, coord_type)
-        # Multi geometries
-        else:
-            return FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
+        return FeatureCollection._multi_geom_handler(geom, coord_type, gtype)
 
     def xy(self) -> None:
-        """Compute x and y coordinates of all vertices.
+        """Add per-vertex ``x`` and ``y`` columns to this FeatureCollection.
 
-        Processes the geometry column of the GeoDataFrame and returns the x and y coordinates of all the vertices.
+        Explodes MultiPolygon and GeometryCollection geometries into
+        their parts, then assigns ``x`` and ``y`` columns containing the
+        coordinate sequences of each row. Mutates ``self`` in place.
+
+        Re-initializing a pandas subclass on itself is hostile to pandas'
+        ``_constructor`` plumbing (it causes infinite recursion through
+        the subclass contract). Instead this method builds the exploded
+        frame separately, computes the coordinate columns on it, drops
+        sentinel rows, and swaps the result into ``self`` via
+        ``_update_inplace``, the pandas-internal primitive that
+        ``DataFrame.sort_values(inplace=True)`` and friends also use.
 
         Returns:
-            None
+            None: Mutation only.
         """
-        # explode the gdf if the Geometry of type MultiPolygon
-        gdf = self._explode_gdf(self._feature, geometry="multipolygon")
+        gdf = self._explode_gdf(
+            gpd.GeoDataFrame(self, copy=True), geometry="multipolygon"
+        )
         gdf = self._explode_gdf(gdf, geometry="geometrycollection")
-        self._feature = gdf
 
-        # get the x & y coordinates of the exploded multi_polygons
-        self._feature["x"] = self._feature.apply(
-            self._get_coords, geom_col="geometry", coord_type="x", axis=1
+        # Coerce to a FeatureCollection so ``apply`` and friends see the
+        # subclass methods without needing an extra isinstance branch.
+        fc = FeatureCollection(gdf)
+
+        fc["x"] = fc.apply(
+            fc._get_coords, geom_col="geometry", coord_type="x", axis=1
         )
-        self._feature["y"] = self._feature.apply(
-            self._get_coords, geom_col="geometry", coord_type="y", axis=1
+        fc["y"] = fc.apply(
+            fc._get_coords, geom_col="geometry", coord_type="y", axis=1
         )
 
-        to_delete = np.where(self._feature["x"] == -9999)[0]
-        self._feature.drop(to_delete, inplace=True)
-        self._feature.reset_index(drop=True, inplace=True)
+        to_delete = np.where(fc["x"] == -9999)[0]
+        fc.drop(fc.index[to_delete], inplace=True)
+        fc.reset_index(drop=True, inplace=True)
+
+        # Replace self's data with fc's — pandas-internal primitive used
+        # by DataFrame's own inplace methods.
+        self._update_inplace(fc)
+
+    # ── geometry factories ──
 
     @staticmethod
     def create_polygon(
         coords: list[tuple[float, float]], wkt: bool = False
     ) -> str | Polygon:
-        """Create a polygon geometry from coordinates.
+        """Build a :class:`shapely.Polygon` (or its WKT) from coordinates.
 
         Args:
-            coords (List[Tuple[float, float]]):
-                List of (x, y) tuples.
+            coords (list[tuple[float, float]]):
+                Sequence of ``(x, y)`` tuples forming the ring.
             wkt (bool):
-                True to return Well-Known Text (WKT) string; False to return a Shapely Polygon object.
+                Return the WKT string form instead of a shapely
+                ``Polygon``. Default ``False``.
 
         Returns:
-            str | Polygon:
-                WKT string if wkt is True; otherwise a Shapely Polygon object.
+            str | Polygon: The WKT string if ``wkt=True``, else the
+            ``Polygon``.
 
         Examples:
-            - Create a WKT polygon from coordinates and print it:
+            - Create a WKT polygon from coordinates:
+                ```python
+                >>> coords = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
+                >>> FeatureCollection.create_polygon(coords, wkt=True)
+                'POLYGON ((-106.64 24, -106.49 24.05, -106.49 24.01, -106.49 23.98, -106.64 24))'
 
-              ```python
-              >>> coordinates = [(-106.64, 24), (-106.49, 24.05), (-106.49, 24.01), (-106.49, 23.98)]
-              >>> feature_collection = FeatureCollection.create_polygon(coordinates, wkt=True)
-              >>> print(feature_collection)
-              'POLYGON ((-106.64 24, -106.49 24.05, -106.49 24.01, -106.49 23.98, -106.64 24))'
-
-              ```
-
-            - Create a Shapely Polygon and assign it to a GeoDataFrame:
-
-              ```python
-              >>> new_geometry = gpd.GeoDataFrame()
-              >>> new_geometry.loc[0,'geometry'] = FeatureCollection.create_polygon(coordinates, wkt=False)
-
-              ```
+                ```
         """
         poly = Polygon(coords)
-        if wkt:
-            return poly.wkt
-        else:
-            return poly
+        return poly.wkt if wkt else poly
+
+    @staticmethod
+    def create_point(
+        coords: Iterable[tuple[float, ...]], epsg: int | None = None
+    ) -> list[Point] | FeatureCollection:
+        """Build shapely ``Point`` objects (or a FeatureCollection of them).
+
+        Args:
+            coords:
+                Iterable of ``(x, y)`` tuples.
+            epsg (int | None):
+                When given, return a FeatureCollection with the supplied
+                CRS; otherwise return a plain ``list[Point]``.
+
+        Returns:
+            list[Point] | FeatureCollection: A list of shapely Points,
+            or a FeatureCollection if ``epsg`` is provided.
+        """
+        points = list(map(Point, coords))
+        if epsg is not None:
+            gdf = gpd.GeoDataFrame(
+                columns=["geometry"], data=points, crs=epsg
+            )
+            return FeatureCollection(gdf)
+        return points
+
+    # ── plot (adds optional basemap; chart itself is inherited) ──
 
     def plot(
         self,
@@ -1330,49 +722,36 @@ class FeatureCollection:
         basemap: bool | str | None = None,
         **kwargs: Any,
     ) -> Any:
-        """Plot the feature collection.
+        """Plot features, optionally on a web-tile basemap.
 
-        Delegates to ``GeoDataFrame.plot()`` and optionally adds a web
-        tile basemap underneath the vector data.
+        Delegates to :meth:`geopandas.GeoDataFrame.plot` and, when
+        ``basemap`` is truthy, adds an OpenStreetMap (or named provider)
+        tile layer underneath the vector data.
 
-        Parameters
-        ----------
-        column : str or None, optional
-            Column name to use for coloring features. Passed to
-            ``GeoDataFrame.plot(column=...)``.
-        basemap : bool, str, or None, optional
-            If ``True``, add an OpenStreetMap basemap. If a string,
-            use it as the tile provider name (e.g.
-            ``"CartoDB.Positron"``). Default is ``None`` (no basemap).
-            Requires the ``[viz]`` extra.
-        **kwargs
-            Additional keyword arguments passed to
-            ``GeoDataFrame.plot()``.
+        Args:
+            column (str | None):
+                Attribute column used to color features. Passed to
+                ``GeoDataFrame.plot(column=...)``.
+            basemap (bool | str | None):
+                ``True`` for OpenStreetMap; a string for a named tile
+                provider (e.g. ``"CartoDB.Positron"``); ``None`` or
+                ``False`` for no basemap. Requires the ``[viz]`` extra.
+            **kwargs:
+                Passed through to ``GeoDataFrame.plot()``.
 
-        Returns
-        -------
-        matplotlib.axes.Axes
-            The matplotlib axes with the plot.
+        Returns:
+            matplotlib.axes.Axes: The plot axes.
 
-        Raises
-        ------
-        TypeError
-            If the underlying feature is an OGR DataSource (not a
-            GeoDataFrame).
+        Raises:
+            ValueError: If ``basemap`` is requested but the
+                FeatureCollection has no CRS.
         """
-        if not isinstance(self.feature, GeoDataFrame):
-            raise TypeError(
-                "plot() requires a GeoDataFrame-backed FeatureCollection. "
-                "Convert the OGR DataSource to a GeoDataFrame first."
-            )
-
-        ax = self.feature.plot(column=column, **kwargs)
+        ax = super().plot(column=column, **kwargs)
 
         if basemap:
             if self.epsg is None:
                 raise ValueError(
-                    "FeatureCollection must have a CRS (epsg) to "
-                    "use basemap."
+                    "FeatureCollection must have a CRS (epsg) to use basemap."
                 )
             from pyramids.basemap.basemap import add_basemap
 
@@ -1381,76 +760,38 @@ class FeatureCollection:
 
         return ax
 
-    @staticmethod
-    def create_point(
-        coords: Iterable[tuple[float, ...]], epsg: int | None = None
-    ) -> list[Point] | GeoDataFrame:
-        """Create Shapely Point objects from coordinate tuples.
+    # ── concatenation helper (kept for back-compat) ──
 
-        Args:
-            coords (Iterable[Tuple[float]]):
-                List of tuples [(x1, y1), (x2, y2)] or [(lon1, lat1), (lon2, lat1)].
-            epsg (int):
-                EPSG number for coordinates. If provided, returns a GeoDataFrame wrapped as FeatureCollection.
+    def concate(
+        self, gdf: GeoDataFrame, inplace: bool = False
+    ) -> GeoDataFrame | None:
+        """Concatenate another GeoDataFrame onto this FeatureCollection.
 
-        Returns:
-            list | FeatureCollection:
-                List of Shapely Point objects, or FeatureCollection if epsg is provided.
-
-        Examples:
-            - Create points and assign to a GeoDataFrame:
-
-              ```python
-              >>> coordinates = [(24.95, 60.16), (24.95, 60.16), (24.95, 60.17), (24.95, 60.16)]
-              >>> point_list = FeatureCollection.create_point(coordinates)
-              >>> new_geometry = gpd.GeoDataFrame()
-              >>> new_geometry.loc[:, 'geometry'] = point_list
-
-              ```
-        """
-        points = list(map(Point, coords))
-
-        result: list | FeatureCollection = points
-        if epsg is not None:
-            gdf = gpd.GeoDataFrame(columns=["geometry"], data=points, crs=epsg)
-            result = FeatureCollection(gdf)
-
-        return result
-
-    def concate(self, gdf: GeoDataFrame, inplace: bool = False) -> GeoDataFrame | None:
-        """Concatenate two shapefiles into one object.
+        Under the GeoDataFrame-subclass design you can also use the
+        standard idiom ``pd.concat([fc, other])`` which returns a
+        ``FeatureCollection`` because of the ``_constructor`` hook.
 
         Args:
             gdf (GeoDataFrame):
-                GeoDataFrame containing the geometries to combine.
+                The rows to append.
             inplace (bool):
-                If True, modifies the current object in place. Default is False.
+                When ``True``, replace the rows of ``self`` with the
+                concatenation and return ``None``. When ``False``
+                (default), return a new ``GeoDataFrame``.
 
         Returns:
-            GeoDataFrame | None:
-                New combined GeoDataFrame, or None if inplace is True.
-
-        Examples:
-            - Concatenate two GeoDataFrames:
-
-              ```python
-              >>> subbasins = FeatureCollection.read_file("sub-basins.shp")
-              >>> new_sub = gpd.read_file("new-sub-basins.shp")
-              >>> all_subs = subbasins.concate(new_sub, new_sub, inplace=False)
-
-              ```
+            GeoDataFrame | None: The concatenation, or ``None`` when
+            ``inplace=True``.
         """
-        # concatenate the second shapefile into the first shapefile
-        new_gdf = gpd.GeoDataFrame(pd.concat([self.feature, gdf]))
-        # re-index the data frame
-        new_gdf.index = [i for i in range(len(new_gdf))]
-        # take the spatial reference of the first geodataframe
-        new_gdf.crs = self.feature.crs
+        new_gdf = gpd.GeoDataFrame(pd.concat([self, gdf]))
+        new_gdf.index = list(range(len(new_gdf)))
+        new_gdf.crs = self.crs
         if inplace:
-            self._update_inplace(new_gdf)
-            new_gdf = None
-
+            self._update_inplace(FeatureCollection(new_gdf))
+            return None
         return new_gdf
+
+    # ── point reprojection helpers (standalone — no collection needed) ──
 
     @staticmethod
     def reproject_points(
@@ -1460,53 +801,41 @@ class FeatureCollection:
         to_epsg: int = 3857,
         precision: int = 6,
     ) -> tuple[list[float], list[float]]:
-        """reproject_points.
+        """Reproject point coordinates (legacy wrapper).
 
-        reproject_points changes the projection of coordinates from one coordinate system to another
-        (default: from GCS to Web Mercator as used by Google Maps).
+        Historical API kept for back-compatibility; see
+        :meth:`reproject_points2` for the ``osr``-based form. Internally
+        suppresses the :class:`pyproj` ``FutureWarning`` emitted by the
+        legacy ``Proj(init=...)`` construction.
 
         Args:
-            lat (list):
-                List of latitudes of the points.
-            lon (list):
-                List of longitudes of the points.
-            from_epsg (int):
-                Reference number of the source projection (https://epsg.io/).
-            to_epsg (int):
-                Reference number of the target projection (https://epsg.io/).
-            precision (int):
-                Number of decimal places.
+            lat (list): Y-coordinates in the source CRS.
+            lon (list): X-coordinates in the source CRS.
+            from_epsg (int): Source EPSG code. Default 4326.
+            to_epsg (int): Target EPSG code. Default 3857.
+            precision (int): Decimal places to round to.
 
         Returns:
-            tuple[list, list]:
-                y coordinates list, x coordinates list of the points.
-
-        Examples:
-            - From Web Mercator to GCS WGS84:
-
-              ```python
-              >>> x_coords = [-8418583.96378159, -8404716.499972705]
-              >>> y_coords = [529374.3212213353, 529374.3212213353]
-              >>>  longs, lats = FeatureCollection.reproject_points(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
-
-              ```
+            tuple[list[float], list[float]]: ``(y, x)`` lists in the
+            target CRS. Note the ``(y, x)`` ordering (legacy).
         """
-        # Proj gives a future warning however the from_epsg argument to the functiuon
-        # is correct the following couple of code lines are to disable the warning
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=FutureWarning)
 
             from_epsg_str = "epsg:" + str(from_epsg)
-            in_proj = Proj(init=from_epsg_str)  # GCS geographic coordinate system
+            in_proj = Proj(init=from_epsg_str)
             to_epsg_str = "epsg:" + str(to_epsg)
-            out_proj = Proj(init=to_epsg_str)  # WGS84 web mercator
+            out_proj = Proj(init=to_epsg_str)
 
         x = np.ones(len(lat)) * np.nan
         y = np.ones(len(lat)) * np.nan
 
         for i in range(len(lat)):
             x[i], y[i] = np.round(
-                transform(in_proj, out_proj, lon[i], lat[i], always_xy=True), precision
+                _pyproj_transform(
+                    in_proj, out_proj, lon[i], lat[i], always_xy=True
+                ),
+                precision,
             )
 
         return y.tolist(), x.tolist()
@@ -1515,34 +844,17 @@ class FeatureCollection:
     def reproject_points2(
         lat: list, lng: list, from_epsg: int = 4326, to_epsg: int = 3857
     ) -> tuple[list[float], list[float]]:
-        """reproject_points.
-
-        This function changes the projection of the coordinates from one coordinate system to another
-        (default: from GCS to Web Mercator used by Google Maps).
+        """Reproject point coordinates using :class:`osr.CoordinateTransformation`.
 
         Args:
-            lat (list):
-                List of latitudes of the points.
-            lng (list):
-                List of longitudes of the points.
-            from_epsg (int):
-                EPSG code of the source projection (https://epsg.io/).
-            to_epsg (int):
-                EPSG code of the target projection (https://epsg.io/).
+            lat (list): Y-coordinates in the source CRS.
+            lng (list): X-coordinates in the source CRS.
+            from_epsg (int): Source EPSG code. Default 4326.
+            to_epsg (int): Target EPSG code. Default 3857.
 
         Returns:
-            tuple[list, list]:
-                x coordinates list, y coordinates list of the points.
-
-        Examples:
-            - From Web Mercator to GCS WGS84:
-
-              ```python
-              >>> x_coords = [-8418583.96378159, -8404716.499972705]
-              >>> y_coords = [529374.3212213353, 529374.3212213353]
-              >>> longs, lats = FeatureCollection.reproject_points2(y_coords, x_coords, from_epsg=3857, to_epsg=4326)
-
-              ```
+            tuple[list[float], list[float]]: ``(x, y)`` lists in the
+            target CRS.
         """
         source = osr.SpatialReference()
         source.ImportFromEPSG(from_epsg)
@@ -1550,56 +862,34 @@ class FeatureCollection:
         target = osr.SpatialReference()
         target.ImportFromEPSG(to_epsg)
 
-        transform = osr.CoordinateTransformation(source, target)
-        x = []
-        y = []
+        coord_transform = osr.CoordinateTransformation(source, target)
+        x: list[float] = []
+        y: list[float] = []
         for i in range(len(lat)):
             point = ogr.CreateGeometryFromWkt(
                 "POINT (" + str(lng[i]) + " " + str(lat[i]) + ")"
             )
-            point.Transform(transform)
+            point.Transform(coord_transform)
             x.append(point.GetPoints()[0][0])
             y.append(point.GetPoints()[0][1])
         return x, y
 
-    def center_point(
-        self,
-    ) -> GeoDataFrame:
-        """Center Point.
+    # ── centroid helper (keeps legacy column-adding behavior) ──
 
-        Center Point function takes a geodata frame of polygons and returns the center of each polygon
+    def center_point(self) -> GeoDataFrame:
+        """Compute per-feature centers as extra columns on ``self``.
+
+        Calls :meth:`xy` first, then adds ``avg_x``, ``avg_y`` and
+        ``center_point`` columns. Mutates and returns ``self``.
 
         Returns:
-            saveIng the shapefile or CenterPointDataFrame :
-                If you choose True in the "save" input the function will save the shapefile in the given "savePath"
-                If you choose False in the "save" input the function will return a [geodataframe] dataframe
-                containing CenterPoint DataFrame you can save it as a shapefile using
-                CenterPointDataFrame.to_file("Anyname.shp")
-
-
-        Examples:
-            - Return a geodata frame
-            ```python
-            >>> sub_basins = gpd.read_file("inputs/sub_basins.shp")
-            >>> CenterPointDataFrame = FeatureCollection.polygon_center_point(sub_basins, save=False)
-
-            ```
-            - save a shapefile
-            ```python
-            >>> sub_basins = gpd.read_file("Inputs/sub_basins.shp")
-            >>> FeatureCollection.center_point(sub_basins, save=True, save_path="centerpoint.shp")
-
-            ```
+            GeoDataFrame: ``self`` with the added columns.
         """
-        # get the X, Y coordinates of the points of the polygons and the multipolygons
         self.xy()
-        poly = self.feature
-        # calculate the average X & Y coordinate for each geometry in the shapefile
-        for i, row_i in poly.iterrows():
-            poly.loc[i, "avg_x"] = np.mean(row_i["x"])
-            poly.loc[i, "avg_y"] = np.mean(row_i["y"])
+        for i, row_i in self.iterrows():
+            self.loc[i, "avg_x"] = np.mean(row_i["x"])
+            self.loc[i, "avg_y"] = np.mean(row_i["y"])
 
-        coords_list = zip(poly["avg_x"].tolist(), poly["avg_y"].tolist())
-        poly["center_point"] = FeatureCollection.create_point(coords_list)
-
-        return poly
+        coords_list = zip(self["avg_x"].tolist(), self["avg_y"].tolist())
+        self["center_point"] = FeatureCollection.create_point(coords_list)
+        return self

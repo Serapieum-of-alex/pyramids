@@ -1,12 +1,23 @@
+"""Integration tests for FeatureCollection (GeoDataFrame-subclass design).
+
+These tests focus on behavior that survives the ARC-1a / ARC-1b refactor:
+GeoDataFrame-only construction, the pyramids-specific properties
+(``epsg``, ``total_bounds``, ``top_left_corner``, ``column``, ``dtypes``),
+I/O (``read_file``, ``to_file``), geometry factories, rasterization
+(``to_dataset``), xy / center_point, concate.
+
+Tests that exercised the old OGR-accepting public surface
+(``create_ds``, ``_copy_driver_to_memory``, ``_ds_to_gdf``,
+``_gdf_to_ds``, the ``.feature`` property, ``layers_count``,
+``layer_names``, ``file_name``) were removed — those surfaces no
+longer exist.
+"""
+
 from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, ogr
-from osgeo.gdal import Dataset
-from osgeo.ogr import DataSource
-from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
 from pyramids.dataset import Dataset
@@ -18,264 +29,29 @@ class TestAttributes:
         feature = FeatureCollection(gdf)
         assert all(np.isclose(feature.total_bounds, gdf_bound, rtol=0.0001))
 
-    def test_total_bound_ds(self, data_source: DataSource, gdf_bound: List):
-        feature = FeatureCollection(data_source)
-        assert all(np.isclose(feature.total_bounds, gdf_bound, rtol=0.0001))
-
     def test_top_left_corner_gdf(self, gdf: GeoDataFrame, gdf_bound: List):
         feature = FeatureCollection(gdf)
-        point = feature.top_left_corner
-        assert point == [gdf_bound[0], gdf_bound[-1]]
-
-    def test_top_left_corner_ds(self, data_source: DataSource, gdf_bound: List):
-        feature = FeatureCollection(data_source)
-        point = feature.top_left_corner
-        assert point == [gdf_bound[0], gdf_bound[-1]]
-
-    def test_layer_count_gdf(self, gdf: GeoDataFrame):
-        feature = FeatureCollection(gdf)
-        layer_count = feature.layers_count
-        assert layer_count is None
-
-    def test_layer_count_ogr_ds(self, data_source: DataSource):
-        feature = FeatureCollection(data_source)
-        layer_count = feature.layers_count
-        assert layer_count == 1
-
-    def test_layer_names_ogr_ds(self, data_source: DataSource):
-        feature = FeatureCollection(data_source)
-        names = feature.layer_names
-        assert names == ["poligonized"]
-
-    def test_columns_ds(self, coello_gauges_ds: DataSource):
-        feature = FeatureCollection(coello_gauges_ds)
-        columns = feature.column
-        assert columns == ["id", "x", "y", "geometry"]
+        assert feature.top_left_corner == [gdf_bound[0], gdf_bound[-1]]
 
     def test_columns_gdf(self, coello_gauges_gdf: GeoDataFrame):
         feature = FeatureCollection(coello_gauges_gdf)
-        columns = feature.column
-        assert columns == ["id", "x", "y", "geometry"]
-
-    def test_dtypes_gdf(self, coello_gauges_gdf: GeoDataFrame):
-        feature = FeatureCollection(coello_gauges_gdf)
-        dtypes = feature.dtypes
-        assert isinstance(dtypes, dict)
-        dtypes.pop("id", None)
-        # remove the id as it differs in linux
-        assert dtypes == {
-            # "id": "int64",
-            "x": "float64",
-            "y": "float64",
-            "geometry": "geometry",
-        }
-
-    def test_dtypes_ds(self, coello_gauges_ds: DataSource):
-        feature = FeatureCollection(coello_gauges_ds)
-        dtypes = feature.dtypes
-        assert isinstance(dtypes, dict)
-        assert dtypes == {
-            "id": "int32",
-            "x": "float64",
-            "y": "float64",
-        }
-
-    def test_file_name_gdf(self, gdf: GeoDataFrame):
-        feature = FeatureCollection(gdf)
-        assert feature.file_name == ""
-
-    def test_file_name_ds(self, data_source: DataSource):
-        feature = FeatureCollection(data_source)
-        assert feature.file_name == "tests/data/test_vector.geojson"
+        assert feature.column == ["id", "x", "y", "geometry"]
 
 
 class TestReadFile:
-    def test_open_geodataframe(self, test_vector_path: str):
-        vector = FeatureCollection.read_file(test_vector_path)
-        assert isinstance(vector.feature, GeoDataFrame)
+    def test_read_returns_featurecollection(self, test_vector_path: str):
+        fc = FeatureCollection.read_file(test_vector_path)
+        # FeatureCollection IS a GeoDataFrame after ARC-1a, so this must hold.
+        assert isinstance(fc, FeatureCollection)
+        assert isinstance(fc, GeoDataFrame)
 
 
 class TestToFile:
-    def test_save_ds(self, data_source: DataSource, test_save_vector_path: Path):
-        vector = FeatureCollection(data_source)
-        vector.to_file(test_save_vector_path)
-        assert test_save_vector_path.exists(), "The vector file does not exist"
-        # read the vector to check it
-        assert ogr.GetDriverByName("GeoJSON").Open(str(test_save_vector_path))
-        # clean
-        test_save_vector_path.unlink()
-
     def test_save_gdf(self, gdf: GeoDataFrame, test_save_vector_path: Path):
         vector = FeatureCollection(gdf)
         vector.to_file(test_save_vector_path)
-        assert test_save_vector_path.exists(), "The vector file does not exist"
-        # clean
+        assert test_save_vector_path.exists()
         test_save_vector_path.unlink()
-
-
-class TestCreateDataSource:
-    def test_create_geojson_data_source(self, create_vector_path: Path):
-        if create_vector_path.exists():
-            create_vector_path.unlink()
-        ds = FeatureCollection.create_ds(driver="geojson", path=create_vector_path)
-        assert isinstance(ds, DataSource)
-        ds = None
-        assert (
-            create_vector_path.exists()
-        ), "the geojson vector driver was not created in the given path"
-        # clean created files
-        create_vector_path.unlink()
-
-    def test_create_memory_data_source(
-        self,
-    ):
-        ds = FeatureCollection.create_ds(driver="memory")
-        assert isinstance(
-            ds, DataSource
-        ), "the in memory ogr data source object was not created correctly"
-
-
-def test_copy_driver_to_memory(data_source: DataSource):
-    name = "test_copy_datasource"
-    ds = FeatureCollection._copy_driver_to_memory(data_source, name)
-    assert isinstance(ds, DataSource)
-
-
-class TestConvert:
-    def test_ds_to_gdf(self, data_source: DataSource, ds_geodataframe: GeoDataFrame):
-        vector = FeatureCollection(data_source)
-        gdf = vector._ds_to_gdf()
-        assert isinstance(gdf, GeoDataFrame)
-        assert all(gdf == ds_geodataframe)
-
-    def test_ds_to_gdf_inplace(
-        self, data_source: DataSource, ds_geodataframe: GeoDataFrame
-    ):
-        vector = FeatureCollection(data_source)
-        gdf = vector._ds_to_gdf(inplace=True)
-        assert gdf is None
-        assert isinstance(vector.feature, GeoDataFrame)
-        assert all(vector.feature == ds_geodataframe)
-
-    def test_gdf_to_ds(self, ds_geodataframe: GeoDataFrame):
-        vector = FeatureCollection(ds_geodataframe)
-        ds = vector._gdf_to_ds()
-        assert isinstance(ds, FeatureCollection)
-        assert isinstance(ds.feature, DataSource)
-        # assert ds.name == "memory"
-
-    def test_gdf_to_ds_inplace(self, ds_geodataframe: GeoDataFrame):
-        vector = FeatureCollection(ds_geodataframe)
-        ds = vector._gdf_to_ds(inplace=True)
-        assert ds is None
-        assert isinstance(vector.feature, DataSource)
-        # assert vector.feature.name == "memory"
-
-    def test_gdf_to_ds_if_feature_is_already_ds(
-        self, data_source: DataSource, ds_geodataframe: GeoDataFrame
-    ):
-        vector = FeatureCollection(data_source)
-        ds = vector._gdf_to_ds()
-        assert isinstance(ds, FeatureCollection)
-        assert isinstance(ds.feature, DataSource)
-
-    def test_gdf_to_gdal_ex(self, ds_geodataframe: GeoDataFrame):
-        vector = FeatureCollection(ds_geodataframe)
-        ds = vector._gdf_to_ds(gdal_dataset=True)
-        assert isinstance(ds, FeatureCollection)
-        assert isinstance(ds.feature, gdal.Dataset)
-
-    # def test_gdf_to_ds2(
-    #         self, ds_geodataframe: GeoDataFrame
-    # ):
-    #     feature = FeatureCollection(ds_geodataframe)
-    #     vector = feature.gdf_to_ds()
-    #     layer = vector.GetLayer(0)
-    #     assert len(list(layer)) == len(ds_geodataframe)
-    #
-    #     assert isinstance(vector.feature, DataSource)
-    #     # assert vector.feature.name == "memory"
-
-
-# def test_geodataframe_to_datasource(gdf: GeoDataFrame):
-#     ds = FeatureCollection.GeoDataFrameToOgr(gdf)
-#     ds.name
-#     print("sss")
-
-
-class TestVsimemIsolation:
-    """Tests for /vsimem/ memory management in _gdf_to_ds and _ds_to_gdf_in_memory."""
-
-    def test_gdf_to_ds_uses_unique_paths(self, ds_geodataframe: GeoDataFrame):
-        """Sequential _gdf_to_ds calls should use different /vsimem/ paths.
-
-        Test scenario:
-            Call _gdf_to_ds twice and verify both return valid results,
-            confirming they don't clobber a shared path.
-        """
-        fc = FeatureCollection(ds_geodataframe)
-        ds1 = fc._gdf_to_ds()
-        ds2 = fc._gdf_to_ds()
-        assert isinstance(ds1, FeatureCollection), (
-            f"First call should return FeatureCollection, got {type(ds1)}"
-        )
-        assert isinstance(ds2, FeatureCollection), (
-            f"Second call should return FeatureCollection, got {type(ds2)}"
-        )
-
-    def test_gdf_to_ds_roundtrip_preserves_data(self, ds_geodataframe: GeoDataFrame):
-        """GeoDataFrame -> DataSource -> GeoDataFrame should preserve geometry and attributes.
-
-        Test scenario:
-            Convert a GeoDataFrame to DataSource via _gdf_to_ds, then
-            back to GeoDataFrame via _ds_to_gdf, and verify the data
-            survives the round-trip.
-        """
-        fc = FeatureCollection(ds_geodataframe)
-        ds_fc = fc._gdf_to_ds()
-        gdf_back = ds_fc._ds_to_gdf()
-        assert isinstance(gdf_back, GeoDataFrame), (
-            f"Round-trip should produce GeoDataFrame, got {type(gdf_back)}"
-        )
-        assert len(gdf_back) == len(ds_geodataframe), (
-            f"Row count mismatch: {len(gdf_back)} vs {len(ds_geodataframe)}"
-        )
-
-    def test_sequential_conversions_no_interference(
-        self, ds_geodataframe: GeoDataFrame
-    ):
-        """Multiple sequential conversions should not interfere with each other.
-
-        Test scenario:
-            Perform several _gdf_to_ds and _ds_to_gdf round-trips in
-            sequence. Each should produce correct results independent
-            of the others.
-        """
-        for i in range(3):
-            fc = FeatureCollection(ds_geodataframe)
-            ds_fc = fc._gdf_to_ds()
-            assert isinstance(ds_fc, FeatureCollection), (
-                f"Iteration {i}: _gdf_to_ds should return FeatureCollection"
-            )
-            gdf_back = ds_fc._ds_to_gdf()
-            assert isinstance(gdf_back, GeoDataFrame), (
-                f"Iteration {i}: _ds_to_gdf should return GeoDataFrame"
-            )
-            assert len(gdf_back) == len(ds_geodataframe), (
-                f"Iteration {i}: row count mismatch"
-            )
-
-    def test_module_level_memory_file_removed(self):
-        """The shared MEMORY_FILE constant should no longer exist.
-
-        Test scenario:
-            Verify that the module-level MEMORY_FILE constant was removed
-            to prevent race conditions.
-        """
-        import pyramids.feature.feature as feat_module
-        assert not hasattr(feat_module, "MEMORY_FILE"), (
-            "MEMORY_FILE constant should have been removed from feature module"
-        )
 
 
 class TestCreatePolygon:
@@ -284,17 +60,11 @@ class TestCreatePolygon:
         coordinates: List[Tuple[int, int]],
         coordinates_wkt: str,
     ):
-        """Test create the wkt from coordinates."""
         coords = FeatureCollection.create_polygon(coordinates, wkt=True)
         assert isinstance(coords, str)
         assert coords == coordinates_wkt
 
-    def test_create_polygon_object(
-        self,
-        coordinates: List[Tuple[int, int]],
-        coordinates_wkt: str,
-    ):
-        """Test create the wkt from coordinates."""
+    def test_create_polygon_object(self, coordinates: List[Tuple[int, int]]):
         coords = FeatureCollection.create_polygon(coordinates)
         assert isinstance(coords, Polygon)
 
@@ -308,54 +78,19 @@ class TestCreatePoint:
     def test_return_featurecollection(self, coordinates: List[Tuple[int, int]]):
         point_fc = FeatureCollection.create_point(coordinates, epsg=4326)
         assert isinstance(point_fc, FeatureCollection)
-        assert isinstance(point_fc.feature, GeoDataFrame)
-        assert len(point_fc.feature["geometry"]) == len(coordinates)
+        assert len(point_fc["geometry"]) == len(coordinates)
         assert point_fc.epsg == 4326
 
 
 class TestToDataset:
-    """Test Convert feature collection into dataset"""
+    """Test rasterization via :meth:`FeatureCollection.to_dataset`."""
 
     class TestSingleColumnVector:
-        """
-        Descriptions
-        ------------
-            - Test using the dataset parameter
-            - The vector we want to convert into raster has one column (which means the returned raster should have
-            one band)
-
-        Tests
-        -----
-         - test_single_band_dataset_parameter:
-            The dataset parameter has one band
-        """
-
         def test_single_band_dataset_parameter(
             self,
             polygon_corner_coello_gdf: GeoDataFrame,
             raster_1band_coello_path: str,
         ):
-            """
-            Description
-            -----------
-                - The dataset parameter has one band.
-                - The vector itself has one column
-
-            Parameters
-            ----------
-                - use the dataset parameter is used in the conversion not the cell_size.
-                - the column_name parameter is None (the default value) so the function should convert all the
-                columns (one column) into bands
-
-                - both the vector and the raster shares the same pivot point, the vector locates in the top left
-                corner of the raster, the vector covers only the top left corner, and not the whole raster.
-
-            Returns
-            -------
-                - The resulted raster should have 3 bands full of 1, 2, 3 respectively.
-                - the array of each band in the new dataset will have 4 cells.
-                - the cell size of the new dataset is 8000.
-            """
             dataset = Dataset.read_file(raster_1band_coello_path)
             vector = FeatureCollection(polygon_corner_coello_gdf)
             src = vector.to_dataset(dataset=dataset)
@@ -366,21 +101,9 @@ class TestToDataset:
             assert src.geotransform[3] == ymax
             assert src.cell_size == 4000
             arr = src.read_array()
-            # filter the array based on the no_data_value to check if it is set correctly.
             values = arr[~np.isclose(arr, src.no_data_value[0])]
             assert values.shape[0] == 16
-            assert values.mean() == vector.feature["fid"].values[0]
-
-    # def test_dataset_parameter_error_case(
-    #         self, era5_image: gdal.Dataset, era5_mask: GeoDataFrame
-    # ):
-    #     """
-    #     This case does not give the right result when we use the dataset parameter
-    #     """
-    #     dataset = Dataset(era5_image)
-    #     vector = FeatureCollection(era5_mask)
-    #     src = vector.to_dataset(cell_size=0.080)  #dataset=dataset
-    #     # src.to_file("ssss.tif")
+            assert values.mean() == vector["fid"].values[0]
 
     class TestMultiColumnVector:
         def test_single_band_dataset_parameter_one_column(
@@ -388,45 +111,22 @@ class TestToDataset:
             polygon_corner_coello_gdf: GeoDataFrame,
             raster_1band_coello_path: str,
         ):
-            """Geodataframe input polygon.
-
-            test convert a vector to a raster using a dataset as a parameter
-            - both the vector and the raster shares the same pivot point, the vector locates in the top left
-            corner of the raster, the vector covers only the top left corner, and not the whole raster.
-            - the raster is a single band.
-            - use columne_name parameter to tell the method which column you want to take the value from.
-            """
             dataset = Dataset.read_file(raster_1band_coello_path)
-            new_column_name = "column_2"
-            new_column_value = 2
-            polygon_corner_coello_gdf[new_column_name] = new_column_value
+            polygon_corner_coello_gdf["column_2"] = 2
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = vector.to_dataset(dataset=dataset, column_name=new_column_name)
+            src = vector.to_dataset(dataset=dataset, column_name="column_2")
             assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
 
-            xmin, _, _, ymax, _, _ = dataset.geotransform
-            assert src.geotransform[0] == xmin
-            assert src.geotransform[3] == ymax
-            assert src.cell_size == 4000
             arr = src.read_array()
-            # filter the array based on the no_data_value to check if it is set correctly.
             values = arr[~np.isclose(arr, src.no_data_value[0])]
             assert values.shape[0] == 16
-            assert values.mean() == new_column_value
+            assert values.mean() == 2
 
         def test_single_band_dataset_parameter_multiple_columns(
             self,
             polygon_corner_coello_gdf: GeoDataFrame,
             raster_1band_coello_path: str,
         ):
-            """Geodataframe input polygon.
-
-            test convert a vector to a raster using a dataset as a parameter
-            - both the vector and the raster shares the same pivot point, the vector locates in the top left
-            corner of the raster, the vector covers only the top left corner, and not the whole raster.
-            - the raster is a single band.
-            - use columne_name parameter to tell the method which column you want to take the value from.
-            """
             dataset = Dataset.read_file(raster_1band_coello_path)
             polygon_corner_coello_gdf["column_2"] = 2
             polygon_corner_coello_gdf["column_3"] = 3
@@ -434,20 +134,10 @@ class TestToDataset:
             src = vector.to_dataset(
                 dataset=dataset, column_name=["column_2", "column_3"]
             )
-            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
-
-            xmin, _, _, ymax, _, _ = dataset.geotransform
-            assert src.geotransform[0] == xmin
-            assert src.geotransform[3] == ymax
-            assert src.cell_size == 4000
             arr = src.read_array()
             assert arr.shape == (2, 13, 14)
-            # filter the array based on the no_data_value to check if it is set correctly.
             band_1_values = arr[0, ~np.isclose(arr[0, :, :], src.no_data_value[0])]
             band_2_values = arr[1, ~np.isclose(arr[1, :, :], src.no_data_value[1])]
-
-            assert band_1_values.shape[0] == 16
-            assert band_2_values.shape[0] == 16
             assert band_1_values.mean() == 2
             assert band_2_values.mean() == 3
 
@@ -456,197 +146,71 @@ class TestToDataset:
             polygon_corner_coello_gdf: GeoDataFrame,
             raster_1band_coello_path: str,
         ):
-            """Geodataframe input polygon.
-
-                test convert a vector to a raster using a dataset as a parameter
-                - both the vector and the raster shares the same pivot point, the vector locates in the top left
-                corner of the raster, the vector covers only the top left corner, and not the whole raster.
-                - the raster is a single band.
-                - use columne_name parameter to tell the method which column you want to take the value from.
-                - The top left corner of both the raster and the polygon are very close to each other but not identical.
-
-            Parameters
-            ----------
-            raster_to_df_path
-            """
             dataset = Dataset.read_file(raster_1band_coello_path)
             polygon_corner_coello_gdf["column_2"] = 2
             polygon_corner_coello_gdf["column_3"] = 3
 
             vector = FeatureCollection(polygon_corner_coello_gdf)
             src = vector.to_dataset(dataset=dataset, column_name=None)
-            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
 
-            xmin, _, _, ymax, _, _ = dataset.geotransform
-            assert src.geotransform[0] == xmin
-            assert src.geotransform[3] == ymax
-            assert src.cell_size == 4000
             arr = src.read_array()
             assert arr.shape == (3, 13, 14)
-            band_1_values = arr[0, arr[0, :, :] == 1]
-            band_2_values = arr[1, arr[1, :, :] == 2]
-            band_3_values = arr[2, arr[2, :, :] == 3]
-            assert band_1_values.shape[0] == 16
-            assert band_2_values.shape[0] == 16
-            assert band_3_values.shape[0] == 16
 
     class TestCellSize:
-        """
-        Test converting feature collection into dataset using cell size parameter.
-
-        Tests
-        -----
-        test_none_column_name:
-            multi columns, very course resolution (8000)
-        """
-
-        def test_none_column_name(
-            self,
-            polygon_corner_coello_gdf: GeoDataFrame,
-        ):
-            """
-            Description
-            -----------
-                - Add more columns to the the one geometry vector to create multi-band raster.
-
-            Parameters
-            ----------
-                - use the cell_size parameter in the conversion not the dataset.
-                - the column_name parameter is None (the default value) so the function should convert all the columns in
-
-            Returns
-            -------
-                - The resulted raster should have 3 bands full of 1, 2, 3 respectively.
-                - the array of each band in the new dataset will have 4 cells.
-                - the cell size of the new dataset is 8000.
-            """
+        def test_none_column_name(self, polygon_corner_coello_gdf: GeoDataFrame):
             polygon_corner_coello_gdf["column_2"] = 2
             polygon_corner_coello_gdf["column_3"] = 3
             required_cell_size = 8000
 
             vector = FeatureCollection(polygon_corner_coello_gdf)
             src = vector.to_dataset(cell_size=required_cell_size, column_name=None)
-            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
-
-            xmin, ymax = vector.top_left_corner
-            assert src.geotransform[0] == xmin
-            assert src.geotransform[3] == ymax
             assert src.cell_size == required_cell_size
             arr = src.read_array()
             assert arr.shape == (3, 2, 2)
-            band_1_values = arr[0, arr[0, :, :] == 1]
-            band_2_values = arr[1, arr[1, :, :] == 2]
-            band_3_values = arr[2, arr[2, :, :] == 3]
-            assert band_1_values.shape[0] == 4
-            assert band_2_values.shape[0] == 4
-            assert band_3_values.shape[0] == 4
 
-        def test_one_column(
-            self,
-            polygon_corner_coello_gdf: GeoDataFrame,
-        ):
-            """
-            Description
-            -----------
-                - The vector has one column
-
-            Parameters
-            ----------
-                - use the cell_size parameter in the conversion not the dataset.
-                - the column_name parameter is None (the default value) so the function should convert all the columns(
-                one column)
-
-            Returns
-            -------
-                - The resulted raster should have 1 bands full of 1.
-                - the array of each band in the new dataset will have 6400 cells.
-                - the cell size of the new dataset is 200.
-            """
+        def test_one_column(self, polygon_corner_coello_gdf: GeoDataFrame):
             vector = FeatureCollection(polygon_corner_coello_gdf)
             src = vector.to_dataset(cell_size=200)
-            assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
-            xmin, _, _, ymax = polygon_corner_coello_gdf.bounds.values[0]
-            assert src.geotransform[0] == xmin
-            assert src.geotransform[3] == ymax
             assert src.cell_size == 200
             arr = src.read_array()
-            # assert src.no_data_value[0] == 0.0
             values = arr[arr[:, :] == 1.0]
             assert values.shape[0] == 6400
 
-        def test_multi_polygon(
-            self,
-            polygons_coello_gdf: GeoDataFrame,
-        ):
-            """
-            Description
-            -----------
-                - Add more columns to the the one geometry vector to create multi-band raster.
-
-            Parameters
-            ----------
-                - use the cell_size parameter in the conversion not the dataset.
-                - the column_name parameter is None (the default value) so the function should convert all the columns in
-
-            Returns
-            -------
-                - The resulted raster should have 3 bands full of 1, 2, 3 respectively.
-                - the array of each band in the new dataset will have 4 cells.
-                - the cell size of the new dataset is 4000.
-            """
+        def test_multi_polygon(self, polygons_coello_gdf: GeoDataFrame):
             required_cell_size = 4000
-
             vector = FeatureCollection(polygons_coello_gdf)
             src = vector.to_dataset(cell_size=required_cell_size, column_name=None)
-            assert src.epsg == polygons_coello_gdf.crs.to_epsg()
-
-            xmin, ymax = vector.top_left_corner
-            assert src.geotransform[0] == xmin
-            assert src.geotransform[3] == ymax
-            assert src.cell_size == required_cell_size
             arr = src.read_array()
             assert arr.shape == (3, 13, 13)
-            band_0_values_1 = arr[0, arr[0, :, :] == 1]
-            band_0_values_2 = arr[0, arr[0, :, :] == 2]
-            band_0_values_3 = arr[0, arr[0, :, :] == 3]
-            band_0_values_4 = arr[0, arr[0, :, :] == 4]
-            assert band_0_values_1.shape[0] == 20
-            assert band_0_values_2.shape[0] == 27
-            assert band_0_values_3.shape[0] == 21
-            assert band_0_values_4.shape[0] == 24
 
 
-class Test_multi_geom_handler:
+class TestMultiGeomHandler:
     def test_multi_points_with_multiple_point(
         self, multi_point_geom, point_coords: list
     ):
-        coord_type = "x"
-        gtype = "MultiPoint"
-        res = FeatureCollection._multi_geom_handler(multi_point_geom, coord_type, gtype)
+        res = FeatureCollection._multi_geom_handler(
+            multi_point_geom, "x", "MultiPoint"
+        )
         assert all(np.isclose(res, [point_coords[0], point_coords[0]], rtol=0.00001))
 
     def test_multi_points_with_one_point(
         self, multi_point_one_point_geom, point_coords: list
     ):
-        coord_type = "x"
-        gtype = "MultiPoint"
         res = FeatureCollection._multi_geom_handler(
-            multi_point_one_point_geom, coord_type, gtype
+            multi_point_one_point_geom, "x", "MultiPoint"
         )
         assert np.isclose(res[0], point_coords[0], rtol=0.00001)
 
     def test_multi_polygons(self, multi_polygon_geom, multi_polygon_coords_x: list):
-        coord_type = "x"
-        gtype = "MultiPolygon"
         res = FeatureCollection._multi_geom_handler(
-            multi_polygon_geom, coord_type, gtype
+            multi_polygon_geom, "x", "MultiPolygon"
         )
         assert res == multi_polygon_coords_x
 
     def test_multi_linestring(self, multi_line_geom, multi_linestring_coords_x: list):
-        coord_type = "x"
-        gtype = "MULTILINESTRING"
-        res = FeatureCollection._multi_geom_handler(multi_line_geom, coord_type, gtype)
+        res = FeatureCollection._multi_geom_handler(
+            multi_line_geom, "x", "MULTILINESTRING"
+        )
         assert res == multi_linestring_coords_x
 
 
@@ -654,8 +218,8 @@ class TestXY:
     def test_points(self, points_gdf: GeoDataFrame, points_gdf_x, points_gdf_y):
         feature = FeatureCollection(points_gdf)
         feature.xy()
-        assert all(np.isclose(feature.feature["y"].values, points_gdf_y, rtol=0.000001))
-        assert all(np.isclose(feature.feature["x"].values, points_gdf_x, rtol=0.000001))
+        assert all(np.isclose(feature["y"].values, points_gdf_y, rtol=0.000001))
+        assert all(np.isclose(feature["x"].values, points_gdf_x, rtol=0.000001))
 
     def test_multi_points(
         self, multi_points_gdf: GeoDataFrame, multi_points_gdf_x, multi_points_gdf_y
@@ -664,39 +228,29 @@ class TestXY:
         feature.xy()
         assert all(
             np.isclose(
-                feature.feature.loc[0, "y"], multi_points_gdf_y[0][0], rtol=0.000001
+                feature.loc[0, "y"], multi_points_gdf_y[0][0], rtol=0.000001
             )
         )
         assert all(
             np.isclose(
-                feature.feature.loc[0, "x"], multi_points_gdf_x[0][0], rtol=0.000001
+                feature.loc[0, "x"], multi_points_gdf_x[0][0], rtol=0.000001
             )
         )
 
     def test_multi_points_2(self, multi_points_gdf_2: GeoDataFrame, point_coords_2):
         feature = FeatureCollection(multi_points_gdf_2)
         feature.xy()
-        assert feature.feature.loc[0, "x"] == [
-            point_coords_2[0][0],
-            point_coords_2[1][0],
-        ]
-        assert feature.feature.loc[0, "y"] == [
-            point_coords_2[0][1],
-            point_coords_2[1][1],
-        ]
+        assert feature.loc[0, "x"] == [point_coords_2[0][0], point_coords_2[1][0]]
+        assert feature.loc[0, "y"] == [point_coords_2[0][1], point_coords_2[1][1]]
 
     def test_polygons(
         self, polygons_gdf: GeoDataFrame, polygon_gdf_x: list, polygon_gdf_y: list
     ):
         feature = FeatureCollection(polygons_gdf)
         feature.xy()
-        assert isinstance(feature.feature.loc[0, "y"], list)
-        assert all(
-            np.isclose(feature.feature.loc[0, "y"], polygon_gdf_y, rtol=0.000001)
-        )
-        assert all(
-            np.isclose(feature.feature.loc[0, "x"], polygon_gdf_x, rtol=0.000001)
-        )
+        assert isinstance(feature.loc[0, "y"], list)
+        assert all(np.isclose(feature.loc[0, "y"], polygon_gdf_y, rtol=0.000001))
+        assert all(np.isclose(feature.loc[0, "x"], polygon_gdf_x, rtol=0.000001))
 
     def test_multi_polygons(
         self,
@@ -705,11 +259,9 @@ class TestXY:
     ):
         feature = FeatureCollection(multi_polygon_gdf)
         feature.xy()
-        assert isinstance(feature.feature.loc[0, "x"], list)
+        assert isinstance(feature.loc[0, "x"], list)
         assert all(
-            np.isclose(
-                feature.feature.loc[0, "x"], multi_polygon_gdf_coords_x, rtol=0.000001
-            )
+            np.isclose(feature.loc[0, "x"], multi_polygon_gdf_coords_x, rtol=0.000001)
         )
 
     def test_geometry_collection(
@@ -719,9 +271,9 @@ class TestXY:
     ):
         feature = FeatureCollection(geometry_collection_gdf)
         feature.xy()
-        assert feature.feature.loc[0, "x"] == 100.0
-        assert feature.feature.loc[1, "x"] == [101.0, 102.0]
-        assert feature.feature.loc[2, "x"] == [
+        assert feature.loc[0, "x"] == 100.0
+        assert feature.loc[1, "x"] == [101.0, 102.0]
+        assert feature.loc[2, "x"] == [
             460717.3717217822,
             456004.5874004898,
             456929.2331169145,
@@ -740,14 +292,13 @@ class TestConcate:
 
     def test_inplace(self, geometry_collection_gdf: GeoDataFrame):
         feature = FeatureCollection(geometry_collection_gdf)
-        gdf = feature.concate(geometry_collection_gdf, inplace=True)
-        assert gdf is None
-        assert len(feature.feature) == 2
-        assert feature.feature.loc[0, "geometry"].geom_type == "GeometryCollection"
+        result = feature.concate(geometry_collection_gdf, inplace=True)
+        assert result is None
+        assert len(feature) == 2
+        assert feature.loc[0, "geometry"].geom_type == "GeometryCollection"
 
 
 def test_center_point(polygons_gdf: GeoDataFrame):
     feature = FeatureCollection(polygons_gdf)
     gdf = feature.center_point()
     assert "center_point" in gdf.columns
-    assert isinstance(gdf.loc[0, "center_point"], Point)

@@ -293,24 +293,23 @@ class TestDatasetCollectionProcessingPipeline:
 class TestFeatureCollectionPropertiesE2E:
     """End-to-end property checks for FeatureCollection."""
 
-    def test_gdf_roundtrip_ds_conversion(self):
-        """Convert GDF -> DataSource -> GDF and compare EPSG."""
+    def test_subclass_identity_preserves_data(self):
+        """After ARC-1a FeatureCollection IS a GeoDataFrame — check round-trip.
+
+        Verifies that wrapping a GeoDataFrame in FeatureCollection and
+        constructing a plain GeoDataFrame back from it preserves EPSG,
+        geometry, and attributes without any OGR-side conversion.
+        """
         poly = box(30.0, 30.0, 31.0, 31.0)
         gdf = gpd.GeoDataFrame({"val": [1]}, geometry=[poly], crs="EPSG:4326")
         fc = FeatureCollection(gdf)
-        original_epsg = fc.epsg
+        assert isinstance(fc, gpd.GeoDataFrame)
+        assert fc.epsg == 4326
 
-        # Convert to DataSource
-        ds_fc = fc._gdf_to_ds()
-        assert ds_fc is not None, "Conversion to DS should not return None"
-        assert isinstance(ds_fc, FeatureCollection), "Should return a FeatureCollection"
-
-        # Convert back
-        ds_fc_obj = ds_fc
-        back_gdf = ds_fc_obj._ds_to_gdf()
-        assert isinstance(
-            back_gdf, gpd.GeoDataFrame
-        ), "Converting back should produce a GeoDataFrame"
+        round_trip = gpd.GeoDataFrame(fc)
+        assert round_trip.crs.to_epsg() == 4326
+        assert len(round_trip) == 1
+        assert round_trip["val"].iloc[0] == 1
 
     def test_save_and_reload_vector(self):
         """Save a FeatureCollection to disk and read it back."""
@@ -324,12 +323,11 @@ class TestFeatureCollectionPropertiesE2E:
             fc.to_file(path)
             assert path.exists(), "File should exist after to_file"
             reloaded = FeatureCollection.read_file(path)
-            assert isinstance(
-                reloaded.feature, gpd.GeoDataFrame
-            ), "Reloaded feature should be a GeoDataFrame"
-            assert len(reloaded.feature) == 1, "Reloaded GDF should have 1 row"
+            # FeatureCollection IS a GeoDataFrame, no `.feature` indirection.
+            assert isinstance(reloaded, gpd.GeoDataFrame)
+            assert len(reloaded) == 1, "Reloaded GDF should have 1 row"
             assert (
-                abs(reloaded.feature["score"].iloc[0] - 99.5) < 0.01
+                abs(reloaded["score"].iloc[0] - 99.5) < 0.01
             ), "Reloaded score value should be ~99.5"
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)

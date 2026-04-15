@@ -1,0 +1,489 @@
+"""Tests for the private OGR bridge ``pyramids.feature._ogr``.
+
+The module exposes four internal helpers used by ``FeatureCollection``
+methods that need a GDAL/OGR object without leaking one into the
+public API:
+
+- ``_new_vsimem_path`` — generates unique ``/vsimem/`` paths.
+- ``as_datasource`` — context manager yielding an ``ogr.DataSource`` or
+  ``gdal.Dataset`` for a ``GeoDataFrame``.
+- ``as_vsimem_path`` — context manager yielding a ``/vsimem/`` path a
+  GDAL API can read from.
+- ``datasource_to_gdf`` — materializes an OGR DataSource back into a
+  ``GeoDataFrame``.
+
+These tests cover shape/uniqueness invariants, both ``gdal_dataset``
+toggles on ``as_datasource``, cleanup guarantees (paths unlinked even
+when the ``with`` block raises), path validity inside the ``with``
+block for ``as_vsimem_path``, and round-trip fidelity via a Polygonize-
+style OGR DataSource for ``datasource_to_gdf``.
+"""
+
+from __future__ import annotations
+
+import re
+
+import geopandas as gpd
+import numpy as np
+import pytest
+from geopandas import GeoDataFrame
+from osgeo import gdal, ogr, osr
+from shapely.geometry import Point, Polygon
+
+from pyramids.feature import FeatureCollection
+from pyramids.feature._ogr import (
+    _new_vsimem_path,
+    as_datasource,
+    as_vsimem_path,
+    datasource_to_gdf,
+)
+
+
+# ── fixtures ────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def point_gdf() -> GeoDataFrame:
+    """GeoDataFrame with three points and an integer attribute.
+
+    Returns:
+        GeoDataFrame: Points at (0,0), (1,1), (2,2) with EPSG:4326.
+    """
+    return gpd.GeoDataFrame(
+        {"score": [10, 20, 30]},
+        geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
+        crs="EPSG:4326",
+    )
+
+
+@pytest.fixture
+def polygon_gdf() -> GeoDataFrame:
+    """GeoDataFrame with a single square polygon.
+
+    Returns:
+        GeoDataFrame: One unit square with EPSG:4326 and a ``value`` column.
+    """
+    poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+    return gpd.GeoDataFrame(
+        {"value": [42]}, geometry=[poly], crs="EPSG:4326"
+    )
+
+
+@pytest.fixture
+def polygonize_datasource() -> ogr.DataSource:
+    """Produce a Polygonize-style in-memory OGR DataSource.
+
+    Mirrors the internal pattern used by ``Dataset._band_to_polygon``:
+    an in-memory OGR DataSource holding a single-layer polygon
+    FeatureCollection produced by running :func:`gdal.Polygonize` over
+    a tiny raster band.
+
+    Returns:
+        ogr.DataSource: In-memory DataSource with one layer named
+        ``"poly"`` and a single ``value`` integer field. Two polygons
+        are created from a 2×2 band where the two columns have
+        different constant values.
+    """
+    # Build a 2-row × 2-col Byte raster in memory with values 1 and 2.
+    mem_driver = gdal.GetDriverByName("MEM")
+    raster = mem_driver.Create("", 2, 2, 1, gdal.GDT_Byte)
+    band = raster.GetRasterBand(1)
+    band.WriteArray(np.array([[1, 2], [1, 2]], dtype=np.uint8))
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+
+    ds = ogr.GetDriverByName("Memory").CreateDataSource("scratch")
+    layer = ds.CreateLayer("poly", srs=srs)
+    layer.CreateField(ogr.FieldDefn("value", ogr.OFTInteger))
+    gdal.Polygonize(band, band, layer, 0, [], callback=None)
+    return ds
+
+
+# ── _new_vsimem_path ────────────────────────────────────────────────
+
+
+class TestNewVsimemPath:
+    """Tests for :func:`_new_vsimem_path`."""
+
+    def test_starts_with_vsimem_prefix(self):
+        """The path must start with ``/vsimem/`` so GDAL routes it to VFS.
+
+        Test scenario:
+            Without the ``/vsimem/`` prefix GDAL would attempt to touch
+            the real filesystem, which would defeat the zero-disk-I/O
+            guarantee of the bridge.
+        """
+        path = _new_vsimem_path()
+        assert path.startswith("/vsimem/"), (
+            f"Path must start with /vsimem/, got {path!r}"
+        )
+
+    def test_ends_with_geojson_extension(self):
+        """The path must end with ``.geojson`` so GDAL picks the GeoJSON driver.
+
+        Test scenario:
+            GDAL infers the driver from the extension when none is
+            explicitly specified.
+        """
+        path = _new_vsimem_path()
+        assert path.endswith(".geojson"), (
+            f"Path must end with .geojson, got {path!r}"
+        )
+
+    def test_embeds_uuid(self):
+        """The stem of the path must be a valid UUID4 hex sequence.
+
+        Test scenario:
+            UUID4 collisions are astronomically unlikely, which is what
+            makes the bridge safe for concurrent internal conversions.
+        """
+        path = _new_vsimem_path()
+        stem = path[len("/vsimem/"): -len(".geojson")]
+        uuid_re = re.compile(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-"
+            r"[0-9a-f]{12}$"
+        )
+        assert uuid_re.match(stem), f"Stem is not a UUID4: {stem!r}"
+
+    def test_unique_across_calls(self):
+        """Successive calls must return distinct paths.
+
+        Test scenario:
+            Uniqueness is the guard against concurrent conversions
+            clobbering each other's backing files.
+        """
+        paths = {_new_vsimem_path() for _ in range(50)}
+        assert len(paths) == 50, (
+            f"Expected 50 unique paths, got {len(paths)}"
+        )
+
+
+# ── as_datasource ───────────────────────────────────────────────────
+
+
+class TestAsDatasource:
+    """Tests for :func:`as_datasource`."""
+
+    def test_yields_ogr_datasource_by_default(self, point_gdf):
+        """Default ``gdal_dataset=False`` must yield an ``ogr.DataSource``.
+
+        Test scenario:
+            The default shape is ``ogr.DataSource`` because most internal
+            callers (``gdal.Warp`` cutline, OGR SQL) expect it.
+        """
+        with as_datasource(point_gdf) as ds:
+            assert isinstance(ds, ogr.DataSource), (
+                f"Expected ogr.DataSource, got {type(ds).__name__}"
+            )
+
+    def test_yields_gdal_dataset_when_requested(self, point_gdf):
+        """``gdal_dataset=True`` must yield a ``gdal.Dataset``.
+
+        Test scenario:
+            :func:`gdal.Rasterize` requires ``gdal.Dataset`` when its
+            vector argument is a Python GDAL object rather than a path.
+        """
+        with as_datasource(point_gdf, gdal_dataset=True) as ds:
+            assert isinstance(ds, gdal.Dataset), (
+                f"Expected gdal.Dataset, got {type(ds).__name__}"
+            )
+
+    def test_preserves_feature_count(self, point_gdf):
+        """The yielded DataSource must expose every input feature.
+
+        Test scenario:
+            Three input points → three OGR features.
+        """
+        with as_datasource(point_gdf) as ds:
+            n = ds.GetLayer(0).GetFeatureCount()
+        assert n == 3, f"Expected 3 features, got {n}"
+
+    def test_preserves_attribute_values(self, point_gdf):
+        """Per-feature attribute values must survive the bridge.
+
+        Test scenario:
+            Read back the ``score`` attribute from the OGR layer and
+            confirm we see {10, 20, 30}.
+        """
+        with as_datasource(point_gdf) as ds:
+            layer = ds.GetLayer(0)
+            scores = [feat.GetField("score") for feat in layer]
+        assert sorted(scores) == [10, 20, 30], (
+            f"Attribute round-trip changed values: {scores}"
+        )
+
+    def test_accepts_featurecollection_subclass(self, point_gdf):
+        """A ``FeatureCollection`` (GDF subclass) must work unchanged.
+
+        Test scenario:
+            The bridge type-annotates ``GeoDataFrame`` but
+            ``FeatureCollection`` IS a ``GeoDataFrame`` after ARC-1a.
+        """
+        fc = FeatureCollection(point_gdf)
+        with as_datasource(fc) as ds:
+            n = ds.GetLayer(0).GetFeatureCount()
+        assert n == 3, f"FeatureCollection bridge failed: {n} features"
+
+    def test_vsimem_path_unlinked_on_normal_exit(self, point_gdf, monkeypatch):
+        """After a normal ``with`` exit the ``/vsimem/`` file is unlinked.
+
+        Test scenario:
+            Capture the path generated by the context manager, let the
+            block exit normally, then confirm the path is no longer
+            resolvable in ``osgeo.gdal``'s VFS.
+        """
+        captured: list[str] = []
+        real_new = _new_vsimem_path
+
+        def _capture() -> str:
+            path = real_new()
+            captured.append(path)
+            return path
+
+        monkeypatch.setattr(
+            "pyramids.feature._ogr._new_vsimem_path", _capture
+        )
+
+        with as_datasource(point_gdf):
+            pass
+
+        assert len(captured) == 1, "Expected exactly one path generation"
+        # After unlink, VSIStatL returns None.
+        assert gdal.VSIStatL(captured[0]) is None, (
+            f"/vsimem/ path was not unlinked: {captured[0]}"
+        )
+
+    def test_vsimem_path_unlinked_on_exception(self, point_gdf, monkeypatch):
+        """The ``/vsimem/`` file is unlinked even if the body raises.
+
+        Test scenario:
+            Capture the path, raise inside the ``with`` block, and
+            confirm the path is still cleaned up afterwards.
+        """
+        captured: list[str] = []
+        real_new = _new_vsimem_path
+
+        def _capture() -> str:
+            path = real_new()
+            captured.append(path)
+            return path
+
+        monkeypatch.setattr(
+            "pyramids.feature._ogr._new_vsimem_path", _capture
+        )
+
+        with pytest.raises(RuntimeError, match="boom"):
+            with as_datasource(point_gdf):
+                raise RuntimeError("boom")
+
+        assert len(captured) == 1
+        assert gdal.VSIStatL(captured[0]) is None, (
+            f"/vsimem/ path leaked after exception: {captured[0]}"
+        )
+
+    def test_preserves_crs(self, point_gdf):
+        """CRS of the yielded OGR layer must match the input GeoDataFrame.
+
+        Test scenario:
+            EPSG:4326 input → EPSG:4326 on the OGR layer (resolved via
+            ``AutoIdentifyEPSG``).
+        """
+        with as_datasource(point_gdf) as ds:
+            layer = ds.GetLayer(0)
+            srs = layer.GetSpatialRef()
+            srs.AutoIdentifyEPSG()
+            code = int(srs.GetAuthorityCode(None))
+        assert code == 4326, f"Expected EPSG 4326, got {code}"
+
+
+# ── as_vsimem_path ──────────────────────────────────────────────────
+
+
+class TestAsVsimemPath:
+    """Tests for :func:`as_vsimem_path`."""
+
+    def test_yields_str_path_with_prefix(self, polygon_gdf):
+        """The yielded value is a string beginning with ``/vsimem/``.
+
+        Test scenario:
+            Callers pass the yielded string straight into GDAL APIs
+            like ``cutlineDSName`` which expect a path string.
+        """
+        with as_vsimem_path(polygon_gdf) as path:
+            assert isinstance(path, str), (
+                f"Expected str, got {type(path).__name__}"
+            )
+            assert path.startswith("/vsimem/"), (
+                f"Path must start with /vsimem/, got {path!r}"
+            )
+
+    def test_path_is_openable_by_osgeo(self, polygon_gdf):
+        """Inside the ``with`` block, ``osgeo.ogr.Open`` must succeed.
+
+        Test scenario:
+            The bridge uses ``gdal.FileFromMemBuffer`` so the file
+            lands in ``osgeo.gdal``'s VFS (not pyogrio's). We read it
+            back with ``osgeo.ogr.Open`` to confirm the write target.
+        """
+        with as_vsimem_path(polygon_gdf) as path:
+            ds = ogr.Open(path)
+            assert ds is not None, "ogr.Open returned None for yielded path"
+            n = ds.GetLayer(0).GetFeatureCount()
+            ds = None
+        assert n == 1, f"Expected 1 feature, got {n}"
+
+    def test_path_unlinked_after_normal_exit(self, polygon_gdf):
+        """The ``/vsimem/`` path is unlinked after the block exits.
+
+        Test scenario:
+            After a normal exit, ``VSIStatL`` on the captured path
+            returns ``None`` — the file is gone.
+        """
+        captured: str | None = None
+        with as_vsimem_path(polygon_gdf) as path:
+            captured = path
+        assert captured is not None
+        assert gdal.VSIStatL(captured) is None, (
+            f"/vsimem/ path was not unlinked: {captured}"
+        )
+
+    def test_path_unlinked_on_exception(self, polygon_gdf):
+        """The ``/vsimem/`` path is unlinked even when the body raises.
+
+        Test scenario:
+            Raise inside the block, confirm the path is still gone.
+        """
+        captured: list[str] = []
+        with pytest.raises(ValueError, match="bad"):
+            with as_vsimem_path(polygon_gdf) as path:
+                captured.append(path)
+                raise ValueError("bad")
+        assert len(captured) == 1
+        assert gdal.VSIStatL(captured[0]) is None, (
+            f"/vsimem/ path leaked after exception: {captured[0]}"
+        )
+
+    def test_accepts_featurecollection_subclass(self, polygon_gdf):
+        """A ``FeatureCollection`` is accepted transparently.
+
+        Test scenario:
+            FeatureCollection inherits from GeoDataFrame, so the bridge
+            must handle it without any type branching.
+        """
+        fc = FeatureCollection(polygon_gdf)
+        with as_vsimem_path(fc) as path:
+            ds = ogr.Open(path)
+            n = ds.GetLayer(0).GetFeatureCount()
+            ds = None
+        assert n == 1
+
+
+# ── datasource_to_gdf ───────────────────────────────────────────────
+
+
+class TestDatasourceToGdf:
+    """Tests for :func:`datasource_to_gdf`."""
+
+    def test_returns_geodataframe(self, point_gdf):
+        """The return type is a plain ``GeoDataFrame``, never a subclass.
+
+        Test scenario:
+            The docstring promises a plain GDF so callers who want a
+            ``FeatureCollection`` can decide whether to wrap.
+        """
+        with as_datasource(point_gdf) as ds:
+            result = datasource_to_gdf(ds)
+        assert isinstance(result, GeoDataFrame), (
+            f"Expected GeoDataFrame, got {type(result).__name__}"
+        )
+
+    def test_preserves_row_count_round_trip(self, point_gdf):
+        """Row count survives a GeoDataFrame → DataSource → GeoDataFrame trip.
+
+        Test scenario:
+            3-row input → 3-row output.
+        """
+        with as_datasource(point_gdf) as ds:
+            result = datasource_to_gdf(ds)
+        assert len(result) == 3, (
+            f"Row count changed: {len(result)} != 3"
+        )
+
+    def test_preserves_attributes_round_trip(self, point_gdf):
+        """Attribute column values survive the OGR round-trip.
+
+        Test scenario:
+            ``score`` column values {10, 20, 30} must come back intact.
+        """
+        with as_datasource(point_gdf) as ds:
+            result = datasource_to_gdf(ds)
+        assert sorted(result["score"].tolist()) == [10, 20, 30], (
+            f"Attribute values changed: {result['score'].tolist()}"
+        )
+
+    def test_preserves_crs_round_trip(self, point_gdf):
+        """CRS (EPSG:4326) survives the OGR round-trip.
+
+        Test scenario:
+            ``gdf.crs.to_epsg()`` must still report 4326 on the
+            materialized GDF.
+        """
+        with as_datasource(point_gdf) as ds:
+            result = datasource_to_gdf(ds)
+        assert result.crs.to_epsg() == 4326, (
+            f"CRS changed: {result.crs.to_epsg()}"
+        )
+
+    def test_polygonize_style_source(self, polygonize_datasource):
+        """Materialize a Polygonize-style OGR DataSource.
+
+        Test scenario:
+            ``gdal.Polygonize`` on a 2-column band with two distinct
+            values produces two polygons; the bridge must materialize
+            a 2-row GeoDataFrame with a ``value`` integer column.
+        """
+        result = datasource_to_gdf(polygonize_datasource)
+        assert isinstance(result, GeoDataFrame), (
+            f"Expected GeoDataFrame, got {type(result).__name__}"
+        )
+        assert len(result) == 2, f"Expected 2 polygons, got {len(result)}"
+        assert "value" in result.columns, (
+            f"value column missing from materialized GDF: {result.columns.tolist()}"
+        )
+        assert sorted(result["value"].tolist()) == [1, 2], (
+            f"Polygon values changed: {result['value'].tolist()}"
+        )
+
+    def test_not_a_featurecollection(self, point_gdf):
+        """The helper must NOT return a ``FeatureCollection``.
+
+        Test scenario:
+            Users of the private bridge are internal code. Returning a
+            ``FeatureCollection`` would force them to unwrap it before
+            handing the result up to public APIs.
+        """
+        with as_datasource(point_gdf) as ds:
+            result = datasource_to_gdf(ds)
+        assert not isinstance(result, FeatureCollection), (
+            f"Result must be plain GeoDataFrame, not a FeatureCollection: "
+            f"got {type(result).__name__}"
+        )
+
+    def test_vector_translate_failure_raises(
+        self, point_gdf, monkeypatch
+    ):
+        """A ``None`` return from ``gdal.VectorTranslate`` raises RuntimeError.
+
+        Test scenario:
+            The real ``VectorTranslate`` returns ``None`` on failure.
+            The helper must convert that sentinel into an explicit
+            ``RuntimeError`` so callers cannot ignore it.
+        """
+        monkeypatch.setattr(
+            "pyramids.feature._ogr.gdal.VectorTranslate",
+            lambda *a, **kw: None,
+        )
+        with as_datasource(point_gdf) as ds:
+            with pytest.raises(RuntimeError, match="VectorTranslate failed"):
+                datasource_to_gdf(ds)
