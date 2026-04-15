@@ -106,6 +106,49 @@ def utm_proj4() -> str:
     return srs.ExportToProj4()
 
 
+class TestEpsgCaching:
+    """ARC-6: the ``epsg`` property caches its value per CRS identity."""
+
+    def test_epsg_returns_same_value_on_repeated_access(
+        self, simple_polygon_gdf: GeoDataFrame
+    ):
+        """Stable CRS → stable EPSG value across repeated access."""
+        fc = FeatureCollection(simple_polygon_gdf)
+        assert fc.epsg == 4326
+        assert fc.epsg == 4326
+        # Cached state is set after first access.
+        assert fc._epsg_cache_value == 4326
+
+    def test_epsg_invalidates_when_crs_changes(
+        self, simple_polygon_gdf: GeoDataFrame
+    ):
+        """Changing CRS via to_crs() must refresh the cached EPSG."""
+        fc = FeatureCollection(simple_polygon_gdf)
+        assert fc.epsg == 4326
+        reproj = fc.to_crs(3857)
+        assert reproj.epsg == 3857
+        # Original FC is unchanged and still reports 4326.
+        assert fc.epsg == 4326
+
+    def test_epsg_none_when_no_crs(self):
+        """EPSG is None when the GDF has no CRS set."""
+        poly = box(0.0, 0.0, 1.0, 1.0)
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[poly])  # no crs=
+        fc = FeatureCollection(gdf)
+        assert fc.epsg is None
+
+    def test_cached_attrs_are_in_metadata(self):
+        """The cache attrs must be in ``_metadata`` so pandas preserves them.
+
+        Without this, a ``fc.copy()`` would strip the cached values
+        silently and subsequent access would silently re-resolve. We
+        check the declaration directly so adding new cache attrs
+        requires updating ``_metadata`` too.
+        """
+        assert "_epsg_cache_crs" in FeatureCollection._metadata
+        assert "_epsg_cache_value" in FeatureCollection._metadata
+
+
 class TestContextManager:
     """ARC-5: FeatureCollection supports the ``with`` protocol."""
 

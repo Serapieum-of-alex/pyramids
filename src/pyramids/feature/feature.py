@@ -74,12 +74,14 @@ class FeatureCollection(GeoDataFrame):
         """Return the type pandas uses when constructing new frames."""
         return FeatureCollection
 
-    _metadata: list[str] = []
+    _metadata: list[str] = ["_epsg_cache_crs", "_epsg_cache_value"]
     """Instance attributes pandas must preserve across copy/slice.
 
-    Currently empty — ``FeatureCollection`` keeps no per-instance state
-    beyond the GeoDataFrame data itself. Extend this list if you add
-    an instance attribute that must survive pandas operations.
+    ARC-6 added ``_epsg_cache_crs`` and ``_epsg_cache_value`` so the
+    :attr:`epsg` property can avoid repeated ``pyproj`` calls on hot
+    paths (for example inside :meth:`to_dataset` loops). Invalidation
+    is by CRS-object identity: if ``self.crs is cached_crs`` we return
+    the cached value; otherwise we re-resolve.
     """
 
 
@@ -182,16 +184,31 @@ class FeatureCollection(GeoDataFrame):
 
     @property
     def epsg(self) -> int | None:
-        """EPSG code of this FeatureCollection's CRS.
+        """EPSG code of this FeatureCollection's CRS (ARC-6 cached).
+
+        The value is cached per CRS-object identity so repeated access
+        on hot paths (e.g. inside :meth:`to_dataset` rasterization
+        loops) does not call :meth:`pyproj.CRS.to_epsg` every time.
+        The cache auto-invalidates whenever ``self.crs`` is replaced
+        (``set_crs``, ``to_crs``, or direct assignment).
 
         Returns:
             int | None: EPSG code (e.g. 4326) or ``None`` when the CRS
             is unset or cannot be resolved to an EPSG authority code.
         """
-        if self.crs is None:
-            return None
-        code = self.crs.to_epsg()
-        return int(code) if code is not None else None
+        crs = self.crs
+        cached_crs = getattr(self, "_epsg_cache_crs", None)
+        if cached_crs is crs:
+            return getattr(self, "_epsg_cache_value", None)
+        if crs is None:
+            value: int | None = None
+        else:
+            code = crs.to_epsg()
+            value = int(code) if code is not None else None
+        # object.__setattr__ bypasses any pandas ``__setattr__`` hook.
+        object.__setattr__(self, "_epsg_cache_crs", crs)
+        object.__setattr__(self, "_epsg_cache_value", value)
+        return value
 
     @property
     def top_left_corner(self) -> list[Number]:
