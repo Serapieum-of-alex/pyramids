@@ -106,9 +106,6 @@ def utm_proj4() -> str:
     return srs.ExportToProj4()
 
 
-# ── ARC-1a / ARC-1b : subclass contract + OGR guard ─────────────────
-
-
 class TestSubclassContract:
     """FeatureCollection subclasses GeoDataFrame and preserves identity."""
 
@@ -151,9 +148,6 @@ class TestSubclassContract:
         ds = ogr.Open(str(path))
         with pytest.raises(TypeError, match="no longer accepts"):
             FeatureCollection(ds)
-
-
-# ── static / helper coverage ────────────────────────────────────────
 
 
 class TestGeometryCollection:
@@ -297,6 +291,39 @@ class TestReprojectPoints:
             lat, lng, from_epsg=4326, to_epsg=32636
         )
         assert len(x_out) == 2 and len(y_out) == 2
+
+    def test_reproject_points_no_future_warning(self):
+        """ARC-2: reproject_points must not emit pyproj FutureWarning.
+
+        Before ARC-2 the method called ``Proj(init="epsg:…")`` which
+        pyproj deprecated in 2.0; the old code hid the resulting
+        ``FutureWarning`` with ``warnings.filterwarnings``. ARC-2
+        switched to ``pyproj.Transformer.from_crs`` and removed the
+        suppression. Guard against regression.
+        """
+        import warnings as _w
+
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            FeatureCollection.reproject_points(
+                [30.0], [31.0], from_epsg=4326, to_epsg=3857
+            )
+        future = [w for w in caught if issubclass(w.category, FutureWarning)]
+        assert not future, (
+            f"reproject_points must not emit FutureWarning; got: "
+            f"{[str(w.message) for w in future]}"
+        )
+
+    def test_reproject_points_roundtrip(self):
+        """ARC-2: 4326 → 3857 → 4326 returns the original lat/lon."""
+        y_merc, x_merc = FeatureCollection.reproject_points(
+            [30.0], [31.0], from_epsg=4326, to_epsg=3857
+        )
+        y_back, x_back = FeatureCollection.reproject_points(
+            y_merc, x_merc, from_epsg=3857, to_epsg=4326
+        )
+        assert abs(y_back[0] - 30.0) < 1e-4
+        assert abs(x_back[0] - 31.0) < 1e-4
 
 
 class TestCreateSrFromProj:

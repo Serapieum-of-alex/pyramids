@@ -39,9 +39,6 @@ from pyramids.feature._ogr import (
 )
 
 
-# ── fixtures ────────────────────────────────────────────────────────
-
-
 @pytest.fixture
 def point_gdf() -> GeoDataFrame:
     """GeoDataFrame with three points and an integer attribute.
@@ -100,9 +97,6 @@ def polygonize_datasource() -> ogr.DataSource:
     return ds
 
 
-# ── _new_vsimem_path ────────────────────────────────────────────────
-
-
 class TestNewVsimemPath:
     """Tests for :func:`_new_vsimem_path`."""
 
@@ -157,9 +151,6 @@ class TestNewVsimemPath:
         assert len(paths) == 50, (
             f"Expected 50 unique paths, got {len(paths)}"
         )
-
-
-# ── as_datasource ───────────────────────────────────────────────────
 
 
 class TestAsDatasource:
@@ -297,9 +288,6 @@ class TestAsDatasource:
         assert code == 4326, f"Expected EPSG 4326, got {code}"
 
 
-# ── as_vsimem_path ──────────────────────────────────────────────────
-
-
 class TestAsVsimemPath:
     """Tests for :func:`as_vsimem_path`."""
 
@@ -377,9 +365,6 @@ class TestAsVsimemPath:
             n = ds.GetLayer(0).GetFeatureCount()
             ds = None
         assert n == 1
-
-
-# ── datasource_to_gdf ───────────────────────────────────────────────
 
 
 class TestDatasourceToGdf:

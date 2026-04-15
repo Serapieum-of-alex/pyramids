@@ -63,9 +63,6 @@ def single_fc():
     return FeatureCollection(gdf)
 
 
-# ── len (inherited from DataFrame: row count) ───────────────────────
-
-
 class TestLen:
     def test_len_multiple_features(self, point_fc):
         assert len(point_fc) == 3
@@ -77,9 +74,6 @@ class TestLen:
         assert len(single_fc) == 1
 
 
-# ── contains (inherited: column membership) ─────────────────────────
-
-
 class TestContains:
     def test_contains_existing_column(self, point_fc):
         assert "name" in point_fc
@@ -89,9 +83,6 @@ class TestContains:
 
     def test_contains_geometry(self, point_fc):
         assert "geometry" in point_fc
-
-
-# ── getitem: column label (inherited DataFrame semantics) ───────────
 
 
 class TestGetitem:
@@ -112,17 +103,11 @@ class TestGetitem:
         assert isinstance(subset, FeatureCollection)
 
 
-# ── slice: DataFrame row-slice semantics ────────────────────────────
-
-
 class TestSlice:
     def test_slice_rows(self, point_fc):
         subset = point_fc[0:2]
         assert len(subset) == 2
         assert isinstance(subset, FeatureCollection)
-
-
-# ── str / repr: pyramids branding is preserved ──────────────────────
 
 
 class TestStr:
@@ -154,9 +139,6 @@ class TestRepr:
         assert "name" in r
 
 
-# ── iterrows works (inherited from DataFrame) ───────────────────────
-
-
 class TestIterrows:
     def test_iterrows_yields_three_rows(self, point_fc):
         rows = list(point_fc.iterrows())
@@ -167,9 +149,6 @@ class TestIterrows:
             assert "name" in row.index
             assert hasattr(row, "geometry")
             break
-
-
-# ── end-to-end sanity: round-trip + inherited API access ─────────────
 
 
 class TestEndToEnd:

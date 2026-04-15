@@ -24,7 +24,6 @@ constructor, never returned, and never stored as instance state.
 
 from __future__ import annotations
 
-import warnings
 from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable
@@ -37,7 +36,7 @@ import numpy as np
 import pandas as pd
 from geopandas import GeoDataFrame
 from osgeo import gdal, ogr, osr
-from pyproj import Proj, transform as _pyproj_transform
+from pyproj import Transformer
 from shapely.geometry import LineString, Point, Polygon
 from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
@@ -62,7 +61,6 @@ class FeatureCollection(GeoDataFrame):
     The OGR/GDAL backend is internal only; see :mod:`pyramids.feature._ogr`.
     """
 
-    # ── pandas / geopandas subclass contract ──
     # Override ``_constructor`` so pandas returns FeatureCollection (not
     # plain GeoDataFrame) through slicing, filtering, copy(), concat(),
     # groupby().apply(), etc. Do NOT override ``_constructor_sliced``:
@@ -84,7 +82,6 @@ class FeatureCollection(GeoDataFrame):
     an instance attribute that must survive pandas operations.
     """
 
-    # ── construction ──
 
     def __init__(self, data: Any = None, *args: Any, **kwargs: Any) -> None:
         """Construct a FeatureCollection.
@@ -145,7 +142,6 @@ class FeatureCollection(GeoDataFrame):
         gdf = gpd.read_file(path)
         return cls(gdf)
 
-    # ── pyramids-specific spatial metadata ──
 
     @property
     def epsg(self) -> int | None:
@@ -184,7 +180,6 @@ class FeatureCollection(GeoDataFrame):
         """
         return self.columns.tolist()
 
-    # ── dunders (branding only; data-level dunders are inherited) ──
 
     def __str__(self) -> str:
         """Return a short, pyramids-branded summary of the collection."""
@@ -203,7 +198,6 @@ class FeatureCollection(GeoDataFrame):
             f"columns={self.columns.tolist()}, epsg={self.epsg})"
         )
 
-    # ── I/O ──
 
     def to_file(
         self, path: str | Path, driver: str = "geojson", **kwargs: Any
@@ -235,7 +229,6 @@ class FeatureCollection(GeoDataFrame):
             resolved = driver
         super().to_file(path, driver=resolved, **kwargs)
 
-    # ── rasterization (uses the internal OGR bridge) ──
 
     def to_dataset(
         self,
@@ -356,7 +349,6 @@ class FeatureCollection(GeoDataFrame):
 
         return dataset_n
 
-    # ── SR / EPSG helpers (kept as-is for back-compat) ──
 
     @staticmethod
     def _create_sr_from_proj(
@@ -415,7 +407,6 @@ class FeatureCollection(GeoDataFrame):
             epsg = 4326
         return epsg
 
-    # ── coordinate extraction (used by xy / center_point) ──
 
     @staticmethod
     def _get_xy_coords(geometry: Any, coord_type: str) -> list:
@@ -658,7 +649,6 @@ class FeatureCollection(GeoDataFrame):
         # by DataFrame's own inplace methods.
         self._update_inplace(fc)
 
-    # ── geometry factories ──
 
     @staticmethod
     def create_polygon(
@@ -714,7 +704,6 @@ class FeatureCollection(GeoDataFrame):
             return FeatureCollection(gdf)
         return points
 
-    # ── plot (adds optional basemap; chart itself is inherited) ──
 
     def plot(
         self,
@@ -760,7 +749,6 @@ class FeatureCollection(GeoDataFrame):
 
         return ax
 
-    # ── concatenation helper (kept for back-compat) ──
 
     def concate(
         self, gdf: GeoDataFrame, inplace: bool = False
@@ -791,7 +779,6 @@ class FeatureCollection(GeoDataFrame):
             return None
         return new_gdf
 
-    # ── point reprojection helpers (standalone — no collection needed) ──
 
     @staticmethod
     def reproject_points(
@@ -801,12 +788,14 @@ class FeatureCollection(GeoDataFrame):
         to_epsg: int = 3857,
         precision: int = 6,
     ) -> tuple[list[float], list[float]]:
-        """Reproject point coordinates (legacy wrapper).
+        """Reproject point coordinates between EPSG codes.
 
-        Historical API kept for back-compatibility; see
-        :meth:`reproject_points2` for the ``osr``-based form. Internally
-        suppresses the :class:`pyproj` ``FutureWarning`` emitted by the
-        legacy ``Proj(init=...)`` construction.
+        Uses :meth:`pyproj.Transformer.from_crs` — the current,
+        non-deprecated pyproj API. The previous implementation used
+        ``Proj(init="epsg:XXXX")`` which has been deprecated since
+        pyproj 2.0 and emits ``FutureWarning``; ARC-2 removed that
+        legacy construction along with the ``warnings.catch_warnings``
+        suppression that hid the deprecation.
 
         Args:
             lat (list): Y-coordinates in the source CRS.
@@ -817,27 +806,34 @@ class FeatureCollection(GeoDataFrame):
 
         Returns:
             tuple[list[float], list[float]]: ``(y, x)`` lists in the
-            target CRS. Note the ``(y, x)`` ordering (legacy).
+            target CRS. The ``(y, x)`` ordering is kept for
+            back-compat; :meth:`reproject_points2` returns ``(x, y)``.
+
+        Examples:
+            - Reproject two WGS84 points into Web Mercator and inspect
+              the magnitudes of the projected coordinates:
+                ```python
+                >>> lat = [30.0]
+                >>> lon = [31.0]
+                >>> y, x = FeatureCollection.reproject_points(
+                ...     lat, lon, from_epsg=4326, to_epsg=3857
+                ... )
+                >>> round(x[0])
+                3450904
+                >>> round(y[0])
+                3503550
+
+                ```
         """
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=FutureWarning)
-
-            from_epsg_str = "epsg:" + str(from_epsg)
-            in_proj = Proj(init=from_epsg_str)
-            to_epsg_str = "epsg:" + str(to_epsg)
-            out_proj = Proj(init=to_epsg_str)
-
-        x = np.ones(len(lat)) * np.nan
-        y = np.ones(len(lat)) * np.nan
-
+        transformer = Transformer.from_crs(
+            f"EPSG:{from_epsg}", f"EPSG:{to_epsg}", always_xy=True
+        )
+        x = np.full(len(lat), np.nan)
+        y = np.full(len(lat), np.nan)
         for i in range(len(lat)):
             x[i], y[i] = np.round(
-                _pyproj_transform(
-                    in_proj, out_proj, lon[i], lat[i], always_xy=True
-                ),
-                precision,
+                transformer.transform(lon[i], lat[i]), precision
             )
-
         return y.tolist(), x.tolist()
 
     @staticmethod
@@ -874,7 +870,6 @@ class FeatureCollection(GeoDataFrame):
             y.append(point.GetPoints()[0][1])
         return x, y
 
-    # ── centroid helper (keeps legacy column-adding behavior) ──
 
     def center_point(self) -> GeoDataFrame:
         """Compute per-feature centers as extra columns on ``self``.
