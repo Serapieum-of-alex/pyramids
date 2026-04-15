@@ -194,41 +194,110 @@ def get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
     return multi_geom_handler(geom, coord_type, gtype)
 
 
-def create_polygon(
-    coords: list[tuple[float, float]], wkt: bool = False
-) -> str | Polygon:
-    """Build a :class:`shapely.Polygon` (or its WKT) from coordinates.
+def create_polygon(coords: list[tuple[float, float]]) -> Polygon:
+    """Build a :class:`shapely.Polygon` from a sequence of (x, y) tuples.
+
+    ARC-15: the return type is now unconditional — always a
+    ``Polygon``. For the WKT string form use :func:`polygon_wkt`.
 
     Args:
         coords (list[tuple[float, float]]): Sequence of ``(x, y)``
             tuples forming the ring.
-        wkt (bool): Return WKT string form instead of a shapely
-            ``Polygon``. Default ``False``.
 
     Returns:
-        str | Polygon: WKT if ``wkt=True``, else the ``Polygon``.
+        Polygon: A shapely ``Polygon``.
     """
-    poly = Polygon(coords)
-    return poly.wkt if wkt else poly
+    return Polygon(coords)
 
 
-def create_point(
-    coords: Iterable[tuple[float, ...]], epsg: int | None = None
-) -> list[Point] | GeoDataFrame:
-    """Build shapely ``Point`` objects (or wrap them in a GeoDataFrame).
+def polygon_wkt(coords: list[tuple[float, float]]) -> str:
+    """Build a WKT string for a polygon from (x, y) tuples (ARC-15).
+
+    Args:
+        coords (list[tuple[float, float]]): Ring coordinates.
+
+    Returns:
+        str: Well-Known Text representation of the polygon.
+    """
+    return Polygon(coords).wkt
+
+
+def create_points(coords: Iterable[tuple[float, ...]]) -> list[Point]:
+    """Build a list of shapely ``Point`` objects from (x, y) tuples.
+
+    ARC-15: the return type is now unconditional — always a
+    ``list[Point]``. For the GeoDataFrame wrapper use
+    :func:`point_collection`.
 
     Args:
         coords: Iterable of ``(x, y)`` tuples.
-        epsg (int | None): When given, return a GeoDataFrame with the
-            supplied CRS; otherwise return a plain ``list[Point]``.
 
     Returns:
-        list[Point] | GeoDataFrame: A list of shapely Points, or a
-        GeoDataFrame if ``epsg`` is provided.
+        list[Point]: The constructed shapely Points.
     """
-    points = list(map(Point, coords))
+    return list(map(Point, coords))
+
+
+def point_collection(
+    coords: Iterable[tuple[float, ...]], crs: Any
+) -> GeoDataFrame:
+    """Build a :class:`GeoDataFrame` of points with a given CRS (ARC-15).
+
+    Args:
+        coords: Iterable of ``(x, y)`` tuples.
+        crs: A CRS accepted by :class:`geopandas.GeoDataFrame` (EPSG
+            int, WKT, Proj string, etc.).
+
+    Returns:
+        GeoDataFrame: A GeoDataFrame with a single ``geometry`` column.
+    """
+    pts = create_points(coords)
+    return gpd.GeoDataFrame(columns=["geometry"], data=pts, crs=crs)
+
+
+# Legacy polymorphic signatures kept as deprecated shims ---------------
+
+
+def create_polygon_legacy(
+    coords: list[tuple[float, float]], wkt: bool = False
+) -> str | Polygon:
+    """Deprecated ARC-15 shim. Use :func:`create_polygon` or :func:`polygon_wkt`.
+
+    Returns a WKT string when ``wkt=True``, otherwise a
+    :class:`shapely.Polygon`. The polymorphic return type is the
+    reason ARC-15 split this into two functions; new code should
+    pick the right one explicitly.
+    """
+    import warnings as _w
+
+    _w.warn(
+        "create_polygon(coords, wkt=True) is deprecated (ARC-15). "
+        "Use polygon_wkt(coords) for a WKT string, or "
+        "create_polygon(coords) for a Polygon.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return polygon_wkt(coords) if wkt else create_polygon(coords)
+
+
+def create_point_legacy(
+    coords: Iterable[tuple[float, ...]], epsg: int | None = None
+) -> list[Point] | GeoDataFrame:
+    """Deprecated ARC-15 shim. Use :func:`create_points` or :func:`point_collection`.
+
+    When ``epsg`` is ``None`` returns a ``list[Point]``; when given,
+    returns a ``GeoDataFrame``. New code should pick the right one
+    explicitly.
+    """
+    import warnings as _w
+
+    _w.warn(
+        "create_point(coords, epsg=...) with polymorphic return is "
+        "deprecated (ARC-15). Use create_points(coords) for the list "
+        "or point_collection(coords, crs=...) for a GeoDataFrame.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if epsg is not None:
-        return gpd.GeoDataFrame(
-            columns=["geometry"], data=points, crs=epsg
-        )
-    return points
+        return point_collection(coords, crs=epsg)
+    return create_points(coords)

@@ -383,22 +383,60 @@ class FeatureCollection(GeoDataFrame):
     def create_polygon(
         coords: list[tuple[float, float]], wkt: bool = False
     ) -> str | Polygon:
-        """Delegate to :func:`pyramids.feature.geometry.create_polygon`."""
-        return _geom.create_polygon(coords, wkt)
+        """Create a Polygon (or its WKT) from coordinates.
+
+        ARC-15: the ``wkt=True`` form is deprecated in favor of
+        :meth:`polygon_wkt`. ``wkt=False`` (the default) now delegates
+        to the new unconditional :func:`pyramids.feature.geometry.create_polygon`
+        which always returns a ``Polygon``.
+        """
+        if wkt:
+            return _geom.create_polygon_legacy(coords, wkt=True)
+        return _geom.create_polygon(coords)
+
+    @staticmethod
+    def polygon_wkt(coords: list[tuple[float, float]]) -> str:
+        """Return the WKT for a polygon built from ``coords`` (ARC-15).
+
+        Delegates to :func:`pyramids.feature.geometry.polygon_wkt`.
+        """
+        return _geom.polygon_wkt(coords)
 
     @staticmethod
     def create_point(
         coords: Iterable[tuple[float, ...]], epsg: int | None = None
     ) -> list[Point] | FeatureCollection:
-        """Delegate to :func:`pyramids.feature.geometry.create_point`.
+        """Create shapely Points (or a FeatureCollection wrapper).
 
-        Wraps the plain-GeoDataFrame result in a FeatureCollection when
-        ``epsg`` is supplied (for API continuity).
+        ARC-15: the polymorphic return is deprecated. Use
+        :meth:`create_points` for the list form and
+        :meth:`point_collection` for the FeatureCollection form. This
+        method kept for back-compat; it emits DeprecationWarning when
+        ``epsg`` is provided.
         """
-        result = _geom.create_point(coords, epsg)
         if epsg is not None:
+            result = _geom.create_point_legacy(coords, epsg=epsg)
             return FeatureCollection(result)
-        return result
+        return _geom.create_points(coords)
+
+    @staticmethod
+    def create_points(coords: Iterable[tuple[float, ...]]) -> list[Point]:
+        """Return a list of shapely Points from ``coords`` (ARC-15).
+
+        Delegates to :func:`pyramids.feature.geometry.create_points`.
+        """
+        return _geom.create_points(coords)
+
+    @staticmethod
+    def point_collection(
+        coords: Iterable[tuple[float, ...]], crs: Any
+    ) -> FeatureCollection:
+        """Return a FeatureCollection of points with the given CRS (ARC-15).
+
+        Delegates to :func:`pyramids.feature.geometry.point_collection`
+        and wraps the result as a ``FeatureCollection``.
+        """
+        return FeatureCollection(_geom.point_collection(coords, crs=crs))
 
     def xy(self) -> None:
         """Add per-vertex ``x`` and ``y`` columns to this FeatureCollection.
@@ -517,5 +555,5 @@ class FeatureCollection(GeoDataFrame):
             self.loc[i, "avg_y"] = np.mean(row_i["y"])
 
         coords_list = zip(self["avg_x"].tolist(), self["avg_y"].tolist())
-        self["center_point"] = _geom.create_point(coords_list)
+        self["center_point"] = _geom.create_points(coords_list)
         return self
