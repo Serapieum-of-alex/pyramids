@@ -106,14 +106,25 @@ class FeatureCollection(GeoDataFrame):
         :func:`pyramids._io._parse_path`, which handles:
 
         * Cloud-URL rewriting (``s3://``, ``gs://``, ``az://``,
-          ``http(s)://``, ``file://`` → GDAL ``/vsi*/`` form).
+          ``abfs://``, ``http(s)://``, ``file://`` → GDAL ``/vsi*/``
+          form). ARC-22 verified end-to-end through an HTTP test.
+          For AWS / GCS / Azure credentials either set the standard
+          environment variables (``AWS_ACCESS_KEY_ID``,
+          ``AWS_SECRET_ACCESS_KEY``, ``GOOGLE_APPLICATION_CREDENTIALS``,
+          ``AZURE_STORAGE_CONNECTION_STRING``, …) or scope them via
+          :class:`pyramids.base.remote.CloudConfig` as a context
+          manager around the ``read_file`` call.
         * Compressed-archive dispatch for ``.zip``, ``.tar``, ``.tar.gz``,
-          ``.gz`` — the returned path is a ``/vsizip/``, ``/vsitar/``
-          or ``/vsigzip/`` string that :func:`geopandas.read_file`
-          (via GDAL's virtual filesystem) can open directly. You can
-          either pass just the archive path (first contained file
-          wins) or ``archive.zip/inner.geojson`` to target a specific
-          member.
+          ``.gz`` on **local** paths — the returned path is a
+          ``/vsizip/``, ``/vsitar/`` or ``/vsigzip/`` string that
+          :func:`geopandas.read_file` (via GDAL's virtual filesystem)
+          can open directly. You can either pass just the archive
+          path (first contained file wins) or
+          ``archive.zip/inner.geojson`` to target a specific member.
+          Cloud + archive chaining (``http://host/x.zip``) is not
+          automatic today — if you need it, stage the archive
+          locally first or use ``CloudConfig`` with an explicit
+          ``/vsizip//vsicurl/...`` path.
 
         Args:
             path (str | Path): File path, URL, archive path, or
