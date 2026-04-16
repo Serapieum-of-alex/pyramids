@@ -251,7 +251,9 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
     try:
         result = gdal.VectorTranslate(str(tmp), ds, format="GeoJSON")
         if result is None:
-            raise RuntimeError(
+            from pyramids.base._errors import VectorDriverError
+
+            raise VectorDriverError(
                 "gdal.VectorTranslate failed to materialize the DataSource "
                 "to GeoJSON."
             )

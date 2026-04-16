@@ -54,3 +54,59 @@ class FailedToSaveError(_PyramidsError):
 
 class OutOfBoundsError(_PyramidsError):
     """Out-of-bounds error."""
+
+
+# ARC-18: vector-side error hierarchy.
+#
+# Each ``Feature*``/``CRS``/``VectorDriver`` error multi-inherits from
+# the closest Python builtin (``ValueError`` / ``RuntimeError``) so
+# existing ``except ValueError:`` / ``except RuntimeError:`` handlers
+# still catch them. Callers that want to catch only pyramids.feature
+# failures can ``except FeatureError:``.
+
+
+class FeatureError(_PyramidsError):
+    """Base class for errors raised from :mod:`pyramids.feature`.
+
+    Use to catch any vector-side failure at once::
+
+        try:
+            fc.rasterize(...)
+        except FeatureError:
+            ...
+    """
+
+
+class InvalidGeometryError(FeatureError, ValueError):
+    """A geometry is empty, malformed, or has the wrong type.
+
+    Raised e.g. when :func:`pyramids.feature.geometry.get_coords` is
+    handed a ``MultiPolygon`` (ARC-9 — caller must explode first).
+
+    Multi-inherits from :class:`ValueError` so ``except ValueError:``
+    handlers keep working.
+    """
+
+
+class CRSError(FeatureError, ValueError):
+    """CRS is missing, ambiguous, or cannot be resolved.
+
+    Raised e.g. when :func:`pyramids.feature.crs.get_epsg_from_prj`
+    receives an empty projection string (ARC-7), or when a rasterize
+    template's CRS disagrees with the vector's.
+
+    Multi-inherits from :class:`ValueError` so ``except ValueError:``
+    handlers keep working.
+    """
+
+
+class VectorDriverError(FeatureError, RuntimeError):
+    """A vector-driver-level failure.
+
+    Raised when an internal OGR operation reports failure —
+    unknown driver, ``VectorTranslate`` returning ``None``, layer
+    not found, creation option rejected.
+
+    Multi-inherits from :class:`RuntimeError` so ``except
+    RuntimeError:`` handlers keep working.
+    """

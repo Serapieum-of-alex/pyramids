@@ -728,7 +728,9 @@ class Dataset(  # type: ignore[misc]
                     "(see pyramids.dataset.Dataset.read_file)."
                 )
             if template.epsg != ds_epsg:
-                raise ValueError(
+                from pyramids.base._errors import CRSError
+
+                raise CRSError(
                     f"Dataset and vector are not the same EPSG. "
                     f"{template.epsg} != {ds_epsg}"
                 )

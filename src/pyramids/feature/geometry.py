@@ -199,7 +199,9 @@ def get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
     if gtype == "polygon":
         return list(get_poly_coords(geom, coord_type))
     if gtype == "multipolygon":
-        raise ValueError(
+        from pyramids.base._errors import InvalidGeometryError
+
+        raise InvalidGeometryError(
             "get_coords does not accept MultiPolygon rows — explode the "
             "GeoDataFrame with explode_gdf(gdf, 'multipolygon') first "
             "(ARC-9: previously returned the -9999 sentinel, which "

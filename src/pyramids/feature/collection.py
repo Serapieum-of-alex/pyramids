@@ -34,7 +34,6 @@ from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
-from pyramids.base._errors import DriverNotExistError
 from pyramids.base._utils import Catalog
 from pyramids.feature import crs as _crs
 from pyramids.feature import geometry as _geom
@@ -424,7 +423,9 @@ class FeatureCollection(GeoDataFrame):
 
         if basemap:
             if self.epsg is None:
-                raise ValueError(
+                from pyramids.base._errors import CRSError
+
+                raise CRSError(
                     "FeatureCollection must have a CRS (epsg) to use basemap."
                 )
             from pyramids.basemap.basemap import add_basemap

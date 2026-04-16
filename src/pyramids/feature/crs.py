@@ -71,12 +71,14 @@ def get_epsg_from_prj(prj: str) -> int:
         ValueError: If ``prj`` is an empty string.
     """
     if prj == "":
-        raise ValueError(
+        from pyramids.base._errors import CRSError
+
+        raise CRSError(
             "get_epsg_from_prj received an empty projection string. "
             "An empty projection is ambiguous and is no longer "
             "silently defaulted to EPSG:4326 (ARC-7). If you want "
-            "a fallback EPSG, catch ValueError and supply it at "
-            "the call site."
+            "a fallback EPSG, catch CRSError (also a ValueError) "
+            "and supply it at the call site."
         )
     srs = create_sr_from_proj(prj)
     try:
