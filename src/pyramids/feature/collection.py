@@ -59,10 +59,26 @@ class FeatureCollection(GeoDataFrame):
         """Return the type pandas uses when constructing new frames."""
         return FeatureCollection
 
-    _metadata: list[str] = ["_epsg_cache_crs", "_epsg_cache_value"]
-    """Instance attributes pandas must preserve across copy/slice.
+    # ARC-31 — merge with GeoDataFrame._metadata instead of replacing it.
+    # The parent class lists ``_geometry_column_name`` (the name of the
+    # active geometry column); overriding _metadata with just our own
+    # entries drops that attribute on pickle / copy / concat, and the
+    # restored object can no longer find its geometry column. Always
+    # splat the parent's list first.
+    _metadata: list[str] = [
+        *GeoDataFrame._metadata,
+        "_epsg_cache_crs",
+        "_epsg_cache_value",
+    ]
+    """Instance attributes pandas must preserve across copy/slice/pickle.
 
-    Currently holds the per-instance EPSG cache added by ARC-6.
+    Holds:
+
+    * ``GeoDataFrame._metadata`` (currently ``_geometry_column_name``)
+      — required for pickle round-trips to remember which column is
+      the active geometry column.
+    * ``_epsg_cache_crs`` / ``_epsg_cache_value`` — the ARC-6 EPSG
+      cache.
     """
 
     def __init__(self, data: Any = None, *args: Any, **kwargs: Any) -> None:
