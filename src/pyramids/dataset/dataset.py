@@ -365,6 +365,18 @@ class Dataset(  # type: ignore[misc]
         return self._calculate_bbox()
 
     @property
+    def total_bounds(self) -> np.ndarray:
+        """Bounding box ``[minx, miny, maxx, maxy]`` as a NumPy array.
+
+        ARC-17 introduced this property so that ``Dataset`` and
+        :class:`pyramids.feature.FeatureCollection` expose the same
+        shape (``GeoDataFrame.total_bounds`` is the geopandas name
+        for exactly this array), letting both classes satisfy the
+        :class:`pyramids.base.protocols.SpatialObject` protocol.
+        """
+        return np.asarray(self._calculate_bbox())
+
+    @property
     def lon(self) -> np.ndarray:
         """Longitude coordinates.
 
