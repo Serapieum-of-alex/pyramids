@@ -29,7 +29,7 @@ import geopandas as gpd
 import numpy as np
 from geopandas import GeoDataFrame
 from osgeo import gdal, ogr, osr
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, Point, Polygon, box
 from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
@@ -221,6 +221,13 @@ class FeatureCollection(GeoDataFrame):
             )
         return cls(gpd.GeoDataFrame(df, geometry=geometry, crs=crs))
 
+    _VALID_TILE_STRATEGIES: tuple[str, ...] = (
+        "auto",
+        "rtree",
+        "row_group",
+        "none",
+    )
+
     @classmethod
     def iter_features(
         cls,
@@ -230,26 +237,41 @@ class FeatureCollection(GeoDataFrame):
         bbox: tuple[float, float, float, float] | None = None,
         where: str | None = None,
         chunksize: int | None = None,
+        tile_strategy: str = "auto",
     ) -> Any:
         """Stream features from ``path`` without materializing the full file.
 
-        ARC-25. Two modes:
+        ARC-25 + ARC-34. Two orthogonal knobs:
 
-        * **Default** (``chunksize=None``) — yields one
-          GeoJSON-style feature dict per row. Suitable for pipelines
-          that process rows one at a time without ever building a
-          DataFrame.
-        * **Chunked** (``chunksize=N``) — yields
-          :class:`FeatureCollection` batches of up to N rows each.
-          Build-up happens on the pyogrio side so memory peaks at
-          chunk size, not dataset size.
+        * **Chunk shape**. ``chunksize=None`` yields one GeoJSON-style
+          dict per row (fiona idiom). ``chunksize=N`` yields
+          :class:`FeatureCollection` batches of up to N rows each so
+          batched pipelines get a DataFrame-shaped payload.
+        * **Tile strategy** (ARC-34). Controls whether the ``bbox``
+          filter is pushed into the format's spatial index (rtree on
+          GPKG, row-group statistics on Parquet, …) or applied after
+          a full scan. Pass one of:
 
-        Both modes push ``bbox`` / ``where`` down to the driver, so
-        non-matching features are never read.
+          - ``"auto"`` (default) — let pyogrio pick. For a GPKG,
+            pyogrio queries the ``rtree_<layer>_geom`` companion
+            table automatically. For a Parquet file, pyogrio /
+            pyarrow push the bbox down to the row-group statistics
+            and skip non-matching groups. For formats without a
+            spatial index (GeoJSON, Shapefile without a ``.qix``)
+            this falls back to a full scan in the driver.
+          - ``"rtree"`` — same as ``"auto"``; kept as an explicit
+            name so pipeline code can document intent.
+          - ``"row_group"`` — same as ``"auto"``; explicit name for
+            the Parquet case.
+          - ``"none"`` — disable index pushdown; read whole chunks
+            from the driver and apply the bbox filter in Python.
+            Useful when the on-disk spatial index is stale or
+            suspected wrong; also exercises the "slow path" in
+            tests.
 
-        Paths run through :func:`pyramids._io._parse_path` so cloud
-        URLs and archive paths work the same way as in
-        :meth:`read_file`.
+        ``bbox`` / ``where`` compose with any tile_strategy. Paths run
+        through :func:`pyramids._io._parse_path` so cloud URLs and
+        archive paths work the same way as in :meth:`read_file`.
 
         Args:
             path (str | Path): File path, URL, archive path.
@@ -259,6 +281,8 @@ class FeatureCollection(GeoDataFrame):
             where (str | None): OGR SQL predicate.
             chunksize (int | None): ``None`` yields dicts, an ``int``
                 yields ``FeatureCollection`` chunks.
+            tile_strategy (str): One of ``"auto"``, ``"rtree"``,
+                ``"row_group"``, ``"none"``. Default ``"auto"``.
 
         Yields:
             dict | FeatureCollection: Per-feature dicts when
@@ -266,11 +290,17 @@ class FeatureCollection(GeoDataFrame):
             otherwise.
 
         Raises:
-            ValueError: If ``chunksize`` is given but ``< 1``.
+            ValueError: If ``chunksize`` is given but ``< 1``, or if
+                ``tile_strategy`` is not one of the accepted values.
         """
         if chunksize is not None and chunksize < 1:
             raise ValueError(
                 f"chunksize must be >= 1 when supplied; got {chunksize}."
+            )
+        if tile_strategy not in cls._VALID_TILE_STRATEGIES:
+            raise ValueError(
+                f"tile_strategy must be one of "
+                f"{cls._VALID_TILE_STRATEGIES}; got {tile_strategy!r}."
             )
 
         import pyogrio
@@ -296,10 +326,17 @@ class FeatureCollection(GeoDataFrame):
         read_kwargs: dict[str, Any] = {}
         if layer is not None:
             read_kwargs["layer"] = layer
-        if bbox is not None:
-            read_kwargs["bbox"] = bbox
         if where is not None:
             read_kwargs["where"] = where
+
+        # ARC-34: when tile_strategy is "auto"/"rtree"/"row_group",
+        # forward the bbox to pyogrio which transparently uses the
+        # format's spatial index. When "none", hold the bbox back
+        # and apply it in Python after each chunk loads.
+        pushdown_bbox = bbox if tile_strategy != "none" else None
+        python_bbox = bbox if tile_strategy == "none" else None
+        if pushdown_bbox is not None:
+            read_kwargs["bbox"] = pushdown_bbox
 
         for start in range(0, total, batch_size):
             gdf_chunk = gpd.read_file(
@@ -308,6 +345,12 @@ class FeatureCollection(GeoDataFrame):
                 max_features=batch_size,
                 **read_kwargs,
             )
+            if python_bbox is not None and len(gdf_chunk) > 0:
+                xmin, ymin, xmax, ymax = python_bbox
+                mask = gdf_chunk.intersects(
+                    box(xmin, ymin, xmax, ymax)
+                )
+                gdf_chunk = gdf_chunk[mask]
             if chunksize is None:
                 for feat in gdf_chunk.iterfeatures(na="null"):
                     yield feat
