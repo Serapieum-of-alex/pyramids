@@ -1,0 +1,262 @@
+"""ARC-25 + ARC-28: streaming iteration + from-records constructors.
+
+ARC-28 adds two classmethods:
+
+* ``FeatureCollection.from_features(iterable, *, crs=None, columns=None)``
+* ``FeatureCollection.from_records(records, *, geometry='geometry', crs=None)``
+
+ARC-25 adds:
+
+* ``FeatureCollection.iter_features(path, *, layer=None, bbox=None,
+  where=None, chunksize=None)``
+  — generator that either yields GeoJSON-style dicts (default) or
+    FeatureCollection chunks (``chunksize=N``) without loading the
+    whole file up front.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import geopandas as gpd
+import pytest
+from shapely.geometry import Point
+
+from pyramids.base._errors import FeatureError
+from pyramids.feature import FeatureCollection
+
+
+@pytest.fixture
+def small_geojson(tmp_path: Path) -> Path:
+    """6 points with id + score attributes."""
+    gdf = gpd.GeoDataFrame(
+        {"id": [1, 2, 3, 4, 5, 6], "score": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]},
+        geometry=[
+            Point(0, 0), Point(1, 1), Point(2, 2),
+            Point(3, 3), Point(4, 4), Point(5, 5),
+        ],
+        crs="EPSG:4326",
+    )
+    p = tmp_path / "six.geojson"
+    gdf.to_file(p, driver="GeoJSON")
+    return p
+
+
+@pytest.fixture
+def larger_geojson(tmp_path: Path) -> Path:
+    """50 points to exercise batching."""
+    gdf = gpd.GeoDataFrame(
+        {"i": list(range(50))},
+        geometry=[Point(x, x) for x in range(50)],
+        crs="EPSG:4326",
+    )
+    p = tmp_path / "fifty.geojson"
+    gdf.to_file(p, driver="GeoJSON")
+    return p
+
+
+# ── ARC-28 : from_features ──────────────────────────────────────────
+
+
+class TestFromFeatures:
+    """Build a FeatureCollection from GeoJSON-feature dicts."""
+
+    def test_basic_round_trip(self):
+        feats = [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [0, 0]},
+                "properties": {"name": "a"},
+            },
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [1, 1]},
+                "properties": {"name": "b"},
+            },
+        ]
+        fc = FeatureCollection.from_features(feats, crs=4326)
+        assert isinstance(fc, FeatureCollection)
+        assert len(fc) == 2
+        assert fc.epsg == 4326
+        assert list(fc["name"]) == ["a", "b"]
+
+    def test_accepts_generator(self):
+        """Iterator input (not just a list) is accepted."""
+
+        def gen():
+            for i in range(3):
+                yield {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [i, i]},
+                    "properties": {"k": i},
+                }
+
+        fc = FeatureCollection.from_features(gen(), crs=4326)
+        assert len(fc) == 3
+        assert list(fc["k"]) == [0, 1, 2]
+
+    def test_without_crs(self):
+        feats = [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [0, 0]},
+                "properties": {"v": 1},
+            }
+        ]
+        fc = FeatureCollection.from_features(feats)
+        assert fc.epsg is None
+
+    def test_columns_order(self):
+        feats = [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [0, 0]},
+                "properties": {"b": 2, "a": 1},
+            }
+        ]
+        fc = FeatureCollection.from_features(
+            feats, crs=4326, columns=["a", "b", "geometry"]
+        )
+        assert list(fc.columns)[:2] == ["a", "b"]
+
+    def test_roundtrip_via_geo_interface(self, small_geojson: Path):
+        """fc.from_features(fc.__geo_interface__['features']) reconstructs."""
+        original = FeatureCollection.read_file(small_geojson)
+        feats = original.__geo_interface__["features"]
+        rebuilt = FeatureCollection.from_features(feats, crs=original.crs)
+        assert len(rebuilt) == len(original)
+        assert rebuilt.epsg == original.epsg
+
+
+# ── ARC-28 : from_records ───────────────────────────────────────────
+
+
+class TestFromRecords:
+    """Build a FeatureCollection from dict records with shapely geoms."""
+
+    def test_basic(self):
+        records = [
+            {"geometry": Point(0, 0), "n": 1, "k": "a"},
+            {"geometry": Point(1, 1), "n": 2, "k": "b"},
+        ]
+        fc = FeatureCollection.from_records(records, crs=4326)
+        assert isinstance(fc, FeatureCollection)
+        assert len(fc) == 2
+        assert fc.epsg == 4326
+        assert list(fc["n"]) == [1, 2]
+
+    def test_custom_geometry_column(self):
+        records = [
+            {"geom": Point(0, 0), "v": 10},
+            {"geom": Point(1, 1), "v": 20},
+        ]
+        fc = FeatureCollection.from_records(
+            records, geometry="geom", crs=4326
+        )
+        assert len(fc) == 2
+        # With a non-default geometry column name, that column IS the
+        # active geometry column.
+        assert fc.geometry.name == "geom"
+
+    def test_missing_geometry_raises(self):
+        records = [{"v": 1}, {"v": 2}]
+        with pytest.raises(FeatureError, match="geometry"):
+            FeatureCollection.from_records(records, crs=4326)
+
+    def test_empty_records(self):
+        fc = FeatureCollection.from_records([], crs=4326)
+        assert len(fc) == 0
+
+
+# ── ARC-25 : iter_features dict mode ────────────────────────────────
+
+
+class TestIterFeaturesDictMode:
+    """``chunksize=None`` yields per-feature dicts."""
+
+    def test_yields_dicts(self, small_geojson: Path):
+        feats = list(FeatureCollection.iter_features(small_geojson))
+        assert len(feats) == 6
+        assert all(isinstance(f, dict) for f in feats)
+        assert feats[0]["geometry"]["type"] == "Point"
+
+    def test_total_matches_full_read(self, small_geojson: Path):
+        total_streamed = sum(
+            1 for _ in FeatureCollection.iter_features(small_geojson)
+        )
+        total_loaded = len(FeatureCollection.read_file(small_geojson))
+        assert total_streamed == total_loaded
+
+    def test_bbox_filter_streamed(self, small_geojson: Path):
+        feats = list(
+            FeatureCollection.iter_features(
+                small_geojson, bbox=(0.0, 0.0, 2.5, 2.5)
+            )
+        )
+        # points at (0,0), (1,1), (2,2) fall inside
+        assert len(feats) == 3
+
+    def test_where_filter_streamed(self, small_geojson: Path):
+        feats = list(
+            FeatureCollection.iter_features(
+                small_geojson, where="score > 0.3"
+            )
+        )
+        assert len(feats) == 3  # scores 0.4, 0.5, 0.6
+
+
+# ── ARC-25 : iter_features chunked mode ─────────────────────────────
+
+
+class TestIterFeaturesChunked:
+    """``chunksize=N`` yields FeatureCollection batches of up to N rows."""
+
+    def test_yields_feature_collections(self, larger_geojson: Path):
+        chunks = list(
+            FeatureCollection.iter_features(larger_geojson, chunksize=10)
+        )
+        assert all(isinstance(c, FeatureCollection) for c in chunks)
+        # 50 features / 10 per chunk → 5 chunks.
+        assert len(chunks) == 5
+        assert all(len(c) == 10 for c in chunks)
+
+    def test_last_chunk_can_be_short(self, larger_geojson: Path):
+        """50 features at chunksize=15 → 15 + 15 + 15 + 5."""
+        chunks = list(
+            FeatureCollection.iter_features(larger_geojson, chunksize=15)
+        )
+        sizes = [len(c) for c in chunks]
+        assert sizes == [15, 15, 15, 5]
+
+    def test_chunk_concat_matches_full(self, larger_geojson: Path):
+        """Concatenating every chunk yields the full dataset."""
+        import pandas as pd
+
+        chunks = list(
+            FeatureCollection.iter_features(larger_geojson, chunksize=7)
+        )
+        combined = pd.concat(chunks)
+        assert len(combined) == 50
+        # Subclass identity survives pd.concat via _constructor.
+        assert isinstance(combined, FeatureCollection)
+
+    def test_chunksize_less_than_one_raises(self, small_geojson: Path):
+        with pytest.raises(ValueError, match="chunksize"):
+            list(
+                FeatureCollection.iter_features(
+                    small_geojson, chunksize=0
+                )
+            )
+
+    def test_chunked_with_filters(self, larger_geojson: Path):
+        """bbox / where compose with chunking."""
+        chunks = list(
+            FeatureCollection.iter_features(
+                larger_geojson,
+                bbox=(0.0, 0.0, 9.5, 9.5),
+                chunksize=4,
+            )
+        )
+        # Points (0,0)..(9,9) → 10 features; chunks of 4 → 4+4+2.
+        total = sum(len(c) for c in chunks)
+        assert total == 10

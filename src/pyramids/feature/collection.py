@@ -99,6 +99,206 @@ class FeatureCollection(GeoDataFrame):
         return None
 
     @classmethod
+    def from_features(
+        cls,
+        features: Iterable[Any],
+        *,
+        crs: Any = None,
+        columns: list[str] | None = None,
+    ) -> FeatureCollection:
+        """Build a FeatureCollection from GeoJSON-like feature dicts (ARC-28).
+
+        Delegates to :meth:`geopandas.GeoDataFrame.from_features` and
+        wraps the result. Accepts any of the shapes that method
+        accepts — a list of GeoJSON feature dicts, any object
+        implementing ``__geo_interface__``, or an iterator that yields
+        such objects.
+
+        Args:
+            features (Iterable):
+                Feature dicts of the form
+                ``{"type": "Feature", "geometry": {...}, "properties": {...}}``,
+                or any ``__geo_interface__`` provider. Also accepts a
+                bare ``FeatureCollection`` dict.
+            crs:
+                CRS to attach to the result (EPSG int, ``"EPSG:4326"``,
+                WKT, Proj, or a :class:`pyproj.CRS`). ``None`` leaves
+                the CRS unset.
+            columns (list[str] | None):
+                Explicit column order for the output. When ``None``,
+                geopandas infers columns from the first feature.
+
+        Returns:
+            FeatureCollection: A new FC backed by the supplied features.
+
+        Examples:
+            - Build from a list of feature dicts:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> feats = [
+                ...     {"type": "Feature",
+                ...      "geometry": {"type": "Point", "coordinates": [0, 0]},
+                ...      "properties": {"name": "a"}},
+                ...     {"type": "Feature",
+                ...      "geometry": {"type": "Point", "coordinates": [1, 1]},
+                ...      "properties": {"name": "b"}},
+                ... ]
+                >>> fc = FeatureCollection.from_features(feats, crs=4326)
+                >>> len(fc)
+                2
+                >>> fc.epsg
+                4326
+
+                ```
+        """
+        gdf = gpd.GeoDataFrame.from_features(
+            features, crs=crs, columns=columns
+        )
+        return cls(gdf)
+
+    @classmethod
+    def from_records(
+        cls,
+        records: Iterable[dict],
+        *,
+        geometry: str = "geometry",
+        crs: Any = None,
+    ) -> FeatureCollection:
+        """Build a FeatureCollection from dict records (ARC-28).
+
+        Each record is a dict whose keys become column names; the
+        ``geometry`` key (name configurable) must hold a shapely
+        geometry. Useful for ingesting rows from an API response that
+        doesn't emit GeoJSON but already has shapely geoms.
+
+        Args:
+            records (Iterable[dict]):
+                Iterable of ``{column: value, ..., geometry: <shapely>}``
+                dicts.
+            geometry (str):
+                Name of the key holding the shapely geometry. Default
+                ``"geometry"``.
+            crs:
+                CRS to attach (same forms as :meth:`from_features`).
+
+        Returns:
+            FeatureCollection: A new FC with one row per record.
+
+        Raises:
+            FeatureError: If a record is missing the ``geometry``
+                column.
+        """
+        import pandas as pd
+
+        from pyramids.base._errors import FeatureError
+
+        records_list = list(records)
+        if not records_list:
+            return cls(
+                gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
+            )
+        df = pd.DataFrame.from_records(records_list)
+        if geometry not in df.columns:
+            raise FeatureError(
+                f"records missing required geometry column {geometry!r}; "
+                f"columns present: {list(df.columns)}"
+            )
+        return cls(gpd.GeoDataFrame(df, geometry=geometry, crs=crs))
+
+    @classmethod
+    def iter_features(
+        cls,
+        path: str | Path,
+        *,
+        layer: str | int | None = None,
+        bbox: tuple[float, float, float, float] | None = None,
+        where: str | None = None,
+        chunksize: int | None = None,
+    ) -> Any:
+        """Stream features from ``path`` without materializing the full file.
+
+        ARC-25. Two modes:
+
+        * **Default** (``chunksize=None``) — yields one
+          GeoJSON-style feature dict per row. Suitable for pipelines
+          that process rows one at a time without ever building a
+          DataFrame.
+        * **Chunked** (``chunksize=N``) — yields
+          :class:`FeatureCollection` batches of up to N rows each.
+          Build-up happens on the pyogrio side so memory peaks at
+          chunk size, not dataset size.
+
+        Both modes push ``bbox`` / ``where`` down to the driver, so
+        non-matching features are never read.
+
+        Paths run through :func:`pyramids._io._parse_path` so cloud
+        URLs and archive paths work the same way as in
+        :meth:`read_file`.
+
+        Args:
+            path (str | Path): File path, URL, archive path.
+            layer (str | int | None): Layer selector for multi-layer
+                formats.
+            bbox: ``(minx, miny, maxx, maxy)`` filter.
+            where (str | None): OGR SQL predicate.
+            chunksize (int | None): ``None`` yields dicts, an ``int``
+                yields ``FeatureCollection`` chunks.
+
+        Yields:
+            dict | FeatureCollection: Per-feature dicts when
+            ``chunksize`` is ``None``; FeatureCollection chunks
+            otherwise.
+
+        Raises:
+            ValueError: If ``chunksize`` is given but ``< 1``.
+        """
+        if chunksize is not None and chunksize < 1:
+            raise ValueError(
+                f"chunksize must be >= 1 when supplied; got {chunksize}."
+            )
+
+        import pyogrio
+
+        from pyramids import _io as _pyramids_io
+
+        resolved = str(_pyramids_io._parse_path(path))
+
+        # Determine how many features are in the layer so we can
+        # iterate in fixed-size batches via skip_features / max_features.
+        # pyogrio's read_info is O(1) per call.
+        info_kwargs: dict[str, Any] = {}
+        if layer is not None:
+            info_kwargs["layer"] = layer
+        info = pyogrio.read_info(resolved, **info_kwargs)
+        total = int(info["features"])
+
+        if chunksize is None:
+            batch_size = 1000
+        else:
+            batch_size = int(chunksize)
+
+        read_kwargs: dict[str, Any] = {}
+        if layer is not None:
+            read_kwargs["layer"] = layer
+        if bbox is not None:
+            read_kwargs["bbox"] = bbox
+        if where is not None:
+            read_kwargs["where"] = where
+
+        for start in range(0, total, batch_size):
+            gdf_chunk = gpd.read_file(
+                resolved,
+                skip_features=start,
+                max_features=batch_size,
+                **read_kwargs,
+            )
+            if chunksize is None:
+                for feat in gdf_chunk.iterfeatures(na="null"):
+                    yield feat
+            else:
+                yield cls(gdf_chunk)
+
+    @classmethod
     def read_file(
         cls,
         path: str | Path,
