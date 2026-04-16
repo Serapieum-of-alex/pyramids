@@ -99,7 +99,18 @@ class FeatureCollection(GeoDataFrame):
         return None
 
     @classmethod
-    def read_file(cls, path: str | Path) -> FeatureCollection:
+    def read_file(
+        cls,
+        path: str | Path,
+        *,
+        layer: str | int | None = None,
+        bbox: tuple[float, float, float, float] | Any = None,
+        mask: Any = None,
+        rows: slice | int | None = None,
+        columns: list[str] | None = None,
+        where: str | None = None,
+        **kwargs: Any,
+    ) -> FeatureCollection:
         """Read a vector file into a FeatureCollection.
 
         ARC-23: path is first routed through
@@ -126,13 +137,46 @@ class FeatureCollection(GeoDataFrame):
           locally first or use ``CloudConfig`` with an explicit
           ``/vsizip//vsicurl/...`` path.
 
+        ARC-24: filter kwargs are pushed down to fiona/pyogrio so the
+        dataset never fully materializes when only a subset is needed.
+
         Args:
-            path (str | Path): File path, URL, archive path, or
+            path (str | Path):
+                File path, URL, archive path, or
                 ``archive.ext/inner-file`` form.
+            layer (str | int | None):
+                Layer name or index for multi-layer formats
+                (GeoPackage, GDB, KML, …). ``None`` reads the first /
+                default layer.
+            bbox:
+                ``(minx, miny, maxx, maxy)`` tuple, or a
+                ``GeoDataFrame`` / ``GeoSeries`` / shapely geometry
+                whose total bounds are used. Only features
+                intersecting the bbox are loaded.
+            mask:
+                A shapely geometry (or mapping / GeoSeries /
+                GeoDataFrame) whose geometries are used as a mask —
+                only features intersecting the mask are loaded. Finer
+                than ``bbox`` (actual geometry intersection, not just
+                envelope). Mutually exclusive with ``bbox``.
+            rows (slice | int | None):
+                ``int`` — read at most N rows. ``slice`` — read the
+                given range of rows. Useful for sampling.
+            columns (list[str] | None):
+                Restrict loaded attribute columns. Geometry is
+                always loaded. ``None`` loads every column.
+            where (str | None):
+                OGR SQL ``WHERE``-clause predicate pushed down to the
+                driver (e.g. ``"population > 10000"``). Avoids loading
+                non-matching features.
+            **kwargs:
+                Forwarded to :func:`geopandas.read_file` verbatim for
+                engine-specific options (``engine="pyogrio"``,
+                ``use_arrow=True``, driver-specific creation options).
 
         Returns:
-            FeatureCollection: The file's features wrapped as a
-            FeatureCollection.
+            FeatureCollection: The (possibly filtered) features
+            wrapped as a FeatureCollection.
 
         Examples:
             - Load a GeoJSON file:
@@ -144,13 +188,27 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        # _parse_path turns zip/tar/gz archive paths into /vsi* strings
-        # and rewrites cloud URLs. A plain local file path comes back
-        # unchanged.
         from pyramids import _io as _pyramids_io
 
         resolved = _pyramids_io._parse_path(path)
-        gdf = gpd.read_file(resolved)
+        # Only pass kwargs that were actually supplied — passing the
+        # defaults (None) is fine for some geopandas engines but
+        # confuses others. Build a clean kwargs dict.
+        passthrough: dict[str, Any] = {}
+        if layer is not None:
+            passthrough["layer"] = layer
+        if bbox is not None:
+            passthrough["bbox"] = bbox
+        if mask is not None:
+            passthrough["mask"] = mask
+        if rows is not None:
+            passthrough["rows"] = rows
+        if columns is not None:
+            passthrough["columns"] = columns
+        if where is not None:
+            passthrough["where"] = where
+        passthrough.update(kwargs)
+        gdf = gpd.read_file(resolved, **passthrough)
         return cls(gdf)
 
     @property
