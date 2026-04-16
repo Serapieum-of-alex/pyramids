@@ -261,19 +261,83 @@ class FeatureCollection(GeoDataFrame):
         )
 
     def to_file(
-        self, path: str | Path, driver: str = "geojson", **kwargs: Any
+        self,
+        path: str | Path,
+        driver: str = "geojson",
+        *,
+        layer: str | None = None,
+        mode: str = "w",
+        **creation_options: Any,
     ) -> None:
         """Write this FeatureCollection to a vector file.
 
-        Resolves a pyramids driver alias (e.g. ``"geojson"``) to the
-        GDAL driver name via :class:`Catalog`, then delegates to
-        :meth:`geopandas.GeoDataFrame.to_file`.
+        ARC-26: ``layer``, ``mode``, and arbitrary driver creation
+        options are now first-class kwargs. Previously callers had to
+        rely on implicit ``**kwargs`` forwarding, which hurt
+        discoverability.
+
+        Args:
+            path (str | Path):
+                Destination file path.
+            driver (str):
+                Driver alias (e.g. ``"geojson"``, ``"gpkg"``) or
+                literal GDAL driver name (``"GeoJSON"``, ``"GPKG"``,
+                ``"ESRI Shapefile"``). Resolved via :class:`Catalog`.
+            layer (str | None):
+                Layer name for multi-layer drivers (GPKG, GDB, …).
+                Writing two layers into the same GPKG is the canonical
+                use case. ``None`` defers to the driver default.
+            mode (str):
+                ``"w"`` (default) overwrites; ``"a"`` appends to an
+                existing layer. Append support depends on the driver
+                — GPKG and Shapefile accept it, GeoJSON does not.
+            **creation_options:
+                Driver-specific creation options, forwarded to the
+                underlying engine (pyogrio / fiona). Examples:
+
+                * GPKG: ``SPATIAL_INDEX="YES"``, ``FID="id"``.
+                * Shapefile: ``ENCODING="UTF-8"``.
+                * GeoJSON: ``COORDINATE_PRECISION=6``, ``RFC7946=YES``.
+
+                Keys are case-preserving and passed verbatim to the
+                driver; consult the GDAL driver docs for the full
+                list.
+
+        Raises:
+            ValueError: If ``mode`` isn't ``"w"`` or ``"a"``.
+
+        Examples:
+            - Write a GeoJSON (default driver):
+                ```python
+                fc.to_file("out.geojson")
+                ```
+            - Write a GPKG with spatial index + named layer:
+                ```python
+                fc.to_file(
+                    "out.gpkg", driver="gpkg",
+                    layer="rivers", SPATIAL_INDEX="YES",
+                )
+                ```
+            - Append to an existing layer:
+                ```python
+                fc.to_file("out.gpkg", driver="gpkg",
+                           layer="rivers", mode="a")
+                ```
         """
+        if mode not in ("w", "a"):
+            raise ValueError(
+                f"mode must be 'w' (write) or 'a' (append); got {mode!r}."
+            )
         try:
             resolved = CATALOG.get_gdal_name(driver) or driver
         except AttributeError:
             resolved = driver
-        super().to_file(path, driver=resolved, **kwargs)
+
+        passthrough: dict[str, Any] = {"driver": resolved, "mode": mode}
+        if layer is not None:
+            passthrough["layer"] = layer
+        passthrough.update(creation_options)
+        super().to_file(path, **passthrough)
 
     # ARC-4: FeatureCollection.to_dataset was moved to
     # Dataset.from_features(features, ...) to break the circular import

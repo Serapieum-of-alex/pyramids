@@ -1,0 +1,133 @@
+"""ARC-26: FeatureCollection.to_file(layer=, mode=, **creation_options).
+
+Covers the three newly-promoted first-class kwargs on ``to_file``:
+layer selection, append mode, and driver creation options. All three
+forward to the underlying pyogrio / fiona engine.
+"""
+
+from __future__ import annotations
+
+import sqlite3
+from pathlib import Path
+
+import geopandas as gpd
+import pytest
+from shapely.geometry import Point
+
+from pyramids.feature import FeatureCollection
+
+
+@pytest.fixture
+def fc_rivers() -> FeatureCollection:
+    return FeatureCollection(
+        gpd.GeoDataFrame(
+            {"name": ["r1", "r2"]},
+            geometry=[Point(0, 0), Point(1, 1)],
+            crs="EPSG:4326",
+        )
+    )
+
+
+@pytest.fixture
+def fc_lakes() -> FeatureCollection:
+    return FeatureCollection(
+        gpd.GeoDataFrame(
+            {"name": ["l1", "l2", "l3"]},
+            geometry=[Point(10, 10), Point(11, 11), Point(12, 12)],
+            crs="EPSG:4326",
+        )
+    )
+
+
+class TestLayerKwarg:
+    """layer= writes into a named layer of a multi-layer driver (GPKG)."""
+
+    def test_write_single_layer_gpkg(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        p = tmp_path / "single.gpkg"
+        fc_rivers.to_file(p, driver="gpkg", layer="rivers")
+        reloaded = FeatureCollection.read_file(p, layer="rivers")
+        assert len(reloaded) == 2
+        assert set(reloaded["name"]) == {"r1", "r2"}
+
+    def test_write_two_layers_same_gpkg(
+        self,
+        tmp_path: Path,
+        fc_rivers: FeatureCollection,
+        fc_lakes: FeatureCollection,
+    ):
+        p = tmp_path / "multi.gpkg"
+        fc_rivers.to_file(p, driver="gpkg", layer="rivers")
+        fc_lakes.to_file(p, driver="gpkg", layer="lakes")
+        rivers = FeatureCollection.read_file(p, layer="rivers")
+        lakes = FeatureCollection.read_file(p, layer="lakes")
+        assert len(rivers) == 2 and len(lakes) == 3
+
+
+class TestModeAppend:
+    """mode='a' appends to an existing file / layer."""
+
+    def test_append_to_existing_gpkg_layer(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        p = tmp_path / "append.gpkg"
+        fc_rivers.to_file(p, driver="gpkg", layer="rivers", mode="w")
+        fc_rivers.to_file(p, driver="gpkg", layer="rivers", mode="a")
+        reloaded = FeatureCollection.read_file(p, layer="rivers")
+        # Wrote 2 rows twice -> 4 rows total.
+        assert len(reloaded) == 4
+
+    def test_invalid_mode_raises(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        with pytest.raises(ValueError, match="'w' .* 'a'"):
+            fc_rivers.to_file(tmp_path / "x.geojson", mode="x")
+
+
+class TestCreationOptions:
+    """Driver creation options are forwarded through **kwargs."""
+
+    def test_gpkg_spatial_index(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """SPATIAL_INDEX='YES' should produce an rtree_<layer>_geom table."""
+        p = tmp_path / "indexed.gpkg"
+        fc_rivers.to_file(
+            p, driver="gpkg", layer="rivers", SPATIAL_INDEX="YES"
+        )
+        # Peek into the GPKG via sqlite3: rtree companion table is
+        # named 'rtree_<layer>_<geom-column>'. Default geom-column
+        # is 'geom' for GPKG, so we expect 'rtree_rivers_geom'.
+        with sqlite3.connect(p) as conn:
+            rows = conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name LIKE 'rtree_%'"
+            ).fetchall()
+        names = {r[0] for r in rows}
+        assert any(
+            n.startswith("rtree_rivers") for n in names
+        ), f"expected an rtree_rivers_* table; found {names}"
+
+    def test_geojson_rfc7946(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """GeoJSON RFC7946=YES writes RFC 7946-compliant output.
+
+        RFC 7946 mandates CRS84 (= EPSG:4326 with axis order lon/lat).
+        The test just verifies the option is accepted — nothing raises.
+        """
+        p = tmp_path / "rfc7946.geojson"
+        fc_rivers.to_file(p, driver="geojson", RFC7946="YES")
+        assert p.exists()
+
+
+class TestPlainPathStillWorks:
+    """Back-compat: no new kwargs still writes a GeoJSON like before."""
+
+    def test_default_geojson(self, tmp_path: Path, fc_rivers: FeatureCollection):
+        p = tmp_path / "plain.geojson"
+        fc_rivers.to_file(p)
+        assert p.exists()
+        reloaded = FeatureCollection.read_file(p)
+        assert len(reloaded) == 2
