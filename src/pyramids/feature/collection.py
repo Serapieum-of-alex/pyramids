@@ -103,7 +103,26 @@ class FeatureCollection(GeoDataFrame):
     def read_file(cls, path: str | Path) -> FeatureCollection:
         """Read a vector file into a FeatureCollection.
 
-        Delegates to :func:`geopandas.read_file` and wraps the result.
+        ARC-23: path is first routed through
+        :func:`pyramids._io._parse_path`, which handles:
+
+        * Cloud-URL rewriting (``s3://``, ``gs://``, ``az://``,
+          ``http(s)://``, ``file://`` → GDAL ``/vsi*/`` form).
+        * Compressed-archive dispatch for ``.zip``, ``.tar``, ``.tar.gz``,
+          ``.gz`` — the returned path is a ``/vsizip/``, ``/vsitar/``
+          or ``/vsigzip/`` string that :func:`geopandas.read_file`
+          (via GDAL's virtual filesystem) can open directly. You can
+          either pass just the archive path (first contained file
+          wins) or ``archive.zip/inner.geojson`` to target a specific
+          member.
+
+        Args:
+            path (str | Path): File path, URL, archive path, or
+                ``archive.ext/inner-file`` form.
+
+        Returns:
+            FeatureCollection: The file's features wrapped as a
+            FeatureCollection.
 
         Examples:
             - Load a GeoJSON file:
@@ -115,7 +134,13 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        gdf = gpd.read_file(path)
+        # _parse_path turns zip/tar/gz archive paths into /vsi* strings
+        # and rewrites cloud URLs. A plain local file path comes back
+        # unchanged.
+        from pyramids import _io as _pyramids_io
+
+        resolved = _pyramids_io._parse_path(path)
+        gdf = gpd.read_file(resolved)
         return cls(gdf)
 
     @property
