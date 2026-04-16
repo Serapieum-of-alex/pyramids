@@ -260,6 +260,71 @@ class FeatureCollection(GeoDataFrame):
             f"columns={self.columns.tolist()}, epsg={self.epsg})"
         )
 
+    @property
+    def schema(self) -> dict:
+        """Fiona-style schema: geometry type + field-type dict (ARC-27).
+
+        Returns a dict shaped like fiona's ``schema`` attribute so
+        callers migrating from ``fiona.open(path).schema`` can consume
+        this without rewriting. The dict has two keys:
+
+        * ``"geometry"``: single string (``"Point"``, ``"Polygon"``,
+          …) when every row has the same geom type, otherwise
+          ``"Unknown"``.
+        * ``"properties"``: ``{column_name: dtype_string}`` for every
+          non-geometry column.
+
+        Empty FeatureCollections (``len(self) == 0``) report
+        ``"Unknown"`` for the geometry type.
+
+        Returns:
+            dict: Two-key dict with ``"geometry"`` and ``"properties"``.
+        """
+        geom_types = {
+            g.geom_type
+            for g in self.geometry
+            if g is not None
+        }
+        if len(geom_types) == 1:
+            (geom_type,) = geom_types
+        else:
+            geom_type = "Unknown"
+        properties = {
+            col: str(dt)
+            for col, dt in self.dtypes.items()
+            if col != "geometry"
+        }
+        return {"geometry": geom_type, "properties": properties}
+
+    @classmethod
+    def list_layers(cls, path: str | Path) -> list[str]:
+        """List every vector-layer name in ``path`` (ARC-27).
+
+        Routes through :func:`pyramids._io._parse_path` so the same
+        cloud-URL / archive rewriting that :meth:`read_file` uses
+        applies here too. Uses :func:`pyogrio.list_layers` under the
+        hood (geopandas' default engine).
+
+        Args:
+            path (str | Path):
+                File path, URL, or archive path. Single-layer formats
+                like GeoJSON return one name; multi-layer formats
+                (GPKG, GDB, KML) return every layer.
+
+        Returns:
+            list[str]: Layer names in the order the driver reports them.
+        """
+        import pyogrio
+
+        from pyramids import _io as _pyramids_io
+
+        resolved = _pyramids_io._parse_path(path)
+        arr = pyogrio.list_layers(str(resolved))
+        # pyogrio returns an ndarray of shape (N, 2): (name, geom_type).
+        # We only expose names here; callers who want geom_types too
+        # can open individual layers and inspect ``schema``.
+        return [str(row[0]) for row in arr]
+
     def to_file(
         self,
         path: str | Path,
