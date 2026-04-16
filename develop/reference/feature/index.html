@@ -1333,10 +1333,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.feature.FeatureCollection.xy" class="md-nav__link">
+  <a href="#pyramids.feature.FeatureCollection.with_coordinates" class="md-nav__link">
     <span class="md-ellipsis">
       
-        xy
+        with_coordinates
       
     </span>
   </a>
@@ -1355,10 +1355,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.feature.FeatureCollection.concatenate" class="md-nav__link">
+  <a href="#pyramids.feature.FeatureCollection.concat" class="md-nav__link">
     <span class="md-ellipsis">
       
-        concatenate
+        concat
       
     </span>
   </a>
@@ -1366,21 +1366,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.feature.FeatureCollection.concate" class="md-nav__link">
+  <a href="#pyramids.feature.FeatureCollection.with_centroid" class="md-nav__link">
     <span class="md-ellipsis">
       
-        concate
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.feature.FeatureCollection.center_point" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        center_point
+        with_centroid
       
     </span>
   </a>
@@ -3454,10 +3443,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.feature.FeatureCollection.xy" class="md-nav__link">
+  <a href="#pyramids.feature.FeatureCollection.with_coordinates" class="md-nav__link">
     <span class="md-ellipsis">
       
-        xy
+        with_coordinates
       
     </span>
   </a>
@@ -3476,10 +3465,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.feature.FeatureCollection.concatenate" class="md-nav__link">
+  <a href="#pyramids.feature.FeatureCollection.concat" class="md-nav__link">
     <span class="md-ellipsis">
       
-        concatenate
+        concat
       
     </span>
   </a>
@@ -3487,21 +3476,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pyramids.feature.FeatureCollection.concate" class="md-nav__link">
+  <a href="#pyramids.feature.FeatureCollection.with_centroid" class="md-nav__link">
     <span class="md-ellipsis">
       
-        concate
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pyramids.feature.FeatureCollection.center_point" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        center_point
+        with_centroid
       
     </span>
   </a>
@@ -4025,17 +4003,7 @@ vertex extraction, and CRS helpers on top.</p>
 <span class="normal"><a href="#__codelineno-0-485">485</a></span>
 <span class="normal"><a href="#__codelineno-0-486">486</a></span>
 <span class="normal"><a href="#__codelineno-0-487">487</a></span>
-<span class="normal"><a href="#__codelineno-0-488">488</a></span>
-<span class="normal"><a href="#__codelineno-0-489">489</a></span>
-<span class="normal"><a href="#__codelineno-0-490">490</a></span>
-<span class="normal"><a href="#__codelineno-0-491">491</a></span>
-<span class="normal"><a href="#__codelineno-0-492">492</a></span>
-<span class="normal"><a href="#__codelineno-0-493">493</a></span>
-<span class="normal"><a href="#__codelineno-0-494">494</a></span>
-<span class="normal"><a href="#__codelineno-0-495">495</a></span>
-<span class="normal"><a href="#__codelineno-0-496">496</a></span>
-<span class="normal"><a href="#__codelineno-0-497">497</a></span>
-<span class="normal"><a href="#__codelineno-0-498">498</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="k">class</span><span class="w"> </span><span class="nc">FeatureCollection</span><span class="p">(</span><span class="n">GeoDataFrame</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-488">488</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="k">class</span><span class="w"> </span><span class="nc">FeatureCollection</span><span class="p">(</span><span class="n">GeoDataFrame</span><span class="p">):</span>
 <a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A :class:`geopandas.GeoDataFrame` with pyramids-specific GIS methods.</span>
 <a id="__codelineno-0-48" name="__codelineno-0-48"></a>
 <a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="sd">    ``FeatureCollection`` *is a* ``GeoDataFrame`` — ``isinstance(fc,</span>
@@ -4363,131 +4331,121 @@ vertex extraction, and CRS helpers on top.</p>
 <a id="__codelineno-0-371" name="__codelineno-0-371"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-372" name="__codelineno-0-372"></a>        <span class="k">return</span> <span class="n">FeatureCollection</span><span class="p">(</span><span class="n">_geom</span><span class="o">.</span><span class="n">point_collection</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="n">crs</span><span class="p">))</span>
 <a id="__codelineno-0-373" name="__codelineno-0-373"></a>
-<a id="__codelineno-0-374" name="__codelineno-0-374"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">xy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add per-vertex ``x`` and ``y`` columns to this FeatureCollection.</span>
+<a id="__codelineno-0-374" name="__codelineno-0-374"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">with_coordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureCollection</span><span class="p">:</span>
+<a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a new FeatureCollection with per-vertex ``x`` and ``y`` columns.</span>
 <a id="__codelineno-0-376" name="__codelineno-0-376"></a>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">        Explodes MultiPolygon and GeometryCollection geometries into</span>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">        their parts *first*, then assigns ``x`` and ``y`` columns</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">        containing the coordinate sequences of each row. Because the</span>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">        explode step runs before :func:`get_coords`, no MultiPolygon</span>
-<a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">        survives into the coordinate-extraction phase. Mutates</span>
-<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">        ``self`` in place via pandas&#39; ``_update_inplace`` primitive</span>
-<a id="__codelineno-0-383" name="__codelineno-0-383"></a><span class="sd">        (avoids the subclass-re-init recursion trap).</span>
-<a id="__codelineno-0-384" name="__codelineno-0-384"></a>
-<a id="__codelineno-0-385" name="__codelineno-0-385"></a><span class="sd">        ARC-9: the previous implementation post-filtered rows whose</span>
-<a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="sd">        ``x`` column equalled the magic value ``-9999``. That sentinel</span>
-<a id="__codelineno-0-387" name="__codelineno-0-387"></a><span class="sd">        was replaced by making :func:`get_coords` raise on</span>
-<a id="__codelineno-0-388" name="__codelineno-0-388"></a><span class="sd">        MultiPolygon rows and relying on the up-front explode to</span>
-<a id="__codelineno-0-389" name="__codelineno-0-389"></a><span class="sd">        guarantee the raise is unreachable in practice.</span>
-<a id="__codelineno-0-390" name="__codelineno-0-390"></a>
-<a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-392" name="__codelineno-0-392"></a><span class="sd">            None: Mutation only.</span>
-<a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-394" name="__codelineno-0-394"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">explode_gdf</span><span class="p">(</span>
-<a id="__codelineno-0-395" name="__codelineno-0-395"></a>            <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">geometry</span><span class="o">=</span><span class="s2">&quot;multipolygon&quot;</span>
-<a id="__codelineno-0-396" name="__codelineno-0-396"></a>        <span class="p">)</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">explode_gdf</span><span class="p">(</span><span class="n">gdf</span><span class="p">,</span> <span class="n">geometry</span><span class="o">=</span><span class="s2">&quot;geometrycollection&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-398" name="__codelineno-0-398"></a>
-<a id="__codelineno-0-399" name="__codelineno-0-399"></a>        <span class="n">fc</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="p">(</span><span class="n">gdf</span><span class="p">)</span>
-<a id="__codelineno-0-400" name="__codelineno-0-400"></a>        <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
-<a id="__codelineno-0-401" name="__codelineno-0-401"></a>            <span class="n">_geom</span><span class="o">.</span><span class="n">get_coords</span><span class="p">,</span> <span class="n">geom_col</span><span class="o">=</span><span class="s2">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">coord_type</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
-<a id="__codelineno-0-402" name="__codelineno-0-402"></a>        <span class="p">)</span>
-<a id="__codelineno-0-403" name="__codelineno-0-403"></a>        <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a>            <span class="n">_geom</span><span class="o">.</span><span class="n">get_coords</span><span class="p">,</span> <span class="n">geom_col</span><span class="o">=</span><span class="s2">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">coord_type</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
-<a id="__codelineno-0-405" name="__codelineno-0-405"></a>        <span class="p">)</span>
-<a id="__codelineno-0-406" name="__codelineno-0-406"></a>        <span class="n">fc</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">        ARC-16: non-mutating replacement for the old ``xy()`` method</span>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">        (which has been deleted). Matches pandas / geopandas</span>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">        convention — data-transformation methods return a new object.</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">        The ``with_`` prefix follows the stdlib/pandas pattern for</span>
+<a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">        &quot;return a copy with this change applied&quot; (e.g.</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">        :meth:`pathlib.Path.with_suffix`).</span>
+<a id="__codelineno-0-383" name="__codelineno-0-383"></a>
+<a id="__codelineno-0-384" name="__codelineno-0-384"></a><span class="sd">        Explodes MultiPolygon and GeometryCollection geometries into</span>
+<a id="__codelineno-0-385" name="__codelineno-0-385"></a><span class="sd">        their parts first, then attaches ``x`` and ``y`` columns</span>
+<a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="sd">        containing the coordinate sequences of each row.</span>
+<a id="__codelineno-0-387" name="__codelineno-0-387"></a>
+<a id="__codelineno-0-388" name="__codelineno-0-388"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-389" name="__codelineno-0-389"></a><span class="sd">            FeatureCollection: A new FeatureCollection (``self`` is</span>
+<a id="__codelineno-0-390" name="__codelineno-0-390"></a><span class="sd">            not modified) with the original columns plus ``x`` and</span>
+<a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="sd">            ``y`` per-vertex coordinate lists.</span>
+<a id="__codelineno-0-392" name="__codelineno-0-392"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-393" name="__codelineno-0-393"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">explode_gdf</span><span class="p">(</span>
+<a id="__codelineno-0-394" name="__codelineno-0-394"></a>            <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">geometry</span><span class="o">=</span><span class="s2">&quot;multipolygon&quot;</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a>        <span class="p">)</span>
+<a id="__codelineno-0-396" name="__codelineno-0-396"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">explode_gdf</span><span class="p">(</span><span class="n">gdf</span><span class="p">,</span> <span class="n">geometry</span><span class="o">=</span><span class="s2">&quot;geometrycollection&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a>        <span class="n">fc</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="p">(</span><span class="n">gdf</span><span class="p">)</span>
+<a id="__codelineno-0-399" name="__codelineno-0-399"></a>        <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+<a id="__codelineno-0-400" name="__codelineno-0-400"></a>            <span class="n">_geom</span><span class="o">.</span><span class="n">get_coords</span><span class="p">,</span> <span class="n">geom_col</span><span class="o">=</span><span class="s2">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">coord_type</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+<a id="__codelineno-0-401" name="__codelineno-0-401"></a>        <span class="p">)</span>
+<a id="__codelineno-0-402" name="__codelineno-0-402"></a>        <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+<a id="__codelineno-0-403" name="__codelineno-0-403"></a>            <span class="n">_geom</span><span class="o">.</span><span class="n">get_coords</span><span class="p">,</span> <span class="n">geom_col</span><span class="o">=</span><span class="s2">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">coord_type</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+<a id="__codelineno-0-404" name="__codelineno-0-404"></a>        <span class="p">)</span>
+<a id="__codelineno-0-405" name="__codelineno-0-405"></a>        <span class="n">fc</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-406" name="__codelineno-0-406"></a>        <span class="k">return</span> <span class="n">fc</span>
 <a id="__codelineno-0-407" name="__codelineno-0-407"></a>
-<a id="__codelineno-0-408" name="__codelineno-0-408"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">fc</span><span class="p">)</span>
-<a id="__codelineno-0-409" name="__codelineno-0-409"></a>
-<a id="__codelineno-0-410" name="__codelineno-0-410"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
-<a id="__codelineno-0-411" name="__codelineno-0-411"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-412" name="__codelineno-0-412"></a>        <span class="n">column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-413" name="__codelineno-0-413"></a>        <span class="n">basemap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-414" name="__codelineno-0-414"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-415" name="__codelineno-0-415"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot features, optionally on a web-tile basemap.</span>
-<a id="__codelineno-0-417" name="__codelineno-0-417"></a>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">        Delegates to :meth:`geopandas.GeoDataFrame.plot` and, when</span>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">        ``basemap`` is truthy, adds an OSM (or named provider) tile</span>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">        layer underneath.</span>
-<a id="__codelineno-0-421" name="__codelineno-0-421"></a>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="sd">            ValueError: If ``basemap`` is requested but the FC has no CRS.</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-425" name="__codelineno-0-425"></a>        <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="n">column</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-426" name="__codelineno-0-426"></a>
-<a id="__codelineno-0-427" name="__codelineno-0-427"></a>        <span class="k">if</span> <span class="n">basemap</span><span class="p">:</span>
-<a id="__codelineno-0-428" name="__codelineno-0-428"></a>            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-429" name="__codelineno-0-429"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-430" name="__codelineno-0-430"></a>                    <span class="s2">&quot;FeatureCollection must have a CRS (epsg) to use basemap.&quot;</span>
-<a id="__codelineno-0-431" name="__codelineno-0-431"></a>                <span class="p">)</span>
-<a id="__codelineno-0-432" name="__codelineno-0-432"></a>            <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.basemap.basemap</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_basemap</span>
-<a id="__codelineno-0-433" name="__codelineno-0-433"></a>
-<a id="__codelineno-0-434" name="__codelineno-0-434"></a>            <span class="n">source</span> <span class="o">=</span> <span class="n">basemap</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">basemap</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
-<a id="__codelineno-0-435" name="__codelineno-0-435"></a>            <span class="n">add_basemap</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
+<a id="__codelineno-0-408" name="__codelineno-0-408"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
+<a id="__codelineno-0-409" name="__codelineno-0-409"></a>        <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-410" name="__codelineno-0-410"></a>        <span class="n">column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-411" name="__codelineno-0-411"></a>        <span class="n">basemap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-412" name="__codelineno-0-412"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-413" name="__codelineno-0-413"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot features, optionally on a web-tile basemap.</span>
+<a id="__codelineno-0-415" name="__codelineno-0-415"></a>
+<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">        Delegates to :meth:`geopandas.GeoDataFrame.plot` and, when</span>
+<a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">        ``basemap`` is truthy, adds an OSM (or named provider) tile</span>
+<a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">        layer underneath.</span>
+<a id="__codelineno-0-419" name="__codelineno-0-419"></a>
+<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">            ValueError: If ``basemap`` is requested but the FC has no CRS.</span>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-423" name="__codelineno-0-423"></a>        <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="n">column</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a>
+<a id="__codelineno-0-425" name="__codelineno-0-425"></a>        <span class="k">if</span> <span class="n">basemap</span><span class="p">:</span>
+<a id="__codelineno-0-426" name="__codelineno-0-426"></a>            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-427" name="__codelineno-0-427"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-428" name="__codelineno-0-428"></a>                    <span class="s2">&quot;FeatureCollection must have a CRS (epsg) to use basemap.&quot;</span>
+<a id="__codelineno-0-429" name="__codelineno-0-429"></a>                <span class="p">)</span>
+<a id="__codelineno-0-430" name="__codelineno-0-430"></a>            <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.basemap.basemap</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_basemap</span>
+<a id="__codelineno-0-431" name="__codelineno-0-431"></a>
+<a id="__codelineno-0-432" name="__codelineno-0-432"></a>            <span class="n">source</span> <span class="o">=</span> <span class="n">basemap</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">basemap</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+<a id="__codelineno-0-433" name="__codelineno-0-433"></a>            <span class="n">add_basemap</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
+<a id="__codelineno-0-434" name="__codelineno-0-434"></a>
+<a id="__codelineno-0-435" name="__codelineno-0-435"></a>        <span class="k">return</span> <span class="n">ax</span>
 <a id="__codelineno-0-436" name="__codelineno-0-436"></a>
-<a id="__codelineno-0-437" name="__codelineno-0-437"></a>        <span class="k">return</span> <span class="n">ax</span>
-<a id="__codelineno-0-438" name="__codelineno-0-438"></a>
-<a id="__codelineno-0-439" name="__codelineno-0-439"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">concatenate</span><span class="p">(</span>
-<a id="__codelineno-0-440" name="__codelineno-0-440"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">gdf</span><span class="p">:</span> <span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-441" name="__codelineno-0-441"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concatenate another GeoDataFrame onto this FeatureCollection.</span>
-<a id="__codelineno-0-443" name="__codelineno-0-443"></a>
-<a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="sd">        Under the GeoDataFrame-subclass design you can also use the</span>
-<a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="sd">        standard idiom ``pd.concat([fc, other])`` which returns a</span>
-<a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="sd">        ``FeatureCollection`` because of the ``_constructor`` hook.</span>
-<a id="__codelineno-0-447" name="__codelineno-0-447"></a>
-<a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">            gdf (GeoDataFrame): The rows to append.</span>
-<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">            inplace (bool): If ``True``, replace ``self``&#39;s rows with</span>
-<a id="__codelineno-0-451" name="__codelineno-0-451"></a><span class="sd">                the concatenation and return ``None``. Default ``False``.</span>
-<a id="__codelineno-0-452" name="__codelineno-0-452"></a>
-<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">            GeoDataFrame | None: The concatenated result, or ``None``</span>
-<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">            when ``inplace=True``.</span>
+<a id="__codelineno-0-437" name="__codelineno-0-437"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">concat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">GeoDataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureCollection</span><span class="p">:</span>
+<a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concatenate another GeoDataFrame onto this FeatureCollection.</span>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a>
+<a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="sd">        ARC-16: mirrors :func:`pandas.concat` — returns a new</span>
+<a id="__codelineno-0-441" name="__codelineno-0-441"></a><span class="sd">        ``FeatureCollection`` and never mutates ``self``. No</span>
+<a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="sd">        ``inplace`` kwarg (pandas&#39; ``pd.concat`` has never had one;</span>
+<a id="__codelineno-0-443" name="__codelineno-0-443"></a><span class="sd">        follow the convention).</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a>
+<a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="sd">        Equivalent to ``pd.concat([fc, other])`` which also works</span>
+<a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="sd">        directly and returns a ``FeatureCollection`` via the</span>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a><span class="sd">        ``_constructor`` hook (ARC-1a).</span>
+<a id="__codelineno-0-448" name="__codelineno-0-448"></a>
+<a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">            other (GeoDataFrame): The rows to append.</span>
+<a id="__codelineno-0-451" name="__codelineno-0-451"></a>
+<a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">            FeatureCollection: A new FC containing ``self``&#39;s rows</span>
+<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">            followed by ``other``&#39;s rows, with ``self``&#39;s CRS and a</span>
+<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">            freshly-reset index.</span>
 <a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-457" name="__codelineno-0-457"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <a id="__codelineno-0-458" name="__codelineno-0-458"></a>
-<a id="__codelineno-0-459" name="__codelineno-0-459"></a>        <span class="n">new_gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="p">,</span> <span class="n">gdf</span><span class="p">]))</span>
-<a id="__codelineno-0-460" name="__codelineno-0-460"></a>        <span class="n">new_gdf</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">new_gdf</span><span class="p">)))</span>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a>        <span class="n">new_gdf</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crs</span>
-<a id="__codelineno-0-462" name="__codelineno-0-462"></a>        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
-<a id="__codelineno-0-463" name="__codelineno-0-463"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">FeatureCollection</span><span class="p">(</span><span class="n">new_gdf</span><span class="p">))</span>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a>            <span class="k">return</span> <span class="kc">None</span>
-<a id="__codelineno-0-465" name="__codelineno-0-465"></a>        <span class="k">return</span> <span class="n">new_gdf</span>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a>        <span class="n">combined</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">]))</span>
+<a id="__codelineno-0-460" name="__codelineno-0-460"></a>        <span class="n">combined</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">combined</span><span class="p">)))</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a>        <span class="n">combined</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crs</span>
+<a id="__codelineno-0-462" name="__codelineno-0-462"></a>        <span class="k">return</span> <span class="n">FeatureCollection</span><span class="p">(</span><span class="n">combined</span><span class="p">)</span>
+<a id="__codelineno-0-463" name="__codelineno-0-463"></a>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">with_centroid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureCollection</span><span class="p">:</span>
+<a id="__codelineno-0-465" name="__codelineno-0-465"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a new FC with per-feature center-point columns attached.</span>
 <a id="__codelineno-0-466" name="__codelineno-0-466"></a>
-<a id="__codelineno-0-467" name="__codelineno-0-467"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">concate</span><span class="p">(</span>
-<a id="__codelineno-0-468" name="__codelineno-0-468"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">gdf</span><span class="p">:</span> <span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Deprecated alias for :meth:`concatenate` (ARC-11).</span>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="sd">        ARC-16: non-mutating replacement for the old ``center_point()``</span>
+<a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">        method (which has been deleted). The ``with_`` prefix mirrors</span>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">        stdlib / pandas conventions for &quot;return a copy with this</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">        change applied&quot;.</span>
 <a id="__codelineno-0-471" name="__codelineno-0-471"></a>
-<a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="sd">        ``concate`` was a misspelling. Use :meth:`concatenate` directly.</span>
-<a id="__codelineno-0-473" name="__codelineno-0-473"></a><span class="sd">        This shim will be removed in a future release.</span>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-475" name="__codelineno-0-475"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_w</span>
-<a id="__codelineno-0-476" name="__codelineno-0-476"></a>
-<a id="__codelineno-0-477" name="__codelineno-0-477"></a>        <span class="n">_w</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-<a id="__codelineno-0-478" name="__codelineno-0-478"></a>            <span class="s2">&quot;FeatureCollection.concate is deprecated (misspelling) — &quot;</span>
-<a id="__codelineno-0-479" name="__codelineno-0-479"></a>            <span class="s2">&quot;use FeatureCollection.concatenate instead (ARC-11).&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-480" name="__codelineno-0-480"></a>            <span class="ne">DeprecationWarning</span><span class="p">,</span>
-<a id="__codelineno-0-481" name="__codelineno-0-481"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-0-482" name="__codelineno-0-482"></a>        <span class="p">)</span>
-<a id="__codelineno-0-483" name="__codelineno-0-483"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">gdf</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
-<a id="__codelineno-0-484" name="__codelineno-0-484"></a>
-<a id="__codelineno-0-485" name="__codelineno-0-485"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">center_point</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeoDataFrame</span><span class="p">:</span>
-<a id="__codelineno-0-486" name="__codelineno-0-486"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute per-feature centers as extra columns on ``self``.</span>
-<a id="__codelineno-0-487" name="__codelineno-0-487"></a>
-<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">        Calls :meth:`xy` first, then adds ``avg_x``, ``avg_y`` and</span>
-<a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">        ``center_point`` columns. Mutates and returns ``self``.</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">xy</span><span class="p">()</span>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a>        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row_i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;avg_x&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">row_i</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;avg_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">row_i</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span>
-<a id="__codelineno-0-495" name="__codelineno-0-495"></a>
-<a id="__codelineno-0-496" name="__codelineno-0-496"></a>        <span class="n">coords_list</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s2">&quot;avg_x&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="bp">self</span><span class="p">[</span><span class="s2">&quot;avg_y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
-<a id="__codelineno-0-497" name="__codelineno-0-497"></a>        <span class="bp">self</span><span class="p">[</span><span class="s2">&quot;center_point&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">create_points</span><span class="p">(</span><span class="n">coords_list</span><span class="p">)</span>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a>        <span class="k">return</span> <span class="bp">self</span>
+<a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="sd">        Computes average x/y per feature (after</span>
+<a id="__codelineno-0-473" name="__codelineno-0-473"></a><span class="sd">        :meth:`with_coordinates`) and attaches three columns:</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">        ``avg_x``, ``avg_y`` and ``center_point`` (shapely ``Point``).</span>
+<a id="__codelineno-0-475" name="__codelineno-0-475"></a>
+<a id="__codelineno-0-476" name="__codelineno-0-476"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="sd">            FeatureCollection: A new FeatureCollection (``self`` is</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">            not modified) with ``x``, ``y``, ``avg_x``, ``avg_y``,</span>
+<a id="__codelineno-0-479" name="__codelineno-0-479"></a><span class="sd">            ``center_point`` columns added.</span>
+<a id="__codelineno-0-480" name="__codelineno-0-480"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-481" name="__codelineno-0-481"></a>        <span class="n">fc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_coordinates</span><span class="p">()</span>
+<a id="__codelineno-0-482" name="__codelineno-0-482"></a>        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row_i</span> <span class="ow">in</span> <span class="n">fc</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+<a id="__codelineno-0-483" name="__codelineno-0-483"></a>            <span class="n">fc</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;avg_x&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">row_i</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span>
+<a id="__codelineno-0-484" name="__codelineno-0-484"></a>            <span class="n">fc</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;avg_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">row_i</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span>
+<a id="__codelineno-0-485" name="__codelineno-0-485"></a>
+<a id="__codelineno-0-486" name="__codelineno-0-486"></a>        <span class="n">coords_list</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="n">fc</span><span class="p">[</span><span class="s2">&quot;avg_x&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;avg_y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+<a id="__codelineno-0-487" name="__codelineno-0-487"></a>        <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;center_point&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">create_points</span><span class="p">(</span><span class="n">coords_list</span><span class="p">)</span>
+<a id="__codelineno-0-488" name="__codelineno-0-488"></a>        <span class="k">return</span> <span class="n">fc</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -5436,27 +5394,24 @@ and wraps the result as a <code>FeatureCollection</code>.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.feature.FeatureCollection.xy" class="doc doc-heading"><a href="#pyramids.feature.FeatureCollection.xy" class="toclink">
-            <code class="highlight language-python"><span class="n">xy</span><span class="p">()</span></code>
+<h4 id="pyramids.feature.FeatureCollection.with_coordinates" class="doc doc-heading"><a href="#pyramids.feature.FeatureCollection.with_coordinates" class="toclink">
+            <code class="highlight language-python"><span class="n">with_coordinates</span><span class="p">()</span></code>
 
-</a><a href="#pyramids.feature.FeatureCollection.xy" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.feature.FeatureCollection.with_coordinates" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
-        <p>Add per-vertex <code>x</code> and <code>y</code> columns to this FeatureCollection.</p>
+        <p>Return a new FeatureCollection with per-vertex <code>x</code> and <code>y</code> columns.</p>
+<p>ARC-16: non-mutating replacement for the old <code>xy()</code> method
+(which has been deleted). Matches pandas / geopandas
+convention — data-transformation methods return a new object.
+The <code>with_</code> prefix follows the stdlib/pandas pattern for
+"return a copy with this change applied" (e.g.
+:meth:<code>pathlib.Path.with_suffix</code>).</p>
 <p>Explodes MultiPolygon and GeometryCollection geometries into
-their parts <em>first</em>, then assigns <code>x</code> and <code>y</code> columns
-containing the coordinate sequences of each row. Because the
-explode step runs before :func:<code>get_coords</code>, no MultiPolygon
-survives into the coordinate-extraction phase. Mutates
-<code>self</code> in place via pandas' <code>_update_inplace</code> primitive
-(avoids the subclass-re-init recursion trap).</p>
-<p>ARC-9: the previous implementation post-filtered rows whose
-<code>x</code> column equalled the magic value <code>-9999</code>. That sentinel
-was replaced by making :func:<code>get_coords</code> raise on
-MultiPolygon rows and relying on the up-front explode to
-guarantee the raise is unreachable in practice.</p>
+their parts first, then attaches <code>x</code> and <code>y</code> columns
+containing the coordinate sequences of each row.</p>
 
 
     <p><span class="doc-section-title">Returns:</span></p>
@@ -5469,12 +5424,32 @@ guarantee the raise is unreachable in practice.</p>
       </thead>
       <tbody>
           <tr class="doc-section-item">
-<td><code>None</code></td>            <td>
-                  <code>None</code>
+<td><code>FeatureCollection</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt; (&lt;code&gt;pyramids.feature.collection.FeatureCollection&lt;/code&gt;)" href="#pyramids.feature.FeatureCollection">FeatureCollection</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Mutation only.</p>
+                <p>A new FeatureCollection (<code>self</code> is</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt; (&lt;code&gt;pyramids.feature.collection.FeatureCollection&lt;/code&gt;)" href="#pyramids.feature.FeatureCollection">FeatureCollection</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>not modified) with the original columns plus <code>x</code> and</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt; (&lt;code&gt;pyramids.feature.collection.FeatureCollection&lt;/code&gt;)" href="#pyramids.feature.FeatureCollection">FeatureCollection</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>y</code> per-vertex coordinate lists.</p>
               </div>
             </td>
           </tr>
@@ -5516,43 +5491,39 @@ guarantee the raise is unreachable in practice.</p>
 <span class="normal"><a href="#__codelineno-0-403">403</a></span>
 <span class="normal"><a href="#__codelineno-0-404">404</a></span>
 <span class="normal"><a href="#__codelineno-0-405">405</a></span>
-<span class="normal"><a href="#__codelineno-0-406">406</a></span>
-<span class="normal"><a href="#__codelineno-0-407">407</a></span>
-<span class="normal"><a href="#__codelineno-0-408">408</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="k">def</span><span class="w"> </span><span class="nf">xy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add per-vertex ``x`` and ``y`` columns to this FeatureCollection.</span>
+<span class="normal"><a href="#__codelineno-0-406">406</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="k">def</span><span class="w"> </span><span class="nf">with_coordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureCollection</span><span class="p">:</span>
+<a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a new FeatureCollection with per-vertex ``x`` and ``y`` columns.</span>
 <a id="__codelineno-0-376" name="__codelineno-0-376"></a>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">    Explodes MultiPolygon and GeometryCollection geometries into</span>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">    their parts *first*, then assigns ``x`` and ``y`` columns</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">    containing the coordinate sequences of each row. Because the</span>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">    explode step runs before :func:`get_coords`, no MultiPolygon</span>
-<a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">    survives into the coordinate-extraction phase. Mutates</span>
-<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">    ``self`` in place via pandas&#39; ``_update_inplace`` primitive</span>
-<a id="__codelineno-0-383" name="__codelineno-0-383"></a><span class="sd">    (avoids the subclass-re-init recursion trap).</span>
-<a id="__codelineno-0-384" name="__codelineno-0-384"></a>
-<a id="__codelineno-0-385" name="__codelineno-0-385"></a><span class="sd">    ARC-9: the previous implementation post-filtered rows whose</span>
-<a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="sd">    ``x`` column equalled the magic value ``-9999``. That sentinel</span>
-<a id="__codelineno-0-387" name="__codelineno-0-387"></a><span class="sd">    was replaced by making :func:`get_coords` raise on</span>
-<a id="__codelineno-0-388" name="__codelineno-0-388"></a><span class="sd">    MultiPolygon rows and relying on the up-front explode to</span>
-<a id="__codelineno-0-389" name="__codelineno-0-389"></a><span class="sd">    guarantee the raise is unreachable in practice.</span>
-<a id="__codelineno-0-390" name="__codelineno-0-390"></a>
-<a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-392" name="__codelineno-0-392"></a><span class="sd">        None: Mutation only.</span>
-<a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-394" name="__codelineno-0-394"></a>    <span class="n">gdf</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">explode_gdf</span><span class="p">(</span>
-<a id="__codelineno-0-395" name="__codelineno-0-395"></a>        <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">geometry</span><span class="o">=</span><span class="s2">&quot;multipolygon&quot;</span>
-<a id="__codelineno-0-396" name="__codelineno-0-396"></a>    <span class="p">)</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a>    <span class="n">gdf</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">explode_gdf</span><span class="p">(</span><span class="n">gdf</span><span class="p">,</span> <span class="n">geometry</span><span class="o">=</span><span class="s2">&quot;geometrycollection&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-398" name="__codelineno-0-398"></a>
-<a id="__codelineno-0-399" name="__codelineno-0-399"></a>    <span class="n">fc</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="p">(</span><span class="n">gdf</span><span class="p">)</span>
-<a id="__codelineno-0-400" name="__codelineno-0-400"></a>    <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
-<a id="__codelineno-0-401" name="__codelineno-0-401"></a>        <span class="n">_geom</span><span class="o">.</span><span class="n">get_coords</span><span class="p">,</span> <span class="n">geom_col</span><span class="o">=</span><span class="s2">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">coord_type</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
-<a id="__codelineno-0-402" name="__codelineno-0-402"></a>    <span class="p">)</span>
-<a id="__codelineno-0-403" name="__codelineno-0-403"></a>    <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a>        <span class="n">_geom</span><span class="o">.</span><span class="n">get_coords</span><span class="p">,</span> <span class="n">geom_col</span><span class="o">=</span><span class="s2">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">coord_type</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
-<a id="__codelineno-0-405" name="__codelineno-0-405"></a>    <span class="p">)</span>
-<a id="__codelineno-0-406" name="__codelineno-0-406"></a>    <span class="n">fc</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-0-407" name="__codelineno-0-407"></a>
-<a id="__codelineno-0-408" name="__codelineno-0-408"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">fc</span><span class="p">)</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">    ARC-16: non-mutating replacement for the old ``xy()`` method</span>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">    (which has been deleted). Matches pandas / geopandas</span>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">    convention — data-transformation methods return a new object.</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">    The ``with_`` prefix follows the stdlib/pandas pattern for</span>
+<a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">    &quot;return a copy with this change applied&quot; (e.g.</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">    :meth:`pathlib.Path.with_suffix`).</span>
+<a id="__codelineno-0-383" name="__codelineno-0-383"></a>
+<a id="__codelineno-0-384" name="__codelineno-0-384"></a><span class="sd">    Explodes MultiPolygon and GeometryCollection geometries into</span>
+<a id="__codelineno-0-385" name="__codelineno-0-385"></a><span class="sd">    their parts first, then attaches ``x`` and ``y`` columns</span>
+<a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="sd">    containing the coordinate sequences of each row.</span>
+<a id="__codelineno-0-387" name="__codelineno-0-387"></a>
+<a id="__codelineno-0-388" name="__codelineno-0-388"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-389" name="__codelineno-0-389"></a><span class="sd">        FeatureCollection: A new FeatureCollection (``self`` is</span>
+<a id="__codelineno-0-390" name="__codelineno-0-390"></a><span class="sd">        not modified) with the original columns plus ``x`` and</span>
+<a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="sd">        ``y`` per-vertex coordinate lists.</span>
+<a id="__codelineno-0-392" name="__codelineno-0-392"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-393" name="__codelineno-0-393"></a>    <span class="n">gdf</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">explode_gdf</span><span class="p">(</span>
+<a id="__codelineno-0-394" name="__codelineno-0-394"></a>        <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">geometry</span><span class="o">=</span><span class="s2">&quot;multipolygon&quot;</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a>    <span class="p">)</span>
+<a id="__codelineno-0-396" name="__codelineno-0-396"></a>    <span class="n">gdf</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">explode_gdf</span><span class="p">(</span><span class="n">gdf</span><span class="p">,</span> <span class="n">geometry</span><span class="o">=</span><span class="s2">&quot;geometrycollection&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a>    <span class="n">fc</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="p">(</span><span class="n">gdf</span><span class="p">)</span>
+<a id="__codelineno-0-399" name="__codelineno-0-399"></a>    <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+<a id="__codelineno-0-400" name="__codelineno-0-400"></a>        <span class="n">_geom</span><span class="o">.</span><span class="n">get_coords</span><span class="p">,</span> <span class="n">geom_col</span><span class="o">=</span><span class="s2">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">coord_type</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+<a id="__codelineno-0-401" name="__codelineno-0-401"></a>    <span class="p">)</span>
+<a id="__codelineno-0-402" name="__codelineno-0-402"></a>    <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+<a id="__codelineno-0-403" name="__codelineno-0-403"></a>        <span class="n">_geom</span><span class="o">.</span><span class="n">get_coords</span><span class="p">,</span> <span class="n">geom_col</span><span class="o">=</span><span class="s2">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">coord_type</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+<a id="__codelineno-0-404" name="__codelineno-0-404"></a>    <span class="p">)</span>
+<a id="__codelineno-0-405" name="__codelineno-0-405"></a>    <span class="n">fc</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-406" name="__codelineno-0-406"></a>    <span class="k">return</span> <span class="n">fc</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5601,7 +5572,9 @@ layer underneath.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/feature/collection.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-410">410</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-408">408</a></span>
+<span class="normal"><a href="#__codelineno-0-409">409</a></span>
+<span class="normal"><a href="#__codelineno-0-410">410</a></span>
 <span class="normal"><a href="#__codelineno-0-411">411</a></span>
 <span class="normal"><a href="#__codelineno-0-412">412</a></span>
 <span class="normal"><a href="#__codelineno-0-413">413</a></span>
@@ -5626,36 +5599,34 @@ layer underneath.</p>
 <span class="normal"><a href="#__codelineno-0-432">432</a></span>
 <span class="normal"><a href="#__codelineno-0-433">433</a></span>
 <span class="normal"><a href="#__codelineno-0-434">434</a></span>
-<span class="normal"><a href="#__codelineno-0-435">435</a></span>
-<span class="normal"><a href="#__codelineno-0-436">436</a></span>
-<span class="normal"><a href="#__codelineno-0-437">437</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
-<a id="__codelineno-0-411" name="__codelineno-0-411"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-412" name="__codelineno-0-412"></a>    <span class="n">column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-413" name="__codelineno-0-413"></a>    <span class="n">basemap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-414" name="__codelineno-0-414"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot features, optionally on a web-tile basemap.</span>
-<a id="__codelineno-0-417" name="__codelineno-0-417"></a>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">    Delegates to :meth:`geopandas.GeoDataFrame.plot` and, when</span>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">    ``basemap`` is truthy, adds an OSM (or named provider) tile</span>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">    layer underneath.</span>
-<a id="__codelineno-0-421" name="__codelineno-0-421"></a>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="sd">        ValueError: If ``basemap`` is requested but the FC has no CRS.</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="n">column</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-426" name="__codelineno-0-426"></a>
-<a id="__codelineno-0-427" name="__codelineno-0-427"></a>    <span class="k">if</span> <span class="n">basemap</span><span class="p">:</span>
-<a id="__codelineno-0-428" name="__codelineno-0-428"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-429" name="__codelineno-0-429"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-430" name="__codelineno-0-430"></a>                <span class="s2">&quot;FeatureCollection must have a CRS (epsg) to use basemap.&quot;</span>
-<a id="__codelineno-0-431" name="__codelineno-0-431"></a>            <span class="p">)</span>
-<a id="__codelineno-0-432" name="__codelineno-0-432"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.basemap.basemap</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_basemap</span>
-<a id="__codelineno-0-433" name="__codelineno-0-433"></a>
-<a id="__codelineno-0-434" name="__codelineno-0-434"></a>        <span class="n">source</span> <span class="o">=</span> <span class="n">basemap</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">basemap</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
-<a id="__codelineno-0-435" name="__codelineno-0-435"></a>        <span class="n">add_basemap</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
-<a id="__codelineno-0-436" name="__codelineno-0-436"></a>
-<a id="__codelineno-0-437" name="__codelineno-0-437"></a>    <span class="k">return</span> <span class="n">ax</span>
+<span class="normal"><a href="#__codelineno-0-435">435</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
+<a id="__codelineno-0-409" name="__codelineno-0-409"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-410" name="__codelineno-0-410"></a>    <span class="n">column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-411" name="__codelineno-0-411"></a>    <span class="n">basemap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-412" name="__codelineno-0-412"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot features, optionally on a web-tile basemap.</span>
+<a id="__codelineno-0-415" name="__codelineno-0-415"></a>
+<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">    Delegates to :meth:`geopandas.GeoDataFrame.plot` and, when</span>
+<a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">    ``basemap`` is truthy, adds an OSM (or named provider) tile</span>
+<a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">    layer underneath.</span>
+<a id="__codelineno-0-419" name="__codelineno-0-419"></a>
+<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">        ValueError: If ``basemap`` is requested but the FC has no CRS.</span>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="n">column</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a>
+<a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="k">if</span> <span class="n">basemap</span><span class="p">:</span>
+<a id="__codelineno-0-426" name="__codelineno-0-426"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-427" name="__codelineno-0-427"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-428" name="__codelineno-0-428"></a>                <span class="s2">&quot;FeatureCollection must have a CRS (epsg) to use basemap.&quot;</span>
+<a id="__codelineno-0-429" name="__codelineno-0-429"></a>            <span class="p">)</span>
+<a id="__codelineno-0-430" name="__codelineno-0-430"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.basemap.basemap</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_basemap</span>
+<a id="__codelineno-0-431" name="__codelineno-0-431"></a>
+<a id="__codelineno-0-432" name="__codelineno-0-432"></a>        <span class="n">source</span> <span class="o">=</span> <span class="n">basemap</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">basemap</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+<a id="__codelineno-0-433" name="__codelineno-0-433"></a>        <span class="n">add_basemap</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
+<a id="__codelineno-0-434" name="__codelineno-0-434"></a>
+<a id="__codelineno-0-435" name="__codelineno-0-435"></a>    <span class="k">return</span> <span class="n">ax</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5665,18 +5636,22 @@ layer underneath.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.feature.FeatureCollection.concatenate" class="doc doc-heading"><a href="#pyramids.feature.FeatureCollection.concatenate" class="toclink">
-            <code class="highlight language-python"><span class="n">concatenate</span><span class="p">(</span><span class="n">gdf</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+<h4 id="pyramids.feature.FeatureCollection.concat" class="doc doc-heading"><a href="#pyramids.feature.FeatureCollection.concat" class="toclink">
+            <code class="highlight language-python"><span class="n">concat</span><span class="p">(</span><span class="n">other</span><span class="p">)</span></code>
 
-</a><a href="#pyramids.feature.FeatureCollection.concatenate" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.feature.FeatureCollection.concat" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
         <p>Concatenate another GeoDataFrame onto this FeatureCollection.</p>
-<p>Under the GeoDataFrame-subclass design you can also use the
-standard idiom <code>pd.concat([fc, other])</code> which returns a
-<code>FeatureCollection</code> because of the <code>_constructor</code> hook.</p>
+<p>ARC-16: mirrors :func:<code>pandas.concat</code> — returns a new
+<code>FeatureCollection</code> and never mutates <code>self</code>. No
+<code>inplace</code> kwarg (pandas' <code>pd.concat</code> has never had one;
+follow the convention).</p>
+<p>Equivalent to <code>pd.concat([fc, other])</code> which also works
+directly and returns a <code>FeatureCollection</code> via the
+<code>_constructor</code> hook (ARC-1a).</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -5692,7 +5667,7 @@ standard idiom <code>pd.concat([fc, other])</code> which returns a
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>gdf</code>
+                <code>other</code>
             </td>
             <td>
                   <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span></code>
@@ -5706,23 +5681,6 @@ standard idiom <code>pd.concat([fc, other])</code> which returns a
                 <em>required</em>
             </td>
           </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>inplace</code>
-            </td>
-            <td>
-                  <code><span title="bool">bool</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>If <code>True</code>, replace <code>self</code>'s rows with
-the concatenation and return <code>None</code>. Default <code>False</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>False</code>
-            </td>
-          </tr>
       </tbody>
     </table>
 
@@ -5731,28 +5689,38 @@ the concatenation and return <code>None</code>. Default <code>False</code>.</p>
     <table>
       <thead>
         <tr>
-          <th>Type</th>
+<th>Name</th>          <th>Type</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td>
-                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span> | None</code>
+<td><code>FeatureCollection</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt; (&lt;code&gt;pyramids.feature.collection.FeatureCollection&lt;/code&gt;)" href="#pyramids.feature.FeatureCollection">FeatureCollection</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>GeoDataFrame | None: The concatenated result, or <code>None</code></p>
+                <p>A new FC containing <code>self</code>'s rows</p>
               </div>
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td>
-                  <code><span title="geopandas.GeoDataFrame">GeoDataFrame</span> | None</code>
+<td></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt; (&lt;code&gt;pyramids.feature.collection.FeatureCollection&lt;/code&gt;)" href="#pyramids.feature.FeatureCollection">FeatureCollection</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>when <code>inplace=True</code>.</p>
+                <p>followed by <code>other</code>'s rows, with <code>self</code>'s CRS and a</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt; (&lt;code&gt;pyramids.feature.collection.FeatureCollection&lt;/code&gt;)" href="#pyramids.feature.FeatureCollection">FeatureCollection</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>freshly-reset index.</p>
               </div>
             </td>
           </tr>
@@ -5762,7 +5730,9 @@ the concatenation and return <code>None</code>. Default <code>False</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/feature/collection.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-439">439</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-437">437</a></span>
+<span class="normal"><a href="#__codelineno-0-438">438</a></span>
+<span class="normal"><a href="#__codelineno-0-439">439</a></span>
 <span class="normal"><a href="#__codelineno-0-440">440</a></span>
 <span class="normal"><a href="#__codelineno-0-441">441</a></span>
 <span class="normal"><a href="#__codelineno-0-442">442</a></span>
@@ -5785,36 +5755,32 @@ the concatenation and return <code>None</code>. Default <code>False</code>.</p>
 <span class="normal"><a href="#__codelineno-0-459">459</a></span>
 <span class="normal"><a href="#__codelineno-0-460">460</a></span>
 <span class="normal"><a href="#__codelineno-0-461">461</a></span>
-<span class="normal"><a href="#__codelineno-0-462">462</a></span>
-<span class="normal"><a href="#__codelineno-0-463">463</a></span>
-<span class="normal"><a href="#__codelineno-0-464">464</a></span>
-<span class="normal"><a href="#__codelineno-0-465">465</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-439" name="__codelineno-0-439"></a><span class="k">def</span><span class="w"> </span><span class="nf">concatenate</span><span class="p">(</span>
-<a id="__codelineno-0-440" name="__codelineno-0-440"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">gdf</span><span class="p">:</span> <span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-441" name="__codelineno-0-441"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Concatenate another GeoDataFrame onto this FeatureCollection.</span>
-<a id="__codelineno-0-443" name="__codelineno-0-443"></a>
-<a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="sd">    Under the GeoDataFrame-subclass design you can also use the</span>
-<a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="sd">    standard idiom ``pd.concat([fc, other])`` which returns a</span>
-<a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="sd">    ``FeatureCollection`` because of the ``_constructor`` hook.</span>
-<a id="__codelineno-0-447" name="__codelineno-0-447"></a>
-<a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">        gdf (GeoDataFrame): The rows to append.</span>
-<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">        inplace (bool): If ``True``, replace ``self``&#39;s rows with</span>
-<a id="__codelineno-0-451" name="__codelineno-0-451"></a><span class="sd">            the concatenation and return ``None``. Default ``False``.</span>
-<a id="__codelineno-0-452" name="__codelineno-0-452"></a>
-<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">        GeoDataFrame | None: The concatenated result, or ``None``</span>
-<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">        when ``inplace=True``.</span>
+<span class="normal"><a href="#__codelineno-0-462">462</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="k">def</span><span class="w"> </span><span class="nf">concat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">GeoDataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureCollection</span><span class="p">:</span>
+<a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Concatenate another GeoDataFrame onto this FeatureCollection.</span>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a>
+<a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="sd">    ARC-16: mirrors :func:`pandas.concat` — returns a new</span>
+<a id="__codelineno-0-441" name="__codelineno-0-441"></a><span class="sd">    ``FeatureCollection`` and never mutates ``self``. No</span>
+<a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="sd">    ``inplace`` kwarg (pandas&#39; ``pd.concat`` has never had one;</span>
+<a id="__codelineno-0-443" name="__codelineno-0-443"></a><span class="sd">    follow the convention).</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a>
+<a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="sd">    Equivalent to ``pd.concat([fc, other])`` which also works</span>
+<a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="sd">    directly and returns a ``FeatureCollection`` via the</span>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a><span class="sd">    ``_constructor`` hook (ARC-1a).</span>
+<a id="__codelineno-0-448" name="__codelineno-0-448"></a>
+<a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">        other (GeoDataFrame): The rows to append.</span>
+<a id="__codelineno-0-451" name="__codelineno-0-451"></a>
+<a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">        FeatureCollection: A new FC containing ``self``&#39;s rows</span>
+<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">        followed by ``other``&#39;s rows, with ``self``&#39;s CRS and a</span>
+<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">        freshly-reset index.</span>
 <a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-457" name="__codelineno-0-457"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <a id="__codelineno-0-458" name="__codelineno-0-458"></a>
-<a id="__codelineno-0-459" name="__codelineno-0-459"></a>    <span class="n">new_gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="p">,</span> <span class="n">gdf</span><span class="p">]))</span>
-<a id="__codelineno-0-460" name="__codelineno-0-460"></a>    <span class="n">new_gdf</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">new_gdf</span><span class="p">)))</span>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a>    <span class="n">new_gdf</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crs</span>
-<a id="__codelineno-0-462" name="__codelineno-0-462"></a>    <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
-<a id="__codelineno-0-463" name="__codelineno-0-463"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="n">FeatureCollection</span><span class="p">(</span><span class="n">new_gdf</span><span class="p">))</span>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a>        <span class="k">return</span> <span class="kc">None</span>
-<a id="__codelineno-0-465" name="__codelineno-0-465"></a>    <span class="k">return</span> <span class="n">new_gdf</span>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a>    <span class="n">combined</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">]))</span>
+<a id="__codelineno-0-460" name="__codelineno-0-460"></a>    <span class="n">combined</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">combined</span><span class="p">)))</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a>    <span class="n">combined</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crs</span>
+<a id="__codelineno-0-462" name="__codelineno-0-462"></a>    <span class="k">return</span> <span class="n">FeatureCollection</span><span class="p">(</span><span class="n">combined</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5824,22 +5790,73 @@ the concatenation and return <code>None</code>. Default <code>False</code>.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="pyramids.feature.FeatureCollection.concate" class="doc doc-heading"><a href="#pyramids.feature.FeatureCollection.concate" class="toclink">
-            <code class="highlight language-python"><span class="n">concate</span><span class="p">(</span><span class="n">gdf</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+<h4 id="pyramids.feature.FeatureCollection.with_centroid" class="doc doc-heading"><a href="#pyramids.feature.FeatureCollection.with_centroid" class="toclink">
+            <code class="highlight language-python"><span class="n">with_centroid</span><span class="p">()</span></code>
 
-</a><a href="#pyramids.feature.FeatureCollection.concate" class="headerlink" title="Permanent link">#</a></h4>
+</a><a href="#pyramids.feature.FeatureCollection.with_centroid" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
-        <p>Deprecated alias for :meth:<code>concatenate</code> (ARC-11).</p>
-<p><code>concate</code> was a misspelling. Use :meth:<code>concatenate</code> directly.
-This shim will be removed in a future release.</p>
+        <p>Return a new FC with per-feature center-point columns attached.</p>
+<p>ARC-16: non-mutating replacement for the old <code>center_point()</code>
+method (which has been deleted). The <code>with_</code> prefix mirrors
+stdlib / pandas conventions for "return a copy with this
+change applied".</p>
+<p>Computes average x/y per feature (after
+:meth:<code>with_coordinates</code>) and attaches three columns:
+<code>avg_x</code>, <code>avg_y</code> and <code>center_point</code> (shapely <code>Point</code>).</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>FeatureCollection</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt; (&lt;code&gt;pyramids.feature.collection.FeatureCollection&lt;/code&gt;)" href="#pyramids.feature.FeatureCollection">FeatureCollection</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A new FeatureCollection (<code>self</code> is</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt; (&lt;code&gt;pyramids.feature.collection.FeatureCollection&lt;/code&gt;)" href="#pyramids.feature.FeatureCollection">FeatureCollection</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>not modified) with <code>x</code>, <code>y</code>, <code>avg_x</code>, <code>avg_y</code>,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.feature.FeatureCollection&lt;/code&gt; (&lt;code&gt;pyramids.feature.collection.FeatureCollection&lt;/code&gt;)" href="#pyramids.feature.FeatureCollection">FeatureCollection</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>center_point</code> columns added.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/feature/collection.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-467">467</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-464">464</a></span>
+<span class="normal"><a href="#__codelineno-0-465">465</a></span>
+<span class="normal"><a href="#__codelineno-0-466">466</a></span>
+<span class="normal"><a href="#__codelineno-0-467">467</a></span>
 <span class="normal"><a href="#__codelineno-0-468">468</a></span>
 <span class="normal"><a href="#__codelineno-0-469">469</a></span>
 <span class="normal"><a href="#__codelineno-0-470">470</a></span>
@@ -5855,74 +5872,36 @@ This shim will be removed in a future release.</p>
 <span class="normal"><a href="#__codelineno-0-480">480</a></span>
 <span class="normal"><a href="#__codelineno-0-481">481</a></span>
 <span class="normal"><a href="#__codelineno-0-482">482</a></span>
-<span class="normal"><a href="#__codelineno-0-483">483</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="k">def</span><span class="w"> </span><span class="nf">concate</span><span class="p">(</span>
-<a id="__codelineno-0-468" name="__codelineno-0-468"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">gdf</span><span class="p">:</span> <span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeoDataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated alias for :meth:`concatenate` (ARC-11).</span>
-<a id="__codelineno-0-471" name="__codelineno-0-471"></a>
-<a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="sd">    ``concate`` was a misspelling. Use :meth:`concatenate` directly.</span>
-<a id="__codelineno-0-473" name="__codelineno-0-473"></a><span class="sd">    This shim will be removed in a future release.</span>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-475" name="__codelineno-0-475"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_w</span>
-<a id="__codelineno-0-476" name="__codelineno-0-476"></a>
-<a id="__codelineno-0-477" name="__codelineno-0-477"></a>    <span class="n">_w</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-<a id="__codelineno-0-478" name="__codelineno-0-478"></a>        <span class="s2">&quot;FeatureCollection.concate is deprecated (misspelling) — &quot;</span>
-<a id="__codelineno-0-479" name="__codelineno-0-479"></a>        <span class="s2">&quot;use FeatureCollection.concatenate instead (ARC-11).&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-480" name="__codelineno-0-480"></a>        <span class="ne">DeprecationWarning</span><span class="p">,</span>
-<a id="__codelineno-0-481" name="__codelineno-0-481"></a>        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-0-482" name="__codelineno-0-482"></a>    <span class="p">)</span>
-<a id="__codelineno-0-483" name="__codelineno-0-483"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">gdf</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="pyramids.feature.FeatureCollection.center_point" class="doc doc-heading"><a href="#pyramids.feature.FeatureCollection.center_point" class="toclink">
-            <code class="highlight language-python"><span class="n">center_point</span><span class="p">()</span></code>
-
-</a><a href="#pyramids.feature.FeatureCollection.center_point" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Compute per-feature centers as extra columns on <code>self</code>.</p>
-<p>Calls :meth:<code>xy</code> first, then adds <code>avg_x</code>, <code>avg_y</code> and
-<code>center_point</code> columns. Mutates and returns <code>self</code>.</p>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>src/pyramids/feature/collection.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-485">485</a></span>
+<span class="normal"><a href="#__codelineno-0-483">483</a></span>
+<span class="normal"><a href="#__codelineno-0-484">484</a></span>
+<span class="normal"><a href="#__codelineno-0-485">485</a></span>
 <span class="normal"><a href="#__codelineno-0-486">486</a></span>
 <span class="normal"><a href="#__codelineno-0-487">487</a></span>
-<span class="normal"><a href="#__codelineno-0-488">488</a></span>
-<span class="normal"><a href="#__codelineno-0-489">489</a></span>
-<span class="normal"><a href="#__codelineno-0-490">490</a></span>
-<span class="normal"><a href="#__codelineno-0-491">491</a></span>
-<span class="normal"><a href="#__codelineno-0-492">492</a></span>
-<span class="normal"><a href="#__codelineno-0-493">493</a></span>
-<span class="normal"><a href="#__codelineno-0-494">494</a></span>
-<span class="normal"><a href="#__codelineno-0-495">495</a></span>
-<span class="normal"><a href="#__codelineno-0-496">496</a></span>
-<span class="normal"><a href="#__codelineno-0-497">497</a></span>
-<span class="normal"><a href="#__codelineno-0-498">498</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="k">def</span><span class="w"> </span><span class="nf">center_point</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeoDataFrame</span><span class="p">:</span>
-<a id="__codelineno-0-486" name="__codelineno-0-486"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute per-feature centers as extra columns on ``self``.</span>
-<a id="__codelineno-0-487" name="__codelineno-0-487"></a>
-<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">    Calls :meth:`xy` first, then adds ``avg_x``, ``avg_y`` and</span>
-<a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">    ``center_point`` columns. Mutates and returns ``self``.</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">xy</span><span class="p">()</span>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row_i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;avg_x&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">row_i</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;avg_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">row_i</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span>
-<a id="__codelineno-0-495" name="__codelineno-0-495"></a>
-<a id="__codelineno-0-496" name="__codelineno-0-496"></a>    <span class="n">coords_list</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s2">&quot;avg_x&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="bp">self</span><span class="p">[</span><span class="s2">&quot;avg_y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
-<a id="__codelineno-0-497" name="__codelineno-0-497"></a>    <span class="bp">self</span><span class="p">[</span><span class="s2">&quot;center_point&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">create_points</span><span class="p">(</span><span class="n">coords_list</span><span class="p">)</span>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a>    <span class="k">return</span> <span class="bp">self</span>
+<span class="normal"><a href="#__codelineno-0-488">488</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="k">def</span><span class="w"> </span><span class="nf">with_centroid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureCollection</span><span class="p">:</span>
+<a id="__codelineno-0-465" name="__codelineno-0-465"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a new FC with per-feature center-point columns attached.</span>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="sd">    ARC-16: non-mutating replacement for the old ``center_point()``</span>
+<a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">    method (which has been deleted). The ``with_`` prefix mirrors</span>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">    stdlib / pandas conventions for &quot;return a copy with this</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">    change applied&quot;.</span>
+<a id="__codelineno-0-471" name="__codelineno-0-471"></a>
+<a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="sd">    Computes average x/y per feature (after</span>
+<a id="__codelineno-0-473" name="__codelineno-0-473"></a><span class="sd">    :meth:`with_coordinates`) and attaches three columns:</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">    ``avg_x``, ``avg_y`` and ``center_point`` (shapely ``Point``).</span>
+<a id="__codelineno-0-475" name="__codelineno-0-475"></a>
+<a id="__codelineno-0-476" name="__codelineno-0-476"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="sd">        FeatureCollection: A new FeatureCollection (``self`` is</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">        not modified) with ``x``, ``y``, ``avg_x``, ``avg_y``,</span>
+<a id="__codelineno-0-479" name="__codelineno-0-479"></a><span class="sd">        ``center_point`` columns added.</span>
+<a id="__codelineno-0-480" name="__codelineno-0-480"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-481" name="__codelineno-0-481"></a>    <span class="n">fc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_coordinates</span><span class="p">()</span>
+<a id="__codelineno-0-482" name="__codelineno-0-482"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row_i</span> <span class="ow">in</span> <span class="n">fc</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+<a id="__codelineno-0-483" name="__codelineno-0-483"></a>        <span class="n">fc</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;avg_x&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">row_i</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span>
+<a id="__codelineno-0-484" name="__codelineno-0-484"></a>        <span class="n">fc</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;avg_y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">row_i</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span>
+<a id="__codelineno-0-485" name="__codelineno-0-485"></a>
+<a id="__codelineno-0-486" name="__codelineno-0-486"></a>    <span class="n">coords_list</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="n">fc</span><span class="p">[</span><span class="s2">&quot;avg_x&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;avg_y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+<a id="__codelineno-0-487" name="__codelineno-0-487"></a>    <span class="n">fc</span><span class="p">[</span><span class="s2">&quot;center_point&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_geom</span><span class="o">.</span><span class="n">create_points</span><span class="p">(</span><span class="n">coords_list</span><span class="p">)</span>
+<a id="__codelineno-0-488" name="__codelineno-0-488"></a>    <span class="k">return</span> <span class="n">fc</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
