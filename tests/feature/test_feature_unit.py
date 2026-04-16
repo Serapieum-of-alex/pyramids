@@ -463,13 +463,39 @@ class TestGetCoords:
         result = FeatureCollection._get_coords(row, "geometry", "x")
         assert isinstance(result, expected_type)
 
-    def test_multipolygon_returns_sentinel(self):
-        """MultiPolygon rows return the -9999 sentinel so xy() can drop them."""
+    def test_multipolygon_raises(self):
+        """ARC-9: MultiPolygon rows raise; callers must explode first.
+
+        Before ARC-9 the function returned the magic value -9999 as a
+        sentinel, which silently dropped rows whose x coordinate
+        happened to equal -9999 in projected CRSes. The function now
+        raises ValueError; xy() guarantees this branch is unreachable
+        by calling explode_gdf first.
+        """
         import pandas as pd
 
         mp = MultiPolygon([box(0, 0, 1, 1)])
         row = pd.Series({"geometry": mp})
-        assert FeatureCollection._get_coords(row, "geometry", "x") == -9999
+        with pytest.raises(ValueError, match="MultiPolygon"):
+            FeatureCollection._get_coords(row, "geometry", "x")
+
+    def test_xy_does_not_drop_real_minus_9999(self):
+        """ARC-9 regression: a polygon with x=-9999 is not silently dropped.
+
+        Under the old sentinel design a polygon whose x coordinate
+        equaled -9999 would have matched the drop filter and vanished.
+        The explode-first design keeps it.
+        """
+        poly = box(-9999.0, -9999.0, -9998.0, -9998.0)
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[poly], crs="EPSG:32636"
+        )
+        fc = FeatureCollection(gdf)
+        fc.xy()
+        assert len(fc) == 1
+        # The x column contains the literal -9999.0 (not dropped).
+        xs = fc.loc[0, "x"]
+        assert -9999.0 in xs, f"Real -9999 coord missing: {xs}"
 
     def test_geometry_collection(self):
         import pandas as pd

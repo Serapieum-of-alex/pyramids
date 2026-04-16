@@ -166,9 +166,15 @@ def geometry_collection_coords(geom: Any, coord_type: str) -> list[Any]:
 def get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
     """Return coordinates for a row, dispatching by geometry type.
 
-    Returns ``-9999`` for MultiPolygon rows as a sentinel so the caller
-    (currently :meth:`FeatureCollection.xy`) can drop them after the
-    per-row ``.apply()``.
+    ARC-9: the previous implementation returned the magic value
+    ``-9999`` for ``MultiPolygon`` rows as a sentinel that the caller
+    (:meth:`FeatureCollection.xy`) filtered out afterwards. That
+    conflated real coordinate values of ``-9999`` (plausible in
+    several projected CRSes) with the "unhandled geometry" signal and
+    could silently drop valid rows. The sentinel is gone; callers
+    must explode MultiPolygon rows *before* calling this function
+    (:func:`explode_gdf` does exactly that and is always invoked from
+    :meth:`FeatureCollection.xy`).
 
     Args:
         row (pandas.Series): A row of the GeoDataFrame.
@@ -176,8 +182,13 @@ def get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
         coord_type (str): ``"x"`` or ``"y"``.
 
     Returns:
-        Any: Coordinates as ``list`` / ``float`` / ``int``, or the
-        sentinel ``-9999`` for MultiPolygon rows.
+        Any: Coordinates as ``list`` / ``float`` / ``int``.
+
+    Raises:
+        ValueError: If the geometry is a ``MultiPolygon``. Explode
+            the frame with :func:`explode_gdf` first so that each
+            row is a single Polygon. This replaces the old
+            ``-9999`` sentinel (ARC-9).
     """
     geom = row[geom_col]
     gtype = geom.geom_type.lower()
@@ -188,7 +199,12 @@ def get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
     if gtype == "polygon":
         return list(get_poly_coords(geom, coord_type))
     if gtype == "multipolygon":
-        return -9999
+        raise ValueError(
+            "get_coords does not accept MultiPolygon rows — explode the "
+            "GeoDataFrame with explode_gdf(gdf, 'multipolygon') first "
+            "(ARC-9: previously returned the -9999 sentinel, which "
+            "silently clashed with real coordinate values)."
+        )
     if gtype == "geometrycollection":
         return geometry_collection_coords(geom, coord_type)
     return multi_geom_handler(geom, coord_type, gtype)

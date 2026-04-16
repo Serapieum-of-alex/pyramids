@@ -351,10 +351,18 @@ class FeatureCollection(GeoDataFrame):
         """Add per-vertex ``x`` and ``y`` columns to this FeatureCollection.
 
         Explodes MultiPolygon and GeometryCollection geometries into
-        their parts, then assigns ``x`` and ``y`` columns containing
-        the coordinate sequences of each row. Mutates ``self`` in place
-        via pandas' ``_update_inplace`` primitive (avoids the
-        subclass-re-init recursion trap).
+        their parts *first*, then assigns ``x`` and ``y`` columns
+        containing the coordinate sequences of each row. Because the
+        explode step runs before :func:`get_coords`, no MultiPolygon
+        survives into the coordinate-extraction phase. Mutates
+        ``self`` in place via pandas' ``_update_inplace`` primitive
+        (avoids the subclass-re-init recursion trap).
+
+        ARC-9: the previous implementation post-filtered rows whose
+        ``x`` column equalled the magic value ``-9999``. That sentinel
+        was replaced by making :func:`get_coords` raise on
+        MultiPolygon rows and relying on the up-front explode to
+        guarantee the raise is unreachable in practice.
 
         Returns:
             None: Mutation only.
@@ -371,8 +379,6 @@ class FeatureCollection(GeoDataFrame):
         fc["y"] = fc.apply(
             _geom.get_coords, geom_col="geometry", coord_type="y", axis=1
         )
-        to_delete = np.where(fc["x"] == -9999)[0]
-        fc.drop(fc.index[to_delete], inplace=True)
         fc.reset_index(drop=True, inplace=True)
 
         self._update_inplace(fc)
