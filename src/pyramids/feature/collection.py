@@ -525,6 +525,99 @@ class FeatureCollection(GeoDataFrame):
         # can open individual layers and inspect ``schema``.
         return [str(row[0]) for row in arr]
 
+    @classmethod
+    def read_parquet(
+        cls,
+        path: str | Path,
+        *,
+        columns: list[str] | None = None,
+        **kwargs: Any,
+    ) -> FeatureCollection:
+        """Read a GeoParquet file into a FeatureCollection (ARC-32).
+
+        GeoParquet is a cloud-native columnar vector format (OGC-
+        adopted December 2024) — faster to scan than GeoJSON, smaller
+        than Shapefile, and partitioned in a way that suits distributed
+        compute. This method is a thin wrapper around
+        :func:`geopandas.read_parquet`; the path is first routed
+        through :func:`pyramids._io._parse_path` so cloud URLs
+        (``s3://``, ``gs://``, ``http(s)://``, …) resolve the same way
+        they do in :meth:`read_file`.
+
+        Requires the optional :mod:`pyarrow` dependency. Install with
+        ``pip install pyramids-gis[parquet]`` or
+        ``pixi add pyarrow``.
+
+        Args:
+            path (str | Path):
+                Local path, cloud URL, or any form
+                :func:`pyramids._io._parse_path` accepts.
+            columns (list[str] | None):
+                Project a subset of columns — Parquet's columnar
+                layout makes this a true I/O win, unlike row-oriented
+                formats. ``geometry`` is always loaded. ``None``
+                loads every column.
+            **kwargs:
+                Forwarded to :func:`geopandas.read_parquet`
+                (``storage_options=`` for fsspec, etc.).
+
+        Returns:
+            FeatureCollection: The file's features wrapped as a
+            FeatureCollection.
+
+        Raises:
+            ImportError: If :mod:`pyarrow` is not installed.
+        """
+        from pyramids import _io as _pyramids_io
+
+        resolved = _pyramids_io._parse_path(path)
+        passthrough: dict[str, Any] = dict(kwargs)
+        if columns is not None:
+            passthrough["columns"] = columns
+        gdf = gpd.read_parquet(resolved, **passthrough)
+        return cls(gdf)
+
+    def to_parquet(
+        self,
+        path: str | Path,
+        *,
+        compression: str = "snappy",
+        index: bool | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Write this FeatureCollection to GeoParquet (ARC-32).
+
+        Thin wrapper around :meth:`geopandas.GeoDataFrame.to_parquet`
+        that defaults :param:`compression` to ``"snappy"`` — the
+        format-standard tradeoff between speed and size.
+
+        Requires the optional :mod:`pyarrow` dependency. Install with
+        ``pip install pyramids-gis[parquet]`` or
+        ``pixi add pyarrow``.
+
+        Args:
+            path (str | Path):
+                Destination file path.
+            compression (str):
+                Parquet compression codec — ``"snappy"`` (default),
+                ``"gzip"``, ``"brotli"``, ``"lz4"``, ``"zstd"``, or
+                ``"none"``. ``"snappy"`` is the GeoParquet-spec
+                recommended default.
+            index (bool | None):
+                Whether to include the pandas index as a column.
+                ``None`` (default) uses geopandas' default behavior:
+                preserve a non-default index, drop the default
+                ``RangeIndex``.
+            **kwargs:
+                Forwarded to :meth:`geopandas.GeoDataFrame.to_parquet`.
+
+        Raises:
+            ImportError: If :mod:`pyarrow` is not installed.
+        """
+        super().to_parquet(
+            path, compression=compression, index=index, **kwargs
+        )
+
     def to_file(
         self,
         path: str | Path,
