@@ -651,6 +651,136 @@ class Dataset(  # type: ignore[misc]
         return dst
 
     @classmethod
+    def from_features(
+        cls,
+        features: FeatureCollection,
+        *,
+        cell_size: Any | None = None,
+        template: Dataset | None = None,
+        column_name: str | list[str] | None = None,
+    ) -> Dataset:
+        """Rasterize a :class:`FeatureCollection` into a new :class:`Dataset`.
+
+        ARC-4: this classmethod replaces ``FeatureCollection.to_dataset``.
+        Moving the method here breaks the circular import that forced
+        the old code to do ``from pyramids.dataset import Dataset``
+        inside the method body (a CLAUDE.md violation).
+        ``pyramids.dataset`` already imports :class:`FeatureCollection`
+        at module level, so this direction is cycle-free.
+
+        Burns the values from ``column_name`` (or every attribute
+        column if ``None``) into a single-band or multi-band raster.
+        When a ``template`` Dataset is given, the output adopts its
+        geotransform, cell size, row/column count, and no-data value.
+        Otherwise ``cell_size`` controls the resolution and the extent
+        is derived from :attr:`FeatureCollection.total_bounds`.
+
+        Args:
+            features (FeatureCollection):
+                The vector to rasterize.
+            cell_size (int | float | None):
+                Cell size for the new raster. Required unless
+                ``template`` is given.
+            template (Dataset | None):
+                Optional template raster. When supplied, the output
+                inherits its geotransform and no-data value.
+            column_name (str | list[str] | None):
+                Attribute column(s) to burn as band values. ``None``
+                burns every non-geometry column as a separate band.
+
+        Returns:
+            Dataset: The burned raster.
+
+        Raises:
+            ValueError: If neither ``cell_size`` nor ``template`` is
+                given, or if the vector CRS disagrees with the raster
+                CRS.
+            TypeError: If ``template`` is not a pyramids ``Dataset``.
+        """
+        # Avoid circular import at module-top by importing the OGR
+        # bridge here. This function belongs to dataset/, and the
+        # bridge lives under feature/, so this is a sibling-module
+        # import (cycle-free) not a self-reference.
+        from pyramids.feature import _ogr as _feature_ogr
+
+        if cell_size is None and template is None:
+            raise ValueError(
+                "You have to enter either cell size or Dataset object."
+            )
+
+        ds_epsg = features.epsg
+        if template is not None:
+            if not isinstance(template, Dataset):
+                raise TypeError(
+                    "The template parameter must be a pyramids Dataset "
+                    "(see pyramids.dataset.Dataset.read_file)."
+                )
+            if template.epsg != ds_epsg:
+                raise ValueError(
+                    f"Dataset and vector are not the same EPSG. "
+                    f"{template.epsg} != {ds_epsg}"
+                )
+            xmin, ymax = template.top_left_corner
+            no_data_value = (
+                template.no_data_value[0]
+                if template.no_data_value[0] is not None
+                else np.nan
+            )
+            rows = template.rows
+            columns = template.columns
+            cell_size = template.cell_size
+        else:
+            xmin, ymin, xmax, ymax = features.total_bounds
+            no_data_value = cls.default_no_data_value
+            columns = int(np.ceil((xmax - xmin) / cell_size))
+            rows = int(np.ceil((ymax - ymin) / cell_size))
+
+        burn_values = None
+        if column_name is None:
+            column_name = [c for c in features.columns if c != "geometry"]
+
+        if isinstance(column_name, list):
+            numpy_dtype = features.dtypes[column_name[0]]
+        else:
+            numpy_dtype = features.dtypes[column_name]
+
+        dtype = str(numpy_dtype)
+        attribute = column_name
+        top_left_corner = (xmin, ymax)
+        bands_count = 1 if not isinstance(attribute, list) else len(attribute)
+        cell_size_val: int | float = float(cell_size)
+
+        dataset_n = cls.create(
+            cell_size_val,
+            rows,
+            columns,
+            dtype,
+            bands_count,
+            top_left_corner,
+            ds_epsg,
+            no_data_value,
+        )
+
+        with _feature_ogr.as_datasource(features, gdal_dataset=True) as vector_ds:
+            bands = list(range(1, bands_count + 1))
+            for ind, band in enumerate(bands):
+                rasterize_opts = gdal.RasterizeOptions(
+                    bands=[band],
+                    burnValues=burn_values,
+                    attribute=(
+                        attribute[ind]
+                        if isinstance(attribute, list)
+                        else attribute
+                    ),
+                    allTouched=True,
+                )
+                gdal.Rasterize(
+                    dataset_n.raster, vector_ds, options=rasterize_opts
+                )
+
+        return dataset_n
+
+    @classmethod
     def create_from_array(  # type: ignore[override]
         cls,
         arr: np.ndarray,

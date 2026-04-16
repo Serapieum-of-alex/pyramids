@@ -23,10 +23,7 @@ from __future__ import annotations
 
 from numbers import Number
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable
-
-if TYPE_CHECKING:
-    from pyramids.dataset import Dataset
+from typing import Any, Iterable
 
 import geopandas as gpd
 import numpy as np
@@ -39,7 +36,6 @@ from shapely.geometry.multipolygon import MultiPolygon
 
 from pyramids.base._errors import DriverNotExistError
 from pyramids.base._utils import Catalog
-from pyramids.feature import _ogr
 from pyramids.feature import crs as _crs
 from pyramids.feature import geometry as _geom
 
@@ -186,102 +182,15 @@ class FeatureCollection(GeoDataFrame):
             resolved = driver
         super().to_file(path, driver=resolved, **kwargs)
 
-    def to_dataset(
-        self,
-        cell_size: Any | None = None,
-        dataset: Dataset | None = None,
-        column_name: str | list[str] | None = None,
-    ) -> Dataset:
-        """Rasterize this FeatureCollection to a :class:`pyramids.Dataset`.
-
-        Burns values from ``column_name`` (or every attribute column
-        when ``None``) into a raster. When a template ``dataset`` is
-        given, the output adopts its geotransform, cell size, and
-        no-data value; otherwise ``cell_size`` controls the resolution.
-
-        Raises:
-            ValueError: If neither ``cell_size`` nor ``dataset`` is
-                given, or if CRSes disagree.
-            TypeError: If ``dataset`` is not a pyramids ``Dataset``.
-        """
-        from pyramids.dataset import Dataset
-
-        if cell_size is None and dataset is None:
-            raise ValueError(
-                "You have to enter either cell size or Dataset object."
-            )
-
-        ds_epsg = self.epsg
-        if dataset is not None:
-            if not isinstance(dataset, Dataset):
-                raise TypeError(
-                    "The dataset parameter must be a pyramids Dataset "
-                    "(see pyramids.dataset.Dataset.read_file)."
-                )
-            if dataset.epsg != ds_epsg:
-                raise ValueError(
-                    f"Dataset and vector are not the same EPSG. "
-                    f"{dataset.epsg} != {ds_epsg}"
-                )
-            xmin, ymax = dataset.top_left_corner
-            no_data_value = (
-                dataset.no_data_value[0]
-                if dataset.no_data_value[0] is not None
-                else np.nan
-            )
-            rows = dataset.rows
-            columns = dataset.columns
-            cell_size = dataset.cell_size
-        else:
-            xmin, ymin, xmax, ymax = self.total_bounds
-            no_data_value = Dataset.default_no_data_value
-            columns = int(np.ceil((xmax - xmin) / cell_size))
-            rows = int(np.ceil((ymax - ymin) / cell_size))
-
-        burn_values = None
-        if column_name is None:
-            column_name = [c for c in self.columns if c != "geometry"]
-
-        if isinstance(column_name, list):
-            numpy_dtype = self.dtypes[column_name[0]]
-        else:
-            numpy_dtype = self.dtypes[column_name]
-
-        dtype = str(numpy_dtype)
-        attribute = column_name
-        top_left_corner = (xmin, ymax)
-        bands_count = 1 if not isinstance(attribute, list) else len(attribute)
-        cell_size_val: int | float = float(cell_size)
-
-        dataset_n = Dataset.create(
-            cell_size_val,
-            rows,
-            columns,
-            dtype,
-            bands_count,
-            top_left_corner,
-            ds_epsg,
-            no_data_value,
-        )
-
-        with _ogr.as_datasource(self, gdal_dataset=True) as vector_ds:
-            bands = list(range(1, bands_count + 1))
-            for ind, band in enumerate(bands):
-                rasterize_opts = gdal.RasterizeOptions(
-                    bands=[band],
-                    burnValues=burn_values,
-                    attribute=(
-                        attribute[ind]
-                        if isinstance(attribute, list)
-                        else attribute
-                    ),
-                    allTouched=True,
-                )
-                gdal.Rasterize(
-                    dataset_n.raster, vector_ds, options=rasterize_opts
-                )
-
-        return dataset_n
+    # ARC-4: FeatureCollection.to_dataset was moved to
+    # Dataset.from_features(features, ...) to break the circular import
+    # that used to force a CLAUDE.md-violating inline
+    # ``from pyramids.dataset import Dataset`` inside the method body.
+    # Callers should migrate:
+    #     fc.to_dataset(dataset=ds, column_name="pop")
+    #         → Dataset.from_features(fc, template=ds, column_name="pop")
+    #     fc.to_dataset(cell_size=10)
+    #         → Dataset.from_features(fc, cell_size=10)
 
     # Static delegates to helper modules kept for backward compatibility
     # (callers may do ``FeatureCollection.create_polygon(...)``).

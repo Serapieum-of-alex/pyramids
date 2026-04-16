@@ -39,6 +39,7 @@ from shapely.geometry import (
 )
 from shapely.geometry.collection import GeometryCollection
 
+from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
 
 
@@ -495,11 +496,9 @@ class TestToDatasetErrors:
     def test_no_cell_size_no_dataset_raises(self, simple_polygon_gdf: GeoDataFrame):
         fc = FeatureCollection(simple_polygon_gdf)
         with pytest.raises(ValueError, match="cell size"):
-            fc.to_dataset(cell_size=None, dataset=None)
+            Dataset.from_features(fc, cell_size=None, template=None)
 
     def test_mismatched_epsg_raises(self, simple_polygon_gdf: GeoDataFrame):
-        from pyramids.dataset import Dataset
-
         fc = FeatureCollection(simple_polygon_gdf)
         ds = Dataset.create(
             cell_size=1000.0,
@@ -512,12 +511,12 @@ class TestToDatasetErrors:
             no_data_value=-9999.0,
         )
         with pytest.raises(ValueError, match="not the same EPSG"):
-            fc.to_dataset(dataset=ds)
+            Dataset.from_features(fc, template=ds)
 
     def test_non_dataset_object_raises(self, simple_polygon_gdf: GeoDataFrame):
         fc = FeatureCollection(simple_polygon_gdf)
         with pytest.raises((TypeError, AttributeError)):
-            fc.to_dataset(dataset="not_a_dataset")
+            Dataset.from_features(fc, template="not_a_dataset")
 
 
 class TestGetXyCoordsInvalidType:

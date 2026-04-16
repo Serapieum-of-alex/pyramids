@@ -145,7 +145,7 @@ class TestRasterizeRoundTrip:
         fc = FeatureCollection(gdf)
 
         # Rasterize: use cell_size (no reference dataset)
-        raster = fc.to_dataset(cell_size=cell_size, column_name="burn_val")
+        raster = Dataset.from_features(fc, cell_size=cell_size, column_name="burn_val")
         arr = raster.read_array()
 
         # Verify burned value
@@ -173,7 +173,7 @@ class TestRasterizeRoundTrip:
         gdf = gpd.GeoDataFrame({"class_id": [42]}, geometry=[poly], crs=f"EPSG:{epsg}")
         fc = FeatureCollection(gdf)
 
-        raster = fc.to_dataset(dataset=ref, column_name="class_id")
+        raster = Dataset.from_features(fc, template=ref, column_name="class_id")
         arr = raster.read_array()
 
         # Same dimensions as reference

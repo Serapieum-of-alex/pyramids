@@ -137,7 +137,7 @@ class TestToDataset:
         ):
             dataset = Dataset.read_file(raster_1band_coello_path)
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = vector.to_dataset(dataset=dataset)
+            src = Dataset.from_features(vector, template=dataset)
             assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
 
             xmin, _, _, ymax, _, _ = dataset.geotransform
@@ -158,7 +158,7 @@ class TestToDataset:
             dataset = Dataset.read_file(raster_1band_coello_path)
             polygon_corner_coello_gdf["column_2"] = 2
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = vector.to_dataset(dataset=dataset, column_name="column_2")
+            src = Dataset.from_features(vector, template=dataset, column_name="column_2")
             assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
 
             arr = src.read_array()
@@ -175,8 +175,8 @@ class TestToDataset:
             polygon_corner_coello_gdf["column_2"] = 2
             polygon_corner_coello_gdf["column_3"] = 3
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = vector.to_dataset(
-                dataset=dataset, column_name=["column_2", "column_3"]
+            src = Dataset.from_features(vector, 
+                template=dataset, column_name=["column_2", "column_3"]
             )
             arr = src.read_array()
             assert arr.shape == (2, 13, 14)
@@ -195,7 +195,7 @@ class TestToDataset:
             polygon_corner_coello_gdf["column_3"] = 3
 
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = vector.to_dataset(dataset=dataset, column_name=None)
+            src = Dataset.from_features(vector, template=dataset, column_name=None)
 
             arr = src.read_array()
             assert arr.shape == (3, 13, 14)
@@ -207,14 +207,14 @@ class TestToDataset:
             required_cell_size = 8000
 
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = vector.to_dataset(cell_size=required_cell_size, column_name=None)
+            src = Dataset.from_features(vector, cell_size=required_cell_size, column_name=None)
             assert src.cell_size == required_cell_size
             arr = src.read_array()
             assert arr.shape == (3, 2, 2)
 
         def test_one_column(self, polygon_corner_coello_gdf: GeoDataFrame):
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = vector.to_dataset(cell_size=200)
+            src = Dataset.from_features(vector, cell_size=200)
             assert src.cell_size == 200
             arr = src.read_array()
             values = arr[arr[:, :] == 1.0]
@@ -223,7 +223,7 @@ class TestToDataset:
         def test_multi_polygon(self, polygons_coello_gdf: GeoDataFrame):
             required_cell_size = 4000
             vector = FeatureCollection(polygons_coello_gdf)
-            src = vector.to_dataset(cell_size=required_cell_size, column_name=None)
+            src = Dataset.from_features(vector, cell_size=required_cell_size, column_name=None)
             arr = src.read_array()
             assert arr.shape == (3, 13, 13)
 
