@@ -8,8 +8,8 @@ ARC-10 split the original ``feature.py`` into a subpackage:
   extractors (``create_polygon``, ``create_point``, ``get_coords``,
   ``explode_gdf``, ``multi_geom_handler``, …).
 - :mod:`pyramids.feature.crs` — CRS/EPSG/reprojection helpers
-  (``get_epsg_from_prj``, ``reproject_points``,
-  ``reproject_points_osr``, ``create_sr_from_proj``).
+  (``get_epsg_from_prj``, ``reproject_coordinates``,
+  ``create_sr_from_proj``).
 - :mod:`pyramids.feature._ogr` — private OGR bridge.
 
 ``FeatureCollection`` is a direct subclass of
@@ -233,23 +233,27 @@ class FeatureCollection(GeoDataFrame):
         return _crs.get_epsg_from_prj(prj)
 
     @staticmethod
-    def reproject_points(
-        lat: list,
-        lon: list,
-        from_epsg: int = 4326,
-        to_epsg: int = 3857,
-        precision: int = 6,
+    def reproject_coordinates(
+        x: list[float],
+        y: list[float],
+        *,
+        from_crs: Any = 4326,
+        to_crs: Any = 3857,
+        precision: int | None = 6,
     ) -> tuple[list[float], list[float]]:
-        """Delegate to :func:`pyramids.feature.crs.reproject_points`.
+        """Delegate to :func:`pyramids.feature.crs.reproject_coordinates`.
+
+        ARC-14: canonical replacement for the deleted
+        ``reproject_points`` / ``reproject_points2`` pair. Argument and
+        return order is ``(x, y)`` throughout. ``from_crs`` / ``to_crs``
+        accept any form :meth:`pyproj.Transformer.from_crs` understands
+        (EPSG int, authority string, WKT, Proj4, :class:`pyproj.CRS`).
 
         Examples:
-            - Reproject two WGS84 points into Web Mercator and inspect
-              the magnitudes of the projected coordinates:
+            - Reproject a single WGS84 point into Web Mercator:
                 ```python
-                >>> lat = [30.0]
-                >>> lon = [31.0]
-                >>> y, x = FeatureCollection.reproject_points(
-                ...     lat, lon, from_epsg=4326, to_epsg=3857
+                >>> x, y = FeatureCollection.reproject_coordinates(
+                ...     [31.0], [30.0], from_crs=4326, to_crs=3857
                 ... )
                 >>> round(x[0])
                 3450904
@@ -258,14 +262,9 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        return _crs.reproject_points(lat, lon, from_epsg, to_epsg, precision)
-
-    @staticmethod
-    def reproject_points2(
-        lat: list, lng: list, from_epsg: int = 4326, to_epsg: int = 3857
-    ) -> tuple[list[float], list[float]]:
-        """Delegate to :func:`pyramids.feature.crs.reproject_points_osr`."""
-        return _crs.reproject_points_osr(lat, lng, from_epsg, to_epsg)
+        return _crs.reproject_coordinates(
+            x, y, from_crs=from_crs, to_crs=to_crs, precision=precision
+        )
 
     @staticmethod
     def _get_xy_coords(geometry: Any, coord_type: str) -> list:

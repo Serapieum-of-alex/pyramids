@@ -4,15 +4,24 @@ ARC-10 moved the CRS-related static helpers off
 :class:`pyramids.feature.FeatureCollection` into this module so the
 collection class can focus on per-feature behavior. The
 FeatureCollection class keeps thin static-method delegates for
-back-compat: callers that wrote ``FeatureCollection.get_epsg_from_prj(...)``
-or ``FeatureCollection.reproject_points(...)`` continue to work
-unchanged.
+symbolic continuity.
+
+ARC-14 collapsed the two previous reprojection helpers
+(``reproject_points`` taking ``(lat, lon)`` and returning ``(y, x)``,
+``reproject_points_osr``/``reproject_points2`` taking ``(lat, lng)``
+and returning ``(x, y)``) into a single canonical function
+:func:`reproject_coordinates` with consistent ``(x, y)`` order. The
+old functions were deleted outright — no deprecation shims — per the
+branch's refactor policy (the inconsistent axis order was a latent
+foot-gun and keeping shims perpetuated the confusion).
 """
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
-from osgeo import ogr, osr
+from osgeo import osr
 from pyproj import Transformer
 
 
@@ -82,71 +91,82 @@ def get_epsg_from_prj(prj: str) -> int:
     return epsg
 
 
-def reproject_points(
-    lat: list,
-    lon: list,
-    from_epsg: int = 4326,
-    to_epsg: int = 3857,
-    precision: int = 6,
+def reproject_coordinates(
+    x: list[float],
+    y: list[float],
+    *,
+    from_crs: Any = 4326,
+    to_crs: Any = 3857,
+    precision: int | None = 6,
 ) -> tuple[list[float], list[float]]:
-    """Reproject point coordinates between EPSG codes.
+    """Reproject parallel x / y coordinate lists between CRSes.
 
-    Uses :meth:`pyproj.Transformer.from_crs` (ARC-2: replaces the
-    legacy ``Proj(init="epsg:…")`` API which pyproj deprecated in
-    2.0).
+    ARC-14: canonical replacement for the two former helpers
+    (``reproject_points`` and ``reproject_points_osr`` /
+    ``reproject_points2``). Unambiguous ``(x, y)`` argument and return
+    order throughout; accepts any CRS form
+    :meth:`pyproj.Transformer.from_crs` understands (EPSG int, EPSG
+    string, WKT, Proj4, :class:`pyproj.CRS`).
 
     Args:
-        lat (list): Y-coordinates in the source CRS.
-        lon (list): X-coordinates in the source CRS.
-        from_epsg (int): Source EPSG code. Default 4326.
-        to_epsg (int): Target EPSG code. Default 3857.
-        precision (int): Decimal places to round to.
+        x (list[float]):
+            X-coordinates in the source CRS (longitudes when
+            ``from_crs`` is geographic).
+        y (list[float]):
+            Y-coordinates in the source CRS (latitudes when
+            ``from_crs`` is geographic).
+        from_crs:
+            Source CRS. Accepts anything
+            :meth:`pyproj.Transformer.from_crs` accepts: EPSG integer
+            (``4326``), authority string (``"EPSG:4326"``), WKT, Proj4,
+            or a :class:`pyproj.CRS` instance. Default ``4326``.
+        to_crs:
+            Target CRS, same forms as ``from_crs``. Default ``3857``.
+        precision (int | None):
+            Decimal places to round each returned coordinate to. Pass
+            ``None`` to disable rounding. Default ``6``.
 
     Returns:
-        tuple[list[float], list[float]]: ``(y, x)`` lists in the target
-        CRS. Kept in ``(y, x)`` order for back-compat;
-        :func:`reproject_points_osr` returns ``(x, y)``.
+        tuple[list[float], list[float]]: ``(x, y)`` in the target CRS.
+
+    Raises:
+        ValueError: If ``len(x) != len(y)``.
+
+    Examples:
+        - Reproject two WGS84 points into Web Mercator:
+            ```python
+            >>> x, y = reproject_coordinates(
+            ...     [31.0], [30.0], from_crs=4326, to_crs=3857
+            ... )
+            >>> round(x[0])
+            3450904
+            >>> round(y[0])
+            3503550
+
+            ```
+        - Accepts WKT / authority strings / :class:`pyproj.CRS`:
+            ```python
+            >>> x, y = reproject_coordinates(
+            ...     [31.0], [30.0], from_crs="EPSG:4326", to_crs="EPSG:3857"
+            ... )
+            >>> len(x) == 1 and len(y) == 1
+            True
+
+            ```
     """
-    transformer = Transformer.from_crs(
-        f"EPSG:{from_epsg}", f"EPSG:{to_epsg}", always_xy=True
-    )
-    x = np.full(len(lat), np.nan)
-    y = np.full(len(lat), np.nan)
-    for i in range(len(lat)):
-        x[i], y[i] = np.round(
-            transformer.transform(lon[i], lat[i]), precision
+    if len(x) != len(y):
+        raise ValueError(
+            f"x and y must have equal length; got len(x)={len(x)} "
+            f"vs. len(y)={len(y)}."
         )
-    return y.tolist(), x.tolist()
-
-
-def reproject_points_osr(
-    lat: list, lng: list, from_epsg: int = 4326, to_epsg: int = 3857
-) -> tuple[list[float], list[float]]:
-    """Reproject point coordinates via :class:`osr.CoordinateTransformation`.
-
-    Args:
-        lat (list): Y-coordinates in the source CRS.
-        lng (list): X-coordinates in the source CRS.
-        from_epsg (int): Source EPSG code. Default 4326.
-        to_epsg (int): Target EPSG code. Default 3857.
-
-    Returns:
-        tuple[list[float], list[float]]: ``(x, y)`` lists in the target CRS.
-    """
-    source = osr.SpatialReference()
-    source.ImportFromEPSG(from_epsg)
-
-    target = osr.SpatialReference()
-    target.ImportFromEPSG(to_epsg)
-
-    coord_transform = osr.CoordinateTransformation(source, target)
-    x: list[float] = []
-    y: list[float] = []
-    for i in range(len(lat)):
-        point = ogr.CreateGeometryFromWkt(
-            "POINT (" + str(lng[i]) + " " + str(lat[i]) + ")"
-        )
-        point.Transform(coord_transform)
-        x.append(point.GetPoints()[0][0])
-        y.append(point.GetPoints()[0][1])
-    return x, y
+    transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+    xs = np.full(len(x), np.nan)
+    ys = np.full(len(x), np.nan)
+    for i in range(len(x)):
+        nx, ny = transformer.transform(x[i], y[i])
+        if precision is not None:
+            nx = round(nx, precision)
+            ny = round(ny, precision)
+        xs[i] = nx
+        ys[i] = ny
+    return xs.tolist(), ys.tolist()

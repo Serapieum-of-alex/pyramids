@@ -8,7 +8,7 @@ after the ARC-1a/ARC-1b refactor:
   ``_get_point_coords``, ``_create_sr_from_proj``.
 - Instance methods: ``center_point``, ``dtypes``, ``__str__``.
 - Classmethods / statics: ``create_point``, ``create_polygon``,
-  ``reproject_points2``, ``get_epsg_from_prj``.
+  ``reproject_coordinates``, ``get_epsg_from_prj``.
 - The ARC-1b guard: constructing ``FeatureCollection(ogr.DataSource)``
   raises ``TypeError`` and the constructor accepts only what
   ``GeoDataFrame`` accepts.
@@ -348,63 +348,97 @@ class TestDtypes:
         assert "geometry" in dtypes.index
 
 
-class TestReprojectPoints:
-    """Tests for the static ``reproject_points2``."""
+class TestReprojectCoordinates:
+    """ARC-14: single ``reproject_coordinates`` replaces the old pair."""
 
-    def test_reproject_points2_roundtrip(self):
-        """Reproject 4326 → 32636 → 4326 should round-trip."""
-        lat = [30.0]
-        lng = [31.0]
-        x_utm, y_utm = FeatureCollection.reproject_points2(
-            lat, lng, from_epsg=4326, to_epsg=32636
+    def test_roundtrip_epsg_int(self):
+        """4326 → 32636 → 4326 returns the original (x, y)."""
+        x_utm, y_utm = FeatureCollection.reproject_coordinates(
+            [31.0], [30.0], from_crs=4326, to_crs=32636
         )
         assert len(x_utm) == 1 and len(y_utm) == 1
-        x_back, y_back = FeatureCollection.reproject_points2(
-            y_utm, x_utm, from_epsg=32636, to_epsg=4326
+        x_back, y_back = FeatureCollection.reproject_coordinates(
+            x_utm, y_utm, from_crs=32636, to_crs=4326
         )
-        assert abs(x_back[0] - 31.0) < 0.01
-        assert abs(y_back[0] - 30.0) < 0.01
+        assert abs(x_back[0] - 31.0) < 1e-4
+        assert abs(y_back[0] - 30.0) < 1e-4
 
-    def test_reproject_points2_multiple(self):
-        lat = [30.0, 31.0]
-        lng = [31.0, 32.0]
-        x_out, y_out = FeatureCollection.reproject_points2(
-            lat, lng, from_epsg=4326, to_epsg=32636
+    def test_multiple_points(self):
+        """Works across a list of points."""
+        x_out, y_out = FeatureCollection.reproject_coordinates(
+            [31.0, 32.0], [30.0, 31.0], from_crs=4326, to_crs=32636
         )
         assert len(x_out) == 2 and len(y_out) == 2
 
-    def test_reproject_points_no_future_warning(self):
-        """ARC-2: reproject_points must not emit pyproj FutureWarning.
+    def test_authority_string_crs(self):
+        """Accepts 'EPSG:4326'-style authority strings, not just ints."""
+        x, y = FeatureCollection.reproject_coordinates(
+            [31.0], [30.0], from_crs="EPSG:4326", to_crs="EPSG:3857"
+        )
+        assert len(x) == 1 and len(y) == 1
 
-        Before ARC-2 the method called ``Proj(init="epsg:…")`` which
-        pyproj deprecated in 2.0; the old code hid the resulting
-        ``FutureWarning`` with ``warnings.filterwarnings``. ARC-2
-        switched to ``pyproj.Transformer.from_crs`` and removed the
-        suppression. Guard against regression.
+    def test_pyproj_crs_object(self):
+        """Accepts a :class:`pyproj.CRS` instance directly."""
+        from pyproj import CRS
+
+        src = CRS.from_epsg(4326)
+        dst = CRS.from_epsg(3857)
+        x, y = FeatureCollection.reproject_coordinates(
+            [31.0], [30.0], from_crs=src, to_crs=dst
+        )
+        assert len(x) == 1 and len(y) == 1
+
+    def test_wgs84_to_web_mercator_values(self):
+        """Concrete value check at (31, 30) into Web Mercator."""
+        x, y = FeatureCollection.reproject_coordinates(
+            [31.0], [30.0], from_crs=4326, to_crs=3857
+        )
+        assert round(x[0]) == 3450904
+        assert round(y[0]) == 3503550
+
+    def test_precision_none_preserves_full_precision(self):
+        """``precision=None`` disables rounding."""
+        x_default, _ = FeatureCollection.reproject_coordinates(
+            [31.0], [30.0], from_crs=4326, to_crs=3857, precision=2
+        )
+        x_raw, _ = FeatureCollection.reproject_coordinates(
+            [31.0], [30.0], from_crs=4326, to_crs=3857, precision=None
+        )
+        # The rounded-to-2-decimal form should not equal the raw form
+        # (unless the raw form happened to already be rounded, which it
+        # won't be at this input).
+        assert x_default[0] != x_raw[0]
+
+    def test_length_mismatch_raises(self):
+        """``len(x) != len(y)`` raises ValueError."""
+        with pytest.raises(ValueError, match="equal length"):
+            FeatureCollection.reproject_coordinates(
+                [31.0, 32.0], [30.0], from_crs=4326, to_crs=3857
+            )
+
+    def test_no_future_warning(self):
+        """Must not emit pyproj FutureWarning (ARC-2 regression).
+
+        The canonical path is ``pyproj.Transformer.from_crs`` — no
+        deprecated ``Proj(init=…)`` anywhere.
         """
         import warnings as _w
 
         with _w.catch_warnings(record=True) as caught:
             _w.simplefilter("always")
-            FeatureCollection.reproject_points(
-                [30.0], [31.0], from_epsg=4326, to_epsg=3857
+            FeatureCollection.reproject_coordinates(
+                [31.0], [30.0], from_crs=4326, to_crs=3857
             )
         future = [w for w in caught if issubclass(w.category, FutureWarning)]
         assert not future, (
-            f"reproject_points must not emit FutureWarning; got: "
+            f"reproject_coordinates must not emit FutureWarning; got: "
             f"{[str(w.message) for w in future]}"
         )
 
-    def test_reproject_points_roundtrip(self):
-        """ARC-2: 4326 → 3857 → 4326 returns the original lat/lon."""
-        y_merc, x_merc = FeatureCollection.reproject_points(
-            [30.0], [31.0], from_epsg=4326, to_epsg=3857
-        )
-        y_back, x_back = FeatureCollection.reproject_points(
-            y_merc, x_merc, from_epsg=3857, to_epsg=4326
-        )
-        assert abs(y_back[0] - 30.0) < 1e-4
-        assert abs(x_back[0] - 31.0) < 1e-4
+    def test_old_names_are_gone(self):
+        """ARC-14: the old entry points have been removed, not deprecated."""
+        assert not hasattr(FeatureCollection, "reproject_points")
+        assert not hasattr(FeatureCollection, "reproject_points2")
 
 
 class TestCreateSrFromProj:

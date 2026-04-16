@@ -389,8 +389,9 @@ class Spatial:
                 xs = [src_gt[0], src_gt[0] + src_gt[1] * src_x]
                 ys = [src_gt[3], src_gt[3] + src_gt[5] * src_y]
 
-                [uly, lry], [ulx, lrx] = FeatureCollection.reproject_points(
-                    ys, xs, from_epsg=src_epsg, to_epsg=to_epsg
+                # ARC-14: reproject_coordinates takes (x, y) and returns (x, y).
+                [ulx, lrx], [uly, lry] = FeatureCollection.reproject_coordinates(
+                    xs, ys, from_crs=src_epsg, to_crs=to_epsg
                 )
                 # old transform
                 # # transform the right upper corner point
@@ -414,8 +415,9 @@ class Spatial:
 
         if src_epsg != to_epsg:
             # transform the two-point coordinates to the new crs to calculate the new cell size
-            new_ys, new_xs = FeatureCollection.reproject_points(
-                ys, xs, from_epsg=src_epsg, to_epsg=to_epsg, precision=6
+            # ARC-14: reproject_coordinates takes (x, y) and returns (x, y).
+            new_xs, new_ys = FeatureCollection.reproject_coordinates(
+                xs, ys, from_crs=src_epsg, to_crs=to_epsg, precision=6
             )
         else:
             new_xs = xs
