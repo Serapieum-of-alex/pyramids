@@ -371,25 +371,24 @@ class FeatureCollection(GeoDataFrame):
         """
         return FeatureCollection(_geom.point_collection(coords, crs=crs))
 
-    def xy(self) -> None:
-        """Add per-vertex ``x`` and ``y`` columns to this FeatureCollection.
+    def with_coordinates(self) -> FeatureCollection:
+        """Return a new FeatureCollection with per-vertex ``x`` and ``y`` columns.
+
+        ARC-16: non-mutating replacement for the old ``xy()`` method
+        (which has been deleted). Matches pandas / geopandas
+        convention — data-transformation methods return a new object.
+        The ``with_`` prefix follows the stdlib/pandas pattern for
+        "return a copy with this change applied" (e.g.
+        :meth:`pathlib.Path.with_suffix`).
 
         Explodes MultiPolygon and GeometryCollection geometries into
-        their parts *first*, then assigns ``x`` and ``y`` columns
-        containing the coordinate sequences of each row. Because the
-        explode step runs before :func:`get_coords`, no MultiPolygon
-        survives into the coordinate-extraction phase. Mutates
-        ``self`` in place via pandas' ``_update_inplace`` primitive
-        (avoids the subclass-re-init recursion trap).
-
-        ARC-9: the previous implementation post-filtered rows whose
-        ``x`` column equalled the magic value ``-9999``. That sentinel
-        was replaced by making :func:`get_coords` raise on
-        MultiPolygon rows and relying on the up-front explode to
-        guarantee the raise is unreachable in practice.
+        their parts first, then attaches ``x`` and ``y`` columns
+        containing the coordinate sequences of each row.
 
         Returns:
-            None: Mutation only.
+            FeatureCollection: A new FeatureCollection (``self`` is
+            not modified) with the original columns plus ``x`` and
+            ``y`` per-vertex coordinate lists.
         """
         gdf = _geom.explode_gdf(
             gpd.GeoDataFrame(self, copy=True), geometry="multipolygon"
@@ -404,8 +403,7 @@ class FeatureCollection(GeoDataFrame):
             _geom.get_coords, geom_col="geometry", coord_type="y", axis=1
         )
         fc.reset_index(drop=True, inplace=True)
-
-        self._update_inplace(fc)
+        return fc
 
     def plot(
         self,
@@ -436,63 +434,55 @@ class FeatureCollection(GeoDataFrame):
 
         return ax
 
-    def concatenate(
-        self, gdf: GeoDataFrame, inplace: bool = False
-    ) -> GeoDataFrame | None:
+    def concat(self, other: GeoDataFrame) -> FeatureCollection:
         """Concatenate another GeoDataFrame onto this FeatureCollection.
 
-        Under the GeoDataFrame-subclass design you can also use the
-        standard idiom ``pd.concat([fc, other])`` which returns a
-        ``FeatureCollection`` because of the ``_constructor`` hook.
+        ARC-16: mirrors :func:`pandas.concat` — returns a new
+        ``FeatureCollection`` and never mutates ``self``. No
+        ``inplace`` kwarg (pandas' ``pd.concat`` has never had one;
+        follow the convention).
+
+        Equivalent to ``pd.concat([fc, other])`` which also works
+        directly and returns a ``FeatureCollection`` via the
+        ``_constructor`` hook (ARC-1a).
 
         Args:
-            gdf (GeoDataFrame): The rows to append.
-            inplace (bool): If ``True``, replace ``self``'s rows with
-                the concatenation and return ``None``. Default ``False``.
+            other (GeoDataFrame): The rows to append.
 
         Returns:
-            GeoDataFrame | None: The concatenated result, or ``None``
-            when ``inplace=True``.
+            FeatureCollection: A new FC containing ``self``'s rows
+            followed by ``other``'s rows, with ``self``'s CRS and a
+            freshly-reset index.
         """
         import pandas as pd
 
-        new_gdf = gpd.GeoDataFrame(pd.concat([self, gdf]))
-        new_gdf.index = list(range(len(new_gdf)))
-        new_gdf.crs = self.crs
-        if inplace:
-            self._update_inplace(FeatureCollection(new_gdf))
-            return None
-        return new_gdf
+        combined = gpd.GeoDataFrame(pd.concat([self, other]))
+        combined.index = list(range(len(combined)))
+        combined.crs = self.crs
+        return FeatureCollection(combined)
 
-    def concate(
-        self, gdf: GeoDataFrame, inplace: bool = False
-    ) -> GeoDataFrame | None:
-        """Deprecated alias for :meth:`concatenate` (ARC-11).
+    def with_centroid(self) -> FeatureCollection:
+        """Return a new FC with per-feature center-point columns attached.
 
-        ``concate`` was a misspelling. Use :meth:`concatenate` directly.
-        This shim will be removed in a future release.
+        ARC-16: non-mutating replacement for the old ``center_point()``
+        method (which has been deleted). The ``with_`` prefix mirrors
+        stdlib / pandas conventions for "return a copy with this
+        change applied".
+
+        Computes average x/y per feature (after
+        :meth:`with_coordinates`) and attaches three columns:
+        ``avg_x``, ``avg_y`` and ``center_point`` (shapely ``Point``).
+
+        Returns:
+            FeatureCollection: A new FeatureCollection (``self`` is
+            not modified) with ``x``, ``y``, ``avg_x``, ``avg_y``,
+            ``center_point`` columns added.
         """
-        import warnings as _w
+        fc = self.with_coordinates()
+        for i, row_i in fc.iterrows():
+            fc.loc[i, "avg_x"] = np.mean(row_i["x"])
+            fc.loc[i, "avg_y"] = np.mean(row_i["y"])
 
-        _w.warn(
-            "FeatureCollection.concate is deprecated (misspelling) — "
-            "use FeatureCollection.concatenate instead (ARC-11).",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.concatenate(gdf, inplace=inplace)
-
-    def center_point(self) -> GeoDataFrame:
-        """Compute per-feature centers as extra columns on ``self``.
-
-        Calls :meth:`xy` first, then adds ``avg_x``, ``avg_y`` and
-        ``center_point`` columns. Mutates and returns ``self``.
-        """
-        self.xy()
-        for i, row_i in self.iterrows():
-            self.loc[i, "avg_x"] = np.mean(row_i["x"])
-            self.loc[i, "avg_y"] = np.mean(row_i["y"])
-
-        coords_list = zip(self["avg_x"].tolist(), self["avg_y"].tolist())
-        self["center_point"] = _geom.create_points(coords_list)
-        return self
+        coords_list = zip(fc["avg_x"].tolist(), fc["avg_y"].tolist())
+        fc["center_point"] = _geom.create_points(coords_list)
+        return fc

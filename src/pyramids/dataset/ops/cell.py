@@ -361,14 +361,15 @@ class Cell:
         """
         # After ARC-1a, FeatureCollection *is* a GeoDataFrame (and therefore
         # *is* a DataFrame). Check the most specific type first so the
-        # branches do not overlap.
+        # branches do not overlap. ARC-16 replaced the mutating ``xy()``
+        # method with the non-mutating ``with_coordinates()`` — we keep
+        # the original inputs intact and read coords off the returned FC.
         if isinstance(points, FeatureCollection):
-            points.xy()
-            points = points.loc[:, ["x", "y"]].values
+            verts = points.with_coordinates()
+            points = verts.loc[:, ["x", "y"]].values
         elif isinstance(points, GeoDataFrame):
-            fc = FeatureCollection(points)
-            fc.xy()
-            points = fc.loc[:, ["x", "y"]].values
+            verts = FeatureCollection(points).with_coordinates()
+            points = verts.loc[:, ["x", "y"]].values
         elif isinstance(points, DataFrame):
             if all(elem not in points.columns for elem in ["x", "y"]):
                 raise ValueError(

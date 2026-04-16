@@ -265,19 +265,18 @@ class TestExplodeGdf:
     """Tests for ``_explode_gdf`` via ``xy()``."""
 
     def test_multipolygon_exploded_via_xy(self):
-        """``xy()`` explodes MultiPolygons into per-row Polygons."""
+        """``with_coordinates()`` explodes MultiPolygons into per-row Polygons."""
         poly1 = box(0.0, 0.0, 1.0, 1.0)
         poly2 = box(2.0, 2.0, 3.0, 3.0)
         mpoly = MultiPolygon([poly1, poly2])
         single = box(10.0, 10.0, 11.0, 11.0)
         gdf = gpd.GeoDataFrame(geometry=[mpoly, single], crs="EPSG:4326")
         fc = FeatureCollection(gdf)
-        fc.xy()
-        # FeatureCollection IS a GeoDataFrame — read columns from self.
-        assert "x" in fc.columns
-        assert "y" in fc.columns
-        for idx in range(len(fc)):
-            assert fc.iloc[idx].geometry.geom_type == "Polygon"
+        result = fc.with_coordinates()
+        assert "x" in result.columns
+        assert "y" in result.columns
+        for idx in range(len(result)):
+            assert result.iloc[idx].geometry.geom_type == "Polygon"
 
     def test_no_multipolygon_unchanged(self, simple_polygon_gdf: GeoDataFrame):
         """A GDF without multi-geometries should be returned with same row count."""
@@ -323,15 +322,16 @@ class TestMultiGeomHandler:
             assert isinstance(coords, list)
 
 
-class TestCenterPoint:
-    """Tests for ``center_point`` method."""
+class TestWithCentroid:
+    """ARC-16: with_centroid() returns a new FC with centroid columns."""
 
-    def test_center_point_single_polygon(self, simple_polygon_gdf: GeoDataFrame):
+    def test_with_centroid_single_polygon(self, simple_polygon_gdf: GeoDataFrame):
         """Center point of box(30,30,31,31) is ~(30.5, 30.5)."""
         fc = FeatureCollection(simple_polygon_gdf)
-        result_gdf = fc.center_point()
-        assert "center_point" in result_gdf.columns
-        cp = result_gdf.loc[0, "center_point"]
+        result = fc.with_centroid()
+        assert "center_point" in result.columns
+        assert "center_point" not in fc.columns, "self must not be mutated"
+        cp = result.loc[0, "center_point"]
         assert isinstance(cp, Point)
         assert abs(cp.x - 30.5) < 0.2
         assert abs(cp.y - 30.5) < 0.2
@@ -525,10 +525,9 @@ class TestGetCoords:
             {"v": [1]}, geometry=[poly], crs="EPSG:32636"
         )
         fc = FeatureCollection(gdf)
-        fc.xy()
-        assert len(fc) == 1
-        # The x column contains the literal -9999.0 (not dropped).
-        xs = fc.loc[0, "x"]
+        result = fc.with_coordinates()
+        assert len(result) == 1
+        xs = result.loc[0, "x"]
         assert -9999.0 in xs, f"Real -9999 coord missing: {xs}"
 
     def test_geometry_collection(self):

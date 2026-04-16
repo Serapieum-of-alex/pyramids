@@ -258,43 +258,47 @@ class TestMultiGeomHandler:
         assert res == multi_linestring_coords_x
 
 
-class TestXY:
+class TestWithCoordinates:
+    """ARC-16: with_coordinates() — non-mutating, returns a new FC."""
+
     def test_points(self, points_gdf: GeoDataFrame, points_gdf_x, points_gdf_y):
         feature = FeatureCollection(points_gdf)
-        feature.xy()
-        assert all(np.isclose(feature["y"].values, points_gdf_y, rtol=0.000001))
-        assert all(np.isclose(feature["x"].values, points_gdf_x, rtol=0.000001))
+        result = feature.with_coordinates()
+        assert result is not feature, "must return a new object, not self"
+        assert "x" not in feature.columns, "self must not be mutated"
+        assert all(np.isclose(result["y"].values, points_gdf_y, rtol=0.000001))
+        assert all(np.isclose(result["x"].values, points_gdf_x, rtol=0.000001))
 
     def test_multi_points(
         self, multi_points_gdf: GeoDataFrame, multi_points_gdf_x, multi_points_gdf_y
     ):
         feature = FeatureCollection(multi_points_gdf)
-        feature.xy()
+        result = feature.with_coordinates()
         assert all(
             np.isclose(
-                feature.loc[0, "y"], multi_points_gdf_y[0][0], rtol=0.000001
+                result.loc[0, "y"], multi_points_gdf_y[0][0], rtol=0.000001
             )
         )
         assert all(
             np.isclose(
-                feature.loc[0, "x"], multi_points_gdf_x[0][0], rtol=0.000001
+                result.loc[0, "x"], multi_points_gdf_x[0][0], rtol=0.000001
             )
         )
 
     def test_multi_points_2(self, multi_points_gdf_2: GeoDataFrame, point_coords_2):
         feature = FeatureCollection(multi_points_gdf_2)
-        feature.xy()
-        assert feature.loc[0, "x"] == [point_coords_2[0][0], point_coords_2[1][0]]
-        assert feature.loc[0, "y"] == [point_coords_2[0][1], point_coords_2[1][1]]
+        result = feature.with_coordinates()
+        assert result.loc[0, "x"] == [point_coords_2[0][0], point_coords_2[1][0]]
+        assert result.loc[0, "y"] == [point_coords_2[0][1], point_coords_2[1][1]]
 
     def test_polygons(
         self, polygons_gdf: GeoDataFrame, polygon_gdf_x: list, polygon_gdf_y: list
     ):
         feature = FeatureCollection(polygons_gdf)
-        feature.xy()
-        assert isinstance(feature.loc[0, "y"], list)
-        assert all(np.isclose(feature.loc[0, "y"], polygon_gdf_y, rtol=0.000001))
-        assert all(np.isclose(feature.loc[0, "x"], polygon_gdf_x, rtol=0.000001))
+        result = feature.with_coordinates()
+        assert isinstance(result.loc[0, "y"], list)
+        assert all(np.isclose(result.loc[0, "y"], polygon_gdf_y, rtol=0.000001))
+        assert all(np.isclose(result.loc[0, "x"], polygon_gdf_x, rtol=0.000001))
 
     def test_multi_polygons(
         self,
@@ -302,10 +306,10 @@ class TestXY:
         multi_polygon_gdf_coords_x: list,
     ):
         feature = FeatureCollection(multi_polygon_gdf)
-        feature.xy()
-        assert isinstance(feature.loc[0, "x"], list)
+        result = feature.with_coordinates()
+        assert isinstance(result.loc[0, "x"], list)
         assert all(
-            np.isclose(feature.loc[0, "x"], multi_polygon_gdf_coords_x, rtol=0.000001)
+            np.isclose(result.loc[0, "x"], multi_polygon_gdf_coords_x, rtol=0.000001)
         )
 
     def test_geometry_collection(
@@ -314,10 +318,10 @@ class TestXY:
         multi_polygon_gdf_coords_x: list,
     ):
         feature = FeatureCollection(geometry_collection_gdf)
-        feature.xy()
-        assert feature.loc[0, "x"] == 100.0
-        assert feature.loc[1, "x"] == [101.0, 102.0]
-        assert feature.loc[2, "x"] == [
+        result = feature.with_coordinates()
+        assert result.loc[0, "x"] == 100.0
+        assert result.loc[1, "x"] == [101.0, 102.0]
+        assert result.loc[2, "x"] == [
             460717.3717217822,
             456004.5874004898,
             456929.2331169145,
@@ -326,40 +330,79 @@ class TestXY:
             460717.3717217822,
         ]
 
+    def test_returns_featurecollection(self, points_gdf: GeoDataFrame):
+        """Subclass identity preserved on the returned object."""
+        feature = FeatureCollection(points_gdf)
+        assert isinstance(feature.with_coordinates(), FeatureCollection)
 
-class TestConcatenate:
-    """ARC-11: concatenate() is the canonical spelling; concate is a deprecated alias."""
 
-    def test_return_new_gdf(self, geometry_collection_gdf: GeoDataFrame):
+class TestConcat:
+    """ARC-16: concat() mirrors pd.concat — returns a new FC, no inplace."""
+
+    def test_returns_new_fc(self, geometry_collection_gdf: GeoDataFrame):
         feature = FeatureCollection(geometry_collection_gdf)
-        gdf = feature.concatenate(geometry_collection_gdf)
-        assert len(gdf) == 2
-        assert gdf.loc[0, "geometry"].geom_type == "GeometryCollection"
+        result = feature.concat(geometry_collection_gdf)
+        assert isinstance(result, FeatureCollection)
+        assert result is not feature, "must not return self"
+        assert len(result) == 2
+        assert result.loc[0, "geometry"].geom_type == "GeometryCollection"
 
-    def test_inplace(self, geometry_collection_gdf: GeoDataFrame):
+    def test_does_not_mutate_self(self, geometry_collection_gdf: GeoDataFrame):
         feature = FeatureCollection(geometry_collection_gdf)
-        result = feature.concatenate(geometry_collection_gdf, inplace=True)
-        assert result is None
-        assert len(feature) == 2
-        assert feature.loc[0, "geometry"].geom_type == "GeometryCollection"
+        before = len(feature)
+        _ = feature.concat(geometry_collection_gdf)
+        assert len(feature) == before, "self must not be mutated"
 
-    def test_concate_is_deprecated_alias(self, geometry_collection_gdf: GeoDataFrame):
-        """``concate`` (the old misspelling) still works but warns."""
-        import warnings as _w
+    def test_pd_concat_idiom_also_works(self, geometry_collection_gdf: GeoDataFrame):
+        """pd.concat([fc, other]) returns a FeatureCollection via _constructor."""
+        import pandas as pd
 
         feature = FeatureCollection(geometry_collection_gdf)
-        with _w.catch_warnings(record=True) as caught:
-            _w.simplefilter("always")
-            gdf = feature.concate(geometry_collection_gdf)
-        deprecated = [
-            w for w in caught if issubclass(w.category, DeprecationWarning)
-        ]
-        assert deprecated, "concate should emit a DeprecationWarning"
-        assert "concatenate" in str(deprecated[0].message)
-        assert len(gdf) == 2  # behavior still correct
+        result = pd.concat([feature, geometry_collection_gdf])
+        assert isinstance(result, FeatureCollection)
+        assert len(result) == 2
 
 
-def test_center_point(polygons_gdf: GeoDataFrame):
+def test_with_centroid(polygons_gdf: GeoDataFrame):
     feature = FeatureCollection(polygons_gdf)
-    gdf = feature.center_point()
-    assert "center_point" in gdf.columns
+    result = feature.with_centroid()
+    assert result is not feature, "must return a new object"
+    assert "center_point" in result.columns
+    assert "center_point" not in feature.columns, "self must not be mutated"
+
+
+def test_old_names_are_gone():
+    """ARC-16: xy / center_point / concatenate / concate removed outright."""
+    assert not hasattr(FeatureCollection, "xy")
+    assert not hasattr(FeatureCollection, "center_point")
+    assert not hasattr(FeatureCollection, "concatenate")
+    assert not hasattr(FeatureCollection, "concate")
+
+
+def test_no_inplace_kwarg_on_public_methods():
+    """ARC-16 regression: no pyramids-specific method exposes inplace=.
+
+    Scans the class for any public method whose signature contains an
+    ``inplace`` parameter; none of our pyramids-added methods should.
+    (Inherited pandas/geopandas methods that still carry ``inplace``
+    are not our concern — filter them out by only checking attributes
+    declared on FeatureCollection itself.)
+    """
+    import inspect
+
+    own = FeatureCollection.__dict__
+    offenders = []
+    for name, obj in own.items():
+        if name.startswith("_"):
+            continue
+        if not callable(obj):
+            continue
+        try:
+            sig = inspect.signature(obj)
+        except (TypeError, ValueError):
+            continue
+        if "inplace" in sig.parameters:
+            offenders.append(name)
+    assert not offenders, (
+        f"pyramids methods must not have inplace= (ARC-16): {offenders}"
+    )
