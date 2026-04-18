@@ -24,6 +24,8 @@ import numpy as np
 from osgeo import osr
 from pyproj import Transformer
 
+from pyramids.base._errors import CRSError
+
 
 def create_sr_from_proj(
     prj: str, string_type: str | None = None
@@ -71,8 +73,6 @@ def get_epsg_from_prj(prj: str) -> int:
         ValueError: If ``prj`` is an empty string.
     """
     if prj == "":
-        from pyramids.base._errors import CRSError
-
         raise CRSError(
             "get_epsg_from_prj received an empty projection string. "
             "An empty projection is ambiguous and is no longer "

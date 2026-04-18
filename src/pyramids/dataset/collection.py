@@ -14,9 +14,13 @@ from osgeo import gdal
 
 from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.base._errors import DatasetNotFoundError
+from pyramids.base._file_manager import CachingFileManager
+from pyramids.base._openers import gdal_raster_open
 from pyramids.base._raster_meta import RasterMeta
 from pyramids.base._utils import import_cleopatra
+from pyramids.dataset._stac import from_stac as _from_stac
 from pyramids.dataset.dataset import Dataset
+from pyramids.dataset.ops._zarr import _resolve_store
 
 if TYPE_CHECKING:
     from cleopatra.array_glyph import ArrayGlyph
@@ -214,9 +218,6 @@ def _read_time_step(path: str) -> np.ndarray:
     """
     manager = _READ_TIME_STEP_MANAGERS.get(path)
     if manager is None:
-        from pyramids.base._file_manager import CachingFileManager
-        from pyramids.base._openers import gdal_raster_open
-
         manager = CachingFileManager(
             gdal_raster_open, path, "read_only", lock=False,
         )
@@ -566,14 +567,12 @@ class DatasetCollection:
                 "construct one."
             )
         try:
-            import zarr
+            import zarr  # noqa: F401  - presence check for the optional extra
         except ImportError as exc:
             raise ImportError(
                 "DatasetCollection.to_zarr requires the optional 'zarr' "
                 "dependency. Install with: pip install 'pyramids-gis[lazy]'"
             ) from exc
-        from pyramids.dataset.ops._zarr import _resolve_store
-
         data = self.data
         resolved_store = _resolve_store(store, storage_options)
         write_result = data.to_zarr(
@@ -619,8 +618,6 @@ class DatasetCollection:
         Returns:
             DatasetCollection: File-backed collection.
         """
-        from pyramids.dataset._stac import from_stac as _from_stac
-
         return _from_stac(
             items, asset,
             patch_url=patch_url, bbox=bbox, max_items=max_items,

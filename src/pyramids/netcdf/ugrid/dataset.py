@@ -7,6 +7,7 @@ unstructured mesh data.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -378,7 +379,6 @@ class UgridDataset:
         srs.ImportFromEPSG(to_epsg)
         new_crs_wkt = srs.ExportToWkt()
 
-        from dataclasses import replace
         new_topo_info = None
         if self._topology_info is not None:
             new_topo_info = replace(self._topology_info, crs_wkt=new_crs_wkt)

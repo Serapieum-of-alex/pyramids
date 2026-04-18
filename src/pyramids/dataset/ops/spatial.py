@@ -19,6 +19,7 @@ from pyramids.dataset.abstract_dataset import (
     RESAMPLING_METHODS,
 )
 from pyramids.feature import FeatureCollection
+from pyramids.feature import _ogr as _feature_ogr
 
 if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
@@ -813,7 +814,6 @@ class Spatial:
         # gdal.Warp's cutlineDSName needs a *path*; stage the vector in
         # /vsimem/ through the internal OGR bridge. The path is unlinked
         # automatically when the with-block exits.
-        from pyramids.feature import _ogr as _feature_ogr
 
         # Use the base Dataset class (not a subclass like NetCDF) for intermediate GDAL warp results
         # because _correct_wrap_cutline_error calls create_from_array which has different behavior in

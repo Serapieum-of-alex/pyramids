@@ -152,10 +152,8 @@ def _register_worker_plugin(client: Any, env: dict[str, str]) -> None:
             self._env = env
 
         def setup(self, worker: Any) -> None:  # pragma: no cover - runs on workers
-            from osgeo import gdal as _gdal
-
             for key, value in self._env.items():
-                _gdal.SetConfigOption(key, value)
+                gdal.SetConfigOption(key, value)
 
     plugin = PyramidsConfigPlugin(env)
     try:

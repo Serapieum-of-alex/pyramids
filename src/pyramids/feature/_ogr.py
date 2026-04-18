@@ -15,13 +15,17 @@ Do not import this module from user code; its signatures are unstable.
 
 from __future__ import annotations
 
+import tempfile
 import uuid
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Iterator
 
 import geopandas as gpd
 from geopandas import GeoDataFrame
 from osgeo import gdal, ogr
+
+from pyramids.base._errors import VectorDriverError
 
 
 def _new_vsimem_path() -> str:
@@ -244,15 +248,10 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
     # geopandas' default pyogrio engine reads from its own bundled GDAL
     # VFS, not osgeo.gdal's /vsimem/. Round-trip through a real temp file
     # so pyogrio can open what we wrote.
-    import tempfile
-    from pathlib import Path
-
     tmp = Path(tempfile.gettempdir()) / f"pyramids_ogr_{uuid.uuid4()}.geojson"
     try:
         result = gdal.VectorTranslate(str(tmp), ds, format="GeoJSON")
         if result is None:
-            from pyramids.base._errors import VectorDriverError
-
             raise VectorDriverError(
                 "gdal.VectorTranslate failed to materialize the DataSource "
                 "to GeoJSON."

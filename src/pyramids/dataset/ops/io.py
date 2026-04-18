@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import pickle
 from pathlib import Path
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Generator
@@ -742,8 +744,6 @@ class IO:
             # surfaces a clear error before the graph materialises.
             file_name = getattr(self, "_file_name", "") or ""
             if not file_name or file_name.startswith("/vsimem/"):
-                import pickle
-
                 raise pickle.PicklingError(
                     "to_file(compute=False) requires an on-disk Dataset "
                     "— call .to_file(path) first to anchor the MEM "
@@ -754,8 +754,6 @@ class IO:
             # of the write, not per-tile parallelism. Users expecting
             # parallel writes should use to_zarr or a Zarr-backed
             # output.
-            import logging
-
             logging.getLogger("pyramids.dataset").info(
                 "to_file(compute=False) returns a Delayed wrapping the "
                 "synchronous write — GeoTIFF writes are lock-serialised "

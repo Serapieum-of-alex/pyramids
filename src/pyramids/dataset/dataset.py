@@ -21,11 +21,13 @@ from pyramids.dataset.abstract_dataset import (
     DEFAULT_NO_DATA_VALUE,
     AbstractDataset,
 )
+from pyramids.base._errors import CRSError
 from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     numpy_to_gdal_dtype,
 )
 from pyramids.feature import FeatureCollection
+from pyramids.feature import _ogr as _feature_ogr
 
 from pyramids.dataset.ops import (
     Analysis,
@@ -36,6 +38,19 @@ from pyramids.dataset.ops import (
     Spatial,
     Vectorize,
 )
+from pyramids.dataset.ops._focal import (
+    aspect,
+    focal_apply,
+    focal_mean,
+    focal_std,
+    hillshade,
+    slope,
+)
+from pyramids.dataset.ops._zarr import (
+    read_dataset_from_zarr,
+    write_dataset_to_zarr,
+)
+from pyramids.dataset.ops._zonal import zonal_stats as _zonal_stats
 
 if TYPE_CHECKING:
     from geopandas import GeoDataFrame
@@ -83,32 +98,22 @@ class Dataset(  # type: ignore[misc]
 
     def focal_mean(self, radius: int = 1, *, chunks=None, band: int = 0):
         """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_mean`."""
-        from pyramids.dataset.ops._focal import focal_mean
-
         return focal_mean(self, radius=radius, chunks=chunks, band=band)
 
     def focal_std(self, radius: int = 1, *, chunks=None, band: int = 0):
         """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_std`."""
-        from pyramids.dataset.ops._focal import focal_std
-
         return focal_std(self, radius=radius, chunks=chunks, band=band)
 
     def focal_apply(self, func, radius: int = 1, *, chunks=None, band: int = 0):
         """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_apply`."""
-        from pyramids.dataset.ops._focal import focal_apply
-
         return focal_apply(self, func, radius=radius, chunks=chunks, band=band)
 
     def slope(self, *, chunks=None, band: int = 0, units: str = "degrees"):
         """Thin forwarder to :func:`pyramids.dataset.ops._focal.slope`."""
-        from pyramids.dataset.ops._focal import slope
-
         return slope(self, chunks=chunks, band=band, units=units)
 
     def aspect(self, *, chunks=None, band: int = 0):
         """Thin forwarder to :func:`pyramids.dataset.ops._focal.aspect`."""
-        from pyramids.dataset.ops._focal import aspect
-
         return aspect(self, chunks=chunks, band=band)
 
     def hillshade(
@@ -120,8 +125,6 @@ class Dataset(  # type: ignore[misc]
         band: int = 0,
     ):
         """Thin forwarder to :func:`pyramids.dataset.ops._focal.hillshade`."""
-        from pyramids.dataset.ops._focal import hillshade
-
         return hillshade(
             self, azimuth=azimuth, altitude=altitude, chunks=chunks, band=band,
         )
@@ -152,9 +155,7 @@ class Dataset(  # type: ignore[misc]
         Returns:
             pandas.DataFrame: Indexed by ``fc.index``; one column per stat.
         """
-        from pyramids.dataset.ops._zonal import zonal_stats as _zs
-
-        return _zs(self, fc, stats=stats, method=method, band=band)
+        return _zonal_stats(self, fc, stats=stats, method=method, band=band)
 
     def to_zarr(
         self,
@@ -183,8 +184,6 @@ class Dataset(  # type: ignore[misc]
                 ``None`` defaults to ``"auto"`` via the zarr helper.
             storage_options: fsspec options for cloud stores.
         """
-        from pyramids.dataset.ops._zarr import write_dataset_to_zarr
-
         resolved_chunks = chunks if chunks is not None else "auto"
         return write_dataset_to_zarr(
             self, store,
@@ -212,8 +211,6 @@ class Dataset(  # type: ignore[misc]
                 lazy arrays.
             storage_options: fsspec options for cloud stores.
         """
-        from pyramids.dataset.ops._zarr import read_dataset_from_zarr
-
         return read_dataset_from_zarr(
             store, chunks=chunks, storage_options=storage_options,
         )
@@ -846,12 +843,6 @@ class Dataset(  # type: ignore[misc]
                 CRS.
             TypeError: If ``template`` is not a pyramids ``Dataset``.
         """
-        # Avoid circular import at module-top by importing the OGR
-        # bridge here. This function belongs to dataset/, and the
-        # bridge lives under feature/, so this is a sibling-module
-        # import (cycle-free) not a self-reference.
-        from pyramids.feature import _ogr as _feature_ogr
-
         if cell_size is None and template is None:
             raise ValueError(
                 "You have to enter either cell size or Dataset object."
@@ -865,8 +856,6 @@ class Dataset(  # type: ignore[misc]
                     "(see pyramids.dataset.Dataset.read_file)."
                 )
             if template.epsg != ds_epsg:
-                from pyramids.base._errors import CRSError
-
                 raise CRSError(
                     f"Dataset and vector are not the same EPSG. "
                     f"{template.epsg} != {ds_epsg}"

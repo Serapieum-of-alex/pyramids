@@ -27,6 +27,8 @@ from typing import Any, Iterable
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
+import pyogrio
 from geopandas import GeoDataFrame
 from osgeo import gdal, ogr, osr
 from shapely.geometry import LineString, Point, Polygon, box
@@ -34,6 +36,8 @@ from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
+from pyramids import _io as _pyramids_io
+from pyramids.base._errors import CRSError, FeatureError
 from pyramids.base._utils import Catalog
 from pyramids.feature import crs as _crs
 from pyramids.feature import geometry as _geom
@@ -204,10 +208,6 @@ class FeatureCollection(GeoDataFrame):
             FeatureError: If a record is missing the ``geometry``
                 column.
         """
-        import pandas as pd
-
-        from pyramids.base._errors import FeatureError
-
         records_list = list(records)
         if not records_list:
             return cls(
@@ -302,10 +302,6 @@ class FeatureCollection(GeoDataFrame):
                 f"tile_strategy must be one of "
                 f"{cls._VALID_TILE_STRATEGIES}; got {tile_strategy!r}."
             )
-
-        import pyogrio
-
-        from pyramids import _io as _pyramids_io
 
         resolved = str(_pyramids_io._parse_path(path))
 
@@ -450,8 +446,6 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        from pyramids import _io as _pyramids_io
-
         resolved = _pyramids_io._parse_path(path)
         if backend == "dask":
             # M7: dask_geopandas.read_file does NOT forward pyogrio
@@ -612,10 +606,6 @@ class FeatureCollection(GeoDataFrame):
         Returns:
             list[str]: Layer names in the order the driver reports them.
         """
-        import pyogrio
-
-        from pyramids import _io as _pyramids_io
-
         resolved = _pyramids_io._parse_path(path)
         arr = pyogrio.list_layers(str(resolved))
         # pyogrio returns an ndarray of shape (N, 2): (name, geom_type).
@@ -670,8 +660,6 @@ class FeatureCollection(GeoDataFrame):
                 "open_arrow requires the optional 'pyogrio' dependency. "
                 "Install with: pip install pyogrio"
             ) from exc
-        from pyramids import _io as _pyramids_io
-
         resolved = _pyramids_io._parse_path(path)
         kwargs: dict[str, Any] = {}
         if layer is not None:
@@ -799,8 +787,6 @@ class FeatureCollection(GeoDataFrame):
         Raises:
             ImportError: If :mod:`pyarrow` is not installed.
         """
-        from pyramids import _io as _pyramids_io
-
         resolved = _pyramids_io._parse_path(path)
         if backend == "dask":
             try:
@@ -1173,8 +1159,6 @@ class FeatureCollection(GeoDataFrame):
 
         if basemap:
             if self.epsg is None:
-                from pyramids.base._errors import CRSError
-
                 raise CRSError(
                     "FeatureCollection must have a CRS (epsg) to use basemap."
                 )
@@ -1205,8 +1189,6 @@ class FeatureCollection(GeoDataFrame):
             followed by ``other``'s rows, with ``self``'s CRS and a
             freshly-reset index.
         """
-        import pandas as pd
-
         combined = gpd.GeoDataFrame(pd.concat([self, other]))
         combined.index = list(range(len(combined)))
         combined.crs = self.crs

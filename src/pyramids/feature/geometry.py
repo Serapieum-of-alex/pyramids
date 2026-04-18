@@ -10,6 +10,7 @@ wrote ``FeatureCollection.create_polygon(...)`` or
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Iterable
 
 import geopandas as gpd
@@ -19,6 +20,8 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
+
+from pyramids.base._errors import InvalidGeometryError
 
 
 def get_xy_coords(geometry: Any, coord_type: str) -> list:
@@ -199,8 +202,6 @@ def get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
     if gtype == "polygon":
         return list(get_poly_coords(geom, coord_type))
     if gtype == "multipolygon":
-        from pyramids.base._errors import InvalidGeometryError
-
         raise InvalidGeometryError(
             "get_coords does not accept MultiPolygon rows — explode the "
             "GeoDataFrame with explode_gdf(gdf, 'multipolygon') first "
@@ -286,9 +287,7 @@ def create_polygon_legacy(
     reason ARC-15 split this into two functions; new code should
     pick the right one explicitly.
     """
-    import warnings as _w
-
-    _w.warn(
+    warnings.warn(
         "create_polygon(coords, wkt=True) is deprecated (ARC-15). "
         "Use polygon_wkt(coords) for a WKT string, or "
         "create_polygon(coords) for a Polygon.",
@@ -307,9 +306,7 @@ def create_point_legacy(
     returns a ``GeoDataFrame``. New code should pick the right one
     explicitly.
     """
-    import warnings as _w
-
-    _w.warn(
+    warnings.warn(
         "create_point(coords, epsg=...) with polymorphic return is "
         "deprecated (ARC-15). Use create_points(coords) for the list "
         "or point_collection(coords, crs=...) for a GeoDataFrame.",

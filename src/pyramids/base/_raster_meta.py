@@ -18,7 +18,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+from osgeo import gdal
 from pyproj import CRS
+
+from pyramids.base._utils import gdal_to_numpy_dtype
 
 if TYPE_CHECKING:
     from pyramids.dataset import Dataset
@@ -129,15 +133,9 @@ class RasterMeta:
             # float64 — otherwise a Dataset with an int16 band would
             # get a bogus float64 dtype metadata on the RasterMeta and
             # downstream dask graphs produce wrong-dtype arrays.
-            from osgeo import gdal as _gdal
-
-            from pyramids.base._utils import gdal_to_numpy_dtype
-
             band_type = ds.raster.GetRasterBand(1).DataType
-            dtype = str(gdal_to_numpy_dtype(_gdal.GetDataTypeName(band_type)))
+            dtype = str(gdal_to_numpy_dtype(gdal.GetDataTypeName(band_type)))
         else:
-            import numpy as np
-
             dtype = str(np.dtype(first_dtype))
         return cls(
             rows=int(ds.rows),

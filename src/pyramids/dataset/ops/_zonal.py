@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import pandas as pd
+from osgeo import gdal, ogr, osr
 
 if TYPE_CHECKING:
     from pyramids.dataset import Dataset
@@ -59,8 +60,6 @@ def _rasterize_labels(ds: "Dataset", fc: "FeatureCollection") -> np.ndarray:
     incompatible raises :class:`ValueError` early rather than silently
     producing a mis-aligned label grid.
     """
-    from osgeo import gdal, ogr, osr
-
     fc_crs = getattr(fc, "crs", None)
     ds_epsg = int(ds.epsg) if ds.epsg else None
     if fc_crs is not None and ds_epsg is not None:

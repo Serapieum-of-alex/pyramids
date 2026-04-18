@@ -21,6 +21,9 @@ from pyramids.base._errors import OptionalPackageDoesNotExist
 from pyramids.base._utils import numpy_to_gdal_dtype
 from pyramids.base.protocols import ArrayLike
 from pyramids.dataset import DEFAULT_NO_DATA_VALUE, Dataset
+from pyramids.netcdf._lazy import _apply_unpack, build_lazy_array
+from pyramids.netcdf._kerchunk import combine_kerchunk, to_kerchunk
+from pyramids.netcdf._mfdataset import open_mfdataset
 from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
 from pyramids.netcdf.models import NetCDFMetadata
@@ -490,8 +493,6 @@ class NetCDF(Dataset):
                     if offset is not None:
                         result = result + offset
         else:
-            from pyramids.netcdf._lazy import _apply_unpack, build_lazy_array
-
             parent = self._parent_nc if self._parent_nc is not None else self
             path = parent._file_name
             if path.startswith("NETCDF"):
@@ -889,8 +890,6 @@ class NetCDF(Dataset):
         Returns:
             dict: The manifest dict that was written.
         """
-        from pyramids.netcdf._kerchunk import to_kerchunk
-
         return to_kerchunk(
             self._file_name, output_path,
             inline_threshold=inline_threshold, vlen_encode=vlen_encode,
@@ -925,8 +924,6 @@ class NetCDF(Dataset):
         Returns:
             dict: The combined manifest.
         """
-        from pyramids.netcdf._kerchunk import combine_kerchunk
-
         return combine_kerchunk(
             paths, output_path,
             concat_dims=concat_dims, identical_dims=identical_dims,
@@ -962,8 +959,6 @@ class NetCDF(Dataset):
         Returns:
             dask.array.Array: Stack of shape ``(n_files, *var_shape)``.
         """
-        from pyramids.netcdf._mfdataset import open_mfdataset
-
         return open_mfdataset(
             paths, variable,
             chunks=chunks, parallel=parallel, preprocess=preprocess,
