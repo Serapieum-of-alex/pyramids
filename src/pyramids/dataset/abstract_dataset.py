@@ -40,6 +40,29 @@ RESAMPLING_METHODS = [
 ]
 
 
+def _reconstruct_dataset(cls: type, path: str, access: str) -> "AbstractDataset":
+    """Re-open a dataset from its pickle recipe tuple.
+
+    Called by :meth:`AbstractDataset.__reduce__` on unpickle. Routes
+    through the target class's ``read_file`` classmethod so subclass
+    behavior (NetCDF mode flags, COG mixins) is preserved — subclasses
+    that need to carry extra state (for example
+    :class:`~pyramids.netcdf.NetCDF`) override ``__reduce__`` directly.
+
+    Args:
+        cls: The concrete :class:`AbstractDataset` subclass to
+            reconstruct (``Dataset``, ``NetCDF``, etc.).
+        path: The on-disk path or VSI URL to re-open.
+        access: Access mode string; ``"read_only"`` opens read-only,
+            any other value opens for update.
+
+    Returns:
+        AbstractDataset: A freshly opened instance of ``cls``.
+    """
+    read_only = access == "read_only"
+    return cls.read_file(path, read_only=read_only)
+
+
 class AbstractDataset(ABC):
     """AbstractDataset."""
 
@@ -70,6 +93,33 @@ class AbstractDataset(ABC):
         self._block_size = [
             src.GetRasterBand(i).GetBlockSize() for i in range(1, self._band_count + 1)
         ]
+
+    def __reduce__(self):
+        """Return a recipe tuple that re-opens the dataset on unpickle.
+
+        Serialising a live ``gdal.Dataset`` pointer is not possible
+        (native C++ handle, no copy semantics). Instead we emit the
+        minimal recipe ``(class, file_name, access)`` and reconstruct
+        on unpickle by calling ``cls.read_file(path, read_only=...)``.
+
+        The GDAL handle is therefore opened **on the receiving process
+        / thread**, which is the invariant dask.distributed needs.
+
+        Raises:
+            TypeError: The dataset has no on-disk path (empty
+                ``_file_name`` or a ``/vsimem/`` path). In-memory
+                datasets are not reconstructible from the recipe;
+                call :meth:`to_file` first to anchor them to disk.
+        """
+        path = self._file_name
+        if not path or path.startswith("/vsimem/"):
+            raise TypeError(
+                f"{type(self).__name__} has no on-disk path "
+                f"(file_name={path!r}); pickling an in-memory "
+                "dataset is not supported. Call .to_file(path) "
+                "first to anchor it to disk."
+            )
+        return (_reconstruct_dataset, (type(self), path, self._access))
 
     def __enter__(self):
         """Enter the context manager."""
