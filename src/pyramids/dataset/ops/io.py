@@ -887,14 +887,26 @@ class IO:
         func: Callable[[np.ndarray], np.ndarray],
         tile_size: int = 256,
         band: int | None = None,
-    ) -> Dataset:
-        """Apply a function block-by-block without loading the full raster into memory.
+        *,
+        chunks: int | tuple | dict | str | None = None,
+        dtype: np.dtype | None = None,
+        drop_axis: int | list[int] | None = None,
+        new_axis: int | list[int] | None = None,
+    ) -> Any:
+        """Apply a function block-by-block — eager by default; lazy via ``chunks=``.
 
-        Reads the raster in tiles of `tile_size x tile_size`, applies `func` to each
-        tile, and writes the result to a new in-memory Dataset. Neither the input nor
-        the output array needs to fit in memory at once — only one tile at a time.
+        Two backends:
 
-        This is the key enabler for processing rasters larger than RAM.
+        - Default / ``chunks=None``: reads the raster tile-by-tile via GDAL,
+          applies ``func`` to each tile, and writes the result into a fresh
+          in-memory Dataset. Neither input nor output needs to fit in RAM at
+          once. Returns a :class:`~pyramids.dataset.Dataset`.
+        - ``chunks=<spec>``: reads lazily via
+          :meth:`read_array(chunks=<spec>) <pyramids.dataset.ops.io.IO.read_array>`
+          and dispatches to :func:`dask.array.map_blocks`. Returns a
+          :class:`dask.array.Array` that materializes on ``.compute()`` or
+          when wrapped by another lazy pyramids op. ``dtype``, ``drop_axis``,
+          and ``new_axis`` are forwarded to dask.
 
         Args:
             func (Callable[[np.ndarray], np.ndarray]):
@@ -902,13 +914,29 @@ class IO:
                 of the same shape. The function should handle no-data values internally
                 if needed.
             tile_size (int):
-                Size of each square tile in pixels. Default is 256.
+                Size of each square tile in pixels when ``chunks=None``. Default is 256.
+                Ignored on the lazy path (use ``chunks=`` instead).
             band (int | None):
                 Band index to process. If None, all bands are processed. Default is None.
+            chunks (keyword-only):
+                If given, switches to the lazy path and is forwarded to
+                ``read_array(chunks=...)`` — see that method for accepted
+                values. ``None`` (default) keeps the eager block loop.
+            dtype (np.dtype | None, keyword-only):
+                Output dtype. Defaults to the input array dtype. Matches
+                :func:`dask.array.map_blocks` ``dtype=``. Lazy path only.
+            drop_axis (keyword-only):
+                Axes dropped by ``func``. Matches dask's ``drop_axis=``.
+                Lazy path only.
+            new_axis (keyword-only):
+                Axes added by ``func``. Matches dask's ``new_axis=``.
+                Lazy path only.
 
         Returns:
-            Dataset:
-                A new Dataset with the function applied to every tile.
+            Dataset or dask.array.Array:
+                - Eager path returns a :class:`Dataset` with the function
+                  applied to every tile.
+                - Lazy path returns a :class:`dask.array.Array`.
 
         Examples:
             - Apply a function block-by-block to avoid loading a large raster into memory:
@@ -925,12 +953,26 @@ class IO:
 
               ```
         """
+        if chunks is not None:
+            try:
+                import dask.array as da
+            except ImportError as exc:
+                raise ImportError(_LAZY_IMPORT_ERROR) from exc
+            lazy_src = self.read_array(band=band, chunks=chunks)
+            result_dtype = dtype if dtype is not None else lazy_src.dtype
+            kwargs: dict[str, Any] = {"dtype": result_dtype}
+            if drop_axis is not None:
+                kwargs["drop_axis"] = drop_axis
+            if new_axis is not None:
+                kwargs["new_axis"] = new_axis
+            return da.map_blocks(func, lazy_src, **kwargs)
+
         if band is not None:
             bands = 1
-            dtype = self.gdal_dtype[band]
+            gdal_dtype = self.gdal_dtype[band]
         else:
             bands = self.band_count
-            dtype = self.gdal_dtype[0]
+            gdal_dtype = self.gdal_dtype[0]
 
         if band is not None:
             no_data = [self.no_data_value[band]]
@@ -938,7 +980,7 @@ class IO:
             no_data = self.no_data_value
 
         dst_obj = type(self)._build_dataset(
-            self.columns, self.rows, bands, dtype,
+            self.columns, self.rows, bands, gdal_dtype,
             self.geotransform, self.crs, no_data,
         )
 
