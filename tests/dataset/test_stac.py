@@ -111,6 +111,33 @@ class TestPatchUrl:
         assert len(seen) == 3
 
 
+class TestBboxAndMaxItems:
+    """M6: bbox filter + max_items cap before href resolution."""
+
+    @requires_pystac
+    def test_bbox_filters_items(self, stac_items):
+        collection = DatasetCollection.from_stac(
+            stac_items, asset="data", bbox=(0.0, 0.0, 0.5, 0.5),
+        )
+        # Every fixture item claims bbox [0,0,1,1] so they all intersect.
+        assert collection.time_length == 3
+
+    @requires_pystac
+    def test_bbox_excludes_non_intersecting(self, stac_items):
+        with pytest.raises(ValueError, match="at least one path"):
+            DatasetCollection.from_stac(
+                stac_items, asset="data",
+                bbox=(100.0, 100.0, 200.0, 200.0),
+            )
+
+    @requires_pystac
+    def test_max_items_caps(self, stac_items):
+        collection = DatasetCollection.from_stac(
+            stac_items, asset="data", max_items=2,
+        )
+        assert collection.time_length == 2
+
+
 class TestAssetMissing:
     """Missing asset keys raise KeyError with available assets listed."""
 

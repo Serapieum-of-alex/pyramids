@@ -74,11 +74,27 @@ def _resolve_asset_href(item: Any, asset_key: str) -> str:
     return str(asset.href)
 
 
+def _item_intersects_bbox(
+    item: Any, bbox: tuple[float, float, float, float],
+) -> bool:
+    """Return True if ``item.bbox`` overlaps ``bbox`` (lon/lat box)."""
+    item_bbox = getattr(item, "bbox", None)
+    if item_bbox is None:
+        return True
+    minx, miny, maxx, maxy = bbox
+    i_minx, i_miny, i_maxx, i_maxy = item_bbox
+    return not (
+        i_maxx < minx or i_minx > maxx or i_maxy < miny or i_miny > maxy
+    )
+
+
 def from_stac(
     items: Any,
     asset: str,
     *,
     patch_url: Callable[[str], str] | None = None,
+    bbox: tuple[float, float, float, float] | None = None,
+    max_items: int | None = None,
 ) -> "DatasetCollection":
     """Build a :class:`DatasetCollection` from a STAC ItemCollection.
 
@@ -108,6 +124,10 @@ def from_stac(
     """
     _require_pystac()
     item_list = _iter_items(items)
+    if bbox is not None:
+        item_list = [i for i in item_list if _item_intersects_bbox(i, bbox)]
+    if max_items is not None:
+        item_list = item_list[:max_items]
     hrefs = []
     for item in item_list:
         href = _resolve_asset_href(item, asset)

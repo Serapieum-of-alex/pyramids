@@ -592,6 +592,8 @@ class DatasetCollection:
         asset: str,
         *,
         patch_url=None,
+        bbox: tuple | None = None,
+        max_items: int | None = None,
     ) -> DatasetCollection:
         """Build a collection from a STAC :class:`ItemCollection`.
 
@@ -604,13 +606,21 @@ class DatasetCollection:
             asset: Asset key to extract from each item.
             patch_url: Optional callable rewriting each href (useful
                 for signing Planetary Computer URLs).
+            bbox: M6 — optional ``(minx, miny, maxx, maxy)`` filter in
+                lon/lat; items whose ``bbox`` doesn't intersect are
+                dropped before hrefs are resolved.
+            max_items: M6 — cap the number of items consumed (after
+                bbox filtering). Useful for quick-look workflows.
 
         Returns:
             DatasetCollection: File-backed collection.
         """
         from pyramids.dataset._stac import from_stac as _from_stac
 
-        return _from_stac(items, asset, patch_url=patch_url)
+        return _from_stac(
+            items, asset,
+            patch_url=patch_url, bbox=bbox, max_items=max_items,
+        )
 
     @classmethod
     def from_files(
