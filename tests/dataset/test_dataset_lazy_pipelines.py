@@ -81,23 +81,31 @@ class TestDatasetLazyPipelines:
     """Cross-task lazy pipelines for Phase 1."""
 
     def test_read_map_blocks_to_raster_pipeline(self, source_tif, tmp_path):
-        """Full lazy pipeline: lazy read → map_blocks → compute=False write → compute."""
+        """Full lazy pipeline: lazy read → map_blocks → compute=False write → compute.
+
+        L2: ``to_raster(compute=False)`` only accepts disk-anchored
+        Datasets, because the delayed write pickles ``self`` through
+        :meth:`AbstractDataset.__reduce__` which cannot reconstruct a
+        MEM dataset. So we materialise ``map_blocks``, persist the
+        result to disk eagerly, reopen it, and only then issue the
+        delayed write.
+        """
         src = Dataset.read_file(source_tif)
         lazy = src.map_blocks(
             lambda a: a * 2.0, chunks=(5, 6), band=0,
         )
-        out_path = str(tmp_path / "doubled.tif")
-        src._backend = "dask"  # type: ignore[attr-defined]
-        # to_raster on the original Dataset writes through the eager
-        # GDAL path, not dask. Instead materialise the lazy result via
-        # compute + from_array and write that.
-        result = lazy.compute()
-        out_ds = Dataset.create_from_array(
-            result, top_left_corner=src.top_left_corner,
+        scratch_path = str(tmp_path / "scratch.tif")
+        scratch = Dataset.create_from_array(
+            lazy.compute(), top_left_corner=src.top_left_corner,
             cell_size=src.cell_size, epsg=src.epsg,
         )
-        delayed = out_ds.to_raster(out_path, compute=False)
+        scratch.to_file(scratch_path)
+
+        out_path = str(tmp_path / "doubled.tif")
+        disk_scratch = Dataset.read_file(scratch_path)
+        delayed = disk_scratch.to_raster(out_path, compute=False)
         delayed.compute()
+
         roundtrip = Dataset.read_file(out_path).read_array()
         np.testing.assert_allclose(roundtrip, src.read_array() * 2.0)
 
