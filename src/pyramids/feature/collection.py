@@ -454,6 +454,24 @@ class FeatureCollection(GeoDataFrame):
 
         resolved = _pyramids_io._parse_path(path)
         if backend == "dask":
+            # M7: dask_geopandas.read_file does NOT forward pyogrio
+            # filter kwargs (bbox / mask / rows / columns / where) —
+            # silently dropping them was the bug. Raise a clear
+            # ValueError instead so users know to either pre-filter
+            # or call .compute() and filter eagerly.
+            unsupported = {
+                "bbox": bbox, "mask": mask, "rows": rows,
+                "columns": columns, "where": where, "layer": layer,
+            }
+            supplied = [k for k, v in unsupported.items() if v is not None]
+            if supplied:
+                raise ValueError(
+                    f"backend='dask' does not support filter kwargs "
+                    f"{supplied}. dask_geopandas.read_file has no "
+                    "pushdown story for these. Either omit them and "
+                    "filter post-load via .clip / .loc / .compute, or "
+                    "switch to read_parquet(backend='dask', filters=...)"
+                )
             try:
                 import dask_geopandas
             except ImportError as exc:

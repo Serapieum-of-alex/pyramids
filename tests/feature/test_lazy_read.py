@@ -85,6 +85,22 @@ class TestDaskBackend:
         assert hasattr(lazy, "npartitions")
 
 
+class TestFilterKwargsRejected:
+    """M7: pushing unsupported filter kwargs into backend='dask' must error."""
+
+    def test_bbox_with_dask_backend_raises(self, small_geojson):
+        with pytest.raises(ValueError, match="filter kwargs"):
+            FeatureCollection.read_file(
+                small_geojson, backend="dask", bbox=(0, 0, 1, 1),
+            )
+
+    def test_where_with_dask_backend_raises(self, small_geojson):
+        with pytest.raises(ValueError, match="filter kwargs"):
+            FeatureCollection.read_file(
+                small_geojson, backend="dask", where="id > 0",
+            )
+
+
 class TestBackendValidation:
     def test_unknown_backend_raises(self, small_geojson):
         with pytest.raises(ValueError, match="backend"):
