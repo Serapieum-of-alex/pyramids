@@ -98,14 +98,23 @@ def focal_std(
     chunks: Any = None,
     band: int = 0,
 ) -> Any:
-    """Standard deviation over a ``(2*radius+1)``-side window."""
+    """Standard deviation over a ``(2*radius+1)``-side window.
+
+    L4: uses the two-pass formulation ``sqrt(mean((x - local_mean)²))``
+    rather than the unstable ``sqrt(E[x²] - E[x]²)``. The cancellation
+    error in the latter blows up for large magnitudes with small
+    variance (a common DEM case — elevations in metres where the
+    local deviation is centimetres). The two-pass variant does one
+    extra uniform_filter; the cost is linear in pixels and negligible
+    compared to the I/O.
+    """
     size = 2 * radius + 1
 
     def _kernel(arr: np.ndarray) -> np.ndarray:
-        mean = ndimage.uniform_filter(arr, size=size, mode="reflect")
-        sq_mean = ndimage.uniform_filter(arr * arr, size=size, mode="reflect")
-        var = np.clip(sq_mean - mean * mean, 0.0, None)
-        return np.sqrt(var)
+        local_mean = ndimage.uniform_filter(arr, size=size, mode="reflect")
+        deviations = (arr - local_mean) ** 2
+        var = ndimage.uniform_filter(deviations, size=size, mode="reflect")
+        return np.sqrt(np.clip(var, 0.0, None))
 
     return _apply_eager_or_lazy(_kernel, ds, radius, chunks, band, np.float64)
 
