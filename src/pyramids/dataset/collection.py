@@ -365,6 +365,48 @@ class DatasetCollection:
         """
         return self._meta
 
+    def to_kerchunk(
+        self,
+        output_path,
+        *,
+        concat_dim: str = "time",
+    ) -> dict:
+        """Emit a combined kerchunk JSON manifest for the collection.
+
+        Produces a single JSON sidecar that points at every timestep's
+        source file — downstream consumers open the entire cube as a
+        lazy Zarr-backed xarray with zero data rewrite.
+
+        Currently routes through
+        :func:`pyramids.netcdf._kerchunk.combine_kerchunk`, which
+        handles NetCDF/HDF5 sources. GeoTIFF backing is a follow-on
+        (kerchunk's tiff support requires ``tifffile``).
+
+        Args:
+            output_path: Path where the manifest JSON is written.
+            concat_dim: Dimension along which to concatenate per-file
+                coordinates. Default ``"time"``.
+
+        Returns:
+            dict: The combined manifest.
+
+        Raises:
+            ImportError: When kerchunk is not installed.
+            RuntimeError: When the collection has no files list.
+        """
+        if self._files is None or len(self._files) == 0:
+            raise RuntimeError(
+                "DatasetCollection.to_kerchunk requires a file-backed "
+                "collection. Use DatasetCollection.from_files(...) to "
+                "construct one."
+            )
+        from pyramids.netcdf._kerchunk import combine_kerchunk
+
+        return combine_kerchunk(
+            self._files, output_path,
+            concat_dims=(concat_dim,), identical_dims=(),
+        )
+
     def to_zarr(
         self,
         store,
