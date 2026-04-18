@@ -14,6 +14,7 @@ from osgeo import gdal
 
 from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.base._errors import DatasetNotFoundError
+from pyramids.base._raster_meta import RasterMeta
 from pyramids.base._utils import import_cleopatra
 from pyramids.dataset.dataset import Dataset
 
@@ -43,11 +44,24 @@ class DatasetCollection:
         src: Dataset,
         time_length: int,
         files: list[str] | None = None,
+        *,
+        meta: RasterMeta | None = None,
     ):
-        """Construct DatasetCollection object."""
+        """Construct DatasetCollection object.
+
+        Args:
+            src: Template :class:`~pyramids.dataset.Dataset`.
+            time_length: Number of timesteps in the collection.
+            files: Optional list of file paths backing each timestep.
+            meta: Optional :class:`RasterMeta` snapshot. When omitted,
+                a snapshot is derived eagerly from ``src`` so downstream
+                lazy paths (DASK-16) can access geo metadata without
+                reopening the template every call.
+        """
         self._base = src
         self._files = files
         self._time_length = time_length
+        self._meta = meta if meta is not None else RasterMeta.from_dataset(src)
 
     def __str__(self):
         """__str__."""
@@ -120,6 +134,55 @@ class DatasetCollection:
             DatasetCollection: DatasetCollection object.
         """
         return cls(src, dataset_length)
+
+    @property
+    def meta(self) -> RasterMeta:
+        """Return the picklable :class:`RasterMeta` snapshot.
+
+        Always accessible without reopening the template dataset — a
+        snapshot is derived eagerly at construction (see
+        :meth:`__init__`) so downstream lazy paths can read geobox +
+        dtype metadata without paying a GDAL-open cost per call, and
+        so the whole collection pickles cleanly even if the
+        ``_base`` Dataset handle is closed or points at a /vsimem/
+        file.
+        """
+        return self._meta
+
+    @classmethod
+    def from_files(
+        cls,
+        files: list[str | Path],
+        *,
+        meta: RasterMeta | None = None,
+    ) -> DatasetCollection:
+        """Build a collection from a list of files without pre-opening all.
+
+        Only the first file is opened eagerly (to derive
+        :class:`RasterMeta`). The remaining files are referenced by
+        path only — lazy DASK-16 readers open them on demand through
+        :class:`~pyramids.base._file_manager.CachingFileManager`.
+
+        Args:
+            files: Sequence of file paths backing each timestep.
+            meta: Optional pre-computed :class:`RasterMeta`. When
+                omitted, derived from the first file via
+                :meth:`RasterMeta.from_dataset`.
+
+        Returns:
+            DatasetCollection: A new collection whose ``time_length``
+            matches ``len(files)``.
+
+        Raises:
+            ValueError: When ``files`` is empty.
+        """
+        resolved = [str(p) for p in files]
+        if not resolved:
+            raise ValueError("files must contain at least one path")
+        template = Dataset.read_file(resolved[0])
+        if meta is None:
+            meta = RasterMeta.from_dataset(template)
+        return cls(template, len(resolved), files=resolved, meta=meta)
 
     @classmethod
     def read_multiple_files(
