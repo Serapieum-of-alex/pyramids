@@ -498,6 +498,22 @@ class DatasetCollection:
                 "collection. Use DatasetCollection.from_files(...) to "
                 "construct one."
             )
+        # M5: current backend only handles HDF5 / NetCDF. Detect
+        # GeoTIFF inputs and raise a clear NotImplementedError rather
+        # than letting kerchunk.hdf produce a confusing failure mode.
+        geotiff_exts = {".tif", ".tiff", ".cog"}
+        geotiff_files = [
+            p for p in self._files
+            if any(str(p).lower().endswith(ext) for ext in geotiff_exts)
+        ]
+        if geotiff_files:
+            raise NotImplementedError(
+                "to_kerchunk currently supports NetCDF / HDF5 source files "
+                "only. GeoTIFF support requires kerchunk.tiff + the "
+                "tifffile backend which is not yet wired up. Offending "
+                f"files: {geotiff_files[:3]}"
+                f"{' ...' if len(geotiff_files) > 3 else ''}"
+            )
         from pyramids.netcdf._kerchunk import combine_kerchunk
 
         return combine_kerchunk(

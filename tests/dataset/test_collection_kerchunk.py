@@ -57,6 +57,21 @@ class TestToKerchunk:
         assert returned == written
 
 
+class TestGeoTiffGuard:
+    """M5: GeoTIFF-backed collections raise NotImplementedError."""
+
+    def test_geotiff_collection_raises(self, tmp_path):
+        arr = np.zeros((3, 4), dtype=np.float32)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+        )
+        tif = str(tmp_path / "x.tif")
+        ds.to_file(tif)
+        collection = DatasetCollection.from_files([tif])
+        with pytest.raises(NotImplementedError, match="GeoTIFF"):
+            collection.to_kerchunk(tmp_path / "refs.json")
+
+
 class TestErrors:
     def test_no_files_raises(self):
         arr = np.zeros((3, 4), dtype=np.float32)
