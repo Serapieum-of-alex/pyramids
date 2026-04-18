@@ -111,6 +111,89 @@ def _read_chunk(
     return result
 
 
+def _write_to_file_sync(
+    ds: "Dataset",
+    path: str | Path,
+    band: int,
+    tile_length: int | None,
+    creation_options: list[str] | None,
+    driver: str | None,
+) -> None:
+    """Synchronous write-to-file body, extracted for use with ``dask.delayed``.
+
+    Originally the body of :meth:`IO.to_file`; factored out at
+    module scope so :func:`dask.delayed` can wrap it without pulling
+    the whole ``IO`` mixin into the task graph. Pickles cleanly
+    because ``ds`` goes through
+    :meth:`AbstractDataset.__reduce__` (DASK-3) and all other args
+    are primitives or ``None``.
+
+    Args:
+        ds: The :class:`~pyramids.dataset.Dataset` to write.
+        path: Output path.
+        band: Band index (ASCII driver only).
+        tile_length: Output tile length for GeoTIFF.
+        creation_options: Extra GDAL creation options.
+        driver: Explicit GDAL driver name (``"COG"`` delegates to
+            :meth:`COGMixin.to_cog`).
+    """
+    if driver == "COG":
+        if band != 0:
+            raise ValueError(
+                "driver='COG' does not support the 'band' argument — "
+                "COG always writes all source bands. Subset the "
+                "dataset first (e.g. Dataset.get_band_subset) if you "
+                "need a single-band output."
+            )
+        cog_kwargs: dict[str, Any] = {"extra": creation_options}
+        if tile_length is not None:
+            cog_kwargs["blocksize"] = tile_length
+        ds.to_cog(path, **cog_kwargs)
+        return
+    if not isinstance(path, (str, Path)):
+        raise TypeError(
+            f"path input should be string or Path type, given: {type(path)}"
+        )
+
+    path = Path(path)
+    extension = path.suffix[1:]
+    driver = CATALOG.get_driver_name_by_extension(extension)
+    driver_name = CATALOG.get_gdal_name(driver)
+
+    if driver == "ascii":
+        arr = ds.read_array(band=band)
+        no_data_value = ds.no_data_value[band]
+        xmin, ymin, _, _ = ds.bbox
+        _io.to_ascii(arr, ds.cell_size, xmin, ymin, no_data_value, path)
+    else:
+        options = ["COMPRESS=DEFLATE"]
+        if tile_length is not None:
+            options += [
+                "TILED=YES",
+                f"TILE_LENGTH={tile_length}",
+            ]
+            if ds._block_size is not None and ds._block_size != []:
+                options += [
+                    "BLOCKXSIZE={}".format(ds._block_size[0][0]),
+                    "BLOCKYSIZE={}".format(ds._block_size[0][1]),
+                ]
+        if creation_options is not None:
+            options += creation_options
+
+        try:
+            ds.raster.FlushCache()
+            dst = gdal.GetDriverByName(driver_name).CreateCopy(
+                str(path), ds.raster, 0, options=options
+            )
+            ds._update_inplace(dst, "write")
+            dst.FlushCache()
+        except RuntimeError:
+            if not path.exists():
+                raise FailedToSaveError(
+                    f"Failed to save the {driver_name} raster to the path: {path}"
+                )
+
+
 class IO:
 
     def read_array(
@@ -577,8 +660,11 @@ class IO:
         tile_length: int | None = None,
         creation_options: list[str] | None = None,
         driver: str | None = None,
-    ) -> None:
-        """Save dataset to tiff file.
+        *,
+        compute: bool = True,
+        lock: Any = None,
+    ) -> Any:
+        """Save dataset to tiff file (eager by default; ``compute=False`` defers).
 
             `to_file` saves a raster to disk, the type of the driver (georiff/netcdf/ascii) will be implied from the
             extension at the end of the given path.
@@ -608,6 +694,23 @@ class IO:
 
                 Default ``None`` preserves the existing
                 extension-based driver selection.
+            compute (bool, keyword-only):
+                ``True`` (default) writes the file synchronously and
+                returns ``None`` — behavior identical to earlier
+                releases. ``False`` returns a
+                :class:`dask.delayed.Delayed` object that defers the
+                write until the caller invokes ``.compute()`` on it.
+                Useful for composing a pyramids write into a larger
+                dask task graph (for example, reading with
+                ``read_array(chunks=...)``, transforming lazily, then
+                writing in the same compute).
+            lock (Any, keyword-only):
+                Optional lock object reserved for cluster-wide write
+                coordination. GeoTIFF writes are serialized by GDAL's
+                own file lock regardless, so this kwarg is currently a
+                no-op — supplied for rioxarray API parity and to
+                future-proof the signature for when we add per-tile
+                parallel writes.
 
         Examples:
             - Create a Dataset with 4 bands, 5 rows, 5 columns, at the point lon/lat (0, 0):
@@ -632,63 +735,40 @@ class IO:
 
               ```
         """
-        if driver == "COG":
-            if band != 0:
-                raise ValueError(
-                    "driver='COG' does not support the 'band' argument — "
-                    "COG always writes all source bands. Subset the "
-                    "dataset first (e.g. Dataset.get_band_subset) if you "
-                    "need a single-band output."
-                )
-            cog_kwargs: dict[str, Any] = {"extra": creation_options}
-            if tile_length is not None:
-                cog_kwargs["blocksize"] = tile_length
-            self.to_cog(path, **cog_kwargs)
-            return None
-        if not isinstance(path, (str, Path)):
-            raise TypeError(
-                f"path input should be string or Path type, given: {type(path)}"
-            )
-
-        path = Path(path)
-        extension = path.suffix[1:]
-        driver = CATALOG.get_driver_name_by_extension(extension)
-        driver_name = CATALOG.get_gdal_name(driver)
-
-        if driver == "ascii":
-            arr = self.read_array(band=band)
-            no_data_value = self.no_data_value[band]
-            xmin, ymin, _, _ = self.bbox
-            _io.to_ascii(arr, self.cell_size, xmin, ymin, no_data_value, path)
-        else:
-            # saving rasters with color table fails with a runtime error
-            options = ["COMPRESS=DEFLATE"]
-            if tile_length is not None:
-                options += [
-                    "TILED=YES",
-                    f"TILE_LENGTH={tile_length}",
-                ]
-                if self._block_size is not None and self._block_size != []:
-                    options += [
-                        "BLOCKXSIZE={}".format(self._block_size[0][0]),
-                        "BLOCKYSIZE={}".format(self._block_size[0][1]),
-                    ]
-            if creation_options is not None:
-                options += creation_options
-
+        if not compute:
             try:
-                self.raster.FlushCache()
-                dst = gdal.GetDriverByName(driver_name).CreateCopy(
-                    str(path), self.raster, 0, options=options
-                )
-                self._update_inplace(dst, "write")
-                # flush the data to the dataset on disk.
-                dst.FlushCache()
-            except RuntimeError:
-                if not path.exists():
-                    raise FailedToSaveError(
-                        f"Failed to save the {driver_name} raster to the path: {path}"
-                    )
+                import dask
+            except ImportError as exc:
+                raise ImportError(_LAZY_IMPORT_ERROR) from exc
+            return dask.delayed(_write_to_file_sync)(
+                self, path, band, tile_length, creation_options, driver,
+            )
+        _write_to_file_sync(
+            self, path, band, tile_length, creation_options, driver,
+        )
+        return None
+
+    def to_raster(
+        self: Dataset,
+        path: str | Path,
+        band: int = 0,
+        tile_length: int | None = None,
+        creation_options: list[str] | None = None,
+        driver: str | None = None,
+        *,
+        compute: bool = True,
+        lock: Any = None,
+    ) -> Any:
+        """Alias of :meth:`to_file` for rioxarray API parity.
+
+        Forwards every argument to :meth:`to_file`; see that method's
+        documentation for the full contract.
+        """
+        return self.to_file(
+            path, band=band, tile_length=tile_length,
+            creation_options=creation_options, driver=driver,
+            compute=compute, lock=lock,
+        )
 
     def _tile_offsets(self: Dataset, size: int = 256) -> Generator:
         """Dataset square window size/offsets.
