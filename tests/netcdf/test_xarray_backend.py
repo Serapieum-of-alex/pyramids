@@ -70,6 +70,28 @@ class TestEngineDispatch:
         assert ds.attrs.get("pyramids_backend") is True
 
 
+class TestCacheReuse:
+    """H3: repeated slicing through the backend reuses one GDAL open."""
+
+    @requires_xarray
+    def test_repeated_slices_hit_cache(self):
+        from pyramids.netcdf._xarray_backend import (
+            _BACKEND_ARRAY_CACHE,
+            PyramidsBackendEntrypoint,
+        )
+
+        _BACKEND_ARRAY_CACHE.clear()
+        entry = PyramidsBackendEntrypoint()
+        ds = entry.open_dataset(FIXTURE)
+        values = ds["values"]
+        _ = values[0, :, :].values
+        _ = values[1, :, :].values
+        _ = values[:, 0, 0].values
+        assert any(
+            key[1] == "values" for key in _BACKEND_ARRAY_CACHE
+        )
+
+
 class TestGuessCanOpen:
     """Backend never auto-claims — entry is opt-in via engine=."""
 

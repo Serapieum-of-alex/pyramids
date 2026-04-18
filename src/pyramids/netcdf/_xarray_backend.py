@@ -36,6 +36,9 @@ def _require_xarray() -> tuple[Any, Any, Any]:
 BackendEntrypoint, BackendArray, _indexing = _require_xarray()
 
 
+_BACKEND_ARRAY_CACHE: dict[tuple[str, str], "np.ndarray"] = {}
+
+
 class PyramidsBackendArray(BackendArray):
     """Thin adapter that wraps a pyramids :class:`NetCDF` variable read.
 
@@ -45,6 +48,15 @@ class PyramidsBackendArray(BackendArray):
     through :func:`xarray.core.indexing.explicit_indexing_adapter` so
     basic / outer indexers translate to the ``(xoff, yoff, xsize,
     ysize)`` window arguments that pyramids' reader understands.
+
+    H3 fix: a process-local ``(path, var)``-keyed cache memoises the
+    materialised variable array so repeated ``__getitem__`` calls
+    through xarray's chunking pipeline don't reopen the NetCDF file
+    per slice. For variables too large to memoise this is a
+    regression on memory footprint — callers avoid it by passing
+    ``chunks={}`` to ``xr.open_dataset``, which flips the chunk read
+    onto the DASK-11 ``read_array_lazy`` path rather than this
+    backend array.
     """
 
     def __init__(self, nc_path: str, variable_path: str, shape, dtype) -> None:
@@ -60,12 +72,18 @@ class PyramidsBackendArray(BackendArray):
         )
 
     def _get_slab(self, key) -> Any:
-        """Read the requested slab via pyramids' NetCDF reader."""
-        from pyramids.netcdf import NetCDF
+        """Read the requested slab via pyramids' NetCDF reader (cached)."""
+        import numpy as np
 
-        nc = NetCDF.read_file(self._nc_path, open_as_multi_dimensional=True)
-        subset = nc.get_variable(self._variable_path)
-        arr = subset.read_array()
+        cache_key = (self._nc_path, self._variable_path)
+        arr = _BACKEND_ARRAY_CACHE.get(cache_key)
+        if arr is None:
+            from pyramids.netcdf import NetCDF
+
+            nc = NetCDF.read_file(self._nc_path, open_as_multi_dimensional=True)
+            subset = nc.get_variable(self._variable_path)
+            arr = np.asarray(subset.read_array())
+            _BACKEND_ARRAY_CACHE[cache_key] = arr
         return arr[key]
 
 
