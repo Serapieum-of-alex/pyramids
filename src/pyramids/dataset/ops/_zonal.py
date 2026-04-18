@@ -105,6 +105,9 @@ def _rasterize_labels(ds: "Dataset", fc: "FeatureCollection") -> np.ndarray:
     return labels
 
 
+_BINCOUNT_STATS = {"mean", "sum", "count"}
+
+
 def _rasterize_zonal_stats(
     ds: "Dataset",
     fc: "FeatureCollection",
@@ -112,18 +115,74 @@ def _rasterize_zonal_stats(
     band: int,
     no_data: float | None,
 ) -> pd.DataFrame:
-    """Compute stats via single-rasterize + numpy groupby per label."""
+    """Compute stats via single-rasterize + vectorised groupby.
+
+    M3: mean / sum / count stats route through :func:`numpy.bincount`
+    weighted reductions instead of a per-polygon Python loop. Non-
+    linear stats (std / var / min / max) still use the loop because
+    bincount can't express them without per-label sort.
+    """
     raster = np.asarray(ds.read_array(band=band), dtype=np.float64)
     if no_data is not None:
         raster = np.where(raster == no_data, np.nan, raster)
     labels = _rasterize_labels(ds, fc)
     n_features = len(fc)
-    rows: list[dict[str, float]] = []
-    for pid in range(n_features):
-        mask = labels == pid
-        vals = raster[mask]
-        rows.append({stat: _apply_stat(stat, vals) for stat in stats})
-    return pd.DataFrame(rows, index=fc.index)
+
+    stats_bincount = [s for s in stats if s in _BINCOUNT_STATS]
+    stats_loop = [s for s in stats if s not in _BINCOUNT_STATS]
+
+    columns: dict[str, np.ndarray] = {}
+    if stats_bincount:
+        columns.update(
+            _bincount_stats(raster, labels, n_features, stats_bincount)
+        )
+    if stats_loop:
+        loop_cols: dict[str, list[float]] = {s: [] for s in stats_loop}
+        for pid in range(n_features):
+            vals = raster[labels == pid]
+            for stat in stats_loop:
+                loop_cols[stat].append(_apply_stat(stat, vals))
+        for stat, vals_list in loop_cols.items():
+            columns[stat] = np.asarray(vals_list, dtype=np.float64)
+
+    ordered = {stat: columns[stat] for stat in stats}
+    return pd.DataFrame(ordered, index=fc.index)
+
+
+def _bincount_stats(
+    raster: np.ndarray,
+    labels: np.ndarray,
+    n_features: int,
+    stats: list[str],
+) -> dict[str, np.ndarray]:
+    """Vectorised sum / count / mean via :func:`numpy.bincount`.
+
+    ``labels`` uses -1 for unassigned pixels; we shift by +1 so
+    bincount's non-negative-index requirement is satisfied, then
+    drop the leading "unassigned" bucket.
+    """
+    flat_labels = labels.ravel() + 1
+    flat_vals = raster.ravel()
+    valid_mask = ~np.isnan(flat_vals)
+    minlength = n_features + 1
+    sums = np.bincount(
+        flat_labels[valid_mask],
+        weights=flat_vals[valid_mask],
+        minlength=minlength,
+    )[1:]
+    counts = np.bincount(
+        flat_labels[valid_mask], minlength=minlength,
+    )[1:].astype(np.float64)
+    out: dict[str, np.ndarray] = {}
+    if "sum" in stats:
+        out["sum"] = sums
+    if "count" in stats:
+        out["count"] = counts
+    if "mean" in stats:
+        with np.errstate(invalid="ignore", divide="ignore"):
+            mean = np.where(counts > 0, sums / counts, np.nan)
+        out["mean"] = mean
+    return out
 
 
 def _apply_stat(stat: str, vals: np.ndarray) -> float:
