@@ -606,6 +606,71 @@ class FeatureCollection(GeoDataFrame):
         return [str(row[0]) for row in arr]
 
     @classmethod
+    def spatial_shuffle(
+        cls,
+        dgdf: Any,
+        by: str = "hilbert",
+        level: int = 16,
+        *,
+        npartitions: int | None = None,
+        divisions: Any = None,
+    ) -> Any:
+        """Thin passthrough to :meth:`dask_geopandas.GeoDataFrame.spatial_shuffle`.
+
+        Calling this with an eager :class:`FeatureCollection` is a
+        type error — spatial-shuffle only makes sense on a
+        partitioned backend (it sorts rows by a space-filling curve
+        so each partition covers a contiguous region, which is what
+        ``sjoin`` needs to prune partition pairs and avoid the
+        cartesian-product fallback). Use
+        ``FeatureCollection.read_file(..., backend='dask')`` or
+        ``read_parquet(..., backend='dask')`` to get a
+        :class:`dask_geopandas.GeoDataFrame` first, then pass it
+        here.
+
+        Args:
+            dgdf: A :class:`dask_geopandas.GeoDataFrame`.
+            by: Curve used to compute the shuffle key. One of
+                ``"hilbert"`` (default — best locality),
+                ``"morton"`` (faster to compute), or ``"geohash"``
+                (lat/lon only).
+            level: Resolution of the curve. Default 16.
+            npartitions: If given, the shuffle targets this many
+                output partitions.
+            divisions: Optional explicit division boundaries.
+
+        Returns:
+            dask_geopandas.GeoDataFrame: A spatially-sorted copy of
+            ``dgdf`` with ``spatial_partitions`` computed.
+
+        Raises:
+            TypeError: If ``dgdf`` is not a
+                :class:`dask_geopandas.GeoDataFrame` (in particular,
+                if a plain :class:`FeatureCollection` is passed).
+            ImportError: If :mod:`dask_geopandas` is not installed.
+        """
+        try:
+            import dask_geopandas
+        except ImportError as exc:
+            raise ImportError(
+                "spatial_shuffle requires the optional 'dask-geopandas' "
+                "dependency. Install with: pip install "
+                "'pyramids-gis[parquet-lazy]'"
+            ) from exc
+        if not isinstance(dgdf, dask_geopandas.GeoDataFrame):
+            raise TypeError(
+                "spatial_shuffle requires a dask_geopandas.GeoDataFrame; "
+                "call FeatureCollection.read_file(..., backend='dask') or "
+                "read_parquet(..., backend='dask') first."
+            )
+        kwargs: dict[str, Any] = {}
+        if npartitions is not None:
+            kwargs["npartitions"] = npartitions
+        if divisions is not None:
+            kwargs["divisions"] = divisions
+        return dgdf.spatial_shuffle(by=by, level=level, **kwargs)
+
+    @classmethod
     def read_parquet(
         cls,
         path: str | Path,
