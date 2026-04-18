@@ -81,6 +81,48 @@ class _LazyVariableDict(dict):
         return [(k, self[k]) for k in self._names]
 
 
+def _reconstruct_netcdf(
+    path: str,
+    access: str,
+    is_md_array: bool,
+    is_subset: bool,
+    source_var_name: str | None,
+) -> "NetCDF":
+    """Re-open a :class:`NetCDF` from its pickle recipe tuple.
+
+    Called by :meth:`NetCDF.__reduce__` on unpickle. Carries four
+    bits of extra state beyond the base :class:`AbstractDataset`
+    recipe so the reconstructed instance retains identity:
+
+    * ``is_md_array`` — was the file opened via
+      :data:`gdal.OF_MULTIDIM_RASTER` (MDIM mode) or classic mode?
+    * ``is_subset`` — is this instance a container or a single variable?
+    * ``source_var_name`` — when ``is_subset`` is True, the variable
+      path to re-traverse via :meth:`NetCDF.get_variable`.
+
+    Args:
+        path: On-disk path or VSI URL to re-open.
+        access: ``"read_only"`` opens read-only; any other value opens
+            for update.
+        is_md_array: Whether to pass ``open_as_multi_dimensional=True``
+            to :meth:`NetCDF.read_file`.
+        is_subset: If True and ``source_var_name`` is not None, the
+            rebuilt container is then drilled into via
+            :meth:`NetCDF.get_variable` before return.
+        source_var_name: Variable path for the subset drill-down.
+
+    Returns:
+        NetCDF: Container or variable-subset instance.
+    """
+    read_only = access == "read_only"
+    container = NetCDF.read_file(
+        path, read_only=read_only, open_as_multi_dimensional=is_md_array,
+    )
+    if is_subset and source_var_name is not None:
+        return container.get_variable(source_var_name)
+    return container
+
+
 class NetCDF(Dataset):
     """NetCDF.
 
@@ -90,6 +132,47 @@ class NetCDF(Dataset):
     NetCDF Creation guidelines:
         https://acdguide.github.io/Governance/create/create-basics.html
     """
+
+    def __reduce__(self):  # type: ignore[override]
+        """Emit the extended recipe tuple carrying NetCDF mode flags.
+
+        Overrides :meth:`AbstractDataset.__reduce__` to include
+        ``_is_md_array``, ``_is_subset``, and ``_source_var_name``,
+        which are required to reconstruct a container vs a
+        variable-subset with matching identity.
+
+        For variable-subset instances the ``_file_name`` attribute
+        reflects the subset's GDAL description, which is typically
+        empty or driver-specific. We therefore fall back to the
+        parent container's ``_file_name`` when reconstructing a
+        subset.
+
+        Raises:
+            TypeError: The NetCDF has no on-disk path (empty
+                ``_file_name`` or a ``/vsimem/`` path). Pickling an
+                in-memory NetCDF is not supported.
+        """
+        path = self._file_name
+        if (not path) and self._is_subset:
+            parent = getattr(self, "_parent_nc", None)
+            if parent is not None:
+                path = parent._file_name
+        if not path or path.startswith("/vsimem/"):
+            raise TypeError(
+                f"NetCDF has no on-disk path (file_name={self._file_name!r}); "
+                "pickling an in-memory NetCDF is not supported. Call "
+                ".to_file(path) first to anchor it to disk."
+            )
+        return (
+            _reconstruct_netcdf,
+            (
+                path,
+                self._access,
+                bool(self._is_md_array),
+                bool(self._is_subset),
+                self._source_var_name,
+            ),
+        )
 
     def __init__(
         self,
