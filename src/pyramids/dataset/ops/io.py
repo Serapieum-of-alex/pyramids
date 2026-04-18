@@ -19,6 +19,9 @@ from pyramids.base._errors import (
     OutOfBoundsError,
     ReadOnlyError,
 )
+from pyramids.base._file_manager import CachingFileManager
+from pyramids.base._locks import DummyLock, default_lock
+from pyramids.base._openers import gdal_raster_open
 from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     gdal_to_numpy_dtype,
@@ -32,23 +35,105 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
+_LAZY_IMPORT_ERROR = (
+    "Lazy reads require the optional 'dask' dependency. "
+    "Install it with: pip install 'pyramids-gis[lazy]'"
+)
+
+
+def _read_chunk(
+    block_info: dict[Any, Any] | None,
+    manager: CachingFileManager,
+    lock: Any,
+    band: int | None,
+    out_dtype: np.dtype,
+    single_band: bool,
+) -> np.ndarray:
+    """Read one chunk of a raster through a pickleable :class:`CachingFileManager`.
+
+    Module-level (not a closure) so dask can pickle the resulting task
+    graph and ship it to worker processes. The manager carries the
+    path and opener recipe; the lock guards the shared GDAL handle
+    when several chunks dispatch on the same thread-pool.
+
+    Args:
+        block_info: ``dask.array`` per-chunk metadata dict. The
+            ``"array-location"`` key supplies ``[(start, stop), ...]``
+            index ranges for the chunk in the parent array's index
+            space. Dask injects this when the function is passed as a
+            ``map_blocks`` callback.
+        manager: File-handle manager wrapping
+            :func:`pyramids.base._openers.gdal_raster_open`. A single
+            manager is shared by every chunk in the array so GDAL
+            opens the file at most once per worker.
+        lock: Any context-manager / ``acquire``-``release`` lock
+            (``SerializableLock``, :class:`DummyLock`, or a
+            ``dask.distributed.Lock``). Held around the
+            :class:`osgeo.gdal.Band.ReadAsArray` call.
+        band: Zero-based band index when reading one band, or
+            ``None`` when every band is read into a 3-D array.
+        out_dtype: Output numpy dtype — matches the band dtype so
+            ``map_blocks`` produces a homogeneous array. Named
+            ``out_dtype`` rather than ``dtype`` to avoid collision
+            with :func:`dask.array.map_blocks`'s own ``dtype=`` kwarg.
+        single_band: ``True`` when the output is 2-D (``(rows, cols)``)
+            and ``False`` when it is 3-D (``(bands, rows, cols)``).
+
+    Returns:
+        np.ndarray: The fully materialized chunk with shape derived
+        from the ``block_info`` slice, dtype equal to ``dtype``.
+    """
+    location = block_info[None]["array-location"]
+    if single_band:
+        (y_start, y_stop), (x_start, x_stop) = location
+        xoff, yoff = x_start, y_start
+        xsize, ysize = x_stop - x_start, y_stop - y_start
+        with lock:
+            handle = manager.acquire()
+            gdal_band = handle.GetRasterBand(band + 1)
+            data = gdal_band.ReadAsArray(xoff, yoff, xsize, ysize)
+        result = np.asarray(data, dtype=out_dtype)
+    else:
+        (b_start, b_stop), (y_start, y_stop), (x_start, x_stop) = location
+        xoff, yoff = x_start, y_start
+        xsize, ysize = x_stop - x_start, y_stop - y_start
+        with lock:
+            handle = manager.acquire()
+            block = np.empty(
+                (b_stop - b_start, ysize, xsize), dtype=out_dtype,
+            )
+            for offset, band_idx in enumerate(range(b_start, b_stop)):
+                gdal_band = handle.GetRasterBand(band_idx + 1)
+                block[offset] = np.asarray(
+                    gdal_band.ReadAsArray(xoff, yoff, xsize, ysize), dtype=out_dtype,
+                )
+        result = block
+    return result
+
+
 class IO:
 
     def read_array(
-        self: Dataset, band: int | None = None, window: GeoDataFrame | list[int] | None = None
+        self: Dataset,
+        band: int | None = None,
+        window: GeoDataFrame | list[int] | None = None,
+        *,
+        chunks: int | tuple | dict | str | None = None,
+        lock: Any = None,
     ) -> ArrayLike:
-        """Read the values stored in a given band.
+        """Read the values stored in a given band (eager or lazy).
 
         Data Chuncks/blocks
             When a raster dataset is stored on disk, it might not be stored as one continuous chunk of data. Instead,
             it can be divided into smaller rectangular blocks or tiles. These blocks can be individually accessed,
             which is particularly useful for large datasets:
 
-                - Efficiency: Reading or writing small blocks requires less memory than dealing with the entire dataset
-                      at once. This is especially beneficial when only a small portion of the data needs to be processed.
-                - Performance: For certain file formats and operations, working with optimal block sizes can significantly
-                      improve performance. For example, if the block size matches the reading or processing window,
-                      Pyramids can minimize disk access and data transfer.
+                - Efficiency: Reading or writing small blocks requires less memory than dealing with the entire
+                      dataset at once. This is especially beneficial when only a small portion of the data needs
+                      to be processed.
+                - Performance: For certain file formats and operations, working with optimal block sizes can
+                      significantly improve performance. For example, if the block size matches the reading or
+                      processing window, Pyramids can minimize disk access and data transfer.
 
         Args:
             band (int, optional):
@@ -67,10 +152,59 @@ class IO:
                 - GeoDataFrame:
                     GeoDataFrame with a geometry column filled with polygon geometries; the function will get the
                     total_bounds of the GeoDataFrame and use it as a window to read the raster.
+            chunks (int | tuple | dict | str | None, keyword-only):
+                Controls the backing array type. ``None`` (the default)
+                preserves the eager numpy path — no behavior change
+                relative to earlier releases, and ``dask`` is not
+                imported. Any other value switches to a lazy
+                :class:`dask.array.Array` whose blocks are materialized
+                on demand via a pickle-safe chunk reader:
+
+                - ``"auto"`` lets dask pick chunk shapes that keep each
+                  block near the default dask chunk-byte target while
+                  aligning with the on-disk block layout.
+                - ``-1`` produces a single chunk that covers the whole
+                  array — useful to defer the read but materialize in
+                  one shot.
+                - An int (e.g. ``512``) applies to every dimension.
+                - A tuple (e.g. ``(1, 512, 512)``) gives per-dimension
+                  sizes.
+                - A dict (e.g. ``{0: 1, 1: 512, 2: 512}``) maps
+                  dimension index to chunk size.
+
+                When ``chunks`` is non-None and ``dask`` is not
+                installed, :class:`ImportError` is raised pointing at
+                the ``[lazy]`` extra. ``window`` is **not** supported
+                together with ``chunks``; raise :class:`ValueError`
+                otherwise.
+            lock (optional, keyword-only):
+                Thread / process lock guarding concurrent GDAL reads
+                of the same handle.
+
+                - ``None`` (default) → :func:`pyramids.base._locks.default_lock` —
+                  :class:`SerializableLock` in a single-process context,
+                  ``dask.distributed.Lock`` when a running client is
+                  detected.
+                - ``False`` → :class:`~pyramids.base._locks.DummyLock`
+                  for lock-free reads (per-thread handle; no mutex).
+                - Any other object with ``acquire``/``release`` /
+                  context-manager semantics is used as-is.
+
+                Ignored when ``chunks is None``.
 
         Returns:
-            np.ndarray:
-                array with all the values in the raster.
+            ArrayLike:
+                :class:`numpy.ndarray` when ``chunks is None``,
+                :class:`dask.array.Array` otherwise. The instance
+                attribute :attr:`_backend` records ``"numpy"`` or
+                ``"dask"`` after the call.
+
+        Raises:
+            ValueError: If ``band`` is out of range or ``chunks`` is
+                combined with ``window`` (the lazy path reads the
+                full array and expects dask to slice it down).
+            ImportError: If ``chunks`` is non-None and ``dask`` is not
+                installed.
 
         Examples:
             - Create `Dataset` consisting of 4 bands, 5 rows, and 5 columns at the point lon/lat (0, 0):
@@ -80,7 +214,9 @@ class IO:
               >>> arr = np.random.rand(4, 5, 5)
               >>> top_left_corner = (0, 0)
               >>> cell_size = 0.05
-              >>> dataset = Dataset.create_from_array(arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326)
+              >>> dataset = Dataset.create_from_array(
+              ...     arr, top_left_corner=top_left_corner, cell_size=cell_size, epsg=4326,
+              ... )
 
               ```
 
@@ -115,7 +251,10 @@ class IO:
               ```python
               >>> import geopandas as gpd
               >>> from shapely.geometry import Polygon
-              >>> poly = gpd.GeoDataFrame(geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])], crs=4326)
+              >>> poly = gpd.GeoDataFrame(
+              ...     geometry=[Polygon([(0.1, -0.1), (0.1, -0.2), (0.2, -0.2), (0.2, -0.1)])],
+              ...     crs=4326,
+              ... )
               >>> arr = dataset.read_array(band=0, window=poly)
               >>> print(arr) # doctest: +SKIP
               array([[0.14617829, 0.05045189],
@@ -127,39 +266,133 @@ class IO:
             - Dataset.get_tile: Read the dataset in chunks.
             - Dataset.get_block_arrangement: Get block arrangement to read the dataset in chunks.
         """
-        if band is None and self.band_count > 1:
-            rows = self.rows if window is None else window[3]
-            columns = self.columns if window is None else window[2]
-            arr = np.ones(
-                (
-                    self.band_count,
-                    rows,
-                    columns,
-                ),
-                dtype=self.numpy_dtype[0],
-            )
-
-            for i in range(self.band_count):
-                if window is None:
-                    # this line could be replaced with the following line
-                    # arr[i, :, :] = self._iloc(i).ReadAsArray()
-                    arr[i, :, :] = self._raster.GetRasterBand(i + 1).ReadAsArray()
-                else:
-                    arr[i, :, :] = self._read_block(i, window)
+        if chunks is not None:
+            if window is not None:
+                raise ValueError(
+                    "read_array(chunks=..., window=...) is not supported; "
+                    "read lazily and slice the resulting dask array instead."
+                )
+            arr = self._lazy_read_array(band=band, chunks=chunks, lock=lock)
+            self._backend = "dask"
         else:
-            # given band number or the raster has only one band
-            if band is None:
-                band = 0
+            if band is None and self.band_count > 1:
+                rows = self.rows if window is None else window[3]
+                columns = self.columns if window is None else window[2]
+                arr = np.ones(
+                    (
+                        self.band_count,
+                        rows,
+                        columns,
+                    ),
+                    dtype=self.numpy_dtype[0],
+                )
+                for i in range(self.band_count):
+                    if window is None:
+                        arr[i, :, :] = self._raster.GetRasterBand(i + 1).ReadAsArray()
+                    else:
+                        arr[i, :, :] = self._read_block(i, window)
             else:
-                if band > self.band_count - 1:
-                    raise ValueError(
-                        f"band index should be between 0 and {self.band_count - 1}"
-                    )
-            if window is None:
-                arr = self._iloc(band).ReadAsArray()
-            else:
-                arr = self._read_block(band, window)
+                if band is None:
+                    band = 0
+                else:
+                    if band > self.band_count - 1:
+                        raise ValueError(
+                            f"band index should be between 0 and {self.band_count - 1}"
+                        )
+                if window is None:
+                    arr = self._iloc(band).ReadAsArray()
+                else:
+                    arr = self._read_block(band, window)
+            self._backend = "numpy"
+        return arr
 
+    def _lazy_read_array(
+        self: Dataset,
+        band: int | None,
+        chunks: int | tuple | dict | str,
+        lock: Any,
+    ) -> Any:
+        """Build a :class:`dask.array.Array` view over this dataset.
+
+        Delegated helper for :meth:`read_array` so the eager branch
+        stays free of dask imports. The built array has:
+
+        - shape ``(rows, cols)`` when ``band`` is an integer or the
+          dataset has a single band, and ``(bands, rows, cols)``
+          otherwise;
+        - chunks derived by
+          :func:`dask.array.core.normalize_chunks` from
+          ``self._block_size[0]`` (the on-disk ``(block_width,
+          block_height)``) as ``previous_chunks``, so the default
+          chunking already aligns with GDAL's internal tiles;
+        - a module-level :func:`_read_chunk` task per block — a
+          closure-free callable paired with a pickle-safe
+          :class:`CachingFileManager` so the graph survives
+          serialization to a dask worker.
+
+        Args:
+            band: Zero-based band index, or ``None`` for all bands.
+            chunks: Any value accepted by
+                :func:`dask.array.core.normalize_chunks` (an int, a
+                per-axis tuple, a dict, the string ``"auto"``, or
+                ``-1`` for a single chunk).
+            lock: ``None`` → :func:`default_lock`; ``False`` →
+                :class:`DummyLock`; otherwise passed through unchanged.
+
+        Returns:
+            dask.array.Array: A lazy array wrapping this dataset.
+
+        Raises:
+            ImportError: When ``dask`` is not installed.
+            ValueError: If ``band`` is out of range.
+        """
+        try:
+            import dask.array as da
+            from dask.array.core import normalize_chunks
+        except ImportError as exc:
+            raise ImportError(_LAZY_IMPORT_ERROR) from exc
+        if band is not None and band > self.band_count - 1:
+            raise ValueError(
+                f"band index should be between 0 and {self.band_count - 1}"
+            )
+        single_band = band is not None or self.band_count == 1
+        dtype = np.dtype(self.numpy_dtype[0])
+        if single_band:
+            effective_band = 0 if band is None else band
+            shape: tuple[int, ...] = (self.rows, self.columns)
+            block_w, block_h = self._block_size[effective_band]
+            previous_chunks: tuple[tuple[int, ...], ...] | tuple[int, ...] = (
+                block_h, block_w,
+            )
+        else:
+            effective_band = None
+            shape = (self.band_count, self.rows, self.columns)
+            block_w, block_h = self._block_size[0]
+            previous_chunks = (1, block_h, block_w)
+        if lock is False:
+            effective_lock: Any = DummyLock()
+        elif lock is None:
+            effective_lock = default_lock()
+        else:
+            effective_lock = lock
+        normalized = normalize_chunks(
+            chunks, shape=shape, dtype=dtype, previous_chunks=previous_chunks,
+        )
+        # The FileManager's own lock must be independent of the IO lock
+        # handed to the chunk reader: the reader acquires the IO lock
+        # first, then calls manager.acquire() which grabs the manager
+        # lock. Sharing one non-reentrant lock between the two would
+        # deadlock. Using lock=False here delegates concurrency control
+        # to the outer ``with effective_lock`` in _read_chunk.
+        manager = CachingFileManager(
+            gdal_raster_open, self._file_name, "read_only", lock=False,
+        )
+        meta = np.empty((0,) * len(shape), dtype=dtype)
+        arr = da.map_blocks(
+            _read_chunk, chunks=normalized, dtype=dtype, meta=meta,
+            manager=manager, lock=effective_lock, band=effective_band,
+            out_dtype=dtype, single_band=single_band,
+        )
         return arr
 
     def _read_block(
