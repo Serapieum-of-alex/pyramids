@@ -81,6 +81,68 @@ class Dataset(  # type: ignore[misc]
         new = Dataset(src, access=access or self._access)
         self.__dict__.update(new.__dict__)
 
+    def to_zarr(
+        self,
+        store,
+        *,
+        compute: bool = True,
+        mode: str = "w",
+        chunks=None,
+        storage_options: dict | None = None,
+    ):
+        """Serialise this Dataset to a Zarr store (parallel writes per chunk).
+
+        Thin forwarder to
+        :func:`pyramids.dataset.ops._zarr.write_dataset_to_zarr`; see
+        that function for the full argument contract. Zarr is the
+        only raster output format where pyramids can write in true
+        parallel — each dask chunk becomes an independent Zarr chunk
+        file. Requires the ``[lazy]`` optional extra.
+
+        Args:
+            store: Target store (path / fsspec URL / zarr.Store).
+            compute: ``True`` writes immediately; ``False`` returns a
+                :class:`dask.delayed.Delayed`.
+            mode: Zarr open mode, usually ``"w"`` or ``"a"``.
+            chunks: Chunk spec forwarded to :meth:`read_array`.
+                ``None`` defaults to ``"auto"`` via the zarr helper.
+            storage_options: fsspec options for cloud stores.
+        """
+        from pyramids.dataset.ops._zarr import write_dataset_to_zarr
+
+        resolved_chunks = chunks if chunks is not None else "auto"
+        return write_dataset_to_zarr(
+            self, store,
+            compute=compute, mode=mode, chunks=resolved_chunks,
+            storage_options=storage_options,
+        )
+
+    @classmethod
+    def from_zarr(
+        cls,
+        store,
+        *,
+        chunks=None,
+        storage_options: dict | None = None,
+    ) -> "Dataset":
+        """Load a pyramids-written Zarr store into a new :class:`Dataset`.
+
+        Thin forwarder to
+        :func:`pyramids.dataset.ops._zarr.read_dataset_from_zarr`.
+
+        Args:
+            store: Input store (path / fsspec URL / zarr.Store).
+            chunks: If non-None, the loaded Dataset is flagged as
+                dask-backed so downstream ``read_array`` calls return
+                lazy arrays.
+            storage_options: fsspec options for cloud stores.
+        """
+        from pyramids.dataset.ops._zarr import read_dataset_from_zarr
+
+        return read_dataset_from_zarr(
+            store, chunks=chunks, storage_options=storage_options,
+        )
+
     def __str__(self) -> str:
         """__str__."""
         message = f"""
