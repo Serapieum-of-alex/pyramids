@@ -40,8 +40,9 @@ requires_pyarrow = pytest.mark.skipif(
 
 @pytest.fixture
 def small_parquet(tmp_path):
-    if not HAS_PYARROW:
-        pytest.skip("pyarrow required to build the fixture")
+    """GeoParquet fixture — pyarrow is asserted at the class level via
+    the ``requires_pyarrow`` mark on every class that uses this fixture,
+    so no per-fixture skip is needed (N4)."""
     gdf = gpd.GeoDataFrame(
         {"id": list(range(10)), "class": ["water"] * 5 + ["land"] * 5},
         geometry=[Point(i, i) for i in range(10)],
@@ -52,21 +53,24 @@ def small_parquet(tmp_path):
     return str(p)
 
 
+# N4: pyarrow-dependent classes carry the skip as a class-level mark so
+# pytest emits a single "[N] skipped: pyarrow not installed" entry per
+# class rather than one SKIPPED per test method with no shared reason.
+@requires_pyarrow
 class TestDefaultBackend:
-    @requires_pyarrow
     def test_returns_feature_collection(self, small_parquet):
         fc = FeatureCollection.read_parquet(small_parquet)
         assert isinstance(fc, FeatureCollection)
         assert len(fc) == 10
 
 
+@requires_pyarrow
+@requires_dask_geopandas
 class TestDaskBackend:
-    @requires_dask_geopandas
     def test_returns_dask_geodataframe(self, small_parquet):
         lazy = FeatureCollection.read_parquet(small_parquet, backend="dask")
         assert hasattr(lazy, "npartitions")
 
-    @requires_dask_geopandas
     def test_filters_pushed_down(self, small_parquet):
         lazy = FeatureCollection.read_parquet(
             small_parquet, backend="dask",
@@ -75,7 +79,6 @@ class TestDaskBackend:
         gdf = lazy.compute()
         assert set(gdf["class"].unique()) == {"water"}
 
-    @requires_dask_geopandas
     def test_columns_projection(self, small_parquet):
         lazy = FeatureCollection.read_parquet(
             small_parquet, backend="dask", columns=["id", "geometry"],
