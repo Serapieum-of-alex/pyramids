@@ -222,7 +222,12 @@ def _to_vsi(path: str) -> str:
         new_path = _chain_archive_vsi(new_path)
 
         if new_path != path:
-            logger.info("cloud path rewritten: %r -> %r", path, new_path)
+            # N2: downgraded from info to debug — a DatasetCollection
+            # of thousands of files fires this once per chunk read and
+            # floods the stream. Users can re-enable with
+            # ``logging.getLogger("pyramids.base.remote").setLevel(
+            # logging.DEBUG)``.
+            logger.debug("cloud path rewritten: %r -> %r", path, new_path)
     return new_path
 
 
