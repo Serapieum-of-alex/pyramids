@@ -138,13 +138,15 @@ def write_dataset_to_zarr(
     )
     if compute:
         _finalize_metadata(resolved_store, metadata)
-        return None
-    try:
-        import dask
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(_LAZY_IMPORT_ERROR) from exc
-    finalize = dask.delayed(_finalize_metadata)(resolved_store, metadata)
-    return dask.delayed(_combine_writes)(write_result, finalize)
+        result: Any = None
+    else:
+        try:
+            import dask
+        except ImportError as exc:  # pragma: no cover
+            raise ImportError(_LAZY_IMPORT_ERROR) from exc
+        finalize = dask.delayed(_finalize_metadata)(resolved_store, metadata)
+        result = dask.delayed(_combine_writes)(write_result, finalize)
+    return result
 
 
 def _finalize_metadata(resolved_store: Any, metadata: dict[str, Any]) -> None:
@@ -239,8 +241,10 @@ def _resolve_store(
             import fsspec
         except ImportError as exc:
             raise ImportError(_LAZY_IMPORT_ERROR) from exc
-        return fsspec.get_mapper(str(store), **(storage_options or {}))
-    return store
+        resolved = fsspec.get_mapper(str(store), **(storage_options or {}))
+    else:
+        resolved = store
+    return resolved
 
 
 # Keep the dunder explicit so users importing from the module see the surface.

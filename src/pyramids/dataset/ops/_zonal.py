@@ -187,17 +187,20 @@ def _bincount_stats(
 def _apply_stat(stat: str, vals: np.ndarray) -> float:
     """Safe per-polygon stat — empty cohort or all-NaN returns NaN."""
     if vals.size == 0:
-        return float("nan")
-    valid = vals[~np.isnan(vals)] if stat != "count" else vals
-    if stat != "count" and valid.size == 0:
-        return float("nan")
-    try:
-        func = _STAT_FUNCS[stat]
-    except KeyError as exc:
-        raise ValueError(
-            f"unknown stat {stat!r}; supported: {sorted(_STAT_FUNCS)}"
-        ) from exc
-    return float(func(vals))
+        result = float("nan")
+    else:
+        valid = vals[~np.isnan(vals)] if stat != "count" else vals
+        if stat != "count" and valid.size == 0:
+            result = float("nan")
+        else:
+            try:
+                func = _STAT_FUNCS[stat]
+            except KeyError as exc:
+                raise ValueError(
+                    f"unknown stat {stat!r}; supported: {sorted(_STAT_FUNCS)}"
+                ) from exc
+            result = float(func(vals))
+    return result
 
 
 def _exactextract_zonal_stats(
@@ -251,14 +254,16 @@ def zonal_stats(
             installed.
     """
     if method == "exactextract":
-        return _exactextract_zonal_stats(ds, fc, stats)
-    if method != "rasterize":
+        result = _exactextract_zonal_stats(ds, fc, stats)
+    elif method == "rasterize":
+        no_data_list = ds.no_data_value
+        no_data = no_data_list[band] if no_data_list else None
+        result = _rasterize_zonal_stats(ds, fc, stats, band, no_data)
+    else:
         raise ValueError(
             f"method must be 'rasterize' or 'exactextract', got {method!r}"
         )
-    no_data_list = ds.no_data_value
-    no_data = no_data_list[band] if no_data_list else None
-    return _rasterize_zonal_stats(ds, fc, stats, band, no_data)
+    return result
 
 
 __all__ = ["zonal_stats"]

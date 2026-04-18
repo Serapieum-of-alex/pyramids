@@ -69,14 +69,14 @@ class _GroupedCollection:
         label_array = np.asarray(self._labels)
         ordered_labels = sorted(set(self._labels))
         try:
-            return _flox_groupby_reduce(
+            result = _flox_groupby_reduce(
                 data, label_array, ordered_labels, op_name, skipna,
             )
         except _FloxUnavailable:
-            pass
-        return _fallback_groupby_reduce(
-            data, label_array, ordered_labels, op_name, skipna,
-        )
+            result = _fallback_groupby_reduce(
+                data, label_array, ordered_labels, op_name, skipna,
+            )
+        return result
 
     def mean(self, *, skipna: bool = True) -> dict:
         return self._reduce_per_label("mean", skipna=skipna)
@@ -581,12 +581,14 @@ class DatasetCollection:
         )
         if compute:
             _finalize_collection_metadata(resolved_store, self._meta, self._files)
-            return None
-        import dask
+            result: Any = None
+        else:
+            import dask
 
-        return dask.delayed(_finalize_after_write)(
-            write_result, resolved_store, self._meta, self._files,
-        )
+            result = dask.delayed(_finalize_after_write)(
+                write_result, resolved_store, self._meta, self._files,
+            )
+        return result
 
     @classmethod
     def from_stac(

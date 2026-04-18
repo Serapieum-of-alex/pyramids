@@ -122,8 +122,10 @@ def _reconstruct_netcdf(
         path, read_only=read_only, open_as_multi_dimensional=is_md_array,
     )
     if is_subset and source_var_name is not None:
-        return container.get_variable(source_var_name)
-    return container
+        result = container.get_variable(source_var_name)
+    else:
+        result = container
+    return result
 
 
 class NetCDF(Dataset):

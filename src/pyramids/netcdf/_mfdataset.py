@@ -40,14 +40,15 @@ _LAZY_IMPORT_ERROR = (
 def _resolve_paths(paths: str | Sequence[str | Path]) -> list[str]:
     """Normalize ``paths`` to a sorted list of absolute string paths."""
     if isinstance(paths, (str, Path)):
-        candidates = [str(p) for p in sorted(glob.glob(str(paths)))]
-        if not candidates:
+        resolved = [str(p) for p in sorted(glob.glob(str(paths)))]
+        if not resolved:
             # Fall back to treating the input as a single explicit path —
             # lets callers pass one filename without it being glob-filtered
             # to nothing.
-            candidates = [str(paths)]
-        return candidates
-    return [str(p) for p in paths]
+            resolved = [str(paths)]
+    else:
+        resolved = [str(p) for p in paths]
+    return resolved
 
 
 def _open_and_extract(

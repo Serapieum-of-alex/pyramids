@@ -80,12 +80,14 @@ def _item_intersects_bbox(
     """Return True if ``item.bbox`` overlaps ``bbox`` (lon/lat box)."""
     item_bbox = getattr(item, "bbox", None)
     if item_bbox is None:
-        return True
-    minx, miny, maxx, maxy = bbox
-    i_minx, i_miny, i_maxx, i_maxy = item_bbox
-    return not (
-        i_maxx < minx or i_minx > maxx or i_maxy < miny or i_miny > maxy
-    )
+        result = True
+    else:
+        minx, miny, maxx, maxy = bbox
+        i_minx, i_miny, i_maxx, i_maxy = item_bbox
+        result = not (
+            i_maxx < minx or i_minx > maxx or i_maxy < miny or i_miny > maxy
+        )
+    return result
 
 
 def from_stac(

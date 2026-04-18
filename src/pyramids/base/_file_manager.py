@@ -326,11 +326,11 @@ class CachingFileManager(FileManager):
         """Return the handle, opening it if not already cached."""
         with self._lock:
             try:
-                return self._cache[self._key]
+                handle = self._cache[self._key]
             except KeyError:
                 handle = self._opener(self._path, self._access, **self._kwargs)
                 self._cache[self._key] = handle
-                return handle
+        return handle
 
     @contextmanager
     def acquire_context(self) -> Iterator[Any]:

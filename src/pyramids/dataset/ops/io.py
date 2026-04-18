@@ -737,7 +737,12 @@ class IO:
 
               ```
         """
-        if not compute:
+        if compute:
+            _write_to_file_sync(
+                self, path, band, tile_length, creation_options, driver,
+            )
+            result: Any = None
+        else:
             # L2: fail early if the Dataset isn't on-disk. The delayed
             # write goes through self.__reduce__ at compute time, which
             # raises for MEM / /vsimem/ datasets — catching it now
@@ -763,13 +768,10 @@ class IO:
                 import dask
             except ImportError as exc:
                 raise ImportError(_LAZY_IMPORT_ERROR) from exc
-            return dask.delayed(_write_to_file_sync)(
+            result = dask.delayed(_write_to_file_sync)(
                 self, path, band, tile_length, creation_options, driver,
             )
-        _write_to_file_sync(
-            self, path, band, tile_length, creation_options, driver,
-        )
-        return None
+        return result
 
     def to_raster(
         self: Dataset,
@@ -988,41 +990,41 @@ class IO:
                 kwargs["drop_axis"] = drop_axis
             if new_axis is not None:
                 kwargs["new_axis"] = new_axis
-            return da.map_blocks(func, lazy_src, **kwargs)
-
-        if band is not None:
-            bands = 1
-            gdal_dtype = self.gdal_dtype[band]
+            result: Any = da.map_blocks(func, lazy_src, **kwargs)
         else:
-            bands = self.band_count
-            gdal_dtype = self.gdal_dtype[0]
-
-        if band is not None:
-            no_data = [self.no_data_value[band]]
-        else:
-            no_data = self.no_data_value
-
-        dst_obj = type(self)._build_dataset(
-            self.columns, self.rows, bands, gdal_dtype,
-            self.geotransform, self.crs, no_data,
-        )
-
-        for xoff, yoff, xsize, ysize in self._tile_offsets(size=tile_size):
             if band is not None:
-                tile = self._iloc(band).ReadAsArray(xoff, yoff, xsize, ysize)
-                result_tile = func(np.asarray(tile))
-                dst_obj.raster.GetRasterBand(1).WriteArray(result_tile, xoff, yoff)
+                bands = 1
+                gdal_dtype = self.gdal_dtype[band]
             else:
-                for b in range(self.band_count):
-                    tile = self._raster.GetRasterBand(b + 1).ReadAsArray(
-                        xoff, yoff, xsize, ysize
-                    )
-                    result_tile = func(np.asarray(tile))
-                    dst_obj.raster.GetRasterBand(b + 1).WriteArray(
-                        result_tile, xoff, yoff
-                    )
+                bands = self.band_count
+                gdal_dtype = self.gdal_dtype[0]
 
-        return dst_obj
+            if band is not None:
+                no_data = [self.no_data_value[band]]
+            else:
+                no_data = self.no_data_value
+
+            dst_obj = type(self)._build_dataset(
+                self.columns, self.rows, bands, gdal_dtype,
+                self.geotransform, self.crs, no_data,
+            )
+
+            for xoff, yoff, xsize, ysize in self._tile_offsets(size=tile_size):
+                if band is not None:
+                    tile = self._iloc(band).ReadAsArray(xoff, yoff, xsize, ysize)
+                    result_tile = func(np.asarray(tile))
+                    dst_obj.raster.GetRasterBand(1).WriteArray(result_tile, xoff, yoff)
+                else:
+                    for b in range(self.band_count):
+                        tile = self._raster.GetRasterBand(b + 1).ReadAsArray(
+                            xoff, yoff, xsize, ysize
+                        )
+                        result_tile = func(np.asarray(tile))
+                        dst_obj.raster.GetRasterBand(b + 1).WriteArray(
+                            result_tile, xoff, yoff
+                        )
+            result = dst_obj
+        return result
 
     def to_xyz(
         self: Dataset, bands: list[int] | None = None, path: str | Path | None = None

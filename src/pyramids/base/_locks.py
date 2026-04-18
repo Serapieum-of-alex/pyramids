@@ -179,5 +179,7 @@ def default_lock() -> Any:
 
         client = get_client()
     except (ImportError, ValueError):
-        return SerializableLock()
-    return _DistributedLock(name=f"pyramids-{uuid.uuid4()}", client=client)
+        lock: Any = SerializableLock()
+    else:
+        lock = _DistributedLock(name=f"pyramids-{uuid.uuid4()}", client=client)
+    return lock

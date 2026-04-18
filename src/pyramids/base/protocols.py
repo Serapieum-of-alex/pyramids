@@ -196,5 +196,7 @@ def as_numpy(x: ArrayLike) -> np.ndarray:
         [0, 1, 2, 3]
     """
     if is_lazy(x):
-        return x.compute()
-    return np.asarray(x)
+        result = x.compute()
+    else:
+        result = np.asarray(x)
+    return result

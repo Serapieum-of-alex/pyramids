@@ -53,14 +53,13 @@ def _expand_credentials(
     For example ``_expand_credentials("AWS", {"aws_unsigned": True})``
     returns ``{"AWS_NO_SIGN_REQUEST": "YES"}``.
     """
-    if not creds:
-        return {}
     out: dict[str, str] = {}
-    for key, value in creds.items():
-        if key == "aws_unsigned" and value:
-            out["AWS_NO_SIGN_REQUEST"] = "YES"
-            continue
-        out[f"{prefix}_{key.upper()}"] = str(value)
+    if creds:
+        for key, value in creds.items():
+            if key == "aws_unsigned" and value:
+                out["AWS_NO_SIGN_REQUEST"] = "YES"
+                continue
+            out[f"{prefix}_{key.upper()}"] = str(value)
     return out
 
 

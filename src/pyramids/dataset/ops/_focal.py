@@ -53,18 +53,20 @@ def _apply_eager_or_lazy(
     """
     if chunks is None:
         arr = np.asarray(ds.read_array(band=band), dtype=dtype)
-        return func(arr)
-    try:
-        import dask.array as da
-    except ImportError as exc:
-        raise ImportError(_LAZY_IMPORT_ERROR) from exc
-    lazy = ds.read_array(band=band, chunks=chunks)
-    if not hasattr(lazy, "dask"):
-        lazy = da.from_array(np.asarray(lazy), chunks="auto")
-    lazy = lazy.astype(dtype)
-    return lazy.map_overlap(
-        func, depth=radius, boundary="reflect", trim=True, dtype=dtype,
-    )
+        result = func(arr)
+    else:
+        try:
+            import dask.array as da
+        except ImportError as exc:
+            raise ImportError(_LAZY_IMPORT_ERROR) from exc
+        lazy = ds.read_array(band=band, chunks=chunks)
+        if not hasattr(lazy, "dask"):
+            lazy = da.from_array(np.asarray(lazy), chunks="auto")
+        lazy = lazy.astype(dtype)
+        result = lazy.map_overlap(
+            func, depth=radius, boundary="reflect", trim=True, dtype=dtype,
+        )
+    return result
 
 
 def focal_mean(

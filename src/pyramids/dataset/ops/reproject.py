@@ -111,9 +111,11 @@ class Reprojector:
         Returns:
             Dataset or dask.delayed.Delayed.
         """
-        if not compute:
-            return _deferred(self._plan, ds)
-        return _apply_plan(self._plan, ds)
+        if compute:
+            result = _apply_plan(self._plan, ds)
+        else:
+            result = _deferred(self._plan, ds)
+        return result
 
 
 class Aligner(Reprojector):
@@ -164,9 +166,11 @@ class Aligner(Reprojector):
         Returns:
             Dataset or dask.delayed.Delayed.
         """
-        if not compute:
-            return _deferred_align(self._reference, self._plan.method, ds)
-        return ds.align(self._reference)
+        if compute:
+            result = ds.align(self._reference)
+        else:
+            result = _deferred_align(self._reference, self._plan.method, ds)
+        return result
 
 
 def _apply_plan(plan: ReprojectPlan, ds: "Dataset") -> "Dataset":
