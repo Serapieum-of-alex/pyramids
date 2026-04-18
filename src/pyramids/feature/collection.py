@@ -611,8 +611,13 @@ class FeatureCollection(GeoDataFrame):
         path: str | Path,
         *,
         columns: list[str] | None = None,
+        backend: str = "pandas",
+        split_row_groups: bool | None = None,
+        filters: list | None = None,
+        blocksize: int | str | None = None,
+        storage_options: dict | None = None,
         **kwargs: Any,
-    ) -> FeatureCollection:
+    ) -> Any:
         """Read a GeoParquet file into a FeatureCollection (ARC-32).
 
         GeoParquet is a cloud-native columnar vector format (OGC-
@@ -651,9 +656,37 @@ class FeatureCollection(GeoDataFrame):
         from pyramids import _io as _pyramids_io
 
         resolved = _pyramids_io._parse_path(path)
+        if backend == "dask":
+            try:
+                import dask_geopandas
+            except ImportError as exc:
+                raise ImportError(
+                    "backend='dask' requires the optional "
+                    "'dask-geopandas' dependency. Install with: "
+                    "pip install 'pyramids-gis[parquet-lazy]'"
+                ) from exc
+            dask_kwargs: dict[str, Any] = {}
+            if columns is not None:
+                dask_kwargs["columns"] = columns
+            if split_row_groups is not None:
+                dask_kwargs["split_row_groups"] = split_row_groups
+            if filters is not None:
+                dask_kwargs["filters"] = filters
+            if blocksize is not None:
+                dask_kwargs["blocksize"] = blocksize
+            if storage_options is not None:
+                dask_kwargs["storage_options"] = storage_options
+            dask_kwargs.update(kwargs)
+            return dask_geopandas.read_parquet(resolved, **dask_kwargs)
+        if backend != "pandas":
+            raise ValueError(
+                f"backend must be 'pandas' or 'dask', got {backend!r}"
+            )
         passthrough: dict[str, Any] = dict(kwargs)
         if columns is not None:
             passthrough["columns"] = columns
+        if storage_options is not None:
+            passthrough["storage_options"] = storage_options
         gdf = gpd.read_parquet(resolved, **passthrough)
         return cls(gdf)
 
