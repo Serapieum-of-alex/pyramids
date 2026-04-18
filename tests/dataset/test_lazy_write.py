@@ -105,6 +105,22 @@ class TestToRasterAlias:
         assert out.exists()
 
 
+class TestEarlyPicklingError:
+    """L2: MEM-driver Dataset raises PicklingError at schedule time, not compute."""
+
+    @requires_dask
+    def test_mem_dataset_raises_at_schedule(self, tmp_path):
+        import pickle
+        import numpy as np
+
+        arr = np.zeros((3, 4), dtype=np.float32)
+        mem_ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+        )
+        with pytest.raises(pickle.PicklingError, match="on-disk"):
+            mem_ds.to_file(str(tmp_path / "nope.tif"), compute=False)
+
+
 class TestImportError:
     """``compute=False`` without dask raises actionable ``ImportError``."""
 

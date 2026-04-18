@@ -736,6 +736,31 @@ class IO:
               ```
         """
         if not compute:
+            # L2: fail early if the Dataset isn't on-disk. The delayed
+            # write goes through self.__reduce__ at compute time, which
+            # raises for MEM / /vsimem/ datasets — catching it now
+            # surfaces a clear error before the graph materialises.
+            file_name = getattr(self, "_file_name", "") or ""
+            if not file_name or file_name.startswith("/vsimem/"):
+                import pickle
+
+                raise pickle.PicklingError(
+                    "to_file(compute=False) requires an on-disk Dataset "
+                    "— call .to_file(path) first to anchor the MEM "
+                    f"dataset, or use compute=True. file_name={file_name!r}"
+                )
+            # L1: GeoTIFF writes are serialised by GDAL's own file lock
+            # regardless of dask. compute=False defers the *scheduling*
+            # of the write, not per-tile parallelism. Users expecting
+            # parallel writes should use to_zarr or a Zarr-backed
+            # output.
+            import logging
+
+            logging.getLogger("pyramids.dataset").info(
+                "to_file(compute=False) returns a Delayed wrapping the "
+                "synchronous write — GeoTIFF writes are lock-serialised "
+                "by GDAL. For truly parallel writes use to_zarr."
+            )
             try:
                 import dask
             except ImportError as exc:
