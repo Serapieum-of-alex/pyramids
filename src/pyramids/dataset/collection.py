@@ -49,19 +49,26 @@ class _GroupedCollection:
         self._labels = labels
 
     def _reduce_per_label(self, op_name: str, *, skipna: bool) -> dict:
-        import dask.array as da
+        """M4: route through flox when installed; fall back to per-label dask.
 
+        flox performs the grouped reduction as a single tree-reduction
+        over the full cube, which reads each source file at most once
+        regardless of how many groups share it. The fallback path does
+        one compute per unique label, re-reading files a label-count
+        number of times — correct but slower.
+        """
         data = self._collection.data
-        result: dict = {}
-        func_name = f"nan{op_name}" if skipna else op_name
-        func = getattr(da, func_name)
         label_array = np.asarray(self._labels)
-        for label in sorted(set(self._labels)):
-            mask_positions = np.where(label_array == label)[0]
-            subset = data[mask_positions.tolist()]
-            reduced = func(subset, axis=0).compute()
-            result[label] = np.asarray(reduced)
-        return result
+        ordered_labels = sorted(set(self._labels))
+        try:
+            return _flox_groupby_reduce(
+                data, label_array, ordered_labels, op_name, skipna,
+            )
+        except _FloxUnavailable:
+            pass
+        return _fallback_groupby_reduce(
+            data, label_array, ordered_labels, op_name, skipna,
+        )
 
     def mean(self, *, skipna: bool = True) -> dict:
         return self._reduce_per_label("mean", skipna=skipna)
@@ -80,6 +87,59 @@ class _GroupedCollection:
 
     def var(self, *, skipna: bool = True) -> dict:
         return self._reduce_per_label("var", skipna=skipna)
+
+
+class _FloxUnavailable(RuntimeError):
+    """Signals to callers that flox isn't installed; use the fallback."""
+
+
+def _flox_groupby_reduce(
+    data, label_array: np.ndarray,
+    ordered_labels: list, op_name: str, skipna: bool,
+) -> dict:
+    """Single-pass grouped reduction via :func:`flox.groupby_reduce`.
+
+    Raises :class:`_FloxUnavailable` when flox isn't importable so
+    the caller falls back to the per-label loop.
+    """
+    try:
+        from flox import groupby_reduce
+    except ImportError as exc:
+        raise _FloxUnavailable from exc
+    func_name = f"nan{op_name}" if skipna else op_name
+    grouped_result, groups = groupby_reduce(
+        data, label_array, func=func_name, expected_groups=ordered_labels,
+    )
+    materialised = np.asarray(grouped_result)
+    index_by_label = {label: idx for idx, label in enumerate(groups)}
+    out: dict = {}
+    for label in ordered_labels:
+        idx = index_by_label[label]
+        out[label] = materialised[idx]
+    return out
+
+
+def _fallback_groupby_reduce(
+    data, label_array: np.ndarray,
+    ordered_labels: list, op_name: str, skipna: bool,
+) -> dict:
+    """Per-label reduction path when flox is unavailable.
+
+    Equivalent to the pre-M4 implementation; kept so ``groupby``
+    works in environments that skip the ``[lazy]`` extra's flox
+    optional.
+    """
+    import dask.array as da
+
+    func_name = f"nan{op_name}" if skipna else op_name
+    func = getattr(da, func_name)
+    out: dict = {}
+    for label in ordered_labels:
+        positions = np.where(label_array == label)[0]
+        subset = data[positions.tolist()]
+        reduced = func(subset, axis=0).compute()
+        out[label] = np.asarray(reduced)
+    return out
 
 
 def _finalize_collection_metadata(resolved_store, meta, files: list) -> None:
