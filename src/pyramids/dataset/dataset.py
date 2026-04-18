@@ -81,6 +81,51 @@ class Dataset(  # type: ignore[misc]
         new = Dataset(src, access=access or self._access)
         self.__dict__.update(new.__dict__)
 
+    def focal_mean(self, radius: int = 1, *, chunks=None, band: int = 0):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_mean`."""
+        from pyramids.dataset.ops._focal import focal_mean
+
+        return focal_mean(self, radius=radius, chunks=chunks, band=band)
+
+    def focal_std(self, radius: int = 1, *, chunks=None, band: int = 0):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_std`."""
+        from pyramids.dataset.ops._focal import focal_std
+
+        return focal_std(self, radius=radius, chunks=chunks, band=band)
+
+    def focal_apply(self, func, radius: int = 1, *, chunks=None, band: int = 0):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_apply`."""
+        from pyramids.dataset.ops._focal import focal_apply
+
+        return focal_apply(self, func, radius=radius, chunks=chunks, band=band)
+
+    def slope(self, *, chunks=None, band: int = 0, units: str = "degrees"):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.slope`."""
+        from pyramids.dataset.ops._focal import slope
+
+        return slope(self, chunks=chunks, band=band, units=units)
+
+    def aspect(self, *, chunks=None, band: int = 0):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.aspect`."""
+        from pyramids.dataset.ops._focal import aspect
+
+        return aspect(self, chunks=chunks, band=band)
+
+    def hillshade(
+        self,
+        *,
+        azimuth: float = 315.0,
+        altitude: float = 45.0,
+        chunks=None,
+        band: int = 0,
+    ):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.hillshade`."""
+        from pyramids.dataset.ops._focal import hillshade
+
+        return hillshade(
+            self, azimuth=azimuth, altitude=altitude, chunks=chunks, band=band,
+        )
+
     def zonal_stats(
         self,
         fc,
