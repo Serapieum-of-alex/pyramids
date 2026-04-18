@@ -110,9 +110,26 @@ def _finalize_collection_metadata(resolved_store, meta, files: list) -> None:
 
 
 def _combine_collection_writes(data_result, metadata_result) -> None:
-    """Identity fn used to sequence two :func:`dask.delayed` outputs."""
+    """Identity fn used to sequence two :func:`dask.delayed` outputs.
+
+    Kept for backwards compatibility; the new
+    :func:`_finalize_after_write` sequences data write and metadata
+    write into one dask task to guarantee ordering.
+    """
     del data_result, metadata_result
     return None
+
+
+def _finalize_after_write(data_result, resolved_store, meta, files) -> None:
+    """M2: run metadata finalize AFTER data write completes.
+
+    Wrapping both in one dask.delayed makes the dependency explicit:
+    ``_finalize_collection_metadata`` cannot start until
+    ``data_result`` is materialised, so there is no race between the
+    data writer and the attribute writer.
+    """
+    del data_result  # consumed as a dependency only
+    _finalize_collection_metadata(resolved_store, meta, files)
 
 
 _READ_TIME_STEP_MANAGERS: dict[str, Any] = {}
@@ -488,10 +505,9 @@ class DatasetCollection:
             return None
         import dask
 
-        finalize = dask.delayed(_finalize_collection_metadata)(
-            resolved_store, self._meta, self._files,
+        return dask.delayed(_finalize_after_write)(
+            write_result, resolved_store, self._meta, self._files,
         )
-        return dask.delayed(_combine_collection_writes)(write_result, finalize)
 
     @classmethod
     def from_stac(
