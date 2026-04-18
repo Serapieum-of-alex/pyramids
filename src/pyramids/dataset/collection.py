@@ -333,6 +333,33 @@ class DatasetCollection:
         return self._meta
 
     @classmethod
+    def from_stac(
+        cls,
+        items,
+        asset: str,
+        *,
+        patch_url=None,
+    ) -> DatasetCollection:
+        """Build a collection from a STAC :class:`ItemCollection`.
+
+        Thin forwarder to :func:`pyramids.dataset._stac.from_stac`.
+        Requires the ``[stac]`` optional extra.
+
+        Args:
+            items: Iterable of :class:`pystac.Item` or an
+                :class:`pystac.ItemCollection`.
+            asset: Asset key to extract from each item.
+            patch_url: Optional callable rewriting each href (useful
+                for signing Planetary Computer URLs).
+
+        Returns:
+            DatasetCollection: File-backed collection.
+        """
+        from pyramids.dataset._stac import from_stac as _from_stac
+
+        return _from_stac(items, asset, patch_url=patch_url)
+
+    @classmethod
     def from_files(
         cls,
         files: list[str | Path],
