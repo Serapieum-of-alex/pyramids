@@ -149,6 +149,54 @@ class DatasetCollection:
         """
         return cls(src, dataset_length)
 
+    def _reduce(self, op_name: str, *, skipna: bool) -> np.ndarray:
+        """Shared reduction dispatcher over the time axis."""
+        data = self.data
+        try:
+            import dask.array as da
+        except ImportError as exc:  # pragma: no cover
+            raise ImportError(
+                "DatasetCollection reductions require the optional 'dask' "
+                "dependency. Install with: pip install 'pyramids-gis[lazy]'"
+            ) from exc
+        func_name = f"nan{op_name}" if skipna else op_name
+        func = getattr(da, func_name)
+        result = func(data, axis=0)
+        return np.asarray(result.compute())
+
+    def mean(self, *, skipna: bool = True) -> np.ndarray:
+        """Element-wise mean across the time axis.
+
+        Args:
+            skipna: When True (default) skip ``NaN`` via
+                :func:`dask.array.nanmean`; otherwise use
+                :func:`dask.array.mean`.
+
+        Returns:
+            np.ndarray: Mean array of shape ``(bands, rows, cols)``.
+        """
+        return self._reduce("mean", skipna=skipna)
+
+    def sum(self, *, skipna: bool = True) -> np.ndarray:
+        """Element-wise sum across the time axis."""
+        return self._reduce("sum", skipna=skipna)
+
+    def min(self, *, skipna: bool = True) -> np.ndarray:
+        """Element-wise minimum across the time axis."""
+        return self._reduce("min", skipna=skipna)
+
+    def max(self, *, skipna: bool = True) -> np.ndarray:
+        """Element-wise maximum across the time axis."""
+        return self._reduce("max", skipna=skipna)
+
+    def std(self, *, skipna: bool = True) -> np.ndarray:
+        """Element-wise standard deviation across the time axis."""
+        return self._reduce("std", skipna=skipna)
+
+    def var(self, *, skipna: bool = True) -> np.ndarray:
+        """Element-wise variance across the time axis."""
+        return self._reduce("var", skipna=skipna)
+
     @property
     def data(self) -> Any:
         """Return a lazy ``dask.array.Array`` of shape ``(T, B, R, C)``.
