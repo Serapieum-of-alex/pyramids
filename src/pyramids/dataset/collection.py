@@ -82,6 +82,39 @@ class _GroupedCollection:
         return self._reduce_per_label("var", skipna=skipna)
 
 
+def _finalize_collection_metadata(resolved_store, meta, files: list) -> None:
+    """Write pyramids + rioxarray-style attrs on a freshly-written cube Zarr.
+
+    Module-level so the :func:`dask.delayed` path can pickle it
+    cleanly. Sets ``crs_wkt``, ``GeoTransform``, ``epsg``, ``nodata``,
+    ``band_names``, ``time_length`` + a pyramids version marker on the
+    ``data`` array + root group.
+    """
+    import zarr
+
+    root = zarr.open_group(resolved_store, mode="a")
+    root.attrs.update({
+        "pyramids_zarr_version": "1",
+        "time_length": int(len(files)),
+        "pyramids_file_list": list(files),
+    })
+    root["data"].attrs.update({
+        "epsg": int(meta.epsg) if meta.epsg else None,
+        "GeoTransform": " ".join(str(v) for v in meta.geotransform),
+        "crs_wkt": meta.crs.to_wkt(),
+        "nodata": [None if v is None else float(v) for v in meta.nodata],
+        "band_names": list(meta.band_names) if meta.band_names else [],
+        "dtype": str(meta.dtype),
+    })
+    zarr.consolidate_metadata(resolved_store)
+
+
+def _combine_collection_writes(data_result, metadata_result) -> None:
+    """Identity fn used to sequence two :func:`dask.delayed` outputs."""
+    del data_result, metadata_result
+    return None
+
+
 def _read_time_step(path: str) -> np.ndarray:
     """Synchronous per-file reader used by the lazy ``data`` dask graph.
 
@@ -331,6 +364,71 @@ class DatasetCollection:
         file.
         """
         return self._meta
+
+    def to_zarr(
+        self,
+        store,
+        *,
+        compute: bool = True,
+        mode: str = "w",
+        storage_options: dict | None = None,
+    ):
+        """Serialise the 4-D ``(T, B, R, C)`` cube to a Zarr store.
+
+        Each dask chunk in ``self.data`` lands in an independent Zarr
+        chunk file — the only truly parallel raster output path pyramids
+        offers. Geobox metadata (epsg, geotransform, nodata, band_names,
+        time_length) is written as attributes on the root group + the
+        ``data`` array following the rioxarray attribute convention, so
+        downstream ``xr.open_zarr(store)`` consumers can reconstruct the
+        geobox without pyramids.
+
+        Args:
+            store: Target store (path, fsspec URL, or zarr.Store).
+            compute: ``True`` (default) writes immediately; ``False``
+                returns a :class:`dask.delayed.Delayed`.
+            mode: Zarr open mode, typically ``"w"`` (fresh) or ``"a"``.
+            storage_options: Optional dict forwarded to
+                :func:`fsspec.get_mapper` for cloud stores.
+
+        Returns:
+            ``None`` on ``compute=True``; a :class:`dask.delayed.Delayed`
+            on ``compute=False``.
+
+        Raises:
+            ImportError: When the ``[lazy]`` extra is not installed.
+            RuntimeError: When the collection has no files list.
+        """
+        if self._files is None or len(self._files) == 0:
+            raise RuntimeError(
+                "DatasetCollection.to_zarr requires a file-backed "
+                "collection. Use DatasetCollection.from_files(...) to "
+                "construct one."
+            )
+        try:
+            import zarr
+        except ImportError as exc:
+            raise ImportError(
+                "DatasetCollection.to_zarr requires the optional 'zarr' "
+                "dependency. Install with: pip install 'pyramids-gis[lazy]'"
+            ) from exc
+        from pyramids.dataset.ops._zarr import _resolve_store
+
+        data = self.data
+        resolved_store = _resolve_store(store, storage_options)
+        write_result = data.to_zarr(
+            resolved_store, component="data",
+            overwrite=(mode == "w"), compute=compute,
+        )
+        if compute:
+            _finalize_collection_metadata(resolved_store, self._meta, self._files)
+            return None
+        import dask
+
+        finalize = dask.delayed(_finalize_collection_metadata)(
+            resolved_store, self._meta, self._files,
+        )
+        return dask.delayed(_combine_collection_writes)(write_result, finalize)
 
     @classmethod
     def from_stac(
