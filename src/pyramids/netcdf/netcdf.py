@@ -403,36 +403,118 @@ class NetCDF(Dataset):
 
     def read_array(
         self,
+        variable: str | None = None,
         band: int | None = None,
         window: list[int] | None = None,
         unpack: bool = False,
+        *,
+        chunks: Any = None,
+        lock: Any = None,
     ) -> ArrayLike:
-        """Read array from the dataset.
+        """Read array from the dataset (eager by default, lazy with ``chunks``).
 
         Args:
-            band: Band index to read, or None for all bands.
-            window: Spatial window to read.
+            variable: When this instance is a root MDIM container,
+                the variable name to read. When the instance is
+                already a variable subset (``nc.get_variable("x")``)
+                this argument must be ``None`` — the variable is
+                already pinned.
+            band: Band index to read, or None for all bands. Only
+                honored on the eager path (``chunks=None``).
+            window: Spatial window to read. Only honored on the
+                eager path.
             unpack: If True and the variable has CF ``scale_factor``
                 and/or ``add_offset``, apply the transformation
                 ``real = raw * scale + offset``. Defaults to False.
+                Applied lazily via :mod:`dask.array` arithmetic when
+                ``chunks`` is given — the compute graph stays lazy
+                until the caller materializes it.
+            chunks: Chunking spec for a lazy return. ``None`` (the
+                default) returns an eager :class:`numpy.ndarray` and
+                preserves the legacy behavior. Any of ``int``,
+                ``tuple``, ``dict``, or the string ``"auto"`` switches
+                to a :class:`dask.array.Array` backed by MDArray
+                chunk reads. Defaults chunked at the variable's
+                native ``GetBlockSize`` (see
+                :attr:`pyramids.netcdf.models.VariableInfo.block_size`);
+                a conservative ``(1, ..., rows, cols)`` fallback is
+                used when the driver doesn't advertise one.
+            lock: Lock passed to the underlying
+                :class:`pyramids.base._file_manager.CachingFileManager`.
+                ``None`` → :func:`pyramids.base._locks.default_lock`
+                (a :class:`SerializableLock`, or a
+                ``dask.distributed.Lock`` when a client is active).
+                ``False`` → :class:`pyramids.base._locks.DummyLock`.
+                Only meaningful when ``chunks`` is not ``None``.
 
         Returns:
-            np.ndarray: The array data, optionally unpacked.
+            np.ndarray or dask.array.Array: The array data, eager
+            (numpy) by default or lazy (dask) when ``chunks`` is
+            supplied. The lazy array computes chunk-by-chunk through
+            ``md_arr.ReadAsArray(array_start_idx=starts, count=counts)``.
 
         Raises:
-            ValueError: If called on a root MDIM container.
+            ValueError: If called on a root MDIM container without a
+                ``variable`` argument, or when a subset is called
+                with a conflicting ``variable`` name.
+            ImportError: If ``chunks`` is given but ``dask`` is not
+                installed. Install the ``[lazy]`` extra.
         """
-        self._check_not_container("read_array")
-        result = super().read_array(band=band, window=window)
-        if unpack:
-            scale = getattr(self, "_scale", None)
-            offset = getattr(self, "_offset", None)
-            if scale is not None or offset is not None:
-                result = result.astype(np.float64)
-                if scale is not None:
-                    result = result * scale
-                if offset is not None:
-                    result = result + offset
+        is_container = (
+            self._is_md_array and not self._is_subset and self.band_count == 0
+        )
+        if is_container:
+            if variable is None:
+                self._check_not_container("read_array")
+            subset = self.get_variable(variable)
+            return subset.read_array(
+                band=band, window=window, unpack=unpack,
+                chunks=chunks, lock=lock,
+            )
+        if variable is not None and variable != self._source_var_name:
+            raise ValueError(
+                f"This NetCDF instance is already pinned to variable "
+                f"{self._source_var_name!r}; cannot re-read as "
+                f"{variable!r}. Call read_array on the parent container "
+                "instead."
+            )
+        if chunks is None:
+            result = super().read_array(band=band, window=window)
+            if unpack:
+                scale = getattr(self, "_scale", None)
+                offset = getattr(self, "_offset", None)
+                if scale is not None or offset is not None:
+                    result = result.astype(np.float64)
+                    if scale is not None:
+                        result = result * scale
+                    if offset is not None:
+                        result = result + offset
+        else:
+            from pyramids.netcdf._lazy import _apply_unpack, build_lazy_array
+
+            parent = self._parent_nc if self._parent_nc is not None else self
+            path = parent._file_name
+            if path.startswith("NETCDF"):
+                path = path.split(":")[1][1:-1]
+            var_name = self._source_var_name
+            if var_name is None:
+                raise ValueError(
+                    "Lazy read requires a variable name; pass "
+                    "`variable=` on the container or call read_array "
+                    "on a subset from `get_variable()`."
+                )
+            result = build_lazy_array(
+                path=path,
+                variable_name=var_name,
+                chunks=chunks,
+                lock=lock,
+            )
+            if unpack:
+                result = _apply_unpack(
+                    result,
+                    getattr(self, "_scale", None),
+                    getattr(self, "_offset", None),
+                )
         return result
 
     def _preserve_netcdf_metadata(self, result: Dataset) -> NetCDF:
