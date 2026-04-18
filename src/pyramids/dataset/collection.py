@@ -115,18 +115,39 @@ def _combine_collection_writes(data_result, metadata_result) -> None:
     return None
 
 
+_READ_TIME_STEP_MANAGERS: dict[str, Any] = {}
+
+
 def _read_time_step(path: str) -> np.ndarray:
     """Synchronous per-file reader used by the lazy ``data`` dask graph.
 
     Module-level (not a closure) so each
     :func:`dask.delayed` task pickles as ``(_read_time_step, path)``
     — no live GDAL handle crosses the wire.
+
+    H2 fix: route the per-file open through a process-local
+    :class:`CachingFileManager` keyed by path so workers reuse one
+    ``gdal.Dataset`` per file rather than reopening on every chunk
+    read. Avoids FD exhaustion on large
+    :class:`DatasetCollection` graphs.
     """
-    ds = Dataset.read_file(path)
-    arr = ds.read_array()
-    if arr.ndim == 2:
+    manager = _READ_TIME_STEP_MANAGERS.get(path)
+    if manager is None:
+        from pyramids.base._file_manager import CachingFileManager
+        from pyramids.base._openers import gdal_raster_open
+
+        manager = CachingFileManager(
+            gdal_raster_open, path, "read_only", lock=False,
+        )
+        _READ_TIME_STEP_MANAGERS[path] = manager
+    handle = manager.acquire()
+    band_count = handle.RasterCount
+    if band_count == 1:
+        arr = handle.GetRasterBand(1).ReadAsArray()
         arr = arr[np.newaxis, :, :]
-    return np.asarray(arr)
+    else:
+        arr = handle.ReadAsArray()
+    return np.ascontiguousarray(arr)
 
 
 class DatasetCollection:

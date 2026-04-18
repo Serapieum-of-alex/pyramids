@@ -101,6 +101,25 @@ class TestGraphPickle:
         assert result == pytest.approx(1.0)
 
 
+class TestManagerCaching:
+    """H2: repeated compute calls reuse cached GDAL handles per path."""
+
+    @requires_dask
+    def test_cached_manager_reused_across_computes(self, three_files):
+        from pyramids.dataset.collection import _READ_TIME_STEP_MANAGERS
+
+        _READ_TIME_STEP_MANAGERS.clear()
+        collection = DatasetCollection.from_files(three_files)
+        collection.data.compute()
+        first_snapshot = set(_READ_TIME_STEP_MANAGERS.keys())
+        collection.data.compute()
+        second_snapshot = set(_READ_TIME_STEP_MANAGERS.keys())
+        assert first_snapshot == second_snapshot, (
+            "Repeated compute should not register new managers"
+        )
+        assert len(first_snapshot) == len(three_files)
+
+
 class TestErrors:
     def test_no_files_raises(self):
         arr = np.zeros((4, 5), dtype=np.float32)
