@@ -867,6 +867,42 @@ class NetCDF(Dataset):
             src, access=read_only, open_as_multi_dimensional=open_as_multi_dimensional
         )
 
+    @classmethod
+    def open_mfdataset(
+        cls,
+        paths,
+        variable: str,
+        *,
+        chunks=None,
+        parallel: bool = False,
+        preprocess=None,
+    ):
+        """Open many NetCDFs and stack ``variable`` into one lazy dask array.
+
+        Thin forwarder to
+        :func:`pyramids.netcdf._mfdataset.open_mfdataset`; see that
+        function for the full argument contract. Requires the
+        ``[lazy]`` optional extra.
+
+        Args:
+            paths: Glob string, explicit path, or sequence of paths.
+            variable: Name of the variable to extract from each file.
+            chunks: Chunk spec forwarded to
+                :meth:`NetCDF.read_array`.
+            parallel: Fan out per-file opens through ``dask.delayed``.
+            preprocess: Optional callable applied to each
+                :class:`NetCDF` before extraction.
+
+        Returns:
+            dask.array.Array: Stack of shape ``(n_files, *var_shape)``.
+        """
+        from pyramids.netcdf._mfdataset import open_mfdataset
+
+        return open_mfdataset(
+            paths, variable,
+            chunks=chunks, parallel=parallel, preprocess=preprocess,
+        )
+
     @property
     def meta_data(self) -> NetCDFMetadata:
         """Structured metadata for this NetCDF.
