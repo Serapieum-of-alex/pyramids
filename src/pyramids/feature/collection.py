@@ -606,6 +606,69 @@ class FeatureCollection(GeoDataFrame):
         return [str(row[0]) for row in arr]
 
     @classmethod
+    def open_arrow(
+        cls,
+        path: str | Path,
+        *,
+        layer: str | int | None = None,
+        columns: list[str] | None = None,
+        bbox: tuple[float, float, float, float] | None = None,
+        where: str | None = None,
+        batch_size: int | None = None,
+    ) -> Any:
+        """Open a vector file as a streaming :class:`pyarrow.RecordBatchReader`.
+
+        Thin wrapper over :func:`pyogrio.raw.open_arrow` that
+        surfaces the underlying Arrow RecordBatch iterator. Rows are
+        yielded in batches, so callers can iterate through multi-GB
+        datasets without materializing the whole table in memory —
+        useful for building custom dask partitioners.
+
+        Args:
+            path: Vector file path (Shapefile, GPKG, FlatGeobuf,
+                GeoJSON, GeoParquet, ...). Routed through
+                :func:`pyramids._io._parse_path` so cloud URLs work.
+            layer: Layer name or index for multi-layer formats.
+            columns: Attribute columns to load (``geometry`` is
+                always included).
+            bbox: ``(minx, miny, maxx, maxy)`` filter.
+            where: OGR SQL ``WHERE`` predicate pushed down to the
+                driver.
+            batch_size: Requested RecordBatch size in rows. ``None``
+                uses the driver default.
+
+        Returns:
+            pyarrow.RecordBatchReader: A streaming reader.
+            Call ``.read_all()`` to materialise, or iterate for
+            row-batch consumption.
+
+        Raises:
+            ImportError: If :mod:`pyogrio` is not installed.
+        """
+        try:
+            from pyogrio.raw import open_arrow
+        except ImportError as exc:
+            raise ImportError(
+                "open_arrow requires the optional 'pyogrio' dependency. "
+                "Install with: pip install pyogrio"
+            ) from exc
+        from pyramids import _io as _pyramids_io
+
+        resolved = _pyramids_io._parse_path(path)
+        kwargs: dict[str, Any] = {}
+        if layer is not None:
+            kwargs["layer"] = layer
+        if columns is not None:
+            kwargs["columns"] = columns
+        if bbox is not None:
+            kwargs["bbox"] = bbox
+        if where is not None:
+            kwargs["where"] = where
+        if batch_size is not None:
+            kwargs["batch_size"] = batch_size
+        return open_arrow(resolved, **kwargs)
+
+    @classmethod
     def spatial_shuffle(
         cls,
         dgdf: Any,
