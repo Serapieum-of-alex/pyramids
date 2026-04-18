@@ -41,6 +41,11 @@ dependencies = [
 viz = ["cleopatra>=0.7.1", "mercantile>=1.2.0", "xyzservices>=2024.4.0", "Pillow>=9.0.0"]
 xarray = ["xarray>=2023.1.0", "netCDF4>=1.6.0", "h5netcdf>=1.0.0", "cftime>=1.6.0"]
 parquet = ["pyarrow>=10.0.0"]
+lazy = ["dask[array]>=2024.1.0", "distributed>=2024.1.0"]
+netcdf-lazy = ["pyramids-gis[lazy,xarray]", "kerchunk>=0.2.6"]
+parquet-lazy = ["pyramids-gis[lazy,parquet]", "dask-geopandas>=0.5.0"]
+stac = ["pystac>=1.10", "odc-geo>=0.5.1"]
+zonal = ["exactextract>=0.2.1"]
 
 [dependency-groups]
 dev = [

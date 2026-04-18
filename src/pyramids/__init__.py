@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pyramids.base.config import Config
+from pyramids._configure import configure
 
 
 from importlib.metadata import PackageNotFoundError
@@ -14,3 +15,6 @@ except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
 
 config = Config()
+
+
+__all__ = ["configure", "config", "__version__"]
