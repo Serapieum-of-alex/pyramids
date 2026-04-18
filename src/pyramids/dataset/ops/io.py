@@ -24,6 +24,7 @@ from pyramids.base._utils import (
     gdal_to_numpy_dtype,
     numpy_to_gdal_dtype,
 )
+from pyramids.base.protocols import ArrayLike
 from pyramids.dataset.abstract_dataset import CATALOG, OVERVIEW_LEVELS, RESAMPLING_METHODS
 from pyramids.feature import FeatureCollection
 
@@ -35,7 +36,7 @@ class IO:
 
     def read_array(
         self: Dataset, band: int | None = None, window: GeoDataFrame | list[int] | None = None
-    ) -> np.ndarray:
+    ) -> ArrayLike:
         """Read the values stored in a given band.
 
         Data Chuncks/blocks

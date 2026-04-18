@@ -19,6 +19,7 @@ from osgeo import gdal
 from pyramids import _io
 from pyramids.base._errors import OptionalPackageDoesNotExist
 from pyramids.base._utils import numpy_to_gdal_dtype
+from pyramids.base.protocols import ArrayLike
 from pyramids.dataset import DEFAULT_NO_DATA_VALUE, Dataset
 from pyramids.netcdf.dimensions import DimMetaData
 from pyramids.netcdf.metadata import get_metadata
@@ -322,7 +323,7 @@ class NetCDF(Dataset):
         band: int | None = None,
         window: list[int] | None = None,
         unpack: bool = False,
-    ) -> np.ndarray:
+    ) -> ArrayLike:
         """Read array from the dataset.
 
         Args:

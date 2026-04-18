@@ -1,17 +1,43 @@
 """Structural-typing protocols shared across the pyramids package.
 
-ARC-17 defines :class:`SpatialObject`, a runtime-checkable protocol
-covering the surface that both :class:`pyramids.dataset.Dataset` and
-:class:`pyramids.feature.FeatureCollection` implement. User code can
-type-annotate ``def describe(obj: SpatialObject) -> str: ...`` and
-accept either a raster or a vector without importing both concrete
-classes (and without creating an import cycle between them).
+This module exposes two cross-cutting structural types:
+
+* :class:`SpatialObject` — the surface shared by
+  :class:`pyramids.dataset.Dataset` (raster) and
+  :class:`pyramids.feature.FeatureCollection` (vector), so callers can
+  write generic utilities that accept either without importing both
+  concrete classes (and without creating import cycles).
+* :class:`ArrayLike` — the structural type matching both
+  :class:`numpy.ndarray` and :class:`dask.array.Array`, used to annotate
+  array-returning methods that may be either eager or lazy.
+
+The module also exports two small dispatch helpers — :func:`is_lazy` and
+:func:`as_numpy` — so the rest of the codebase has a single place to
+branch between the eager and lazy paths.
+
+Importing this module does **not** import ``dask``; the dask reference
+is string-forwarded via :data:`typing.TYPE_CHECKING`, so this file is
+cheap to import in environments where the ``[lazy]`` extra is not
+installed.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, Union, runtime_checkable
+
+import numpy as np
+
+if TYPE_CHECKING:  # pragma: no cover - only for type checkers
+    import dask.array as da  # noqa: F401
+
+
+# Type alias covering both numpy arrays and (optionally-installed) dask arrays.
+# String-forwarded so importing ``pyramids.base.protocols`` never triggers a
+# dask import. Use this alias for function signatures that accept or return
+# either backend; use the :class:`_ArrayLikeProto` Protocol below for runtime
+# isinstance checks.
+ArrayLike = Union[np.ndarray, "da.Array"]
 
 
 @runtime_checkable
@@ -70,3 +96,105 @@ class SpatialObject(Protocol):
     def plot(self, *args: Any, **kwargs: Any) -> Any:
         """Render a matplotlib view of this object."""
         ...
+
+
+@runtime_checkable
+class _ArrayLikeProto(Protocol):
+    """Runtime-checkable structural type for eager-or-lazy arrays.
+
+    Matches any object that has the attributes / methods numpy exposes on
+    its ndarray and that dask exposes on ``dask.array.Array``. Used for
+    :func:`isinstance` branches that dispatch on "do we have an array
+    backend at all?" — *not* for static type annotations, which should
+    use the :data:`ArrayLike` type alias instead.
+
+    PEP 544 runtime checks verify attribute presence only, not
+    signatures, so extra guards (for example comparing ``ndim`` or
+    checking ``hasattr(x, "dask")``) may be needed for precise dispatch.
+
+    Examples:
+        - Numpy ``ndarray`` satisfies the structural type:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.base.protocols import _ArrayLikeProto
+            >>> isinstance(np.zeros(5), _ArrayLikeProto)
+            True
+
+            ```
+        - Plain Python containers do not satisfy it:
+            ```python
+            >>> from pyramids.base.protocols import _ArrayLikeProto
+            >>> isinstance([1, 2, 3], _ArrayLikeProto)
+            False
+
+            ```
+    """
+
+    shape: tuple[int, ...]
+    ndim: int
+    dtype: Any
+
+    def __array__(self, dtype: Any = None) -> np.ndarray:  # pragma: no cover - protocol stub
+        """Return a numpy representation of the array."""
+        ...
+
+    def __getitem__(self, key: Any) -> "_ArrayLikeProto":  # pragma: no cover - protocol stub
+        """Return a sliced view or copy."""
+        ...
+
+
+def is_lazy(x: Any) -> bool:
+    """Return True if ``x`` is a dask-backed array, False if eager.
+
+    The check is duck-typed rather than isinstance-based, so any
+    object exposing a ``dask`` graph attribute plus a ``compute``
+    method (for example custom dask subclasses) is reported as lazy.
+    ``None`` and non-array inputs return False.
+
+    Args:
+        x: Any object — typically a numpy ``ndarray`` or a
+            ``dask.array.Array``.
+
+    Returns:
+        bool: ``True`` when ``x`` is lazy (has dask graph and a
+        ``compute`` method), ``False`` otherwise.
+
+    Examples:
+        >>> import numpy as np
+        >>> from pyramids.base.protocols import is_lazy
+        >>> is_lazy(np.zeros(5))
+        False
+        >>> is_lazy(None)
+        False
+    """
+    return hasattr(x, "dask") and hasattr(x, "compute")
+
+
+def as_numpy(x: ArrayLike) -> np.ndarray:
+    """Return a numpy ndarray view/copy of ``x``, computing if lazy.
+
+    Eager :class:`numpy.ndarray` inputs are returned via
+    :func:`numpy.asarray` (a zero-copy view when the dtype matches).
+    Dask-backed inputs are materialized via ``x.compute()``.
+
+    Use this at the boundary where pyramids needs to hand an array
+    to code that is not dask-aware (for example a GDAL
+    ``WriteArray`` call), so every lazy-vs-eager branch in the
+    codebase funnels through one helper.
+
+    Args:
+        x: The input array. Must satisfy :class:`_ArrayLikeProto`.
+
+    Returns:
+        np.ndarray: The materialized numpy array.
+
+    Examples:
+        >>> import numpy as np
+        >>> from pyramids.base.protocols import as_numpy
+        >>> arr = np.arange(4)
+        >>> as_numpy(arr).tolist()
+        [0, 1, 2, 3]
+    """
+    if is_lazy(x):
+        return x.compute()
+    return np.asarray(x)

@@ -20,6 +20,7 @@ from osgeo.osr import SpatialReference
 from pyramids.base._utils import (
     Catalog,
 )
+from pyramids.base.protocols import ArrayLike
 from pyramids.feature import FeatureCollection
 
 DEFAULT_NO_DATA_VALUE = -9999
@@ -298,7 +299,7 @@ class AbstractDataset(ABC):
     @abstractmethod
     def read_array(
         self, band: int | None = None, window: list[int] | None = None
-    ) -> np.ndarray:
+    ) -> ArrayLike:
         """Read Array.
 
             - read the values stored in a given band.
