@@ -81,6 +81,36 @@ class Dataset(  # type: ignore[misc]
         new = Dataset(src, access=access or self._access)
         self.__dict__.update(new.__dict__)
 
+    def zonal_stats(
+        self,
+        fc,
+        *,
+        stats=("mean",),
+        method: str = "rasterize",
+        band: int = 0,
+    ):
+        """Compute zonal statistics of this dataset over a polygon FeatureCollection.
+
+        Thin forwarder to
+        :func:`pyramids.dataset.ops._zonal.zonal_stats`; see that
+        function for the full argument contract.
+
+        Args:
+            fc: A :class:`pyramids.feature.FeatureCollection` of
+                polygons sharing this dataset's CRS.
+            stats: Sequence of stat names (``"mean"``, ``"sum"``,
+                ``"min"``, ``"max"``, ``"std"``, ``"var"``,
+                ``"count"``).
+            method: ``"rasterize"`` (default) or ``"exactextract"``.
+            band: Zero-based band index.
+
+        Returns:
+            pandas.DataFrame: Indexed by ``fc.index``; one column per stat.
+        """
+        from pyramids.dataset.ops._zonal import zonal_stats as _zs
+
+        return _zs(self, fc, stats=stats, method=method, band=band)
+
     def to_zarr(
         self,
         store,
