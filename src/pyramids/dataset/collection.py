@@ -31,6 +31,20 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
+def _read_time_step(path: str) -> np.ndarray:
+    """Synchronous per-file reader used by the lazy ``data`` dask graph.
+
+    Module-level (not a closure) so each
+    :func:`dask.delayed` task pickles as ``(_read_time_step, path)``
+    — no live GDAL handle crosses the wire.
+    """
+    ds = Dataset.read_file(path)
+    arr = ds.read_array()
+    if arr.ndim == 2:
+        arr = arr[np.newaxis, :, :]
+    return np.asarray(arr)
+
+
 class DatasetCollection:
     """DatasetCollection."""
 
@@ -134,6 +148,48 @@ class DatasetCollection:
             DatasetCollection: DatasetCollection object.
         """
         return cls(src, dataset_length)
+
+    @property
+    def data(self) -> Any:
+        """Return a lazy ``dask.array.Array`` of shape ``(T, B, R, C)``.
+
+        Each per-file read is scheduled as a
+        :func:`dask.delayed` task that opens the file via
+        :class:`~pyramids.base._file_manager.CachingFileManager`
+        (DASK-2) and reads its full array. Workers therefore never
+        serialise a ``gdal.Dataset`` — only the file path crosses the
+        pickle boundary, matching the pattern xarray / stackstac /
+        odc-stac use for dask.distributed safety.
+
+        Raises:
+            ImportError: If the optional ``dask`` extra is not
+                installed.
+            RuntimeError: If the collection was constructed without a
+                ``files`` list (legacy ``create_cube`` path).
+        """
+        if self._files is None or len(self._files) == 0:
+            raise RuntimeError(
+                "DatasetCollection.data requires a file-backed collection. "
+                "Use DatasetCollection.from_files(...) to construct one."
+            )
+        try:
+            import dask
+            import dask.array as da
+        except ImportError as exc:
+            raise ImportError(
+                "DatasetCollection.data requires the optional 'dask' "
+                "dependency. Install with: pip install 'pyramids-gis[lazy]'"
+            ) from exc
+        meta = self._meta
+        shape = meta.shape
+        dtype = np.dtype(meta.dtype)
+        delayed_reads = [
+            dask.delayed(_read_time_step)(path) for path in self._files
+        ]
+        arrays = [
+            da.from_delayed(d, shape=shape, dtype=dtype) for d in delayed_reads
+        ]
+        return da.stack(arrays, axis=0)
 
     @property
     def meta(self) -> RasterMeta:

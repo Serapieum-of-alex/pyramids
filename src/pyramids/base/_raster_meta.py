@@ -123,7 +123,13 @@ class RasterMeta:
         nodata = tuple(None if v is None else float(v) for v in nodata_raw)
         block_size = tuple(tuple(bs) for bs in ds._block_size)
         band_names = tuple(ds.band_names or ())
-        dtype = str(ds.numpy_dtype[0]) if ds.numpy_dtype else "float64"
+        first_dtype = ds.numpy_dtype[0] if ds.numpy_dtype else None
+        if first_dtype is None:
+            dtype = "float64"
+        else:
+            import numpy as np
+
+            dtype = str(np.dtype(first_dtype))
         return cls(
             rows=int(ds.rows),
             columns=int(ds.columns),
