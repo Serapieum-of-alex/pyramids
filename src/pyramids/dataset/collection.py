@@ -34,12 +34,16 @@ except ModuleNotFoundError:  # pragma: no cover
 class _GroupedCollection:
     """Lightweight view over a :class:`DatasetCollection` grouped by label.
 
-    One reduction method per dask op. Each call materialises the
-    reduction per unique label and returns a ``{label: ndarray}``
-    dict. When :mod:`flox` is installed the per-label reduction
-    runs through :func:`flox.groupby_reduce` in a single call
-    (tree-reduction over the cohort); otherwise each label's
-    subset is reduced with plain :mod:`dask.array` ops.
+    One reduction method per dask op. Each call returns a
+    ``{label: ndarray}`` dict.
+
+    As of M4 the reduction is routed through
+    :func:`flox.groupby_reduce` when :mod:`flox` is importable (via
+    the ``[lazy]`` extra) — a single tree-reduction over the full
+    cube so each source file opens at most once regardless of how
+    many groups share it. When flox is unavailable the fallback
+    loops over unique labels and issues one :func:`dask.array`
+    reduction per label (correct but slower).
     """
 
     _OPS = ("mean", "sum", "min", "max", "std", "var")
