@@ -867,6 +867,72 @@ class NetCDF(Dataset):
             src, access=read_only, open_as_multi_dimensional=open_as_multi_dimensional
         )
 
+    def to_kerchunk(
+        self,
+        output_path,
+        *,
+        inline_threshold: int = 500,
+        vlen_encode: str = "embed",
+    ) -> dict:
+        """Emit a kerchunk JSON reference manifest for this file.
+
+        Thin forwarder to :func:`pyramids.netcdf._kerchunk.to_kerchunk`
+        using ``self._file_name`` as the source path. Requires the
+        ``[netcdf-lazy]`` optional extra.
+
+        Args:
+            output_path: Path where the manifest JSON is written.
+            inline_threshold: Chunks smaller than this many bytes are
+                embedded directly. Default 500.
+            vlen_encode: VLEN string handling mode. Default ``"embed"``.
+
+        Returns:
+            dict: The manifest dict that was written.
+        """
+        from pyramids.netcdf._kerchunk import to_kerchunk
+
+        return to_kerchunk(
+            self._file_name, output_path,
+            inline_threshold=inline_threshold, vlen_encode=vlen_encode,
+        )
+
+    @classmethod
+    def combine_kerchunk(
+        cls,
+        paths,
+        output_path,
+        *,
+        concat_dims=("time",),
+        identical_dims=("lat", "lon"),
+        inline_threshold: int = 500,
+    ) -> dict:
+        """Emit a combined kerchunk manifest spanning many NetCDFs.
+
+        Thin forwarder to
+        :func:`pyramids.netcdf._kerchunk.combine_kerchunk`. Requires
+        the ``[netcdf-lazy]`` optional extra.
+
+        Args:
+            paths: Sequence of NetCDF paths to combine.
+            output_path: Path where the combined manifest is written.
+            concat_dims: Dimension name(s) along which to concatenate.
+                Default ``("time",)``.
+            identical_dims: Dimensions expected to match across all
+                files. Default ``("lat", "lon")``.
+            inline_threshold: Chunks smaller than this inline bytes are
+                embedded. Default 500.
+
+        Returns:
+            dict: The combined manifest.
+        """
+        from pyramids.netcdf._kerchunk import combine_kerchunk
+
+        return combine_kerchunk(
+            paths, output_path,
+            concat_dims=concat_dims, identical_dims=identical_dims,
+            inline_threshold=inline_threshold,
+        )
+
     @classmethod
     def open_mfdataset(
         cls,
