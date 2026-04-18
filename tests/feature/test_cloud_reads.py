@@ -4,24 +4,28 @@ After ARC-23 wired ``pyramids._io._parse_path`` into
 ``FeatureCollection.read_file``, URL-scheme paths (``s3://``, ``gs://``,
 ``az://``, ``http(s)://``, ``file://``) are rewritten to GDAL
 ``/vsi*`` form before the file is opened. These tests cover that
-code path end-to-end without requiring external cloud credentials:
+behavior without any real network I/O:
 
-* A local ``http.server`` serves a directory containing a GeoJSON
-  (and a zipped GeoJSON). Reading the HTTP URL exercises the
-  ``/vsicurl/`` path in GDAL's VFS.
-* ``file://`` paths are exercised against a regular tmp_path file.
-* Actual cloud-service tests (``s3://`` etc.) are marked ``vfs`` and
+* The ``http://`` rewrite is tested by mocking ``geopandas.read_file``
+  — we assert that the mock receives the rewritten ``/vsicurl/...``
+  path. This is the ARC-22 behavior; actually fetching from HTTP is
+  GDAL's job and doesn't need to be re-tested here.
+* ``file://`` paths are exercised against a real tmp_path file — the
+  rewrite is a no-op string operation, no network.
+* Real cloud-service tests (``s3://`` etc.) are marked ``vfs`` and
   skipped by default — they run only when real credentials are in
   the environment. They document the intended surface.
+
+Why mock instead of a local HTTP server: GDAL ``/vsicurl/`` on Windows
+loopback can hang indefinitely against ``http.server``'s default
+HTTP/1.0 handler (no keep-alive, no client-side read timeout). The
+behavior under test is string rewriting, not curl semantics — so we
+mock at the read boundary.
 """
 
 from __future__ import annotations
 
-import functools
-import http.server
-import socketserver
-import threading
-import zipfile
+import logging
 from pathlib import Path
 
 import geopandas as gpd
@@ -31,88 +35,79 @@ from shapely.geometry import Point
 from pyramids.feature import FeatureCollection
 
 
-class _QuietHandler(http.server.SimpleHTTPRequestHandler):
-    """SimpleHTTPRequestHandler that stays quiet under tests."""
+class TestHttpRewrite:
+    """Assert that ``http://`` URLs reach ``gpd.read_file`` as ``/vsicurl/...``.
 
-    def log_message(self, *args, **kwargs):  # noqa: D401, N802
-        """Suppress the default stderr access log."""
-        return
-
-
-@pytest.fixture(scope="module")
-def http_vector_dir(tmp_path_factory) -> Path:
-    """Directory containing a GeoJSON + a zipped GeoJSON to serve over HTTP."""
-    root = tmp_path_factory.mktemp("http_vector_dir")
-
-    gdf = gpd.GeoDataFrame(
-        {"id": [1, 2, 3], "name": ["a", "b", "c"]},
-        geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
-        crs="EPSG:4326",
-    )
-    plain = root / "points.geojson"
-    gdf.to_file(plain, driver="GeoJSON")
-
-    zipped = root / "points.zip"
-    with zipfile.ZipFile(zipped, "w") as z:
-        z.write(plain, arcname="points.geojson")
-
-    return root
-
-
-@pytest.fixture(scope="module")
-def http_server(http_vector_dir: Path):
-    """Local HTTP server serving ``http_vector_dir``; yield the base URL."""
-    handler = functools.partial(_QuietHandler, directory=str(http_vector_dir))
-    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
-    port = httpd.server_address[1]
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    yield f"http://127.0.0.1:{port}"
-    httpd.shutdown()
-    httpd.server_close()
-
-
-@pytest.mark.vfs
-class TestHttpRead:
-    """Read vectors via http:// URLs (routed through /vsicurl/).
-
-    Marked ``vfs`` because GDAL's ``/vsicurl/`` issues blocking HTTP
-    requests (HEAD + Range GETs) that can hang indefinitely on some
-    firewall-restricted or sandboxed environments. Skipped by default;
-    run explicitly with ``pytest -m vfs``.
+    Mocks ``geopandas.read_file`` so no network traffic is issued. The
+    point of the test is the rewrite, not GDAL's curl behavior.
     """
 
-    def test_read_geojson_over_http(self, http_server: str):
-        """FeatureCollection.read_file accepts http:// URLs directly."""
-        url = f"{http_server}/points.geojson"
+    def _fake_gdf(self) -> gpd.GeoDataFrame:
+        return gpd.GeoDataFrame(
+            {"id": [1, 2, 3], "name": ["a", "b", "c"]},
+            geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
+            crs="EPSG:4326",
+        )
+
+    def test_http_url_is_rewritten_to_vsicurl(self, monkeypatch):
+        """Given an ``http://`` URL, ``gpd.read_file`` receives ``/vsicurl/...``."""
+        captured: dict[str, object] = {}
+
+        def fake_read_file(path, **kwargs):
+            captured["path"] = path
+            captured["kwargs"] = kwargs
+            return self._fake_gdf()
+
+        monkeypatch.setattr(
+            "pyramids.feature.collection.gpd.read_file", fake_read_file
+        )
+
+        url = "http://example.invalid/points.geojson"
         fc = FeatureCollection.read_file(url)
+
+        assert captured["path"] == f"/vsicurl/{url}"
         assert isinstance(fc, FeatureCollection)
         assert len(fc) == 3
-        assert fc.epsg == 4326
-        assert sorted(fc["name"].tolist()) == ["a", "b", "c"]
 
-    def test_http_url_is_rewritten_not_passed_through(
-        self, http_server: str, caplog
-    ):
-        """The rewrite from http:// to /vsicurl/ fires on the code path.
+    def test_https_url_is_rewritten_to_vsicurl(self, monkeypatch):
+        """``https://`` also maps to ``/vsicurl/``."""
+        captured: dict[str, object] = {}
 
-        Checks the ``pyramids.base.remote`` log message rather than
-        asserting feature count again — the rewrite is the ARC-22
-        behavior under test.
-        """
-        import logging
+        def fake_read_file(path, **kwargs):
+            captured["path"] = path
+            return self._fake_gdf()
 
-        url = f"{http_server}/points.geojson"
+        monkeypatch.setattr(
+            "pyramids.feature.collection.gpd.read_file", fake_read_file
+        )
+
+        url = "https://example.invalid/points.geojson"
+        FeatureCollection.read_file(url)
+
+        assert captured["path"] == f"/vsicurl/{url}"
+
+    def test_rewrite_emits_log_message(self, monkeypatch, caplog):
+        """The ``pyramids.base.remote`` rewrite log fires on the code path."""
+
+        def fake_read_file(path, **kwargs):
+            return self._fake_gdf()
+
+        monkeypatch.setattr(
+            "pyramids.feature.collection.gpd.read_file", fake_read_file
+        )
+
+        url = "http://example.invalid/points.geojson"
         with caplog.at_level(logging.INFO, logger="pyramids.base.remote"):
             FeatureCollection.read_file(url)
+
+        messages = [rec.getMessage() for rec in caplog.records]
         assert any(
-            "rewritten" in rec.getMessage() and "/vsicurl/" in rec.getMessage()
-            for rec in caplog.records
-        ), f"expected a /vsicurl/ rewrite log; got: {[r.getMessage() for r in caplog.records]}"
+            "rewritten" in m and "/vsicurl/" in m for m in messages
+        ), f"expected a /vsicurl/ rewrite log; got: {messages}"
 
 
 class TestFileUrlRead:
-    """``file://`` URLs are rewritten to plain local paths."""
+    """``file://`` URLs are rewritten to plain local paths (no network)."""
 
     def test_read_file_url(self, tmp_path: Path):
         gdf = gpd.GeoDataFrame(
@@ -121,8 +116,6 @@ class TestFileUrlRead:
         p = tmp_path / "one.geojson"
         gdf.to_file(p, driver="GeoJSON")
 
-        # ``file://`` URLs require an absolute path. as_uri() handles
-        # Windows/Posix differences correctly.
         fc = FeatureCollection.read_file(p.resolve().as_uri())
         assert isinstance(fc, FeatureCollection)
         assert len(fc) == 1
@@ -150,7 +143,4 @@ class TestCloudReads:
 
         if not os.environ.get("AWS_ACCESS_KEY_ID"):
             pytest.skip("AWS credentials not in env; skipping s3:// test")
-        # Example:
-        # fc = FeatureCollection.read_file("s3://my-bucket/rivers.geojson")
-        # assert len(fc) > 0
         pytest.skip("no concrete s3:// fixture; this is a documentation stub")
