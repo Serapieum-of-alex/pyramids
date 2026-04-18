@@ -99,14 +99,24 @@ class _LRUCache(MutableMapping):
     def maxsize(self, value: int) -> None:
         if value < 1:
             raise ValueError(f"maxsize must be >= 1, got {value}")
-        with self._lock:
-            self._maxsize = value
-            self._enforce_size_limit(value)
+        self._maxsize = value
+        self._enforce_size_limit(value)
 
     def _enforce_size_limit(self, target: int) -> None:
-        while len(self._cache) > target:
-            key, value = self._cache.popitem(last=False)
-            if self._on_evict is not None:
+        """Evict LRU entries until ``len(self) <= target``.
+
+        M1: ``on_evict`` runs OUTSIDE the cache lock so the
+        callback is free to take any other lock (including a
+        :class:`CachingFileManager` per-handle mutex) without
+        risking a deadlock against concurrent ``acquire()`` calls
+        on other threads.
+        """
+        to_evict: list[tuple[Hashable, Any]] = []
+        with self._lock:
+            while len(self._cache) > target:
+                to_evict.append(self._cache.popitem(last=False))
+        if self._on_evict is not None:
+            for key, value in to_evict:
                 self._on_evict(key, value)
 
     def __getitem__(self, key: Hashable) -> Any:
@@ -116,14 +126,18 @@ class _LRUCache(MutableMapping):
             return value
 
     def __setitem__(self, key: Hashable, value: Any) -> None:
+        to_evict: list[tuple[Hashable, Any]] = []
         with self._lock:
             if key in self._cache:
                 self._cache.move_to_end(key)
                 self._cache[key] = value
                 return
-            if len(self._cache) >= self._maxsize:
-                self._enforce_size_limit(self._maxsize - 1)
+            while len(self._cache) >= self._maxsize:
+                to_evict.append(self._cache.popitem(last=False))
             self._cache[key] = value
+        if self._on_evict is not None:
+            for evicted_key, evicted_value in to_evict:
+                self._on_evict(evicted_key, evicted_value)
 
     def __delitem__(self, key: Hashable) -> None:
         with self._lock:
@@ -137,12 +151,17 @@ class _LRUCache(MutableMapping):
         return len(self._cache)
 
     def clear(self) -> None:
-        """Evict every entry, calling ``on_evict`` for each one."""
+        """Evict every entry, calling ``on_evict`` for each one.
+
+        M1: ``on_evict`` runs with the cache lock released so callback
+        code can take other locks without deadlock.
+        """
         with self._lock:
-            while self._cache:
-                key, value = self._cache.popitem(last=False)
-                if self._on_evict is not None:
-                    self._on_evict(key, value)
+            items = list(self._cache.items())
+            self._cache.clear()
+        if self._on_evict is not None:
+            for key, value in items:
+                self._on_evict(key, value)
 
 
 def _close_handle(_key: Hashable, handle: Any) -> None:
