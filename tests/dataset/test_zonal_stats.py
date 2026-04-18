@@ -85,6 +85,20 @@ class TestStatValidation:
             raster.zonal_stats(two_boxes, method="invalid")
 
 
+class TestCrsEnforcement:
+    """H4: mismatched vector / raster CRS raises early, not silently."""
+
+    def test_crs_mismatch_raises(self, raster, tmp_path):
+        other_crs = gpd.GeoDataFrame(
+            {"id": [0]},
+            geometry=[box(0.0, 8.0, 2.0, 10.0)],
+            crs="EPSG:3857",
+        )
+        fc = FeatureCollection(other_crs)
+        with pytest.raises(ValueError, match="CRS"):
+            raster.zonal_stats(fc, stats=("mean",))
+
+
 class TestExactExtractImport:
     def test_exactextract_import_error(self, raster, two_boxes, monkeypatch):
         import builtins

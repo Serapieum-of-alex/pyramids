@@ -52,12 +52,33 @@ def _rasterize_labels(ds: "Dataset", fc: "FeatureCollection") -> np.ndarray:
 
     Label values are 0-based feature-index integers. Pixels not
     covered by any polygon get -1.
-    """
-    from osgeo import gdal, ogr
 
+    H4: the FeatureCollection's CRS is attached to the OGR layer so
+    GDAL's ``RasterizeLayer`` reprojects coordinates when the vector
+    and raster CRSes disagree. A mismatch that ``pyproj`` considers
+    incompatible raises :class:`ValueError` early rather than silently
+    producing a mis-aligned label grid.
+    """
+    from osgeo import gdal, ogr, osr
+
+    fc_crs = getattr(fc, "crs", None)
+    ds_epsg = int(ds.epsg) if ds.epsg else None
+    if fc_crs is not None and ds_epsg is not None:
+        fc_epsg = fc_crs.to_epsg()
+        if fc_epsg is not None and fc_epsg != ds_epsg:
+            raise ValueError(
+                f"zonal_stats: FeatureCollection CRS (EPSG:{fc_epsg}) does "
+                f"not match Dataset CRS (EPSG:{ds_epsg}). Reproject the "
+                "FeatureCollection via fc.to_crs(ds.epsg) first."
+            )
+
+    srs = osr.SpatialReference()
+    if fc_crs is not None:
+        srs.ImportFromWkt(fc_crs.to_wkt())
+    elif ds_epsg is not None:
+        srs.ImportFromEPSG(ds_epsg)
     mem_driver = ogr.GetDriverByName("Memory")
     ds_vec = mem_driver.CreateDataSource("zonal_mem")
-    srs = None
     layer = ds_vec.CreateLayer("features", srs=srs, geom_type=ogr.wkbPolygon)
     id_field = ogr.FieldDefn("pid", ogr.OFTInteger)
     layer.CreateField(id_field)
