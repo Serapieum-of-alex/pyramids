@@ -72,8 +72,15 @@ def http_server(http_vector_dir: Path):
     httpd.server_close()
 
 
+@pytest.mark.vfs
 class TestHttpRead:
-    """Read vectors via http:// URLs (routed through /vsicurl/)."""
+    """Read vectors via http:// URLs (routed through /vsicurl/).
+
+    Marked ``vfs`` because GDAL's ``/vsicurl/`` issues blocking HTTP
+    requests (HEAD + Range GETs) that can hang indefinitely on some
+    firewall-restricted or sandboxed environments. Skipped by default;
+    run explicitly with ``pytest -m vfs``.
+    """
 
     def test_read_geojson_over_http(self, http_server: str):
         """FeatureCollection.read_file accepts http:// URLs directly."""
