@@ -125,7 +125,16 @@ class RasterMeta:
         band_names = tuple(ds.band_names or ())
         first_dtype = ds.numpy_dtype[0] if ds.numpy_dtype else None
         if first_dtype is None:
-            dtype = "float64"
+            # L3: derive from GDAL band dtype rather than hardcoding
+            # float64 — otherwise a Dataset with an int16 band would
+            # get a bogus float64 dtype metadata on the RasterMeta and
+            # downstream dask graphs produce wrong-dtype arrays.
+            from osgeo import gdal as _gdal
+
+            from pyramids.base._utils import gdal_to_numpy_dtype
+
+            band_type = ds.raster.GetRasterBand(1).DataType
+            dtype = str(gdal_to_numpy_dtype(_gdal.GetDataTypeName(band_type)))
         else:
             import numpy as np
 
