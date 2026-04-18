@@ -368,8 +368,11 @@ class FeatureCollection(GeoDataFrame):
         rows: slice | int | None = None,
         columns: list[str] | None = None,
         where: str | None = None,
+        backend: str = "pandas",
+        npartitions: int | None = None,
+        chunksize: int | None = None,
         **kwargs: Any,
-    ) -> FeatureCollection:
+    ) -> Any:
         """Read a vector file into a FeatureCollection.
 
         ARC-23: path is first routed through
@@ -450,9 +453,27 @@ class FeatureCollection(GeoDataFrame):
         from pyramids import _io as _pyramids_io
 
         resolved = _pyramids_io._parse_path(path)
-        # Only pass kwargs that were actually supplied — passing the
-        # defaults (None) is fine for some geopandas engines but
-        # confuses others. Build a clean kwargs dict.
+        if backend == "dask":
+            try:
+                import dask_geopandas
+            except ImportError as exc:
+                raise ImportError(
+                    "backend='dask' requires the optional "
+                    "'dask-geopandas' dependency. Install with: "
+                    "pip install 'pyramids-gis[parquet-lazy]'"
+                ) from exc
+            partition_kwargs: dict[str, Any] = {}
+            if npartitions is not None:
+                partition_kwargs["npartitions"] = npartitions
+            if chunksize is not None:
+                partition_kwargs["chunksize"] = chunksize
+            if not partition_kwargs:
+                partition_kwargs["npartitions"] = 1
+            return dask_geopandas.read_file(resolved, **partition_kwargs)
+        if backend != "pandas":
+            raise ValueError(
+                f"backend must be 'pandas' or 'dask', got {backend!r}"
+            )
         passthrough: dict[str, Any] = {}
         if layer is not None:
             passthrough["layer"] = layer
