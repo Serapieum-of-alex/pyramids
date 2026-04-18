@@ -1,4 +1,4 @@
-"""Phase 3 end-to-end: cross-task DatasetCollection pipelines.
+"""End-to-end tests for DatasetCollection reductions + pickle (DASK-15..18 seams).
 
 DASK-15..18 are each covered by per-task suites. This file exercises
 the seams where one task's output feeds another:
@@ -57,7 +57,7 @@ def _worker_mean(payload: bytes) -> float:
 
 
 @requires_dask
-class TestPhase3Pipelines:
+class TestCollectionReductionsE2E:
     """Cross-task integration for DatasetCollection lazy path."""
 
     def test_mean_via_spawn_subprocess(self, four_ramp_files):

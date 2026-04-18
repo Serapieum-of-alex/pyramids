@@ -1,4 +1,4 @@
-"""Phase 4 end-to-end: cross-task cube IO pipelines.
+"""End-to-end tests for DatasetCollection cube IO (DASK-19..21 seams: STAC + Zarr + kerchunk).
 
 DASK-19..21 each have their own per-task suites. This file covers the
 seams where one task feeds another:
@@ -90,7 +90,7 @@ def _worker_write_zarr(payload: bytes, store: str) -> tuple[int, int, int, int]:
     return tuple(root["data"].shape)
 
 
-class TestPhase4Pipelines:
+class TestCollectionIOE2E:
     """Cross-task pipelines for the Phase 4 cube IO path."""
 
     @requires_pystac

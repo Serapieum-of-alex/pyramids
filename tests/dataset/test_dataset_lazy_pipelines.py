@@ -1,4 +1,4 @@
-"""Phase 1 end-to-end tests: cross-task lazy pipelines.
+"""End-to-end tests for single-Dataset lazy pipelines (DASK-6..10 seams).
 
 DASK-6..10 are each exercised by their own per-task test file. This
 file covers the gaps where one task's output is consumed by another —
@@ -77,7 +77,7 @@ def _pickle_reprojector_worker(payload: bytes, src_path: str) -> tuple[int, int,
 
 
 @requires_full_stack
-class TestPhase1Pipelines:
+class TestDatasetLazyPipelines:
     """Cross-task lazy pipelines for Phase 1."""
 
     def test_read_map_blocks_to_raster_pipeline(self, source_tif, tmp_path):
