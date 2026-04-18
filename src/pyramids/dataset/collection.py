@@ -31,6 +31,57 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
+class _GroupedCollection:
+    """Lightweight view over a :class:`DatasetCollection` grouped by label.
+
+    One reduction method per dask op. Each call materialises the
+    reduction per unique label and returns a ``{label: ndarray}``
+    dict. When :mod:`flox` is installed the per-label reduction
+    runs through :func:`flox.groupby_reduce` in a single call
+    (tree-reduction over the cohort); otherwise each label's
+    subset is reduced with plain :mod:`dask.array` ops.
+    """
+
+    _OPS = ("mean", "sum", "min", "max", "std", "var")
+
+    def __init__(self, collection, labels: list) -> None:
+        self._collection = collection
+        self._labels = labels
+
+    def _reduce_per_label(self, op_name: str, *, skipna: bool) -> dict:
+        import dask.array as da
+
+        data = self._collection.data
+        result: dict = {}
+        func_name = f"nan{op_name}" if skipna else op_name
+        func = getattr(da, func_name)
+        label_array = np.asarray(self._labels)
+        for label in sorted(set(self._labels)):
+            mask_positions = np.where(label_array == label)[0]
+            subset = data[mask_positions.tolist()]
+            reduced = func(subset, axis=0).compute()
+            result[label] = np.asarray(reduced)
+        return result
+
+    def mean(self, *, skipna: bool = True) -> dict:
+        return self._reduce_per_label("mean", skipna=skipna)
+
+    def sum(self, *, skipna: bool = True) -> dict:
+        return self._reduce_per_label("sum", skipna=skipna)
+
+    def min(self, *, skipna: bool = True) -> dict:
+        return self._reduce_per_label("min", skipna=skipna)
+
+    def max(self, *, skipna: bool = True) -> dict:
+        return self._reduce_per_label("max", skipna=skipna)
+
+    def std(self, *, skipna: bool = True) -> dict:
+        return self._reduce_per_label("std", skipna=skipna)
+
+    def var(self, *, skipna: bool = True) -> dict:
+        return self._reduce_per_label("var", skipna=skipna)
+
+
 def _read_time_step(path: str) -> np.ndarray:
     """Synchronous per-file reader used by the lazy ``data`` dask graph.
 
@@ -148,6 +199,34 @@ class DatasetCollection:
             DatasetCollection: DatasetCollection object.
         """
         return cls(src, dataset_length)
+
+    def groupby(self, time_labels) -> "_GroupedCollection":
+        """Group time steps by per-timestep label.
+
+        Returns a view exposing the same reduction surface as
+        :class:`DatasetCollection` (``mean / sum / min / max / std /
+        var``); each reduction runs once per unique label over the
+        subset of timesteps carrying that label.
+
+        Args:
+            time_labels: Sequence of length ``self.time_length`` — each
+                entry is the group label for the corresponding file
+                (e.g. ``["Jan", "Jan", "Feb", "Feb", ...]`` or integer
+                month numbers for monthly groupings).
+
+        Returns:
+            _GroupedCollection: Lightweight view with ``.mean()`` etc.
+            Each call returns a dict ``{label: np.ndarray}``.
+
+        Raises:
+            ValueError: When ``len(time_labels) != self.time_length``.
+        """
+        if len(time_labels) != self._time_length:
+            raise ValueError(
+                f"time_labels length {len(time_labels)} does not match "
+                f"time_length {self._time_length}"
+            )
+        return _GroupedCollection(self, list(time_labels))
 
     def _reduce(self, op_name: str, *, skipna: bool) -> np.ndarray:
         """Shared reduction dispatcher over the time axis."""
