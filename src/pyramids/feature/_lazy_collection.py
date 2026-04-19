@@ -285,6 +285,71 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
             "write via read_parquet + fc.to_parquet(path) which IS lazy."
         )
 
+    def to_parquet(self, path: Any, *args: Any, **kwargs: Any) -> None:
+        """Write the lazy frame to GeoParquet (the one genuinely-lazy writer).
+
+        ARC-V8: explicit wrapper around
+        :meth:`dask_geopandas.GeoDataFrame.to_parquet`. The parent
+        returns a :class:`dask.delayed.Delayed` (or ``None`` when the
+        call is implicitly computed), which leaks the dask detail into
+        user code and breaks the pyramids convention that ``to_*``
+        writers return ``None``. This override normalises the contract:
+
+        * The call blocks until every partition has been written.
+        * Return is always ``None`` — matches
+          :meth:`FeatureCollection.to_parquet` and
+          :meth:`LazyFeatureCollection.to_file` (the raising stub).
+        * All other kwargs (``compression=``, ``write_index=``,
+          ``storage_options=``) forward to the parent.
+
+        Args:
+            path: Destination path or directory. Cloud URLs (``s3://``,
+                ``gs://``, ``az://``) work via ``storage_options``.
+            *args: Forwarded to
+                :meth:`dask_geopandas.GeoDataFrame.to_parquet`.
+            **kwargs: Forwarded to
+                :meth:`dask_geopandas.GeoDataFrame.to_parquet`.
+                ``compute=True`` is forced; passing ``compute=False``
+                raises :class:`ValueError` because the pyramids API
+                contract is "``to_*`` always writes, never defers".
+
+        Raises:
+            ValueError: If ``compute=False`` is supplied. Use the
+                parent's API directly if you need a Delayed.
+
+        Examples:
+            - Round-trip a lazy FC through GeoParquet:
+                ```python
+                >>> import tempfile  # doctest: +SKIP
+                >>> from pathlib import Path  # doctest: +SKIP
+                >>> import geopandas as gpd  # doctest: +SKIP
+                >>> import dask_geopandas as dg  # doctest: +SKIP
+                >>> from shapely.geometry import Point  # doctest: +SKIP
+                >>> from pyramids.feature import LazyFeatureCollection  # doctest: +SKIP
+                >>> d = Path(tempfile.mkdtemp())  # doctest: +SKIP
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"id": [1, 2]},
+                ...     geometry=[Point(0, 0), Point(1, 1)],
+                ...     crs="EPSG:4326",
+                ... )  # doctest: +SKIP
+                >>> lfc = LazyFeatureCollection.from_dask_gdf(
+                ...     dg.from_geopandas(gdf, npartitions=1)
+                ... )  # doctest: +SKIP
+                >>> lfc.to_parquet(d / "out.parquet")  # doctest: +SKIP
+
+                ```
+        """
+        if kwargs.get("compute") is False:
+            raise ValueError(
+                "LazyFeatureCollection.to_parquet always writes — "
+                "passing compute=False is not supported. Use "
+                "self._data.to_parquet(...) or go through the "
+                "dask_geopandas parent API directly if you need a "
+                "Delayed."
+            )
+        kwargs["compute"] = True
+        super().to_parquet(path, *args, **kwargs)
+
     def __repr__(self) -> str:
         """Pyramids-branded repr; avoids the generic Dask DataFrame one."""
         return (

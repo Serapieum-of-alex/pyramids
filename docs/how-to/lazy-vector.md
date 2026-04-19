@@ -131,6 +131,24 @@ shuffled = lazy.spatial_shuffle().persist()   # still lazy, but graph is warm
 hits = shuffled.sjoin(query_fc, predicate="intersects").compute()
 ```
 
+## Writing a lazy FC back to disk
+
+`LazyFeatureCollection.to_parquet(path)` is the only lazy-native write
+path. It writes a partitioned directory of `part.N.parquet` files and
+always blocks until every partition is materialised — `compute=False`
+is rejected to keep the pyramids "`to_*` always writes" invariant. All
+other kwargs (`compression=`, `write_index=`, `storage_options=`) pass
+through to `dask_geopandas.GeoDataFrame.to_parquet`.
+
+```python
+lfc = FeatureCollection.read_parquet("in.parquet", backend="dask")
+lfc.spatial_shuffle().to_parquet("out.parquet")  # partitioned directory
+```
+
+`to_file()` is NOT lazy — it raises `NotImplementedError` because
+dask-geopandas has no lazy OGR write path. Call `.compute().to_file(path)`
+to materialise first.
+
 ## `total_bounds` is lazy — and honest about it
 
 `LazyFeatureCollection` inherits `total_bounds` from
