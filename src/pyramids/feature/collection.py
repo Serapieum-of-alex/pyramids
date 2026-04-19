@@ -53,8 +53,9 @@ CATALOG = Catalog(raster_driver=False)
 gdal.UseExceptions()
 
 # D-L3: default per-chunk batch size for ``iter_features`` when the
-# user does not pass ``chunksize``. 1000 rows balances pyogrio overhead
-# against memory headroom on a typical development machine.
+# user does not pass ``chunksize``. Matches pyogrio's own
+# ``read_dataframe`` default for row-group streaming, so the fast
+# path (GeoParquet + row_group tile strategy) does not re-chunk.
 _DEFAULT_ITER_BATCH_SIZE: int = 1000
 
 
