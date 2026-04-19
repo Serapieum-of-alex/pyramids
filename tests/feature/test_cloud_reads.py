@@ -97,7 +97,7 @@ class TestHttpRewrite:
         )
 
         url = "http://example.invalid/points.geojson"
-        with caplog.at_level(logging.INFO, logger="pyramids.base.remote"):
+        with caplog.at_level(logging.DEBUG, logger="pyramids.base.remote"):
             FeatureCollection.read_file(url)
 
         messages = [rec.getMessage() for rec in caplog.records]
