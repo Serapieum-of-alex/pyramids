@@ -133,13 +133,18 @@ def reproject_coordinates(
 
     Raises:
         ValueError: If ``len(x) != len(y)``.
-        CRSError: If :meth:`pyproj.Transformer.from_crs` cannot parse
-            ``from_crs`` or ``to_crs`` (C23). The wrapper converts
-            ``pyproj.exceptions.CRSError`` into pyramids'
+        CRSError: If :meth:`pyproj.Transformer.from_crs` raises one
+            of ``pyproj.exceptions.CRSError`` (malformed WKT / proj
+            string), ``TypeError`` (input is not CRS-like — e.g. a
+            bare ``object()``), or ``ValueError`` (out-of-range EPSG
+            integer). The wrapper converts each into pyramids'
             :class:`pyramids.base._errors.CRSError` so callers do not
             need to import pyproj to catch bad-CRS failures, and the
-            message names both CRSes plus the underlying pyproj
-            explanation.
+            message names both CRSes plus the underlying explanation.
+            Other exception types (``AttributeError``, ``ImportError``,
+            …) propagate unchanged — they signal a real bug, not a bad
+            user input (M1 narrowed the original blanket
+            ``except Exception``).
 
     Examples:
         - Reproject two WGS84 points into Web Mercator:
@@ -168,15 +173,21 @@ def reproject_coordinates(
             f"x and y must have equal length; got len(x)={len(x)} "
             f"vs. len(y)={len(y)}."
         )
-    # C23: ``pyproj.Transformer.from_crs`` raises
-    # :class:`pyproj.exceptions.CRSError` on malformed CRS input. Wrap
-    # it in :class:`pyramids.base._errors.CRSError` so callers can
-    # catch pyramids' own typed exception without importing pyproj.
+    # C23 / M1: ``pyproj.Transformer.from_crs`` raises
+    # :class:`pyproj.exceptions.CRSError` on malformed CRS strings,
+    # ``TypeError`` on unsupported input types (e.g. a dict), and
+    # ``ValueError`` on e.g. out-of-range EPSG ints. Wrap those three
+    # explicitly in :class:`pyramids.base._errors.CRSError` so callers
+    # can catch pyramids' own typed exception without importing pyproj
+    # — but do NOT swallow ``AttributeError`` / ``ImportError`` / etc.
+    # which would mask real bugs in our own code.
+    import pyproj.exceptions
+
+    from pyramids.base._errors import CRSError as _CRSError
+
     try:
         transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
-    except Exception as exc:
-        from pyramids.base._errors import CRSError as _CRSError
-
+    except (pyproj.exceptions.CRSError, TypeError, ValueError) as exc:
         raise _CRSError(
             f"reproject_coordinates failed to parse CRS "
             f"(from_crs={from_crs!r}, to_crs={to_crs!r}): {exc}"

@@ -573,6 +573,63 @@ class TestReprojectCoordinates:
                 to_crs="not a valid wkt string",
             )
 
+    def test_non_crs_like_object_wraps_as_pyramids_crs_error(self):
+        """M1: a non-CRS-like ``from_crs`` surfaces as pyramids CRSError.
+
+        Test scenario:
+            pyproj raises ``TypeError`` when asked to convert e.g. a
+            bare ``object()`` into a CRS. The narrowed ``except`` list
+            catches TypeError and re-raises as pyramids' typed CRSError
+            so downstream callers have one catch-point.
+        """
+        from pyramids.base._errors import CRSError
+
+        with pytest.raises(CRSError, match="from_crs="):
+            FeatureCollection.reproject_coordinates(
+                [0.0], [0.0], from_crs=object(), to_crs=4326
+            )
+
+    def test_out_of_range_epsg_wraps_as_pyramids_crs_error(self):
+        """M1: an out-of-range EPSG int wraps via the ValueError arm.
+
+        Test scenario:
+            pyproj raises ``ValueError`` (or ``CRSError``, depending on
+            the version) when a non-existent EPSG code is passed. The
+            narrowed except list handles both paths.
+        """
+        from pyramids.base._errors import CRSError
+
+        with pytest.raises(CRSError, match="reproject_coordinates"):
+            FeatureCollection.reproject_coordinates(
+                [0.0], [0.0], from_crs=999999999, to_crs=4326
+            )
+
+    def test_bare_attribute_error_is_not_swallowed(self, monkeypatch):
+        """M1: unrelated exceptions leak out with their typed cause.
+
+        Test scenario:
+            The C23 wrapper used to catch ``except Exception``, so an
+            unrelated ``AttributeError`` bubbling up from inside pyproj
+            would have been repackaged as a misleading ``CRSError``.
+            After M1 the catch is narrowed to
+            ``(pyproj.exceptions.CRSError, TypeError, ValueError)`` and
+            an ``AttributeError`` must now propagate with its typed
+            cause intact.
+        """
+        import pyproj
+
+        def _raise_attr_error(*args, **kwargs):
+            raise AttributeError(
+                "simulated unrelated AttributeError from pyproj"
+            )
+
+        monkeypatch.setattr(pyproj.Transformer, "from_crs", _raise_attr_error)
+
+        with pytest.raises(AttributeError, match="simulated unrelated"):
+            FeatureCollection.reproject_coordinates(
+                [31.0], [30.0], from_crs=4326, to_crs=3857
+            )
+
 
 class TestParquetPyarrowGuard:
     """D-M5: parquet read/write surface a pyramids-branded ImportError.
