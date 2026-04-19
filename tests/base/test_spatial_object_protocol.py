@@ -125,3 +125,54 @@ class TestSpatialObjectNegative:
             crs="EPSG:4326",
         )
         assert not isinstance(plain, SpatialObject)
+
+
+try:
+    import dask_geopandas  # noqa: F401
+    HAS_DASK_GP = True
+except ImportError:  # pragma: no cover
+    HAS_DASK_GP = False
+
+
+@pytest.mark.skipif(not HAS_DASK_GP, reason="dask-geopandas not installed")
+class TestSpatialObjectLazy:
+    """DASK-40a: :class:`LazyFeatureCollection` satisfies :class:`SpatialObject`.
+
+    Pins the contract that the lazy vector class stays protocol-compatible
+    with the eager :class:`FeatureCollection` and :class:`Dataset`. A
+    consumer typed against ``SpatialObject`` must accept all three.
+    """
+
+    def test_lazy_feature_collection_satisfies_protocol(self):
+        """``isinstance(lfc, SpatialObject)`` is True at runtime."""
+        import dask_geopandas as dg
+
+        from pyramids.feature import LazyFeatureCollection
+
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]},
+            geometry=[box(0, 0, 1, 1)],
+            crs="EPSG:4326",
+        )
+        ddf = dg.from_geopandas(gdf, npartitions=1)
+        lfc = LazyFeatureCollection._from_dask_gdf(ddf)
+        assert isinstance(lfc, SpatialObject)
+
+    def test_generic_consumer_accepts_lazy(self):
+        """A function typed against SpatialObject accepts a LazyFC."""
+        import dask_geopandas as dg
+
+        from pyramids.feature import LazyFeatureCollection
+
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]},
+            geometry=[box(500000.0, 3400000.0, 510000.0, 3410000.0)],
+            crs="EPSG:32636",
+        )
+        ddf = dg.from_geopandas(gdf, npartitions=1)
+        lfc = LazyFeatureCollection._from_dask_gdf(ddf)
+
+        def epsg_of(obj: SpatialObject) -> int | None:
+            return obj.epsg
+
+        assert epsg_of(lfc) == 32636
