@@ -22,6 +22,7 @@ internal only (ARC-1b); see :mod:`pyramids.feature._ogr`.
 from __future__ import annotations
 
 import functools
+import warnings
 from numbers import Number
 from pathlib import Path
 from typing import Any, Iterable
@@ -35,6 +36,7 @@ from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
+from pyramids.base._errors import GeometryWarning
 from pyramids.base._utils import Catalog
 from pyramids.feature import crs as _crs
 from pyramids.feature import geometry as _geom
@@ -1373,15 +1375,13 @@ class FeatureCollection(GeoDataFrame):
         bad_mask = np.isnan(avg_x) | np.isnan(avg_y)
         if bad_mask.any():
             bad_idx = [int(i) for i, is_bad in enumerate(bad_mask) if is_bad]
-            import warnings
-
             warnings.warn(
                 f"with_centroid: {len(bad_idx)} row(s) yielded NaN centroids "
                 f"(rows {bad_idx}). Their ``center_point`` is an empty "
                 f"shapely.Point. Drop or repair those rows before running "
                 f"a method that requires a valid centroid (e.g. reproject, "
                 f"distance).",
-                UserWarning,
+                GeometryWarning,
                 stacklevel=2,
             )
 

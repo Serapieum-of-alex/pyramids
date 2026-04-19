@@ -509,6 +509,74 @@ class TestWithCentroidDegenerateGeometries:
             "NaN centroids" in str(w.message) for w in user_warnings
         ), f"should not warn for valid geometries; got {user_warnings}"
 
+    def test_warning_is_geometry_warning_category(self):
+        """L6: the NaN-centroid warning uses ``GeometryWarning``.
+
+        Test scenario:
+            A caller must be able to suppress just pyramids geometry
+            warnings with ``warnings.filterwarnings("ignore",
+            category=GeometryWarning)`` — silencing the plain
+            ``UserWarning`` would also silence unrelated geopandas /
+            shapely warnings.
+        """
+        import warnings as _w
+
+        from shapely.geometry import Point as _Pt
+
+        from pyramids.base._errors import GeometryWarning
+
+        nan = float("nan")
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(0, 0), _Pt(nan, nan)],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always", GeometryWarning)
+            fc.with_centroid()
+        geo_warnings = [
+            w for w in caught if issubclass(w.category, GeometryWarning)
+        ]
+        assert geo_warnings, (
+            f"expected a GeometryWarning; got {[w.category for w in caught]}"
+        )
+
+    def test_warning_can_be_filtered_by_category(self):
+        """L6: ``filterwarnings("ignore", category=GeometryWarning)`` works.
+
+        Test scenario:
+            Install the filter, call ``with_centroid`` on a
+            degenerate FC, and assert no warnings were captured. A
+            plain-UserWarning-only warning would have needed a
+            message-match filter to silence.
+        """
+        import warnings as _w
+
+        from shapely.geometry import Point as _Pt
+
+        from pyramids.base._errors import GeometryWarning
+
+        nan = float("nan")
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(0, 0), _Pt(nan, nan)],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            _w.filterwarnings("ignore", category=GeometryWarning)
+            fc.with_centroid()
+        geo_warnings = [
+            w for w in caught if issubclass(w.category, GeometryWarning)
+        ]
+        assert not geo_warnings, (
+            f"GeometryWarning should have been filtered out; got {geo_warnings}"
+        )
+
     def test_warning_lists_all_bad_row_indices(self):
         """C18: multiple NaN rows are all named in the warning message.
 
