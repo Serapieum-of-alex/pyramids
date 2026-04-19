@@ -347,17 +347,20 @@ class FeatureCollection(GeoDataFrame):
 
         from pyramids.base._errors import FeatureError
 
+        # D-N4: empty-input branches both build a single-column frame
+        # whose column name matches the ``geometry=`` kwarg, so
+        # ``GeoDataFrame(..., geometry=…)`` sets it as the active
+        # geometry column and the returned FC has
+        # ``geometry.name == geometry``.
+        def _empty_fc() -> "FeatureCollection":
+            return cls(
+                gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
+            )
+
         if orient == "records":
             records_list = list(records)
             if not records_list:
-                return cls(
-                    # D-N4: for an empty input the constructed frame
-                    # carries a single column whose name matches the
-                    # ``geometry=`` kwarg, so ``GeoDataFrame(..., geometry=…)``
-                    # sets it as the active geometry column and the
-                    # returned FC has ``geometry.name == geometry``.
-                    gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
-                )
+                return _empty_fc()
             df = pd.DataFrame.from_records(records_list)
         elif orient == "list":
             # C26: columnar dict of equal-length lists. Straight into
@@ -371,14 +374,7 @@ class FeatureCollection(GeoDataFrame):
                 )
             df = pd.DataFrame(records)
             if len(df) == 0:
-                return cls(
-                    # D-N4: for an empty input the constructed frame
-                    # carries a single column whose name matches the
-                    # ``geometry=`` kwarg, so ``GeoDataFrame(..., geometry=…)``
-                    # sets it as the active geometry column and the
-                    # returned FC has ``geometry.name == geometry``.
-                    gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
-                )
+                return _empty_fc()
         else:
             raise ValueError(
                 f"orient must be 'records' or 'list'; got {orient!r}."
