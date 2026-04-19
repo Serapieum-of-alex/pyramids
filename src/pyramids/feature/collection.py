@@ -65,11 +65,16 @@ class FeatureCollection(GeoDataFrame):
     # entries drops that attribute on pickle / copy / concat, and the
     # restored object can no longer find its geometry column. Always
     # splat the parent's list first.
-    _metadata: list[str] = [
+    # C3 — dedupe via ``dict.fromkeys`` so that if a future geopandas
+    # release adds one of our own names to its own ``_metadata`` list,
+    # the pyramids subclass does not carry a duplicate entry. Python
+    # preserves insertion order in dicts since 3.7, so the parent's
+    # ordering is preserved.
+    _metadata: list[str] = list(dict.fromkeys([
         *GeoDataFrame._metadata,
         "_epsg_cache_crs",
         "_epsg_cache_value",
-    ]
+    ]))
     """Instance attributes pandas must preserve across copy/slice/pickle.
 
     Holds:

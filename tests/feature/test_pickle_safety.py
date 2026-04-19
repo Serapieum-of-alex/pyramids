@@ -86,6 +86,36 @@ class TestPicklePlain:
         assert len(restored) == len(fc)
 
 
+class TestMetadataDedup:
+    """C3: ``_metadata`` is de-duplicated against geopandas upstream additions.
+
+    ARC-31 fixed the pickle bug by splatting ``GeoDataFrame._metadata``
+    first; if a future geopandas release adds one of our own names
+    (``_epsg_cache_crs`` / ``_epsg_cache_value``) to the parent list,
+    the pyramids subclass used to end up with a duplicate. Python
+    allows duplicate list entries, but pandas' ``_metadata`` processing
+    may not be idempotent. ``dict.fromkeys`` de-dupes while preserving
+    insertion order.
+    """
+
+    def test_metadata_has_no_duplicates(self):
+        assert len(FeatureCollection._metadata) == len(
+            set(FeatureCollection._metadata)
+        )
+
+    def test_metadata_preserves_parent_ordering(self):
+        from geopandas import GeoDataFrame as _GDF
+
+        # Parent entries come first, pyramids additions last.
+        parent = list(_GDF._metadata)
+        for idx, name in enumerate(parent):
+            assert FeatureCollection._metadata[idx] == name
+
+    def test_metadata_contains_pyramids_caches(self):
+        assert "_epsg_cache_crs" in FeatureCollection._metadata
+        assert "_epsg_cache_value" in FeatureCollection._metadata
+
+
 @pytest.mark.skipif(
     importlib.util.find_spec("cloudpickle") is None,
     reason="cloudpickle not installed",
