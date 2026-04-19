@@ -185,6 +185,28 @@ class TestRasterizeRoundTrip:
         burned = arr[arr == 42.0]
         assert burned.size > 0, "Burned value 42 should appear in the raster"
 
+    def test_from_features_raises_on_crs_less_features(self):
+        """C5: CRS-less FeatureCollection fails fast with CRSError.
+
+        Regression for the pr-review-merged C5 finding: rasterising a
+        FeatureCollection whose ``crs`` is ``None`` previously produced
+        a raster with an undefined projection, failing downstream with
+        cryptic GDAL errors. Now the method raises a typed
+        :class:`CRSError` at the top of ``from_features``.
+        """
+        from pyramids.base._errors import CRSError
+
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]},
+            geometry=[box(0.0, 0.0, 1.0, 1.0)],
+            # Explicitly no CRS.
+        )
+        fc = FeatureCollection(gdf)
+        assert fc.epsg is None
+
+        with pytest.raises(CRSError, match="must have a CRS"):
+            Dataset.from_features(fc, cell_size=0.1, column_name="v")
+
     def test_rasterize_integer_dtype_with_none_nodata_template(self):
         """C2: integer burn with a template having no-data=None falls back
         to the class default sentinel instead of NaN.

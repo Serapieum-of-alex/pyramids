@@ -721,6 +721,19 @@ class Dataset(  # type: ignore[misc]
             )
 
         ds_epsg = features.epsg
+        # C5: both branches below feed ``ds_epsg`` into ``cls.create`` (via
+        # either the template path or the cell_size path). A CRS-less
+        # FeatureCollection would produce a raster with an undefined
+        # projection, which fails downstream in reproject / crop / overlay
+        # with cryptic GDAL errors. Fail fast with a typed CRSError.
+        if ds_epsg is None:
+            from pyramids.base._errors import CRSError
+
+            raise CRSError(
+                "FeatureCollection must have a CRS before rasterisation. "
+                "Set one via ``fc.set_crs('EPSG:...')`` or construct the FC "
+                "with ``crs='EPSG:...'``."
+            )
         if template is not None:
             if not isinstance(template, Dataset):
                 raise TypeError(
