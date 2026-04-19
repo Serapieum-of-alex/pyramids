@@ -1383,18 +1383,17 @@ class FeatureCollection(GeoDataFrame):
                 stacklevel=2,
             )
 
-        coords_list = []
-        for idx, (ax, ay) in enumerate(zip(avg_x.tolist(), avg_y.tolist())):
-            if bad_mask[idx]:
-                coords_list.append((float("nan"), float("nan")))
-            else:
-                coords_list.append((ax, ay))
-        points = _geom.create_points(coords_list)
-        # Substitute empty Points for the NaN rows so the column's
-        # invariant is "every entry is a non-NaN shapely Point OR is
-        # Point.is_empty".
-        cleaned: list[Any] = []
-        for idx, pt in enumerate(points):
-            cleaned.append(Point() if bad_mask[idx] else pt)
+        # L4: single-pass build. The previous implementation built a
+        # throwaway ``coords_list`` (with NaN placeholders for the bad
+        # rows), called ``create_points`` on it, then iterated the
+        # result a second time to substitute empty Points for the bad
+        # rows. Skip both intermediates — write the final column value
+        # directly.
+        cleaned: list[Any] = [
+            Point() if bad else Point(ax, ay)
+            for ax, ay, bad in zip(
+                avg_x.tolist(), avg_y.tolist(), bad_mask.tolist()
+            )
+        ]
         fc["center_point"] = cleaned
         return fc
