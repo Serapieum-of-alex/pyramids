@@ -133,6 +133,13 @@ def reproject_coordinates(
 
     Raises:
         ValueError: If ``len(x) != len(y)``.
+        CRSError: If :meth:`pyproj.Transformer.from_crs` cannot parse
+            ``from_crs`` or ``to_crs`` (C23). The wrapper converts
+            ``pyproj.exceptions.CRSError`` into pyramids'
+            :class:`pyramids.base._errors.CRSError` so callers do not
+            need to import pyproj to catch bad-CRS failures, and the
+            message names both CRSes plus the underlying pyproj
+            explanation.
 
     Examples:
         - Reproject two WGS84 points into Web Mercator:
