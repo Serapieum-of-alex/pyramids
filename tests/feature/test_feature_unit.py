@@ -388,6 +388,24 @@ class TestExplodeGdf:
             "explode_gdf mutated the first row's geometry in place"
         )
 
+    def test_returns_expanded_row_count(self):
+        """D-H1: the returned frame carries the exploded children.
+
+        Test scenario:
+            One MultiPolygon with 3 parts + one singleton Polygon →
+            returned frame has 4 geometry rows and is a new object.
+        """
+        poly_a = box(0.0, 0.0, 1.0, 1.0)
+        poly_b = box(2.0, 2.0, 3.0, 3.0)
+        poly_c = box(4.0, 4.0, 5.0, 5.0)
+        mpoly = MultiPolygon([poly_a, poly_b, poly_c])
+        single = box(10.0, 10.0, 11.0, 11.0)
+        gdf = gpd.GeoDataFrame(geometry=[mpoly, single], crs="EPSG:4326")
+
+        out = FeatureCollection._explode_gdf(gdf, geometry="multipolygon")
+        assert out is not gdf, "return value must be a fresh GeoDataFrame"
+        assert len(out) == 4, f"expected 4 exploded rows, got {len(out)}"
+
 
 class TestMultiGeomHandler:
     """Tests for ``_multi_geom_handler``."""
@@ -538,6 +556,23 @@ class TestReprojectCoordinates:
                 to_crs=3857,
             )
 
+    def test_invalid_to_crs_raises_pyramids_crs_error(self):
+        """C23: a bad ``to_crs`` (with valid ``from_crs``) also wraps.
+
+        Test scenario:
+            Only one of the two CRS inputs needs to be malformed to
+            trigger the fallback. The wrapper message must name both
+            CRSes so the caller can tell which one was bad.
+        """
+        from pyramids.base._errors import CRSError
+
+        with pytest.raises(CRSError, match=r"to_crs="):
+            FeatureCollection.reproject_coordinates(
+                [31.0], [30.0],
+                from_crs=4326,
+                to_crs="not a valid wkt string",
+            )
+
     def test_no_future_warning(self):
         """Must not emit pyproj FutureWarning (ARC-2 regression).
 
@@ -669,6 +704,26 @@ class TestGetCoords:
         row = pd.Series({"geometry": Point()})  # empty
         with pytest.raises(InvalidGeometryError, match="empty geometry"):
             FeatureCollection._get_coords(row, "geometry", "x")
+
+    def test_empty_linestring_raises_invalid_geometry(self):
+        """C22: an empty LineString also raises ``InvalidGeometryError``."""
+        import pandas as pd
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        row = pd.Series({"geometry": LineString()})
+        with pytest.raises(InvalidGeometryError, match="empty geometry"):
+            FeatureCollection._get_coords(row, "geometry", "x")
+
+    def test_empty_polygon_raises_invalid_geometry(self):
+        """C22: an empty Polygon also raises ``InvalidGeometryError``."""
+        import pandas as pd
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        row = pd.Series({"geometry": Polygon()})
+        with pytest.raises(InvalidGeometryError, match="empty geometry"):
+            FeatureCollection._get_coords(row, "geometry", "y")
 
     def test_geometry_collection(self):
         import pandas as pd

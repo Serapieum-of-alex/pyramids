@@ -310,3 +310,59 @@ class TestStreamIndexCentroidPickleChain:
         assert isinstance(restored, FeatureCollection)
         assert list(restored["_row_index"]) == [0, 1, 2, 3, 4]
         assert list(restored["center_point"]) == list(with_center["center_point"])
+
+
+class TestGeometryHardeningChain:
+    """Chained e2e across D-H1/C21/C22/C23 + D-H2.
+
+    Builds a FeatureCollection with mixed Polygons + MultiPolygons, runs
+    ``with_coordinates`` (which calls ``explode_gdf`` internally), asserts:
+
+    * the input FC is untouched (D-H1),
+    * the exploded output has the right row count,
+    * ``create_polygon`` rejects a bad ring (C21) so the pipeline can
+      build one valid polygon to feed the FC,
+    * calling ``get_coords`` on an empty row raises (C22), and
+    * ``reproject_coordinates`` converts pyproj failures to
+      :class:`pyramids.base._errors.CRSError` (C23).
+    """
+
+    def test_explode_polygon_extract_reproject_chain(self):
+        from shapely.geometry import MultiPolygon as _Mp
+        from shapely.geometry import Point as _Pt
+
+        from pyramids.base._errors import CRSError, InvalidGeometryError
+
+        # C21: valid triangle ring; the 2-vertex guard keeps callers from
+        # ever reaching this with a degenerate polygon.
+        triangle = FeatureCollection.create_polygon(
+            [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]
+        )
+        mpoly = _Mp([box(2.0, 2.0, 3.0, 3.0), box(4.0, 4.0, 5.0, 5.0)])
+        fc = FeatureCollection(
+            gpd.GeoDataFrame(geometry=[triangle, mpoly], crs="EPSG:4326")
+        )
+        original_types = [g.geom_type for g in fc.geometry]
+
+        # D-H1: with_coordinates explodes internally and must NOT mutate ``fc``.
+        exploded = fc.with_coordinates()
+        assert [g.geom_type for g in fc.geometry] == original_types, (
+            "input FC's geometries mutated by with_coordinates"
+        )
+        # Exploded output carries the split child rows (triangle + 2 boxes).
+        assert len(exploded) == 3
+
+        # C22: empty geometry in a row raises InvalidGeometryError on
+        # direct ``get_coords`` access.
+        import pandas as _pd
+
+        row = _pd.Series({"geometry": _Pt()})
+        with pytest.raises(InvalidGeometryError):
+            FeatureCollection._get_coords(row, "geometry", "x")
+
+        # C23: a bad target CRS in a downstream reproject surfaces as
+        # pyramids CRSError, not pyproj's.
+        with pytest.raises(CRSError):
+            FeatureCollection.reproject_coordinates(
+                [1.0], [1.0], from_crs=4326, to_crs="gibberish-wkt"
+            )

@@ -103,6 +103,20 @@ class TestCreatePolygon:
         with _pt.raises(InvalidGeometryError, match="at least 3 vertices"):
             FeatureCollection.create_polygon([])
 
+    def test_create_polygon_exactly_three_vertices_ok(self):
+        """C21 boundary: exactly 3 vertices is accepted.
+
+        Test scenario:
+            The threshold is "at least 3". A coord list of length 3
+            is the minimum-valid input and must construct a Polygon
+            successfully.
+        """
+        triangle = FeatureCollection.create_polygon(
+            [(0, 0), (1, 0), (0, 1)]
+        )
+        assert isinstance(triangle, Polygon)
+        assert not triangle.is_empty
+
 
 class TestCreatePoint:
     """ARC-15: create_points is the list form; point_collection is the FC form."""
