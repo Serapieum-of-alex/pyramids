@@ -1,10 +1,11 @@
 """Tests for :meth:`FeatureCollection.read_file(backend="dask")`.
 
-DASK-22: when ``backend="dask"`` is passed, delegate to
-:func:`dask_geopandas.read_file` and return the lazy
-:class:`dask_geopandas.GeoDataFrame` directly. Users get the
-partitioned-geometry API for clip / buffer / to_crs / sjoin without
-a second class surface in pyramids.
+DASK-22 + DASK-22F: when ``backend="dask"`` is passed, delegate to
+:func:`dask_geopandas.read_file` and wrap the lazy result in a
+:class:`~pyramids.feature.LazyFeatureCollection` so the return stays
+inside the pyramids type system. Users get the partitioned-geometry API
+for clip / buffer / to_crs / sjoin, plus the shared ``SpatialObject``
+protocol so downstream code accepts either eager or lazy vectors.
 """
 
 from __future__ import annotations
@@ -55,34 +56,41 @@ class TestDefaultBackend:
 
 
 class TestDaskBackend:
-    """``backend="dask"`` returns a lazy dask_geopandas.GeoDataFrame."""
+    """DASK-22F: ``backend="dask"`` returns a LazyFeatureCollection."""
 
     @requires_dask_geopandas
-    def test_returns_dask_geodataframe(self, small_geojson):
-        lazy = FeatureCollection.read_file(small_geojson, backend="dask")
-        assert hasattr(lazy, "npartitions")
+    def test_returns_lazy_feature_collection(self, small_geojson):
+        """Lazy read returns a LazyFeatureCollection, not a raw dask GDF."""
+        from pyramids.feature import LazyFeatureCollection
+
+        lfc = FeatureCollection.read_file(small_geojson, backend="dask")
+        assert isinstance(lfc, LazyFeatureCollection)
+        assert lfc.npartitions >= 1
 
     @requires_dask_geopandas
     def test_npartitions_respected(self, small_geojson):
-        lazy = FeatureCollection.read_file(
+        lfc = FeatureCollection.read_file(
             small_geojson, backend="dask", npartitions=2,
         )
-        assert lazy.npartitions == 2
+        assert lfc.npartitions == 2
 
     @requires_dask_geopandas
     def test_compute_recovers_features(self, small_geojson):
-        lazy = FeatureCollection.read_file(
+        lfc = FeatureCollection.read_file(
             small_geojson, backend="dask", npartitions=2,
         )
-        gdf = lazy.compute()
-        assert len(gdf) == 5
+        eager = lfc.compute()
+        assert isinstance(eager, FeatureCollection)
+        assert len(eager) == 5
 
     @requires_dask_geopandas
     def test_chunksize_alternative(self, small_geojson):
-        lazy = FeatureCollection.read_file(
+        from pyramids.feature import LazyFeatureCollection
+
+        lfc = FeatureCollection.read_file(
             small_geojson, backend="dask", chunksize=3,
         )
-        assert hasattr(lazy, "npartitions")
+        assert isinstance(lfc, LazyFeatureCollection)
 
 
 class TestFilterKwargsRejected:

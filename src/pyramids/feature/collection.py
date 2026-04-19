@@ -368,7 +368,7 @@ class FeatureCollection(GeoDataFrame):
         npartitions: int | None = None,
         chunksize: int | None = None,
         **kwargs: Any,
-    ) -> Any:
+    ) -> "FeatureCollection | Any":
         """Read a vector file into a FeatureCollection.
 
         ARC-23: path is first routed through
@@ -433,8 +433,19 @@ class FeatureCollection(GeoDataFrame):
                 ``use_arrow=True``, driver-specific creation options).
 
         Returns:
-            FeatureCollection: The (possibly filtered) features
-            wrapped as a FeatureCollection.
+            FeatureCollection | LazyFeatureCollection: When
+            ``backend="pandas"`` (default), an eager
+            :class:`FeatureCollection`. When ``backend="dask"``, a
+            :class:`~pyramids.feature.LazyFeatureCollection` (a
+            :class:`dask_geopandas.GeoDataFrame` subclass). Call
+            ``.compute()`` on the lazy return to materialize back to an
+            eager :class:`FeatureCollection`.
+
+            ``backend="dask"`` requires the optional ``[parquet-lazy]``
+            extra. It does NOT honor the ``bbox`` / ``mask`` / ``rows`` /
+            ``columns`` / ``where`` / ``layer`` filter kwargs —
+            dask-geopandas has no pushdown for them — so supplying any
+            of those with ``backend="dask"`` raises :class:`ValueError`.
 
         Examples:
             - Load a GeoJSON file:
@@ -481,7 +492,16 @@ class FeatureCollection(GeoDataFrame):
                 partition_kwargs["chunksize"] = chunksize
             if not partition_kwargs:
                 partition_kwargs["npartitions"] = 1
-            return dask_geopandas.read_file(resolved, **partition_kwargs)
+            # DASK-22F: wrap the lazy return as a LazyFeatureCollection so the
+            # dask branch stays inside the pyramids type system. The inline
+            # import of LazyFeatureCollection is intentional — the import of
+            # dask-geopandas above has already gated us on the [parquet-lazy]
+            # extra, and moving _lazy_collection to the module top would
+            # force that extra onto every minimal install.
+            from pyramids.feature._lazy_collection import LazyFeatureCollection
+
+            dask_gdf = dask_geopandas.read_file(resolved, **partition_kwargs)
+            return LazyFeatureCollection._from_dask_gdf(dask_gdf)
         if backend != "pandas":
             raise ValueError(
                 f"backend must be 'pandas' or 'dask', got {backend!r}"
