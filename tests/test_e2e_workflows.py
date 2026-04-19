@@ -185,6 +185,52 @@ class TestRasterizeRoundTrip:
         burned = arr[arr == 42.0]
         assert burned.size > 0, "Burned value 42 should appear in the raster"
 
+    def test_rasterize_integer_dtype_with_none_nodata_template(self):
+        """C2: integer burn with a template having no-data=None falls back
+        to the class default sentinel instead of NaN.
+
+        Regression for the pr-review-merged C2 finding: when the template's
+        no-data is None and the burn column is integer-typed, the previous
+        code assigned ``np.nan`` to the output raster's no-data — invalid
+        on integer rasters and silently coerced into an arbitrary sentinel.
+        """
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+
+        template = Dataset.create(
+            cell_size=cell_size,
+            rows=10,
+            columns=10,
+            dtype="int32",
+            bands=1,
+            top_left_corner=top_left,
+            epsg=epsg,
+            no_data_value=None,
+        )
+        # Precondition: template carries None as its no-data.
+        assert template.no_data_value[0] is None
+
+        x0, y0 = top_left
+        poly = box(x0, y0 - 5 * cell_size, x0 + 5 * cell_size, y0)
+        gdf = gpd.GeoDataFrame(
+            {"class_id": np.array([7], dtype=np.int32)},
+            geometry=[poly],
+            crs=f"EPSG:{epsg}",
+        )
+        fc = FeatureCollection(gdf)
+
+        raster = Dataset.from_features(
+            fc, template=template, column_name="class_id"
+        )
+
+        nodata = raster.no_data_value[0]
+        assert nodata is not None, "integer raster must have a non-None no-data"
+        assert not (isinstance(nodata, float) and np.isnan(nodata)), (
+            "integer raster's no-data must not be NaN (C2)"
+        )
+        assert nodata == Dataset.default_no_data_value
+
 
 class TestReprojectAlignWorkflow:
     """Reproject a raster and then align another to its grid."""

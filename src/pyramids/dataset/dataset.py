@@ -758,6 +758,18 @@ class Dataset(  # type: ignore[misc]
         else:
             numpy_dtype = features.dtypes[column_name]
 
+        # C2: integer raster dtypes cannot represent NaN. If the template
+        # supplied None as no_data_value (defaulted to NaN above) and the
+        # burn column's dtype is integer, fall back to the class default
+        # sentinel so GDAL does not silently coerce NaN into an arbitrary
+        # integer value.
+        if np.issubdtype(numpy_dtype, np.integer):
+            try:
+                if np.isnan(no_data_value):
+                    no_data_value = cls.default_no_data_value
+            except (TypeError, ValueError):
+                pass
+
         dtype = str(numpy_dtype)
         attribute = column_name
         top_left_corner = (xmin, ymax)
