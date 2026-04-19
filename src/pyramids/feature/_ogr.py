@@ -87,6 +87,21 @@ def as_datasource(
         ogr.DataSource | gdal.Dataset: A short-lived handle to the vector
         data. Do not store past the ``with`` block.
 
+    Raises:
+        VectorDriverError: If :func:`gdal.OpenEx` / :func:`ogr.Open`
+            returns ``None`` after the in-memory GeoJSON was written —
+            usually the GeoDataFrame has malformed geometry or an
+            unsupported CRS. The message includes the ``/vsimem/``
+            path for debugging (C4).
+
+    Notes:
+        Cleanup is exception-safe. If ``gdf.to_json`` or
+        :func:`gdal.FileFromMemBuffer` raises before the in-memory file
+        is written, the ``finally`` block does **not** call
+        :func:`gdal.Unlink` on a non-existent path (tracked via an
+        internal ``file_written`` flag). When the user's ``with`` body
+        raises, the path is still unlinked exactly once (C4).
+
     Examples:
         - Open a GeoDataFrame as an OGR DataSource inside a ``with``
           block, and confirm the yielded handle exposes one layer with

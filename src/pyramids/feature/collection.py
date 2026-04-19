@@ -84,6 +84,12 @@ class FeatureCollection(GeoDataFrame):
       the active geometry column.
     * ``_epsg_cache_crs`` / ``_epsg_cache_value`` — the ARC-6 EPSG
       cache.
+
+    The list is wrapped in ``list(dict.fromkeys(...))`` so that a
+    future geopandas release adding one of our own names to its own
+    ``_metadata`` list does not produce a duplicate entry. ``dict``
+    preserves insertion order since Python 3.7, so the parent's
+    ordering is preserved (C3).
     """
 
     def __init__(self, data: Any = None, *args: Any, **kwargs: Any) -> None:

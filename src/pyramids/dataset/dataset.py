@@ -701,13 +701,21 @@ class Dataset(  # type: ignore[misc]
                 burns every non-geometry column as a separate band.
 
         Returns:
-            Dataset: The burned raster.
+            Dataset: The burned raster. When the burn column is an
+            integer dtype and the template's no-data is ``None``, the
+            output raster's no-data is the class default sentinel
+            (``cls.default_no_data_value``) rather than ``NaN`` — NaN
+            cannot be stored in integer rasters without silent
+            coercion. Float-typed burn columns keep NaN as before.
 
         Raises:
             ValueError: If neither ``cell_size`` nor ``template`` is
-                given, or if the vector CRS disagrees with the raster
-                CRS.
+                given.
             TypeError: If ``template`` is not a pyramids ``Dataset``.
+            CRSError: If ``features.epsg`` is ``None`` (the vector
+                has no CRS), or if ``template`` is supplied and
+                ``template.epsg != features.epsg``. Raised before any
+                raster is allocated so callers fail fast.
         """
         # Avoid circular import at module-top by importing the OGR
         # bridge here. This function belongs to dataset/, and the
