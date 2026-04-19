@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 from shapely.geometry import box
 
-from pyramids.base.protocols import SpatialObject
+from pyramids.base.protocols import LazySpatialObject, SpatialObject
 from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
 
@@ -135,16 +135,22 @@ except ImportError:  # pragma: no cover
 
 
 @pytest.mark.skipif(not HAS_DASK_GP, reason="dask-geopandas not installed")
-class TestSpatialObjectLazy:
-    """DASK-40a: :class:`LazyFeatureCollection` satisfies :class:`SpatialObject`.
+class TestLazySpatialObject:
+    """ARC-V4: :class:`LazyFeatureCollection` satisfies :class:`LazySpatialObject`.
 
-    Pins the contract that the lazy vector class stays protocol-compatible
-    with the eager :class:`FeatureCollection` and :class:`Dataset`. A
-    consumer typed against ``SpatialObject`` must accept all three.
+    The eager :class:`SpatialObject` protocol is NOT satisfied by
+    LazyFeatureCollection (intentionally — it would require
+    ``top_left_corner`` to silently run an ``O(partitions)`` dask
+    reduction). Lazy objects satisfy the separate
+    :class:`LazySpatialObject` protocol, which exposes ``npartitions``
+    / ``compute`` / ``persist`` and a lazy ``total_bounds``. Consumers
+    that want to accept both types should type against
+    ``SpatialObject | LazySpatialObject`` and branch via
+    :func:`pyramids.feature.is_lazy_fc`.
     """
 
-    def test_lazy_feature_collection_satisfies_protocol(self):
-        """``isinstance(lfc, SpatialObject)`` is True at runtime."""
+    def test_lazy_feature_collection_satisfies_lazy_protocol(self):
+        """``isinstance(lfc, LazySpatialObject)`` is True at runtime."""
         import dask_geopandas as dg
 
         from pyramids.feature import LazyFeatureCollection
@@ -156,10 +162,33 @@ class TestSpatialObjectLazy:
         )
         ddf = dg.from_geopandas(gdf, npartitions=1)
         lfc = LazyFeatureCollection.from_dask_gdf(ddf)
-        assert isinstance(lfc, SpatialObject)
+        assert isinstance(lfc, LazySpatialObject)
 
-    def test_generic_consumer_accepts_lazy(self):
-        """A function typed against SpatialObject accepts a LazyFC."""
+    def test_lazy_feature_collection_does_not_satisfy_eager_protocol(self):
+        """ARC-V4: LazyFC no longer fakes eager ``top_left_corner``.
+
+        Test scenario:
+            After the ARC-V4 split the lazy class drops
+            ``top_left_corner`` entirely (rather than silently
+            calling ``.compute()`` inside it). As a result,
+            ``isinstance(lfc, SpatialObject)`` returns False —
+            intentionally, honestly.
+        """
+        import dask_geopandas as dg
+
+        from pyramids.feature import LazyFeatureCollection
+
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]},
+            geometry=[box(0, 0, 1, 1)],
+            crs="EPSG:4326",
+        )
+        ddf = dg.from_geopandas(gdf, npartitions=1)
+        lfc = LazyFeatureCollection.from_dask_gdf(ddf)
+        assert not isinstance(lfc, SpatialObject)
+
+    def test_generic_consumer_accepts_lazy_via_union(self):
+        """A function typed against ``SpatialObject | LazySpatialObject`` accepts both."""
         import dask_geopandas as dg
 
         from pyramids.feature import LazyFeatureCollection
@@ -172,7 +201,55 @@ class TestSpatialObjectLazy:
         ddf = dg.from_geopandas(gdf, npartitions=1)
         lfc = LazyFeatureCollection.from_dask_gdf(ddf)
 
-        def epsg_of(obj: SpatialObject) -> int | None:
+        def epsg_of(obj: "SpatialObject | LazySpatialObject") -> int | None:
             return obj.epsg
 
         assert epsg_of(lfc) == 32636
+
+
+@pytest.mark.skipif(not HAS_DASK_GP, reason="dask-geopandas not installed")
+class TestComputeTotalBounds:
+    """ARC-V4: the explicit ``compute_total_bounds()`` helper forces reduction."""
+
+    def test_returns_four_element_array(self):
+        """The helper materialises the lazy Scalar into a concrete array."""
+        import dask_geopandas as dg
+        import numpy as np
+
+        from pyramids.feature import LazyFeatureCollection
+
+        gdf = gpd.GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[box(0, 0, 1, 1), box(2, 3, 4, 5)],
+            crs="EPSG:4326",
+        )
+        ddf = dg.from_geopandas(gdf, npartitions=1)
+        lfc = LazyFeatureCollection.from_dask_gdf(ddf)
+        bounds = lfc.compute_total_bounds()
+        assert isinstance(bounds, np.ndarray)
+        assert bounds.shape == (4,)
+        assert bounds.tolist() == [0.0, 0.0, 4.0, 5.0]
+
+    def test_top_left_corner_property_is_gone(self):
+        """ARC-V4: eager-only ``top_left_corner`` no longer exists on LazyFC.
+
+        Test scenario:
+            The previous implementation had a ``top_left_corner``
+            property that silently called ``.compute()``. After the
+            ARC-V4 split it is removed outright; ``hasattr`` reports
+            False, and explicit access raises ``AttributeError``.
+        """
+        import dask_geopandas as dg
+
+        from pyramids.feature import LazyFeatureCollection
+
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]},
+            geometry=[box(0, 0, 1, 1)],
+            crs="EPSG:4326",
+        )
+        ddf = dg.from_geopandas(gdf, npartitions=1)
+        lfc = LazyFeatureCollection.from_dask_gdf(ddf)
+        assert not hasattr(lfc, "top_left_corner")
+        with pytest.raises(AttributeError, match="top_left_corner"):
+            lfc.top_left_corner  # noqa: B018

@@ -145,19 +145,43 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         result = None if crs is None else crs.to_epsg()
         return result
 
-    @property
-    def top_left_corner(self) -> list[float]:
-        """Top-left corner ``[xmin, ymax]`` of the total bounds.
+    def compute_total_bounds(self) -> "Any":
+        """Materialise :attr:`total_bounds` via an explicit ``.compute()`` call.
 
-        :attr:`dask_geopandas.GeoDataFrame.total_bounds` returns a lazy
-        dask Scalar — this property calls ``.compute()`` on that single
-        Scalar (cheap, O(partitions) — no materialization of the full
-        frame) so :class:`~pyramids.base.protocols.SpatialObject`
-        consumers get concrete numbers.
+        ARC-V4: :attr:`total_bounds` on a
+        :class:`dask_geopandas.GeoDataFrame` is a lazy dask Scalar.
+        Most consumers who want concrete numbers today wrote
+        ``lfc.total_bounds.compute()`` — this helper gives them a
+        single-line, self-documenting equivalent that also makes the
+        compute-cost explicit in the method name.
+
+        Returns:
+            numpy.ndarray: ``[minx, miny, maxx, maxy]`` as a
+            4-element 1-D array — the exact shape
+            :class:`geopandas.GeoDataFrame.total_bounds` returns.
+
+        Examples:
+            - Force the reduction and destructure into named values:
+                ```python
+                >>> import geopandas as gpd
+                >>> import dask_geopandas as dg
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import LazyFeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": [1, 2]},
+                ...     geometry=[Point(0, 0), Point(10, 20)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> lfc = LazyFeatureCollection.from_dask_gdf(
+                ...     dg.from_geopandas(gdf, npartitions=1)
+                ... )
+                >>> xmin, ymin, xmax, ymax = lfc.compute_total_bounds()
+                >>> xmin, ymax
+                (0.0, 20.0)
+
+                ```
         """
-        bounds = list(self.total_bounds.compute())
-        result = [bounds[0], bounds[3]]
-        return result
+        return self.total_bounds.compute()
 
     def plot(self, *args: Any, **kwargs: Any) -> Any:
         """No lazy plot path; materialize first.

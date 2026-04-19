@@ -83,11 +83,24 @@ class TestLazyFeatureCollection:
     def test_epsg_property(self, lfc):
         assert lfc.epsg == 4326
 
-    def test_top_left_corner_property(self, lfc):
-        corner = lfc.top_left_corner
-        assert isinstance(corner, list)
-        assert len(corner) == 2
-        assert corner == [0.0, 9.0]
+    def test_compute_total_bounds_replaces_top_left_corner(self, lfc):
+        """ARC-V4: top_left_corner is gone; compute_total_bounds is the path.
+
+        Test scenario:
+            The previous eager-looking ``top_left_corner`` property on
+            LazyFC silently ran an ``O(partitions)`` dask reduction.
+            After ARC-V4 the property is removed; the explicit
+            ``compute_total_bounds()`` helper is the supported way to
+            materialise bounds. Pin both the removal and the new
+            helper's 4-element return.
+        """
+        import numpy as np
+
+        bounds = lfc.compute_total_bounds()
+        assert isinstance(bounds, np.ndarray)
+        assert bounds.shape == (4,)
+        # Fixture builds Points at (i, i) for i in 0..9 → bbox [0, 0, 9, 9].
+        assert bounds.tolist() == [0.0, 0.0, 9.0, 9.0]
 
     def test_repr_is_pyramids_branded(self, lfc):
         text = repr(lfc)

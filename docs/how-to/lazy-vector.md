@@ -101,11 +101,12 @@ shuffled = lazy.spatial_shuffle().persist()   # still lazy, but graph is warm
 hits = shuffled.sjoin(query_fc, predicate="intersects").compute()
 ```
 
-## `total_bounds` is lazy
+## `total_bounds` is lazy — and honest about it
 
 `LazyFeatureCollection` inherits `total_bounds` from
-`dask_geopandas.GeoDataFrame`. That attribute returns a **dask Scalar**, not
-a numpy array of four floats. Indexing it returns another lazy object:
+`dask_geopandas.GeoDataFrame`. That attribute returns a **dask Scalar**,
+not a numpy array of four floats. Indexing it returns another lazy
+object:
 
 ```python
 lfc = FeatureCollection.read_parquet("points.parquet", backend="dask")
@@ -113,13 +114,21 @@ lfc.total_bounds           # <dask.Scalar ...> — NOT a tuple
 lfc.total_bounds.compute() # → array([xmin, ymin, xmax, ymax])
 ```
 
-The `top_left_corner` property on `LazyFeatureCollection` does the
-`.compute()` for you (it's cheap, O(partitions), no materialisation of
-the full frame) so `SpatialObject` consumers get concrete numbers:
+When you want concrete numbers, call `compute_total_bounds()` —
+self-documenting one-liner that makes the `O(partitions)` reduction
+explicit at the call site:
 
 ```python
-lfc.top_left_corner   # → [xmin, ymax]  as list[float]
+xmin, ymin, xmax, ymax = lfc.compute_total_bounds()
 ```
+
+`LazyFeatureCollection` **does not** expose the eager
+`top_left_corner` property (it used to, by silently calling
+`.compute()` inside the property — that leaked the laziness). For
+generic code that needs to accept both eager and lazy FCs, type-check
+against `SpatialObject | LazySpatialObject` from
+`pyramids.base.protocols` and branch on
+`pyramids.feature.is_lazy_fc(x)` before touching bounds.
 
 ## Minimal-install guard
 

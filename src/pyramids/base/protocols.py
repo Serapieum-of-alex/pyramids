@@ -99,6 +99,72 @@ class SpatialObject(Protocol):
 
 
 @runtime_checkable
+class LazySpatialObject(Protocol):
+    """Lazy variant of :class:`SpatialObject` for dask-backed vectors.
+
+    ARC-V4: a separate protocol for dask-backed objects whose
+    ``total_bounds`` / geometry attributes are not cheap to read. On an
+    eager :class:`pyramids.feature.FeatureCollection`, ``total_bounds``
+    is a materialised 4-element numpy array — cheap, safe to expose as
+    a property. On a :class:`pyramids.feature.LazyFeatureCollection`,
+    ``total_bounds`` is a ``dask.Scalar`` that requires ``.compute()``
+    (an O(partitions) reduction) to resolve. Hiding that compute behind
+    an eager-looking property is a leak; this protocol makes the
+    laziness explicit.
+
+    Consumers that genuinely want to accept either eager or lazy
+    objects should type-check against ``SpatialObject | LazySpatialObject``
+    and branch on :func:`pyramids.feature.is_lazy_fc` before touching
+    the bounds attributes.
+
+    Attributes / properties:
+        epsg (int | None):
+            EPSG code of the CRS; cheap to read (pure metadata).
+        total_bounds:
+            A lazy object (dask Scalar for dask-geopandas backed
+            frames). Consumers must call ``.compute()`` to materialise.
+        npartitions (int):
+            Number of dask partitions. Cheap (metadata only).
+
+    Methods:
+        compute(**kwargs):
+            Materialise the graph; returns a corresponding
+            :class:`SpatialObject` (eager twin).
+        persist(**kwargs):
+            Materialise graph into worker memory, stay lazy.
+        to_file(path, ...):
+            May raise :class:`NotImplementedError` for drivers with
+            no lazy write path — callers should ``.compute().to_file(...)``.
+
+    Because this is :func:`typing.runtime_checkable`, you can use it
+    with :func:`isinstance`:
+
+    >>> from pyramids.base.protocols import LazySpatialObject
+    >>> def get_parts(obj: LazySpatialObject) -> int:
+    ...     return obj.npartitions
+
+    Runtime isinstance checks verify attribute / method presence only
+    (PEP 544 — they do not verify signatures or return types).
+    """
+
+    epsg: int | None
+    total_bounds: Any
+    npartitions: int
+
+    def compute(self, *args: Any, **kwargs: Any) -> "SpatialObject":
+        """Materialise this lazy object into its eager twin."""
+        ...
+
+    def persist(self, *args: Any, **kwargs: Any) -> "LazySpatialObject":
+        """Force the graph into worker memory; keep laziness."""
+        ...
+
+    def to_file(self, path: str | Path, *args: Any, **kwargs: Any) -> None:
+        """Serialize this object to ``path`` (may raise :class:`NotImplementedError`)."""
+        ...
+
+
+@runtime_checkable
 class _ArrayLikeProto(Protocol):
     """Runtime-checkable structural type for eager-or-lazy arrays.
 
