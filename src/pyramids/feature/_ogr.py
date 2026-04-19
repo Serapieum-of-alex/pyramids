@@ -329,7 +329,11 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
             gdal.VSIFSeekL(vsi_file, 0, 2)  # SEEK_END
             size = gdal.VSIFTellL(vsi_file)
             gdal.VSIFSeekL(vsi_file, 0, 0)
-            data = bytes(gdal.VSIFReadL(1, size, vsi_file))
+            # L1: gdal.VSIFReadL on GDAL >=3 already returns a Python
+            # bytes object; wrapping in ``bytes(...)`` forced a
+            # defensive O(size) copy that doubled peak memory on
+            # polygonize outputs. Use the buffer as-is.
+            data = gdal.VSIFReadL(1, size, vsi_file)
         finally:
             gdal.VSIFCloseL(vsi_file)
         gdf = gpd.read_file(io.BytesIO(data))
