@@ -1320,9 +1320,11 @@ class FeatureCollection(GeoDataFrame):
 
                 raise CRSError(
                     f"concat: CRS mismatch — self.crs = {self.crs!r}, "
-                    f"other.crs = {other.crs!r}. Call "
-                    f"other.to_crs(self.crs) before concatenating, or "
-                    f"strip one CRS with .set_crs(None, allow_override=True)."
+                    f"other.crs = {other.crs!r}. Reproject one side "
+                    f"— ``other.to_crs(self.crs)`` OR "
+                    f"``self.to_crs(other.crs)`` — before "
+                    f"concatenating, or strip one CRS with "
+                    f".set_crs(None, allow_override=True)."
                 )
         combined = gpd.GeoDataFrame(pd.concat([self, other]))
         combined.index = list(range(len(combined)))
