@@ -126,6 +126,45 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         from inside its dask branch, so a top-of-file import here would
         form a cycle. Per ``CLAUDE.md``, circular-import breaks are an
         accepted exception to the no-inline-imports rule.
+
+        Args:
+            path: Path to a vector file GDAL/OGR can open (GeoJSON,
+                Shapefile, GeoPackage, FlatGeobuf, …).
+            npartitions: Target number of dask partitions. Mutually
+                exclusive with ``chunksize``.
+            chunksize: Target rows per partition. Mutually exclusive
+                with ``npartitions``.
+            **kwargs: Forwarded to :meth:`FeatureCollection.read_file`.
+                Filter kwargs (``bbox`` / ``mask`` / ``rows`` /
+                ``columns`` / ``where`` / ``layer``) are rejected
+                because dask-geopandas has no pushdown for them.
+
+        Returns:
+            LazyFeatureCollection: A new lazy FC.
+
+        Examples:
+            - Read a small GeoJSON as a lazy FC via the classmethod:
+                ```python
+                >>> import tempfile
+                >>> from pathlib import Path
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import LazyFeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": [1, 2, 3]},
+                ...     geometry=[Point(i, i) for i in range(3)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> d = Path(tempfile.mkdtemp())
+                >>> p = d / "pts.geojson"
+                >>> gdf.to_file(p, driver="GeoJSON")
+                >>> lfc = LazyFeatureCollection.read_file(str(p), npartitions=1)
+                >>> lfc.npartitions
+                1
+                >>> len(lfc.compute())
+                3
+
+                ```
         """
         from pyramids.feature.collection import FeatureCollection
 
@@ -140,7 +179,32 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
 
     @property
     def epsg(self) -> int | None:
-        """EPSG code of the CRS, or ``None`` when the CRS is unset."""
+        """EPSG code of the CRS, or ``None`` when the CRS is unset.
+
+        Cheap — reads the cached pyproj CRS attached to the
+        dask-geopandas frame and calls ``.to_epsg()``. No graph
+        materialisation.
+
+        Examples:
+            - Inspect the EPSG of a lazy FC built from a WGS84 GDF:
+                ```python
+                >>> import geopandas as gpd
+                >>> import dask_geopandas as dg
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import LazyFeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": [1]},
+                ...     geometry=[Point(0, 0)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> lfc = LazyFeatureCollection.from_dask_gdf(
+                ...     dg.from_geopandas(gdf, npartitions=1)
+                ... )
+                >>> lfc.epsg
+                4326
+
+                ```
+        """
         crs = self.crs
         result = None if crs is None else crs.to_epsg()
         return result
@@ -189,6 +253,29 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         Raises:
             NotImplementedError: Always. Call ``.compute().plot(...)`` to
                 materialize before plotting.
+
+        Examples:
+            - Calling ``.plot`` directly raises with an actionable hint:
+                ```python
+                >>> import geopandas as gpd
+                >>> import dask_geopandas as dg
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import LazyFeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": [1]},
+                ...     geometry=[Point(0, 0)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> lfc = LazyFeatureCollection.from_dask_gdf(
+                ...     dg.from_geopandas(gdf, npartitions=1)
+                ... )
+                >>> try:
+                ...     lfc.plot()
+                ... except NotImplementedError as exc:
+                ...     "compute().plot" in str(exc)
+                True
+
+                ```
         """
         raise NotImplementedError(
             "LazyFeatureCollection.plot is not supported — call "
@@ -213,6 +300,31 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         Returns:
             FeatureCollection: an eager wrapper around the materialized
             :class:`geopandas.GeoDataFrame`.
+
+        Examples:
+            - Compute a two-partition lazy frame back to eager form:
+                ```python
+                >>> import geopandas as gpd
+                >>> import dask_geopandas as dg
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import (
+                ...     FeatureCollection, LazyFeatureCollection,
+                ... )
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": [1, 2, 3, 4]},
+                ...     geometry=[Point(i, i) for i in range(4)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> lfc = LazyFeatureCollection.from_dask_gdf(
+                ...     dg.from_geopandas(gdf, npartitions=2)
+                ... )
+                >>> eager = lfc.compute()
+                >>> len(eager)
+                4
+                >>> eager.epsg
+                4326
+
+                ```
         """
         from pyramids.feature.collection import FeatureCollection
 
@@ -230,6 +342,29 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         Returns:
             LazyFeatureCollection: A new lazy FC whose graph has been
             materialized into worker memory.
+
+        Examples:
+            - Persist and confirm the result is still lazy:
+                ```python
+                >>> import geopandas as gpd
+                >>> import dask_geopandas as dg
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import LazyFeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": [1, 2]},
+                ...     geometry=[Point(0, 0), Point(1, 1)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> lfc = LazyFeatureCollection.from_dask_gdf(
+                ...     dg.from_geopandas(gdf, npartitions=2)
+                ... )
+                >>> persisted = lfc.persist()
+                >>> isinstance(persisted, LazyFeatureCollection)
+                True
+                >>> persisted.npartitions
+                2
+
+                ```
         """
         persisted = super().persist(**kwargs)
         result = type(self).from_dask_gdf(persisted)
@@ -259,6 +394,27 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         Returns:
             LazyFeatureCollection: A new lazy FC with ``spatial_partitions``
             populated.
+
+        Examples:
+            - Shuffle a two-partition frame and confirm bboxes are set:
+                ```python
+                >>> import geopandas as gpd
+                >>> import dask_geopandas as dg
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import LazyFeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": list(range(8))},
+                ...     geometry=[Point(i, i) for i in range(8)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> lfc = LazyFeatureCollection.from_dask_gdf(
+                ...     dg.from_geopandas(gdf, npartitions=2)
+                ... )
+                >>> shuffled = lfc.spatial_shuffle()
+                >>> shuffled.spatial_partitions is not None
+                True
+
+                ```
         """
         kwargs: dict[str, Any] = {}
         if npartitions is not None:
@@ -277,6 +433,29 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
                 write path for GeoJSON / Shapefile / GeoPackage. Call
                 ``.compute().to_file(path)`` to materialize first, or
                 use ``to_parquet`` which IS lazy.
+
+        Examples:
+            - The hint at the raise site points to the supported paths:
+                ```python
+                >>> import geopandas as gpd
+                >>> import dask_geopandas as dg
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import LazyFeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": [1]},
+                ...     geometry=[Point(0, 0)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> lfc = LazyFeatureCollection.from_dask_gdf(
+                ...     dg.from_geopandas(gdf, npartitions=1)
+                ... )
+                >>> try:
+                ...     lfc.to_file("out.geojson")
+                ... except NotImplementedError as exc:
+                ...     "compute().to_file" in str(exc)
+                True
+
+                ```
         """
         raise NotImplementedError(
             "LazyFeatureCollection.to_file is not supported — "
