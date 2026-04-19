@@ -60,6 +60,65 @@ gdal.UseExceptions()
 _DEFAULT_ITER_BATCH_SIZE: int = 1000
 
 
+# ARC-V6: target bytes per partition when read_file(backend="dask") is
+# called with neither npartitions nor chunksize. 128 MiB is
+# dask-geopandas' own read_parquet default and a reasonable size for
+# shapely-heavy geometry ops on modern cores. Small enough that even a
+# 1 GiB shapefile gets 8 partitions; large enough to avoid one-partition-
+# per-10-rows pathologies on huge feature counts.
+_LAZY_TARGET_BYTES_PER_PARTITION: int = 128 * 1024 * 1024
+
+
+def _resolve_lazy_partitioning(
+    path: str,
+    npartitions: int | None,
+    chunksize: int | None,
+) -> dict[str, Any]:
+    """ARC-V6: default ``npartitions`` from file size when not given.
+
+    Called by ``read_file(backend="dask")``. If the caller supplies
+    either ``npartitions`` or ``chunksize`` we honor it verbatim. If
+    they supply neither, we stat the resolved path and pick
+    ``npartitions = max(1, ceil(size / 128 MiB))``.
+
+    On cloud / virtual-FS paths (``/vsi*``, ``http(s)://``, ``s3://``,
+    etc.) ``os.stat`` can't size the file cheaply — there we fall
+    back to ``npartitions=1`` rather than emit a pre-flight HEAD
+    request with ambiguous semantics. Users who want more partitions
+    on cloud-hosted files should pass ``npartitions=`` explicitly.
+
+    Args:
+        path: The already-``_to_vsi``-resolved path string.
+        npartitions: User-supplied partition count, if any.
+        chunksize: User-supplied rows-per-partition, if any.
+
+    Returns:
+        dict: kwargs to forward to :func:`dask_geopandas.read_file`.
+        Exactly one of ``npartitions`` / ``chunksize`` is populated.
+    """
+    import math
+    import os
+
+    kwargs: dict[str, Any] = {}
+    if npartitions is not None:
+        kwargs["npartitions"] = npartitions
+    elif chunksize is not None:
+        kwargs["chunksize"] = chunksize
+    elif path.startswith(("/vsi", "http://", "https://", "s3://", "gs://", "az://")):
+        # Remote / VFS path — no cheap size probe. Fall back to 1.
+        kwargs["npartitions"] = 1
+    else:
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            kwargs["npartitions"] = 1
+        else:
+            kwargs["npartitions"] = max(
+                1, math.ceil(size / _LAZY_TARGET_BYTES_PER_PARTITION),
+            )
+    return kwargs
+
+
 def _require_pyarrow() -> None:
     """Raise a pyramids-branded ImportError if pyarrow is absent (D-M5).
 
@@ -852,13 +911,12 @@ class FeatureCollection(GeoDataFrame):
                     "'dask-geopandas' dependency. Install with: "
                     "pip install 'pyramids-gis[parquet-lazy]'"
                 ) from exc
-            partition_kwargs: dict[str, Any] = {}
-            if npartitions is not None:
-                partition_kwargs["npartitions"] = npartitions
-            if chunksize is not None:
-                partition_kwargs["chunksize"] = chunksize
-            if not partition_kwargs:
-                partition_kwargs["npartitions"] = 1
+            # ARC-V6: default npartitions from file size when neither
+            # kwarg was supplied; one-partition fallback defeats the
+            # point of going lazy.
+            partition_kwargs = _resolve_lazy_partitioning(
+                resolved, npartitions, chunksize,
+            )
             # DASK-22F: wrap the lazy return as a LazyFeatureCollection so the
             # dask branch stays inside the pyramids type system.
             from pyramids.feature._lazy_collection import LazyFeatureCollection
