@@ -69,21 +69,21 @@ class TestCreatePolygon:
         assert isinstance(wkt, str)
         assert wkt == coordinates_wkt
 
-    def test_create_polygon_wkt_kwarg_deprecated(
-        self, coordinates: List[Tuple[int, int]], coordinates_wkt: str
+    def test_create_polygon_wkt_kwarg_is_gone(
+        self, coordinates: List[Tuple[int, int]]
     ):
-        """The legacy ``wkt=True`` kwarg still works but emits a warning."""
-        import warnings as _w
+        """D-H2: the ARC-15 ``wkt=`` kwarg is deleted outright.
 
-        with _w.catch_warnings(record=True) as caught:
-            _w.simplefilter("always")
-            result = FeatureCollection.create_polygon(coordinates, wkt=True)
-        deprecated = [
-            w for w in caught if issubclass(w.category, DeprecationWarning)
-        ]
-        assert deprecated, "wkt=True should emit a DeprecationWarning"
-        assert "polygon_wkt" in str(deprecated[0].message)
-        assert result == coordinates_wkt
+        Test scenario:
+            Callers who wrote ``create_polygon(coords, wkt=True)`` must
+            migrate to :meth:`polygon_wkt` — the polymorphic kwarg no
+            longer exists, so the call surfaces a ``TypeError`` naming
+            the unknown kwarg.
+        """
+        import pytest as _pt
+
+        with _pt.raises(TypeError, match="wkt"):
+            FeatureCollection.create_polygon(coordinates, wkt=True)
 
     def test_create_polygon_too_few_vertices_raises(self):
         """C21: fewer than 3 vertices raises ``InvalidGeometryError``."""
@@ -118,30 +118,21 @@ class TestCreatePoint:
         assert len(fc["geometry"]) == len(coordinates)
         assert fc.epsg == 4326
 
-    def test_create_point_with_epsg_deprecated(
+    def test_create_point_method_is_gone(
         self, coordinates: List[Tuple[int, int]]
     ):
-        """The legacy ``create_point(coords, epsg=…)`` still works, with warning."""
-        import warnings as _w
+        """D-H2: the polymorphic ``create_point`` dispatcher is deleted.
 
-        with _w.catch_warnings(record=True) as caught:
-            _w.simplefilter("always")
-            fc = FeatureCollection.create_point(coordinates, epsg=4326)
-        deprecated = [
-            w for w in caught if issubclass(w.category, DeprecationWarning)
-        ]
-        assert deprecated, "create_point(..., epsg=...) should warn"
-        assert "point_collection" in str(deprecated[0].message)
-        assert isinstance(fc, FeatureCollection)
-        assert fc.epsg == 4326
-
-    def test_create_point_without_epsg_returns_list(
-        self, coordinates: List[Tuple[int, int]]
-    ):
-        """Back-compat: legacy ``create_point(coords)`` still returns list."""
-        pts = FeatureCollection.create_point(coordinates)
-        assert isinstance(pts, list)
-        assert len(pts) == len(coordinates)
+        Test scenario:
+            ARC-15 split this into :meth:`create_points` (list) and
+            :meth:`point_collection` (FC). The polymorphic
+            ``create_point`` pass-through is gone outright; the
+            attribute simply doesn't exist on the class anymore.
+        """
+        assert not hasattr(FeatureCollection, "create_point"), (
+            "FeatureCollection.create_point must be deleted (D-H2). "
+            "Use create_points() or point_collection() instead."
+        )
 
 
 class TestToDataset:

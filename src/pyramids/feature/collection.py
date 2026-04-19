@@ -981,18 +981,17 @@ class FeatureCollection(GeoDataFrame):
         return _geom.get_coords(row, geom_col, coord_type)
 
     @staticmethod
-    def create_polygon(
-        coords: list[tuple[float, float]], wkt: bool = False
-    ) -> str | Polygon:
-        """Create a Polygon (or its WKT) from coordinates.
+    def create_polygon(coords: list[tuple[float, float]]) -> Polygon:
+        """Create a :class:`shapely.Polygon` from coordinates.
 
-        ARC-15: the ``wkt=True`` form is deprecated in favor of
-        :meth:`polygon_wkt`. ``wkt=False`` (the default) now delegates
-        to the new unconditional :func:`pyramids.feature.geometry.create_polygon`
-        which always returns a ``Polygon``.
+        Delegates to :func:`pyramids.feature.geometry.create_polygon`.
+        For the WKT-string form use :meth:`polygon_wkt` instead.
+
+        D-H2: the ARC-15 ``wkt=True`` polymorphic kwarg was removed
+        outright (no deprecation shim) — a polymorphic return type
+        was the whole motivation for splitting ARC-15 in the first
+        place.
         """
-        if wkt:
-            return _geom.create_polygon_legacy(coords, wkt=True)
         return _geom.create_polygon(coords)
 
     @staticmethod
@@ -1002,23 +1001,6 @@ class FeatureCollection(GeoDataFrame):
         Delegates to :func:`pyramids.feature.geometry.polygon_wkt`.
         """
         return _geom.polygon_wkt(coords)
-
-    @staticmethod
-    def create_point(
-        coords: Iterable[tuple[float, ...]], epsg: int | None = None
-    ) -> list[Point] | FeatureCollection:
-        """Create shapely Points (or a FeatureCollection wrapper).
-
-        ARC-15: the polymorphic return is deprecated. Use
-        :meth:`create_points` for the list form and
-        :meth:`point_collection` for the FeatureCollection form. This
-        method kept for back-compat; it emits DeprecationWarning when
-        ``epsg`` is provided.
-        """
-        if epsg is not None:
-            result = _geom.create_point_legacy(coords, epsg=epsg)
-            return FeatureCollection(result)
-        return _geom.create_points(coords)
 
     @staticmethod
     def create_points(coords: Iterable[tuple[float, ...]]) -> list[Point]:
