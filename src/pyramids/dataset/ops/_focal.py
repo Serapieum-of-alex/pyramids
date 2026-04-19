@@ -84,6 +84,28 @@ def focal_mean(
         chunks: If given, switch to the lazy path via
             :func:`dask.array.map_overlap`.
         band: Zero-based band index. Default 0.
+
+    Returns:
+        numpy.ndarray or dask.array.Array: Same shape as the input
+        band; eager on default ``chunks=None``, lazy otherwise.
+
+    Examples:
+        - Apply a 3×3 box mean to a tiny in-memory raster and check
+          the centre pixel against the expected 9-neighbourhood
+          average:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset
+            >>> from pyramids.dataset.ops._focal import focal_mean
+            >>> arr = np.arange(9, dtype=np.float32).reshape(3, 3)
+            >>> ds = Dataset.create_from_array(
+            ...     arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+            ... )
+            >>> smoothed = focal_mean(ds, radius=1)
+            >>> float(round(float(smoothed[1, 1]), 4))
+            4.0
+
+            ```
     """
     size = 2 * radius + 1
 
@@ -109,6 +131,32 @@ def focal_std(
     local deviation is centimetres). The two-pass variant does one
     extra uniform_filter; the cost is linear in pixels and negligible
     compared to the I/O.
+
+    Args:
+        ds: Source :class:`~pyramids.dataset.Dataset`.
+        radius: Half-window in pixels. Default 1.
+        chunks: Lazy-path chunk spec; ``None`` runs eagerly.
+        band: Zero-based band index.
+
+    Returns:
+        numpy.ndarray or dask.array.Array: Per-cell standard
+        deviation, same shape as the source band.
+
+    Examples:
+        - A constant raster has zero local variance:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset
+            >>> from pyramids.dataset.ops._focal import focal_std
+            >>> arr = np.full((4, 4), 7.0, dtype=np.float32)
+            >>> ds = Dataset.create_from_array(
+            ...     arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+            ... )
+            >>> std = focal_std(ds, radius=1)
+            >>> float(round(float(std.max()), 6))
+            0.0
+
+            ```
     """
     size = 2 * radius + 1
 
@@ -134,6 +182,33 @@ def focal_apply(
     ``func`` receives a flat 1-D array of window values and returns
     one scalar per window. Wrapped with
     :func:`scipy.ndimage.generic_filter`.
+
+    Args:
+        ds: Source :class:`~pyramids.dataset.Dataset`.
+        func: Callable ``func(values_1d) -> float``; receives the
+            flattened window.
+        radius: Half-window in pixels. Default 1.
+        chunks: Lazy-path chunk spec; ``None`` runs eagerly.
+        band: Zero-based band index.
+
+    Returns:
+        numpy.ndarray or dask.array.Array: Per-cell aggregation.
+
+    Examples:
+        - Custom max-over-window kernel:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset
+            >>> from pyramids.dataset.ops._focal import focal_apply
+            >>> arr = np.arange(9, dtype=np.float32).reshape(3, 3)
+            >>> ds = Dataset.create_from_array(
+            ...     arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+            ... )
+            >>> out = focal_apply(ds, np.max, radius=1)
+            >>> float(out[1, 1])
+            8.0
+
+            ```
     """
     size = 2 * radius + 1
 
@@ -159,6 +234,30 @@ def slope(
     """Slope of a DEM in degrees (default) or radians.
 
     Computed via :func:`numpy.gradient` centered differences.
+
+    Args:
+        ds: Source DEM :class:`~pyramids.dataset.Dataset`.
+        chunks: Lazy-path chunk spec; ``None`` runs eagerly.
+        band: Zero-based band index.
+        units: ``"degrees"`` (default) or ``"radians"``.
+
+    Returns:
+        numpy.ndarray or dask.array.Array: Per-cell slope magnitude.
+
+    Examples:
+        - Flat DEM has zero slope everywhere:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset
+            >>> from pyramids.dataset.ops._focal import slope
+            >>> flat = np.full((4, 4), 100.0, dtype=np.float32)
+            >>> ds = Dataset.create_from_array(
+            ...     flat, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=32636,
+            ... )
+            >>> float(round(float(slope(ds).max()), 6))
+            0.0
+
+            ```
     """
     cell_size = float(ds.cell_size)
 
@@ -177,7 +276,35 @@ def aspect(
     chunks: Any = None,
     band: int = 0,
 ) -> Any:
-    """Aspect (degrees clockwise from north) of a DEM."""
+    """Aspect (degrees clockwise from north) of a DEM.
+
+    Args:
+        ds: Source DEM :class:`~pyramids.dataset.Dataset`.
+        chunks: Lazy-path chunk spec; ``None`` runs eagerly.
+        band: Zero-based band index.
+
+    Returns:
+        numpy.ndarray or dask.array.Array: Aspect in degrees in
+        ``[0, 360)``.
+
+    Examples:
+        - Aspect of a uniform west-facing slope (values increase with
+          column index, so the gradient points east and the slope
+          faces *west* = 270°):
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset
+            >>> from pyramids.dataset.ops._focal import aspect
+            >>> arr = np.tile(np.arange(4, dtype=np.float32), (4, 1))
+            >>> ds = Dataset.create_from_array(
+            ...     arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=32636,
+            ... )
+            >>> a = aspect(ds)
+            >>> float(round(float(a[1, 1]), 1))
+            270.0
+
+            ```
+    """
     cell_size = float(ds.cell_size)
 
     def _kernel(arr: np.ndarray) -> np.ndarray:
@@ -196,7 +323,37 @@ def hillshade(
     chunks: Any = None,
     band: int = 0,
 ) -> Any:
-    """Shaded-relief map in 0..255 given sun azimuth + altitude (degrees)."""
+    """Shaded-relief map in 0..255 given sun azimuth + altitude (degrees).
+
+    Args:
+        ds: Source DEM :class:`~pyramids.dataset.Dataset`.
+        azimuth: Sun azimuth in degrees (0° = north, 90° = east, …).
+            Default 315° (NW — the GIS cartographic convention).
+        altitude: Sun altitude above horizon, in degrees. Default 45°.
+        chunks: Lazy-path chunk spec; ``None`` runs eagerly.
+        band: Zero-based band index.
+
+    Returns:
+        numpy.ndarray or dask.array.Array: Shaded-relief intensity
+        clipped to ``[0, 255]``.
+
+    Examples:
+        - Hillshade of a flat DEM saturates at the illumination level
+          (no gradient → pure sin(altitude)·255):
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset
+            >>> from pyramids.dataset.ops._focal import hillshade
+            >>> flat = np.full((4, 4), 100.0, dtype=np.float32)
+            >>> ds = Dataset.create_from_array(
+            ...     flat, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=32636,
+            ... )
+            >>> shade = hillshade(ds, azimuth=315, altitude=45)
+            >>> float(round(float(shade[1, 1]), 1))
+            180.3
+
+            ```
+    """
     cell_size = float(ds.cell_size)
     az_rad = np.deg2rad(360.0 - azimuth + 90.0)
     alt_rad = np.deg2rad(altitude)
