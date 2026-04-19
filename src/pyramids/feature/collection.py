@@ -43,6 +43,24 @@ CATALOG = Catalog(raster_driver=False)
 gdal.UseExceptions()
 
 
+def _require_pyarrow() -> None:
+    """Raise a pyramids-branded ImportError if pyarrow is absent (D-M5).
+
+    ``geopandas.read_parquet`` / ``GeoDataFrame.to_parquet`` raise a
+    generic ImportError that mentions neither ``pyramids-gis`` nor
+    the ``[parquet]`` extra. This helper surfaces the install
+    instruction up front so the Raises docstring is truthful.
+    """
+    try:
+        import pyarrow  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(
+            "GeoParquet support requires the optional 'pyarrow' "
+            "dependency. Install with: pip install 'pyramids-gis[parquet]' "
+            "(or ``pixi add pyarrow`` in a pixi workspace)."
+        ) from exc
+
+
 # C15: module-level LRU cache backing ``FeatureCollection.list_layers``.
 # Keyed on the already-resolved ``str`` path (post ``_parse_path``). The
 # tuple return type plays nicely with ``functools.lru_cache`` (lists are
@@ -735,10 +753,13 @@ class FeatureCollection(GeoDataFrame):
             FeatureCollection.
 
         Raises:
-            ImportError: If :mod:`pyarrow` is not installed.
+            ImportError: If :mod:`pyarrow` is not installed, with a
+                pyramids-branded message pointing at the
+                ``[parquet]`` optional-dependency extra (D-M5).
         """
         from pyramids import _io as _pyramids_io
 
+        _require_pyarrow()
         resolved = _pyramids_io._parse_path(path)
         passthrough: dict[str, Any] = dict(kwargs)
         if columns is not None:
@@ -781,8 +802,11 @@ class FeatureCollection(GeoDataFrame):
                 Forwarded to :meth:`geopandas.GeoDataFrame.to_parquet`.
 
         Raises:
-            ImportError: If :mod:`pyarrow` is not installed.
+            ImportError: If :mod:`pyarrow` is not installed, with a
+                pyramids-branded message pointing at the
+                ``[parquet]`` optional-dependency extra (D-M5).
         """
+        _require_pyarrow()
         super().to_parquet(
             path, compression=compression, index=index, **kwargs
         )

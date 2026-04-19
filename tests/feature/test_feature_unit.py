@@ -573,6 +573,51 @@ class TestReprojectCoordinates:
                 to_crs="not a valid wkt string",
             )
 
+
+class TestParquetPyarrowGuard:
+    """D-M5: parquet read/write surface a pyramids-branded ImportError.
+
+    ``geopandas.read_parquet`` / ``GeoDataFrame.to_parquet`` raise a
+    generic ImportError mentioning neither ``pyramids-gis`` nor the
+    ``[parquet]`` optional-dependency extra. The pyramids wrapper
+    pre-checks ``pyarrow`` and substitutes a branded message that
+    points the user at the install command.
+    """
+
+    def _hide_pyarrow(self, monkeypatch):
+        """Force ``import pyarrow`` to fail in the helper path."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def _fake_import(name, *a, **kw):
+            if name == "pyarrow":
+                raise ImportError("No module named 'pyarrow'")
+            return real_import(name, *a, **kw)
+
+        monkeypatch.setattr(builtins, "__import__", _fake_import)
+
+    def test_read_parquet_branded_error_without_pyarrow(
+        self, tmp_path: Path, monkeypatch
+    ):
+        self._hide_pyarrow(monkeypatch)
+        with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
+            FeatureCollection.read_parquet(tmp_path / "x.parquet")
+
+    def test_to_parquet_branded_error_without_pyarrow(
+        self, tmp_path: Path, monkeypatch
+    ):
+        self._hide_pyarrow(monkeypatch)
+        fc = FeatureCollection(
+            gpd.GeoDataFrame(
+                {"v": [1]},
+                geometry=[Point(0, 0)],
+                crs="EPSG:4326",
+            )
+        )
+        with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
+            fc.to_parquet(tmp_path / "x.parquet")
+
     def test_no_future_warning(self):
         """Must not emit pyproj FutureWarning (ARC-2 regression).
 
