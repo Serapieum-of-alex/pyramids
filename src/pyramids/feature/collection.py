@@ -675,19 +675,24 @@ class FeatureCollection(GeoDataFrame):
 
         Returns a dict shaped like fiona's ``schema`` attribute so
         callers migrating from ``fiona.open(path).schema`` can consume
-        this without rewriting. The dict has two keys:
+        this without rewriting. The dict has three keys:
 
         * ``"geometry"``: single string (``"Point"``, ``"Polygon"``,
           …) when every row has the same geom type, otherwise
           ``"Unknown"``.
         * ``"properties"``: ``{column_name: dtype_string}`` for every
           non-geometry column.
+        * ``"crs"``: the :attr:`crs` as a :class:`pyproj.CRS` object,
+          or ``None`` when the FC has no CRS set (C30). Matches
+          fiona's convention — callers migrating from
+          ``fiona.open(path).schema['crs']`` can consume it directly.
 
         Empty FeatureCollections (``len(self) == 0``) report
         ``"Unknown"`` for the geometry type.
 
         Returns:
-            dict: Two-key dict with ``"geometry"`` and ``"properties"``.
+            dict: Three-key dict with ``"geometry"``, ``"properties"``,
+            and ``"crs"``.
         """
         geom_types = {
             g.geom_type
@@ -703,7 +708,11 @@ class FeatureCollection(GeoDataFrame):
             for col, dt in self.dtypes.items()
             if col != "geometry"
         }
-        return {"geometry": geom_type, "properties": properties}
+        return {
+            "geometry": geom_type,
+            "properties": properties,
+            "crs": self.crs,
+        }
 
     @classmethod
     def list_layers(cls, path: str | Path) -> list[str]:
@@ -729,8 +738,29 @@ class FeatureCollection(GeoDataFrame):
 
         Returns:
             list[str]: Layer names in the order the driver reports them.
+
+        Raises:
+            FileNotFoundError: If ``path`` is a local filesystem path
+                that does not exist. Cloud URLs and ``/vsi*`` paths
+                skip this check and defer to the underlying driver
+                (C29). Previously all failures surfaced as an opaque
+                ``VectorDriverError("Failed to open datasource")``.
         """
         from pyramids import _io as _pyramids_io
+
+        # C29: pre-check local-path existence so the caller sees a
+        # ``FileNotFoundError`` naming the path instead of a generic
+        # driver-open failure. Skip the check for any path already
+        # rewritten to a VSI form (cloud / archive) — only local
+        # paths are ``exists()``-able.
+        path_str = str(path)
+        if not path_str.startswith(("/vsi", "http://", "https://", "s3://",
+                                    "gs://", "az://", "abfs://", "file://")):
+            local = Path(path_str)
+            if not local.exists():
+                raise FileNotFoundError(
+                    f"list_layers: no file at {path_str!r}."
+                )
 
         resolved = str(_pyramids_io._parse_path(path))
         return list(_list_layers_cached(resolved))
@@ -752,6 +782,7 @@ class FeatureCollection(GeoDataFrame):
         path: str | Path,
         *,
         columns: list[str] | None = None,
+        bbox: tuple[float, float, float, float] | None = None,
         **kwargs: Any,
     ) -> FeatureCollection:
         """Read a GeoParquet file into a FeatureCollection (ARC-32).
@@ -778,6 +809,13 @@ class FeatureCollection(GeoDataFrame):
                 layout makes this a true I/O win, unlike row-oriented
                 formats. ``geometry`` is always loaded. ``None``
                 loads every column.
+            bbox (tuple[float, float, float, float] | None):
+                ``(minx, miny, maxx, maxy)`` spatial filter (C33).
+                Forwarded to :func:`geopandas.read_parquet` which uses
+                the file's GeoParquet spatial-index metadata when
+                present to skip non-matching row groups — a true I/O
+                win on large files. ``None`` (default) loads every
+                feature.
             **kwargs:
                 Forwarded to :func:`geopandas.read_parquet`
                 (``storage_options=`` for fsspec, etc.).
@@ -798,6 +836,8 @@ class FeatureCollection(GeoDataFrame):
         passthrough: dict[str, Any] = dict(kwargs)
         if columns is not None:
             passthrough["columns"] = columns
+        if bbox is not None:
+            passthrough["bbox"] = bbox
         gdf = gpd.read_parquet(resolved, **passthrough)
         return cls(gdf)
 
@@ -932,7 +972,16 @@ class FeatureCollection(GeoDataFrame):
         except AttributeError:
             resolved = driver
 
-        passthrough: dict[str, Any] = {"driver": resolved, "mode": mode}
+        # C28: pin the engine to pyogrio to match :meth:`read_file` and
+        # :meth:`iter_features`. Callers who want fiona for some reason
+        # can override via ``engine="fiona"`` in creation_options, but
+        # the default gets the fast path and the pyogrio-specific
+        # unknown-option validation.
+        passthrough: dict[str, Any] = {
+            "driver": resolved,
+            "mode": mode,
+            "engine": "pyogrio",
+        }
         if layer is not None:
             passthrough["layer"] = layer
         passthrough.update(creation_options)
@@ -1161,6 +1210,16 @@ class FeatureCollection(GeoDataFrame):
         directly and returns a ``FeatureCollection`` via the
         ``_constructor`` hook (ARC-1a).
 
+        C32: a CRS mismatch between ``self`` and ``other`` raises
+        :class:`pyramids.base._errors.CRSError`. The old behaviour
+        silently adopted ``self``'s CRS — which corrupted the
+        ``other`` rows' coordinates if the two frames were in
+        different CRSes. Callers that want to force-concat across
+        CRSes must ``other.to_crs(self.crs)`` first. An
+        unset-on-one-side case (one CRS is ``None``) is permitted so
+        you can seed a CRS by concatenating a CRS-carrying frame
+        onto a freshly-constructed empty FC.
+
         Args:
             other (GeoDataFrame): The rows to append.
 
@@ -1168,12 +1227,27 @@ class FeatureCollection(GeoDataFrame):
             FeatureCollection: A new FC containing ``self``'s rows
             followed by ``other``'s rows, with ``self``'s CRS and a
             freshly-reset index.
+
+        Raises:
+            CRSError: If both frames carry a CRS and the two CRSes
+                do not match.
         """
         import pandas as pd
 
+        # C32: validate CRS agreement up front.
+        if self.crs is not None and other.crs is not None:
+            if self.crs != other.crs:
+                from pyramids.base._errors import CRSError
+
+                raise CRSError(
+                    f"concat: CRS mismatch — self.crs = {self.crs!r}, "
+                    f"other.crs = {other.crs!r}. Call "
+                    f"other.to_crs(self.crs) before concatenating, or "
+                    f"strip one CRS with .set_crs(None, allow_override=True)."
+                )
         combined = gpd.GeoDataFrame(pd.concat([self, other]))
         combined.index = list(range(len(combined)))
-        combined.crs = self.crs
+        combined.crs = self.crs if self.crs is not None else other.crs
         return FeatureCollection(combined)
 
     def with_centroid(self) -> FeatureCollection:

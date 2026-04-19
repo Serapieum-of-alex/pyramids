@@ -204,3 +204,32 @@ class TestCreationOptionValidation:
         p = tmp_path / "case.gpkg"
         fc_rivers.to_file(p, driver="gpkg", spatial_index="YES")
         assert p.exists()
+
+
+class TestEnginePin:
+    """C28: to_file pins ``engine="pyogrio"`` when forwarding to geopandas.
+
+    Matches the pin on :meth:`read_file` and :meth:`iter_features`.
+    A ``geopandas.options.io_engine = "fiona"`` global no longer
+    changes the write path silently.
+    """
+
+    def test_passes_engine_pyogrio(
+        self, tmp_path: Path, fc_rivers: FeatureCollection, monkeypatch
+    ):
+        """The ``engine="pyogrio"`` kwarg reaches the underlying writer."""
+        captured: list = []
+        from geopandas import GeoDataFrame as _GDF
+
+        real_to_file = _GDF.to_file
+
+        def _spy(self, path, **kwargs):
+            captured.append(kwargs)
+            return real_to_file(self, path, **kwargs)
+
+        monkeypatch.setattr(_GDF, "to_file", _spy)
+        fc_rivers.to_file(tmp_path / "pin.geojson")
+        assert captured, "to_file must be invoked at least once"
+        assert captured[0].get("engine") == "pyogrio", (
+            f"expected engine='pyogrio', got {captured[0]}"
+        )

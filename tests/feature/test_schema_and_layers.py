@@ -223,3 +223,47 @@ class TestListLayersCache:
             "mutation of returned list leaked into cached value"
         )
         assert set(second) == {"rivers", "lakes"}
+
+
+class TestListLayersMissingFile:
+    """C29: ``list_layers`` raises ``FileNotFoundError`` naming the path.
+
+    The old behaviour produced a generic ``VectorDriverError("Failed
+    to open datasource")`` that gave the caller no hint of whether
+    the file was missing, unreadable, or in an unsupported format.
+    The pre-check now surfaces the specific cause for local paths.
+    """
+
+    def test_missing_local_path_raises_file_not_found(self, tmp_path: Path):
+        nonexistent = tmp_path / "does_not_exist.gpkg"
+        FeatureCollection.list_layers_cache_clear()
+        with pytest.raises(FileNotFoundError, match="does_not_exist"):
+            FeatureCollection.list_layers(nonexistent)
+
+    def test_missing_local_error_names_the_path(self, tmp_path: Path):
+        nonexistent = tmp_path / "rivers.gpkg"
+        FeatureCollection.list_layers_cache_clear()
+        with pytest.raises(FileNotFoundError) as exc_info:
+            FeatureCollection.list_layers(nonexistent)
+        assert str(nonexistent) in str(exc_info.value) or (
+            "rivers.gpkg" in str(exc_info.value)
+        ), f"error should name the missing path; got: {exc_info.value}"
+
+
+class TestSchemaIncludesCRS:
+    """C30: the schema dict includes the CRS under the ``crs`` key."""
+
+    def test_schema_has_crs(self, points_fc: FeatureCollection):
+        sch = points_fc.schema
+        assert "crs" in sch
+        assert sch["crs"] is not None
+        # points_fc uses EPSG:4326 by convention in this test file.
+        assert sch["crs"].to_epsg() == 4326
+
+    def test_schema_crs_is_none_for_crs_less_fc(self):
+        from shapely.geometry import box as _box
+
+        fc = FeatureCollection(
+            gpd.GeoDataFrame({"v": [1]}, geometry=[_box(0, 0, 1, 1)])
+        )
+        assert fc.schema["crs"] is None

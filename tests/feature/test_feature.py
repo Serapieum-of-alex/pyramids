@@ -385,6 +385,45 @@ class TestConcat:
         assert isinstance(result, FeatureCollection)
         assert len(result) == 2
 
+    def test_concat_raises_on_crs_mismatch(self):
+        """C32: concatenating two FCs in different CRSes raises CRSError.
+
+        Test scenario:
+            Silent CRS adoption would corrupt the ``other`` rows'
+            coordinates. Force the caller to reproject first.
+        """
+        import pytest as _pt
+        from shapely.geometry import Point as _Pt
+
+        from pyramids.base._errors import CRSError
+
+        fc_a = FeatureCollection(
+            GeoDataFrame({"v": [1]}, geometry=[_Pt(0, 0)], crs="EPSG:4326")
+        )
+        fc_b = GeoDataFrame({"v": [2]}, geometry=[_Pt(1, 1)], crs="EPSG:3857")
+
+        with _pt.raises(CRSError, match="CRS mismatch"):
+            fc_a.concat(fc_b)
+
+    def test_concat_permits_none_crs_on_one_side(self):
+        """C32 negative: an unset CRS on either side is allowed.
+
+        Test scenario:
+            A freshly-constructed empty FC (crs=None) should still be
+            able to absorb a CRS-carrying frame. The result adopts
+            whichever side has a CRS.
+        """
+        from shapely.geometry import Point as _Pt
+
+        fc_a = FeatureCollection(
+            GeoDataFrame({"v": [1]}, geometry=[_Pt(0, 0)])
+        )
+        fc_b = GeoDataFrame({"v": [2]}, geometry=[_Pt(1, 1)], crs="EPSG:4326")
+
+        result = fc_a.concat(fc_b)
+        assert result.epsg == 4326
+        assert len(result) == 2
+
 
 def test_with_centroid(polygons_gdf: GeoDataFrame):
     feature = FeatureCollection(polygons_gdf)

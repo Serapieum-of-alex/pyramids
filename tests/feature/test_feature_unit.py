@@ -618,6 +618,72 @@ class TestParquetPyarrowGuard:
         with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
             fc.to_parquet(tmp_path / "x.parquet")
 
+
+class TestReadParquetBboxKwarg:
+    """C33: ``read_parquet(bbox=...)`` forwards to ``gpd.read_parquet``.
+
+    Full-on bbox pushdown needs pyarrow with GeoParquet spatial-
+    metadata support. Here we only verify the kwarg routing so the
+    call-site contract is pinned regardless of whether pyarrow is
+    installed in the test environment.
+    """
+
+    def test_bbox_kwarg_reaches_gpd_read_parquet(
+        self, tmp_path: Path, monkeypatch
+    ):
+        import geopandas
+
+        captured: list = []
+
+        def _spy(path, **kwargs):
+            captured.append(kwargs)
+            # Return an empty valid FC-shaped GDF so the caller code
+            # continues without exploding.
+            return gpd.GeoDataFrame(
+                {"v": []}, geometry=[], crs="EPSG:4326"
+            )
+
+        def _fake_require():
+            return None  # pretend pyarrow is available
+
+        monkeypatch.setattr(
+            "pyramids.feature.collection._require_pyarrow",
+            _fake_require,
+        )
+        monkeypatch.setattr(geopandas, "read_parquet", _spy)
+
+        FeatureCollection.read_parquet(
+            tmp_path / "x.parquet",
+            bbox=(0.0, 0.0, 1.0, 1.0),
+        )
+        assert captured, "read_parquet must forward to gpd.read_parquet"
+        assert captured[0].get("bbox") == (0.0, 0.0, 1.0, 1.0), (
+            f"expected bbox tuple; got {captured[0]}"
+        )
+
+    def test_bbox_none_not_forwarded(self, tmp_path: Path, monkeypatch):
+        """bbox=None (default) must not leak as a literal kwarg."""
+        import geopandas
+
+        captured: list = []
+
+        def _spy(path, **kwargs):
+            captured.append(kwargs)
+            return gpd.GeoDataFrame(
+                {"v": []}, geometry=[], crs="EPSG:4326"
+            )
+
+        monkeypatch.setattr(
+            "pyramids.feature.collection._require_pyarrow",
+            lambda: None,
+        )
+        monkeypatch.setattr(geopandas, "read_parquet", _spy)
+
+        FeatureCollection.read_parquet(tmp_path / "x.parquet")
+        assert "bbox" not in captured[0], (
+            f"bbox=None should not appear as a literal kwarg; got {captured[0]}"
+        )
+
     def test_no_future_warning(self):
         """Must not emit pyproj FutureWarning (ARC-2 regression).
 
