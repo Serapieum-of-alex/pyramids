@@ -159,18 +159,23 @@ nav:
           - Dataset collection: examples/dataset/dataset_collection.ipynb
           - South America: examples/dataset/south-america.ipynb
           - Cloud Optimized GeoTIFFs: tutorials/cog.md
+          - Dask (Sentinel-2 COGs on AWS): examples/dataset/dask-lazy-datasets.ipynb
       - Feature:
           - FeatureCollection tutorial: tutorials/feature.md
+          - Dask (Overture Maps on AWS): examples/feature/dask-lazy-features.ipynb
       - Basemap:
           - Basemap example: examples/basemap/basemap-example.ipynb
       - NetCDF:
+          - Dask (ERA5 on AWS): examples/netcdf/dask-lazy-netcdf.ipynb
           - UGRID:
               - Mesh exploration: examples/netcdf/ugrid/ugrid-mesh-exploration.ipynb
               - River channel: examples/netcdf/ugrid/ugrid-river-channel.ipynb
+              - Dask (FVCOM NECOFS via OPeNDAP): examples/netcdf/ugrid/dask-lazy-ugrid.ipynb
   - How-to:
       - Dev Container: how-to/devcontainer.md
       - Docker & GHCR: how-to/docker.md
       - Recipes: how-to/recipes.md
+      - Lazy vector reads: how-to/lazy-vector.md
       - FAQ & Troubleshooting: how-to/faq.md
   - About:
     - Change-log: change-log.md
