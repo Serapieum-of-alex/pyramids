@@ -820,15 +820,16 @@ class FeatureCollection(GeoDataFrame):
                 ``VectorDriverError("Failed to open datasource")``.
         """
         from pyramids import _io as _pyramids_io
+        from pyramids.base.remote import is_remote
 
-        # C29: pre-check local-path existence so the caller sees a
-        # ``FileNotFoundError`` naming the path instead of a generic
-        # driver-open failure. Skip the check for any path already
-        # rewritten to a VSI form (cloud / archive) — only local
-        # paths are ``exists()``-able.
+        # C29 / L3: pre-check local-path existence so the caller sees
+        # a ``FileNotFoundError`` naming the path instead of a generic
+        # driver-open failure. Defer to ``base.remote.is_remote`` as
+        # the single source of truth for which schemes are remote —
+        # the previous hardcoded prefix tuple would silently treat any
+        # future scheme as local and raise a misleading error.
         path_str = str(path)
-        if not path_str.startswith(("/vsi", "http://", "https://", "s3://",
-                                    "gs://", "az://", "abfs://", "file://")):
+        if not is_remote(path_str):
             local = Path(path_str)
             if not local.exists():
                 raise FileNotFoundError(
