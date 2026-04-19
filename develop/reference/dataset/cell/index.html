@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3888,7 +3888,7 @@
 <a id="__codelineno-0-293" name="__codelineno-0-293"></a>        <span class="n">epsg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_epsg</span><span class="p">()</span>
 <a id="__codelineno-0-294" name="__codelineno-0-294"></a>
 <a id="__codelineno-0-295" name="__codelineno-0-295"></a>        <span class="n">coords_tuples</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]))</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>        <span class="n">points</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">create_point</span><span class="p">(</span><span class="n">coords_tuples</span><span class="p">)</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>        <span class="n">points</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">create_points</span><span class="p">(</span><span class="n">coords_tuples</span><span class="p">)</span>
 <a id="__codelineno-0-297" name="__codelineno-0-297"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">points</span><span class="p">)</span>
 <a id="__codelineno-0-298" name="__codelineno-0-298"></a>        <span class="n">gdf</span><span class="o">.</span><span class="n">set_crs</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-299" name="__codelineno-0-299"></a>        <span class="n">gdf</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">index</span>
@@ -4998,7 +4998,7 @@ Array with all the centers of cells in the domain of the DEM.</p>
 <a id="__codelineno-0-293" name="__codelineno-0-293"></a>    <span class="n">epsg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_epsg</span><span class="p">()</span>
 <a id="__codelineno-0-294" name="__codelineno-0-294"></a>
 <a id="__codelineno-0-295" name="__codelineno-0-295"></a>    <span class="n">coords_tuples</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]))</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="n">points</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">create_point</span><span class="p">(</span><span class="n">coords_tuples</span><span class="p">)</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="n">points</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">create_points</span><span class="p">(</span><span class="n">coords_tuples</span><span class="p">)</span>
 <a id="__codelineno-0-297" name="__codelineno-0-297"></a>    <span class="n">gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">points</span><span class="p">)</span>
 <a id="__codelineno-0-298" name="__codelineno-0-298"></a>    <span class="n">gdf</span><span class="o">.</span><span class="n">set_crs</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-0-299" name="__codelineno-0-299"></a>    <span class="n">gdf</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">index</span>
