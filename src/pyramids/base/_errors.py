@@ -56,15 +56,6 @@ class OutOfBoundsError(_PyramidsError):
     """Out-of-bounds error."""
 
 
-# ARC-18: vector-side error hierarchy.
-#
-# Each ``Feature*``/``CRS``/``VectorDriver`` error multi-inherits from
-# the closest Python builtin (``ValueError`` / ``RuntimeError``) so
-# existing ``except ValueError:`` / ``except RuntimeError:`` handlers
-# still catch them. Callers that want to catch only pyramids.feature
-# failures can ``except FeatureError:``.
-
-
 class FeatureError(_PyramidsError):
     """Base class for errors raised from :mod:`pyramids.feature`.
 
