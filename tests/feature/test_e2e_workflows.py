@@ -366,3 +366,45 @@ class TestGeometryHardeningChain:
             FeatureCollection.reproject_coordinates(
                 [1.0], [1.0], from_crs=4326, to_crs="gibberish-wkt"
             )
+
+
+class TestBatch4Chain:
+    """Chained e2e: from_records(orient='list') → rasterize → verify.
+
+    Exercises C26 (columnar-dict input) together with D-M2 (validation
+    guard in ``Dataset.from_features``) by building a FC from a
+    pandas-style columnar dict and rasterising it through the
+    validated path. D-M4's /vsimem/ round-trip is exercised
+    transitively by ``Dataset.from_features`` opening the vector via
+    ``_ogr.as_datasource``.
+    """
+
+    def test_columnar_records_to_raster(self, tmp_path):
+        from pyramids.dataset import Dataset as _Ds
+
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+        x0, y0 = top_left
+
+        fc = FeatureCollection.from_records(
+            {
+                "class_id": [7, 13],
+                "geometry": [
+                    box(x0, y0 - 2 * cell_size,
+                        x0 + 2 * cell_size, y0),
+                    box(x0 + 3 * cell_size, y0 - 2 * cell_size,
+                        x0 + 5 * cell_size, y0),
+                ],
+            },
+            orient="list",
+            crs=f"EPSG:{epsg}",
+        )
+        assert len(fc) == 2
+
+        raster = _Ds.from_features(
+            fc, cell_size=cell_size, column_name="class_id"
+        )
+        arr = raster.read_array()
+        assert int(arr.max()) == 13, f"expected 13 in burned raster; got {arr.max()}"
+        assert 7 in set(int(v) for v in arr.flatten() if v != raster.no_data_value[0])

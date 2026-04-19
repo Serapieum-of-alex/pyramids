@@ -617,3 +617,38 @@ class TestDatasourceToGdf:
         with as_datasource(point_gdf) as ds:
             with pytest.raises(RuntimeError, match="VectorTranslate failed"):
                 datasource_to_gdf(ds)
+
+    def test_no_filesystem_tempfile_on_success(
+        self, point_gdf, monkeypatch
+    ):
+        """D-M4: the /vsimem/ path replaces the old filesystem temp file.
+
+        Test scenario:
+            The previous implementation created
+            ``<tempdir>/pyramids_ogr_<uuid>.geojson`` on disk for every
+            call. The new implementation stays in osgeo.gdal's
+            ``/vsimem/`` VFS and reads the bytes out via
+            ``gdal.VSIFOpenL``. Patch ``tempfile.gettempdir`` to raise
+            if it is called during the round-trip — if it's called,
+            the old disk path has crept back in.
+        """
+        import tempfile
+
+        def _fail_gettempdir():
+            raise AssertionError(
+                "tempfile.gettempdir was called — the /vsimem/ path "
+                "should handle the round-trip in memory."
+            )
+
+        monkeypatch.setattr(tempfile, "gettempdir", _fail_gettempdir)
+
+        with as_datasource(point_gdf) as ds:
+            gdf_back = datasource_to_gdf(ds)
+        assert len(gdf_back) == len(point_gdf)
+
+    def test_empty_datasource_round_trip(self, monkeypatch):
+        """D-M4: zero-feature DataSource round-trips without error."""
+        empty = gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
+        with as_datasource(empty) as ds:
+            back = datasource_to_gdf(ds)
+        assert len(back) == 0

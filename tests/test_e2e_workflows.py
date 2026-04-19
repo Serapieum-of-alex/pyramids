@@ -223,6 +223,33 @@ class TestRasterizeRoundTrip:
         with pytest.raises(ValueError, match=r"not in the FeatureCollection.*'b'"):
             Dataset.from_features(fc, cell_size=0.1, column_name=["a", "b"])
 
+    def test_from_features_negative_cell_size_with_template(self):
+        """D-M2 boundary: negative cell_size is rejected even when template given.
+
+        Test scenario:
+            The guard fires on the cell_size kwarg unconditionally (it
+            does not wait until the non-template branch dereferences
+            ``cell_size``). A template-path caller who passes a
+            negative cell_size gets the same error up front.
+        """
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+        template = Dataset.create(
+            cell_size=cell_size, rows=5, columns=5, dtype="int32",
+            bands=1, top_left_corner=top_left, epsg=epsg,
+            no_data_value=-1,
+        )
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)],
+            crs=f"EPSG:{epsg}",
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match="cell_size must be positive"):
+            Dataset.from_features(
+                fc, cell_size=-1.0, template=template, column_name="v",
+            )
+
     def test_from_features_raises_on_crs_less_features(self):
         """C5: CRS-less FeatureCollection fails fast with CRSError.
 

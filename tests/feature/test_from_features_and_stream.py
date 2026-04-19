@@ -259,6 +259,23 @@ class TestFromRecords:
                 orient="index",
             )
 
+    def test_orient_list_missing_geometry_column_raises(self):
+        """C26: columnar dict without the geometry key raises ``FeatureError``."""
+        with pytest.raises(FeatureError, match="geometry"):
+            FeatureCollection.from_records(
+                {"v": [1, 2]},
+                orient="list",
+                crs=4326,
+            )
+
+    def test_orient_list_mismatched_lengths_raises(self):
+        """C26: pandas surfaces mismatched-length columns as ValueError."""
+        with pytest.raises(ValueError):
+            FeatureCollection.from_records(
+                {"v": [1, 2, 3], "geometry": [Point(0, 0)]},
+                orient="list",
+            )
+
 
 # ── ARC-25 : iter_features dict mode ────────────────────────────────
 
