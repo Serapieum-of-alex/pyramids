@@ -38,9 +38,8 @@ from typing import Any
 import numpy as np
 from osgeo import gdal
 
-from pyramids.base._file_manager import CachingFileManager
+from pyramids.base._file_manager import CachingFileManager, gdal_mdarray_open
 from pyramids.base._locks import DummyLock, default_lock
-from pyramids.base._openers import gdal_mdarray_open
 
 
 _DASK_MISSING_MESSAGE = (

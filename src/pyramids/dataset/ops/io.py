@@ -21,9 +21,8 @@ from pyramids.base._errors import (
     OutOfBoundsError,
     ReadOnlyError,
 )
-from pyramids.base._file_manager import CachingFileManager
+from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._locks import DummyLock, default_lock
-from pyramids.base._openers import gdal_raster_open
 from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     gdal_to_numpy_dtype,

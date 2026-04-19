@@ -36,8 +36,6 @@ from pyramids.base._file_manager import (
     _LRUCache,
     _NullLock,
     _make_cache_key,
-)
-from pyramids.base._openers import (
     _resolve_access,
     gdal_mdarray_open,
     gdal_raster_open,

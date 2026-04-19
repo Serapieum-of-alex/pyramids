@@ -45,9 +45,8 @@ import numpy as np
 import pytest
 from osgeo import gdal, osr
 
-from pyramids.base._file_manager import CachingFileManager
+from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._locks import DummyLock, SerializableLock
-from pyramids.base._openers import gdal_raster_open
 from pyramids.dataset import Dataset
 from pyramids.dataset.ops import io as io_module
 from pyramids.dataset.ops.io import _read_chunk

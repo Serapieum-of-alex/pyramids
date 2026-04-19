@@ -14,8 +14,7 @@ from osgeo import gdal
 
 from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.base._errors import DatasetNotFoundError
-from pyramids.base._file_manager import CachingFileManager
-from pyramids.base._openers import gdal_raster_open
+from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._raster_meta import RasterMeta
 from pyramids.base._utils import import_cleopatra
 from pyramids.dataset._stac import from_stac as _from_stac
