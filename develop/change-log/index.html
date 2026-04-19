@@ -2592,6 +2592,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unreleased
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BREAKING CHANGE
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0140-2026-04-14" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3784,6 +3812,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unreleased
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BREAKING CHANGE
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0140-2026-04-14" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4629,6 +4685,18 @@
 
 
 <h1 id="change-log"><a class="toclink" href="#change-log">Change log</a><a class="headerlink" href="#change-log" title="Permanent link">#</a></h1>
+<h2 id="unreleased"><a class="toclink" href="#unreleased">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">#</a></h2>
+<h3 id="breaking-change"><a class="toclink" href="#breaking-change">BREAKING CHANGE</a><a class="headerlink" href="#breaking-change" title="Permanent link">#</a></h3>
+<ul>
+<li><code>FeatureCollection.create_point(coords, epsg=...)</code> staticmethod removed
+  (D-H2). Use <code>FeatureCollection.create_points(coords)</code> for the list form or
+  <code>FeatureCollection.point_collection(coords, crs=...)</code> for the FC form.</li>
+<li><code>FeatureCollection.create_polygon(coords, wkt=True)</code> removed (D-H2). Pass
+  coords verbatim to <code>create_polygon</code> and use <code>polygon_wkt(wkt_string)</code> for
+  the WKT-string form.</li>
+<li><code>pyramids.feature.geometry.create_point_legacy</code> and <code>create_polygon_legacy</code>
+  soft-shims deleted (D-H2); see the ARC-15 refactor notes.</li>
+</ul>
 <h2 id="0140-2026-04-14"><a class="toclink" href="#0140-2026-04-14">0.14.0 (2026-04-14)</a><a class="headerlink" href="#0140-2026-04-14" title="Permanent link">#</a></h2>
 <h3 id="feat"><a class="toclink" href="#feat">Feat</a><a class="headerlink" href="#feat" title="Permanent link">#</a></h3>
 <ul>
