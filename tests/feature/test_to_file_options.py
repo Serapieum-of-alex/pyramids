@@ -131,3 +131,40 @@ class TestPlainPathStillWorks:
         assert p.exists()
         reloaded = FeatureCollection.read_file(p)
         assert len(reloaded) == 2
+
+
+class TestCreationOptionValidation:
+    """C8: pyogrio already rejects unknown creation options at write-time.
+
+    The original C8 concern ("GDAL silently ignores unknown options") is
+    mooted by the pyogrio engine which geopandas 1.0+ uses by default —
+    pyogrio validates options against both the dataset-level and
+    layer-level creation-option metadata and raises
+    :class:`ValueError` with the message
+    ``"unrecognized option '<name>' for driver '<driver>'"`` before
+    the write ever reaches GDAL. These tests pin that behaviour so
+    regressions in the geopandas/pyogrio stack surface here rather
+    than producing silently-different files.
+    """
+
+    def test_unknown_option_raises_value_error(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """Nonsense option raises ``ValueError`` naming the option + driver."""
+        p = tmp_path / "warn.gpkg"
+        with pytest.raises(
+            ValueError, match="NOT_A_REAL_OPTION.*GPKG"
+        ):
+            fc_rivers.to_file(
+                p, driver="gpkg", NOT_A_REAL_OPTION="YES"
+            )
+
+    def test_known_option_accepted(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """A legitimate option completes the write successfully."""
+        p = tmp_path / "ok.gpkg"
+        fc_rivers.to_file(
+            p, driver="gpkg", SPATIAL_INDEX="YES"
+        )
+        assert p.exists()

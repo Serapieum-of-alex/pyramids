@@ -725,8 +725,22 @@ class FeatureCollection(GeoDataFrame):
                 driver; consult the GDAL driver docs for the full
                 list.
 
+                C8: pyogrio (the default geopandas engine on 1.0+)
+                raises :class:`ValueError` with the message
+                ``"unrecognized option '<name>' for driver '<driver>'"``
+                when a supplied option is neither in the driver's
+                dataset nor its layer creation-option list. This
+                surfaces typos (``SPATIAL_INDX`` vs ``SPATIAL_INDEX``)
+                at write-time rather than silently producing a
+                different file. Some drivers may still accept options
+                that pyogrio does not list — verify against the
+                driver's docs when in doubt.
+
         Raises:
-            ValueError: If ``mode`` isn't ``"w"`` or ``"a"``.
+            ValueError: If ``mode`` isn't ``"w"`` or ``"a"``, or if a
+                supplied creation option is not recognised by the
+                driver (raised by pyogrio — see the ``**creation_options``
+                note above).
 
         Examples:
             - Write a GeoJSON (default driver):
