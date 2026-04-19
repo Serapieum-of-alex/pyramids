@@ -771,7 +771,7 @@ class FeatureCollection(GeoDataFrame):
         blocksize: int | str | None = None,
         storage_options: dict | None = None,
         **kwargs: Any,
-    ) -> Any:
+    ) -> "FeatureCollection | Any":
         """Read a GeoParquet file into a FeatureCollection (ARC-32).
 
         GeoParquet is a cloud-native columnar vector format (OGC-
@@ -801,11 +801,18 @@ class FeatureCollection(GeoDataFrame):
                 (``storage_options=`` for fsspec, etc.).
 
         Returns:
-            FeatureCollection: The file's features wrapped as a
-            FeatureCollection.
+            FeatureCollection | LazyFeatureCollection: When
+            ``backend="pandas"`` (default), an eager
+            :class:`FeatureCollection`. When ``backend="dask"``, a
+            :class:`~pyramids.feature.LazyFeatureCollection` whose
+            :attr:`spatial_partitions` survives from the underlying
+            dask-geopandas frame. Call ``.compute()`` on the lazy return
+            to materialize back to an eager :class:`FeatureCollection`.
 
         Raises:
-            ImportError: If :mod:`pyarrow` is not installed.
+            ImportError: If :mod:`pyarrow` is not installed, or if
+                ``backend="dask"`` is requested without the
+                ``[parquet-lazy]`` extra.
         """
         resolved = _pyramids_io._parse_path(path)
         if backend == "dask":
@@ -829,7 +836,13 @@ class FeatureCollection(GeoDataFrame):
             if storage_options is not None:
                 dask_kwargs["storage_options"] = storage_options
             dask_kwargs.update(kwargs)
-            return dask_geopandas.read_parquet(resolved, **dask_kwargs)
+            # DASK-23F: wrap the lazy return as a LazyFeatureCollection so the
+            # dask branch stays inside the pyramids type system. Same
+            # inline-import exception as DASK-22F.
+            from pyramids.feature._lazy_collection import LazyFeatureCollection
+
+            dask_gdf = dask_geopandas.read_parquet(resolved, **dask_kwargs)
+            return LazyFeatureCollection._from_dask_gdf(dask_gdf)
         if backend != "pandas":
             raise ValueError(
                 f"backend must be 'pandas' or 'dask', got {backend!r}"

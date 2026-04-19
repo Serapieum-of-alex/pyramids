@@ -1,8 +1,10 @@
 """Tests for :meth:`FeatureCollection.read_parquet(backend="dask")`.
 
-DASK-23: extend the GeoParquet reader with split_row_groups / filters
-/ blocksize kwargs, routed to :func:`dask_geopandas.read_parquet`
-when ``backend="dask"``.
+DASK-23 + DASK-23F: extend the GeoParquet reader with split_row_groups /
+filters / blocksize kwargs, routed to :func:`dask_geopandas.read_parquet`
+when ``backend="dask"``. The lazy return is wrapped in a
+:class:`~pyramids.feature.LazyFeatureCollection` so the dask branch stays
+inside the pyramids type system.
 """
 
 from __future__ import annotations
@@ -67,24 +69,38 @@ class TestDefaultBackend:
 @requires_pyarrow
 @requires_dask_geopandas
 class TestDaskBackend:
-    def test_returns_dask_geodataframe(self, small_parquet):
-        lazy = FeatureCollection.read_parquet(small_parquet, backend="dask")
-        assert hasattr(lazy, "npartitions")
+    def test_returns_lazy_feature_collection(self, small_parquet):
+        """DASK-23F: lazy read returns a LazyFeatureCollection."""
+        from pyramids.feature import LazyFeatureCollection
+
+        lfc = FeatureCollection.read_parquet(small_parquet, backend="dask")
+        assert isinstance(lfc, LazyFeatureCollection)
+        assert lfc.npartitions >= 1
 
     def test_filters_pushed_down(self, small_parquet):
-        lazy = FeatureCollection.read_parquet(
+        lfc = FeatureCollection.read_parquet(
             small_parquet, backend="dask",
             filters=[("class", "=", "water")],
         )
-        gdf = lazy.compute()
-        assert set(gdf["class"].unique()) == {"water"}
+        eager = lfc.compute()
+        assert isinstance(eager, FeatureCollection)
+        assert set(eager["class"].unique()) == {"water"}
 
     def test_columns_projection(self, small_parquet):
-        lazy = FeatureCollection.read_parquet(
+        lfc = FeatureCollection.read_parquet(
             small_parquet, backend="dask", columns=["id", "geometry"],
         )
-        gdf = lazy.compute()
-        assert list(gdf.columns) == ["id", "geometry"]
+        eager = lfc.compute()
+        assert list(eager.columns) == ["id", "geometry"]
+
+    def test_spatial_partitions_attribute_survives_wrapping(self, small_parquet):
+        """DASK-23F: the spatial_partitions attribute survives the LazyFC wrap.
+
+        Small fixtures without spatial metadata set ``spatial_partitions`` to
+        ``None``; the test asserts the attribute is reachable, not its value.
+        """
+        lfc = FeatureCollection.read_parquet(small_parquet, backend="dask")
+        assert hasattr(lfc, "spatial_partitions")
 
 
 class TestValidation:
