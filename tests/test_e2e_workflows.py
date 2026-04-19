@@ -214,6 +214,22 @@ class TestRasterizeRoundTrip:
         with pytest.raises(ValueError, match="not in the FeatureCollection"):
             Dataset.from_features(fc, cell_size=0.1, column_name="nope")
 
+    def test_from_features_rejects_non_str_non_list_column_name(self):
+        """M4: ``column_name`` must be str, list, or None — typed TypeError.
+
+        Test scenario:
+            Passing an int for ``column_name`` previously surfaced as a
+            misleading ValueError about the column not being in the
+            FeatureCollection. The typed TypeError now points at the
+            real issue (wrong input type) and names the allowed set.
+        """
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(TypeError, match=r"str, list\[str\], or None"):
+            Dataset.from_features(fc, cell_size=0.1, column_name=123)
+
     def test_from_features_rejects_unknown_column_in_list(self):
         """D-M2: unknown name inside a ``column_name`` list also raises."""
         gdf = gpd.GeoDataFrame(

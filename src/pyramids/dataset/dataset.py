@@ -719,7 +719,11 @@ class Dataset(  # type: ignore[misc]
                   ``features.columns`` — either as a string or inside
                   a list (D-M2). The message lists the available
                   columns to ease the fix.
-            TypeError: If ``template`` is not a pyramids ``Dataset``.
+            TypeError: If ``template`` is not a pyramids ``Dataset``,
+                or if ``column_name`` is neither ``str``, ``list``,
+                nor ``None`` (M4 — a common slip is passing an int
+                by mistake; the typed error points at the input
+                type rather than the column-not-found path).
             CRSError: If ``features.epsg`` is ``None`` (the vector
                 has no CRS), or if ``template`` is supplied and
                 ``template.epsg != features.epsg``. Raised before any
@@ -740,6 +744,16 @@ class Dataset(  # type: ignore[misc]
         if cell_size is not None and cell_size <= 0:
             raise ValueError(
                 f"cell_size must be positive; got {cell_size!r}."
+            )
+        # M4: type-check ``column_name`` up front so a caller passing
+        # an ``int`` (or any other non-str, non-list value) sees a
+        # typed TypeError instead of "column_name 123 is not in the
+        # FeatureCollection" which would misdirect them toward
+        # renaming a column.
+        if column_name is not None and not isinstance(column_name, (str, list)):
+            raise TypeError(
+                f"column_name must be str, list[str], or None; "
+                f"got {type(column_name).__name__}."
             )
 
         ds_epsg = features.epsg
