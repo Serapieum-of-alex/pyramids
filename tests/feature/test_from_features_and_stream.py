@@ -106,6 +106,29 @@ class TestFromFeatures:
         fc = FeatureCollection.from_features(feats)
         assert fc.epsg is None
 
+    def test_empty_iterable_raises(self):
+        """C9: empty iterable → ``ValueError``.
+
+        Test scenario:
+            A caller passing an empty list (or an exhausted iterator)
+            previously got an empty GeoDataFrame with no ``geometry``
+            column, which later broke every pyramids method that
+            assumes the column exists. The method now raises
+            ``ValueError`` up front.
+        """
+        with pytest.raises(ValueError, match="at least one feature"):
+            FeatureCollection.from_features([])
+
+    def test_exhausted_iterator_raises(self):
+        """C9: an exhausted iterator is equivalent to an empty list."""
+
+        def empty_gen():
+            return
+            yield  # pragma: no cover — makes this a generator
+
+        with pytest.raises(ValueError, match="at least one feature"):
+            FeatureCollection.from_features(empty_gen())
+
     def test_columns_order(self):
         feats = [
             {

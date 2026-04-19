@@ -158,6 +158,13 @@ class FeatureCollection(GeoDataFrame):
         Returns:
             FeatureCollection: A new FC backed by the supplied features.
 
+        Raises:
+            ValueError: If ``features`` is empty or exhausted before any
+                feature is consumed (C9). An empty GeoDataFrame from
+                ``from_features`` has no ``geometry`` column, which
+                breaks downstream pyramids methods that assume the
+                column exists. Fail fast instead.
+
         Examples:
             - Build from a list of feature dicts:
                 ```python
@@ -178,8 +185,19 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
+        # C9: materialise an iterator so we can detect the empty case
+        # before handing off to geopandas. ``geopandas.from_features([])``
+        # returns a GeoDataFrame with no ``geometry`` column, which
+        # breaks every pyramids op that assumes the column exists.
+        features_list = list(features)
+        if not features_list:
+            raise ValueError(
+                "from_features requires at least one feature. An empty "
+                "iterable would produce a GeoDataFrame with no geometry "
+                "column, which breaks downstream pyramids methods."
+            )
         gdf = gpd.GeoDataFrame.from_features(
-            features, crs=crs, columns=columns
+            features_list, crs=crs, columns=columns
         )
         return cls(gdf)
 
