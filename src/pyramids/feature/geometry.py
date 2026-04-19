@@ -35,11 +35,16 @@ def get_xy_coords(geometry: Any, coord_type: str) -> list:
     Raises:
         ValueError: If ``coord_type`` is not ``"x"`` or ``"y"``.
     """
-    # D-L6: single-return via axis index lookup.
-    axis = {"x": 0, "y": 1}
-    if coord_type not in axis:
+    # D-L6 / M2: single-return via lazy axis-index lookup. The previous
+    # D-L6 version eagerly called ``geometry.coords.xy`` at the top,
+    # which materialised the full coordinate array before the axis
+    # check — wasteful on large rings and fatal on geometries whose
+    # ``.coords.xy`` raises (e.g. empty geometries). Defer the
+    # attribute access until after the coord_type check.
+    if coord_type not in ("x", "y"):
         raise ValueError("coord_type can only have a value of 'x' or 'y'")
-    return list(geometry.coords.xy[axis[coord_type]].tolist())
+    idx = 0 if coord_type == "x" else 1
+    return list(geometry.coords.xy[idx].tolist())
 
 
 def get_point_coords(geometry: Point, coord_type: str) -> float | int:
@@ -55,11 +60,16 @@ def get_point_coords(geometry: Point, coord_type: str) -> float | int:
     Raises:
         ValueError: If ``coord_type`` is not ``"x"`` or ``"y"``.
     """
-    # D-L6: single-return via attribute dispatch.
-    accessor = {"x": geometry.x, "y": geometry.y}
-    if coord_type not in accessor:
+    # D-L6 / M2: single-return via lazy attribute dispatch. The
+    # original D-L6 built ``{"x": geometry.x, "y": geometry.y}``
+    # which eagerly evaluated BOTH attributes on every call — fatal
+    # for empty shapely Points where ``.x`` / ``.y`` raise
+    # ``GEOSException`` before the coord_type guard can fire. Defer
+    # attribute access until after the string check.
+    if coord_type not in ("x", "y"):
         raise ValueError("coord_type can only have a value of 'x' or 'y'")
-    return float(accessor[coord_type])
+    value = geometry.x if coord_type == "x" else geometry.y
+    return float(value)
 
 
 def get_line_coords(geometry: LineString, coord_type: str) -> list:

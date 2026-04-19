@@ -953,3 +953,20 @@ class TestGetPointCoordsInvalidType:
         point = Point(5, 10)
         with pytest.raises(ValueError, match="'x' or 'y'"):
             FeatureCollection._get_point_coords(point, "z")
+
+    def test_invalid_coord_type_checked_before_attribute_access(self):
+        """M2: the ``coord_type`` check fires before ``geometry.x/y``.
+
+        Test scenario:
+            An empty ``shapely.Point`` has no coordinates and
+            ``geometry.x`` / ``.y`` raise ``GEOSException`` when
+            accessed. Under the pre-M2 D-L6 code the dispatch dict
+            evaluated BOTH attributes eagerly, so callers with an
+            empty Point got a cryptic GEOS error even when they
+            passed an invalid ``coord_type``. After M2 the coord_type
+            check runs first, so invalid types fail with the clean
+            ``ValueError`` regardless of geometry validity.
+        """
+        empty = Point()
+        with pytest.raises(ValueError, match="'x' or 'y'"):
+            FeatureCollection._get_point_coords(empty, "z")
