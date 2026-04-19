@@ -125,22 +125,26 @@ lfc.top_left_corner   # → [xmin, ymax]  as list[float]
 
 On installs without the `[parquet-lazy]` extra (i.e. no `dask-geopandas`),
 `from pyramids.feature import LazyFeatureCollection` raises an
-`ImportError` with an actionable install hint. Library authors writing
-dispatch code that must run on both minimal and full installs should
-guard with `hasattr`:
+`ImportError` with an actionable install hint — good UX for users who
+just want to know why their code failed. Library authors writing
+dispatch code that must run on both minimal and full installs wrap the
+import in a `try/except`:
 
 ```python
-import pyramids.feature as pf
+try:
+    from pyramids.feature import LazyFeatureCollection
+except ImportError:
+    LazyFeatureCollection = None
 
-if hasattr(pf, "LazyFeatureCollection") and isinstance(obj, pf.LazyFeatureCollection):
+if LazyFeatureCollection is not None and isinstance(obj, LazyFeatureCollection):
     ...
 ```
 
-`hasattr(pf, "LazyFeatureCollection")` is `False` on minimal installs
-because the package-level `__getattr__` hook raised `ImportError`. Typical
-user code doesn't need this guard — if you're working with lazy frames at
-all, you already have the extra installed, and the direct
-`from pyramids.feature import LazyFeatureCollection` just works.
+Python 3's `hasattr` only catches `AttributeError`, so it does NOT
+return `False` here — the `ImportError` propagates. `try/except` is the
+correct guard. Typical user code doesn't need it: if you're working
+with lazy frames at all, you already have the extra installed and the
+direct import just works.
 
 ## Interop with `Dataset.zonal_stats`
 
