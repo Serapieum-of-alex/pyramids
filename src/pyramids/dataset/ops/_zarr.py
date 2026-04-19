@@ -126,6 +126,25 @@ def write_dataset_to_zarr(
     Returns:
         ``None`` on ``compute=True``; a :class:`dask.delayed.Delayed`
         on ``compute=False``.
+
+    Examples:
+        - Round-trip a small Dataset through Zarr (requires the
+          ``[lazy]`` extra for zarr + dask):
+            ```python
+            >>> import tempfile  # doctest: +SKIP
+            >>> from pathlib import Path  # doctest: +SKIP
+            >>> import numpy as np  # doctest: +SKIP
+            >>> from pyramids.dataset import Dataset  # doctest: +SKIP
+            >>> from pyramids.dataset.ops._zarr import write_dataset_to_zarr  # doctest: +SKIP
+            >>> arr = np.arange(16, dtype=np.float32).reshape(4, 4)  # doctest: +SKIP
+            >>> ds = Dataset.create_from_array(
+            ...     arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+            ... )  # doctest: +SKIP
+            >>> store = Path(tempfile.mkdtemp()) / "ds.zarr"  # doctest: +SKIP
+            >>> write_dataset_to_zarr(ds, str(store)) is None  # doctest: +SKIP
+            True
+
+            ```
     """
     _require_zarr()
     arr = _build_dask_array(ds, chunks)
@@ -182,6 +201,30 @@ def read_dataset_from_zarr(
 
     Returns:
         Dataset: The reconstructed dataset.
+
+    Examples:
+        - Read a store that was written with :func:`write_dataset_to_zarr`
+          and check the recovered shape (requires the ``[lazy]``
+          extra):
+            ```python
+            >>> import tempfile  # doctest: +SKIP
+            >>> from pathlib import Path  # doctest: +SKIP
+            >>> import numpy as np  # doctest: +SKIP
+            >>> from pyramids.dataset import Dataset  # doctest: +SKIP
+            >>> from pyramids.dataset.ops._zarr import (
+            ...     read_dataset_from_zarr, write_dataset_to_zarr,
+            ... )  # doctest: +SKIP
+            >>> arr = np.arange(16, dtype=np.float32).reshape(4, 4)  # doctest: +SKIP
+            >>> src = Dataset.create_from_array(
+            ...     arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+            ... )  # doctest: +SKIP
+            >>> store = Path(tempfile.mkdtemp()) / "ds.zarr"  # doctest: +SKIP
+            >>> write_dataset_to_zarr(src, str(store))  # doctest: +SKIP
+            >>> recovered = read_dataset_from_zarr(str(store))  # doctest: +SKIP
+            >>> (recovered.rows, recovered.columns)  # doctest: +SKIP
+            (4, 4)
+
+            ```
     """
     # Local import to avoid a circular dependency at package import time.
     from pyramids.dataset import Dataset

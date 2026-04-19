@@ -252,6 +252,29 @@ def zonal_stats(
         ValueError: Unknown ``stat`` name or unknown ``method``.
         ImportError: ``method="exactextract"`` without exactextract
             installed.
+
+    Examples:
+        - Compute the mean value of a constant-valued raster over one
+          polygon — the answer must equal the raster value itself:
+            ```python
+            >>> import geopandas as gpd
+            >>> import numpy as np
+            >>> from shapely.geometry import box
+            >>> from pyramids.dataset import Dataset
+            >>> from pyramids.dataset.ops._zonal import zonal_stats
+            >>> from pyramids.feature import FeatureCollection
+            >>> arr = np.full((4, 4), 5.0, dtype=np.float32)
+            >>> ds = Dataset.create_from_array(
+            ...     arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+            ... )
+            >>> fc = FeatureCollection(gpd.GeoDataFrame(
+            ...     {"zone": ["a"]}, geometry=[box(0, 0, 4, 4)], crs="EPSG:4326",
+            ... ))
+            >>> out = zonal_stats(ds, fc, stats=("mean",))
+            >>> float(out["mean"].iloc[0])
+            5.0
+
+            ```
     """
     if method == "exactextract":
         result = _exactextract_zonal_stats(ds, fc, stats)

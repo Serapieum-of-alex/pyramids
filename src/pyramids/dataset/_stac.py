@@ -123,6 +123,19 @@ def from_stac(
         ImportError: When pystac is not installed.
         KeyError: When any item is missing the requested asset.
         ValueError: When ``items`` is empty.
+
+    Examples:
+        - Build a DatasetCollection from a hand-rolled pystac Item
+          list (requires the ``[stac]`` extra):
+            ```python
+            >>> import pystac  # doctest: +SKIP
+            >>> from pyramids.dataset._stac import from_stac  # doctest: +SKIP
+            >>> items = [pystac.Item.from_file(p) for p in (...)]  # doctest: +SKIP
+            >>> collection = from_stac(items, asset="B04")  # doctest: +SKIP
+            >>> collection.time_length == len(items)  # doctest: +SKIP
+            True
+
+            ```
     """
     _require_pystac()
     item_list = _iter_items(items)

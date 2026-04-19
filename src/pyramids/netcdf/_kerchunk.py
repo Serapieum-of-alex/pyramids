@@ -77,6 +77,20 @@ def to_kerchunk(
 
     Raises:
         ImportError: When kerchunk is not installed.
+
+    Examples:
+        - Emit a manifest for one NetCDF file (requires the
+          ``[netcdf-lazy]`` extra):
+            ```python
+            >>> from pathlib import Path  # doctest: +SKIP
+            >>> from pyramids.netcdf._kerchunk import to_kerchunk  # doctest: +SKIP
+            >>> manifest = to_kerchunk(
+            ...     "noah_20240101.nc", "noah_20240101.kerchunk.json",
+            ... )  # doctest: +SKIP
+            >>> "refs" in manifest or "version" in manifest  # doctest: +SKIP
+            True
+
+            ```
     """
     SingleHdf5ToZarr = _require_kerchunk_single()
     src_str = str(src_path)
@@ -120,6 +134,21 @@ def combine_kerchunk(
 
     Raises:
         ImportError: When kerchunk is not installed.
+
+    Examples:
+        - Combine a year's worth of daily NetCDFs into one manifest:
+            ```python
+            >>> from pathlib import Path  # doctest: +SKIP
+            >>> from pyramids.netcdf._kerchunk import combine_kerchunk  # doctest: +SKIP
+            >>> srcs = sorted(Path("/data/noah").glob("noah_*.nc"))  # doctest: +SKIP
+            >>> manifest = combine_kerchunk(
+            ...     srcs, "noah_combined.json",
+            ...     concat_dims=("time",),
+            ... )  # doctest: +SKIP
+            >>> "refs" in manifest or "version" in manifest  # doctest: +SKIP
+            True
+
+            ```
     """
     SingleHdf5ToZarr = _require_kerchunk_single()
     MultiZarrToZarr = _require_kerchunk_combine()
