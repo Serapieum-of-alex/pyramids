@@ -125,6 +125,8 @@ def as_datasource(
 
             ```
     """
+    from pyramids.base._errors import VectorDriverError
+
     mem_path = _new_vsimem_path()
     # We must write into osgeo.gdal's own /vsimem/ — geopandas' default
     # pyogrio engine uses its own bundled GDAL with a separate VFS, so a
@@ -132,15 +134,37 @@ def as_datasource(
     # store and ``osgeo.gdal`` would never see it. Round-tripping through
     # the GeoJSON serialization + ``gdal.FileFromMemBuffer`` guarantees
     # the file lands in the GDAL VFS we can open.
+    # C4: track whether the vsimem file was actually written so the
+    # finally block only unlinks when there is something to unlink.
+    # If ``gdf.to_json()`` or ``FileFromMemBuffer`` raises, no file
+    # exists on /vsimem/ and ``gdal.Unlink`` would log a spurious
+    # warning about a missing path.
     geojson_bytes = gdf.to_json().encode("utf-8")
-    gdal.FileFromMemBuffer(mem_path, geojson_bytes)
-    ds: ogr.DataSource | gdal.Dataset | None = None
+    file_written = False
     try:
-        ds = gdal.OpenEx(mem_path) if gdal_dataset else ogr.Open(mem_path)
-        yield ds
+        gdal.FileFromMemBuffer(mem_path, geojson_bytes)
+        file_written = True
+        ds: ogr.DataSource | gdal.Dataset | None = (
+            gdal.OpenEx(mem_path) if gdal_dataset else ogr.Open(mem_path)
+        )
+        # C4: GDAL signals a failure to parse the in-memory GeoJSON by
+        # returning ``None`` rather than raising. Convert that to an
+        # explicit :class:`VectorDriverError` so callers see a typed
+        # failure instead of cryptic ``AttributeError: 'NoneType'``
+        # deeper in the stack.
+        if ds is None:
+            raise VectorDriverError(
+                f"GDAL/OGR could not open the in-memory GeoJSON at "
+                f"{mem_path!r}. The GeoDataFrame may have malformed "
+                f"geometry or an unsupported CRS."
+            )
+        try:
+            yield ds
+        finally:
+            ds = None
     finally:
-        ds = None
-        gdal.Unlink(mem_path)
+        if file_written:
+            gdal.Unlink(mem_path)
 
 
 @contextmanager

@@ -288,6 +288,76 @@ class TestAsDatasource:
         assert code == 4326, f"Expected EPSG 4326, got {code}"
 
 
+class TestAsDatasourceExceptionSafety:
+    """C4: ``as_datasource`` is exception-safe on every failure path.
+
+    The context manager must (1) raise :class:`VectorDriverError` with a
+    typed message rather than yielding ``None`` when GDAL fails to open
+    the in-memory GeoJSON, and (2) only call ``gdal.Unlink`` when the
+    in-memory file was actually written. A raise before the
+    ``FileFromMemBuffer`` call must not leave a leaked path or trigger a
+    spurious Unlink on a non-existent path.
+    """
+
+    def test_none_open_becomes_vector_driver_error(
+        self, point_gdf, monkeypatch
+    ):
+        """If ``ogr.Open`` returns ``None``, raise ``VectorDriverError``.
+
+        Test scenario:
+            Simulate a GDAL open failure by monkey-patching
+            ``ogr.Open`` to return ``None``. The context manager must
+            raise ``VectorDriverError`` rather than yielding ``None``
+            (which would surface later as an opaque
+            ``AttributeError``).
+        """
+        from osgeo import ogr as _ogr_mod
+
+        from pyramids.base._errors import VectorDriverError
+
+        monkeypatch.setattr(_ogr_mod, "Open", lambda _: None)
+
+        with pytest.raises(VectorDriverError, match="could not open"):
+            with as_datasource(point_gdf):
+                pass  # pragma: no cover - unreachable when the open fails
+
+    def test_no_unlink_when_serialization_fails(self, monkeypatch):
+        """If ``gdf.to_json`` raises, no vsimem file is ever written.
+
+        Test scenario:
+            Simulate a serialization failure before the vsimem file is
+            written. The context manager must propagate the exception
+            without calling ``gdal.Unlink`` on a path that was never
+            created.
+        """
+        unlinked_paths: list[str] = []
+        from osgeo import gdal as _gdal_mod
+
+        real_unlink = _gdal_mod.Unlink
+        monkeypatch.setattr(
+            _gdal_mod,
+            "Unlink",
+            lambda p: unlinked_paths.append(p) or real_unlink(p),
+        )
+
+        class _BadGDF:
+            @property
+            def crs(self):
+                return None
+
+            def to_json(self):
+                raise RuntimeError("simulated serialization failure")
+
+        with pytest.raises(RuntimeError, match="simulated"):
+            with as_datasource(_BadGDF()):
+                pass  # pragma: no cover - unreachable when to_json fails
+
+        assert unlinked_paths == [], (
+            f"gdal.Unlink was called on {unlinked_paths}; expected no "
+            f"cleanup calls when the in-memory file was never written."
+        )
+
+
 class TestAsVsimemPath:
     """Tests for :func:`as_vsimem_path`."""
 
