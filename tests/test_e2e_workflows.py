@@ -185,6 +185,44 @@ class TestRasterizeRoundTrip:
         burned = arr[arr == 42.0]
         assert burned.size > 0, "Burned value 42 should appear in the raster"
 
+    def test_from_features_rejects_non_positive_cell_size(self):
+        """D-M2: cell_size=0 and negative values raise ``ValueError``."""
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match="cell_size must be positive"):
+            Dataset.from_features(fc, cell_size=0, column_name="v")
+        with pytest.raises(ValueError, match="cell_size must be positive"):
+            Dataset.from_features(fc, cell_size=-10.0, column_name="v")
+
+    def test_from_features_rejects_empty_column_list(self):
+        """D-M2: empty ``column_name`` list raises ``ValueError``."""
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match="non-empty"):
+            Dataset.from_features(fc, cell_size=0.1, column_name=[])
+
+    def test_from_features_rejects_unknown_column_string(self):
+        """D-M2: unknown ``column_name`` string raises with the valid list."""
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match="not in the FeatureCollection"):
+            Dataset.from_features(fc, cell_size=0.1, column_name="nope")
+
+    def test_from_features_rejects_unknown_column_in_list(self):
+        """D-M2: unknown name inside a ``column_name`` list also raises."""
+        gdf = gpd.GeoDataFrame(
+            {"a": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match=r"not in the FeatureCollection.*'b'"):
+            Dataset.from_features(fc, cell_size=0.1, column_name=["a", "b"])
+
     def test_from_features_raises_on_crs_less_features(self):
         """C5: CRS-less FeatureCollection fails fast with CRSError.
 

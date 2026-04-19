@@ -727,6 +727,12 @@ class Dataset(  # type: ignore[misc]
             raise ValueError(
                 "You have to enter either cell size or Dataset object."
             )
+        # D-M2: validate cell_size up front (non-positive breaks the
+        # non-template branch with divide-by-zero / negative shapes).
+        if cell_size is not None and cell_size <= 0:
+            raise ValueError(
+                f"cell_size must be positive; got {cell_size!r}."
+            )
 
         ds_epsg = features.epsg
         # C5: both branches below feed ``ds_epsg`` into ``cls.create`` (via
@@ -774,9 +780,32 @@ class Dataset(  # type: ignore[misc]
         if column_name is None:
             column_name = [c for c in features.columns if c != "geometry"]
 
+        # D-M2: validate column_name shape / membership before
+        # dereferencing into features.dtypes. An empty list used to
+        # IndexError inside the dtype lookup; an unknown name used to
+        # raise an opaque KeyError deep in pandas.
         if isinstance(column_name, list):
+            if not column_name:
+                raise ValueError(
+                    "column_name list must be non-empty. Pass None to "
+                    "burn every non-geometry column, or name at least "
+                    "one column."
+                )
+            missing = [c for c in column_name if c not in features.columns]
+            if missing:
+                raise ValueError(
+                    f"column_name references columns not in the "
+                    f"FeatureCollection: {missing}. Available columns: "
+                    f"{list(features.columns)}."
+                )
             numpy_dtype = features.dtypes[column_name[0]]
         else:
+            if column_name not in features.columns:
+                raise ValueError(
+                    f"column_name {column_name!r} is not in the "
+                    f"FeatureCollection. Available columns: "
+                    f"{list(features.columns)}."
+                )
             numpy_dtype = features.dtypes[column_name]
 
         # C2: integer raster dtypes cannot represent NaN. If the template
