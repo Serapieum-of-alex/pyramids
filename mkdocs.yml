@@ -125,7 +125,10 @@ nav:
       - Band Metadata Operations: reference/dataset/band_metadata.md
       - Cell Operations: reference/dataset/cell.md
     - DatasetCollection: reference/dataset_collection.md
-    - Feature Collection: reference/feature.md
+    - Feature:
+      - Overview: reference/feature/index.md
+      - Geometry helpers: reference/feature/geometry.md
+      - CRS helpers: reference/feature/crs.md
     - NetCDF:
       - NetCDF Class: reference/netcdf/index.md
       - Data Models: reference/netcdf/models.md
@@ -156,6 +159,8 @@ nav:
           - Dataset collection: examples/dataset/dataset_collection.ipynb
           - South America: examples/dataset/south-america.ipynb
           - Cloud Optimized GeoTIFFs: tutorials/cog.md
+      - Feature:
+          - FeatureCollection tutorial: tutorials/feature.md
       - Basemap:
           - Basemap example: examples/basemap/basemap-example.ipynb
       - NetCDF:
