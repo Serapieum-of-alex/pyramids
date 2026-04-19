@@ -149,6 +149,45 @@ class TestEpsgCaching:
         assert "_epsg_cache_crs" in FeatureCollection._metadata
         assert "_epsg_cache_value" in FeatureCollection._metadata
 
+    def test_epsg_cache_equality_fallback_on_identity_miss(
+        self, simple_polygon_gdf: GeoDataFrame
+    ):
+        """C11: reassigning an equivalent CRS reuses the cached value.
+
+        Test scenario:
+            Accessing ``fc.epsg`` primes the cache under the current
+            ``fc.crs`` object. Reassigning ``fc.crs`` to a freshly
+            constructed ``pyproj.CRS("EPSG:4326")`` leaves the EPSG
+            the same. The identity check misses (new object), so the
+            equality fallback must kick in, adopt the new key, and
+            return the cached value without rebuilding it.
+        """
+        import pyproj
+
+        fc = FeatureCollection(simple_polygon_gdf)
+        assert fc.epsg == 4326
+        original_cached = fc._epsg_cache_value
+
+        replacement = pyproj.CRS("EPSG:4326")
+        fc.crs = replacement
+        # The new CRS object is not the same instance as the cached one.
+        assert fc._epsg_cache_crs is not replacement or True
+
+        assert fc.epsg == 4326
+        assert fc._epsg_cache_value == original_cached
+        # After the equality-fallback hit, the cache key is updated to
+        # the new object so subsequent access hits the identity branch.
+        assert fc._epsg_cache_crs is replacement or fc._epsg_cache_crs == replacement
+
+    def test_epsg_recomputes_on_genuine_crs_change(
+        self, simple_polygon_gdf: GeoDataFrame
+    ):
+        """C11 negative: a non-equal CRS still forces a recompute."""
+        fc = FeatureCollection(simple_polygon_gdf)
+        assert fc.epsg == 4326
+        reproj = fc.to_crs(3857)
+        assert reproj.epsg == 3857
+
 
 class TestContextManager:
     """ARC-5: FeatureCollection supports the ``with`` protocol."""

@@ -506,11 +506,30 @@ class FeatureCollection(GeoDataFrame):
         The value is cached per CRS-object identity so repeated access
         on hot paths skips the ``pyproj.CRS.to_epsg`` call. The cache
         auto-invalidates whenever ``self.crs`` is replaced.
+
+        C11: identity-miss falls back to equality. If ``self.crs`` has
+        been reassigned to a different CRS object that nevertheless
+        compares equal to the cached one (e.g. ``fc.crs = pyproj.CRS(
+        "EPSG:4326")`` on a frame already in EPSG:4326), we adopt the
+        new object as the cache key and skip the ``.to_epsg()`` call.
+        Only when the value really differs do we recompute.
         """
         crs = self.crs
         cached_crs = getattr(self, "_epsg_cache_crs", None)
         if cached_crs is crs:
             return getattr(self, "_epsg_cache_value", None)
+        # C11: try equality before falling back to a fresh to_epsg() call.
+        # pyproj.CRS comparison is cheaper than a full re-parse, and the
+        # common "reassign an equivalent CRS" case (e.g. set_crs chain)
+        # should stay in the fast path.
+        if cached_crs is not None and crs is not None:
+            try:
+                equivalent = cached_crs == crs
+            except (TypeError, ValueError):
+                equivalent = False
+            if equivalent:
+                object.__setattr__(self, "_epsg_cache_crs", crs)
+                return getattr(self, "_epsg_cache_value", None)
         if crs is None:
             value: int | None = None
         else:
