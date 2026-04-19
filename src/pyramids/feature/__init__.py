@@ -12,12 +12,13 @@ ARC-10 split the former single ``feature.py`` into a subpackage:
 
 from pyramids.feature.collection import FeatureCollection
 
-# DASK-40b: LazyFeatureCollection is only importable when the [parquet-lazy]
-# extra is installed. Narrow the guard to the import of dask_geopandas itself —
-# a broad `except ImportError` around the whole `_lazy_collection` import would
-# also swallow a SyntaxError or a missing pyproj and silently set the class to
-# None, which is worse than failing loudly. DASK-40c refines the public export
-# story if the sentinel proves noisy in practice.
+# DASK-40b / DASK-40c: LazyFeatureCollection is only importable when the
+# [parquet-lazy] extra is installed. Narrow the guard to the import of
+# dask_geopandas itself — a broad ``except ImportError`` around the whole
+# ``_lazy_collection`` import would also swallow a SyntaxError or a missing
+# pyproj and silently set the class to None, which is worse than failing
+# loudly. On minimal installs, consumer code using ``isinstance`` must guard:
+# ``if LazyFeatureCollection is not None and isinstance(x, LazyFeatureCollection): ...``.
 try:
     import dask_geopandas  # noqa: F401
 except ImportError:  # pragma: no cover - minimal install without dask-geopandas
