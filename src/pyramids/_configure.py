@@ -159,3 +159,121 @@ def _register_worker_plugin(client: Any, env: dict[str, str]) -> None:
         client.register_plugin(plugin, name="pyramids-configure")
     except AttributeError:  # pragma: no cover - old dask API
         client.register_worker_plugin(plugin, name="pyramids-configure")
+
+
+def configure_lazy_vector(
+    *,
+    scheduler: str | None = None,
+    target_bytes_per_partition: int | None = None,
+    client: Any = None,
+) -> dict[str, Any]:
+    """Apply vector-side dask defaults for :class:`LazyFeatureCollection`.
+
+    ARC-V7: mirror of :func:`configure` for the raster side. Sets two
+    vector-specific defaults that matter for lazy-vector performance:
+
+    1. **Dask scheduler.** Shapely / GEOS ops hold the GIL, so the
+       default ``threads`` scheduler serialises geometry work to one
+       core. This helper can flip the global default to ``processes``
+       (or ``synchronous`` for debugging) via :func:`dask.config.set`
+       so subsequent ``.compute()`` calls use the right backend without
+       every caller remembering to pass ``scheduler=...``.
+    2. **Target bytes-per-partition.** Patches the module-level
+       ``_LAZY_TARGET_BYTES_PER_PARTITION`` constant used by
+       :func:`read_file(backend='dask')` to pick a default
+       ``npartitions`` from file size (ARC-V6). Users running on
+       machines with more RAM per worker can raise it; users on
+       memory-constrained workers should lower it.
+
+    The ``client`` kwarg registers a worker plugin that re-applies
+    both defaults on every worker — so a remote ``LocalCluster`` or
+    ``dask.distributed`` cluster ends up with a consistent vector-side
+    config, not just the driver process.
+
+    Args:
+        scheduler: One of ``"threads"``, ``"processes"``,
+            ``"synchronous"``, or ``"distributed"``. ``None`` leaves
+            the dask default unchanged.
+        target_bytes_per_partition: Override the 128 MiB
+            default that :func:`_resolve_lazy_partitioning` uses when
+            the caller supplies neither ``npartitions`` nor
+            ``chunksize``. ``None`` leaves it unchanged.
+        client: Optional :class:`dask.distributed.Client`. When given,
+            both settings propagate to every worker via a
+            :class:`WorkerPlugin`.
+
+    Returns:
+        dict: The settings that were applied (useful for logging and
+        for round-tripping to workers).
+
+    Examples:
+        - Set a process scheduler + 256 MiB partitions locally:
+            ```python
+            >>> from pyramids import configure_lazy_vector
+            >>> applied = configure_lazy_vector(
+            ...     scheduler="processes",
+            ...     target_bytes_per_partition=256 * 1024 * 1024,
+            ... )
+            >>> applied["scheduler"]
+            'processes'
+            >>> applied["target_bytes_per_partition"]
+            268435456
+
+            ```
+    """
+    applied: dict[str, Any] = {}
+    if scheduler is not None:
+        import dask
+
+        dask.config.set(scheduler=scheduler)
+        applied["scheduler"] = scheduler
+    if target_bytes_per_partition is not None:
+        from pyramids.feature import collection as _fc_mod
+
+        _fc_mod._LAZY_TARGET_BYTES_PER_PARTITION = int(
+            target_bytes_per_partition
+        )
+        applied["target_bytes_per_partition"] = int(
+            target_bytes_per_partition
+        )
+    logger.debug(
+        "configure_lazy_vector applied %d setting(s)", len(applied),
+    )
+    if client is not None:
+        _register_lazy_vector_worker_plugin(client, applied)
+    return applied
+
+
+def _register_lazy_vector_worker_plugin(
+    client: Any, settings: dict[str, Any],
+) -> None:
+    """Replay :func:`configure_lazy_vector` settings on every dask worker."""
+    from dask.distributed import WorkerPlugin
+
+    class PyramidsLazyVectorPlugin(WorkerPlugin):
+        """Apply configure_lazy_vector settings on every dask worker."""
+
+        name = "pyramids-configure-lazy-vector"
+
+        def __init__(self, settings: dict[str, Any]) -> None:
+            self._settings = settings
+
+        def setup(self, worker: Any) -> None:  # pragma: no cover - on workers
+            if "scheduler" in self._settings:
+                import dask
+
+                dask.config.set(scheduler=self._settings["scheduler"])
+            if "target_bytes_per_partition" in self._settings:
+                from pyramids.feature import collection as _fc_mod
+
+                _fc_mod._LAZY_TARGET_BYTES_PER_PARTITION = int(
+                    self._settings["target_bytes_per_partition"]
+                )
+
+    plugin = PyramidsLazyVectorPlugin(settings)
+    try:
+        client.register_plugin(plugin, name="pyramids-configure-lazy-vector")
+    except AttributeError:  # pragma: no cover - old dask API
+        client.register_worker_plugin(
+            plugin, name="pyramids-configure-lazy-vector",
+        )

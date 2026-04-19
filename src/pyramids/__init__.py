@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pyramids.base.config import Config
-from pyramids._configure import configure
+from pyramids._configure import configure, configure_lazy_vector
 
 
 from importlib.metadata import PackageNotFoundError
@@ -17,4 +17,4 @@ except PackageNotFoundError:  # pragma: no cover
 config = Config()
 
 
-__all__ = ["configure", "config", "__version__"]
+__all__ = ["configure", "configure_lazy_vector", "config", "__version__"]
