@@ -35,11 +35,11 @@ def get_xy_coords(geometry: Any, coord_type: str) -> list:
     Raises:
         ValueError: If ``coord_type`` is not ``"x"`` or ``"y"``.
     """
-    if coord_type == "x":
-        return list(geometry.coords.xy[0].tolist())
-    if coord_type == "y":
-        return list(geometry.coords.xy[1].tolist())
-    raise ValueError("coord_type can only have a value of 'x' or 'y'")
+    # D-L6: single-return via axis index lookup.
+    axis = {"x": 0, "y": 1}
+    if coord_type not in axis:
+        raise ValueError("coord_type can only have a value of 'x' or 'y'")
+    return list(geometry.coords.xy[axis[coord_type]].tolist())
 
 
 def get_point_coords(geometry: Point, coord_type: str) -> float | int:
@@ -55,11 +55,11 @@ def get_point_coords(geometry: Point, coord_type: str) -> float | int:
     Raises:
         ValueError: If ``coord_type`` is not ``"x"`` or ``"y"``.
     """
-    if coord_type == "x":
-        return float(geometry.x)
-    if coord_type == "y":
-        return float(geometry.y)
-    raise ValueError("coord_type can only have a value of 'x' or 'y'")
+    # D-L6: single-return via attribute dispatch.
+    accessor = {"x": geometry.x, "y": geometry.y}
+    if coord_type not in accessor:
+        raise ValueError("coord_type can only have a value of 'x' or 'y'")
+    return float(accessor[coord_type])
 
 
 def get_line_coords(geometry: LineString, coord_type: str) -> list:
@@ -97,24 +97,29 @@ def explode_gdf(
     """
     # D-H1: work against a copy so the caller's frame is untouched.
     gdf = gdf.copy()
-    new_gdf = gpd.GeoDataFrame()
+    # D-L2: accumulate per-child rows into a Python list and do ONE
+    # final ``pd.concat`` at the end. The old implementation rebuilt
+    # ``new_gdf`` on every iteration via ``pd.concat([new_gdf, row]*n)``,
+    # producing O(N²) copying on multi-geometry-heavy frames.
+    exploded_rows: list = []
     to_drop: list[int] = []
     for idx, row in gdf.iterrows():
         geom_type = row.geometry.geom_type.lower()
         if geom_type == geometry:
-            n_rows = len(row.geometry.geoms)
-            new_gdf = gpd.GeoDataFrame(pd.concat([new_gdf] + [row] * n_rows))
-            new_gdf.reset_index(drop=True, inplace=True)
-            new_gdf.columns = row.index.values
-            for geom in range(n_rows):
-                new_gdf.loc[geom, "geometry"] = row.geometry.geoms[geom]
+            for child in row.geometry.geoms:
+                new_row = row.copy()
+                new_row["geometry"] = child
+                exploded_rows.append(new_row)
             to_drop.append(idx)
 
     gdf = gdf.drop(labels=to_drop, axis=0)
-    new_gdf = gpd.GeoDataFrame(pd.concat([gdf] + [new_gdf]))
-    new_gdf.reset_index(drop=True, inplace=True)
-    new_gdf.columns = gdf.columns
-    return new_gdf
+    if exploded_rows:
+        exploded_gdf = gpd.GeoDataFrame(exploded_rows).reset_index(drop=True)
+        result = gpd.GeoDataFrame(pd.concat([gdf, exploded_gdf]))
+    else:
+        result = gdf
+    result.reset_index(drop=True, inplace=True)
+    return result
 
 
 def multi_geom_handler(

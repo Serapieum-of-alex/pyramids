@@ -42,6 +42,11 @@ from pyramids.feature import geometry as _geom
 CATALOG = Catalog(raster_driver=False)
 gdal.UseExceptions()
 
+# D-L3: default per-chunk batch size for ``iter_features`` when the
+# user does not pass ``chunksize``. 1000 rows balances pyogrio overhead
+# against memory headroom on a typical development machine.
+_DEFAULT_ITER_BATCH_SIZE: int = 1000
+
 
 def _require_pyarrow() -> None:
     """Raise a pyramids-branded ImportError if pyarrow is absent (D-M5).
@@ -426,7 +431,7 @@ class FeatureCollection(GeoDataFrame):
         total = int(info["features"])
 
         if chunksize is None:
-            batch_size = 1000
+            batch_size = _DEFAULT_ITER_BATCH_SIZE
         else:
             batch_size = int(chunksize)
 

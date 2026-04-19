@@ -784,7 +784,6 @@ class Dataset(  # type: ignore[misc]
             columns = int(np.ceil((xmax - xmin) / cell_size))
             rows = int(np.ceil((ymax - ymin) / cell_size))
 
-        burn_values = None
         if column_name is None:
             column_name = [c for c in features.columns if c != "geometry"]
 
@@ -850,7 +849,7 @@ class Dataset(  # type: ignore[misc]
             for ind, band in enumerate(bands):
                 rasterize_opts = gdal.RasterizeOptions(
                     bands=[band],
-                    burnValues=burn_values,
+                    burnValues=None,
                     attribute=(
                         attribute[ind]
                         if isinstance(attribute, list)
