@@ -403,3 +403,35 @@ class TestIterFeaturesIncludeIndex:
         )
         ids = [int(c["_row_index"].iloc[0]) for c in chunks]
         assert ids == list(range(len(ids)))
+
+
+class TestIterFeaturesEnginePin:
+    """D-M3: iter_features pins ``engine="pyogrio"`` on gpd.read_file.
+
+    ``skip_features`` / ``max_features`` are pyogrio-specific kwargs;
+    fiona silently ignores them, which would make every chunk a full
+    scan. The function must force the engine explicitly so a
+    ``geopandas.options.io_engine = "fiona"`` global doesn't quietly
+    break pagination.
+    """
+
+    def test_read_file_receives_engine_pyogrio(
+        self, larger_geojson: Path, monkeypatch
+    ):
+        captured: list = []
+        import geopandas
+
+        real_read_file = geopandas.read_file
+
+        def _spy(path, **kwargs):
+            captured.append(kwargs)
+            return real_read_file(path, **kwargs)
+
+        monkeypatch.setattr(geopandas, "read_file", _spy)
+        list(
+            FeatureCollection.iter_features(larger_geojson, chunksize=10)
+        )
+        assert captured, "gpd.read_file must be invoked at least once"
+        assert all(
+            k.get("engine") == "pyogrio" for k in captured
+        ), f"expected engine='pyogrio' in every call; got {captured}"

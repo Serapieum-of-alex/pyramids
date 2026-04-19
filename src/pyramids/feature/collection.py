@@ -378,7 +378,12 @@ class FeatureCollection(GeoDataFrame):
         else:
             batch_size = int(chunksize)
 
-        read_kwargs: dict[str, Any] = {}
+        # D-M3: pin the engine to pyogrio. ``skip_features`` /
+        # ``max_features`` are pyogrio-specific (geopandas' fiona
+        # engine silently ignores them, which would turn every chunk
+        # into a full scan). Pinning the engine makes the contract
+        # explicit and fails fast if pyogrio is absent.
+        read_kwargs: dict[str, Any] = {"engine": "pyogrio"}
         if layer is not None:
             read_kwargs["layer"] = layer
         if where is not None:
