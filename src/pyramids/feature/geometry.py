@@ -80,8 +80,14 @@ def explode_gdf(
     Rows whose geometry type matches ``geometry`` are expanded so that
     each child geometry becomes its own row.
 
+    D-H1: the input ``gdf`` is **not** mutated. Earlier versions
+    silently dropped the exploded rows from the caller's frame via
+    ``inplace=True`` — a caller that kept a handle to the input saw
+    its data change underneath them. The function now snapshots the
+    input up-front and returns a new frame.
+
     Args:
-        gdf (GeoDataFrame): The GeoDataFrame to process.
+        gdf (GeoDataFrame): The GeoDataFrame to process. Not mutated.
         geometry (str): The geometry type to explode
             (``"multipolygon"`` or ``"geometrycollection"``).
 
@@ -89,6 +95,8 @@ def explode_gdf(
         GeoDataFrame: A new GeoDataFrame with exploded rows first and
         the preserved (non-matching) rows after.
     """
+    # D-H1: work against a copy so the caller's frame is untouched.
+    gdf = gdf.copy()
     new_gdf = gpd.GeoDataFrame()
     to_drop: list[int] = []
     for idx, row in gdf.iterrows():
@@ -102,7 +110,7 @@ def explode_gdf(
                 new_gdf.loc[geom, "geometry"] = row.geometry.geoms[geom]
             to_drop.append(idx)
 
-    gdf.drop(labels=to_drop, axis=0, inplace=True)
+    gdf = gdf.drop(labels=to_drop, axis=0)
     new_gdf = gpd.GeoDataFrame(pd.concat([gdf] + [new_gdf]))
     new_gdf.reset_index(drop=True, inplace=True)
     new_gdf.columns = gdf.columns
@@ -185,12 +193,28 @@ def get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
         Any: Coordinates as ``list`` / ``float`` / ``int``.
 
     Raises:
-        ValueError: If the geometry is a ``MultiPolygon``. Explode
-            the frame with :func:`explode_gdf` first so that each
-            row is a single Polygon. This replaces the old
-            ``-9999`` sentinel (ARC-9).
+        InvalidGeometryError: If the geometry is a ``MultiPolygon``
+            (explode the frame with :func:`explode_gdf` first so that
+            each row is a single Polygon — this replaces the old
+            ``-9999`` sentinel), or if the geometry is **empty**
+            (``geom.is_empty``). C22 turned the silent ``(nan, nan)``
+            return into an explicit error so callers that need to
+            tolerate empty inputs filter them out beforehand.
     """
     geom = row[geom_col]
+    # C22: an empty shapely geometry previously surfaced as
+    # ``(nan, nan)`` via ``geom.x`` / ``geom.y`` (Points) or raised an
+    # opaque GEOSException. Raise a typed error so callers know to
+    # drop empty rows before calling this helper.
+    if geom.is_empty:
+        from pyramids.base._errors import InvalidGeometryError
+
+        raise InvalidGeometryError(
+            "get_coords received an empty geometry. Empty geometries "
+            "have no coordinates; filter them out of the GeoDataFrame "
+            "(e.g. ``gdf[~gdf.geometry.is_empty]``) before extracting "
+            "coordinates."
+        )
     gtype = geom.geom_type.lower()
     if gtype == "point":
         return get_point_coords(geom, coord_type)
@@ -218,13 +242,29 @@ def create_polygon(coords: list[tuple[float, float]]) -> Polygon:
     ARC-15: the return type is now unconditional — always a
     ``Polygon``. For the WKT string form use :func:`polygon_wkt`.
 
+    C21: validates that the ring has at least 3 distinct-capable
+    vertices. Shapely itself accepts 2-vertex input and produces an
+    invalid polygon; raising here surfaces the user error at the
+    point of origin.
+
     Args:
         coords (list[tuple[float, float]]): Sequence of ``(x, y)``
-            tuples forming the ring.
+            tuples forming the ring. Must have at least 3 vertices.
 
     Returns:
         Polygon: A shapely ``Polygon``.
+
+    Raises:
+        InvalidGeometryError: If ``coords`` has fewer than 3 vertices.
     """
+    if len(coords) < 3:
+        from pyramids.base._errors import InvalidGeometryError
+
+        raise InvalidGeometryError(
+            f"create_polygon requires at least 3 vertices; got "
+            f"{len(coords)}. A valid polygon ring needs three distinct "
+            f"corners."
+        )
     return Polygon(coords)
 
 

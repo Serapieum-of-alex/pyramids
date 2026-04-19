@@ -85,6 +85,24 @@ class TestCreatePolygon:
         assert "polygon_wkt" in str(deprecated[0].message)
         assert result == coordinates_wkt
 
+    def test_create_polygon_too_few_vertices_raises(self):
+        """C21: fewer than 3 vertices raises ``InvalidGeometryError``."""
+        import pytest as _pt
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        with _pt.raises(InvalidGeometryError, match="at least 3 vertices"):
+            FeatureCollection.create_polygon([(0, 0), (1, 1)])
+
+    def test_create_polygon_zero_vertices_raises(self):
+        """C21: empty input raises ``InvalidGeometryError``."""
+        import pytest as _pt
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        with _pt.raises(InvalidGeometryError, match="at least 3 vertices"):
+            FeatureCollection.create_polygon([])
+
 
 class TestCreatePoint:
     """ARC-15: create_points is the list form; point_collection is the FC form."""

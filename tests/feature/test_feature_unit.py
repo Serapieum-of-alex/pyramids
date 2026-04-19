@@ -360,6 +360,34 @@ class TestExplodeGdf:
         )
         assert len(result) == len(simple_polygon_gdf)
 
+    def test_input_gdf_not_mutated(self):
+        """D-H1: explode_gdf must not mutate the caller's GeoDataFrame.
+
+        Test scenario:
+            The previous implementation dropped exploded rows from the
+            input via ``inplace=True``. Callers holding a handle to
+            the input saw its rows disappear. Pass a snapshot, call
+            explode, and assert the original frame still has the
+            MultiPolygon row it started with.
+        """
+        poly1 = box(0.0, 0.0, 1.0, 1.0)
+        poly2 = box(2.0, 2.0, 3.0, 3.0)
+        mpoly = MultiPolygon([poly1, poly2])
+        single = box(10.0, 10.0, 11.0, 11.0)
+        gdf = gpd.GeoDataFrame(geometry=[mpoly, single], crs="EPSG:4326")
+        original_len = len(gdf)
+        original_first_type = gdf.geometry.iloc[0].geom_type
+
+        FeatureCollection._explode_gdf(gdf, geometry="multipolygon")
+
+        # Input row count + geometries are unchanged.
+        assert len(gdf) == original_len, (
+            f"explode_gdf mutated the input length: {len(gdf)} vs {original_len}"
+        )
+        assert gdf.geometry.iloc[0].geom_type == original_first_type, (
+            "explode_gdf mutated the first row's geometry in place"
+        )
+
 
 class TestMultiGeomHandler:
     """Tests for ``_multi_geom_handler``."""
@@ -491,6 +519,25 @@ class TestReprojectCoordinates:
                 [31.0, 32.0], [30.0], from_crs=4326, to_crs=3857
             )
 
+    def test_invalid_crs_raises_pyramids_crs_error(self):
+        """C23: malformed CRS raises pyramids ``CRSError``, not pyproj's.
+
+        Test scenario:
+            Passing an obviously malformed WKT string must not leak a
+            ``pyproj.exceptions.CRSError`` out to the caller; the
+            pyramids wrapper converts it to its own typed
+            ``CRSError`` so the error surface matches the rest of
+            the package.
+        """
+        from pyramids.base._errors import CRSError
+
+        with pytest.raises(CRSError, match="reproject_coordinates"):
+            FeatureCollection.reproject_coordinates(
+                [31.0], [30.0],
+                from_crs="not a valid wkt string",
+                to_crs=3857,
+            )
+
     def test_no_future_warning(self):
         """Must not emit pyproj FutureWarning (ARC-2 regression).
 
@@ -604,6 +651,24 @@ class TestGetCoords:
         assert len(result) == 1
         xs = result.loc[0, "x"]
         assert -9999.0 in xs, f"Real -9999 coord missing: {xs}"
+
+    def test_empty_point_raises_invalid_geometry(self):
+        """C22: an empty geometry raises ``InvalidGeometryError``.
+
+        Test scenario:
+            Empty shapely points previously surfaced either a
+            ``(nan, nan)`` tuple (via ``Point.x`` / ``Point.y``) or a
+            cryptic ``GEOSException``. Callers had no clean way to
+            tell them apart from legitimate coords. Now the function
+            raises a typed error telling them to filter first.
+        """
+        import pandas as pd
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        row = pd.Series({"geometry": Point()})  # empty
+        with pytest.raises(InvalidGeometryError, match="empty geometry"):
+            FeatureCollection._get_coords(row, "geometry", "x")
 
     def test_geometry_collection(self):
         import pandas as pd
