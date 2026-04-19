@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import random
 import time
-import uuid  # noqa: F401 — preserved for downstream compatibility
 from contextlib import contextmanager
 from typing import Iterator
 
