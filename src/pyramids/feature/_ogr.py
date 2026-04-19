@@ -15,7 +15,9 @@ Do not import this module from user code; its signatures are unstable.
 
 from __future__ import annotations
 
-import uuid
+import random
+import time
+import uuid  # noqa: F401 — preserved for downstream compatibility
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -27,11 +29,13 @@ from osgeo import gdal, ogr
 def _new_vsimem_path() -> str:
     """Return a fresh unique ``/vsimem/`` path for a GeoJSON serialization.
 
-    The path is unique per call (UUID4) so that concurrent internal
-    conversions cannot clobber each other's backing files.
+    The suffix is ``<time_ns>_<rand>`` (C35) — shorter than a UUID4 and
+    still collision-proof within a single process run: ``time.time_ns``
+    has nanosecond resolution and the random integer adds 20 bits of
+    tie-breaking for the same-nanosecond case.
 
     Returns:
-        str: A ``/vsimem/<uuid>.geojson`` path.
+        str: A ``/vsimem/<time>_<rand>.geojson`` path.
 
     Examples:
         - Check the shape of a freshly generated path:
@@ -44,9 +48,8 @@ def _new_vsimem_path() -> str:
             True
 
             ```
-        - Two successive calls return distinct paths (UUID4 collision is
-          astronomically unlikely) so concurrent conversions cannot
-          clobber each other:
+        - Two successive calls return distinct paths so concurrent
+          conversions cannot clobber each other:
             ```python
             >>> from pyramids.feature._ogr import _new_vsimem_path
             >>> p1 = _new_vsimem_path()
@@ -56,7 +59,7 @@ def _new_vsimem_path() -> str:
 
             ```
     """
-    return f"/vsimem/{uuid.uuid4()}.geojson"
+    return f"/vsimem/{time.time_ns()}_{random.randint(0, 999_999)}.geojson"
 
 
 @contextmanager

@@ -170,13 +170,18 @@ class FeatureCollection(GeoDataFrame):
         crs: Any = None,
         columns: list[str] | None = None,
     ) -> FeatureCollection:
-        """Build a FeatureCollection from GeoJSON-like feature dicts (ARC-28).
+        """Build a FeatureCollection from feature-shaped inputs (ARC-28).
 
         Delegates to :meth:`geopandas.GeoDataFrame.from_features` and
         wraps the result. Accepts any of the shapes that method
-        accepts — a list of GeoJSON feature dicts, any object
-        implementing ``__geo_interface__``, or an iterator that yields
-        such objects.
+        accepts:
+
+        * a list (or iterator) of GeoJSON feature dicts of the form
+          ``{"type": "Feature", "geometry": {...}, "properties": {...}}``,
+        * any object exposing ``__geo_interface__`` (shapely
+          geometries, fiona records, custom feature classes), or
+        * a bare ``FeatureCollection`` dict (``{"type":
+          "FeatureCollection", "features": [...]}``).
 
         Args:
             features (Iterable):
@@ -283,6 +288,50 @@ class FeatureCollection(GeoDataFrame):
                 column.
             ValueError: If ``orient`` is not one of the supported
                 values.
+
+        Examples:
+            - Per-row records with the default geometry key:
+                ```python
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> recs = [
+                ...     {"id": 1, "geometry": Point(0, 0)},
+                ...     {"id": 2, "geometry": Point(1, 1)},
+                ... ]
+                >>> fc = FeatureCollection.from_records(recs, crs=4326)
+                >>> len(fc)
+                2
+                >>> fc.epsg
+                4326
+
+                ```
+            - Custom geometry key via the ``geometry=`` kwarg:
+                ```python
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> recs = [
+                ...     {"id": 1, "geom": Point(0, 0)},
+                ...     {"id": 2, "geom": Point(1, 1)},
+                ... ]
+                >>> fc = FeatureCollection.from_records(
+                ...     recs, geometry="geom", crs=4326,
+                ... )
+                >>> fc.geometry.name
+                'geom'
+
+                ```
+            - Columnar dict via ``orient="list"``:
+                ```python
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> cols = {"id": [1, 2], "geometry": [Point(0, 0), Point(1, 1)]}
+                >>> fc = FeatureCollection.from_records(
+                ...     cols, orient="list", crs=4326,
+                ... )
+                >>> list(fc["id"])
+                [1, 2]
+
+                ```
         """
         import pandas as pd
 
@@ -292,6 +341,11 @@ class FeatureCollection(GeoDataFrame):
             records_list = list(records)
             if not records_list:
                 return cls(
+                    # D-N4: for an empty input the constructed frame
+                    # carries a single column whose name matches the
+                    # ``geometry=`` kwarg, so ``GeoDataFrame(..., geometry=…)``
+                    # sets it as the active geometry column and the
+                    # returned FC has ``geometry.name == geometry``.
                     gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
                 )
             df = pd.DataFrame.from_records(records_list)
@@ -308,6 +362,11 @@ class FeatureCollection(GeoDataFrame):
             df = pd.DataFrame(records)
             if len(df) == 0:
                 return cls(
+                    # D-N4: for an empty input the constructed frame
+                    # carries a single column whose name matches the
+                    # ``geometry=`` kwarg, so ``GeoDataFrame(..., geometry=…)``
+                    # sets it as the active geometry column and the
+                    # returned FC has ``geometry.name == geometry``.
                     gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
                 )
         else:
@@ -838,7 +897,12 @@ class FeatureCollection(GeoDataFrame):
 
         _require_pyarrow()
         resolved = _pyramids_io._parse_path(path)
-        passthrough: dict[str, Any] = dict(kwargs)
+        # D-N3: pin the engine to pyarrow so a future geopandas that
+        # adds a fastparquet path doesn't silently change our
+        # behaviour. Callers who want fastparquet can override by
+        # passing ``engine="fastparquet"`` as a kwarg.
+        passthrough: dict[str, Any] = {"engine": "pyarrow"}
+        passthrough.update(kwargs)
         if columns is not None:
             passthrough["columns"] = columns
         if bbox is not None:

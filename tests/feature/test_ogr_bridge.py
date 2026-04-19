@@ -125,20 +125,17 @@ class TestNewVsimemPath:
             f"Path must end with .geojson, got {path!r}"
         )
 
-    def test_embeds_uuid(self):
-        """The stem of the path must be a valid UUID4 hex sequence.
+    def test_stem_format(self):
+        """The stem is ``<time_ns>_<rand>`` (C35 — UUID4 replaced).
 
         Test scenario:
-            UUID4 collisions are astronomically unlikely, which is what
-            makes the bridge safe for concurrent internal conversions.
+            Shorter than UUID4 but still collision-proof per-process:
+            nanosecond timestamp + 20-bit random tie-break.
         """
         path = _new_vsimem_path()
         stem = path[len("/vsimem/"): -len(".geojson")]
-        uuid_re = re.compile(
-            r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-"
-            r"[0-9a-f]{12}$"
-        )
-        assert uuid_re.match(stem), f"Stem is not a UUID4: {stem!r}"
+        stem_re = re.compile(r"^\d+_\d+$")
+        assert stem_re.match(stem), f"unexpected stem format: {stem!r}"
 
     def test_unique_across_calls(self):
         """Successive calls must return distinct paths.
