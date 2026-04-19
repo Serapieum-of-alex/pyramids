@@ -679,6 +679,15 @@ class FeatureCollection(GeoDataFrame):
         "EPSG:4326")`` on a frame already in EPSG:4326), we adopt the
         new object as the cache key and skip the ``.to_epsg()`` call.
         Only when the value really differs do we recompute.
+
+        L2: the equality fallback is cheaper than a fresh
+        ``.to_epsg()`` (which re-parses the CRS) but it is not free —
+        ``pyproj.CRS.__eq__`` does a WKT2 string comparison. If a
+        future pandas/geopandas release stops returning the same
+        ``self.crs`` object identity across accesses, the fallback
+        runs on every ``fc.epsg`` and adds up on hot loops. Switch
+        the cache key to ``self.crs.to_wkt()`` if a profile ever
+        shows this dominating.
         """
         crs = self.crs
         cached_crs = getattr(self, "_epsg_cache_crs", None)
