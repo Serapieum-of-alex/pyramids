@@ -236,27 +236,39 @@ class FeatureCollection(GeoDataFrame):
     @classmethod
     def from_records(
         cls,
-        records: Iterable[dict],
+        records: Any,
         *,
         geometry: str = "geometry",
         crs: Any = None,
+        orient: str = "records",
     ) -> FeatureCollection:
         """Build a FeatureCollection from dict records (ARC-28).
 
-        Each record is a dict whose keys become column names; the
-        ``geometry`` key (name configurable) must hold a shapely
-        geometry. Useful for ingesting rows from an API response that
-        doesn't emit GeoJSON but already has shapely geoms.
+        Two input orientations are accepted (C26 added the second):
+
+        * ``orient="records"`` (default) — an iterable of per-row dicts,
+          each of the form ``{column: value, ..., geometry: <shapely>}``.
+          The dict's keys become column names; the key named by
+          ``geometry`` must hold a shapely geometry.
+        * ``orient="list"`` — a single columnar dict mapping each
+          column name to a list of values of equal length, for
+          example ``{"id": [1, 2], "geometry": [pt_a, pt_b]}``.
+
+        Useful for ingesting rows from an API response that doesn't
+        emit GeoJSON but already has shapely geoms.
 
         Args:
-            records (Iterable[dict]):
-                Iterable of ``{column: value, ..., geometry: <shapely>}``
-                dicts.
+            records:
+                Per-row iterable of dicts when ``orient="records"``, or a
+                single columnar dict when ``orient="list"``.
             geometry (str):
-                Name of the key holding the shapely geometry. Default
-                ``"geometry"``.
+                Name of the column / key holding the shapely geometry.
+                Default ``"geometry"``.
             crs:
                 CRS to attach (same forms as :meth:`from_features`).
+            orient (str):
+                ``"records"`` (default) or ``"list"`` — matches the
+                pandas ``from_dict``/``from_records`` conventions.
 
         Returns:
             FeatureCollection: A new FC with one row per record.
@@ -264,17 +276,39 @@ class FeatureCollection(GeoDataFrame):
         Raises:
             FeatureError: If a record is missing the ``geometry``
                 column.
+            ValueError: If ``orient`` is not one of the supported
+                values.
         """
         import pandas as pd
 
         from pyramids.base._errors import FeatureError
 
-        records_list = list(records)
-        if not records_list:
-            return cls(
-                gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
+        if orient == "records":
+            records_list = list(records)
+            if not records_list:
+                return cls(
+                    gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
+                )
+            df = pd.DataFrame.from_records(records_list)
+        elif orient == "list":
+            # C26: columnar dict of equal-length lists. Straight into
+            # ``pd.DataFrame`` which accepts this shape natively and
+            # raises ``ValueError`` on mismatched lengths (propagated
+            # to the caller as-is — the pandas message is already clear).
+            if not isinstance(records, dict):
+                raise ValueError(
+                    f"orient='list' expects a dict of column → list; "
+                    f"got {type(records).__name__}."
+                )
+            df = pd.DataFrame(records)
+            if len(df) == 0:
+                return cls(
+                    gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
+                )
+        else:
+            raise ValueError(
+                f"orient must be 'records' or 'list'; got {orient!r}."
             )
-        df = pd.DataFrame.from_records(records_list)
         if geometry not in df.columns:
             raise FeatureError(
                 f"records missing required geometry column {geometry!r}; "

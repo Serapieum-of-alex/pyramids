@@ -204,6 +204,61 @@ class TestFromRecords:
         fc = FeatureCollection.from_records([], crs=4326)
         assert len(fc) == 0
 
+    def test_orient_list_basic(self):
+        """C26: columnar dict input via ``orient="list"``."""
+        fc = FeatureCollection.from_records(
+            {
+                "id": [1, 2, 3],
+                "name": ["a", "b", "c"],
+                "geometry": [Point(0, 0), Point(1, 1), Point(2, 2)],
+            },
+            orient="list",
+            crs=4326,
+        )
+        assert isinstance(fc, FeatureCollection)
+        assert len(fc) == 3
+        assert list(fc["id"]) == [1, 2, 3]
+        assert fc.epsg == 4326
+
+    def test_orient_list_custom_geometry_column(self):
+        """C26: ``orient="list"`` honours a non-default geometry column."""
+        fc = FeatureCollection.from_records(
+            {
+                "v": [10, 20],
+                "geom": [Point(0, 0), Point(1, 1)],
+            },
+            orient="list",
+            geometry="geom",
+            crs=4326,
+        )
+        assert fc.geometry.name == "geom"
+        assert len(fc) == 2
+
+    def test_orient_list_empty(self):
+        """C26: empty columnar dict yields a zero-row FC."""
+        fc = FeatureCollection.from_records(
+            {"id": [], "geometry": []},
+            orient="list",
+            crs=4326,
+        )
+        assert len(fc) == 0
+
+    def test_orient_list_rejects_non_dict(self):
+        """C26: passing a list under ``orient="list"`` raises clearly."""
+        with pytest.raises(ValueError, match="dict of column"):
+            FeatureCollection.from_records(
+                [{"geometry": Point(0, 0)}],
+                orient="list",
+            )
+
+    def test_invalid_orient_raises(self):
+        """C26: unknown ``orient`` value is rejected."""
+        with pytest.raises(ValueError, match=r"records.*list"):
+            FeatureCollection.from_records(
+                [{"geometry": Point(0, 0)}],
+                orient="index",
+            )
+
 
 # ── ARC-25 : iter_features dict mode ────────────────────────────────
 
