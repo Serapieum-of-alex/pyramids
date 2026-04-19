@@ -161,7 +161,19 @@ def reproject_coordinates(
             f"x and y must have equal length; got len(x)={len(x)} "
             f"vs. len(y)={len(y)}."
         )
-    transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+    # C23: ``pyproj.Transformer.from_crs`` raises
+    # :class:`pyproj.exceptions.CRSError` on malformed CRS input. Wrap
+    # it in :class:`pyramids.base._errors.CRSError` so callers can
+    # catch pyramids' own typed exception without importing pyproj.
+    try:
+        transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+    except Exception as exc:
+        from pyramids.base._errors import CRSError as _CRSError
+
+        raise _CRSError(
+            f"reproject_coordinates failed to parse CRS "
+            f"(from_crs={from_crs!r}, to_crs={to_crs!r}): {exc}"
+        ) from exc
     xs = np.full(len(x), np.nan)
     ys = np.full(len(x), np.nan)
     for i in range(len(x)):
