@@ -69,6 +69,10 @@
          <lastmod>2026-04-19</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/dask-lazy-datasets/</loc>
+         <lastmod>2026-04-19</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/dataset/</loc>
          <lastmod>2026-04-19</lastmod>
     </url>
@@ -82,6 +86,18 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/spatial-operation-methods/</loc>
+         <lastmod>2026-04-19</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/feature/dask-lazy-features/</loc>
+         <lastmod>2026-04-19</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/netcdf/dask-lazy-netcdf/</loc>
+         <lastmod>2026-04-19</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/netcdf/ugrid/dask-lazy-ugrid/</loc>
          <lastmod>2026-04-19</lastmod>
     </url>
     <url>
