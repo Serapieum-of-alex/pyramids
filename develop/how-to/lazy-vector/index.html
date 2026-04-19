@@ -10,13 +10,9 @@
       
       
       
-        <link rel="canonical" href="https://serapeum-org.github.io/pyramids/develop/how-to/devcontainer/">
+        <link rel="canonical" href="https://serapeum-org.github.io/pyramids/develop/how-to/lazy-vector/">
       
       
-        <link rel="prev" href="../../examples/netcdf/ugrid/ugrid-river-channel/">
-      
-      
-        <link rel="next" href="../docker/">
       
       
         
@@ -27,7 +23,7 @@
     
     
       
-        <title>Dev Container - pyramids</title>
+        <title>Lazy vector reads — LazyFeatureCollection - pyramids</title>
       
     
     
@@ -83,7 +79,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#using-the-dev-container" class="md-skip">
+        <a href="#lazy-vector-reads-lazyfeaturecollection" class="md-skip">
           Skip to content
         </a>
       
@@ -123,7 +119,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Dev Container
+              Lazy vector reads — LazyFeatureCollection
             
           </span>
         </div>
@@ -376,13 +372,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../devcontainer/" class="md-tabs__link">
           
   
   
@@ -2505,29 +2499,24 @@
       
   
   
-    
   
   
-  
     
     
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -2545,7 +2534,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2560,37 +2549,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dev Container
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../devcontainer/" class="md-nav__link">
         
   
   
@@ -2606,180 +2568,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prerequisites
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#open-the-repository-in-the-dev-container" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Open the repository in the Dev Container
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#python-interpreter" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Python interpreter
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#running-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Running tests
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#working-with-notebooks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Working with notebooks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pre-commit-hooks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pre-commit hooks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#editable-install-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Editable install (optional)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rebuild-and-update" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rebuild and update
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#environment-variables-for-gdalproj" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Environment variables for GDAL/PROJ
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#debugging" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Debugging
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#github-codespaces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GitHub Codespaces
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#use-the-dev-container-in-pycharm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Use the Dev Container in PyCharm
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#whats-in-the-container" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What’s in the container?
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3326,10 +3114,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#which-reader-should-i-use" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        Which reader should I use?
       
     </span>
   </a>
@@ -3337,10 +3125,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#open-the-repository-in-the-dev-container" class="md-nav__link">
+  <a href="#before-you-benchmark-set-schedulerprocesses" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Open the repository in the Dev Container
+        ⚠ Before you benchmark: set scheduler="processes"
       
     </span>
   </a>
@@ -3348,10 +3136,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#python-interpreter" class="md-nav__link">
+  <a href="#when-to-use-backenddask" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Python interpreter
+        When to use backend="dask"
       
     </span>
   </a>
@@ -3359,10 +3147,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-tests" class="md-nav__link">
+  <a href="#which-ops-stay-lazy-vs-need-compute" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running tests
+        Which ops stay lazy vs need .compute()
       
     </span>
   </a>
@@ -3370,10 +3158,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#working-with-notebooks" class="md-nav__link">
+  <a href="#spatial_shuffle-sjoin-pruning-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Working with notebooks
+        spatial_shuffle → sjoin pruning workflow
       
     </span>
   </a>
@@ -3381,10 +3169,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pre-commit-hooks" class="md-nav__link">
+  <a href="#persist-for-interactive-workflows" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pre-commit hooks
+        .persist() for interactive workflows
       
     </span>
   </a>
@@ -3392,10 +3180,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#editable-install-optional" class="md-nav__link">
+  <a href="#writing-a-lazy-fc-back-to-disk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Editable install (optional)
+        Writing a lazy FC back to disk
       
     </span>
   </a>
@@ -3403,10 +3191,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rebuild-and-update" class="md-nav__link">
+  <a href="#total_bounds-is-lazy-and-honest-about-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Rebuild and update
+        total_bounds is lazy — and honest about it
       
     </span>
   </a>
@@ -3414,10 +3202,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#environment-variables-for-gdalproj" class="md-nav__link">
+  <a href="#minimal-install-guard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Environment variables for GDAL/PROJ
+        Minimal-install guard
       
     </span>
   </a>
@@ -3425,10 +3213,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#debugging" class="md-nav__link">
+  <a href="#interop-with-datasetzonal_stats" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Debugging
+        Interop with Dataset.zonal_stats
       
     </span>
   </a>
@@ -3436,43 +3224,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#github-codespaces" class="md-nav__link">
+  <a href="#install" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GitHub Codespaces
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#use-the-dev-container-in-pycharm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Use the Dev Container in PyCharm
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#whats-in-the-container" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What’s in the container?
+        Install
       
     </span>
   </a>
@@ -3496,7 +3251,7 @@
 
 
   
-    <a href="https://github.com/serapeum-org/pyramids/edit/master/docs/how-to/devcontainer.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/serapeum-org/pyramids/edit/master/docs/how-to/lazy-vector.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -3505,149 +3260,242 @@
     
       
     
-    <a href="https://github.com/serapeum-org/pyramids/raw/master/docs/how-to/devcontainer.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/serapeum-org/pyramids/raw/master/docs/how-to/lazy-vector.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="using-the-dev-container"><a class="toclink" href="#using-the-dev-container">Using the Dev Container</a><a class="headerlink" href="#using-the-dev-container" title="Permanent link">#</a></h1>
-<p>This guide explains how to develop this project inside a reproducible Dev Container. The Dev Container is configured to
-build from the repository Dockerfile (production stage) and provisions a complete GIS stack (GDAL/PROJ); development tools are available when <code>ENV_NAME=dev</code>.</p>
-<p>Key facts:
-- Image is built from the Dockerfile <code>production</code> stage with <code>ENV_NAME=default</code> so default (runtime) dependencies are included.
-- The Python environment lives at <code>/opt/venv</code>. VS Code is configured to use <code>/opt/venv/bin/python</code> automatically.
-- GDAL/PROJ environment variables are already set inside the container.
-- By default, the package is installed non-editably (production-like install). You can optionally enable editable installs
-for live code reloading (see below).
-- Dev tools like <code>pytest</code> and <code>pre-commit</code> are part of the Pixi <code>dev</code> environment. To include them by default, change <code>ENV_NAME</code> to <code>dev</code> in <code>.devcontainer/devcontainer.json</code> and rebuild; otherwise you can install them manually inside the container (e.g., <code>pip install -U pytest pre-commit</code>).</p>
-<h2 id="prerequisites"><a class="toclink" href="#prerequisites">Prerequisites</a><a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
-<p>Choose one of the following:
-- VS Code on your machine with the “Dev Containers” extension (or "Remote - Containers").
-- GitHub Codespaces (works similarly; the config is the same).</p>
-<p>You also need Docker running if you build locally.</p>
-<h2 id="open-the-repository-in-the-dev-container"><a class="toclink" href="#open-the-repository-in-the-dev-container">Open the repository in the Dev Container</a><a class="headerlink" href="#open-the-repository-in-the-dev-container" title="Permanent link">#</a></h2>
+<h1 id="lazy-vector-reads-lazyfeaturecollection"><a class="toclink" href="#lazy-vector-reads-lazyfeaturecollection">Lazy vector reads — <code>LazyFeatureCollection</code></a><a class="headerlink" href="#lazy-vector-reads-lazyfeaturecollection" title="Permanent link">#</a></h1>
+<p><code>FeatureCollection.read_file(path, backend="dask")</code> and
+<code>FeatureCollection.read_parquet(path, backend="dask")</code> return a
+<code>LazyFeatureCollection</code> — a subclass of <code>dask_geopandas.GeoDataFrame</code>
+that satisfies the <code>LazySpatialObject</code> protocol. Every partition-aware
+operation inherited from dask-geopandas (<code>to_crs</code>, <code>clip</code>, <code>sjoin</code>,
+<code>spatial_shuffle</code>) runs lazily; materialise with <code>.compute()</code> when you
+need eager rows.</p>
+<h2 id="which-reader-should-i-use"><a class="toclink" href="#which-reader-should-i-use">Which reader should I use?</a><a class="headerlink" href="#which-reader-should-i-use" title="Permanent link">#</a></h2>
+<p>Pick by what you have and what you're trying to do. All four entry
+points below start from the same user-facing
+<code>pyramids.feature.FeatureCollection</code> class so you don't need to learn
+a different API for each; the table just tells you which method to
+call.</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Small / medium GeoJSON / Shapefile / GeoPackage, fits in RAM</td>
+<td><code>FeatureCollection.read_file(path)</code> (eager)</td>
+</tr>
+<tr>
+<td>Large GeoJSON / Shapefile / GeoPackage you want to <em>partition</em></td>
+<td><code>FeatureCollection.read_file(path, backend="dask", npartitions=…)</code></td>
+</tr>
+<tr>
+<td>GeoParquet with <strong>pushdown filters</strong> (<code>filters=[…]</code>, <code>columns=[…]</code>, <code>split_row_groups=…</code>)</td>
+<td><code>FeatureCollection.read_parquet(path, backend="dask", filters=…)</code></td>
+</tr>
+<tr>
+<td>GeoParquet, small enough to load eagerly</td>
+<td><code>FeatureCollection.read_parquet(path)</code></td>
+</tr>
+<tr>
+<td>Streaming batches of Arrow records for a <strong>custom partitioner</strong> (no pyramids wrapper)</td>
+<td><code>FeatureCollection.open_arrow(path, batch_size=…)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Rules of thumb:</p>
 <ol>
-<li>Open the folder in VS Code.</li>
-<li>Run: Command Palette → "Dev Containers: Reopen in Container".</li>
-<li>The first run will build the image from your Dockerfile and then open the workspace in the container.</li>
-<li>Post-create step tries to install git hooks (<code>pre-commit install</code>) if <code>pre-commit</code> is available; otherwise install it (<code>pip install pre-commit</code>) or set <code>ENV_NAME</code> to <code>dev</code> in <code>.devcontainer/devcontainer.json</code> and rebuild.</li>
+<li><strong>If you have GeoParquet</strong>, prefer <code>read_parquet</code>. It pushes
+   <code>filters</code> / <code>columns</code> / row-group splits down to pyarrow — true I/O
+   savings. The <code>backend="dask"</code> variant parallelises row-group loads.</li>
+<li><strong>If you have GeoJSON / Shapefile / GeoPackage</strong>, <code>read_file</code> is
+   the only option. The dask backend doesn't accept filter kwargs
+   (dask-geopandas has no pushdown for those formats) — supplying
+   <code>bbox=</code> / <code>mask=</code> / etc. raises <code>ValueError</code>. Filter after
+   <code>.compute()</code> or pre-slice with <code>pyogrio</code> directly.</li>
+<li><strong>If you're building your own dask partitioner</strong> or streaming into
+   arrow-consuming code (polars, duckdb), <code>open_arrow</code> returns a
+   <code>pyarrow.RecordBatchReader</code> — no pyramids wrapping, no dask graph.</li>
 </ol>
-<p>Tip: The first build can take a while because it resolves the Pixi environment and installs GDAL/PROJ.</p>
-<h2 id="python-interpreter"><a class="toclink" href="#python-interpreter">Python interpreter</a><a class="headerlink" href="#python-interpreter" title="Permanent link">#</a></h2>
-<ul>
-<li>VS Code is set to use: <code>/opt/venv/bin/python</code>.</li>
-<li>You can confirm in VS Code settings or by running <code>which python</code> (Linux-style path inside the container):
-  <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>which<span class="w"> </span>python
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>-V
-</code></pre></div></li>
-</ul>
-<h2 id="running-tests"><a class="toclink" href="#running-tests">Running tests</a><a class="headerlink" href="#running-tests" title="Permanent link">#</a></h2>
-<ul>
-<li>From the integrated terminal in the container:
-  <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;not plot&quot;</span><span class="w"> </span>-vvv
-</code></pre></div></li>
-<li>VS Code Testing UI is already enabled for pytest.</li>
-<li>If pytest is not found (because <code>ENV_NAME=default</code> excludes dev tools), either install it (<code>pip install -U pytest</code>) or set <code>ENV_NAME</code> to <code>dev</code> in <code>.devcontainer/devcontainer.json</code> and rebuild.</li>
-</ul>
-<h2 id="working-with-notebooks"><a class="toclink" href="#working-with-notebooks">Working with notebooks</a><a class="headerlink" href="#working-with-notebooks" title="Permanent link">#</a></h2>
-<ul>
-<li>Jupyter extension is installed. Open a notebook and select the kernel at <code>/opt/venv/bin/python</code> if not already selected.</li>
-</ul>
-<h2 id="pre-commit-hooks"><a class="toclink" href="#pre-commit-hooks">Pre-commit hooks</a><a class="headerlink" href="#pre-commit-hooks" title="Permanent link">#</a></h2>
-<ul>
-<li>Hooks are installed on first container create: <code>pre-commit install</code>.</li>
-<li>You can run them manually:
-  <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files
-</code></pre></div></li>
-</ul>
-<h2 id="editable-install-optional"><a class="toclink" href="#editable-install-optional">Editable install (optional)</a><a class="headerlink" href="#editable-install-optional" title="Permanent link">#</a></h2>
-<p>By default the Dockerfile enforces a non-editable install for a production-like environment. This means code edits in <code>src/</code> may not immediately reflect in the runtime environment.</p>
-<p>If you prefer a live dev workflow inside the container:
-1. Open a terminal in the container.
-2. Run:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>uninstall<span class="w"> </span>-y<span class="w"> </span>pyramids-gis<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+<h2 id="before-you-benchmark-set-schedulerprocesses"><a class="toclink" href="#before-you-benchmark-set-schedulerprocesses">⚠ Before you benchmark: set <code>scheduler="processes"</code></a><a class="headerlink" href="#before-you-benchmark-set-schedulerprocesses" title="Permanent link">#</a></h2>
+<p>Shapely and GEOS hold the Python GIL. Under dask's <strong>default threaded</strong>
+scheduler, <code>map_partitions</code> on geometry ops runs single-core. If your
+benchmark shows the dask backend <em>slower</em> than pandas, that is almost
+always why.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">dask</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s2">&quot;processes&quot;</span><span class="p">)</span>   <span class="c1"># process-based, no GIL contention</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># or spin up an explicit cluster:</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">dask.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalCluster</span><span class="p">,</span> <span class="n">Client</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCluster</span><span class="p">(</span><span class="n">n_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
 </code></pre></div>
-3. Now changes under <code>src/</code> are reflected without rebuilding the image.</p>
-<p>Note: If you rebuild the container image, it will revert to the default non-editable install.</p>
-<h2 id="rebuild-and-update"><a class="toclink" href="#rebuild-and-update">Rebuild and update</a><a class="headerlink" href="#rebuild-and-update" title="Permanent link">#</a></h2>
+<p>Set one of these <strong>before</strong> issuing the first <code>.compute()</code> call. Without
+it, the lazy API still works, but the speedup you expect won't appear.</p>
+<h2 id="when-to-use-backenddask"><a class="toclink" href="#when-to-use-backenddask">When to use <code>backend="dask"</code></a><a class="headerlink" href="#when-to-use-backenddask" title="Permanent link">#</a></h2>
+<p>Rule of thumb:</p>
 <ul>
-<li>After changing dependencies (pyproject.toml), rebuild the container to capture them:</li>
-<li>VS Code Command Palette → "Dev Containers: Rebuild Container".</li>
-<li>If caching causes trouble, do a no-cache rebuild via the Dev Containers UI or remove the prior image.</li>
+<li><strong>&gt; 500 MB GeoDataFrame</strong>, or <strong>&gt; 10 million rows</strong> — the partitioned
+  read wins.</li>
+<li>Smaller than that, the eager path is faster because it avoids the
+  partitioning cost.</li>
+<li>Anything that materialises rows (<code>.iloc</code>, <code>.loc</code>, <code>len</code>, <code>.plot</code>,
+  <code>.to_file</code> for OGR drivers) forces a compute. Don't go lazy just to
+  immediately materialise.</li>
 </ul>
-<h2 id="environment-variables-for-gdalproj"><a class="toclink" href="#environment-variables-for-gdalproj">Environment variables for GDAL/PROJ</a><a class="headerlink" href="#environment-variables-for-gdalproj" title="Permanent link">#</a></h2>
-<p>The Dockerfile’s <code>production</code> stage sets these for you:
-- <code>PATH=/opt/venv/bin:...</code>
-- <code>LD_LIBRARY_PATH=/opt/venv/lib:...</code>
-- <code>GDAL_DATA=/opt/venv/share/gdal</code>
-- <code>PROJ_LIB=/opt/venv/share/proj</code>
-- <code>PYTHONNOUSERSITE=1</code></p>
-<p>You normally don’t need to change them.</p>
-<h2 id="debugging"><a class="toclink" href="#debugging">Debugging</a><a class="headerlink" href="#debugging" title="Permanent link">#</a></h2>
-<ul>
-<li>Use VS Code’s debugger with the Python extension; it will use <code>/opt/venv/bin/python</code>.</li>
-<li>For CLI scripts, add a launch configuration or use the "Run and Debug" panel.</li>
-</ul>
-<h2 id="github-codespaces"><a class="toclink" href="#github-codespaces">GitHub Codespaces</a><a class="headerlink" href="#github-codespaces" title="Permanent link">#</a></h2>
-<ul>
-<li>This configuration also works in Codespaces. Open the repo in a Codespace; it will build and use the same container image settings.</li>
-</ul>
-<h2 id="troubleshooting"><a class="toclink" href="#troubleshooting">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
-<ul>
-<li>Build is slow or fails on GDAL/PROJ:</li>
-<li>Ensure Docker has enough RAM/CPU.</li>
-<li>Try a rebuild without cache.</li>
-<li>Changes in code not reflected:</li>
-<li>Use the editable install approach above or rebuild the container.</li>
-<li>Disk space issues:</li>
-<li>Remove old images/containers or increase Docker disk allocation.</li>
-<li>Interpreter mismatch in VS Code:</li>
-<li>Set Python interpreter to <code>/opt/venv/bin/python</code> (Command Palette → Python: Select Interpreter).</li>
-</ul>
-<h2 id="use-the-dev-container-in-pycharm"><a class="toclink" href="#use-the-dev-container-in-pycharm">Use the Dev Container in PyCharm</a><a class="headerlink" href="#use-the-dev-container-in-pycharm" title="Permanent link">#</a></h2>
-<p>You can use this same Dev Container from PyCharm in two ways.</p>
-<p>Prerequisites:
-- PyCharm Professional 2023.3+ (recommended 2024.1 or newer)
-- Docker Desktop running
-- Install the JetBrains plugin: "Dev Containers" (Settings → Plugins → Marketplace → search "Dev Containers" → Install)</p>
-<p>Option A — Open the project via the Dev Containers plugin (recommended):
-1. File → remote development → dev container → New dev container → select from local Project → then select the
-   devcontainer file .devcontainer/devcontainer.json).
-2. Once you select the devcontainer file, the plugin will build the image from the Dockerfile and the <code>Services</code> tab
-   will open and display the build progress.
-<img alt="build-log" src="../../_images/development/dev-container-build-log.png" />
-3. Once the build is done you can open the project in the container.
-<img alt="build-finished" src="../../_images/development/dev-container-build-finished.png" />
-3. The plugin will build from .devcontainer/devcontainer.json (ENV_NAME=default; target is the final production stage) and open the workspace inside the container at <code>/workspaces/&lt;repo&gt;</code>.
-4. PyCharm will detect the interpreter inside the container. If needed, set it explicitly to <code>/opt/venv/bin/python</code>:
-   - Settings → Project → Python Interpreter → gear icon → Add… → Dev Container → pick the running devcontainer → Interpreter path: <code>/opt/venv/bin/python</code>.
-5. Run/Debug configurations:
-   - Create a Python configuration using the container interpreter.
-   - For tests: Settings → Tools → Python Integrated Tools → Default test runner: pytest.
-   - Configure pytest: Settings → Tools → Python Integrated Tools → pytest → Additional arguments: <code>-m "not plot" -vvv</code>.
-6. Terminals opened in PyCharm will run inside the container (Tools → Terminal). Use <code>pytest</code> or any CLI as usual.</p>
-<p>Option B — Attach a Docker-based remote interpreter (without the plugin):
-1. Build and start the Dev Container once (e.g., via VS Code or <code>devcontainer up</code>) so the container exists.
-2. In PyCharm: Settings → Project → Python Interpreter → gear icon → Add… → Docker.
-3. Select Docker → "Container" and pick the running devcontainer container.
-4. Interpreter path: <code>/opt/venv/bin/python</code>.
-5. Apply. You can now run/debug and test within the container environment.</p>
-<p>Notes and tips for PyCharm:
-- Workspace path inside container: <code>/workspaces/${localWorkspaceFolderBasename}</code> (as per devcontainer.json). PyCharm will map your local project to this path automatically when using the Dev Containers plugin.
-- Pre-commit hooks are installed by the container on first create (<code>pre-commit install</code>). You can run them in PyCharm’s terminal: <code>pre-commit run --all-files</code>.
-- Notebooks: PyCharm Pro supports Jupyter. Select the same interpreter <code>/opt/venv/bin/python</code> for the notebook kernel.
-- Rebuild the container after dependency changes: Tools → Dev Containers → Rebuild (or rebuild via VS Code). This ensures the image picks up changes from pyproject.toml.
-- If you see missing GDAL/PROJ or shared library errors, verify the interpreter path is <code>/opt/venv/bin/python</code> and that the container you’re attaching to is the devcontainer defined by this repo.</p>
-<h2 id="whats-in-the-container"><a class="toclink" href="#whats-in-the-container">What’s in the container?</a><a class="headerlink" href="#whats-in-the-container" title="Permanent link">#</a></h2>
-<ul>
-<li>Editor tooling: Ruff/Pylance extensions are preinstalled for VS Code; in PyCharm, use built-in inspections/formatters or plugins as desired.</li>
-<li>Dev tools: pytest, pre-commit, and Jupyter are available when using <code>ENV_NAME=dev</code> or can be installed via <code>pip</code> inside the container.</li>
-<li>GIS stack: GDAL, PROJ and related libs, aligned with conda-forge packages solved by Pixi during the image build.</li>
-</ul>
-<p>If you want a different balance between dev convenience and production parity (e.g., always editable installs), let us know and we can adjust the devcontainer configuration accordingly.</p>
+<h2 id="which-ops-stay-lazy-vs-need-compute"><a class="toclink" href="#which-ops-stay-lazy-vs-need-compute">Which ops stay lazy vs need <code>.compute()</code></a><a class="headerlink" href="#which-ops-stay-lazy-vs-need-compute" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Runs lazily on <code>LazyFeatureCollection</code></th>
+<th>Requires <code>.compute()</code> first</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>to_crs</code>, <code>clip</code>, <code>sjoin</code> (partition-pruned if <code>spatial_partitions</code> set)</td>
+<td><code>.iloc</code>, <code>.loc</code>, <code>len</code></td>
+</tr>
+<tr>
+<td><code>spatial_shuffle</code></td>
+<td><code>.plot</code> (no lazy plotting path)</td>
+</tr>
+<tr>
+<td><code>.compute</code>, <code>.persist</code> (compute barriers)</td>
+<td><code>.to_file</code> (no lazy OGR write path)</td>
+</tr>
+<tr>
+<td>Any inherited <code>dask_geopandas.GeoDataFrame</code> method</td>
+<td>pyramids-specific methods (<code>extract_vertices</code>, <code>rasterize_with_col</code>, <code>with_coordinates</code>, <code>with_centroid</code>, <code>center_points</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The rule: if dask-geopandas has a lazy implementation, so does
+<code>LazyFeatureCollection</code>. Everything else — including every pyramids-specific
+method that walks geometries one by one — raises <code>AttributeError</code> on a
+lazy FC; call <code>.compute()</code> first.</p>
+<h2 id="spatial_shuffle-sjoin-pruning-workflow"><a class="toclink" href="#spatial_shuffle-sjoin-pruning-workflow"><code>spatial_shuffle</code> → <code>sjoin</code> pruning workflow</a><a class="headerlink" href="#spatial_shuffle-sjoin-pruning-workflow" title="Permanent link">#</a></h2>
+<p>The biggest speedup from going lazy comes from partition-pruned
+<code>sjoin</code> — each partition has a bounding box, and dask drops partition
+pairs that can't intersect before dispatching work. This requires the
+bounding boxes to actually exist:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureCollection</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># 1. Load both frames lazily.</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">left</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;census_blocks.parquet&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;dask&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">right</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;roads.parquet&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;dask&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># 2. Shuffle to populate spatial_partitions. This is a one-time cost</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1">#    amortised across subsequent sjoins with the same frame.</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">left_shuffled</span> <span class="o">=</span> <span class="n">left</span><span class="o">.</span><span class="n">spatial_shuffle</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="s2">&quot;hilbert&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">right_shuffled</span> <span class="o">=</span> <span class="n">right</span><span class="o">.</span><span class="n">spatial_shuffle</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="s2">&quot;hilbert&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># 3. Join. Dask drops partition pairs whose bboxes don&#39;t overlap.</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">joined</span> <span class="o">=</span> <span class="n">left_shuffled</span><span class="o">.</span><span class="n">sjoin</span><span class="p">(</span><span class="n">right_shuffled</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;inner&quot;</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="s2">&quot;intersects&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1"># 4. Materialise.</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">result</span> <span class="o">=</span> <span class="n">joined</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>   <span class="c1"># a FeatureCollection, not a bare GeoDataFrame</span>
+</code></pre></div>
+<p><code>.spatial_shuffle</code> is partially eager — it computes Hilbert distances for
+every row before rebuilding partitions. On 10 GB+ inputs, <code>.persist()</code> the
+result so subsequent reads don't recompute the shuffle graph.</p>
+<h2 id="persist-for-interactive-workflows"><a class="toclink" href="#persist-for-interactive-workflows"><code>.persist()</code> for interactive workflows</a><a class="headerlink" href="#persist-for-interactive-workflows" title="Permanent link">#</a></h2>
+<p><code>.compute()</code> materialises rows and returns an eager <code>FeatureCollection</code> —
+you leave the lazy domain. <code>.persist()</code> materialises the task graph into
+worker memory but keeps the lazy wrapper, so subsequent ops build on the
+persisted partitions without recomputing:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureCollection</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">lazy</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;large.parquet&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;dask&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">shuffled</span> <span class="o">=</span> <span class="n">lazy</span><span class="o">.</span><span class="n">spatial_shuffle</span><span class="p">()</span><span class="o">.</span><span class="n">persist</span><span class="p">()</span>   <span class="c1"># still lazy, but graph is warm</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1"># subsequent sjoin / clip calls benefit from the persisted shuffle:</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">hits</span> <span class="o">=</span> <span class="n">shuffled</span><span class="o">.</span><span class="n">sjoin</span><span class="p">(</span><span class="n">query_fc</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="s2">&quot;intersects&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="writing-a-lazy-fc-back-to-disk"><a class="toclink" href="#writing-a-lazy-fc-back-to-disk">Writing a lazy FC back to disk</a><a class="headerlink" href="#writing-a-lazy-fc-back-to-disk" title="Permanent link">#</a></h2>
+<p><code>LazyFeatureCollection.to_parquet(path)</code> is the only lazy-native write
+path. It writes a partitioned directory of <code>part.N.parquet</code> files and
+always blocks until every partition is materialised — <code>compute=False</code>
+is rejected to keep the pyramids "<code>to_*</code> always writes" invariant. All
+other kwargs (<code>compression=</code>, <code>write_index=</code>, <code>storage_options=</code>) pass
+through to <code>dask_geopandas.GeoDataFrame.to_parquet</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">lfc</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;in.parquet&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;dask&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">lfc</span><span class="o">.</span><span class="n">spatial_shuffle</span><span class="p">()</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="s2">&quot;out.parquet&quot;</span><span class="p">)</span>  <span class="c1"># partitioned directory</span>
+</code></pre></div>
+<p><code>to_file()</code> is NOT lazy — it raises <code>NotImplementedError</code> because
+dask-geopandas has no lazy OGR write path. Call <code>.compute().to_file(path)</code>
+to materialise first.</p>
+<h2 id="total_bounds-is-lazy-and-honest-about-it"><a class="toclink" href="#total_bounds-is-lazy-and-honest-about-it"><code>total_bounds</code> is lazy — and honest about it</a><a class="headerlink" href="#total_bounds-is-lazy-and-honest-about-it" title="Permanent link">#</a></h2>
+<p><code>LazyFeatureCollection</code> inherits <code>total_bounds</code> from
+<code>dask_geopandas.GeoDataFrame</code>. That attribute returns a <strong>dask Scalar</strong>,
+not a numpy array of four floats. Indexing it returns another lazy
+object:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">lfc</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;points.parquet&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;dask&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">lfc</span><span class="o">.</span><span class="n">total_bounds</span>           <span class="c1"># &lt;dask.Scalar ...&gt; — NOT a tuple</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">lfc</span><span class="o">.</span><span class="n">total_bounds</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span> <span class="c1"># → array([xmin, ymin, xmax, ymax])</span>
+</code></pre></div>
+<p>When you want concrete numbers, call <code>compute_total_bounds()</code> —
+self-documenting one-liner that makes the <code>O(partitions)</code> reduction
+explicit at the call site:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">xmin</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymax</span> <span class="o">=</span> <span class="n">lfc</span><span class="o">.</span><span class="n">compute_total_bounds</span><span class="p">()</span>
+</code></pre></div>
+<p><code>LazyFeatureCollection</code> <strong>does not</strong> expose the eager
+<code>top_left_corner</code> property (it used to, by silently calling
+<code>.compute()</code> inside the property — that leaked the laziness). For
+generic code that needs to accept both eager and lazy FCs, type-check
+against <code>SpatialObject | LazySpatialObject</code> from
+<code>pyramids.base.protocols</code> and branch on
+<code>pyramids.feature.is_lazy_fc(x)</code> before touching bounds.</p>
+<h2 id="minimal-install-guard"><a class="toclink" href="#minimal-install-guard">Minimal-install guard</a><a class="headerlink" href="#minimal-install-guard" title="Permanent link">#</a></h2>
+<p>On installs without the <code>[parquet-lazy]</code> extra (i.e. no <code>dask-geopandas</code>),
+<code>from pyramids.feature import LazyFeatureCollection</code> raises an
+<code>ImportError</code> with an actionable install hint — good UX for users who
+just want to know why their code failed. Library authors writing
+dispatch code that must run on both minimal and full installs wrap the
+import in a <code>try/except</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">LazyFeatureCollection</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">LazyFeatureCollection</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">if</span> <span class="n">LazyFeatureCollection</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">LazyFeatureCollection</span><span class="p">):</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="o">...</span>
+</code></pre></div>
+<p>Python 3's <code>hasattr</code> only catches <code>AttributeError</code>, so it does NOT
+return <code>False</code> here — the <code>ImportError</code> propagates. <code>try/except</code> is the
+correct guard. Typical user code doesn't need it: if you're working
+with lazy frames at all, you already have the extra installed and the
+direct import just works.</p>
+<h2 id="interop-with-datasetzonal_stats"><a class="toclink" href="#interop-with-datasetzonal_stats">Interop with <code>Dataset.zonal_stats</code></a><a class="headerlink" href="#interop-with-datasetzonal_stats" title="Permanent link">#</a></h2>
+<p>The raster-side <code>Dataset.zonal_stats(fc)</code> currently expects an eager
+<code>FeatureCollection</code>. Until a lazy path lands, call <code>.compute()</code> first:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureCollection</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">&quot;dem.tif&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">polys</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;zones.parquet&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;dask&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># must materialise for now:</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">stats</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">zonal_stats</span><span class="p">(</span><span class="n">polys</span><span class="o">.</span><span class="n">compute</span><span class="p">(),</span> <span class="n">stats</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;sum&quot;</span><span class="p">))</span>
+</code></pre></div>
+<p>A lazy <code>zonal_stats</code> that accepts a <code>LazyFeatureCollection</code> is tracked as a
+follow-up against DASK-25.</p>
+<h2 id="install"><a class="toclink" href="#install">Install</a><a class="headerlink" href="#install" title="Permanent link">#</a></h2>
+<p><code>LazyFeatureCollection</code> requires the <code>[parquet-lazy]</code> extra:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;pyramids-gis[parquet-lazy]&#39;</span>
+</code></pre></div>
+<p>That pulls <code>pyarrow</code>, <code>dask</code>, <code>dask-geopandas</code>, <code>zarr</code>, and <code>fsspec</code>.
+On minimal installs, <code>LazyFeatureCollection</code> is <code>None</code> and the dask
+branches of <code>read_file</code> / <code>read_parquet</code> raise <code>ImportError</code> with an
+actionable install hint.</p>
 
 
 
@@ -3678,44 +3526,6 @@ for live code reloading (see below).
       
         <footer class="md-footer">
   
-    
-      
-      <nav class="md-footer__inner md-grid" aria-label="Footer" >
-        
-          
-          <a href="../../examples/netcdf/ugrid/ugrid-river-channel/" class="md-footer__link md-footer__link--prev" aria-label="Previous: UGRID River Channel — Tidal Estuary Analysis">
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
-            </div>
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              <div class="md-ellipsis">
-                UGRID River Channel — Tidal Estuary Analysis
-              </div>
-            </div>
-          </a>
-        
-        
-          
-          <a href="../docker/" class="md-footer__link md-footer__link--next" aria-label="Next: Docker &amp; GHCR">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                Docker & GHCR
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
-            </div>
-          </a>
-        
-      </nav>
     
   
   <div class="md-footer-meta md-typeset">
