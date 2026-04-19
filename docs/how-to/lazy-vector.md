@@ -2,11 +2,41 @@
 
 `FeatureCollection.read_file(path, backend="dask")` and
 `FeatureCollection.read_parquet(path, backend="dask")` return a
-`LazyFeatureCollection` — a subclass of `dask_geopandas.GeoDataFrame` that
-satisfies pyramids' `SpatialObject` protocol. Every partition-aware
+`LazyFeatureCollection` — a subclass of `dask_geopandas.GeoDataFrame`
+that satisfies the `LazySpatialObject` protocol. Every partition-aware
 operation inherited from dask-geopandas (`to_crs`, `clip`, `sjoin`,
-`spatial_shuffle`) runs lazily; materialise with `.compute()` when you need
-eager rows.
+`spatial_shuffle`) runs lazily; materialise with `.compute()` when you
+need eager rows.
+
+## Which reader should I use?
+
+Pick by what you have and what you're trying to do. All four entry
+points below start from the same user-facing
+`pyramids.feature.FeatureCollection` class so you don't need to learn
+a different API for each; the table just tells you which method to
+call.
+
+| Situation | Use |
+|-----------|-----|
+| Small / medium GeoJSON / Shapefile / GeoPackage, fits in RAM | `FeatureCollection.read_file(path)` (eager) |
+| Large GeoJSON / Shapefile / GeoPackage you want to *partition* | `FeatureCollection.read_file(path, backend="dask", npartitions=…)` |
+| GeoParquet with **pushdown filters** (`filters=[…]`, `columns=[…]`, `split_row_groups=…`) | `FeatureCollection.read_parquet(path, backend="dask", filters=…)` |
+| GeoParquet, small enough to load eagerly | `FeatureCollection.read_parquet(path)` |
+| Streaming batches of Arrow records for a **custom partitioner** (no pyramids wrapper) | `FeatureCollection.open_arrow(path, batch_size=…)` |
+
+Rules of thumb:
+
+1. **If you have GeoParquet**, prefer `read_parquet`. It pushes
+   `filters` / `columns` / row-group splits down to pyarrow — true I/O
+   savings. The `backend="dask"` variant parallelises row-group loads.
+2. **If you have GeoJSON / Shapefile / GeoPackage**, `read_file` is
+   the only option. The dask backend doesn't accept filter kwargs
+   (dask-geopandas has no pushdown for those formats) — supplying
+   `bbox=` / `mask=` / etc. raises `ValueError`. Filter after
+   `.compute()` or pre-slice with `pyogrio` directly.
+3. **If you're building your own dask partitioner** or streaming into
+   arrow-consuming code (polars, duckdb), `open_arrow` returns a
+   `pyarrow.RecordBatchReader` — no pyramids wrapping, no dask graph.
 
 ## ⚠ Before you benchmark: set `scheduler="processes"`
 
