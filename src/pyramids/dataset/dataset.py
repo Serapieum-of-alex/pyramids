@@ -152,7 +152,11 @@ class Dataset(  # type: ignore[misc]
     def epsg(self) -> int:
         """EPSG number."""
         crs = self.raster.GetProjection()
-        return FeatureCollection.get_epsg_from_prj(crs)
+        # ARC-7: get_epsg_from_prj now raises on empty input; preserve
+        # the historical 4326 fallback here so rasters with an empty
+        # projection (common for in-memory NetCDF slices) still report
+        # a stable EPSG.
+        return FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
 
     @epsg.setter
     def epsg(self, value: int):
@@ -359,6 +363,18 @@ class Dataset(  # type: ignore[misc]
             - Dataset.bounds: Dataset bounding polygon.
         """
         return self._calculate_bbox()
+
+    @property
+    def total_bounds(self) -> np.ndarray:
+        """Bounding box ``[minx, miny, maxx, maxy]`` as a NumPy array.
+
+        ARC-17 introduced this property so that ``Dataset`` and
+        :class:`pyramids.feature.FeatureCollection` expose the same
+        shape (``GeoDataFrame.total_bounds`` is the geopandas name
+        for exactly this array), letting both classes satisfy the
+        :class:`pyramids.base.protocols.SpatialObject` protocol.
+        """
+        return np.asarray(self._calculate_bbox())
 
     @property
     def lon(self) -> np.ndarray:
@@ -645,6 +661,221 @@ class Dataset(  # type: ignore[misc]
             dst._set_no_data_value(no_data_value=no_data_value)
 
         return dst
+
+    @classmethod
+    def from_features(
+        cls,
+        features: FeatureCollection,
+        *,
+        cell_size: Any | None = None,
+        template: Dataset | None = None,
+        column_name: str | list[str] | None = None,
+    ) -> Dataset:
+        """Rasterize a :class:`FeatureCollection` into a new :class:`Dataset`.
+
+        ARC-4: this classmethod replaces ``FeatureCollection.to_dataset``.
+        Moving the method here breaks the circular import that forced
+        the old code to do ``from pyramids.dataset import Dataset``
+        inside the method body (a CLAUDE.md violation).
+        ``pyramids.dataset`` already imports :class:`FeatureCollection`
+        at module level, so this direction is cycle-free.
+
+        Burns the values from ``column_name`` (or every attribute
+        column if ``None``) into a single-band or multi-band raster.
+        When a ``template`` Dataset is given, the output adopts its
+        geotransform, cell size, row/column count, and no-data value.
+        Otherwise ``cell_size`` controls the resolution and the extent
+        is derived from :attr:`FeatureCollection.total_bounds`.
+
+        Args:
+            features (FeatureCollection):
+                The vector to rasterize.
+            cell_size (int | float | None):
+                Cell size for the new raster. Required unless
+                ``template`` is given.
+            template (Dataset | None):
+                Optional template raster. When supplied, the output
+                inherits its geotransform and no-data value.
+            column_name (str | list[str] | None):
+                Attribute column(s) to burn as band values. ``None``
+                burns every non-geometry column as a separate band.
+
+        Returns:
+            Dataset: The burned raster. When the burn column is an
+            integer dtype and the template's no-data is ``None``, the
+            output raster's no-data is the class default sentinel
+            (``cls.default_no_data_value``) rather than ``NaN`` — NaN
+            cannot be stored in integer rasters without silent
+            coercion. Float-typed burn columns keep NaN as before.
+
+        Raises:
+            ValueError: Raised up front (before the raster is
+                allocated) in any of:
+
+                * neither ``cell_size`` nor ``template`` was given,
+                * ``cell_size`` is ``<= 0`` (D-M2),
+                * ``column_name`` is an empty list (D-M2),
+                * ``column_name`` names a column that isn't in
+                  ``features.columns`` — either as a string or inside
+                  a list (D-M2). The message lists the available
+                  columns to ease the fix.
+            TypeError: If ``template`` is not a pyramids ``Dataset``,
+                or if ``column_name`` is neither ``str``, ``list``,
+                nor ``None`` (M4 — a common slip is passing an int
+                by mistake; the typed error points at the input
+                type rather than the column-not-found path).
+            CRSError: If ``features.epsg`` is ``None`` (the vector
+                has no CRS), or if ``template`` is supplied and
+                ``template.epsg != features.epsg``. Raised before any
+                raster is allocated so callers fail fast.
+        """
+        # Avoid circular import at module-top by importing the OGR
+        # bridge here. This function belongs to dataset/, and the
+        # bridge lives under feature/, so this is a sibling-module
+        # import (cycle-free) not a self-reference.
+        from pyramids.feature import _ogr as _feature_ogr
+
+        if cell_size is None and template is None:
+            raise ValueError(
+                "You have to enter either cell size or Dataset object."
+            )
+        # D-M2: validate cell_size up front (non-positive breaks the
+        # non-template branch with divide-by-zero / negative shapes).
+        if cell_size is not None and cell_size <= 0:
+            raise ValueError(
+                f"cell_size must be positive; got {cell_size!r}."
+            )
+        # M4: type-check ``column_name`` up front so a caller passing
+        # an ``int`` (or any other non-str, non-list value) sees a
+        # typed TypeError instead of "column_name 123 is not in the
+        # FeatureCollection" which would misdirect them toward
+        # renaming a column.
+        if column_name is not None and not isinstance(column_name, (str, list)):
+            raise TypeError(
+                f"column_name must be str, list[str], or None; "
+                f"got {type(column_name).__name__}."
+            )
+
+        ds_epsg = features.epsg
+        # C5: both branches below feed ``ds_epsg`` into ``cls.create`` (via
+        # either the template path or the cell_size path). A CRS-less
+        # FeatureCollection would produce a raster with an undefined
+        # projection, which fails downstream in reproject / crop / overlay
+        # with cryptic GDAL errors. Fail fast with a typed CRSError.
+        if ds_epsg is None:
+            from pyramids.base._errors import CRSError
+
+            raise CRSError(
+                "FeatureCollection must have a CRS before rasterisation. "
+                "Set one via ``fc.set_crs('EPSG:...')`` or construct the FC "
+                "with ``crs='EPSG:...'``."
+            )
+        if template is not None:
+            if not isinstance(template, Dataset):
+                raise TypeError(
+                    "The template parameter must be a pyramids Dataset "
+                    "(see pyramids.dataset.Dataset.read_file)."
+                )
+            if template.epsg != ds_epsg:
+                from pyramids.base._errors import CRSError
+
+                raise CRSError(
+                    f"Dataset and vector are not the same EPSG. "
+                    f"{template.epsg} != {ds_epsg}"
+                )
+            xmin, ymax = template.top_left_corner
+            no_data_value = (
+                template.no_data_value[0]
+                if template.no_data_value[0] is not None
+                else np.nan
+            )
+            rows = template.rows
+            columns = template.columns
+            cell_size = template.cell_size
+        else:
+            xmin, ymin, xmax, ymax = features.total_bounds
+            no_data_value = cls.default_no_data_value
+            columns = int(np.ceil((xmax - xmin) / cell_size))
+            rows = int(np.ceil((ymax - ymin) / cell_size))
+
+        if column_name is None:
+            column_name = [c for c in features.columns if c != "geometry"]
+
+        # D-M2: validate column_name shape / membership before
+        # dereferencing into features.dtypes. An empty list used to
+        # IndexError inside the dtype lookup; an unknown name used to
+        # raise an opaque KeyError deep in pandas.
+        if isinstance(column_name, list):
+            if not column_name:
+                raise ValueError(
+                    "column_name list must be non-empty. Pass None to "
+                    "burn every non-geometry column, or name at least "
+                    "one column."
+                )
+            missing = [c for c in column_name if c not in features.columns]
+            if missing:
+                raise ValueError(
+                    f"column_name references columns not in the "
+                    f"FeatureCollection: {missing}. Available columns: "
+                    f"{list(features.columns)}."
+                )
+            numpy_dtype = features.dtypes[column_name[0]]
+        else:
+            if column_name not in features.columns:
+                raise ValueError(
+                    f"column_name {column_name!r} is not in the "
+                    f"FeatureCollection. Available columns: "
+                    f"{list(features.columns)}."
+                )
+            numpy_dtype = features.dtypes[column_name]
+
+        # C2: integer raster dtypes cannot represent NaN. If the template
+        # supplied None as no_data_value (defaulted to NaN above) and the
+        # burn column's dtype is integer, fall back to the class default
+        # sentinel so GDAL does not silently coerce NaN into an arbitrary
+        # integer value.
+        if np.issubdtype(numpy_dtype, np.integer):
+            try:
+                if np.isnan(no_data_value):
+                    no_data_value = cls.default_no_data_value
+            except (TypeError, ValueError):
+                pass
+
+        dtype = str(numpy_dtype)
+        attribute = column_name
+        top_left_corner = (xmin, ymax)
+        bands_count = 1 if not isinstance(attribute, list) else len(attribute)
+        cell_size_val: int | float = float(cell_size)
+
+        dataset_n = cls.create(
+            cell_size_val,
+            rows,
+            columns,
+            dtype,
+            bands_count,
+            top_left_corner,
+            ds_epsg,
+            no_data_value,
+        )
+
+        with _feature_ogr.as_datasource(features, gdal_dataset=True) as vector_ds:
+            bands = list(range(1, bands_count + 1))
+            for ind, band in enumerate(bands):
+                rasterize_opts = gdal.RasterizeOptions(
+                    bands=[band],
+                    burnValues=None,
+                    attribute=(
+                        attribute[ind]
+                        if isinstance(attribute, list)
+                        else attribute
+                    ),
+                    allTouched=True,
+                )
+                gdal.Rasterize(
+                    dataset_n.raster, vector_ds, options=rasterize_opts
+                )
+
+        return dataset_n
 
     @classmethod
     def create_from_array(  # type: ignore[override]

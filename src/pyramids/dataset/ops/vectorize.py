@@ -17,6 +17,7 @@ from pandas import DataFrame
 
 from pyramids.base._utils import gdal_to_ogr_dtype
 from pyramids.feature import FeatureCollection
+from pyramids.feature import _ogr as _feature_ogr
 
 if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
@@ -32,7 +33,10 @@ class Vectorize:
         gdal_band = self.raster.GetRasterBand(band + 1)
         srs = osr.SpatialReference(wkt=self.crs)
 
-        dst_ds = FeatureCollection.create_ds("memory")
+        # Build the OGR DataSource directly — FeatureCollection.create_ds
+        # was deleted because it exposed ogr.DataSource on the public API.
+        # Here the DataSource is purely local scratch space for gdal.Polygonize.
+        dst_ds = ogr.GetDriverByName("Memory").CreateDataSource("memData")
         if dst_ds is None:
             raise RuntimeError("Failed to create in-memory OGR DataSource")
         dst_layer = dst_ds.CreateLayer(col_name, srs=srs)
@@ -41,9 +45,7 @@ class Vectorize:
         dst_layer.CreateField(new_field)
         gdal.Polygonize(gdal_band, gdal_band, dst_layer, 0, [], callback=None)
 
-        vector = FeatureCollection(dst_ds)
-        gdf = vector._ds_to_gdf()
-        return gdf
+        return _feature_ogr.datasource_to_gdf(dst_ds)
 
     def to_feature_collection(
         self,

@@ -1,6 +1,19 @@
 ﻿# Change log
 
 
+## Unreleased
+
+### BREAKING CHANGE
+
+- `FeatureCollection.create_point(coords, epsg=...)` staticmethod removed
+  (D-H2). Use `FeatureCollection.create_points(coords)` for the list form or
+  `FeatureCollection.point_collection(coords, crs=...)` for the FC form.
+- `FeatureCollection.create_polygon(coords, wkt=True)` removed (D-H2). Pass
+  coords verbatim to `create_polygon` and use `polygon_wkt(wkt_string)` for
+  the WKT-string form.
+- `pyramids.feature.geometry.create_point_legacy` and `create_polygon_legacy`
+  soft-shims deleted (D-H2); see the ARC-15 refactor notes.
+
 ## 0.14.0 (2026-04-14)
 
 ### Feat

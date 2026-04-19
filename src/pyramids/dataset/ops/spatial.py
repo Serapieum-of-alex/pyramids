@@ -57,7 +57,11 @@ class Spatial:
         else:
             if crs is not None:
                 self.raster.SetProjection(crs)
-                self._epsg = FeatureCollection.get_epsg_from_prj(crs)
+                # ARC-7: fallback to 4326 when crs is an empty string
+                # (get_epsg_from_prj now raises in that case).
+                self._epsg = (
+                    FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
+                )
             elif epsg is not None:
                 sr = type(self)._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
@@ -168,7 +172,9 @@ class Spatial:
             int: EPSG number.
         """
         prj = self._get_crs()
-        epsg = FeatureCollection.get_epsg_from_prj(prj)
+        # ARC-7: get_epsg_from_prj now raises on empty input; keep the
+        # historical 4326 fallback for datasets without a projection.
+        epsg = FeatureCollection.get_epsg_from_prj(prj) if prj else 4326
 
         return epsg
 
@@ -383,8 +389,9 @@ class Spatial:
                 xs = [src_gt[0], src_gt[0] + src_gt[1] * src_x]
                 ys = [src_gt[3], src_gt[3] + src_gt[5] * src_y]
 
-                [uly, lry], [ulx, lrx] = FeatureCollection.reproject_points(
-                    ys, xs, from_epsg=src_epsg, to_epsg=to_epsg
+                # ARC-14: reproject_coordinates takes (x, y) and returns (x, y).
+                [ulx, lrx], [uly, lry] = FeatureCollection.reproject_coordinates(
+                    xs, ys, from_crs=src_epsg, to_crs=to_epsg
                 )
                 # old transform
                 # # transform the right upper corner point
@@ -408,8 +415,9 @@ class Spatial:
 
         if src_epsg != to_epsg:
             # transform the two-point coordinates to the new crs to calculate the new cell size
-            new_ys, new_xs = FeatureCollection.reproject_points(
-                ys, xs, from_epsg=src_epsg, to_epsg=to_epsg, precision=6
+            # ARC-14: reproject_coordinates takes (x, y) and returns (x, y).
+            new_xs, new_ys = FeatureCollection.reproject_coordinates(
+                xs, ys, from_crs=src_epsg, to_crs=to_epsg, precision=6
             )
         else:
             new_xs = xs
@@ -802,16 +810,11 @@ class Spatial:
                     f"The function takes only a FeatureCollection or GeoDataFrame, given {type(feature)}"
                 )
 
-        feature = feature._gdf_to_ds()
-        warp_options = gdal.WarpOptions(
-            format="VRT",
-            # outputBounds=feature.total_bounds,
-            cropToCutline=not touch,
-            cutlineDSName=feature.file_name,
-            # cutlineLayer=feature.layer_names[0],
-            multithread=True,
-        )
-        dst = gdal.Warp("", self.raster, options=warp_options)
+        # gdal.Warp's cutlineDSName needs a *path*; stage the vector in
+        # /vsimem/ through the internal OGR bridge. The path is unlinked
+        # automatically when the with-block exits.
+        from pyramids.feature import _ogr as _feature_ogr
+
         # Use the base Dataset class (not a subclass like NetCDF) for intermediate GDAL warp results
         # because _correct_wrap_cutline_error calls create_from_array which has different behavior in
         # subclasses.
@@ -819,10 +822,21 @@ class Spatial:
             c for c in type(self).__mro__
             if AbstractDataset in getattr(c, "__bases__", ())
         )
-        dst_obj = base_cls(dst)
 
-        if touch:
-            dst_obj = base_cls._correct_wrap_cutline_error(dst_obj)
+        # The warp output (VRT) may resolve the cutline lazily, so we must
+        # complete every access that could touch the cutline path inside
+        # the with-block that keeps that path alive.
+        with _feature_ogr.as_vsimem_path(feature) as cutline_path:
+            warp_options = gdal.WarpOptions(
+                format="VRT",
+                cropToCutline=not touch,
+                cutlineDSName=cutline_path,
+                multithread=True,
+            )
+            dst = gdal.Warp("", self.raster, options=warp_options)
+            dst_obj = base_cls(dst)
+            if touch:
+                dst_obj = base_cls._correct_wrap_cutline_error(dst_obj)
 
         return dst_obj
 

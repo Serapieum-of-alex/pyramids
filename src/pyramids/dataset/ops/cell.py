@@ -293,7 +293,7 @@ class Cell:
         epsg = self._get_epsg()
 
         coords_tuples = list(zip(coords[:, 0], coords[:, 1]))
-        points = FeatureCollection.create_point(coords_tuples)
+        points = FeatureCollection.create_points(coords_tuples)
         gdf = gpd.GeoDataFrame(geometry=points)
         gdf.set_crs(epsg=epsg, inplace=True)
         gdf["id"] = gdf.index
@@ -359,25 +359,28 @@ class Cell:
 
               ```
         """
-        if isinstance(points, GeoDataFrame):
-            points = FeatureCollection(points)
+        # After ARC-1a, FeatureCollection *is* a GeoDataFrame (and therefore
+        # *is* a DataFrame). Check the most specific type first so the
+        # branches do not overlap. ARC-16 replaced the mutating ``xy()``
+        # method with the non-mutating ``with_coordinates()`` — we keep
+        # the original inputs intact and read coords off the returned FC.
+        if isinstance(points, FeatureCollection):
+            verts = points.with_coordinates()
+            points = verts.loc[:, ["x", "y"]].values
+        elif isinstance(points, GeoDataFrame):
+            verts = FeatureCollection(points).with_coordinates()
+            points = verts.loc[:, ["x", "y"]].values
         elif isinstance(points, DataFrame):
             if all(elem not in points.columns for elem in ["x", "y"]):
                 raise ValueError(
                     "If the input is a DataFrame, it should have two columns x, and y"
                 )
-        else:
-            if not isinstance(points, FeatureCollection):
-                raise TypeError(
-                    "please check points input it should be GeoDataFrame/DataFrame/FeatureCollection - given"
-                    f" {type(points)}"
-                )
-        if not isinstance(points, DataFrame):
-            # get the x, y coordinates.
-            points.xy()
-            points = points.feature.loc[:, ["x", "y"]].values
-        else:
             points = points.loc[:, ["x", "y"]].values
+        else:
+            raise TypeError(
+                "please check points input it should be GeoDataFrame/DataFrame/FeatureCollection - given"
+                f" {type(points)}"
+            )
 
         # since the first row is x-coords so the first column in the indices is the column index
         indices = locate_values(points, self.x, self.y)
