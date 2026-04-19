@@ -447,6 +447,39 @@ class TestWithCentroidDegenerateGeometries:
             "NaN centroids" in str(w.message) for w in user_warnings
         ), f"should not warn for valid geometries; got {user_warnings}"
 
+    def test_warning_lists_all_bad_row_indices(self):
+        """C18: multiple NaN rows are all named in the warning message.
+
+        Test scenario:
+            When two rows produce NaN centroids, the warning message
+            lists both indices so callers can filter them in one pass
+            without re-running the detection.
+        """
+        import warnings
+
+        from shapely.geometry import Point as _Pt
+
+        nan = float("nan")
+        gdf = GeoDataFrame(
+            {"v": [1, 2, 3, 4]},
+            geometry=[
+                _Pt(0, 0),
+                _Pt(nan, nan),
+                _Pt(5, 5),
+                _Pt(nan, nan),
+            ],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", UserWarning)
+            fc.with_centroid()
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        bodies = " ".join(str(w.message) for w in user_warnings)
+        assert "2 row(s)" in bodies or "[1, 3]" in bodies, (
+            f"warning should summarise the two bad rows; got {bodies}"
+        )
+
 
 def test_old_names_are_gone():
     """ARC-16: xy / center_point / concatenate / concate removed outright."""

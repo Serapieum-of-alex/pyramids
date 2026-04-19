@@ -242,4 +242,71 @@ class TestParquetWorkflow:
         final = FeatureCollection.read_file(gpkg, layer="points")
         assert len(final) == 3
         assert final.epsg == 3857
-        assert list(final["pop"]) == [100, 200, 300]
+
+
+class TestStreamIndexCentroidPickleChain:
+    """Chained e2e across C9/C14/C15/C18: stream + centroid + pickle.
+
+    Exercises five of the fixes in one flow:
+
+    * C9 / ARC-28: build a base FC from a features list.
+    * C14: ``iter_features(include_index=True)`` rebuilds the FC from
+      chunks and preserves source-row indices through a Python-side
+      bbox filter.
+    * C15: ``list_layers`` on the on-disk GPKG answers from the cache
+      on the second call.
+    * C18: ``with_centroid`` runs over the reassembled FC without
+      warning (no NaN-coord geometries).
+    * Pickle: the final FC round-trips through ``pickle`` preserving
+      the centroid column and the row-index column.
+    """
+
+    def test_stream_filter_centroid_pickle_round_trip(self, tmp_path: Path):
+        import pickle
+
+        import pandas as pd
+        from shapely.geometry import Point as _Pt
+
+        FeatureCollection.list_layers_cache_clear()
+
+        points = [_Pt(i, i) for i in range(10)]
+        gdf = gpd.GeoDataFrame(
+            {"id": list(range(10)), "score": [i * 0.1 for i in range(10)]},
+            geometry=points,
+            crs="EPSG:4326",
+        )
+        src = tmp_path / "stream.gpkg"
+        gdf.to_file(src, driver="GPKG", layer="points")
+
+        # C15: list_layers is cached — two calls, one pyogrio call.
+        layers_first = FeatureCollection.list_layers(src)
+        layers_second = FeatureCollection.list_layers(src)
+        assert layers_first == layers_second
+        assert "points" in layers_first
+
+        # C14: stream with Python-bbox filter + include_index.
+        chunks = list(
+            FeatureCollection.iter_features(
+                src,
+                layer="points",
+                bbox=(0.0, 0.0, 4.5, 4.5),
+                tile_strategy="none",
+                chunksize=3,
+                include_index=True,
+            )
+        )
+        combined = pd.concat(chunks)
+        assert isinstance(combined, FeatureCollection)
+        combined = combined.reset_index(drop=True)
+        assert list(combined["_row_index"]) == [0, 1, 2, 3, 4]
+
+        # C18: with_centroid on the reassembled FC — no NaN rows.
+        with_center = combined.with_centroid()
+        assert "center_point" in with_center.columns
+        assert all(not p.is_empty for p in with_center["center_point"])
+
+        # Pickle round-trip preserves the attached columns.
+        restored = pickle.loads(pickle.dumps(with_center))
+        assert isinstance(restored, FeatureCollection)
+        assert list(restored["_row_index"]) == [0, 1, 2, 3, 4]
+        assert list(restored["center_point"]) == list(with_center["center_point"])

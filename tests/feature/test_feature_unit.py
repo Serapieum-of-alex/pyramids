@@ -188,6 +188,42 @@ class TestEpsgCaching:
         reproj = fc.to_crs(3857)
         assert reproj.epsg == 3857
 
+    def test_epsg_none_to_non_none_transition(self):
+        """C11: cache invalidates when ``crs`` goes from None → concrete CRS."""
+        import pyproj
+
+        poly = box(0.0, 0.0, 1.0, 1.0)
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[poly])
+        fc = FeatureCollection(gdf)
+        assert fc.epsg is None
+        fc.crs = pyproj.CRS("EPSG:3857")
+        assert fc.epsg == 3857
+
+    def test_epsg_cache_handles_comparison_error(
+        self, simple_polygon_gdf: GeoDataFrame
+    ):
+        """C11: if CRS equality raises, the fallback must still recompute.
+
+        Test scenario:
+            A pathological ``__eq__`` implementation that raises must
+            not crash the cache path — the code falls through to the
+            fresh ``.to_epsg()`` call instead of propagating the error.
+        """
+
+        class _BrokenCRS:
+            def __eq__(self, other):
+                raise TypeError("simulated CRS comparison failure")
+
+            def to_epsg(self):
+                return 4326
+
+        fc = FeatureCollection(simple_polygon_gdf)
+        _ = fc.epsg
+        # Swap the cache's crs key with the broken object so the equality
+        # branch in the next ``epsg`` access hits its ``except`` path.
+        object.__setattr__(fc, "_epsg_cache_crs", _BrokenCRS())
+        assert fc.epsg == 4326
+
 
 class TestContextManager:
     """ARC-5: FeatureCollection supports the ``with`` protocol."""

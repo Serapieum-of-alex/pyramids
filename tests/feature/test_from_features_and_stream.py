@@ -129,6 +129,20 @@ class TestFromFeatures:
         with pytest.raises(ValueError, match="at least one feature"):
             FeatureCollection.from_features(empty_gen())
 
+    def test_empty_tuple_raises(self):
+        """C9: an empty tuple is rejected the same as an empty list."""
+        with pytest.raises(ValueError, match="at least one feature"):
+            FeatureCollection.from_features(())
+
+    def test_error_message_mentions_reason(self):
+        """C9: the error names ``geometry column`` so the cause is visible."""
+        with pytest.raises(ValueError) as exc_info:
+            FeatureCollection.from_features([])
+        msg = str(exc_info.value)
+        assert "geometry column" in msg, (
+            f"error message should explain why; got: {msg}"
+        )
+
     def test_columns_order(self):
         feats = [
             {
@@ -359,3 +373,33 @@ class TestIterFeaturesIncludeIndex:
         ids = [f["id"] for f in feats]
         # Points (0,0)..(4,4) are at indices 0..4 in the file.
         assert ids == [0, 1, 2, 3, 4]
+
+    def test_chunked_include_index_with_python_bbox_filter(
+        self, larger_geojson: Path
+    ):
+        """C14: Python-side bbox filter drops rows; surviving ``_row_index``
+        values still match the absolute source positions.
+        """
+        chunks = list(
+            FeatureCollection.iter_features(
+                larger_geojson,
+                bbox=(0.0, 0.0, 4.5, 4.5),
+                tile_strategy="none",
+                chunksize=3,
+                include_index=True,
+            )
+        )
+        all_ids: list[int] = []
+        for c in chunks:
+            all_ids.extend(int(x) for x in c["_row_index"].tolist())
+        assert all_ids == [0, 1, 2, 3, 4]
+
+    def test_chunksize_one_include_index(self, larger_geojson: Path):
+        """C14 boundary: chunksize=1 still attaches sequential indices."""
+        chunks = list(
+            FeatureCollection.iter_features(
+                larger_geojson, chunksize=1, include_index=True
+            )
+        )
+        ids = [int(c["_row_index"].iloc[0]) for c in chunks]
+        assert ids == list(range(len(ids)))

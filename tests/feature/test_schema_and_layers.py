@@ -202,3 +202,24 @@ class TestListLayersCache:
         # Re-querying the first path still returns the multi-layer list.
         again = FeatureCollection.list_layers(two_layer_gpkg)
         assert set(again) == {"rivers", "lakes"}
+
+    def test_cache_returns_fresh_list_not_shared_instance(
+        self, two_layer_gpkg: Path
+    ):
+        """C15: the public method returns a fresh list each call.
+
+        Test scenario:
+            The LRU cache stores a tuple internally, but the public
+            boundary materialises a new list so a caller mutating the
+            result does not corrupt a cached tuple or affect later
+            callers. Mutating the first returned list must not
+            influence the second.
+        """
+        FeatureCollection.list_layers_cache_clear()
+        first = FeatureCollection.list_layers(two_layer_gpkg)
+        first.append("mutated")
+        second = FeatureCollection.list_layers(two_layer_gpkg)
+        assert "mutated" not in second, (
+            "mutation of returned list leaked into cached value"
+        )
+        assert set(second) == {"rivers", "lakes"}
