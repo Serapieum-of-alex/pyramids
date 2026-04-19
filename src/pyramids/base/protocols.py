@@ -86,15 +86,21 @@ class SpatialObject(Protocol):
 
     @classmethod
     def read_file(cls, path: str | Path, *args: Any, **kwargs: Any) -> "SpatialObject":
-        """Read an on-disk representation into an instance."""
+        """Read an on-disk representation into an instance.
+
+        Protocol stub — see :meth:`pyramids.dataset.Dataset.read_file` and
+        :meth:`pyramids.feature.FeatureCollection.read_file` for runnable
+        examples. The ``...`` body here is a structural-type marker, not
+        a callable implementation.
+        """
         ...
 
     def to_file(self, path: str | Path, *args: Any, **kwargs: Any) -> None:
-        """Serialize this object to ``path``."""
+        """Serialize this object to ``path`` (protocol stub; see concrete impls)."""
         ...
 
     def plot(self, *args: Any, **kwargs: Any) -> Any:
-        """Render a matplotlib view of this object."""
+        """Render a matplotlib view of this object (protocol stub; see concrete impls)."""
         ...
 
 
@@ -152,15 +158,19 @@ class LazySpatialObject(Protocol):
     npartitions: int
 
     def compute(self, *args: Any, **kwargs: Any) -> "SpatialObject":
-        """Materialise this lazy object into its eager twin."""
+        """Materialise this lazy object into its eager twin (protocol stub).
+
+        See :meth:`pyramids.feature.LazyFeatureCollection.compute` for
+        the concrete implementation and runnable examples.
+        """
         ...
 
     def persist(self, *args: Any, **kwargs: Any) -> "LazySpatialObject":
-        """Force the graph into worker memory; keep laziness."""
+        """Force the graph into worker memory; keep laziness (protocol stub)."""
         ...
 
     def to_file(self, path: str | Path, *args: Any, **kwargs: Any) -> None:
-        """Serialize this object to ``path`` (may raise :class:`NotImplementedError`)."""
+        """Serialize this object (may raise :class:`NotImplementedError`; stub)."""
         ...
 
 
