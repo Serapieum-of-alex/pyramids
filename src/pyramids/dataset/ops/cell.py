@@ -293,7 +293,7 @@ class Cell:
         epsg = self._get_epsg()
 
         coords_tuples = list(zip(coords[:, 0], coords[:, 1]))
-        points = FeatureCollection.create_point(coords_tuples)
+        points = FeatureCollection.create_points(coords_tuples)
         gdf = gpd.GeoDataFrame(geometry=points)
         gdf.set_crs(epsg=epsg, inplace=True)
         gdf["id"] = gdf.index

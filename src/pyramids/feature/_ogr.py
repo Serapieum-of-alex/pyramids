@@ -15,10 +15,9 @@ Do not import this module from user code; its signatures are unstable.
 
 from __future__ import annotations
 
-import tempfile
-import uuid
+import random
+import time
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Iterator
 
 import geopandas as gpd
@@ -31,11 +30,13 @@ from pyramids.base._errors import VectorDriverError
 def _new_vsimem_path() -> str:
     """Return a fresh unique ``/vsimem/`` path for a GeoJSON serialization.
 
-    The path is unique per call (UUID4) so that concurrent internal
-    conversions cannot clobber each other's backing files.
+    The suffix is ``<time_ns>_<rand>`` (C35) — shorter than a UUID4 and
+    still collision-proof within a single process run: ``time.time_ns``
+    has nanosecond resolution and the random integer adds 20 bits of
+    tie-breaking for the same-nanosecond case.
 
     Returns:
-        str: A ``/vsimem/<uuid>.geojson`` path.
+        str: A ``/vsimem/<time>_<rand>.geojson`` path.
 
     Examples:
         - Check the shape of a freshly generated path:
@@ -48,9 +49,8 @@ def _new_vsimem_path() -> str:
             True
 
             ```
-        - Two successive calls return distinct paths (UUID4 collision is
-          astronomically unlikely) so concurrent conversions cannot
-          clobber each other:
+        - Two successive calls return distinct paths so concurrent
+          conversions cannot clobber each other:
             ```python
             >>> from pyramids.feature._ogr import _new_vsimem_path
             >>> p1 = _new_vsimem_path()
@@ -60,7 +60,7 @@ def _new_vsimem_path() -> str:
 
             ```
     """
-    return f"/vsimem/{uuid.uuid4()}.geojson"
+    return f"/vsimem/{time.time_ns()}_{random.randint(0, 999_999)}.geojson"
 
 
 @contextmanager
@@ -90,6 +90,21 @@ def as_datasource(
     Yields:
         ogr.DataSource | gdal.Dataset: A short-lived handle to the vector
         data. Do not store past the ``with`` block.
+
+    Raises:
+        VectorDriverError: If :func:`gdal.OpenEx` / :func:`ogr.Open`
+            returns ``None`` after the in-memory GeoJSON was written —
+            usually the GeoDataFrame has malformed geometry or an
+            unsupported CRS. The message includes the ``/vsimem/``
+            path for debugging (C4).
+
+    Notes:
+        Cleanup is exception-safe. If ``gdf.to_json`` or
+        :func:`gdal.FileFromMemBuffer` raises before the in-memory file
+        is written, the ``finally`` block does **not** call
+        :func:`gdal.Unlink` on a non-existent path (tracked via an
+        internal ``file_written`` flag). When the user's ``with`` body
+        raises, the path is still unlinked exactly once (C4).
 
     Examples:
         - Open a GeoDataFrame as an OGR DataSource inside a ``with``
@@ -136,15 +151,37 @@ def as_datasource(
     # store and ``osgeo.gdal`` would never see it. Round-tripping through
     # the GeoJSON serialization + ``gdal.FileFromMemBuffer`` guarantees
     # the file lands in the GDAL VFS we can open.
+    # C4: track whether the vsimem file was actually written so the
+    # finally block only unlinks when there is something to unlink.
+    # If ``gdf.to_json()`` or ``FileFromMemBuffer`` raises, no file
+    # exists on /vsimem/ and ``gdal.Unlink`` would log a spurious
+    # warning about a missing path.
     geojson_bytes = gdf.to_json().encode("utf-8")
-    gdal.FileFromMemBuffer(mem_path, geojson_bytes)
-    ds: ogr.DataSource | gdal.Dataset | None = None
+    file_written = False
     try:
-        ds = gdal.OpenEx(mem_path) if gdal_dataset else ogr.Open(mem_path)
-        yield ds
+        gdal.FileFromMemBuffer(mem_path, geojson_bytes)
+        file_written = True
+        ds: ogr.DataSource | gdal.Dataset | None = (
+            gdal.OpenEx(mem_path) if gdal_dataset else ogr.Open(mem_path)
+        )
+        # C4: GDAL signals a failure to parse the in-memory GeoJSON by
+        # returning ``None`` rather than raising. Convert that to an
+        # explicit :class:`VectorDriverError` so callers see a typed
+        # failure instead of cryptic ``AttributeError: 'NoneType'``
+        # deeper in the stack.
+        if ds is None:
+            raise VectorDriverError(
+                f"GDAL/OGR could not open the in-memory GeoJSON at "
+                f"{mem_path!r}. The GeoDataFrame may have malformed "
+                f"geometry or an unsupported CRS."
+            )
+        try:
+            yield ds
+        finally:
+            ds = None
     finally:
-        ds = None
-        gdal.Unlink(mem_path)
+        if file_written:
+            gdal.Unlink(mem_path)
 
 
 @contextmanager
@@ -204,6 +241,16 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
     ``GeoDataFrame`` back to the public layer. The conversion goes via a
     ``/vsimem/`` GeoJSON round-trip using :func:`gdal.VectorTranslate`.
 
+    D-M4: the round-trip stays entirely in osgeo.gdal's ``/vsimem/``
+    VFS — no filesystem temp file is created. The serialised GeoJSON
+    bytes are read back via :func:`gdal.VSIFOpenL` /
+    :func:`gdal.VSIFReadL` and parsed from an in-memory
+    :class:`io.BytesIO` via :func:`geopandas.read_file` (pyogrio
+    accepts buffer inputs). Cleanup of the ``/vsimem/`` path is gated
+    on the write having actually succeeded, so a failed
+    ``VectorTranslate`` raises :class:`VectorDriverError` cleanly
+    without ``gdal.Unlink`` masking the original error.
+
     Args:
         ds (ogr.DataSource | gdal.Dataset):
             The source DataSource to materialize. Not consumed; the
@@ -216,8 +263,11 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
         ``FeatureCollection(datasource_to_gdf(ds))``.
 
     Raises:
-        RuntimeError: If :func:`gdal.VectorTranslate` fails to write the
-            intermediate GeoJSON.
+        VectorDriverError: If :func:`gdal.VectorTranslate` fails to
+            write the intermediate GeoJSON, or if the subsequent
+            :func:`gdal.VSIFOpenL` cannot open the ``/vsimem/`` path.
+            Multi-inherits from ``RuntimeError`` so existing
+            ``except RuntimeError`` handlers keep working.
 
     Examples:
         - Round-trip a GeoDataFrame through the OGR bridge: first open
@@ -245,22 +295,50 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
 
             ```
     """
-    # geopandas' default pyogrio engine reads from its own bundled GDAL
-    # VFS, not osgeo.gdal's /vsimem/. Round-trip through a real temp file
-    # so pyogrio can open what we wrote.
-    tmp = Path(tempfile.gettempdir()) / f"pyramids_ogr_{uuid.uuid4()}.geojson"
+    # D-M4: the previous implementation wrote to a filesystem temp
+    # file because pyogrio's bundled GDAL reads from its own VFS, not
+    # osgeo.gdal's /vsimem/. Per-call filesystem I/O is a real cost
+    # on heavy polygonize workloads. Instead: VectorTranslate into
+    # osgeo /vsimem/, read the bytes back out via GDAL's own VSIFile*
+    # APIs, and hand a ``BytesIO`` to ``geopandas.read_file`` — which
+    # pyogrio accepts and parses from memory.
+    import io
+
+    mem_path = _new_vsimem_path()
+    file_written = False
     try:
-        result = gdal.VectorTranslate(str(tmp), ds, format="GeoJSON")
+        result = gdal.VectorTranslate(mem_path, ds, format="GeoJSON")
         if result is None:
             raise VectorDriverError(
                 "gdal.VectorTranslate failed to materialize the DataSource "
                 "to GeoJSON."
             )
-        result = None  # flush + close the translation output
-        gdf = gpd.read_file(tmp)
-    finally:
+        file_written = True
+        # Drop the translation handle before reading the /vsimem/ file
+        # so GDAL flushes buffered output.
+        result = None
+        vsi_file = gdal.VSIFOpenL(mem_path, "rb")
+        if vsi_file is None:
+            raise VectorDriverError(
+                f"GDAL could not open the in-memory GeoJSON at "
+                f"{mem_path!r} for reading."
+            )
         try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
+            gdal.VSIFSeekL(vsi_file, 0, 2)  # SEEK_END
+            size = gdal.VSIFTellL(vsi_file)
+            gdal.VSIFSeekL(vsi_file, 0, 0)
+            # L1: gdal.VSIFReadL on GDAL >=3 already returns a Python
+            # bytes object; wrapping in ``bytes(...)`` forced a
+            # defensive O(size) copy that doubled peak memory on
+            # polygonize outputs. Use the buffer as-is.
+            data = gdal.VSIFReadL(1, size, vsi_file)
+        finally:
+            gdal.VSIFCloseL(vsi_file)
+        gdf = gpd.read_file(io.BytesIO(data))
+    finally:
+        # Under gdal.UseExceptions(), Unlink on a non-existent path
+        # raises RuntimeError and would mask whatever exception we
+        # raised above. Gate the cleanup on the write succeeding.
+        if file_written:
+            gdal.Unlink(mem_path)
     return gdf

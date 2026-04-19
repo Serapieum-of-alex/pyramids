@@ -106,6 +106,43 @@ class TestFromFeatures:
         fc = FeatureCollection.from_features(feats)
         assert fc.epsg is None
 
+    def test_empty_iterable_raises(self):
+        """C9: empty iterable → ``ValueError``.
+
+        Test scenario:
+            A caller passing an empty list (or an exhausted iterator)
+            previously got an empty GeoDataFrame with no ``geometry``
+            column, which later broke every pyramids method that
+            assumes the column exists. The method now raises
+            ``ValueError`` up front.
+        """
+        with pytest.raises(ValueError, match="at least one feature"):
+            FeatureCollection.from_features([])
+
+    def test_exhausted_iterator_raises(self):
+        """C9: an exhausted iterator is equivalent to an empty list."""
+
+        def empty_gen():
+            return
+            yield  # pragma: no cover — makes this a generator
+
+        with pytest.raises(ValueError, match="at least one feature"):
+            FeatureCollection.from_features(empty_gen())
+
+    def test_empty_tuple_raises(self):
+        """C9: an empty tuple is rejected the same as an empty list."""
+        with pytest.raises(ValueError, match="at least one feature"):
+            FeatureCollection.from_features(())
+
+    def test_error_message_mentions_reason(self):
+        """C9: the error names ``geometry column`` so the cause is visible."""
+        with pytest.raises(ValueError) as exc_info:
+            FeatureCollection.from_features([])
+        msg = str(exc_info.value)
+        assert "geometry column" in msg, (
+            f"error message should explain why; got: {msg}"
+        )
+
     def test_columns_order(self):
         feats = [
             {
@@ -166,6 +203,78 @@ class TestFromRecords:
     def test_empty_records(self):
         fc = FeatureCollection.from_records([], crs=4326)
         assert len(fc) == 0
+
+    def test_orient_list_basic(self):
+        """C26: columnar dict input via ``orient="list"``."""
+        fc = FeatureCollection.from_records(
+            {
+                "id": [1, 2, 3],
+                "name": ["a", "b", "c"],
+                "geometry": [Point(0, 0), Point(1, 1), Point(2, 2)],
+            },
+            orient="list",
+            crs=4326,
+        )
+        assert isinstance(fc, FeatureCollection)
+        assert len(fc) == 3
+        assert list(fc["id"]) == [1, 2, 3]
+        assert fc.epsg == 4326
+
+    def test_orient_list_custom_geometry_column(self):
+        """C26: ``orient="list"`` honours a non-default geometry column."""
+        fc = FeatureCollection.from_records(
+            {
+                "v": [10, 20],
+                "geom": [Point(0, 0), Point(1, 1)],
+            },
+            orient="list",
+            geometry="geom",
+            crs=4326,
+        )
+        assert fc.geometry.name == "geom"
+        assert len(fc) == 2
+
+    def test_orient_list_empty(self):
+        """C26: empty columnar dict yields a zero-row FC."""
+        fc = FeatureCollection.from_records(
+            {"id": [], "geometry": []},
+            orient="list",
+            crs=4326,
+        )
+        assert len(fc) == 0
+
+    def test_orient_list_rejects_non_dict(self):
+        """C26: passing a list under ``orient="list"`` raises clearly."""
+        with pytest.raises(ValueError, match="dict of column"):
+            FeatureCollection.from_records(
+                [{"geometry": Point(0, 0)}],
+                orient="list",
+            )
+
+    def test_invalid_orient_raises(self):
+        """C26: unknown ``orient`` value is rejected."""
+        with pytest.raises(ValueError, match=r"records.*list"):
+            FeatureCollection.from_records(
+                [{"geometry": Point(0, 0)}],
+                orient="index",
+            )
+
+    def test_orient_list_missing_geometry_column_raises(self):
+        """C26: columnar dict without the geometry key raises ``FeatureError``."""
+        with pytest.raises(FeatureError, match="geometry"):
+            FeatureCollection.from_records(
+                {"v": [1, 2]},
+                orient="list",
+                crs=4326,
+            )
+
+    def test_orient_list_mismatched_lengths_raises(self):
+        """C26: pandas surfaces mismatched-length columns as ValueError."""
+        with pytest.raises(ValueError):
+            FeatureCollection.from_records(
+                {"v": [1, 2, 3], "geometry": [Point(0, 0)]},
+                orient="list",
+            )
 
 
 # ── ARC-25 : iter_features dict mode ────────────────────────────────
@@ -260,3 +369,141 @@ class TestIterFeaturesChunked:
         # Points (0,0)..(9,9) → 10 features; chunks of 4 → 4+4+2.
         total = sum(len(c) for c in chunks)
         assert total == 10
+
+
+class TestIterFeaturesIncludeIndex:
+    """C14: ``include_index=True`` attaches source row indices.
+
+    Users streaming features often need to correlate a yielded feature
+    back to its on-disk row (for logging, error reporting, or writing
+    a result file at the same row). The ``include_index=True`` flag
+    adds an ``"id"`` key to each yielded dict (unchunked) or a
+    ``"_row_index"`` column to each yielded FC (chunked).
+    """
+
+    def test_per_feature_include_index_adds_id(self, small_geojson: Path):
+        """Unchunked + include_index injects sequential ``id`` keys."""
+        feats = list(
+            FeatureCollection.iter_features(
+                small_geojson, include_index=True
+            )
+        )
+        ids = [f["id"] for f in feats]
+        assert ids == list(range(len(feats)))
+
+    def test_per_feature_default_id_is_not_row_index(
+        self, small_geojson: Path
+    ):
+        """include_index=False preserves whatever ``id`` geopandas emits.
+
+        Test scenario:
+            ``geopandas.GeoDataFrame.iterfeatures`` always injects an
+            ``"id"`` key per GeoJSON convention, but its value is not
+            the absolute source-row index; the ``include_index=True``
+            branch overrides it to 0-based sequential. With the flag
+            off, the key (if present) must NOT already be the
+            absolute row index.
+        """
+        feats = list(
+            FeatureCollection.iter_features(small_geojson)
+        )
+        ids = [f.get("id") for f in feats]
+        # Not every geopandas version sets "id" in every feature; the
+        # only invariant we care about is that without the flag, we do
+        # NOT overwrite the value to the absolute row index.
+        assert ids != list(range(len(feats))) or all(i is None for i in ids)
+
+    def test_chunked_include_index_adds_row_index_column(
+        self, larger_geojson: Path
+    ):
+        """Chunked + include_index adds a ``_row_index`` column per chunk."""
+        chunks = list(
+            FeatureCollection.iter_features(
+                larger_geojson, chunksize=10, include_index=True
+            )
+        )
+        assert all("_row_index" in c.columns for c in chunks)
+        first = chunks[0]
+        assert list(first["_row_index"]) == list(range(10))
+        second = chunks[1]
+        assert list(second["_row_index"]) == list(range(10, 20))
+
+    def test_include_index_survives_python_bbox_filter(
+        self, larger_geojson: Path
+    ):
+        """With tile_strategy='none' the bbox filter drops rows in Python;
+        yielded indices must match the surviving source rows.
+        """
+        feats = list(
+            FeatureCollection.iter_features(
+                larger_geojson,
+                bbox=(0.0, 0.0, 4.5, 4.5),
+                tile_strategy="none",
+                include_index=True,
+            )
+        )
+        ids = [f["id"] for f in feats]
+        # Points (0,0)..(4,4) are at indices 0..4 in the file.
+        assert ids == [0, 1, 2, 3, 4]
+
+    def test_chunked_include_index_with_python_bbox_filter(
+        self, larger_geojson: Path
+    ):
+        """C14: Python-side bbox filter drops rows; surviving ``_row_index``
+        values still match the absolute source positions.
+        """
+        chunks = list(
+            FeatureCollection.iter_features(
+                larger_geojson,
+                bbox=(0.0, 0.0, 4.5, 4.5),
+                tile_strategy="none",
+                chunksize=3,
+                include_index=True,
+            )
+        )
+        all_ids: list[int] = []
+        for c in chunks:
+            all_ids.extend(int(x) for x in c["_row_index"].tolist())
+        assert all_ids == [0, 1, 2, 3, 4]
+
+    def test_chunksize_one_include_index(self, larger_geojson: Path):
+        """C14 boundary: chunksize=1 still attaches sequential indices."""
+        chunks = list(
+            FeatureCollection.iter_features(
+                larger_geojson, chunksize=1, include_index=True
+            )
+        )
+        ids = [int(c["_row_index"].iloc[0]) for c in chunks]
+        assert ids == list(range(len(ids)))
+
+
+class TestIterFeaturesEnginePin:
+    """D-M3: iter_features pins ``engine="pyogrio"`` on gpd.read_file.
+
+    ``skip_features`` / ``max_features`` are pyogrio-specific kwargs;
+    fiona silently ignores them, which would make every chunk a full
+    scan. The function must force the engine explicitly so a
+    ``geopandas.options.io_engine = "fiona"`` global doesn't quietly
+    break pagination.
+    """
+
+    def test_read_file_receives_engine_pyogrio(
+        self, larger_geojson: Path, monkeypatch
+    ):
+        captured: list = []
+        import geopandas
+
+        real_read_file = geopandas.read_file
+
+        def _spy(path, **kwargs):
+            captured.append(kwargs)
+            return real_read_file(path, **kwargs)
+
+        monkeypatch.setattr(geopandas, "read_file", _spy)
+        list(
+            FeatureCollection.iter_features(larger_geojson, chunksize=10)
+        )
+        assert captured, "gpd.read_file must be invoked at least once"
+        assert all(
+            k.get("engine") == "pyogrio" for k in captured
+        ), f"expected engine='pyogrio' in every call; got {captured}"

@@ -17,18 +17,26 @@ ARC-10 split the original ``feature.py`` into a subpackage:
 is inherited; pyramids adds rasterization, Dataset interop, vertex
 extraction, and CRS-helper delegates on top. ``ogr.DataSource`` is
 internal only (ARC-1b); see :mod:`pyramids.feature._ogr`.
+
+.. note::
+   Inline comments like ``# C14:``, ``# D-H2:``, ``# D-N4:`` and
+   ``# L6:`` are tracker anchors: they point at review issues resolved
+   during the ARC-* refactor. The full issue text lives in
+   ``planning/feature/pr-review-merged.md`` and
+   ``planning/feature/pr-diff-review-2.md``. Grep either file by the
+   marker to recover the rationale.
 """
 
 from __future__ import annotations
 
+import functools
+import warnings
 from numbers import Number
 from pathlib import Path
 from typing import Any, Iterable
 
 import geopandas as gpd
 import numpy as np
-import pandas as pd
-import pyogrio
 from geopandas import GeoDataFrame
 from osgeo import gdal, ogr, osr
 from shapely.geometry import LineString, Point, Polygon, box
@@ -36,14 +44,50 @@ from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
-from pyramids import _io as _pyramids_io
-from pyramids.base._errors import CRSError, FeatureError
+from pyramids.base._errors import GeometryWarning
 from pyramids.base._utils import Catalog
 from pyramids.feature import crs as _crs
 from pyramids.feature import geometry as _geom
 
 CATALOG = Catalog(raster_driver=False)
 gdal.UseExceptions()
+
+# D-L3: default per-chunk batch size for ``iter_features`` when the
+# user does not pass ``chunksize``. Matches pyogrio's own
+# ``read_dataframe`` default for row-group streaming, so the fast
+# path (GeoParquet + row_group tile strategy) does not re-chunk.
+_DEFAULT_ITER_BATCH_SIZE: int = 1000
+
+
+def _require_pyarrow() -> None:
+    """Raise a pyramids-branded ImportError if pyarrow is absent (D-M5).
+
+    ``geopandas.read_parquet`` / ``GeoDataFrame.to_parquet`` raise a
+    generic ImportError that mentions neither ``pyramids-gis`` nor
+    the ``[parquet]`` extra. This helper surfaces the install
+    instruction up front so the Raises docstring is truthful.
+    """
+    try:
+        import pyarrow  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(
+            "GeoParquet support requires the optional 'pyarrow' "
+            "dependency. Install with: pip install 'pyramids-gis[parquet]' "
+            "(or ``pixi add pyarrow`` in a pixi workspace)."
+        ) from exc
+
+
+# C15: module-level LRU cache backing ``FeatureCollection.list_layers``.
+# Keyed on the already-resolved ``str`` path (post ``_parse_path``). The
+# tuple return type plays nicely with ``functools.lru_cache`` (lists are
+# unhashable and would break LRU internals if returned directly).
+@functools.lru_cache(maxsize=128)
+def _list_layers_cached(resolved_path: str) -> tuple[str, ...]:
+    """Return a tuple of layer names for a resolved path (memoised)."""
+    import pyogrio
+
+    arr = pyogrio.list_layers(resolved_path)
+    return tuple(str(row[0]) for row in arr)
 
 
 class FeatureCollection(GeoDataFrame):
@@ -69,11 +113,16 @@ class FeatureCollection(GeoDataFrame):
     # entries drops that attribute on pickle / copy / concat, and the
     # restored object can no longer find its geometry column. Always
     # splat the parent's list first.
-    _metadata: list[str] = [
+    # C3 — dedupe via ``dict.fromkeys`` so that if a future geopandas
+    # release adds one of our own names to its own ``_metadata`` list,
+    # the pyramids subclass does not carry a duplicate entry. Python
+    # preserves insertion order in dicts since 3.7, so the parent's
+    # ordering is preserved.
+    _metadata: list[str] = list(dict.fromkeys([
         *GeoDataFrame._metadata,
         "_epsg_cache_crs",
         "_epsg_cache_value",
-    ]
+    ]))
     """Instance attributes pandas must preserve across copy/slice/pickle.
 
     Holds:
@@ -83,6 +132,12 @@ class FeatureCollection(GeoDataFrame):
       the active geometry column.
     * ``_epsg_cache_crs`` / ``_epsg_cache_value`` — the ARC-6 EPSG
       cache.
+
+    The list is wrapped in ``list(dict.fromkeys(...))`` so that a
+    future geopandas release adding one of our own names to its own
+    ``_metadata`` list does not produce a duplicate entry. ``dict``
+    preserves insertion order since Python 3.7, so the parent's
+    ordering is preserved (C3).
     """
 
     def __init__(self, data: Any = None, *args: Any, **kwargs: Any) -> None:
@@ -102,11 +157,92 @@ class FeatureCollection(GeoDataFrame):
         super().__init__(data, *args, **kwargs)
 
     def __enter__(self) -> FeatureCollection:
-        """Enter a context-managed block (ARC-5). Returns ``self``."""
+        """Enter a context-managed block (ARC-5). Returns ``self``.
+
+        Returns:
+            FeatureCollection: ``self`` — the exact same instance, so
+            ``with ... as fc:`` binds ``fc`` to this collection.
+
+        Examples:
+            - Use as a context manager and access rows inside the block:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"id": [1, 2]},
+                ...     geometry=[Point(0, 0), Point(1, 1)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> with FeatureCollection(gdf) as fc:
+                ...     n = len(fc)
+                >>> n
+                2
+
+                ```
+            - Exceptions raised inside the block still propagate:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> try:
+                ...     with fc:
+                ...         raise RuntimeError("boom")
+                ... except RuntimeError as err:
+                ...     print(err)
+                boom
+
+                ```
+        """
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:
-        """Exit the context-managed block (ARC-5). Calls :meth:`close`."""
+        """Exit the context-managed block (ARC-5). Calls :meth:`close`.
+
+        Args:
+            exc_type: Exception class if the block raised, else ``None``.
+            exc: Exception instance if the block raised, else ``None``.
+            tb: Traceback for the raised exception, else ``None``.
+
+        Returns:
+            bool: Always ``False`` — exceptions from inside the ``with``
+            block propagate to the caller rather than being swallowed.
+
+        Examples:
+            - The clean-exit path returns ``False`` so nothing is swallowed:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.__exit__(None, None, None)
+                False
+
+                ```
+            - A ``with`` block that finishes normally just releases the FC:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ... )
+                >>> with FeatureCollection(gdf) as fc:
+                ...     pass
+                >>> len(fc)
+                1
+
+                ```
+        """
         self.close()
         return False
 
@@ -115,6 +251,42 @@ class FeatureCollection(GeoDataFrame):
 
         No-op today (the OGR bridge is self-cleaning). Exists so future
         resource-holding features have an idiomatic release point.
+
+        Returns:
+            None: This method does not return a value.
+
+        Examples:
+            - ``close()`` is idempotent — calling it repeatedly is safe:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.close()
+                >>> fc.close()
+                >>> len(fc)
+                1
+
+                ```
+            - The collection remains usable after ``close`` (no-op today):
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"v": [7]}, geometry=[Point(2, 3)], crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.close()
+                >>> fc.epsg
+                4326
+
+                ```
         """
         return None
 
@@ -126,13 +298,18 @@ class FeatureCollection(GeoDataFrame):
         crs: Any = None,
         columns: list[str] | None = None,
     ) -> FeatureCollection:
-        """Build a FeatureCollection from GeoJSON-like feature dicts (ARC-28).
+        """Build a FeatureCollection from feature-shaped inputs (ARC-28).
 
         Delegates to :meth:`geopandas.GeoDataFrame.from_features` and
         wraps the result. Accepts any of the shapes that method
-        accepts — a list of GeoJSON feature dicts, any object
-        implementing ``__geo_interface__``, or an iterator that yields
-        such objects.
+        accepts:
+
+        * a list (or iterator) of GeoJSON feature dicts of the form
+          ``{"type": "Feature", "geometry": {...}, "properties": {...}}``,
+        * any object exposing ``__geo_interface__`` (shapely
+          geometries, fiona records, custom feature classes), or
+        * a bare ``FeatureCollection`` dict (``{"type":
+          "FeatureCollection", "features": [...]}``).
 
         Args:
             features (Iterable):
@@ -150,6 +327,13 @@ class FeatureCollection(GeoDataFrame):
 
         Returns:
             FeatureCollection: A new FC backed by the supplied features.
+
+        Raises:
+            ValueError: If ``features`` is empty or exhausted before any
+                feature is consumed (C9). An empty GeoDataFrame from
+                ``from_features`` has no ``geometry`` column, which
+                breaks downstream pyramids methods that assume the
+                column exists. Fail fast instead.
 
         Examples:
             - Build from a list of feature dicts:
@@ -171,35 +355,58 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
+        # C9: materialise an iterator so we can detect the empty case
+        # before handing off to geopandas. ``geopandas.from_features([])``
+        # returns a GeoDataFrame with no ``geometry`` column, which
+        # breaks every pyramids op that assumes the column exists.
+        features_list = list(features)
+        if not features_list:
+            raise ValueError(
+                "from_features requires at least one feature. An empty "
+                "iterable would produce a GeoDataFrame with no geometry "
+                "column, which breaks downstream pyramids methods."
+            )
         gdf = gpd.GeoDataFrame.from_features(
-            features, crs=crs, columns=columns
+            features_list, crs=crs, columns=columns
         )
         return cls(gdf)
 
     @classmethod
     def from_records(
         cls,
-        records: Iterable[dict],
+        records: Any,
         *,
         geometry: str = "geometry",
         crs: Any = None,
+        orient: str = "records",
     ) -> FeatureCollection:
         """Build a FeatureCollection from dict records (ARC-28).
 
-        Each record is a dict whose keys become column names; the
-        ``geometry`` key (name configurable) must hold a shapely
-        geometry. Useful for ingesting rows from an API response that
-        doesn't emit GeoJSON but already has shapely geoms.
+        Two input orientations are accepted (C26 added the second):
+
+        * ``orient="records"`` (default) — an iterable of per-row dicts,
+          each of the form ``{column: value, ..., geometry: <shapely>}``.
+          The dict's keys become column names; the key named by
+          ``geometry`` must hold a shapely geometry.
+        * ``orient="list"`` — a single columnar dict mapping each
+          column name to a list of values of equal length, for
+          example ``{"id": [1, 2], "geometry": [pt_a, pt_b]}``.
+
+        Useful for ingesting rows from an API response that doesn't
+        emit GeoJSON but already has shapely geoms.
 
         Args:
-            records (Iterable[dict]):
-                Iterable of ``{column: value, ..., geometry: <shapely>}``
-                dicts.
+            records:
+                Per-row iterable of dicts when ``orient="records"``, or a
+                single columnar dict when ``orient="list"``.
             geometry (str):
-                Name of the key holding the shapely geometry. Default
-                ``"geometry"``.
+                Name of the column / key holding the shapely geometry.
+                Default ``"geometry"``.
             crs:
                 CRS to attach (same forms as :meth:`from_features`).
+            orient (str):
+                ``"records"`` (default) or ``"list"`` — matches the
+                pandas ``from_dict``/``from_records`` conventions.
 
         Returns:
             FeatureCollection: A new FC with one row per record.
@@ -207,13 +414,89 @@ class FeatureCollection(GeoDataFrame):
         Raises:
             FeatureError: If a record is missing the ``geometry``
                 column.
+            ValueError: If ``orient`` is not one of the supported
+                values.
+
+        Examples:
+            - Per-row records with the default geometry key:
+                ```python
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> recs = [
+                ...     {"id": 1, "geometry": Point(0, 0)},
+                ...     {"id": 2, "geometry": Point(1, 1)},
+                ... ]
+                >>> fc = FeatureCollection.from_records(recs, crs=4326)
+                >>> len(fc)
+                2
+                >>> fc.epsg
+                4326
+
+                ```
+            - Custom geometry key via the ``geometry=`` kwarg:
+                ```python
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> recs = [
+                ...     {"id": 1, "geom": Point(0, 0)},
+                ...     {"id": 2, "geom": Point(1, 1)},
+                ... ]
+                >>> fc = FeatureCollection.from_records(
+                ...     recs, geometry="geom", crs=4326,
+                ... )
+                >>> fc.geometry.name
+                'geom'
+
+                ```
+            - Columnar dict via ``orient="list"``:
+                ```python
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> cols = {"id": [1, 2], "geometry": [Point(0, 0), Point(1, 1)]}
+                >>> fc = FeatureCollection.from_records(
+                ...     cols, orient="list", crs=4326,
+                ... )
+                >>> list(fc["id"])
+                [1, 2]
+
+                ```
         """
-        records_list = list(records)
-        if not records_list:
+        import pandas as pd
+
+        from pyramids.base._errors import FeatureError
+
+        # D-N4: empty-input branches both build a single-column frame
+        # whose column name matches the ``geometry=`` kwarg, so
+        # ``GeoDataFrame(..., geometry=…)`` sets it as the active
+        # geometry column and the returned FC has
+        # ``geometry.name == geometry``.
+        def _empty_fc() -> "FeatureCollection":
             return cls(
                 gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
             )
-        df = pd.DataFrame.from_records(records_list)
+
+        if orient == "records":
+            records_list = list(records)
+            if not records_list:
+                return _empty_fc()
+            df = pd.DataFrame.from_records(records_list)
+        elif orient == "list":
+            # C26: columnar dict of equal-length lists. Straight into
+            # ``pd.DataFrame`` which accepts this shape natively and
+            # raises ``ValueError`` on mismatched lengths (propagated
+            # to the caller as-is — the pandas message is already clear).
+            if not isinstance(records, dict):
+                raise ValueError(
+                    f"orient='list' expects a dict of column → list; "
+                    f"got {type(records).__name__}."
+                )
+            df = pd.DataFrame(records)
+            if len(df) == 0:
+                return _empty_fc()
+        else:
+            raise ValueError(
+                f"orient must be 'records' or 'list'; got {orient!r}."
+            )
         if geometry not in df.columns:
             raise FeatureError(
                 f"records missing required geometry column {geometry!r}; "
@@ -238,6 +521,7 @@ class FeatureCollection(GeoDataFrame):
         where: str | None = None,
         chunksize: int | None = None,
         tile_strategy: str = "auto",
+        include_index: bool = False,
     ) -> Any:
         """Stream features from ``path`` without materializing the full file.
 
@@ -283,6 +567,17 @@ class FeatureCollection(GeoDataFrame):
                 yields ``FeatureCollection`` chunks.
             tile_strategy (str): One of ``"auto"``, ``"rtree"``,
                 ``"row_group"``, ``"none"``. Default ``"auto"``.
+            include_index (bool): When ``True``, each yielded dict gets
+                an additional ``"id"`` key whose value is the
+                0-based file-row index of that feature. The chunked
+                form (``chunksize=N``) attaches the same index as a
+                ``"_row_index"`` column on the yielded FC. The indices
+                stay aligned with the on-disk rows even when a
+                Python-side bbox filter (``tile_strategy="none"``)
+                drops some rows — only the surviving features are
+                yielded, and their ids match the positions they had
+                in the source file. Defaults to ``False`` for
+                back-compat with the fiona idiom.
 
         Yields:
             dict | FeatureCollection: Per-feature dicts when
@@ -292,6 +587,62 @@ class FeatureCollection(GeoDataFrame):
         Raises:
             ValueError: If ``chunksize`` is given but ``< 1``, or if
                 ``tile_strategy`` is not one of the accepted values.
+
+        Examples:
+            - Stream features one at a time as GeoJSON-style dicts:
+                ```python
+                >>> import tempfile
+                >>> from pathlib import Path
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> d = Path(tempfile.mkdtemp())
+                >>> path = d / "pts.geojson"
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"id": [1, 2, 3]},
+                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> gdf.to_file(path, driver="GeoJSON")
+                >>> feats = list(FeatureCollection.iter_features(path))
+                >>> len(feats)
+                3
+                >>> feats[0]["properties"]["id"]
+                1
+
+                ```
+            - Stream in ``chunksize=2`` batches as FeatureCollection chunks:
+                ```python
+                >>> import tempfile
+                >>> from pathlib import Path
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> d = Path(tempfile.mkdtemp())
+                >>> path = d / "pts.geojson"
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"id": [1, 2, 3]},
+                ...     geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> gdf.to_file(path, driver="GeoJSON")
+                >>> chunks = list(
+                ...     FeatureCollection.iter_features(path, chunksize=2)
+                ... )
+                >>> [len(c) for c in chunks]
+                [2, 1]
+
+                ```
+            - Invalid ``chunksize`` raises ``ValueError``:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> gen = FeatureCollection.iter_features("anywhere", chunksize=0)
+                >>> next(gen)
+                Traceback (most recent call last):
+                    ...
+                ValueError: chunksize must be >= 1 when supplied; got 0.
+
+                ```
         """
         if chunksize is not None and chunksize < 1:
             raise ValueError(
@@ -302,6 +653,10 @@ class FeatureCollection(GeoDataFrame):
                 f"tile_strategy must be one of "
                 f"{cls._VALID_TILE_STRATEGIES}; got {tile_strategy!r}."
             )
+
+        import pyogrio
+
+        from pyramids import _io as _pyramids_io
 
         resolved = str(_pyramids_io._parse_path(path))
 
@@ -315,11 +670,16 @@ class FeatureCollection(GeoDataFrame):
         total = int(info["features"])
 
         if chunksize is None:
-            batch_size = 1000
+            batch_size = _DEFAULT_ITER_BATCH_SIZE
         else:
             batch_size = int(chunksize)
 
-        read_kwargs: dict[str, Any] = {}
+        # D-M3: pin the engine to pyogrio. ``skip_features`` /
+        # ``max_features`` are pyogrio-specific (geopandas' fiona
+        # engine silently ignores them, which would turn every chunk
+        # into a full scan). Pinning the engine makes the contract
+        # explicit and fails fast if pyogrio is absent.
+        read_kwargs: dict[str, Any] = {"engine": "pyogrio"}
         if layer is not None:
             read_kwargs["layer"] = layer
         if where is not None:
@@ -341,17 +701,36 @@ class FeatureCollection(GeoDataFrame):
                 max_features=batch_size,
                 **read_kwargs,
             )
+            # C14: remember the absolute row indices before any
+            # bbox-based masking so callers can map yielded features
+            # back to their source rows even after a Python-side filter
+            # has dropped some of them.
+            if include_index:
+                row_indices = list(range(start, start + len(gdf_chunk)))
             if python_bbox is not None and len(gdf_chunk) > 0:
                 xmin, ymin, xmax, ymax = python_bbox
                 mask = gdf_chunk.intersects(
                     box(xmin, ymin, xmax, ymax)
                 )
+                if include_index:
+                    row_indices = [
+                        ri for ri, keep in zip(row_indices, mask) if keep
+                    ]
                 gdf_chunk = gdf_chunk[mask]
             if chunksize is None:
-                for feat in gdf_chunk.iterfeatures(na="null"):
-                    yield feat
+                iterator = gdf_chunk.iterfeatures(na="null")
+                if include_index:
+                    for ri, feat in zip(row_indices, iterator):
+                        feat["id"] = ri
+                        yield feat
+                else:
+                    for feat in iterator:
+                        yield feat
             else:
-                yield cls(gdf_chunk)
+                chunk_fc = cls(gdf_chunk)
+                if include_index:
+                    chunk_fc["_row_index"] = row_indices
+                yield chunk_fc
 
     @classmethod
     def read_file(
@@ -433,19 +812,8 @@ class FeatureCollection(GeoDataFrame):
                 ``use_arrow=True``, driver-specific creation options).
 
         Returns:
-            FeatureCollection | LazyFeatureCollection: When
-            ``backend="pandas"`` (default), an eager
-            :class:`FeatureCollection`. When ``backend="dask"``, a
-            :class:`~pyramids.feature.LazyFeatureCollection` (a
-            :class:`dask_geopandas.GeoDataFrame` subclass). Call
-            ``.compute()`` on the lazy return to materialize back to an
-            eager :class:`FeatureCollection`.
-
-            ``backend="dask"`` requires the optional ``[parquet-lazy]``
-            extra. It does NOT honor the ``bbox`` / ``mask`` / ``rows`` /
-            ``columns`` / ``where`` / ``layer`` filter kwargs —
-            dask-geopandas has no pushdown for them — so supplying any
-            of those with ``backend="dask"`` raises :class:`ValueError`.
+            FeatureCollection: The (possibly filtered) features
+            wrapped as a FeatureCollection.
 
         Examples:
             - Load a GeoJSON file:
@@ -457,6 +825,8 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
+        from pyramids import _io as _pyramids_io
+
         resolved = _pyramids_io._parse_path(path)
         if backend == "dask":
             # M7: dask_geopandas.read_file does NOT forward pyogrio
@@ -493,11 +863,7 @@ class FeatureCollection(GeoDataFrame):
             if not partition_kwargs:
                 partition_kwargs["npartitions"] = 1
             # DASK-22F: wrap the lazy return as a LazyFeatureCollection so the
-            # dask branch stays inside the pyramids type system. The inline
-            # import of LazyFeatureCollection is intentional — the import of
-            # dask-geopandas above has already gated us on the [parquet-lazy]
-            # extra, and moving _lazy_collection to the module top would
-            # force that extra onto every minimal install.
+            # dask branch stays inside the pyramids type system.
             from pyramids.feature._lazy_collection import LazyFeatureCollection
 
             dask_gdf = dask_geopandas.read_file(resolved, **partition_kwargs)
@@ -506,6 +872,9 @@ class FeatureCollection(GeoDataFrame):
             raise ValueError(
                 f"backend must be 'pandas' or 'dask', got {backend!r}"
             )
+        # Only pass kwargs that were actually supplied — passing the
+        # defaults (None) is fine for some geopandas engines but
+        # confuses others. Build a clean kwargs dict.
         passthrough: dict[str, Any] = {}
         if layer is not None:
             passthrough["layer"] = layer
@@ -530,11 +899,87 @@ class FeatureCollection(GeoDataFrame):
         The value is cached per CRS-object identity so repeated access
         on hot paths skips the ``pyproj.CRS.to_epsg`` call. The cache
         auto-invalidates whenever ``self.crs`` is replaced.
+
+        C11: identity-miss falls back to equality. If ``self.crs`` has
+        been reassigned to a different CRS object that nevertheless
+        compares equal to the cached one (e.g. ``fc.crs = pyproj.CRS(
+        "EPSG:4326")`` on a frame already in EPSG:4326), we adopt the
+        new object as the cache key and skip the ``.to_epsg()`` call.
+        Only when the value really differs do we recompute.
+
+        L2: the equality fallback is cheaper than a fresh
+        ``.to_epsg()`` (which re-parses the CRS) but it is not free —
+        ``pyproj.CRS.__eq__`` does a WKT2 string comparison. If a
+        future pandas/geopandas release stops returning the same
+        ``self.crs`` object identity across accesses, the fallback
+        runs on every ``fc.epsg`` and adds up on hot loops. Switch
+        the cache key to ``self.crs.to_wkt()`` if a profile ever
+        shows this dominating.
+
+        Returns:
+            int | None: The integer EPSG code if the CRS is registered
+            in the EPSG authority; ``None`` when the FC has no CRS set
+            or when its CRS cannot be mapped to a single EPSG code.
+
+        Examples:
+            - Frame built with WGS84 reports EPSG 4326:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.epsg
+                4326
+
+                ```
+            - A frame without a CRS returns ``None``:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame({"id": [1]}, geometry=[Point(0, 0)])
+                ... )
+                >>> fc.epsg is None
+                True
+
+                ```
+            - Reprojecting to Web Mercator updates the cached code:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc = fc.to_crs(3857)
+                >>> fc.epsg
+                3857
+
+                ```
         """
         crs = self.crs
         cached_crs = getattr(self, "_epsg_cache_crs", None)
         if cached_crs is crs:
             return getattr(self, "_epsg_cache_value", None)
+        # C11: try equality before falling back to a fresh to_epsg() call.
+        # pyproj.CRS comparison is cheaper than a full re-parse, and the
+        # common "reassign an equivalent CRS" case (e.g. set_crs chain)
+        # should stay in the fast path.
+        if cached_crs is not None and crs is not None:
+            try:
+                equivalent = cached_crs == crs
+            except (TypeError, ValueError):
+                equivalent = False
+            if equivalent:
+                object.__setattr__(self, "_epsg_cache_crs", crs)
+                return getattr(self, "_epsg_cache_value", None)
         if crs is None:
             value: int | None = None
         else:
@@ -546,13 +991,90 @@ class FeatureCollection(GeoDataFrame):
 
     @property
     def top_left_corner(self) -> list[Number]:
-        """Top-left corner ``[xmin, ymax]`` of the total bounds."""
+        """Top-left corner ``[xmin, ymax]`` of the total bounds.
+
+        Returns:
+            list[Number]: Two-element list ``[xmin, ymax]`` — the
+            minimum x-coordinate paired with the maximum y-coordinate
+            of the union of all geometry bounds.
+
+        Examples:
+            - Two points span a unit square — the top-left is ``[0, 1]``:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1, 2]},
+                ...         geometry=[Point(0, 0), Point(1, 1)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.top_left_corner
+                [0.0, 1.0]
+
+                ```
+            - Offset points yield the offset top-left corner:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1, 2]},
+                ...         geometry=[Point(10, 20), Point(15, 30)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.top_left_corner
+                [10.0, 30.0]
+
+                ```
+        """
         bounds = self.total_bounds.tolist()
         return [bounds[0], bounds[3]]
 
     @property
     def column(self) -> list[str]:
-        """Deprecated alias for :attr:`columns` returning a ``list[str]``."""
+        """Deprecated alias for :attr:`columns` returning a ``list[str]``.
+
+        Returns:
+            list[str]: Column names in their current order, including
+            the active geometry column.
+
+        Examples:
+            - A frame with an ``id`` field reports both columns:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.column
+                ['id', 'geometry']
+
+                ```
+            - Multiple attribute columns appear in insertion order:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"name": ["a"], "pop": [100]},
+                ...         geometry=[Point(0, 0)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.column
+                ['name', 'pop', 'geometry']
+
+                ```
+        """
         return self.columns.tolist()
 
     def __str__(self) -> str:
@@ -578,19 +1100,75 @@ class FeatureCollection(GeoDataFrame):
 
         Returns a dict shaped like fiona's ``schema`` attribute so
         callers migrating from ``fiona.open(path).schema`` can consume
-        this without rewriting. The dict has two keys:
+        this without rewriting. The dict has three keys:
 
         * ``"geometry"``: single string (``"Point"``, ``"Polygon"``,
           …) when every row has the same geom type, otherwise
           ``"Unknown"``.
         * ``"properties"``: ``{column_name: dtype_string}`` for every
           non-geometry column.
+        * ``"crs"``: the :attr:`crs` as a :class:`pyproj.CRS` object,
+          or ``None`` when the FC has no CRS set (C30). Matches
+          fiona's convention — callers migrating from
+          ``fiona.open(path).schema['crs']`` can consume it directly.
 
         Empty FeatureCollections (``len(self) == 0``) report
         ``"Unknown"`` for the geometry type.
 
         Returns:
-            dict: Two-key dict with ``"geometry"`` and ``"properties"``.
+            dict: Three-key dict with ``"geometry"``, ``"properties"``,
+            and ``"crs"``.
+
+        Examples:
+            - Homogeneous point collection reports ``"Point"``:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1, 2]},
+                ...         geometry=[Point(0, 0), Point(1, 1)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> schema = fc.schema
+                >>> schema["geometry"]
+                'Point'
+                >>> schema["properties"]
+                {'id': 'int64'}
+                >>> schema["crs"].to_epsg()
+                4326
+
+                ```
+            - Mixed geometry types collapse to ``"Unknown"``:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point, LineString
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1, 2]},
+                ...         geometry=[Point(0, 0), LineString([(0, 0), (1, 1)])],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.schema["geometry"]
+                'Unknown'
+
+                ```
+            - Frames without a CRS return ``crs=None`` (C30):
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame({"id": [1]}, geometry=[Point(0, 0)])
+                ... )
+                >>> fc.schema["crs"] is None
+                True
+
+                ```
         """
         geom_types = {
             g.geom_type
@@ -606,7 +1184,11 @@ class FeatureCollection(GeoDataFrame):
             for col, dt in self.dtypes.items()
             if col != "geometry"
         }
-        return {"geometry": geom_type, "properties": properties}
+        return {
+            "geometry": geom_type,
+            "properties": properties,
+            "crs": self.crs,
+        }
 
     @classmethod
     def list_layers(cls, path: str | Path) -> list[str]:
@@ -617,6 +1199,13 @@ class FeatureCollection(GeoDataFrame):
         applies here too. Uses :func:`pyogrio.list_layers` under the
         hood (geopandas' default engine).
 
+        C15: results are memoised behind a 128-entry LRU cache keyed on
+        the resolved ``str`` path. Re-calling ``list_layers`` on the
+        same cloud URL or local path in a loop now costs one hash
+        lookup instead of one datasource open. Call
+        :meth:`list_layers_cache_clear` to invalidate after an
+        out-of-band write.
+
         Args:
             path (str | Path):
                 File path, URL, or archive path. Single-layer formats
@@ -625,13 +1214,103 @@ class FeatureCollection(GeoDataFrame):
 
         Returns:
             list[str]: Layer names in the order the driver reports them.
+
+        Raises:
+            FileNotFoundError: If ``path`` is a local filesystem path
+                that does not exist. Cloud URLs and ``/vsi*`` paths
+                skip this check and defer to the underlying driver
+                (C29). Previously all failures surfaced as an opaque
+                ``VectorDriverError("Failed to open datasource")``.
+
+        Examples:
+            - A single-layer GeoJSON returns one name derived from the filename:
+                ```python
+                >>> import tempfile
+                >>> from pathlib import Path
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> d = Path(tempfile.mkdtemp())
+                >>> path = d / "pts.geojson"
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ... )
+                >>> gdf.to_file(path, driver="GeoJSON")
+                >>> FeatureCollection.list_layers(path)
+                ['pts']
+
+                ```
+            - A missing local path raises ``FileNotFoundError``:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> FeatureCollection.list_layers("does/not/exist.geojson")
+                Traceback (most recent call last):
+                    ...
+                FileNotFoundError: list_layers: no file at 'does/not/exist.geojson'.
+
+                ```
         """
-        resolved = _pyramids_io._parse_path(path)
-        arr = pyogrio.list_layers(str(resolved))
-        # pyogrio returns an ndarray of shape (N, 2): (name, geom_type).
-        # We only expose names here; callers who want geom_types too
-        # can open individual layers and inspect ``schema``.
-        return [str(row[0]) for row in arr]
+        from pyramids import _io as _pyramids_io
+        from pyramids.base.remote import is_remote
+
+        # C29 / L3: pre-check local-path existence so the caller sees
+        # a ``FileNotFoundError`` naming the path instead of a generic
+        # driver-open failure. Defer to ``base.remote.is_remote`` as
+        # the single source of truth for which schemes are remote —
+        # the previous hardcoded prefix tuple would silently treat any
+        # future scheme as local and raise a misleading error.
+        path_str = str(path)
+        if not is_remote(path_str):
+            local = Path(path_str)
+            if not local.exists():
+                raise FileNotFoundError(
+                    f"list_layers: no file at {path_str!r}."
+                )
+
+        resolved = str(_pyramids_io._parse_path(path))
+        return list(_list_layers_cached(resolved))
+
+    @classmethod
+    def list_layers_cache_clear(cls) -> None:
+        """Clear the C15 LRU cache backing :meth:`list_layers`.
+
+        Call this after writing a new layer to an existing multi-layer
+        file (e.g. a GPKG) if you then want :meth:`list_layers` to see
+        the new layer. Otherwise the 128-entry LRU cache is self-
+        managing and callers do not need to touch it.
+
+        Returns:
+            None: This method does not return a value.
+
+        Examples:
+            - Clearing an empty cache is a safe no-op:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> FeatureCollection.list_layers_cache_clear()
+                >>> FeatureCollection.list_layers_cache_clear()
+
+                ```
+            - After an out-of-band write, clear the cache so the next
+              ``list_layers`` call re-reads the updated file:
+                ```python
+                >>> import tempfile
+                >>> from pathlib import Path
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> d = Path(tempfile.mkdtemp())
+                >>> path = d / "pts.geojson"
+                >>> gpd.GeoDataFrame(
+                ...     {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ... ).to_file(path, driver="GeoJSON")
+                >>> _ = FeatureCollection.list_layers(path)
+                >>> FeatureCollection.list_layers_cache_clear()
+                >>> FeatureCollection.list_layers(path)
+                ['pts']
+
+                ```
+        """
+        _list_layers_cached.cache_clear()
 
     @classmethod
     def open_arrow(
@@ -646,7 +1325,7 @@ class FeatureCollection(GeoDataFrame):
     ) -> Any:
         """Open a vector file as a streaming :class:`pyarrow.RecordBatchReader`.
 
-        Thin wrapper over :func:`pyogrio.raw.open_arrow` that
+        DASK-27: thin wrapper over :func:`pyogrio.raw.open_arrow` that
         surfaces the underlying Arrow RecordBatch iterator. Rows are
         yielded in batches, so callers can iterate through multi-GB
         datasets without materializing the whole table in memory —
@@ -666,13 +1345,15 @@ class FeatureCollection(GeoDataFrame):
                 uses the driver default.
 
         Returns:
-            pyarrow.RecordBatchReader: A streaming reader.
-            Call ``.read_all()`` to materialise, or iterate for
-            row-batch consumption.
+            pyarrow.RecordBatchReader: A streaming reader. Call
+            ``.read_all()`` to materialise, or iterate for row-batch
+            consumption.
 
         Raises:
             ImportError: If :mod:`pyogrio` is not installed.
         """
+        from pyramids import _io as _pyramids_io
+
         try:
             from pyogrio.raw import open_arrow
         except ImportError as exc:
@@ -700,6 +1381,7 @@ class FeatureCollection(GeoDataFrame):
         path: str | Path,
         *,
         columns: list[str] | None = None,
+        bbox: tuple[float, float, float, float] | None = None,
         backend: str = "pandas",
         split_row_groups: bool | None = None,
         filters: list | None = None,
@@ -731,24 +1413,69 @@ class FeatureCollection(GeoDataFrame):
                 layout makes this a true I/O win, unlike row-oriented
                 formats. ``geometry`` is always loaded. ``None``
                 loads every column.
+            bbox (tuple[float, float, float, float] | None):
+                ``(minx, miny, maxx, maxy)`` spatial filter (C33).
+                Forwarded to :func:`geopandas.read_parquet` which uses
+                the file's GeoParquet spatial-index metadata when
+                present to skip non-matching row groups — a true I/O
+                win on large files. ``None`` (default) loads every
+                feature.
             **kwargs:
                 Forwarded to :func:`geopandas.read_parquet`
                 (``storage_options=`` for fsspec, etc.).
 
         Returns:
-            FeatureCollection | LazyFeatureCollection: When
-            ``backend="pandas"`` (default), an eager
-            :class:`FeatureCollection`. When ``backend="dask"``, a
-            :class:`~pyramids.feature.LazyFeatureCollection` whose
-            :attr:`spatial_partitions` survives from the underlying
-            dask-geopandas frame. Call ``.compute()`` on the lazy return
-            to materialize back to an eager :class:`FeatureCollection`.
+            FeatureCollection: The file's features wrapped as a
+            FeatureCollection.
 
         Raises:
-            ImportError: If :mod:`pyarrow` is not installed, or if
-                ``backend="dask"`` is requested without the
-                ``[parquet-lazy]`` extra.
+            ImportError: If :mod:`pyarrow` is not installed, with a
+                pyramids-branded message pointing at the
+                ``[parquet]`` optional-dependency extra (D-M5).
+
+        Examples:
+            - Round-trip a small FC through GeoParquet (requires pyarrow):
+                ```python
+                >>> import tempfile  # doctest: +SKIP
+                >>> from pathlib import Path  # doctest: +SKIP
+                >>> import geopandas as gpd  # doctest: +SKIP
+                >>> from shapely.geometry import Point  # doctest: +SKIP
+                >>> from pyramids.feature import FeatureCollection  # doctest: +SKIP
+                >>> d = Path(tempfile.mkdtemp())  # doctest: +SKIP
+                >>> path = d / "pts.parquet"  # doctest: +SKIP
+                >>> gpd.GeoDataFrame(
+                ...     {"id": [1, 2]},
+                ...     geometry=[Point(0, 0), Point(1, 1)],
+                ...     crs="EPSG:4326",
+                ... ).to_parquet(path)  # doctest: +SKIP
+                >>> fc = FeatureCollection.read_parquet(path)  # doctest: +SKIP
+                >>> len(fc)  # doctest: +SKIP
+                2
+                >>> fc.epsg  # doctest: +SKIP
+                4326
+
+                ```
+            - Project a subset of columns to speed up I/O on wide files:
+                ```python
+                >>> fc = FeatureCollection.read_parquet(  # doctest: +SKIP
+                ...     "s3://bucket/big.parquet",
+                ...     columns=["id", "geometry"],
+                ... )
+                >>> fc.column  # doctest: +SKIP
+                ['id', 'geometry']
+
+                ```
+            - A missing pyarrow dependency raises a branded ``ImportError``:
+                ```python
+                >>> FeatureCollection.read_parquet("x.parquet")  # doctest: +SKIP
+                Traceback (most recent call last):
+                    ...
+                ImportError: GeoParquet support requires the optional 'pyarrow' ...
+
+                ```
         """
+        from pyramids import _io as _pyramids_io
+
         resolved = _pyramids_io._parse_path(path)
         if backend == "dask":
             try:
@@ -772,8 +1499,7 @@ class FeatureCollection(GeoDataFrame):
                 dask_kwargs["storage_options"] = storage_options
             dask_kwargs.update(kwargs)
             # DASK-23F: wrap the lazy return as a LazyFeatureCollection so the
-            # dask branch stays inside the pyramids type system. Same
-            # inline-import exception as DASK-22F.
+            # dask branch stays inside the pyramids type system.
             from pyramids.feature._lazy_collection import LazyFeatureCollection
 
             dask_gdf = dask_geopandas.read_parquet(resolved, **dask_kwargs)
@@ -782,9 +1508,17 @@ class FeatureCollection(GeoDataFrame):
             raise ValueError(
                 f"backend must be 'pandas' or 'dask', got {backend!r}"
             )
-        passthrough: dict[str, Any] = dict(kwargs)
+        _require_pyarrow()
+        # D-N3: pin the engine to pyarrow so a future geopandas that
+        # adds a fastparquet path doesn't silently change our
+        # behaviour. Callers who want fastparquet can override by
+        # passing ``engine="fastparquet"`` as a kwarg.
+        passthrough: dict[str, Any] = {"engine": "pyarrow"}
+        passthrough.update(kwargs)
         if columns is not None:
             passthrough["columns"] = columns
+        if bbox is not None:
+            passthrough["bbox"] = bbox
         if storage_options is not None:
             passthrough["storage_options"] = storage_options
         gdf = gpd.read_parquet(resolved, **passthrough)
@@ -825,8 +1559,50 @@ class FeatureCollection(GeoDataFrame):
                 Forwarded to :meth:`geopandas.GeoDataFrame.to_parquet`.
 
         Raises:
-            ImportError: If :mod:`pyarrow` is not installed.
+            ImportError: If :mod:`pyarrow` is not installed, with a
+                pyramids-branded message pointing at the
+                ``[parquet]`` optional-dependency extra (D-M5).
+
+        Examples:
+            - Write a FeatureCollection with the default snappy codec:
+                ```python
+                >>> import tempfile  # doctest: +SKIP
+                >>> from pathlib import Path  # doctest: +SKIP
+                >>> import geopandas as gpd  # doctest: +SKIP
+                >>> from shapely.geometry import Point  # doctest: +SKIP
+                >>> from pyramids.feature import FeatureCollection  # doctest: +SKIP
+                >>> d = Path(tempfile.mkdtemp())  # doctest: +SKIP
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1, 2]},
+                ...         geometry=[Point(0, 0), Point(1, 1)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )  # doctest: +SKIP
+                >>> path = d / "out.parquet"  # doctest: +SKIP
+                >>> fc.to_parquet(path)  # doctest: +SKIP
+                >>> path.exists()  # doctest: +SKIP
+                True
+
+                ```
+            - Pick a different codec (e.g. zstd for better compression):
+                ```python
+                >>> import tempfile  # doctest: +SKIP
+                >>> from pathlib import Path  # doctest: +SKIP
+                >>> import geopandas as gpd  # doctest: +SKIP
+                >>> from shapely.geometry import Point  # doctest: +SKIP
+                >>> from pyramids.feature import FeatureCollection  # doctest: +SKIP
+                >>> d = Path(tempfile.mkdtemp())  # doctest: +SKIP
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ...     )
+                ... )  # doctest: +SKIP
+                >>> fc.to_parquet(d / "out.parquet", compression="zstd")  # doctest: +SKIP
+
+                ```
         """
+        _require_pyarrow()
         super().to_parquet(
             path, compression=compression, index=index, **kwargs
         )
@@ -874,25 +1650,81 @@ class FeatureCollection(GeoDataFrame):
                 driver; consult the GDAL driver docs for the full
                 list.
 
+                C8: pyogrio (the default geopandas engine on 1.0+)
+                raises :class:`ValueError` with the message
+                ``"unrecognized option '<name>' for driver '<driver>'"``
+                when a supplied option is neither in the driver's
+                dataset nor its layer creation-option list. This
+                surfaces typos (``SPATIAL_INDX`` vs ``SPATIAL_INDEX``)
+                at write-time rather than silently producing a
+                different file. Some drivers may still accept options
+                that pyogrio does not list — verify against the
+                driver's docs when in doubt.
+
         Raises:
-            ValueError: If ``mode`` isn't ``"w"`` or ``"a"``.
+            ValueError: If ``mode`` isn't ``"w"`` or ``"a"``, or if a
+                supplied creation option is not recognised by the
+                driver (raised by pyogrio — see the ``**creation_options``
+                note above).
 
         Examples:
-            - Write a GeoJSON (default driver):
+            - Round-trip a small FC through GeoJSON (the default driver):
                 ```python
-                fc.to_file("out.geojson")
+                >>> import tempfile
+                >>> from pathlib import Path
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> d = Path(tempfile.mkdtemp())
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1, 2]},
+                ...         geometry=[Point(0, 0), Point(1, 1)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> path = d / "out.geojson"
+                >>> fc.to_file(path)
+                >>> path.exists()
+                True
+                >>> FeatureCollection.read_file(path).column
+                ['id', 'geometry']
+
                 ```
-            - Write a GPKG with spatial index + named layer:
+            - Write to GeoPackage with a named layer:
                 ```python
-                fc.to_file(
-                    "out.gpkg", driver="gpkg",
-                    layer="rivers", SPATIAL_INDEX="YES",
-                )
+                >>> import tempfile
+                >>> from pathlib import Path
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> d = Path(tempfile.mkdtemp())
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> path = d / "out.gpkg"
+                >>> fc.to_file(path, driver="gpkg", layer="rivers")
+                >>> FeatureCollection.list_layers(path)
+                ['rivers']
+
                 ```
-            - Append to an existing layer:
+            - Invalid ``mode`` raises ``ValueError`` before touching the file:
                 ```python
-                fc.to_file("out.gpkg", driver="gpkg",
-                           layer="rivers", mode="a")
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> fc.to_file("ignored.geojson", mode="x")
+                Traceback (most recent call last):
+                    ...
+                ValueError: mode must be 'w' (write) or 'a' (append); got 'x'.
+
                 ```
         """
         if mode not in ("w", "a"):
@@ -904,7 +1736,16 @@ class FeatureCollection(GeoDataFrame):
         except AttributeError:
             resolved = driver
 
-        passthrough: dict[str, Any] = {"driver": resolved, "mode": mode}
+        # C28: pin the engine to pyogrio to match :meth:`read_file` and
+        # :meth:`iter_features`. Callers who want fiona for some reason
+        # can override via ``engine="fiona"`` in creation_options, but
+        # the default gets the fast path and the pyogrio-specific
+        # unknown-option validation.
+        passthrough: dict[str, Any] = {
+            "driver": resolved,
+            "mode": mode,
+            "engine": "pyogrio",
+        }
         if layer is not None:
             passthrough["layer"] = layer
         passthrough.update(creation_options)
@@ -932,7 +1773,43 @@ class FeatureCollection(GeoDataFrame):
 
     @staticmethod
     def get_epsg_from_prj(prj: str) -> int:
-        """Delegate to :func:`pyramids.feature.crs.get_epsg_from_prj`."""
+        """Return the EPSG code identified by a projection string.
+
+        Thin delegate to :func:`pyramids.feature.crs.get_epsg_from_prj` so callers
+        that already hold a :class:`FeatureCollection` do not need to import the
+        helper module.
+
+        Args:
+            prj (str): Projection string (WKT, ESRI WKT, or Proj4).
+
+        Returns:
+            int: The resolved EPSG code.
+
+        Raises:
+            CRSError: If ``prj`` is an empty string (ARC-7: empty input is no
+                longer silently mapped to ``4326``).
+
+        Examples:
+            - Identify EPSG:4326 from its WKT representation:
+                ```python
+                >>> from osgeo import osr
+                >>> from pyramids.feature import FeatureCollection
+                >>> ref = osr.SpatialReference()
+                >>> _ = ref.ImportFromEPSG(4326)
+                >>> FeatureCollection.get_epsg_from_prj(ref.ExportToWkt())
+                4326
+
+                ```
+            - Empty string raises ``CRSError`` instead of defaulting:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> FeatureCollection.get_epsg_from_prj("")
+                Traceback (most recent call last):
+                    ...
+                pyramids.base._errors.CRSError: ...empty projection string...
+
+                ```
+        """
         return _crs.get_epsg_from_prj(prj)
 
     @staticmethod
@@ -952,9 +1829,26 @@ class FeatureCollection(GeoDataFrame):
         accept any form :meth:`pyproj.Transformer.from_crs` understands
         (EPSG int, authority string, WKT, Proj4, :class:`pyproj.CRS`).
 
+        Args:
+            x (list[float]): X-coordinates in the source CRS.
+            y (list[float]): Y-coordinates in the source CRS.
+            from_crs: Source CRS (EPSG int, authority string, WKT, Proj4, or
+                :class:`pyproj.CRS`). Default ``4326``.
+            to_crs: Target CRS, same forms as ``from_crs``. Default ``3857``.
+            precision (int | None): Decimal places for each returned value, or
+                ``None`` to disable rounding. Default ``6``.
+
+        Returns:
+            tuple[list[float], list[float]]: ``(x, y)`` in the target CRS.
+
+        Raises:
+            ValueError: If ``len(x) != len(y)``.
+            CRSError: If either CRS cannot be parsed by pyproj (M1).
+
         Examples:
             - Reproject a single WGS84 point into Web Mercator:
                 ```python
+                >>> from pyramids.feature import FeatureCollection
                 >>> x, y = FeatureCollection.reproject_coordinates(
                 ...     [31.0], [30.0], from_crs=4326, to_crs=3857
                 ... )
@@ -962,6 +1856,31 @@ class FeatureCollection(GeoDataFrame):
                 3450904
                 >>> round(y[0])
                 3503550
+
+                ```
+            - Round-trip 4326 -> 3857 -> 4326 recovers the original to
+              ``precision=6`` decimals:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> x1, y1 = FeatureCollection.reproject_coordinates(
+                ...     [12.5], [55.7], from_crs=4326, to_crs=3857
+                ... )
+                >>> x2, y2 = FeatureCollection.reproject_coordinates(
+                ...     x1, y1, from_crs=3857, to_crs=4326
+                ... )
+                >>> round(x2[0], 4), round(y2[0], 4)
+                (12.5, 55.7)
+
+                ```
+            - Mismatched list lengths raise ``ValueError``:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> FeatureCollection.reproject_coordinates(
+                ...     [1.0, 2.0], [3.0], from_crs=4326, to_crs=3857
+                ... )
+                Traceback (most recent call last):
+                    ...
+                ValueError: x and y must have equal length...
 
                 ```
         """
@@ -1016,50 +1935,129 @@ class FeatureCollection(GeoDataFrame):
         return _geom.get_coords(row, geom_col, coord_type)
 
     @staticmethod
-    def create_polygon(
-        coords: list[tuple[float, float]], wkt: bool = False
-    ) -> str | Polygon:
-        """Create a Polygon (or its WKT) from coordinates.
+    def create_polygon(coords: list[tuple[float, float]]) -> Polygon:
+        """Create a :class:`shapely.Polygon` from coordinates.
 
-        ARC-15: the ``wkt=True`` form is deprecated in favor of
-        :meth:`polygon_wkt`. ``wkt=False`` (the default) now delegates
-        to the new unconditional :func:`pyramids.feature.geometry.create_polygon`
-        which always returns a ``Polygon``.
+        Delegates to :func:`pyramids.feature.geometry.create_polygon`.
+        For the WKT-string form use :meth:`polygon_wkt` instead.
+
+        D-H2: the ARC-15 ``wkt=True`` polymorphic kwarg was removed
+        outright (no deprecation shim) — a polymorphic return type
+        was the whole motivation for splitting ARC-15 in the first
+        place.
+
+        Args:
+            coords (list[tuple[float, float]]): Ring coordinates. At least 3
+                vertices are required (C21).
+
+        Returns:
+            Polygon: A shapely ``Polygon``.
+
+        Raises:
+            InvalidGeometryError: If ``coords`` has fewer than 3 vertices.
+
+        Examples:
+            - Build a unit square and inspect its bounds / area:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> poly = FeatureCollection.create_polygon(
+                ...     [(0, 0), (1, 0), (1, 1), (0, 1)]
+                ... )
+                >>> poly.area
+                1.0
+                >>> poly.bounds
+                (0.0, 0.0, 1.0, 1.0)
+
+                ```
+            - A polygon with fewer than 3 vertices raises
+              ``InvalidGeometryError``:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> FeatureCollection.create_polygon([(0, 0), (1, 1)])
+                Traceback (most recent call last):
+                    ...
+                pyramids.base._errors.InvalidGeometryError: ...at least 3 vertices...
+
+                ```
         """
-        if wkt:
-            return _geom.create_polygon_legacy(coords, wkt=True)
         return _geom.create_polygon(coords)
 
     @staticmethod
     def polygon_wkt(coords: list[tuple[float, float]]) -> str:
         """Return the WKT for a polygon built from ``coords`` (ARC-15).
 
-        Delegates to :func:`pyramids.feature.geometry.polygon_wkt`.
+        Delegates to :func:`pyramids.feature.geometry.polygon_wkt`. This is the
+        WKT-string counterpart of :meth:`create_polygon`; the two were split in
+        ARC-15 so each entry point has a single return type.
+
+        Args:
+            coords (list[tuple[float, float]]): Ring coordinates.
+
+        Returns:
+            str: Well-Known Text representation of the polygon.
+
+        Examples:
+            - A unit-square ring produces a closed WKT polygon string:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> wkt = FeatureCollection.polygon_wkt(
+                ...     [(0, 0), (1, 0), (1, 1), (0, 1)]
+                ... )
+                >>> wkt.startswith("POLYGON")
+                True
+                >>> wkt.count("(")
+                2
+
+                ```
+            - A triangle WKT can be round-tripped back through shapely:
+                ```python
+                >>> from shapely import wkt as _wkt
+                >>> from pyramids.feature import FeatureCollection
+                >>> s = FeatureCollection.polygon_wkt(
+                ...     [(0, 0), (2, 0), (1, 2)]
+                ... )
+                >>> _wkt.loads(s).area
+                2.0
+
+                ```
         """
         return _geom.polygon_wkt(coords)
-
-    @staticmethod
-    def create_point(
-        coords: Iterable[tuple[float, ...]], epsg: int | None = None
-    ) -> list[Point] | FeatureCollection:
-        """Create shapely Points (or a FeatureCollection wrapper).
-
-        ARC-15: the polymorphic return is deprecated. Use
-        :meth:`create_points` for the list form and
-        :meth:`point_collection` for the FeatureCollection form. This
-        method kept for back-compat; it emits DeprecationWarning when
-        ``epsg`` is provided.
-        """
-        if epsg is not None:
-            result = _geom.create_point_legacy(coords, epsg=epsg)
-            return FeatureCollection(result)
-        return _geom.create_points(coords)
 
     @staticmethod
     def create_points(coords: Iterable[tuple[float, ...]]) -> list[Point]:
         """Return a list of shapely Points from ``coords`` (ARC-15).
 
-        Delegates to :func:`pyramids.feature.geometry.create_points`.
+        Delegates to :func:`pyramids.feature.geometry.create_points`. ARC-15
+        fixed the return type to always be ``list[Point]``; for the
+        ``FeatureCollection`` wrapper form use :meth:`point_collection`.
+
+        Args:
+            coords: Iterable of ``(x, y)`` tuples.
+
+        Returns:
+            list[Point]: The constructed shapely Points.
+
+        Examples:
+            - Build two points and read back their coordinates:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> pts = FeatureCollection.create_points([(0.0, 0.0), (1.5, 2.5)])
+                >>> len(pts)
+                2
+                >>> pts[1].x, pts[1].y
+                (1.5, 2.5)
+
+                ```
+            - Works with any iterable of coordinate pairs:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> pts = FeatureCollection.create_points(
+                ...     iter([(10.0, 20.0), (30.0, 40.0), (50.0, 60.0)])
+                ... )
+                >>> [(p.x, p.y) for p in pts]
+                [(10.0, 20.0), (30.0, 40.0), (50.0, 60.0)]
+
+                ```
         """
         return _geom.create_points(coords)
 
@@ -1069,8 +2067,47 @@ class FeatureCollection(GeoDataFrame):
     ) -> FeatureCollection:
         """Return a FeatureCollection of points with the given CRS (ARC-15).
 
-        Delegates to :func:`pyramids.feature.geometry.point_collection`
-        and wraps the result as a ``FeatureCollection``.
+        Delegates to :func:`pyramids.feature.geometry.point_collection` and
+        wraps the result as a ``FeatureCollection``. This is the
+        ``FeatureCollection`` counterpart of :meth:`create_points`.
+
+        Args:
+            coords: Iterable of ``(x, y)`` tuples.
+            crs: Any CRS form accepted by :class:`geopandas.GeoDataFrame` (EPSG
+                int, WKT, Proj string, or :class:`pyproj.CRS`).
+
+        Returns:
+            FeatureCollection: A new ``FeatureCollection`` with a single
+            ``geometry`` column of shapely ``Point`` rows.
+
+        Examples:
+            - Build a 3-point WGS84 FC and inspect its CRS and geometry:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection.point_collection(
+                ...     [(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)], crs="EPSG:4326",
+                ... )
+                >>> len(fc)
+                3
+                >>> fc.crs.to_epsg()
+                4326
+                >>> fc.geometry.iloc[1].x
+                1.0
+
+                ```
+            - Integer EPSG works too; geometry column names default to
+              ``"geometry"``:
+                ```python
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection.point_collection(
+                ...     [(10.0, 20.0), (30.0, 40.0)], crs=3857,
+                ... )
+                >>> fc.geometry.name
+                'geometry'
+                >>> [(p.x, p.y) for p in fc.geometry]
+                [(10.0, 20.0), (30.0, 40.0)]
+
+                ```
         """
         return FeatureCollection(_geom.point_collection(coords, crs=crs))
 
@@ -1092,6 +2129,43 @@ class FeatureCollection(GeoDataFrame):
             FeatureCollection: A new FeatureCollection (``self`` is
             not modified) with the original columns plus ``x`` and
             ``y`` per-vertex coordinate lists.
+
+        Examples:
+            - A Point FC gets scalar ``x`` / ``y`` per row:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1, 2]},
+                ...         geometry=[Point(1.0, 2.0), Point(3.0, 4.0)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> out = fc.with_coordinates()
+                >>> list(out["x"])
+                [1.0, 3.0]
+                >>> list(out["y"])
+                [2.0, 4.0]
+
+                ```
+            - The input FC is not mutated (ARC-16):
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0.0, 0.0)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> _ = fc.with_coordinates()
+                >>> "x" in fc.columns
+                False
+
+                ```
         """
         gdf = _geom.explode_gdf(
             gpd.GeoDataFrame(self, copy=True), geometry="multipolygon"
@@ -1127,6 +2201,8 @@ class FeatureCollection(GeoDataFrame):
 
         if basemap:
             if self.epsg is None:
+                from pyramids.base._errors import CRSError
+
                 raise CRSError(
                     "FeatureCollection must have a CRS (epsg) to use basemap."
                 )
@@ -1149,6 +2225,16 @@ class FeatureCollection(GeoDataFrame):
         directly and returns a ``FeatureCollection`` via the
         ``_constructor`` hook (ARC-1a).
 
+        C32: a CRS mismatch between ``self`` and ``other`` raises
+        :class:`pyramids.base._errors.CRSError`. The old behaviour
+        silently adopted ``self``'s CRS — which corrupted the
+        ``other`` rows' coordinates if the two frames were in
+        different CRSes. Callers that want to force-concat across
+        CRSes must ``other.to_crs(self.crs)`` first. An
+        unset-on-one-side case (one CRS is ``None``) is permitted so
+        you can seed a CRS by concatenating a CRS-carrying frame
+        onto a freshly-constructed empty FC.
+
         Args:
             other (GeoDataFrame): The rows to append.
 
@@ -1156,10 +2242,80 @@ class FeatureCollection(GeoDataFrame):
             FeatureCollection: A new FC containing ``self``'s rows
             followed by ``other``'s rows, with ``self``'s CRS and a
             freshly-reset index.
+
+        Raises:
+            CRSError: If both frames carry a CRS and the two CRSes
+                do not match.
+
+        Examples:
+            - Concatenate two single-row FCs on matching CRS:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> a = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> b = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [2]}, geometry=[Point(1, 1)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> out = a.concat(b)
+                >>> len(out)
+                2
+                >>> list(out["id"])
+                [1, 2]
+                >>> out.crs.to_epsg()
+                4326
+
+                ```
+            - CRS mismatch raises ``CRSError``:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> a = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1]}, geometry=[Point(0, 0)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> b = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [2]}, geometry=[Point(1, 1)],
+                ...         crs="EPSG:3857",
+                ...     )
+                ... )
+                >>> a.concat(b)
+                Traceback (most recent call last):
+                    ...
+                pyramids.base._errors.CRSError: concat: CRS mismatch...
+
+                ```
         """
+        import pandas as pd
+
+        # C32: validate CRS agreement up front.
+        if self.crs is not None and other.crs is not None:
+            if self.crs != other.crs:
+                from pyramids.base._errors import CRSError
+
+                raise CRSError(
+                    f"concat: CRS mismatch — self.crs = {self.crs!r}, "
+                    f"other.crs = {other.crs!r}. Reproject one side "
+                    f"— ``other.to_crs(self.crs)`` OR "
+                    f"``self.to_crs(other.crs)`` — before "
+                    f"concatenating, or strip one CRS with "
+                    f".set_crs(None, allow_override=True)."
+                )
         combined = gpd.GeoDataFrame(pd.concat([self, other]))
         combined.index = list(range(len(combined)))
-        combined.crs = self.crs
+        combined.crs = self.crs if self.crs is not None else other.crs
         return FeatureCollection(combined)
 
     def with_centroid(self) -> FeatureCollection:
@@ -1174,16 +2330,97 @@ class FeatureCollection(GeoDataFrame):
         :meth:`with_coordinates`) and attaches three columns:
         ``avg_x``, ``avg_y`` and ``center_point`` (shapely ``Point``).
 
+        C18: feeding a degenerate or empty geometry (for example an
+        empty ``Point``, or a ``Polygon`` whose ring has zero area)
+        produces ``(NaN, NaN)`` averages. The method emits a single
+        ``UserWarning`` listing the row indices whose ``avg_x`` /
+        ``avg_y`` could not be computed so downstream code can guard
+        against the NaN centroids instead of silently consuming them.
+        The ``center_point`` value at those rows is an empty
+        ``shapely.Point`` (``Point.is_empty is True``) rather than a
+        ``(NaN, NaN)`` point.
+
         Returns:
             FeatureCollection: A new FeatureCollection (``self`` is
             not modified) with ``x``, ``y``, ``avg_x``, ``avg_y``,
             ``center_point`` columns added.
+
+        Examples:
+            - Compute centroids for a 2-polygon FC:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Polygon
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1, 2]},
+                ...         geometry=[
+                ...             Polygon([(0, 0), (2, 0), (2, 2), (0, 2)]),
+                ...             Polygon([(4, 4), (6, 4), (6, 6), (4, 6)]),
+                ...         ],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> out = fc.with_centroid()
+                >>> [(p.x, p.y) for p in out["center_point"]]
+                [(0.8, 0.8), (4.8, 4.8)]
+
+                ```
+            - A Point FC is a no-op for the coordinate lists (each row
+              is already a single vertex); the centroid equals the point:
+                ```python
+                >>> import geopandas as gpd
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import FeatureCollection
+                >>> fc = FeatureCollection(
+                ...     gpd.GeoDataFrame(
+                ...         {"id": [1, 2]},
+                ...         geometry=[Point(3.0, 4.0), Point(7.0, 8.0)],
+                ...         crs="EPSG:4326",
+                ...     )
+                ... )
+                >>> out = fc.with_centroid()
+                >>> [(p.x, p.y) for p in out["center_point"]]
+                [(3.0, 4.0), (7.0, 8.0)]
+
+                ```
         """
         fc = self.with_coordinates()
         for i, row_i in fc.iterrows():
             fc.loc[i, "avg_x"] = np.mean(row_i["x"])
             fc.loc[i, "avg_y"] = np.mean(row_i["y"])
 
-        coords_list = zip(fc["avg_x"].tolist(), fc["avg_y"].tolist())
-        fc["center_point"] = _geom.create_points(coords_list)
+        # C18: detect rows whose averaged coordinate could not be
+        # computed (empty geometry, all-NaN rings, etc.). Emit a single
+        # summary warning and substitute an empty Point so the column
+        # does not expose a ``(NaN, NaN)`` Point that would then crash
+        # downstream reprojections.
+        avg_x = fc["avg_x"].to_numpy()
+        avg_y = fc["avg_y"].to_numpy()
+        bad_mask = np.isnan(avg_x) | np.isnan(avg_y)
+        if bad_mask.any():
+            bad_idx = [int(i) for i, is_bad in enumerate(bad_mask) if is_bad]
+            warnings.warn(
+                f"with_centroid: {len(bad_idx)} row(s) yielded NaN centroids "
+                f"(rows {bad_idx}). Their ``center_point`` is an empty "
+                f"shapely.Point. Drop or repair those rows before running "
+                f"a method that requires a valid centroid (e.g. reproject, "
+                f"distance).",
+                GeometryWarning,
+                stacklevel=2,
+            )
+
+        # L4: single-pass build. The previous implementation built a
+        # throwaway ``coords_list`` (with NaN placeholders for the bad
+        # rows), called ``create_points`` on it, then iterated the
+        # result a second time to substitute empty Points for the bad
+        # rows. Skip both intermediates — write the final column value
+        # directly.
+        cleaned: list[Any] = [
+            Point() if bad else Point(ax, ay)
+            for ax, ay, bad in zip(
+                avg_x.tolist(), avg_y.tolist(), bad_mask.tolist()
+            )
+        ]
+        fc["center_point"] = cleaned
         return fc

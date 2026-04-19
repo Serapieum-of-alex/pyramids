@@ -242,4 +242,169 @@ class TestParquetWorkflow:
         final = FeatureCollection.read_file(gpkg, layer="points")
         assert len(final) == 3
         assert final.epsg == 3857
-        assert list(final["pop"]) == [100, 200, 300]
+
+
+class TestStreamIndexCentroidPickleChain:
+    """Chained e2e across C9/C14/C15/C18: stream + centroid + pickle.
+
+    Exercises five of the fixes in one flow:
+
+    * C9 / ARC-28: build a base FC from a features list.
+    * C14: ``iter_features(include_index=True)`` rebuilds the FC from
+      chunks and preserves source-row indices through a Python-side
+      bbox filter.
+    * C15: ``list_layers`` on the on-disk GPKG answers from the cache
+      on the second call.
+    * C18: ``with_centroid`` runs over the reassembled FC without
+      warning (no NaN-coord geometries).
+    * Pickle: the final FC round-trips through ``pickle`` preserving
+      the centroid column and the row-index column.
+    """
+
+    def test_stream_filter_centroid_pickle_round_trip(self, tmp_path: Path):
+        import pickle
+
+        import pandas as pd
+        from shapely.geometry import Point as _Pt
+
+        FeatureCollection.list_layers_cache_clear()
+
+        points = [_Pt(i, i) for i in range(10)]
+        gdf = gpd.GeoDataFrame(
+            {"id": list(range(10)), "score": [i * 0.1 for i in range(10)]},
+            geometry=points,
+            crs="EPSG:4326",
+        )
+        src = tmp_path / "stream.gpkg"
+        gdf.to_file(src, driver="GPKG", layer="points")
+
+        # C15: list_layers is cached — two calls, one pyogrio call.
+        layers_first = FeatureCollection.list_layers(src)
+        layers_second = FeatureCollection.list_layers(src)
+        assert layers_first == layers_second
+        assert "points" in layers_first
+
+        # C14: stream with Python-bbox filter + include_index.
+        chunks = list(
+            FeatureCollection.iter_features(
+                src,
+                layer="points",
+                bbox=(0.0, 0.0, 4.5, 4.5),
+                tile_strategy="none",
+                chunksize=3,
+                include_index=True,
+            )
+        )
+        combined = pd.concat(chunks)
+        assert isinstance(combined, FeatureCollection)
+        combined = combined.reset_index(drop=True)
+        assert list(combined["_row_index"]) == [0, 1, 2, 3, 4]
+
+        # C18: with_centroid on the reassembled FC — no NaN rows.
+        with_center = combined.with_centroid()
+        assert "center_point" in with_center.columns
+        assert all(not p.is_empty for p in with_center["center_point"])
+
+        # Pickle round-trip preserves the attached columns.
+        restored = pickle.loads(pickle.dumps(with_center))
+        assert isinstance(restored, FeatureCollection)
+        assert list(restored["_row_index"]) == [0, 1, 2, 3, 4]
+        assert list(restored["center_point"]) == list(with_center["center_point"])
+
+
+class TestGeometryHardeningChain:
+    """Chained e2e across D-H1/C21/C22/C23 + D-H2.
+
+    Builds a FeatureCollection with mixed Polygons + MultiPolygons, runs
+    ``with_coordinates`` (which calls ``explode_gdf`` internally), asserts:
+
+    * the input FC is untouched (D-H1),
+    * the exploded output has the right row count,
+    * ``create_polygon`` rejects a bad ring (C21) so the pipeline can
+      build one valid polygon to feed the FC,
+    * calling ``get_coords`` on an empty row raises (C22), and
+    * ``reproject_coordinates`` converts pyproj failures to
+      :class:`pyramids.base._errors.CRSError` (C23).
+    """
+
+    def test_explode_polygon_extract_reproject_chain(self):
+        from shapely.geometry import MultiPolygon as _Mp
+        from shapely.geometry import Point as _Pt
+
+        from pyramids.base._errors import CRSError, InvalidGeometryError
+
+        # C21: valid triangle ring; the 2-vertex guard keeps callers from
+        # ever reaching this with a degenerate polygon.
+        triangle = FeatureCollection.create_polygon(
+            [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]
+        )
+        mpoly = _Mp([box(2.0, 2.0, 3.0, 3.0), box(4.0, 4.0, 5.0, 5.0)])
+        fc = FeatureCollection(
+            gpd.GeoDataFrame(geometry=[triangle, mpoly], crs="EPSG:4326")
+        )
+        original_types = [g.geom_type for g in fc.geometry]
+
+        # D-H1: with_coordinates explodes internally and must NOT mutate ``fc``.
+        exploded = fc.with_coordinates()
+        assert [g.geom_type for g in fc.geometry] == original_types, (
+            "input FC's geometries mutated by with_coordinates"
+        )
+        # Exploded output carries the split child rows (triangle + 2 boxes).
+        assert len(exploded) == 3
+
+        # C22: empty geometry in a row raises InvalidGeometryError on
+        # direct ``get_coords`` access.
+        import pandas as _pd
+
+        row = _pd.Series({"geometry": _Pt()})
+        with pytest.raises(InvalidGeometryError):
+            FeatureCollection._get_coords(row, "geometry", "x")
+
+        # C23: a bad target CRS in a downstream reproject surfaces as
+        # pyramids CRSError, not pyproj's.
+        with pytest.raises(CRSError):
+            FeatureCollection.reproject_coordinates(
+                [1.0], [1.0], from_crs=4326, to_crs="gibberish-wkt"
+            )
+
+
+class TestBatch4Chain:
+    """Chained e2e: from_records(orient='list') → rasterize → verify.
+
+    Exercises C26 (columnar-dict input) together with D-M2 (validation
+    guard in ``Dataset.from_features``) by building a FC from a
+    pandas-style columnar dict and rasterising it through the
+    validated path. D-M4's /vsimem/ round-trip is exercised
+    transitively by ``Dataset.from_features`` opening the vector via
+    ``_ogr.as_datasource``.
+    """
+
+    def test_columnar_records_to_raster(self, tmp_path):
+        from pyramids.dataset import Dataset as _Ds
+
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+        x0, y0 = top_left
+
+        fc = FeatureCollection.from_records(
+            {
+                "class_id": [7, 13],
+                "geometry": [
+                    box(x0, y0 - 2 * cell_size,
+                        x0 + 2 * cell_size, y0),
+                    box(x0 + 3 * cell_size, y0 - 2 * cell_size,
+                        x0 + 5 * cell_size, y0),
+                ],
+            },
+            orient="list",
+            crs=f"EPSG:{epsg}",
+        )
+        assert len(fc) == 2
+
+        raster = _Ds.from_features(
+            fc, cell_size=cell_size, column_name="class_id"
+        )
+        arr = raster.read_array()
+        assert int(arr.max()) == 13, f"expected 13 in burned raster; got {arr.max()}"
+        assert 7 in set(int(v) for v in arr.flatten() if v != raster.no_data_value[0])

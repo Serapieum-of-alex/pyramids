@@ -94,6 +94,7 @@ class TestCRSError:
         with pytest.raises(ValueError):
             get_epsg_from_prj("")
 
+    @pytest.mark.plot
     def test_basemap_without_crs_raises_crs_error(self):
         """FC.plot(basemap=True) without CRS raises CRSError (ARC-18)."""
         poly = box(0, 0, 1, 1)

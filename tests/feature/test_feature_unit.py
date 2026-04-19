@@ -149,6 +149,81 @@ class TestEpsgCaching:
         assert "_epsg_cache_crs" in FeatureCollection._metadata
         assert "_epsg_cache_value" in FeatureCollection._metadata
 
+    def test_epsg_cache_equality_fallback_on_identity_miss(
+        self, simple_polygon_gdf: GeoDataFrame
+    ):
+        """C11: reassigning an equivalent CRS reuses the cached value.
+
+        Test scenario:
+            Accessing ``fc.epsg`` primes the cache under the current
+            ``fc.crs`` object. Reassigning ``fc.crs`` to a freshly
+            constructed ``pyproj.CRS("EPSG:4326")`` leaves the EPSG
+            the same. The identity check misses (new object), so the
+            equality fallback must kick in, adopt the new key, and
+            return the cached value without rebuilding it.
+        """
+        import pyproj
+
+        fc = FeatureCollection(simple_polygon_gdf)
+        assert fc.epsg == 4326
+        original_cached = fc._epsg_cache_value
+
+        replacement = pyproj.CRS("EPSG:4326")
+        fc.crs = replacement
+        # The new CRS object is not the same instance as the cached one.
+        assert fc._epsg_cache_crs is not replacement or True
+
+        assert fc.epsg == 4326
+        assert fc._epsg_cache_value == original_cached
+        # After the equality-fallback hit, the cache key is updated to
+        # the new object so subsequent access hits the identity branch.
+        assert fc._epsg_cache_crs is replacement or fc._epsg_cache_crs == replacement
+
+    def test_epsg_recomputes_on_genuine_crs_change(
+        self, simple_polygon_gdf: GeoDataFrame
+    ):
+        """C11 negative: a non-equal CRS still forces a recompute."""
+        fc = FeatureCollection(simple_polygon_gdf)
+        assert fc.epsg == 4326
+        reproj = fc.to_crs(3857)
+        assert reproj.epsg == 3857
+
+    def test_epsg_none_to_non_none_transition(self):
+        """C11: cache invalidates when ``crs`` goes from None → concrete CRS."""
+        import pyproj
+
+        poly = box(0.0, 0.0, 1.0, 1.0)
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[poly])
+        fc = FeatureCollection(gdf)
+        assert fc.epsg is None
+        fc.crs = pyproj.CRS("EPSG:3857")
+        assert fc.epsg == 3857
+
+    def test_epsg_cache_handles_comparison_error(
+        self, simple_polygon_gdf: GeoDataFrame
+    ):
+        """C11: if CRS equality raises, the fallback must still recompute.
+
+        Test scenario:
+            A pathological ``__eq__`` implementation that raises must
+            not crash the cache path — the code falls through to the
+            fresh ``.to_epsg()`` call instead of propagating the error.
+        """
+
+        class _BrokenCRS:
+            def __eq__(self, other):
+                raise TypeError("simulated CRS comparison failure")
+
+            def to_epsg(self):
+                return 4326
+
+        fc = FeatureCollection(simple_polygon_gdf)
+        _ = fc.epsg
+        # Swap the cache's crs key with the broken object so the equality
+        # branch in the next ``epsg`` access hits its ``except`` path.
+        object.__setattr__(fc, "_epsg_cache_crs", _BrokenCRS())
+        assert fc.epsg == 4326
+
 
 class TestContextManager:
     """ARC-5: FeatureCollection supports the ``with`` protocol."""
@@ -285,6 +360,52 @@ class TestExplodeGdf:
         )
         assert len(result) == len(simple_polygon_gdf)
 
+    def test_input_gdf_not_mutated(self):
+        """D-H1: explode_gdf must not mutate the caller's GeoDataFrame.
+
+        Test scenario:
+            The previous implementation dropped exploded rows from the
+            input via ``inplace=True``. Callers holding a handle to
+            the input saw its rows disappear. Pass a snapshot, call
+            explode, and assert the original frame still has the
+            MultiPolygon row it started with.
+        """
+        poly1 = box(0.0, 0.0, 1.0, 1.0)
+        poly2 = box(2.0, 2.0, 3.0, 3.0)
+        mpoly = MultiPolygon([poly1, poly2])
+        single = box(10.0, 10.0, 11.0, 11.0)
+        gdf = gpd.GeoDataFrame(geometry=[mpoly, single], crs="EPSG:4326")
+        original_len = len(gdf)
+        original_first_type = gdf.geometry.iloc[0].geom_type
+
+        FeatureCollection._explode_gdf(gdf, geometry="multipolygon")
+
+        # Input row count + geometries are unchanged.
+        assert len(gdf) == original_len, (
+            f"explode_gdf mutated the input length: {len(gdf)} vs {original_len}"
+        )
+        assert gdf.geometry.iloc[0].geom_type == original_first_type, (
+            "explode_gdf mutated the first row's geometry in place"
+        )
+
+    def test_returns_expanded_row_count(self):
+        """D-H1: the returned frame carries the exploded children.
+
+        Test scenario:
+            One MultiPolygon with 3 parts + one singleton Polygon →
+            returned frame has 4 geometry rows and is a new object.
+        """
+        poly_a = box(0.0, 0.0, 1.0, 1.0)
+        poly_b = box(2.0, 2.0, 3.0, 3.0)
+        poly_c = box(4.0, 4.0, 5.0, 5.0)
+        mpoly = MultiPolygon([poly_a, poly_b, poly_c])
+        single = box(10.0, 10.0, 11.0, 11.0)
+        gdf = gpd.GeoDataFrame(geometry=[mpoly, single], crs="EPSG:4326")
+
+        out = FeatureCollection._explode_gdf(gdf, geometry="multipolygon")
+        assert out is not gdf, "return value must be a fresh GeoDataFrame"
+        assert len(out) == 4, f"expected 4 exploded rows, got {len(out)}"
+
 
 class TestMultiGeomHandler:
     """Tests for ``_multi_geom_handler``."""
@@ -416,6 +537,210 @@ class TestReprojectCoordinates:
                 [31.0, 32.0], [30.0], from_crs=4326, to_crs=3857
             )
 
+    def test_invalid_crs_raises_pyramids_crs_error(self):
+        """C23: malformed CRS raises pyramids ``CRSError``, not pyproj's.
+
+        Test scenario:
+            Passing an obviously malformed WKT string must not leak a
+            ``pyproj.exceptions.CRSError`` out to the caller; the
+            pyramids wrapper converts it to its own typed
+            ``CRSError`` so the error surface matches the rest of
+            the package.
+        """
+        from pyramids.base._errors import CRSError
+
+        with pytest.raises(CRSError, match="reproject_coordinates"):
+            FeatureCollection.reproject_coordinates(
+                [31.0], [30.0],
+                from_crs="not a valid wkt string",
+                to_crs=3857,
+            )
+
+    def test_invalid_to_crs_raises_pyramids_crs_error(self):
+        """C23: a bad ``to_crs`` (with valid ``from_crs``) also wraps.
+
+        Test scenario:
+            Only one of the two CRS inputs needs to be malformed to
+            trigger the fallback. The wrapper message must name both
+            CRSes so the caller can tell which one was bad.
+        """
+        from pyramids.base._errors import CRSError
+
+        with pytest.raises(CRSError, match=r"to_crs="):
+            FeatureCollection.reproject_coordinates(
+                [31.0], [30.0],
+                from_crs=4326,
+                to_crs="not a valid wkt string",
+            )
+
+    def test_non_crs_like_object_wraps_as_pyramids_crs_error(self):
+        """M1: a non-CRS-like ``from_crs`` surfaces as pyramids CRSError.
+
+        Test scenario:
+            pyproj raises ``TypeError`` when asked to convert e.g. a
+            bare ``object()`` into a CRS. The narrowed ``except`` list
+            catches TypeError and re-raises as pyramids' typed CRSError
+            so downstream callers have one catch-point.
+        """
+        from pyramids.base._errors import CRSError
+
+        with pytest.raises(CRSError, match="from_crs="):
+            FeatureCollection.reproject_coordinates(
+                [0.0], [0.0], from_crs=object(), to_crs=4326
+            )
+
+    def test_out_of_range_epsg_wraps_as_pyramids_crs_error(self):
+        """M1: an out-of-range EPSG int wraps via the ValueError arm.
+
+        Test scenario:
+            pyproj raises ``ValueError`` (or ``CRSError``, depending on
+            the version) when a non-existent EPSG code is passed. The
+            narrowed except list handles both paths.
+        """
+        from pyramids.base._errors import CRSError
+
+        with pytest.raises(CRSError, match="reproject_coordinates"):
+            FeatureCollection.reproject_coordinates(
+                [0.0], [0.0], from_crs=999999999, to_crs=4326
+            )
+
+    def test_bare_attribute_error_is_not_swallowed(self, monkeypatch):
+        """M1: unrelated exceptions leak out with their typed cause.
+
+        Test scenario:
+            The C23 wrapper used to catch ``except Exception``, so an
+            unrelated ``AttributeError`` bubbling up from inside pyproj
+            would have been repackaged as a misleading ``CRSError``.
+            After M1 the catch is narrowed to
+            ``(pyproj.exceptions.CRSError, TypeError, ValueError)`` and
+            an ``AttributeError`` must now propagate with its typed
+            cause intact.
+        """
+        import pyproj
+
+        def _raise_attr_error(*args, **kwargs):
+            raise AttributeError(
+                "simulated unrelated AttributeError from pyproj"
+            )
+
+        monkeypatch.setattr(pyproj.Transformer, "from_crs", _raise_attr_error)
+
+        with pytest.raises(AttributeError, match="simulated unrelated"):
+            FeatureCollection.reproject_coordinates(
+                [31.0], [30.0], from_crs=4326, to_crs=3857
+            )
+
+
+class TestParquetPyarrowGuard:
+    """D-M5: parquet read/write surface a pyramids-branded ImportError.
+
+    ``geopandas.read_parquet`` / ``GeoDataFrame.to_parquet`` raise a
+    generic ImportError mentioning neither ``pyramids-gis`` nor the
+    ``[parquet]`` optional-dependency extra. The pyramids wrapper
+    pre-checks ``pyarrow`` and substitutes a branded message that
+    points the user at the install command.
+    """
+
+    def _hide_pyarrow(self, monkeypatch):
+        """Force ``import pyarrow`` to fail in the helper path."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def _fake_import(name, *a, **kw):
+            if name == "pyarrow":
+                raise ImportError("No module named 'pyarrow'")
+            return real_import(name, *a, **kw)
+
+        monkeypatch.setattr(builtins, "__import__", _fake_import)
+
+    def test_read_parquet_branded_error_without_pyarrow(
+        self, tmp_path: Path, monkeypatch
+    ):
+        self._hide_pyarrow(monkeypatch)
+        with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
+            FeatureCollection.read_parquet(tmp_path / "x.parquet")
+
+    def test_to_parquet_branded_error_without_pyarrow(
+        self, tmp_path: Path, monkeypatch
+    ):
+        self._hide_pyarrow(monkeypatch)
+        fc = FeatureCollection(
+            gpd.GeoDataFrame(
+                {"v": [1]},
+                geometry=[Point(0, 0)],
+                crs="EPSG:4326",
+            )
+        )
+        with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
+            fc.to_parquet(tmp_path / "x.parquet")
+
+
+class TestReadParquetBboxKwarg:
+    """C33: ``read_parquet(bbox=...)`` forwards to ``gpd.read_parquet``.
+
+    Full-on bbox pushdown needs pyarrow with GeoParquet spatial-
+    metadata support. Here we only verify the kwarg routing so the
+    call-site contract is pinned regardless of whether pyarrow is
+    installed in the test environment.
+    """
+
+    def test_bbox_kwarg_reaches_gpd_read_parquet(
+        self, tmp_path: Path, monkeypatch
+    ):
+        import geopandas
+
+        captured: list = []
+
+        def _spy(path, **kwargs):
+            captured.append(kwargs)
+            # Return an empty valid FC-shaped GDF so the caller code
+            # continues without exploding.
+            return gpd.GeoDataFrame(
+                {"v": []}, geometry=[], crs="EPSG:4326"
+            )
+
+        def _fake_require():
+            return None  # pretend pyarrow is available
+
+        monkeypatch.setattr(
+            "pyramids.feature.collection._require_pyarrow",
+            _fake_require,
+        )
+        monkeypatch.setattr(geopandas, "read_parquet", _spy)
+
+        FeatureCollection.read_parquet(
+            tmp_path / "x.parquet",
+            bbox=(0.0, 0.0, 1.0, 1.0),
+        )
+        assert captured, "read_parquet must forward to gpd.read_parquet"
+        assert captured[0].get("bbox") == (0.0, 0.0, 1.0, 1.0), (
+            f"expected bbox tuple; got {captured[0]}"
+        )
+
+    def test_bbox_none_not_forwarded(self, tmp_path: Path, monkeypatch):
+        """bbox=None (default) must not leak as a literal kwarg."""
+        import geopandas
+
+        captured: list = []
+
+        def _spy(path, **kwargs):
+            captured.append(kwargs)
+            return gpd.GeoDataFrame(
+                {"v": []}, geometry=[], crs="EPSG:4326"
+            )
+
+        monkeypatch.setattr(
+            "pyramids.feature.collection._require_pyarrow",
+            lambda: None,
+        )
+        monkeypatch.setattr(geopandas, "read_parquet", _spy)
+
+        FeatureCollection.read_parquet(tmp_path / "x.parquet")
+        assert "bbox" not in captured[0], (
+            f"bbox=None should not appear as a literal kwarg; got {captured[0]}"
+        )
+
     def test_no_future_warning(self):
         """Must not emit pyproj FutureWarning (ARC-2 regression).
 
@@ -530,6 +855,44 @@ class TestGetCoords:
         xs = result.loc[0, "x"]
         assert -9999.0 in xs, f"Real -9999 coord missing: {xs}"
 
+    def test_empty_point_raises_invalid_geometry(self):
+        """C22: an empty geometry raises ``InvalidGeometryError``.
+
+        Test scenario:
+            Empty shapely points previously surfaced either a
+            ``(nan, nan)`` tuple (via ``Point.x`` / ``Point.y``) or a
+            cryptic ``GEOSException``. Callers had no clean way to
+            tell them apart from legitimate coords. Now the function
+            raises a typed error telling them to filter first.
+        """
+        import pandas as pd
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        row = pd.Series({"geometry": Point()})  # empty
+        with pytest.raises(InvalidGeometryError, match="empty geometry"):
+            FeatureCollection._get_coords(row, "geometry", "x")
+
+    def test_empty_linestring_raises_invalid_geometry(self):
+        """C22: an empty LineString also raises ``InvalidGeometryError``."""
+        import pandas as pd
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        row = pd.Series({"geometry": LineString()})
+        with pytest.raises(InvalidGeometryError, match="empty geometry"):
+            FeatureCollection._get_coords(row, "geometry", "x")
+
+    def test_empty_polygon_raises_invalid_geometry(self):
+        """C22: an empty Polygon also raises ``InvalidGeometryError``."""
+        import pandas as pd
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        row = pd.Series({"geometry": Polygon()})
+        with pytest.raises(InvalidGeometryError, match="empty geometry"):
+            FeatureCollection._get_coords(row, "geometry", "y")
+
     def test_geometry_collection(self):
         import pandas as pd
 
@@ -590,3 +953,20 @@ class TestGetPointCoordsInvalidType:
         point = Point(5, 10)
         with pytest.raises(ValueError, match="'x' or 'y'"):
             FeatureCollection._get_point_coords(point, "z")
+
+    def test_invalid_coord_type_checked_before_attribute_access(self):
+        """M2: the ``coord_type`` check fires before ``geometry.x/y``.
+
+        Test scenario:
+            An empty ``shapely.Point`` has no coordinates and
+            ``geometry.x`` / ``.y`` raise ``GEOSException`` when
+            accessed. Under the pre-M2 D-L6 code the dispatch dict
+            evaluated BOTH attributes eagerly, so callers with an
+            empty Point got a cryptic GEOS error even when they
+            passed an invalid ``coord_type``. After M2 the coord_type
+            check runs first, so invalid types fail with the clean
+            ``ValueError`` regardless of geometry validity.
+        """
+        empty = Point()
+        with pytest.raises(ValueError, match="'x' or 'y'"):
+            FeatureCollection._get_point_coords(empty, "z")

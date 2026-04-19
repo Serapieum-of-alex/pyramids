@@ -69,21 +69,53 @@ class TestCreatePolygon:
         assert isinstance(wkt, str)
         assert wkt == coordinates_wkt
 
-    def test_create_polygon_wkt_kwarg_deprecated(
-        self, coordinates: List[Tuple[int, int]], coordinates_wkt: str
+    def test_create_polygon_wkt_kwarg_is_gone(
+        self, coordinates: List[Tuple[int, int]]
     ):
-        """The legacy ``wkt=True`` kwarg still works but emits a warning."""
-        import warnings as _w
+        """D-H2: the ARC-15 ``wkt=`` kwarg is deleted outright.
 
-        with _w.catch_warnings(record=True) as caught:
-            _w.simplefilter("always")
-            result = FeatureCollection.create_polygon(coordinates, wkt=True)
-        deprecated = [
-            w for w in caught if issubclass(w.category, DeprecationWarning)
-        ]
-        assert deprecated, "wkt=True should emit a DeprecationWarning"
-        assert "polygon_wkt" in str(deprecated[0].message)
-        assert result == coordinates_wkt
+        Test scenario:
+            Callers who wrote ``create_polygon(coords, wkt=True)`` must
+            migrate to :meth:`polygon_wkt` — the polymorphic kwarg no
+            longer exists, so the call surfaces a ``TypeError`` naming
+            the unknown kwarg.
+        """
+        import pytest as _pt
+
+        with _pt.raises(TypeError, match="wkt"):
+            FeatureCollection.create_polygon(coordinates, wkt=True)
+
+    def test_create_polygon_too_few_vertices_raises(self):
+        """C21: fewer than 3 vertices raises ``InvalidGeometryError``."""
+        import pytest as _pt
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        with _pt.raises(InvalidGeometryError, match="at least 3 vertices"):
+            FeatureCollection.create_polygon([(0, 0), (1, 1)])
+
+    def test_create_polygon_zero_vertices_raises(self):
+        """C21: empty input raises ``InvalidGeometryError``."""
+        import pytest as _pt
+
+        from pyramids.base._errors import InvalidGeometryError
+
+        with _pt.raises(InvalidGeometryError, match="at least 3 vertices"):
+            FeatureCollection.create_polygon([])
+
+    def test_create_polygon_exactly_three_vertices_ok(self):
+        """C21 boundary: exactly 3 vertices is accepted.
+
+        Test scenario:
+            The threshold is "at least 3". A coord list of length 3
+            is the minimum-valid input and must construct a Polygon
+            successfully.
+        """
+        triangle = FeatureCollection.create_polygon(
+            [(0, 0), (1, 0), (0, 1)]
+        )
+        assert isinstance(triangle, Polygon)
+        assert not triangle.is_empty
 
 
 class TestCreatePoint:
@@ -100,30 +132,21 @@ class TestCreatePoint:
         assert len(fc["geometry"]) == len(coordinates)
         assert fc.epsg == 4326
 
-    def test_create_point_with_epsg_deprecated(
+    def test_create_point_method_is_gone(
         self, coordinates: List[Tuple[int, int]]
     ):
-        """The legacy ``create_point(coords, epsg=…)`` still works, with warning."""
-        import warnings as _w
+        """D-H2: the polymorphic ``create_point`` dispatcher is deleted.
 
-        with _w.catch_warnings(record=True) as caught:
-            _w.simplefilter("always")
-            fc = FeatureCollection.create_point(coordinates, epsg=4326)
-        deprecated = [
-            w for w in caught if issubclass(w.category, DeprecationWarning)
-        ]
-        assert deprecated, "create_point(..., epsg=...) should warn"
-        assert "point_collection" in str(deprecated[0].message)
-        assert isinstance(fc, FeatureCollection)
-        assert fc.epsg == 4326
-
-    def test_create_point_without_epsg_returns_list(
-        self, coordinates: List[Tuple[int, int]]
-    ):
-        """Back-compat: legacy ``create_point(coords)`` still returns list."""
-        pts = FeatureCollection.create_point(coordinates)
-        assert isinstance(pts, list)
-        assert len(pts) == len(coordinates)
+        Test scenario:
+            ARC-15 split this into :meth:`create_points` (list) and
+            :meth:`point_collection` (FC). The polymorphic
+            ``create_point`` pass-through is gone outright; the
+            attribute simply doesn't exist on the class anymore.
+        """
+        assert not hasattr(FeatureCollection, "create_point"), (
+            "FeatureCollection.create_point must be deleted (D-H2). "
+            "Use create_points() or point_collection() instead."
+        )
 
 
 class TestToDataset:
@@ -362,6 +385,45 @@ class TestConcat:
         assert isinstance(result, FeatureCollection)
         assert len(result) == 2
 
+    def test_concat_raises_on_crs_mismatch(self):
+        """C32: concatenating two FCs in different CRSes raises CRSError.
+
+        Test scenario:
+            Silent CRS adoption would corrupt the ``other`` rows'
+            coordinates. Force the caller to reproject first.
+        """
+        import pytest as _pt
+        from shapely.geometry import Point as _Pt
+
+        from pyramids.base._errors import CRSError
+
+        fc_a = FeatureCollection(
+            GeoDataFrame({"v": [1]}, geometry=[_Pt(0, 0)], crs="EPSG:4326")
+        )
+        fc_b = GeoDataFrame({"v": [2]}, geometry=[_Pt(1, 1)], crs="EPSG:3857")
+
+        with _pt.raises(CRSError, match="CRS mismatch"):
+            fc_a.concat(fc_b)
+
+    def test_concat_permits_none_crs_on_one_side(self):
+        """C32 negative: an unset CRS on either side is allowed.
+
+        Test scenario:
+            A freshly-constructed empty FC (crs=None) should still be
+            able to absorb a CRS-carrying frame. The result adopts
+            whichever side has a CRS.
+        """
+        from shapely.geometry import Point as _Pt
+
+        fc_a = FeatureCollection(
+            GeoDataFrame({"v": [1]}, geometry=[_Pt(0, 0)])
+        )
+        fc_b = GeoDataFrame({"v": [2]}, geometry=[_Pt(1, 1)], crs="EPSG:4326")
+
+        result = fc_a.concat(fc_b)
+        assert result.epsg == 4326
+        assert len(result) == 2
+
 
 def test_with_centroid(polygons_gdf: GeoDataFrame):
     feature = FeatureCollection(polygons_gdf)
@@ -369,6 +431,184 @@ def test_with_centroid(polygons_gdf: GeoDataFrame):
     assert result is not feature, "must return a new object"
     assert "center_point" in result.columns
     assert "center_point" not in feature.columns, "self must not be mutated"
+
+
+class TestWithCentroidDegenerateGeometries:
+    """C18: with_centroid handles empty / zero-area geometries safely.
+
+    Feeding a degenerate geometry used to produce a ``(NaN, NaN)``
+    Point silently — downstream reprojection / distance ops would
+    then crash on the invalid coordinates. Now the method (1) emits a
+    ``UserWarning`` naming the offending row indices and (2)
+    substitutes an empty ``shapely.Point`` so the column invariant
+    ("non-NaN point or empty point") holds.
+    """
+
+    def test_nan_coord_point_emits_warning(self):
+        """Test scenario: one valid point + one NaN-coord point → one warning.
+
+        ``Point(float('nan'), float('nan'))`` is not empty — it carries
+        NaN coordinates which propagate through the np.mean call and
+        produce a NaN average. C18 detects that and warns.
+        """
+        import warnings
+
+        from shapely.geometry import Point as _Pt
+
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(3, 4), _Pt(float("nan"), float("nan"))],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", UserWarning)
+            fc.with_centroid()
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert any(
+            "NaN centroids" in str(w.message) for w in user_warnings
+        ), f"expected NaN-centroids warning; got {user_warnings}"
+
+    def test_nan_coord_row_substituted_with_empty_point(self):
+        """Test scenario: the NaN-coord row's center_point is empty."""
+        import warnings
+
+        from shapely.geometry import Point as _Pt
+
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(3, 4), _Pt(float("nan"), float("nan"))],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            result = fc.with_centroid()
+
+        centers = result["center_point"].tolist()
+        assert not centers[0].is_empty
+        assert centers[1].is_empty
+
+    def test_no_warning_for_all_valid_geometries(self):
+        """Test scenario: every row has a valid geometry → no warning."""
+        import warnings
+
+        from shapely.geometry import Point as _Pt
+
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(0, 0), _Pt(1, 1)],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", UserWarning)
+            fc.with_centroid()
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert not any(
+            "NaN centroids" in str(w.message) for w in user_warnings
+        ), f"should not warn for valid geometries; got {user_warnings}"
+
+    def test_warning_is_geometry_warning_category(self):
+        """L6: the NaN-centroid warning uses ``GeometryWarning``.
+
+        Test scenario:
+            A caller must be able to suppress just pyramids geometry
+            warnings with ``warnings.filterwarnings("ignore",
+            category=GeometryWarning)`` — silencing the plain
+            ``UserWarning`` would also silence unrelated geopandas /
+            shapely warnings.
+        """
+        import warnings as _w
+
+        from shapely.geometry import Point as _Pt
+
+        from pyramids.base._errors import GeometryWarning
+
+        nan = float("nan")
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(0, 0), _Pt(nan, nan)],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always", GeometryWarning)
+            fc.with_centroid()
+        geo_warnings = [
+            w for w in caught if issubclass(w.category, GeometryWarning)
+        ]
+        assert geo_warnings, (
+            f"expected a GeometryWarning; got {[w.category for w in caught]}"
+        )
+
+    def test_warning_can_be_filtered_by_category(self):
+        """L6: ``filterwarnings("ignore", category=GeometryWarning)`` works.
+
+        Test scenario:
+            Install the filter, call ``with_centroid`` on a
+            degenerate FC, and assert no warnings were captured. A
+            plain-UserWarning-only warning would have needed a
+            message-match filter to silence.
+        """
+        import warnings as _w
+
+        from shapely.geometry import Point as _Pt
+
+        from pyramids.base._errors import GeometryWarning
+
+        nan = float("nan")
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(0, 0), _Pt(nan, nan)],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            _w.filterwarnings("ignore", category=GeometryWarning)
+            fc.with_centroid()
+        geo_warnings = [
+            w for w in caught if issubclass(w.category, GeometryWarning)
+        ]
+        assert not geo_warnings, (
+            f"GeometryWarning should have been filtered out; got {geo_warnings}"
+        )
+
+    def test_warning_lists_all_bad_row_indices(self):
+        """C18: multiple NaN rows are all named in the warning message.
+
+        Test scenario:
+            When two rows produce NaN centroids, the warning message
+            lists both indices so callers can filter them in one pass
+            without re-running the detection.
+        """
+        import warnings
+
+        from shapely.geometry import Point as _Pt
+
+        nan = float("nan")
+        gdf = GeoDataFrame(
+            {"v": [1, 2, 3, 4]},
+            geometry=[
+                _Pt(0, 0),
+                _Pt(nan, nan),
+                _Pt(5, 5),
+                _Pt(nan, nan),
+            ],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", UserWarning)
+            fc.with_centroid()
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        bodies = " ".join(str(w.message) for w in user_warnings)
+        assert "2 row(s)" in bodies or "[1, 3]" in bodies, (
+            f"warning should summarise the two bad rows; got {bodies}"
+        )
 
 
 def test_old_names_are_gone():

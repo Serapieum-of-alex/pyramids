@@ -42,6 +42,44 @@ def create_sr_from_proj(
 
     Returns:
         osr.SpatialReference: The constructed spatial reference.
+
+    Examples:
+        - Parse a standard EPSG:4326 WKT string and inspect the result:
+            ```python
+            >>> from osgeo import osr
+            >>> ref = osr.SpatialReference()
+            >>> _ = ref.ImportFromEPSG(4326)
+            >>> wkt = ref.ExportToWkt()
+            >>> srs = create_sr_from_proj(wkt)
+            >>> srs.IsGeographic()
+            1
+            >>> srs.GetName()
+            'WGS 84'
+
+            ```
+        - Parse a Proj4 string by passing ``string_type="PROJ4"``:
+            ```python
+            >>> srs = create_sr_from_proj(
+            ...     "+proj=longlat +datum=WGS84 +no_defs", string_type="PROJ4"
+            ... )
+            >>> srs.IsGeographic()
+            1
+            >>> srs.IsProjected()
+            0
+
+            ```
+        - Parse an EPSG:3857 WKT and confirm the axis order is projected:
+            ```python
+            >>> from osgeo import osr
+            >>> ref = osr.SpatialReference()
+            >>> _ = ref.ImportFromEPSG(3857)
+            >>> srs = create_sr_from_proj(ref.ExportToWkt())
+            >>> srs.IsProjected()
+            1
+            >>> srs.GetName()
+            'WGS 84 / Pseudo-Mercator'
+
+            ```
     """
     srs = osr.SpatialReference()
     if string_type is None:
@@ -71,6 +109,34 @@ def get_epsg_from_prj(prj: str) -> int:
 
     Raises:
         ValueError: If ``prj`` is an empty string.
+
+    Examples:
+        - Resolve EPSG:4326 from its standard WKT representation:
+            ```python
+            >>> from osgeo import osr
+            >>> ref = osr.SpatialReference()
+            >>> _ = ref.ImportFromEPSG(4326)
+            >>> get_epsg_from_prj(ref.ExportToWkt())
+            4326
+
+            ```
+        - Resolve EPSG:3857 (Web Mercator) from its WKT representation:
+            ```python
+            >>> from osgeo import osr
+            >>> ref = osr.SpatialReference()
+            >>> _ = ref.ImportFromEPSG(3857)
+            >>> get_epsg_from_prj(ref.ExportToWkt())
+            3857
+
+            ```
+        - An empty projection string raises ``CRSError`` (a ``ValueError`` subclass):
+            ```python
+            >>> get_epsg_from_prj("")
+            Traceback (most recent call last):
+                ...
+            pyramids.base._errors.CRSError: get_epsg_from_prj received an empty projection string. ...
+
+            ```
     """
     if prj == "":
         raise CRSError(
@@ -133,6 +199,18 @@ def reproject_coordinates(
 
     Raises:
         ValueError: If ``len(x) != len(y)``.
+        CRSError: If :meth:`pyproj.Transformer.from_crs` raises one
+            of ``pyproj.exceptions.CRSError`` (malformed WKT / proj
+            string), ``TypeError`` (input is not CRS-like — e.g. a
+            bare ``object()``), or ``ValueError`` (out-of-range EPSG
+            integer). The wrapper converts each into pyramids'
+            :class:`pyramids.base._errors.CRSError` so callers do not
+            need to import pyproj to catch bad-CRS failures, and the
+            message names both CRSes plus the underlying explanation.
+            Other exception types (``AttributeError``, ``ImportError``,
+            …) propagate unchanged — they signal a real bug, not a bad
+            user input (M1 narrowed the original blanket
+            ``except Exception``).
 
     Examples:
         - Reproject two WGS84 points into Web Mercator:
@@ -161,7 +239,23 @@ def reproject_coordinates(
             f"x and y must have equal length; got len(x)={len(x)} "
             f"vs. len(y)={len(y)}."
         )
-    transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+    # C23 / M1: ``pyproj.Transformer.from_crs`` raises
+    # :class:`pyproj.exceptions.CRSError` on malformed CRS strings,
+    # ``TypeError`` on unsupported input types (e.g. a dict), and
+    # ``ValueError`` on e.g. out-of-range EPSG ints. Wrap those three
+    # explicitly in :class:`pyramids.base._errors.CRSError` so callers
+    # can catch pyramids' own typed exception without importing pyproj
+    # — but do NOT swallow ``AttributeError`` / ``ImportError`` / etc.
+    # which would mask real bugs in our own code.
+    import pyproj.exceptions
+
+    try:
+        transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+    except (pyproj.exceptions.CRSError, TypeError, ValueError) as exc:
+        raise CRSError(
+            f"reproject_coordinates failed to parse CRS "
+            f"(from_crs={from_crs!r}, to_crs={to_crs!r}): {exc}"
+        ) from exc
     xs = np.full(len(x), np.nan)
     ys = np.full(len(x), np.nan)
     for i in range(len(x)):

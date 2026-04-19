@@ -97,9 +97,7 @@ class TestHttpRewrite:
         )
 
         url = "http://example.invalid/points.geojson"
-        # N2: log level downgraded from INFO to DEBUG to avoid flood on
-        # DatasetCollection reads. Test asserts at DEBUG accordingly.
-        with caplog.at_level(logging.DEBUG, logger="pyramids.base.remote"):
+        with caplog.at_level(logging.INFO, logger="pyramids.base.remote"):
             FeatureCollection.read_file(url)
 
         messages = [rec.getMessage() for rec in caplog.records]

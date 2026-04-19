@@ -185,6 +185,326 @@ class TestRasterizeRoundTrip:
         burned = arr[arr == 42.0]
         assert burned.size > 0, "Burned value 42 should appear in the raster"
 
+    def test_from_features_rejects_non_positive_cell_size(self):
+        """D-M2: cell_size=0 and negative values raise ``ValueError``."""
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match="cell_size must be positive"):
+            Dataset.from_features(fc, cell_size=0, column_name="v")
+        with pytest.raises(ValueError, match="cell_size must be positive"):
+            Dataset.from_features(fc, cell_size=-10.0, column_name="v")
+
+    def test_from_features_rejects_empty_column_list(self):
+        """D-M2: empty ``column_name`` list raises ``ValueError``."""
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match="non-empty"):
+            Dataset.from_features(fc, cell_size=0.1, column_name=[])
+
+    def test_from_features_rejects_unknown_column_string(self):
+        """D-M2: unknown ``column_name`` string raises with the valid list."""
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match="not in the FeatureCollection"):
+            Dataset.from_features(fc, cell_size=0.1, column_name="nope")
+
+    def test_from_features_rejects_non_str_non_list_column_name(self):
+        """M4: ``column_name`` must be str, list, or None — typed TypeError.
+
+        Test scenario:
+            Passing an int for ``column_name`` previously surfaced as a
+            misleading ValueError about the column not being in the
+            FeatureCollection. The typed TypeError now points at the
+            real issue (wrong input type) and names the allowed set.
+        """
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(TypeError, match=r"str, list\[str\], or None"):
+            Dataset.from_features(fc, cell_size=0.1, column_name=123)
+
+    def test_from_features_rejects_unknown_column_in_list(self):
+        """D-M2: unknown name inside a ``column_name`` list also raises."""
+        gdf = gpd.GeoDataFrame(
+            {"a": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)], crs="EPSG:4326"
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match=r"not in the FeatureCollection.*'b'"):
+            Dataset.from_features(fc, cell_size=0.1, column_name=["a", "b"])
+
+    def test_from_features_negative_cell_size_with_template(self):
+        """D-M2 boundary: negative cell_size is rejected even when template given.
+
+        Test scenario:
+            The guard fires on the cell_size kwarg unconditionally (it
+            does not wait until the non-template branch dereferences
+            ``cell_size``). A template-path caller who passes a
+            negative cell_size gets the same error up front.
+        """
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+        template = Dataset.create(
+            cell_size=cell_size, rows=5, columns=5, dtype="int32",
+            bands=1, top_left_corner=top_left, epsg=epsg,
+            no_data_value=-1,
+        )
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)],
+            crs=f"EPSG:{epsg}",
+        )
+        fc = FeatureCollection(gdf)
+        with pytest.raises(ValueError, match="cell_size must be positive"):
+            Dataset.from_features(
+                fc, cell_size=-1.0, template=template, column_name="v",
+            )
+
+    def test_from_features_raises_on_crs_less_features(self):
+        """C5: CRS-less FeatureCollection fails fast with CRSError.
+
+        Regression for the pr-review-merged C5 finding: rasterising a
+        FeatureCollection whose ``crs`` is ``None`` previously produced
+        a raster with an undefined projection, failing downstream with
+        cryptic GDAL errors. Now the method raises a typed
+        :class:`CRSError` at the top of ``from_features``.
+        """
+        from pyramids.base._errors import CRSError
+
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]},
+            geometry=[box(0.0, 0.0, 1.0, 1.0)],
+            # Explicitly no CRS.
+        )
+        fc = FeatureCollection(gdf)
+        assert fc.epsg is None
+
+        with pytest.raises(CRSError, match="must have a CRS"):
+            Dataset.from_features(fc, cell_size=0.1, column_name="v")
+
+    def test_rasterize_integer_dtype_with_none_nodata_template(self):
+        """C2: integer burn with a template having no-data=None falls back
+        to the class default sentinel instead of NaN.
+
+        Regression for the pr-review-merged C2 finding: when the template's
+        no-data is None and the burn column is integer-typed, the previous
+        code assigned ``np.nan`` to the output raster's no-data — invalid
+        on integer rasters and silently coerced into an arbitrary sentinel.
+        """
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+
+        template = Dataset.create(
+            cell_size=cell_size,
+            rows=10,
+            columns=10,
+            dtype="int32",
+            bands=1,
+            top_left_corner=top_left,
+            epsg=epsg,
+            no_data_value=None,
+        )
+        # Precondition: template carries None as its no-data.
+        assert template.no_data_value[0] is None
+
+        x0, y0 = top_left
+        poly = box(x0, y0 - 5 * cell_size, x0 + 5 * cell_size, y0)
+        gdf = gpd.GeoDataFrame(
+            {"class_id": np.array([7], dtype=np.int32)},
+            geometry=[poly],
+            crs=f"EPSG:{epsg}",
+        )
+        fc = FeatureCollection(gdf)
+
+        raster = Dataset.from_features(
+            fc, template=template, column_name="class_id"
+        )
+
+        nodata = raster.no_data_value[0]
+        assert nodata is not None, "integer raster must have a non-None no-data"
+        assert not (isinstance(nodata, float) and np.isnan(nodata)), (
+            "integer raster's no-data must not be NaN (C2)"
+        )
+        assert nodata == Dataset.default_no_data_value
+
+    @pytest.mark.parametrize(
+        "int_dtype,sample",
+        [
+            ("int16", -42),
+            ("int64", 2_000_000_000),
+        ],
+        ids=["int16", "int64"],
+    )
+    def test_rasterize_integer_dtype_variants(self, int_dtype, sample):
+        """C2 parametrized: signed integer dtypes trigger the fallback.
+
+        Test scenario:
+            Build a template with ``no_data_value=None`` and a burn
+            column of the given signed integer dtype. The rasterizer
+            picks ``cls.default_no_data_value`` (``-9999``) instead of
+            silently coercing NaN into an arbitrary integer. Unsigned
+            integer dtypes (``uint8``/``uint16``) are excluded: the
+            class default ``-9999`` cannot be stored in an unsigned
+            type at all — that is a separate, pre-existing defect in
+            ``band_metadata`` orthogonal to C2.
+        """
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+
+        template = Dataset.create(
+            cell_size=cell_size,
+            rows=5,
+            columns=5,
+            dtype=int_dtype,
+            bands=1,
+            top_left_corner=top_left,
+            epsg=epsg,
+            no_data_value=None,
+        )
+
+        x0, y0 = top_left
+        poly = box(x0, y0 - 3 * cell_size, x0 + 3 * cell_size, y0)
+        gdf = gpd.GeoDataFrame(
+            {"v": np.array([sample], dtype=int_dtype)},
+            geometry=[poly],
+            crs=f"EPSG:{epsg}",
+        )
+        fc = FeatureCollection(gdf)
+
+        raster = Dataset.from_features(fc, template=template, column_name="v")
+        nodata = raster.no_data_value[0]
+        assert nodata is not None, f"{int_dtype}: no-data is None"
+        assert not (
+            isinstance(nodata, float) and np.isnan(nodata)
+        ), f"{int_dtype}: no-data is NaN — C2 regression"
+
+    def test_rasterize_float_dtype_keeps_nan_nodata(self):
+        """C2 negative: float dtype templates keep the NaN fallback.
+
+        Test scenario:
+            The C2 guard only kicks in for integer dtypes. A float32
+            burn column with ``template.no_data_value=None`` must still
+            carry NaN as its no-data (since float32 can represent it).
+        """
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+
+        template = Dataset.create(
+            cell_size=cell_size,
+            rows=5,
+            columns=5,
+            dtype="float32",
+            bands=1,
+            top_left_corner=top_left,
+            epsg=epsg,
+            no_data_value=None,
+        )
+        x0, y0 = top_left
+        poly = box(x0, y0 - 3 * cell_size, x0 + 3 * cell_size, y0)
+        gdf = gpd.GeoDataFrame(
+            {"x": np.array([3.14], dtype=np.float32)},
+            geometry=[poly],
+            crs=f"EPSG:{epsg}",
+        )
+        fc = FeatureCollection(gdf)
+
+        raster = Dataset.from_features(fc, template=template, column_name="x")
+        nodata = raster.no_data_value[0]
+        # NaN on float is valid and preserved.
+        assert nodata is not None, "float raster should still have a no-data"
+        assert isinstance(nodata, float) and np.isnan(nodata), (
+            f"float raster should keep NaN no-data; got {nodata!r}"
+        )
+
+    def test_rasterize_integer_dtype_keeps_explicit_template_nodata(self):
+        """C2 negative: an explicit integer no-data on the template is preserved.
+
+        Test scenario:
+            When the template already carries a concrete integer no-data
+            (e.g. ``-1``), the C2 guard must not overwrite it with the
+            class default. Only the NaN → default fallback path fires.
+        """
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+
+        template = Dataset.create(
+            cell_size=cell_size,
+            rows=5,
+            columns=5,
+            dtype="int32",
+            bands=1,
+            top_left_corner=top_left,
+            epsg=epsg,
+            no_data_value=-1,
+        )
+        assert template.no_data_value[0] == -1
+
+        x0, y0 = top_left
+        poly = box(x0, y0 - 3 * cell_size, x0 + 3 * cell_size, y0)
+        gdf = gpd.GeoDataFrame(
+            {"v": np.array([7], dtype=np.int32)},
+            geometry=[poly],
+            crs=f"EPSG:{epsg}",
+        )
+        fc = FeatureCollection(gdf)
+
+        raster = Dataset.from_features(fc, template=template, column_name="v")
+        assert raster.no_data_value[0] == -1, (
+            "explicit template no-data must not be overwritten"
+        )
+
+    def test_rasterize_then_pickle_roundtrip_chain(self):
+        """C2 + C3 chained: rasterize → pickle FC → unpickle → rasterize again.
+
+        Test scenario:
+            Exercise C2's integer-dtype guard and C3's ``_metadata``
+            dedup together. Build an integer-typed FC, pickle/unpickle
+            it, verify the CRS/epsg cache and geometry column survive,
+            then rasterize through a None-nodata template and confirm
+            both runs produce the same no-data sentinel.
+        """
+        import pickle
+
+        epsg = 32636
+        cell_size = 1000.0
+        top_left = (500000.0, 3400000.0)
+
+        x0, y0 = top_left
+        poly = box(x0, y0 - 3 * cell_size, x0 + 3 * cell_size, y0)
+        gdf = gpd.GeoDataFrame(
+            {"class_id": np.array([9], dtype=np.int32)},
+            geometry=[poly],
+            crs=f"EPSG:{epsg}",
+        )
+        fc = FeatureCollection(gdf)
+
+        restored = pickle.loads(pickle.dumps(fc))
+        assert isinstance(restored, FeatureCollection)
+        assert restored.epsg == epsg
+        assert "geometry" in restored.columns
+
+        template = Dataset.create(
+            cell_size=cell_size, rows=5, columns=5, dtype="int32",
+            bands=1, top_left_corner=top_left, epsg=epsg,
+            no_data_value=None,
+        )
+        r1 = Dataset.from_features(fc, template=template, column_name="class_id")
+        r2 = Dataset.from_features(
+            restored, template=template, column_name="class_id"
+        )
+        assert r1.no_data_value[0] == r2.no_data_value[0]
+        assert r1.no_data_value[0] == Dataset.default_no_data_value
+
 
 class TestReprojectAlignWorkflow:
     """Reproject a raster and then align another to its grid."""

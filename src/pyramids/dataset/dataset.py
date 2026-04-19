@@ -835,20 +835,67 @@ class Dataset(  # type: ignore[misc]
                 burns every non-geometry column as a separate band.
 
         Returns:
-            Dataset: The burned raster.
+            Dataset: The burned raster. When the burn column is an
+            integer dtype and the template's no-data is ``None``, the
+            output raster's no-data is the class default sentinel
+            (``cls.default_no_data_value``) rather than ``NaN`` — NaN
+            cannot be stored in integer rasters without silent
+            coercion. Float-typed burn columns keep NaN as before.
 
         Raises:
-            ValueError: If neither ``cell_size`` nor ``template`` is
-                given, or if the vector CRS disagrees with the raster
-                CRS.
-            TypeError: If ``template`` is not a pyramids ``Dataset``.
+            ValueError: Raised up front (before the raster is
+                allocated) in any of:
+
+                * neither ``cell_size`` nor ``template`` was given,
+                * ``cell_size`` is ``<= 0`` (D-M2),
+                * ``column_name`` is an empty list (D-M2),
+                * ``column_name`` names a column that isn't in
+                  ``features.columns`` — either as a string or inside
+                  a list (D-M2). The message lists the available
+                  columns to ease the fix.
+            TypeError: If ``template`` is not a pyramids ``Dataset``,
+                or if ``column_name`` is neither ``str``, ``list``,
+                nor ``None`` (M4 — a common slip is passing an int
+                by mistake; the typed error points at the input
+                type rather than the column-not-found path).
+            CRSError: If ``features.epsg`` is ``None`` (the vector
+                has no CRS), or if ``template`` is supplied and
+                ``template.epsg != features.epsg``. Raised before any
+                raster is allocated so callers fail fast.
         """
         if cell_size is None and template is None:
             raise ValueError(
                 "You have to enter either cell size or Dataset object."
             )
+        # D-M2: validate cell_size up front (non-positive breaks the
+        # non-template branch with divide-by-zero / negative shapes).
+        if cell_size is not None and cell_size <= 0:
+            raise ValueError(
+                f"cell_size must be positive; got {cell_size!r}."
+            )
+        # M4: type-check ``column_name`` up front so a caller passing
+        # an ``int`` (or any other non-str, non-list value) sees a
+        # typed TypeError instead of "column_name 123 is not in the
+        # FeatureCollection" which would misdirect them toward
+        # renaming a column.
+        if column_name is not None and not isinstance(column_name, (str, list)):
+            raise TypeError(
+                f"column_name must be str, list[str], or None; "
+                f"got {type(column_name).__name__}."
+            )
 
         ds_epsg = features.epsg
+        # C5: both branches below feed ``ds_epsg`` into ``cls.create`` (via
+        # either the template path or the cell_size path). A CRS-less
+        # FeatureCollection would produce a raster with an undefined
+        # projection, which fails downstream in reproject / crop / overlay
+        # with cryptic GDAL errors. Fail fast with a typed CRSError.
+        if ds_epsg is None:
+            raise CRSError(
+                "FeatureCollection must have a CRS before rasterisation. "
+                "Set one via ``fc.set_crs('EPSG:...')`` or construct the FC "
+                "with ``crs='EPSG:...'``."
+            )
         if template is not None:
             if not isinstance(template, Dataset):
                 raise TypeError(
@@ -875,14 +922,49 @@ class Dataset(  # type: ignore[misc]
             columns = int(np.ceil((xmax - xmin) / cell_size))
             rows = int(np.ceil((ymax - ymin) / cell_size))
 
-        burn_values = None
         if column_name is None:
             column_name = [c for c in features.columns if c != "geometry"]
 
+        # D-M2: validate column_name shape / membership before
+        # dereferencing into features.dtypes. An empty list used to
+        # IndexError inside the dtype lookup; an unknown name used to
+        # raise an opaque KeyError deep in pandas.
         if isinstance(column_name, list):
+            if not column_name:
+                raise ValueError(
+                    "column_name list must be non-empty. Pass None to "
+                    "burn every non-geometry column, or name at least "
+                    "one column."
+                )
+            missing = [c for c in column_name if c not in features.columns]
+            if missing:
+                raise ValueError(
+                    f"column_name references columns not in the "
+                    f"FeatureCollection: {missing}. Available columns: "
+                    f"{list(features.columns)}."
+                )
             numpy_dtype = features.dtypes[column_name[0]]
         else:
+            if column_name not in features.columns:
+                raise ValueError(
+                    f"column_name {column_name!r} is not in the "
+                    f"FeatureCollection. Available columns: "
+                    f"{list(features.columns)}."
+                )
             numpy_dtype = features.dtypes[column_name]
+
+        # C2: integer raster dtypes cannot represent NaN. If the template
+        # supplied None as no_data_value (defaulted to NaN above) and the
+        # burn column's dtype is integer, fall back to the class default
+        # sentinel so GDAL does not silently coerce NaN into an arbitrary
+        # integer value.
+        if np.issubdtype(numpy_dtype, np.integer):
+            try:
+                if np.isnan(no_data_value):
+                    no_data_value = cls.default_no_data_value
+            except (TypeError, ValueError):
+                pass
+
 
         dtype = str(numpy_dtype)
         attribute = column_name
@@ -906,7 +988,7 @@ class Dataset(  # type: ignore[misc]
             for ind, band in enumerate(bands):
                 rasterize_opts = gdal.RasterizeOptions(
                     bands=[band],
-                    burnValues=burn_values,
+                    burnValues=None,
                     attribute=(
                         attribute[ind]
                         if isinstance(attribute, list)

@@ -101,3 +101,20 @@ class VectorDriverError(FeatureError, RuntimeError):
     Multi-inherits from :class:`RuntimeError` so ``except
     RuntimeError:`` handlers keep working.
     """
+
+
+class GeometryWarning(UserWarning):
+    """Pyramids-emitted warning about geometry validity / degeneracy.
+
+    L6: emitted by :meth:`pyramids.feature.FeatureCollection.with_centroid`
+    and other geometry-handling methods when an input is degenerate
+    (empty geometry, NaN coordinates, zero-area ring) and the method
+    recovers via a documented fallback rather than raising.
+
+    Users can suppress just this category without silencing every
+    pyramids / geopandas / shapely ``UserWarning``::
+
+        import warnings
+        from pyramids.base._errors import GeometryWarning
+        warnings.filterwarnings("ignore", category=GeometryWarning)
+    """

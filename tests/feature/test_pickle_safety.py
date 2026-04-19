@@ -86,6 +86,67 @@ class TestPicklePlain:
         assert len(restored) == len(fc)
 
 
+class TestMetadataDedup:
+    """C3: ``_metadata`` is de-duplicated against geopandas upstream additions.
+
+    ARC-31 fixed the pickle bug by splatting ``GeoDataFrame._metadata``
+    first; if a future geopandas release adds one of our own names
+    (``_epsg_cache_crs`` / ``_epsg_cache_value``) to the parent list,
+    the pyramids subclass used to end up with a duplicate. Python
+    allows duplicate list entries, but pandas' ``_metadata`` processing
+    may not be idempotent. ``dict.fromkeys`` de-dupes while preserving
+    insertion order.
+    """
+
+    def test_metadata_has_no_duplicates(self):
+        assert len(FeatureCollection._metadata) == len(
+            set(FeatureCollection._metadata)
+        )
+
+    def test_metadata_preserves_parent_ordering(self):
+        from geopandas import GeoDataFrame as _GDF
+
+        # Parent entries come first, pyramids additions last.
+        parent = list(_GDF._metadata)
+        for idx, name in enumerate(parent):
+            assert FeatureCollection._metadata[idx] == name
+
+    def test_metadata_contains_pyramids_caches(self):
+        assert "_epsg_cache_crs" in FeatureCollection._metadata
+        assert "_epsg_cache_value" in FeatureCollection._metadata
+
+    def test_metadata_stays_deduped_in_subclass(self):
+        """C3: a further subclass does not reintroduce duplicates.
+
+        Test scenario:
+            A user may subclass FeatureCollection and splat its own
+            ``_metadata`` list. Even if the child re-adds a name already
+            present in the parent, the final list must still resolve to
+            a unique set. The class attribute pattern relies on Python's
+            MRO, so this mirrors geopandas' contract.
+        """
+
+        class ChildFC(FeatureCollection):
+            _metadata = list(
+                dict.fromkeys([
+                    *FeatureCollection._metadata,
+                    "_epsg_cache_crs",  # intentionally re-listed
+                ])
+            )
+
+        assert len(ChildFC._metadata) == len(set(ChildFC._metadata))
+
+    def test_metadata_survives_copy(self, fc: FeatureCollection):
+        """C3: ``.copy()`` preserves the de-duped ``_metadata`` list."""
+        duplicate = fc.copy()
+        assert list(type(duplicate)._metadata) == list(
+            FeatureCollection._metadata
+        )
+        assert len(type(duplicate)._metadata) == len(
+            set(type(duplicate)._metadata)
+        )
+
+
 @pytest.mark.skipif(
     importlib.util.find_spec("cloudpickle") is None,
     reason="cloudpickle not installed",

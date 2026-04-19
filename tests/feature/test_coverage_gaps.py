@@ -30,6 +30,7 @@ from pyramids.base._errors import CRSError
 from pyramids.feature import FeatureCollection
 
 
+@pytest.mark.plot
 class TestPlotCrsError:
     """``plot(basemap=True)`` raises CRSError when the FC has no CRS."""
 

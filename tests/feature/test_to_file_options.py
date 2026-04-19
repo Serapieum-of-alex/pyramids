@@ -131,3 +131,105 @@ class TestPlainPathStillWorks:
         assert p.exists()
         reloaded = FeatureCollection.read_file(p)
         assert len(reloaded) == 2
+
+
+class TestCreationOptionValidation:
+    """C8: pyogrio already rejects unknown creation options at write-time.
+
+    The original C8 concern ("GDAL silently ignores unknown options") is
+    mooted by the pyogrio engine which geopandas 1.0+ uses by default —
+    pyogrio validates options against both the dataset-level and
+    layer-level creation-option metadata and raises
+    :class:`ValueError` with the message
+    ``"unrecognized option '<name>' for driver '<driver>'"`` before
+    the write ever reaches GDAL. These tests pin that behaviour so
+    regressions in the geopandas/pyogrio stack surface here rather
+    than producing silently-different files.
+    """
+
+    def test_unknown_option_raises_value_error(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """Nonsense option raises ``ValueError`` naming the option + driver."""
+        p = tmp_path / "warn.gpkg"
+        with pytest.raises(
+            ValueError, match="NOT_A_REAL_OPTION.*GPKG"
+        ):
+            fc_rivers.to_file(
+                p, driver="gpkg", NOT_A_REAL_OPTION="YES"
+            )
+
+    def test_known_option_accepted(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """A legitimate option completes the write successfully."""
+        p = tmp_path / "ok.gpkg"
+        fc_rivers.to_file(
+            p, driver="gpkg", SPATIAL_INDEX="YES"
+        )
+        assert p.exists()
+
+    def test_mix_of_known_and_unknown_options_still_raises(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """Any single unknown option triggers the ValueError.
+
+        Test scenario:
+            pyogrio iterates the kwargs and stops on the first option
+            that matches neither the dataset nor the layer option list.
+            Supplying one known + one unknown option still raises.
+        """
+        p = tmp_path / "mix.gpkg"
+        with pytest.raises(ValueError, match="BOGUS"):
+            fc_rivers.to_file(
+                p,
+                driver="gpkg",
+                SPATIAL_INDEX="YES",
+                BOGUS="x",
+            )
+
+    def test_option_case_insensitive_accepted(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """Options are case-insensitive in the pyogrio layer.
+
+        Test scenario:
+            pyogrio uppercases the option key before checking the
+            driver's metadata — so ``spatial_index`` and
+            ``SPATIAL_INDEX`` are both accepted for GPKG. This pins
+            the behaviour so a future pyogrio version that tightens
+            to case-sensitive matching surfaces here rather than
+            silently dropping the option.
+        """
+        p = tmp_path / "case.gpkg"
+        fc_rivers.to_file(p, driver="gpkg", spatial_index="YES")
+        assert p.exists()
+
+
+class TestEnginePin:
+    """C28: to_file pins ``engine="pyogrio"`` when forwarding to geopandas.
+
+    Matches the pin on :meth:`read_file` and :meth:`iter_features`.
+    A ``geopandas.options.io_engine = "fiona"`` global no longer
+    changes the write path silently.
+    """
+
+    def test_passes_engine_pyogrio(
+        self, tmp_path: Path, fc_rivers: FeatureCollection, monkeypatch
+    ):
+        """The ``engine="pyogrio"`` kwarg reaches the underlying writer."""
+        captured: list = []
+        from geopandas import GeoDataFrame as _GDF
+
+        real_to_file = _GDF.to_file
+
+        def _spy(self, path, **kwargs):
+            captured.append(kwargs)
+            return real_to_file(self, path, **kwargs)
+
+        monkeypatch.setattr(_GDF, "to_file", _spy)
+        fc_rivers.to_file(tmp_path / "pin.geojson")
+        assert captured, "to_file must be invoked at least once"
+        assert captured[0].get("engine") == "pyogrio", (
+            f"expected engine='pyogrio', got {captured[0]}"
+        )
