@@ -17,6 +17,14 @@ ARC-10 split the original ``feature.py`` into a subpackage:
 is inherited; pyramids adds rasterization, Dataset interop, vertex
 extraction, and CRS-helper delegates on top. ``ogr.DataSource`` is
 internal only (ARC-1b); see :mod:`pyramids.feature._ogr`.
+
+.. note::
+   Inline comments like ``# C14:``, ``# D-H2:``, ``# D-N4:`` and
+   ``# L6:`` are tracker anchors: they point at review issues resolved
+   during the ARC-* refactor. The full issue text lives in
+   ``planning/feature/pr-review-merged.md`` and
+   ``planning/feature/pr-diff-review-2.md``. Grep either file by the
+   marker to recover the rationale.
 """
 
 from __future__ import annotations
