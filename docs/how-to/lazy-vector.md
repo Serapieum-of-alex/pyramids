@@ -121,22 +121,26 @@ the full frame) so `SpatialObject` consumers get concrete numbers:
 lfc.top_left_corner   # → [xmin, ymax]  as list[float]
 ```
 
-## Minimal-install sentinel
+## Minimal-install guard
 
 On installs without the `[parquet-lazy]` extra (i.e. no `dask-geopandas`),
-`from pyramids.feature import LazyFeatureCollection` returns `None`. Code
-that does `isinstance(x, LazyFeatureCollection)` must guard:
+`from pyramids.feature import LazyFeatureCollection` raises an
+`ImportError` with an actionable install hint. Library authors writing
+dispatch code that must run on both minimal and full installs should
+guard with `hasattr`:
 
 ```python
-from pyramids.feature import LazyFeatureCollection
+import pyramids.feature as pf
 
-if LazyFeatureCollection is not None and isinstance(obj, LazyFeatureCollection):
+if hasattr(pf, "LazyFeatureCollection") and isinstance(obj, pf.LazyFeatureCollection):
     ...
 ```
 
-Typical user code doesn't need this guard — if you're working with lazy
-frames at all, you already have the extra installed. It's for library
-authors writing dispatch code that runs on both minimal and full installs.
+`hasattr(pf, "LazyFeatureCollection")` is `False` on minimal installs
+because the package-level `__getattr__` hook raised `ImportError`. Typical
+user code doesn't need this guard — if you're working with lazy frames at
+all, you already have the extra installed, and the direct
+`from pyramids.feature import LazyFeatureCollection` just works.
 
 ## Interop with `Dataset.zonal_stats`
 

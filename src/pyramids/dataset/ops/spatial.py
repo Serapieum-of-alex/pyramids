@@ -814,7 +814,6 @@ class Spatial:
         # gdal.Warp's cutlineDSName needs a *path*; stage the vector in
         # /vsimem/ through the internal OGR bridge. The path is unlinked
         # automatically when the with-block exits.
-
         # Use the base Dataset class (not a subclass like NetCDF) for intermediate GDAL warp results
         # because _correct_wrap_cutline_error calls create_from_array which has different behavior in
         # subclasses.

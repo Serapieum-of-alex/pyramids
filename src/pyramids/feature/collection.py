@@ -44,6 +44,7 @@ from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
+from pyramids import _io as _pyramids_io
 from pyramids.base._errors import GeometryWarning
 from pyramids.base._utils import Catalog
 from pyramids.feature import crs as _crs
@@ -656,8 +657,6 @@ class FeatureCollection(GeoDataFrame):
 
         import pyogrio
 
-        from pyramids import _io as _pyramids_io
-
         resolved = str(_pyramids_io._parse_path(path))
 
         # Determine how many features are in the layer so we can
@@ -825,8 +824,6 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        from pyramids import _io as _pyramids_io
-
         resolved = _pyramids_io._parse_path(path)
         if backend == "dask":
             # M7: dask_geopandas.read_file does NOT forward pyogrio
@@ -1250,7 +1247,6 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        from pyramids import _io as _pyramids_io
         from pyramids.base.remote import is_remote
 
         # C29 / L3: pre-check local-path existence so the caller sees
@@ -1325,11 +1321,11 @@ class FeatureCollection(GeoDataFrame):
     ) -> Any:
         """Open a vector file as a streaming :class:`pyarrow.RecordBatchReader`.
 
-        DASK-27: thin wrapper over :func:`pyogrio.raw.open_arrow` that
-        surfaces the underlying Arrow RecordBatch iterator. Rows are
-        yielded in batches, so callers can iterate through multi-GB
-        datasets without materializing the whole table in memory —
-        useful for building custom dask partitioners.
+        Thin wrapper over :func:`pyogrio.raw.open_arrow` that surfaces
+        the underlying Arrow RecordBatch iterator. Rows are yielded in
+        batches, so callers can iterate through multi-GB datasets
+        without materializing the whole table in memory — useful for
+        building custom dask partitioners.
 
         Args:
             path: Vector file path (Shapefile, GPKG, FlatGeobuf,
@@ -1352,8 +1348,6 @@ class FeatureCollection(GeoDataFrame):
         Raises:
             ImportError: If :mod:`pyogrio` is not installed.
         """
-        from pyramids import _io as _pyramids_io
-
         try:
             from pyogrio.raw import open_arrow
         except ImportError as exc:
@@ -1474,10 +1468,13 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        from pyramids import _io as _pyramids_io
-
         resolved = _pyramids_io._parse_path(path)
         if backend == "dask":
+            # M3: check deps in order of specificity — the backend
+            # request is the more specific signal, so the
+            # dask-geopandas hint beats the generic pyarrow one.
+            # When both are missing, the dask-geopandas error names
+            # the extra that installs both ([parquet-lazy]).
             try:
                 import dask_geopandas
             except ImportError as exc:
@@ -1498,6 +1495,11 @@ class FeatureCollection(GeoDataFrame):
             if storage_options is not None:
                 dask_kwargs["storage_options"] = storage_options
             dask_kwargs.update(kwargs)
+            # M3: dask_geopandas is installed → assert pyarrow too, so
+            # the user gets the pyramids-branded hint (not the
+            # upstream message dask_geopandas would emit when it tries
+            # to read). ``[parquet-lazy]`` pulls both.
+            _require_pyarrow()
             # DASK-23F: wrap the lazy return as a LazyFeatureCollection so the
             # dask branch stays inside the pyramids type system.
             from pyramids.feature._lazy_collection import LazyFeatureCollection
