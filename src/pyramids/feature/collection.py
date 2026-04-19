@@ -864,7 +864,7 @@ class FeatureCollection(GeoDataFrame):
             from pyramids.feature._lazy_collection import LazyFeatureCollection
 
             dask_gdf = dask_geopandas.read_file(resolved, **partition_kwargs)
-            return LazyFeatureCollection._from_dask_gdf(dask_gdf)
+            return LazyFeatureCollection.from_dask_gdf(dask_gdf)
         if backend != "pandas":
             raise ValueError(
                 f"backend must be 'pandas' or 'dask', got {backend!r}"
@@ -1505,7 +1505,7 @@ class FeatureCollection(GeoDataFrame):
             from pyramids.feature._lazy_collection import LazyFeatureCollection
 
             dask_gdf = dask_geopandas.read_parquet(resolved, **dask_kwargs)
-            return LazyFeatureCollection._from_dask_gdf(dask_gdf)
+            return LazyFeatureCollection.from_dask_gdf(dask_gdf)
         if backend != "pandas":
             raise ValueError(
                 f"backend must be 'pandas' or 'dask', got {backend!r}"

@@ -39,7 +39,7 @@ def lfc(small_gdf):
     from pyramids.feature import LazyFeatureCollection
 
     ddf = dg.from_geopandas(small_gdf, npartitions=2)
-    return LazyFeatureCollection._from_dask_gdf(ddf)
+    return LazyFeatureCollection.from_dask_gdf(ddf)
 
 
 @requires_dask_geopandas
@@ -109,3 +109,56 @@ class TestLazyFeatureCollection:
         lfc_direct = LazyFeatureCollection.read_file(str(p))
         assert isinstance(lfc_direct, LazyFeatureCollection)
         assert len(lfc_direct.compute()) == 10
+
+    def test_from_dask_gdf_public_name_is_canonical(self, small_gdf):
+        """ARC-V1: public ``from_dask_gdf`` is the supported constructor."""
+        import dask_geopandas as dg
+
+        from pyramids.feature import LazyFeatureCollection
+
+        ddf = dg.from_geopandas(small_gdf, npartitions=2)
+        lfc_public = LazyFeatureCollection.from_dask_gdf(ddf)
+        lfc_alias = LazyFeatureCollection._from_dask_gdf(ddf)
+        assert isinstance(lfc_public, LazyFeatureCollection)
+        assert isinstance(lfc_alias, LazyFeatureCollection)
+        assert len(lfc_public.compute()) == len(lfc_alias.compute()) == 10
+
+    def test_from_dask_gdf_preserves_state(self, small_gdf):
+        """ARC-V2: class-swap drops no instance state.
+
+        Test scenario:
+            ``from_dask_gdf`` uses ``result.__class__ = cls``. The
+            invariant that enables this safely is "LazyFeatureCollection
+            adds no extra instance state beyond dask_geopandas.GeoDataFrame."
+            If a future commit adds ``__slots__`` or an ``__init__``,
+            this test catches it by comparing non-dunder ``vars()`` keys
+            before and after the swap.
+        """
+        import dask_geopandas as dg
+
+        from pyramids.feature import LazyFeatureCollection
+
+        ddf = dg.from_geopandas(small_gdf, npartitions=2)
+        pre = {k for k in vars(ddf).keys() if not k.startswith("__")}
+        lfc = LazyFeatureCollection.from_dask_gdf(ddf)
+        post = {k for k in vars(lfc).keys() if not k.startswith("__")}
+        assert pre == post, (
+            f"class-swap leaked state: added={post - pre}, dropped={pre - post}"
+        )
+
+    def test_no_extra_slots(self):
+        """ARC-V2: pin that LazyFeatureCollection declares no ``__slots__``.
+
+        Test scenario:
+            Slotted attributes on the subclass would be silently
+            dropped by the class-swap constructor (the source
+            dask-geopandas frame wouldn't have them set). Assert at
+            the class level that no ``__slots__`` is declared.
+        """
+        from pyramids.feature import LazyFeatureCollection
+
+        assert "__slots__" not in LazyFeatureCollection.__dict__, (
+            "LazyFeatureCollection must not declare __slots__ while the "
+            "class-swap constructor (from_dask_gdf) is in use — slotted "
+            "attributes would be silently dropped by the swap."
+        )

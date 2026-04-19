@@ -155,7 +155,7 @@ class TestSpatialObjectLazy:
             crs="EPSG:4326",
         )
         ddf = dg.from_geopandas(gdf, npartitions=1)
-        lfc = LazyFeatureCollection._from_dask_gdf(ddf)
+        lfc = LazyFeatureCollection.from_dask_gdf(ddf)
         assert isinstance(lfc, SpatialObject)
 
     def test_generic_consumer_accepts_lazy(self):
@@ -170,7 +170,7 @@ class TestSpatialObjectLazy:
             crs="EPSG:32636",
         )
         ddf = dg.from_geopandas(gdf, npartitions=1)
-        lfc = LazyFeatureCollection._from_dask_gdf(ddf)
+        lfc = LazyFeatureCollection.from_dask_gdf(ddf)
 
         def epsg_of(obj: SpatialObject) -> int | None:
             return obj.epsg

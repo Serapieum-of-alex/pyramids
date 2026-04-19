@@ -39,7 +39,7 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
     Construct via ``FeatureCollection.read_file(..., backend='dask')`` or
     ``FeatureCollection.read_parquet(..., backend='dask')``. Direct
     construction is discouraged; use
-    :meth:`LazyFeatureCollection._from_dask_gdf` if you must wrap a
+    :meth:`LazyFeatureCollection.from_dask_gdf` if you must wrap a
     pre-built dask-geopandas frame.
 
     Note:
@@ -50,18 +50,61 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
     """
 
     @classmethod
-    def _from_dask_gdf(cls, dask_gdf: Any) -> LazyFeatureCollection:
-        """Wrap an existing ``dask_geopandas.GeoDataFrame`` as a LazyFC.
+    def from_dask_gdf(cls, dask_gdf: Any) -> LazyFeatureCollection:
+        """Wrap an existing :class:`dask_geopandas.GeoDataFrame` as a LazyFC.
 
-        Uses class-swap (``copy()`` + ``__class__`` assignment) rather than
-        a four-arg reconstruction, because ``(dask, _name, _meta, divisions)``
-        is private dask.dataframe API that shifted between dask-expr and
-        legacy. Class-swap relies only on Python's object model and
-        survives upstream churn.
+        This is the canonical construction path for code that already holds
+        a pre-built :class:`dask_geopandas.GeoDataFrame` (for example,
+        from :func:`dask_geopandas.from_geopandas` or a third-party reader)
+        and wants to use it through the pyramids type system.
+
+        Implementation uses class-swap (``copy()`` + ``__class__``
+        assignment) rather than a four-arg reconstruction, because
+        ``(dask, _name, _meta, divisions)`` is private dask.dataframe API
+        that shifted between dask-expr and legacy. Class-swap relies only
+        on Python's object model and survives upstream churn. The
+        invariant "``LazyFeatureCollection`` adds no extra instance state
+        beyond :class:`dask_geopandas.GeoDataFrame`" is pinned by
+        :func:`tests.feature.test_lazy_feature_collection.test_from_dask_gdf_preserves_state`.
+
+        Args:
+            dask_gdf: Pre-built ``dask_geopandas.GeoDataFrame`` to wrap.
+
+        Returns:
+            LazyFeatureCollection: A view over ``dask_gdf`` whose
+            ``__class__`` has been rebound to LazyFeatureCollection.
+            The task graph, partition names, metadata, and divisions
+            are unchanged — only the concrete class is swapped.
+
+        Examples:
+            - Wrap a fresh dask_geopandas frame:
+                ```python
+                >>> import geopandas as gpd
+                >>> import dask_geopandas as dg
+                >>> from shapely.geometry import Point
+                >>> from pyramids.feature import LazyFeatureCollection
+                >>> gdf = gpd.GeoDataFrame(
+                ...     {"v": [1, 2]},
+                ...     geometry=[Point(0, 0), Point(1, 1)],
+                ...     crs="EPSG:4326",
+                ... )
+                >>> ddf = dg.from_geopandas(gdf, npartitions=1)
+                >>> lfc = LazyFeatureCollection.from_dask_gdf(ddf)
+                >>> lfc.npartitions
+                1
+                >>> lfc.epsg
+                4326
+
+                ```
         """
         result = dask_gdf.copy()
         result.__class__ = cls
         return result
+
+    # ARC-V1: Deprecated alias kept for one release cycle. Old callsites
+    # (readers inside collection.py, tests) can transition at their own
+    # pace; remove the alias in a follow-up commit.
+    _from_dask_gdf = from_dask_gdf
 
     @classmethod
     def read_file(
@@ -165,7 +208,7 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
             materialized into worker memory.
         """
         persisted = super().persist(**kwargs)
-        result = type(self)._from_dask_gdf(persisted)
+        result = type(self).from_dask_gdf(persisted)
         return result
 
     def spatial_shuffle(
@@ -199,7 +242,7 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         if divisions is not None:
             kwargs["divisions"] = divisions
         shuffled = super().spatial_shuffle(by=by, level=level, **kwargs)
-        result = type(self)._from_dask_gdf(shuffled)
+        result = type(self).from_dask_gdf(shuffled)
         return result
 
     def to_file(self, path: Any, *args: Any, **kwargs: Any) -> None:
