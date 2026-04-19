@@ -131,3 +131,74 @@ class TestListLayers:
         layers = FeatureCollection.list_layers(two_layer_gpkg)
         assert set(layers) == {"rivers", "lakes"}
         assert not called, "list_layers triggered a full read"
+
+
+class TestListLayersCache:
+    """C15: ``list_layers`` memoises results behind an LRU cache.
+
+    Repeated calls on the same path must hit the cache and avoid a
+    fresh ``pyogrio.list_layers`` call. ``list_layers_cache_clear``
+    evicts the cache so out-of-band writes become visible.
+    """
+
+    def test_repeated_calls_hit_the_cache(
+        self, two_layer_gpkg: Path, monkeypatch
+    ):
+        import pyogrio
+
+        FeatureCollection.list_layers_cache_clear()
+
+        call_count = [0]
+        real_list_layers = pyogrio.list_layers
+
+        def _counting_list_layers(path):
+            call_count[0] += 1
+            return real_list_layers(path)
+
+        monkeypatch.setattr(pyogrio, "list_layers", _counting_list_layers)
+        FeatureCollection.list_layers(two_layer_gpkg)
+        FeatureCollection.list_layers(two_layer_gpkg)
+        FeatureCollection.list_layers(two_layer_gpkg)
+        assert call_count[0] == 1, (
+            f"expected exactly one pyogrio call, got {call_count[0]}"
+        )
+
+    def test_cache_clear_invalidates_entries(
+        self, two_layer_gpkg: Path, monkeypatch
+    ):
+        import pyogrio
+
+        FeatureCollection.list_layers_cache_clear()
+
+        call_count = [0]
+        real_list_layers = pyogrio.list_layers
+
+        def _counting_list_layers(path):
+            call_count[0] += 1
+            return real_list_layers(path)
+
+        monkeypatch.setattr(pyogrio, "list_layers", _counting_list_layers)
+        FeatureCollection.list_layers(two_layer_gpkg)
+        FeatureCollection.list_layers_cache_clear()
+        FeatureCollection.list_layers(two_layer_gpkg)
+        assert call_count[0] == 2
+
+    def test_different_paths_get_separate_cache_entries(
+        self, tmp_path: Path, two_layer_gpkg: Path
+    ):
+        """Two distinct paths must not collide in the cache."""
+        FeatureCollection.list_layers_cache_clear()
+
+        gdf = gpd.GeoDataFrame(
+            {"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326"
+        )
+        solo = tmp_path / "solo.geojson"
+        gdf.to_file(solo, driver="GeoJSON")
+
+        multi = FeatureCollection.list_layers(two_layer_gpkg)
+        single = FeatureCollection.list_layers(solo)
+        assert set(multi) == {"rivers", "lakes"}
+        assert len(single) == 1
+        # Re-querying the first path still returns the multi-layer list.
+        again = FeatureCollection.list_layers(two_layer_gpkg)
+        assert set(again) == {"rivers", "lakes"}

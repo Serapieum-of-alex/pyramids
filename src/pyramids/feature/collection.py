@@ -21,6 +21,7 @@ internal only (ARC-1b); see :mod:`pyramids.feature._ogr`.
 
 from __future__ import annotations
 
+import functools
 from numbers import Number
 from pathlib import Path
 from typing import Any, Iterable
@@ -40,6 +41,19 @@ from pyramids.feature import geometry as _geom
 
 CATALOG = Catalog(raster_driver=False)
 gdal.UseExceptions()
+
+
+# C15: module-level LRU cache backing ``FeatureCollection.list_layers``.
+# Keyed on the already-resolved ``str`` path (post ``_parse_path``). The
+# tuple return type plays nicely with ``functools.lru_cache`` (lists are
+# unhashable and would break LRU internals if returned directly).
+@functools.lru_cache(maxsize=128)
+def _list_layers_cached(resolved_path: str) -> tuple[str, ...]:
+    """Return a tuple of layer names for a resolved path (memoised)."""
+    import pyogrio
+
+    arr = pyogrio.list_layers(resolved_path)
+    return tuple(str(row[0]) for row in arr)
 
 
 class FeatureCollection(GeoDataFrame):
@@ -638,6 +652,13 @@ class FeatureCollection(GeoDataFrame):
         applies here too. Uses :func:`pyogrio.list_layers` under the
         hood (geopandas' default engine).
 
+        C15: results are memoised behind a 128-entry LRU cache keyed on
+        the resolved ``str`` path. Re-calling ``list_layers`` on the
+        same cloud URL or local path in a loop now costs one hash
+        lookup instead of one datasource open. Call
+        :meth:`list_layers_cache_clear` to invalidate after an
+        out-of-band write.
+
         Args:
             path (str | Path):
                 File path, URL, or archive path. Single-layer formats
@@ -647,16 +668,21 @@ class FeatureCollection(GeoDataFrame):
         Returns:
             list[str]: Layer names in the order the driver reports them.
         """
-        import pyogrio
-
         from pyramids import _io as _pyramids_io
 
-        resolved = _pyramids_io._parse_path(path)
-        arr = pyogrio.list_layers(str(resolved))
-        # pyogrio returns an ndarray of shape (N, 2): (name, geom_type).
-        # We only expose names here; callers who want geom_types too
-        # can open individual layers and inspect ``schema``.
-        return [str(row[0]) for row in arr]
+        resolved = str(_pyramids_io._parse_path(path))
+        return list(_list_layers_cached(resolved))
+
+    @classmethod
+    def list_layers_cache_clear(cls) -> None:
+        """Clear the C15 LRU cache backing :meth:`list_layers`.
+
+        Call this after writing a new layer to an existing multi-layer
+        file (e.g. a GPKG) if you then want :meth:`list_layers` to see
+        the new layer. Otherwise the 128-entry LRU cache is self-
+        managing and callers do not need to touch it.
+        """
+        _list_layers_cached.cache_clear()
 
     @classmethod
     def read_parquet(
