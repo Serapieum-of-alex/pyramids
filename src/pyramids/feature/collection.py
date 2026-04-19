@@ -331,8 +331,13 @@ class FeatureCollection(GeoDataFrame):
                 an additional ``"id"`` key whose value is the
                 0-based file-row index of that feature. The chunked
                 form (``chunksize=N``) attaches the same index as a
-                ``"_row_index"`` column on the yielded FC. Defaults to
-                ``False`` for back-compat with the fiona idiom.
+                ``"_row_index"`` column on the yielded FC. The indices
+                stay aligned with the on-disk rows even when a
+                Python-side bbox filter (``tile_strategy="none"``)
+                drops some rows — only the surviving features are
+                yielded, and their ids match the positions they had
+                in the source file. Defaults to ``False`` for
+                back-compat with the fiona idiom.
 
         Yields:
             dict | FeatureCollection: Per-feature dicts when
