@@ -57,4 +57,79 @@ def __getattr__(name: str) -> object:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["FeatureCollection", "LazyFeatureCollection"]
+def has_lazy_backend() -> bool:
+    """Return True when the ``[parquet-lazy]`` extra is installed.
+
+    ARC-V3: public feature-detection helper that avoids the
+    ``try/except ImportError`` dance for consumers that only need to
+    know "can this session construct a :class:`LazyFeatureCollection`?"
+    Cheap — just reads the module-level flag set at import time.
+
+    Returns:
+        bool: True iff :mod:`dask_geopandas` imported successfully
+        when :mod:`pyramids.feature` was first loaded.
+
+    Examples:
+        - Branch on backend availability without importing the class:
+            ```python
+            >>> from pyramids.feature import has_lazy_backend
+            >>> isinstance(has_lazy_backend(), bool)
+            True
+
+            ```
+    """
+    return _HAS_DASK_GEOPANDAS
+
+
+def is_lazy_fc(obj: object) -> bool:
+    """Return True if ``obj`` is a :class:`LazyFeatureCollection` instance.
+
+    ARC-V3: public dispatch helper for library code that consumes either
+    eager or lazy FeatureCollections. Safe to call on minimal installs —
+    returns False when :mod:`dask_geopandas` is absent (no object could
+    be a LazyFC in that case). Equivalent of the eager-vs-lazy
+    :func:`pyramids.base.protocols.is_lazy` helper that already exists
+    for arrays.
+
+    Args:
+        obj: Any object.
+
+    Returns:
+        bool: True iff ``obj`` is a ``LazyFeatureCollection``, False
+        otherwise (including the "class not available" case).
+
+    Examples:
+        - An eager FeatureCollection is NOT a LazyFC:
+            ```python
+            >>> import geopandas as gpd
+            >>> from shapely.geometry import Point
+            >>> from pyramids.feature import FeatureCollection, is_lazy_fc
+            >>> fc = FeatureCollection(gpd.GeoDataFrame(
+            ...     {"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326",
+            ... ))
+            >>> is_lazy_fc(fc)
+            False
+
+            ```
+        - Plain objects return False:
+            ```python
+            >>> from pyramids.feature import is_lazy_fc
+            >>> is_lazy_fc("not a frame")
+            False
+            >>> is_lazy_fc(None)
+            False
+
+            ```
+    """
+    if not _HAS_DASK_GEOPANDAS:
+        return False
+    from pyramids.feature._lazy_collection import LazyFeatureCollection
+    return isinstance(obj, LazyFeatureCollection)
+
+
+__all__ = [
+    "FeatureCollection",
+    "LazyFeatureCollection",
+    "has_lazy_backend",
+    "is_lazy_fc",
+]
