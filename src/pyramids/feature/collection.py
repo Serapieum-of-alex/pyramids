@@ -1138,6 +1138,16 @@ class FeatureCollection(GeoDataFrame):
         :meth:`with_coordinates`) and attaches three columns:
         ``avg_x``, ``avg_y`` and ``center_point`` (shapely ``Point``).
 
+        C18: feeding a degenerate or empty geometry (for example an
+        empty ``Point``, or a ``Polygon`` whose ring has zero area)
+        produces ``(NaN, NaN)`` averages. The method emits a single
+        ``UserWarning`` listing the row indices whose ``avg_x`` /
+        ``avg_y`` could not be computed so downstream code can guard
+        against the NaN centroids instead of silently consuming them.
+        The ``center_point`` value at those rows is an empty
+        ``shapely.Point`` (``Point.is_empty is True``) rather than a
+        ``(NaN, NaN)`` point.
+
         Returns:
             FeatureCollection: A new FeatureCollection (``self`` is
             not modified) with ``x``, ``y``, ``avg_x``, ``avg_y``,
@@ -1148,6 +1158,40 @@ class FeatureCollection(GeoDataFrame):
             fc.loc[i, "avg_x"] = np.mean(row_i["x"])
             fc.loc[i, "avg_y"] = np.mean(row_i["y"])
 
-        coords_list = zip(fc["avg_x"].tolist(), fc["avg_y"].tolist())
-        fc["center_point"] = _geom.create_points(coords_list)
+        # C18: detect rows whose averaged coordinate could not be
+        # computed (empty geometry, all-NaN rings, etc.). Emit a single
+        # summary warning and substitute an empty Point so the column
+        # does not expose a ``(NaN, NaN)`` Point that would then crash
+        # downstream reprojections.
+        avg_x = fc["avg_x"].to_numpy()
+        avg_y = fc["avg_y"].to_numpy()
+        bad_mask = np.isnan(avg_x) | np.isnan(avg_y)
+        if bad_mask.any():
+            bad_idx = [int(i) for i, is_bad in enumerate(bad_mask) if is_bad]
+            import warnings
+
+            warnings.warn(
+                f"with_centroid: {len(bad_idx)} row(s) yielded NaN centroids "
+                f"(rows {bad_idx}). Their ``center_point`` is an empty "
+                f"shapely.Point. Drop or repair those rows before running "
+                f"a method that requires a valid centroid (e.g. reproject, "
+                f"distance).",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        coords_list = []
+        for idx, (ax, ay) in enumerate(zip(avg_x.tolist(), avg_y.tolist())):
+            if bad_mask[idx]:
+                coords_list.append((float("nan"), float("nan")))
+            else:
+                coords_list.append((ax, ay))
+        points = _geom.create_points(coords_list)
+        # Substitute empty Points for the NaN rows so the column's
+        # invariant is "every entry is a non-NaN shapely Point OR is
+        # Point.is_empty".
+        cleaned: list[Any] = []
+        for idx, pt in enumerate(points):
+            cleaned.append(Point() if bad_mask[idx] else pt)
+        fc["center_point"] = cleaned
         return fc

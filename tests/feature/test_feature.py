@@ -371,6 +371,83 @@ def test_with_centroid(polygons_gdf: GeoDataFrame):
     assert "center_point" not in feature.columns, "self must not be mutated"
 
 
+class TestWithCentroidDegenerateGeometries:
+    """C18: with_centroid handles empty / zero-area geometries safely.
+
+    Feeding a degenerate geometry used to produce a ``(NaN, NaN)``
+    Point silently — downstream reprojection / distance ops would
+    then crash on the invalid coordinates. Now the method (1) emits a
+    ``UserWarning`` naming the offending row indices and (2)
+    substitutes an empty ``shapely.Point`` so the column invariant
+    ("non-NaN point or empty point") holds.
+    """
+
+    def test_nan_coord_point_emits_warning(self):
+        """Test scenario: one valid point + one NaN-coord point → one warning.
+
+        ``Point(float('nan'), float('nan'))`` is not empty — it carries
+        NaN coordinates which propagate through the np.mean call and
+        produce a NaN average. C18 detects that and warns.
+        """
+        import warnings
+
+        from shapely.geometry import Point as _Pt
+
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(3, 4), _Pt(float("nan"), float("nan"))],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", UserWarning)
+            fc.with_centroid()
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert any(
+            "NaN centroids" in str(w.message) for w in user_warnings
+        ), f"expected NaN-centroids warning; got {user_warnings}"
+
+    def test_nan_coord_row_substituted_with_empty_point(self):
+        """Test scenario: the NaN-coord row's center_point is empty."""
+        import warnings
+
+        from shapely.geometry import Point as _Pt
+
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(3, 4), _Pt(float("nan"), float("nan"))],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            result = fc.with_centroid()
+
+        centers = result["center_point"].tolist()
+        assert not centers[0].is_empty
+        assert centers[1].is_empty
+
+    def test_no_warning_for_all_valid_geometries(self):
+        """Test scenario: every row has a valid geometry → no warning."""
+        import warnings
+
+        from shapely.geometry import Point as _Pt
+
+        gdf = GeoDataFrame(
+            {"v": [1, 2]},
+            geometry=[_Pt(0, 0), _Pt(1, 1)],
+            crs="EPSG:4326",
+        )
+        fc = FeatureCollection(gdf)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", UserWarning)
+            fc.with_centroid()
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert not any(
+            "NaN centroids" in str(w.message) for w in user_warnings
+        ), f"should not warn for valid geometries; got {user_warnings}"
+
+
 def test_old_names_are_gone():
     """ARC-16: xy / center_point / concatenate / concate removed outright."""
     assert not hasattr(FeatureCollection, "xy")
