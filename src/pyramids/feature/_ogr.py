@@ -280,27 +280,48 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
 
             ```
     """
-    # geopandas' default pyogrio engine reads from its own bundled GDAL
-    # VFS, not osgeo.gdal's /vsimem/. Round-trip through a real temp file
-    # so pyogrio can open what we wrote.
-    import tempfile
-    from pathlib import Path
+    # D-M4: the previous implementation wrote to a filesystem temp
+    # file because pyogrio's bundled GDAL reads from its own VFS, not
+    # osgeo.gdal's /vsimem/. Per-call filesystem I/O is a real cost
+    # on heavy polygonize workloads. Instead: VectorTranslate into
+    # osgeo /vsimem/, read the bytes back out via GDAL's own VSIFile*
+    # APIs, and hand a ``BytesIO`` to ``geopandas.read_file`` — which
+    # pyogrio accepts and parses from memory.
+    import io
 
-    tmp = Path(tempfile.gettempdir()) / f"pyramids_ogr_{uuid.uuid4()}.geojson"
+    from pyramids.base._errors import VectorDriverError
+
+    mem_path = _new_vsimem_path()
+    file_written = False
     try:
-        result = gdal.VectorTranslate(str(tmp), ds, format="GeoJSON")
+        result = gdal.VectorTranslate(mem_path, ds, format="GeoJSON")
         if result is None:
-            from pyramids.base._errors import VectorDriverError
-
             raise VectorDriverError(
                 "gdal.VectorTranslate failed to materialize the DataSource "
                 "to GeoJSON."
             )
-        result = None  # flush + close the translation output
-        gdf = gpd.read_file(tmp)
-    finally:
+        file_written = True
+        # Drop the translation handle before reading the /vsimem/ file
+        # so GDAL flushes buffered output.
+        result = None
+        vsi_file = gdal.VSIFOpenL(mem_path, "rb")
+        if vsi_file is None:
+            raise VectorDriverError(
+                f"GDAL could not open the in-memory GeoJSON at "
+                f"{mem_path!r} for reading."
+            )
         try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
+            gdal.VSIFSeekL(vsi_file, 0, 2)  # SEEK_END
+            size = gdal.VSIFTellL(vsi_file)
+            gdal.VSIFSeekL(vsi_file, 0, 0)
+            data = bytes(gdal.VSIFReadL(1, size, vsi_file))
+        finally:
+            gdal.VSIFCloseL(vsi_file)
+        gdf = gpd.read_file(io.BytesIO(data))
+    finally:
+        # Under gdal.UseExceptions(), Unlink on a non-existent path
+        # raises RuntimeError and would mask whatever exception we
+        # raised above. Gate the cleanup on the write succeeding.
+        if file_written:
+            gdal.Unlink(mem_path)
     return gdf
