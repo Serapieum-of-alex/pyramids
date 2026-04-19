@@ -33,7 +33,10 @@ import functools
 import warnings
 from numbers import Number
 from pathlib import Path
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
+
+if TYPE_CHECKING:
+    from pyramids.feature._lazy_collection import LazyFeatureCollection
 
 import geopandas as gpd
 import numpy as np
@@ -805,7 +808,7 @@ class FeatureCollection(GeoDataFrame):
         npartitions: int | None = None,
         chunksize: int | None = None,
         **kwargs: Any,
-    ) -> "FeatureCollection | Any":
+    ) -> "FeatureCollection | LazyFeatureCollection":
         """Read a vector file into a FeatureCollection.
 
         ARC-23: path is first routed through
@@ -1440,7 +1443,7 @@ class FeatureCollection(GeoDataFrame):
         blocksize: int | str | None = None,
         storage_options: dict | None = None,
         **kwargs: Any,
-    ) -> "FeatureCollection | Any":
+    ) -> "FeatureCollection | LazyFeatureCollection":
         """Read a GeoParquet file into a FeatureCollection (ARC-32).
 
         GeoParquet is a cloud-native columnar vector format (OGC-
