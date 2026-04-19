@@ -283,3 +283,79 @@ class TestIterFeaturesChunked:
         # Points (0,0)..(9,9) → 10 features; chunks of 4 → 4+4+2.
         total = sum(len(c) for c in chunks)
         assert total == 10
+
+
+class TestIterFeaturesIncludeIndex:
+    """C14: ``include_index=True`` attaches source row indices.
+
+    Users streaming features often need to correlate a yielded feature
+    back to its on-disk row (for logging, error reporting, or writing
+    a result file at the same row). The ``include_index=True`` flag
+    adds an ``"id"`` key to each yielded dict (unchunked) or a
+    ``"_row_index"`` column to each yielded FC (chunked).
+    """
+
+    def test_per_feature_include_index_adds_id(self, small_geojson: Path):
+        """Unchunked + include_index injects sequential ``id`` keys."""
+        feats = list(
+            FeatureCollection.iter_features(
+                small_geojson, include_index=True
+            )
+        )
+        ids = [f["id"] for f in feats]
+        assert ids == list(range(len(feats)))
+
+    def test_per_feature_default_id_is_not_row_index(
+        self, small_geojson: Path
+    ):
+        """include_index=False preserves whatever ``id`` geopandas emits.
+
+        Test scenario:
+            ``geopandas.GeoDataFrame.iterfeatures`` always injects an
+            ``"id"`` key per GeoJSON convention, but its value is not
+            the absolute source-row index; the ``include_index=True``
+            branch overrides it to 0-based sequential. With the flag
+            off, the key (if present) must NOT already be the
+            absolute row index.
+        """
+        feats = list(
+            FeatureCollection.iter_features(small_geojson)
+        )
+        ids = [f.get("id") for f in feats]
+        # Not every geopandas version sets "id" in every feature; the
+        # only invariant we care about is that without the flag, we do
+        # NOT overwrite the value to the absolute row index.
+        assert ids != list(range(len(feats))) or all(i is None for i in ids)
+
+    def test_chunked_include_index_adds_row_index_column(
+        self, larger_geojson: Path
+    ):
+        """Chunked + include_index adds a ``_row_index`` column per chunk."""
+        chunks = list(
+            FeatureCollection.iter_features(
+                larger_geojson, chunksize=10, include_index=True
+            )
+        )
+        assert all("_row_index" in c.columns for c in chunks)
+        first = chunks[0]
+        assert list(first["_row_index"]) == list(range(10))
+        second = chunks[1]
+        assert list(second["_row_index"]) == list(range(10, 20))
+
+    def test_include_index_survives_python_bbox_filter(
+        self, larger_geojson: Path
+    ):
+        """With tile_strategy='none' the bbox filter drops rows in Python;
+        yielded indices must match the surviving source rows.
+        """
+        feats = list(
+            FeatureCollection.iter_features(
+                larger_geojson,
+                bbox=(0.0, 0.0, 4.5, 4.5),
+                tile_strategy="none",
+                include_index=True,
+            )
+        )
+        ids = [f["id"] for f in feats]
+        # Points (0,0)..(4,4) are at indices 0..4 in the file.
+        assert ids == [0, 1, 2, 3, 4]

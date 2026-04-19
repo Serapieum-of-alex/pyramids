@@ -267,6 +267,7 @@ class FeatureCollection(GeoDataFrame):
         where: str | None = None,
         chunksize: int | None = None,
         tile_strategy: str = "auto",
+        include_index: bool = False,
     ) -> Any:
         """Stream features from ``path`` without materializing the full file.
 
@@ -312,6 +313,12 @@ class FeatureCollection(GeoDataFrame):
                 yields ``FeatureCollection`` chunks.
             tile_strategy (str): One of ``"auto"``, ``"rtree"``,
                 ``"row_group"``, ``"none"``. Default ``"auto"``.
+            include_index (bool): When ``True``, each yielded dict gets
+                an additional ``"id"`` key whose value is the
+                0-based file-row index of that feature. The chunked
+                form (``chunksize=N``) attaches the same index as a
+                ``"_row_index"`` column on the yielded FC. Defaults to
+                ``False`` for back-compat with the fiona idiom.
 
         Yields:
             dict | FeatureCollection: Per-feature dicts when
@@ -374,17 +381,36 @@ class FeatureCollection(GeoDataFrame):
                 max_features=batch_size,
                 **read_kwargs,
             )
+            # C14: remember the absolute row indices before any
+            # bbox-based masking so callers can map yielded features
+            # back to their source rows even after a Python-side filter
+            # has dropped some of them.
+            if include_index:
+                row_indices = list(range(start, start + len(gdf_chunk)))
             if python_bbox is not None and len(gdf_chunk) > 0:
                 xmin, ymin, xmax, ymax = python_bbox
                 mask = gdf_chunk.intersects(
                     box(xmin, ymin, xmax, ymax)
                 )
+                if include_index:
+                    row_indices = [
+                        ri for ri, keep in zip(row_indices, mask) if keep
+                    ]
                 gdf_chunk = gdf_chunk[mask]
             if chunksize is None:
-                for feat in gdf_chunk.iterfeatures(na="null"):
-                    yield feat
+                iterator = gdf_chunk.iterfeatures(na="null")
+                if include_index:
+                    for ri, feat in zip(row_indices, iterator):
+                        feat["id"] = ri
+                        yield feat
+                else:
+                    for feat in iterator:
+                        yield feat
             else:
-                yield cls(gdf_chunk)
+                chunk_fc = cls(gdf_chunk)
+                if include_index:
+                    chunk_fc["_row_index"] = row_indices
+                yield chunk_fc
 
     @classmethod
     def read_file(
