@@ -95,6 +95,52 @@ class TestLazyDispatch:
         ) else (square_dataset.read_array() + 1) * 2
         np.testing.assert_array_equal(result, expected)
 
+    @requires_dask
+    def test_drop_axis_kwarg_forwarded(self, square_dataset):
+        """``drop_axis=`` is forwarded to :func:`dask.array.map_blocks`.
+
+        Test scenario:
+            A block function that reduces along an axis (``sum``) must
+            produce a lazy array of lower rank when the user passes
+            ``drop_axis=0``. This covers the ``kwargs["drop_axis"]=...``
+            assignment in the lazy branch of :meth:`map_blocks`.
+        """
+        result = square_dataset.map_blocks(
+            lambda a: a.sum(axis=0),
+            chunks=(10, 10), band=0, drop_axis=0, dtype=np.float32,
+        )
+        assert hasattr(result, "dask"), (
+            "Expected a dask.array.Array when chunks= is provided"
+        )
+        assert result.ndim == 1, (
+            f"drop_axis=0 must reduce rank by 1; got ndim={result.ndim}"
+        )
+        np.testing.assert_array_equal(
+            result.compute(), square_dataset.read_array().sum(axis=0),
+        )
+
+    @requires_dask
+    def test_new_axis_kwarg_forwarded(self, square_dataset):
+        """``new_axis=`` is forwarded to :func:`dask.array.map_blocks`.
+
+        Test scenario:
+            A block function that adds a leading axis (``np.expand_dims``)
+            returns an array of higher rank. The lazy-path wiring must
+            forward ``new_axis=0`` so the dask graph knows about the
+            extra dimension. This covers the ``kwargs["new_axis"]=...``
+            assignment.
+        """
+        result = square_dataset.map_blocks(
+            lambda a: np.expand_dims(a, axis=0),
+            chunks=(10, 10), band=0, new_axis=0, dtype=np.float32,
+        )
+        assert hasattr(result, "dask"), (
+            "Expected a dask.array.Array when chunks= is provided"
+        )
+        assert result.ndim == 3, (
+            f"new_axis=0 must increase rank by 1; got ndim={result.ndim}"
+        )
+
 
 class TestImportErrorWithoutDask:
     """``chunks=`` without dask raises actionable ``ImportError``."""

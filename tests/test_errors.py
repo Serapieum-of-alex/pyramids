@@ -214,3 +214,70 @@ class TestExceptionHierarchy:
         assert exc.args == (msg,), (
             f"Expected args=({msg!r},), got {exc.args}"
         )
+
+
+class TestErrorsReExport:
+    """Tests for the public :mod:`pyramids.errors` re-export surface.
+
+    The module is a thin re-export of the private ``pyramids.base._errors``;
+    these tests guard the surface contract (every name in ``__all__`` is
+    importable, resolves to a class, and participates in the
+    ``PyramidsError`` hierarchy).
+    """
+
+    def test_module_importable(self):
+        """:mod:`pyramids.errors` imports cleanly.
+
+        Test scenario:
+            A downstream user who follows the import advice in the module
+            docstring (``from pyramids import errors``) must not see
+            a deferred :class:`ImportError`.
+        """
+        import pyramids.errors  # noqa: F401
+
+    def test_pyramids_error_exposed_as_public_name(self):
+        """:class:`PyramidsError` is the public alias of the private base.
+
+        Test scenario:
+            The module docstring promises ``except errors.PyramidsError``
+            works, so the public name must resolve to the underlying
+            :class:`_PyramidsError` base class.
+        """
+        import pyramids.errors as errs
+
+        assert errs.PyramidsError is _PyramidsError, (
+            "pyramids.errors.PyramidsError must alias the private base"
+        )
+
+    def test_all_entries_are_importable_attributes(self):
+        """Every name in ``__all__`` resolves to a module attribute.
+
+        Test scenario:
+            A star-import (or static analyser) must not see dangling
+            names. Every listed name must be an attribute on the module.
+        """
+        import pyramids.errors as errs
+
+        missing = [n for n in errs.__all__ if not hasattr(errs, n)]
+        assert not missing, f"Names in __all__ with no attribute: {missing}"
+
+    @pytest.mark.parametrize(
+        "exc_class", ALL_ERRORS, ids=lambda c: c.__name__
+    )
+    def test_each_concrete_class_reexported(self, exc_class):
+        """Every private concrete exception is also re-exported publicly.
+
+        Args:
+            exc_class: One of the concrete exception classes that lives
+                in :mod:`pyramids.base._errors`.
+
+        Test scenario:
+            Iterate the full exception hierarchy and assert each one is
+            accessible via :mod:`pyramids.errors` by its unqualified
+            class name. This is the promise of the public re-export.
+        """
+        import pyramids.errors as errs
+
+        assert getattr(errs, exc_class.__name__, None) is exc_class, (
+            f"{exc_class.__name__} must be re-exported from pyramids.errors"
+        )

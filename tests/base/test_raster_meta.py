@@ -87,6 +87,29 @@ class TestFromDataset:
         assert meta.shape == (1, 4, 5)
         assert meta.cell_size == 1.0
 
+    def test_dtype_derived_from_gdal_band_when_numpy_dtype_empty(
+        self, monkeypatch,
+    ):
+        """L3 fallback: empty ``numpy_dtype`` derives dtype from GDAL band.
+
+        Test scenario:
+            If :attr:`Dataset.numpy_dtype` is empty (as can happen when
+            the eager cache has not populated), :meth:`from_dataset`
+            must not hardcode ``float64`` — it reads the GDAL band's
+            data type directly. For an ``int16`` raster the resulting
+            :attr:`RasterMeta.dtype` must preserve the integer type.
+        """
+        arr = np.arange(20, dtype=np.int16).reshape(4, 5)
+        ds = Dataset.create_from_array(
+            arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+        )
+        monkeypatch.setattr(type(ds), "numpy_dtype", property(lambda self: []))
+        meta = RasterMeta.from_dataset(ds)
+        assert meta.dtype == "int16", (
+            f"Expected dtype 'int16' from GDAL band fallback, got "
+            f"{meta.dtype!r}"
+        )
+
 
 class TestPickle:
     def test_pickle_roundtrip(self, basic_meta):

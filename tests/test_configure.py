@@ -6,6 +6,8 @@ and, when a dask client is given, broadcasts to every worker.
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 from osgeo import gdal
 
@@ -88,3 +90,57 @@ class TestImportSurface:
         import pyramids
 
         assert callable(pyramids.configure)
+
+
+class TestWorkerPlugin:
+    """Tests for :func:`pyramids._configure._register_worker_plugin`.
+
+    ``configure(..., client=<dask client>)`` replays the chosen GDAL
+    options on every worker via a :class:`WorkerPlugin` so distributed
+    reads see the same config as the driver. These tests cover the
+    client-broadcast branch of :func:`configure`.
+    """
+
+    def test_client_triggers_plugin_registration(self):
+        """Passing ``client`` calls ``client.register_plugin`` once.
+
+        Test scenario:
+            With a mock client, a single :func:`configure` call with a
+            non-empty env must fan out to exactly one
+            ``register_plugin`` invocation, passing the well-known
+            plugin name.
+        """
+        fake_client = MagicMock()
+        configure(client=fake_client, GDAL_CACHEMAX="64")
+        fake_client.register_plugin.assert_called_once()
+        call = fake_client.register_plugin.call_args
+        assert call.kwargs.get("name") == "pyramids-configure", (
+            f"Expected plugin name 'pyramids-configure', got "
+            f"{call.kwargs.get('name')!r}"
+        )
+
+    def test_client_fallback_to_register_worker_plugin(self):
+        """Old dask API (no ``register_plugin``) falls back cleanly.
+
+        Test scenario:
+            A client whose :meth:`register_plugin` raises
+            :class:`AttributeError` (emulating a legacy dask build)
+            must fall through to :meth:`register_worker_plugin` instead
+            of crashing the caller.
+        """
+        fake_client = MagicMock()
+        fake_client.register_plugin.side_effect = AttributeError
+        configure(client=fake_client, GDAL_CACHEMAX="128")
+        fake_client.register_worker_plugin.assert_called_once()
+
+    def test_no_client_skips_plugin(self):
+        """Default ``client=None`` must not touch any plugin API.
+
+        Test scenario:
+            When no dask client is passed, :func:`configure` is a pure
+            in-process operation — no registration calls should fire.
+        """
+        fake_client = MagicMock()
+        configure(GDAL_CACHEMAX="64")
+        fake_client.register_plugin.assert_not_called()
+        fake_client.register_worker_plugin.assert_not_called()

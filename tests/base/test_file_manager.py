@@ -125,6 +125,73 @@ class TestLRUCache:
         cache.clear()
         assert sorted(evicted) == ["a", "b"]
 
+    def test_maxsize_property_reports_current_limit(self):
+        """``cache.maxsize`` exposes the configured limit.
+
+        Test scenario:
+            The getter returns the integer passed at construction; the
+            setter changes the limit without evicting when the new
+            limit is wider.
+        """
+        cache = _LRUCache(maxsize=7)
+        assert cache.maxsize == 7, (
+            f"Expected maxsize=7, got {cache.maxsize}"
+        )
+        cache.maxsize = 9
+        assert cache.maxsize == 9, (
+            f"Expected maxsize=9 after widening, got {cache.maxsize}"
+        )
+
+    def test_maxsize_setter_rejects_zero(self):
+        """Setting ``cache.maxsize`` below 1 raises ``ValueError``.
+
+        Test scenario:
+            A zero/negative limit would mean "evict everything on every
+            insert", which is almost always a bug. The setter rejects
+            it explicitly.
+        """
+        cache = _LRUCache(maxsize=3)
+        with pytest.raises(ValueError, match="maxsize must be >= 1"):
+            cache.maxsize = 0
+
+    def test_setitem_existing_key_updates_in_place(self):
+        """Re-setting an existing key updates the value without evicting.
+
+        Test scenario:
+            The LRU must bump the key to most-recently-used and swap
+            the stored value, without firing ``on_evict`` — because no
+            entry actually leaves the cache. This covers the ``if key
+            in self._cache`` fast-return branch.
+        """
+        evicted: list = []
+        cache = _LRUCache(maxsize=2, on_evict=lambda k, v: evicted.append(k))
+        cache["a"] = 1
+        cache["b"] = 2
+        cache["a"] = 99
+        assert cache["a"] == 99, (
+            f"Expected updated value 99, got {cache['a']}"
+        )
+        assert evicted == [], (
+            f"No eviction expected on in-place update, got {evicted}"
+        )
+
+    def test_iter_yields_keys_in_lru_order(self):
+        """Iterating the cache returns keys snapshot-safely.
+
+        Test scenario:
+            Iteration captures a snapshot under the lock so callers can
+            mutate the cache during the loop without a ``RuntimeError``.
+            The returned order mirrors insertion/access order.
+        """
+        cache = _LRUCache(maxsize=4)
+        cache["x"] = 1
+        cache["y"] = 2
+        cache["z"] = 3
+        keys = list(cache)
+        assert keys == ["x", "y", "z"], (
+            f"Expected iteration order ['x','y','z'], got {keys}"
+        )
+
 
 class TestHashedSequence:
     """``_HashedSequence`` — list subclass with cached hash."""
@@ -230,6 +297,34 @@ class TestCachingFileManager:
                 raise RuntimeError("boom")
         assert fm._key not in FILE_CACHE
 
+    def test_close_is_idempotent_when_handle_already_evicted(self):
+        """``close()`` tolerates a cache entry that was already removed.
+
+        Test scenario:
+            Pre-evict the handle out-of-band (simulating an LRU eviction
+            that closed it in another manager), then call ``close()``.
+            It must return cleanly via the ``except KeyError: return``
+            branch rather than raising.
+        """
+        fm = CachingFileManager(_fake_opener, "x.tif", "read_only")
+        fm.acquire()
+        del FILE_CACHE[fm._key]
+        fm.close()
+
+    def test_drop_handles_missing_cache_entry(self):
+        """``_drop()`` silently ignores a missing cache key.
+
+        Test scenario:
+            ``_drop()`` is called in failure paths where the handle may
+            or may not be in the cache. Pre-remove the entry and call
+            ``_drop()`` directly — the ``except KeyError: pass`` branch
+            absorbs the error.
+        """
+        fm = CachingFileManager(_fake_opener, "x.tif", "read_only")
+        fm.acquire()
+        del FILE_CACHE[fm._key]
+        fm._drop()
+
 
 class TestCachingFileManagerLRUEviction:
     """``FILE_CACHE`` eviction closes evicted handles."""
@@ -289,6 +384,59 @@ class TestThreadLocalFileManager:
         # Re-acquire on the same thread opens a new handle.
         h2 = fm.acquire()
         assert h2 is not h
+
+    def test_acquire_context_yields_handle(self):
+        """``acquire_context()`` yields the thread-local handle.
+
+        Test scenario:
+            The context manager is a thin shim over :meth:`acquire`; it
+            must yield a :class:`_FakeHandle` and survive re-entry on
+            the same thread without re-opening. This covers the
+            :meth:`ThreadLocalFileManager.acquire_context` body.
+        """
+        fm = ThreadLocalFileManager(_fake_opener, "t.tif", "read_only")
+        with fm.acquire_context() as handle:
+            assert isinstance(handle, _FakeHandle), (
+                f"Expected _FakeHandle, got {type(handle)}"
+            )
+        with fm.acquire_context() as handle2:
+            assert handle is handle2, (
+                "Context manager must reuse the thread-local handle"
+            )
+
+
+class TestNullLock:
+    """:class:`_NullLock` drop-in for ``lock=False``."""
+
+    def test_acquire_always_returns_true(self):
+        """``acquire()`` is a no-op that always succeeds.
+
+        Test scenario:
+            The null lock never blocks, regardless of ``blocking`` or
+            ``timeout`` kwargs. It must always return ``True`` so code
+            that inspects the return value (like ``with lock:`` guards)
+            proceeds as if it took the lock.
+        """
+        lock = _NullLock()
+        assert lock.acquire() is True, (
+            "_NullLock.acquire() must always return True"
+        )
+        assert lock.acquire(blocking=False, timeout=5.0) is True, (
+            "_NullLock.acquire() must ignore blocking/timeout"
+        )
+
+    def test_release_is_noop(self):
+        """``release()`` returns ``None`` without raising.
+
+        Test scenario:
+            Releasing an unacquired real lock raises ``RuntimeError``;
+            the null lock must tolerate unmatched releases so caller
+            code can treat it interchangeably.
+        """
+        lock = _NullLock()
+        assert lock.release() is None, (
+            "_NullLock.release() must return None"
+        )
 
 
 class TestOpeners:
@@ -375,3 +523,55 @@ class TestOpenersE2E:
             assert ds.RasterXSize == 3
         finally:
             fm.close()
+
+    @pytest.fixture
+    def geojson_path(self, tmp_path):
+        """Write a minimal single-point GeoJSON and return its path.
+
+        Returns:
+            str: Filesystem path to the GeoJSON file.
+        """
+        path = tmp_path / "tiny.geojson"
+        path.write_text(
+            '{"type":"FeatureCollection","features":['
+            '{"type":"Feature","geometry":{"type":"Point",'
+            '"coordinates":[0,0]},"properties":{}}'
+            ']}',
+            encoding="utf-8",
+        )
+        return str(path)
+
+    def test_ogr_open_read_only_returns_datasource(self, geojson_path):
+        """``ogr_open(access="read_only")`` returns a readable OGR datasource.
+
+        Test scenario:
+            Opening a GeoJSON with ``access="read_only"`` must set the
+            OGR update flag to 0 and return a datasource whose first
+            layer has the expected single feature. This covers the
+            ``update = 0 if access in {...}`` branch of :func:`ogr_open`.
+        """
+        ds = ogr_open(geojson_path, access="read_only")
+        try:
+            assert ds is not None, "ogr_open must return a datasource"
+            layer = ds.GetLayer(0)
+            assert layer.GetFeatureCount() == 1, (
+                f"Expected 1 feature, got {layer.GetFeatureCount()}"
+            )
+        finally:
+            ds = None
+
+    def test_ogr_open_write_access_flags_update(self, geojson_path):
+        """``ogr_open(access="w")`` passes ``update=1`` to :func:`ogr.Open`.
+
+        Test scenario:
+            The "write" branch sets ``update=1`` so drivers that support
+            edits open in update mode. The function must still return a
+            valid datasource (not raise) for the common GeoJSON driver.
+        """
+        ds = ogr_open(geojson_path, access="w")
+        try:
+            assert ds is not None, (
+                "ogr_open with access='w' must return a datasource"
+            )
+        finally:
+            ds = None

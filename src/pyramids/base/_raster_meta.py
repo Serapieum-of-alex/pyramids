@@ -19,7 +19,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from osgeo import gdal
 from pyproj import CRS
 
 from pyramids.base._utils import gdal_to_numpy_dtype
@@ -134,7 +133,7 @@ class RasterMeta:
             # get a bogus float64 dtype metadata on the RasterMeta and
             # downstream dask graphs produce wrong-dtype arrays.
             band_type = ds.raster.GetRasterBand(1).DataType
-            dtype = str(gdal_to_numpy_dtype(gdal.GetDataTypeName(band_type)))
+            dtype = str(gdal_to_numpy_dtype(band_type))
         else:
             dtype = str(np.dtype(first_dtype))
         return cls(
