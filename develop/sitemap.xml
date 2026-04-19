@@ -125,10 +125,6 @@
          <lastmod>2026-04-19</lastmod>
     </url>
     <url>
-         <loc>https://serapeum-org.github.io/pyramids/develop/reference/feature/</loc>
-         <lastmod>2026-04-19</lastmod>
-    </url>
-    <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf_metadata/</loc>
          <lastmod>2026-04-19</lastmod>
     </url>
@@ -158,6 +154,18 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/vectorize/</loc>
+         <lastmod>2026-04-19</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/feature/</loc>
+         <lastmod>2026-04-19</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/feature/crs/</loc>
+         <lastmod>2026-04-19</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/feature/geometry/</loc>
          <lastmod>2026-04-19</lastmod>
     </url>
     <url>
@@ -234,6 +242,10 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/dataset_collection/</loc>
+         <lastmod>2026-04-19</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/feature/</loc>
          <lastmod>2026-04-19</lastmod>
     </url>
     <url>
