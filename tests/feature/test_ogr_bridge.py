@@ -357,6 +357,81 @@ class TestAsDatasourceExceptionSafety:
             f"cleanup calls when the in-memory file was never written."
         )
 
+    def test_vector_driver_error_message_names_vsimem_path(
+        self, point_gdf, monkeypatch
+    ):
+        """C4: the ``VectorDriverError`` message includes the vsimem path.
+
+        Test scenario:
+            On an OGR open failure, the typed exception message must
+            include the ``/vsimem/<uuid>.geojson`` path so debuggers can
+            grep it out of a traceback. Tight coupling test — change
+            the wording and this fails loudly.
+        """
+        from osgeo import ogr as _ogr_mod
+
+        from pyramids.base._errors import VectorDriverError
+
+        monkeypatch.setattr(_ogr_mod, "Open", lambda _: None)
+
+        with pytest.raises(VectorDriverError) as exc_info:
+            with as_datasource(point_gdf):
+                pass  # pragma: no cover
+        msg = str(exc_info.value)
+        assert "/vsimem/" in msg, (
+            f"VectorDriverError message must name the vsimem path; got: {msg}"
+        )
+        assert ".geojson" in msg, f"expected .geojson in message; got: {msg}"
+
+    def test_gdal_dataset_none_open_also_becomes_vector_driver_error(
+        self, point_gdf, monkeypatch
+    ):
+        """C4: the ``gdal_dataset=True`` branch also raises on None-open.
+
+        Test scenario:
+            The OGR fallback path and the ``gdal.OpenEx`` path go
+            through the same None-check. This pins that the
+            ``gdal_dataset=True`` toggle does not bypass the guard.
+        """
+        from osgeo import gdal as _gdal_mod
+
+        from pyramids.base._errors import VectorDriverError
+
+        monkeypatch.setattr(_gdal_mod, "OpenEx", lambda _: None)
+
+        with pytest.raises(VectorDriverError):
+            with as_datasource(point_gdf, gdal_dataset=True):
+                pass  # pragma: no cover
+
+    def test_unlinks_on_exception_inside_with_body(
+        self, point_gdf, monkeypatch
+    ):
+        """C4: the vsimem file is unlinked even when user code raises.
+
+        Test scenario:
+            The context manager's cleanup is the single authoritative
+            release point. When the ``with`` block raises, the vsimem
+            path must still be unlinked exactly once.
+        """
+        from osgeo import gdal as _gdal_mod
+
+        calls: list[str] = []
+        real_unlink = _gdal_mod.Unlink
+        monkeypatch.setattr(
+            _gdal_mod,
+            "Unlink",
+            lambda p: calls.append(p) or real_unlink(p),
+        )
+
+        with pytest.raises(ValueError, match="user-code failure"):
+            with as_datasource(point_gdf):
+                raise ValueError("user-code failure")
+
+        assert len(calls) == 1, (
+            f"expected exactly one Unlink call; got {calls}"
+        )
+        assert calls[0].startswith("/vsimem/"), calls[0]
+
 
 class TestAsVsimemPath:
     """Tests for :func:`as_vsimem_path`."""

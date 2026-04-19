@@ -168,3 +168,39 @@ class TestCreationOptionValidation:
             p, driver="gpkg", SPATIAL_INDEX="YES"
         )
         assert p.exists()
+
+    def test_mix_of_known_and_unknown_options_still_raises(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """Any single unknown option triggers the ValueError.
+
+        Test scenario:
+            pyogrio iterates the kwargs and stops on the first option
+            that matches neither the dataset nor the layer option list.
+            Supplying one known + one unknown option still raises.
+        """
+        p = tmp_path / "mix.gpkg"
+        with pytest.raises(ValueError, match="BOGUS"):
+            fc_rivers.to_file(
+                p,
+                driver="gpkg",
+                SPATIAL_INDEX="YES",
+                BOGUS="x",
+            )
+
+    def test_option_case_insensitive_accepted(
+        self, tmp_path: Path, fc_rivers: FeatureCollection
+    ):
+        """Options are case-insensitive in the pyogrio layer.
+
+        Test scenario:
+            pyogrio uppercases the option key before checking the
+            driver's metadata — so ``spatial_index`` and
+            ``SPATIAL_INDEX`` are both accepted for GPKG. This pins
+            the behaviour so a future pyogrio version that tightens
+            to case-sensitive matching surfaces here rather than
+            silently dropping the option.
+        """
+        p = tmp_path / "case.gpkg"
+        fc_rivers.to_file(p, driver="gpkg", spatial_index="YES")
+        assert p.exists()

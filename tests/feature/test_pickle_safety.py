@@ -115,6 +115,37 @@ class TestMetadataDedup:
         assert "_epsg_cache_crs" in FeatureCollection._metadata
         assert "_epsg_cache_value" in FeatureCollection._metadata
 
+    def test_metadata_stays_deduped_in_subclass(self):
+        """C3: a further subclass does not reintroduce duplicates.
+
+        Test scenario:
+            A user may subclass FeatureCollection and splat its own
+            ``_metadata`` list. Even if the child re-adds a name already
+            present in the parent, the final list must still resolve to
+            a unique set. The class attribute pattern relies on Python's
+            MRO, so this mirrors geopandas' contract.
+        """
+
+        class ChildFC(FeatureCollection):
+            _metadata = list(
+                dict.fromkeys([
+                    *FeatureCollection._metadata,
+                    "_epsg_cache_crs",  # intentionally re-listed
+                ])
+            )
+
+        assert len(ChildFC._metadata) == len(set(ChildFC._metadata))
+
+    def test_metadata_survives_copy(self, fc: FeatureCollection):
+        """C3: ``.copy()`` preserves the de-duped ``_metadata`` list."""
+        duplicate = fc.copy()
+        assert list(type(duplicate)._metadata) == list(
+            FeatureCollection._metadata
+        )
+        assert len(type(duplicate)._metadata) == len(
+            set(type(duplicate)._metadata)
+        )
+
 
 @pytest.mark.skipif(
     importlib.util.find_spec("cloudpickle") is None,
