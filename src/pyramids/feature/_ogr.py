@@ -239,6 +239,16 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
     ``GeoDataFrame`` back to the public layer. The conversion goes via a
     ``/vsimem/`` GeoJSON round-trip using :func:`gdal.VectorTranslate`.
 
+    D-M4: the round-trip stays entirely in osgeo.gdal's ``/vsimem/``
+    VFS — no filesystem temp file is created. The serialised GeoJSON
+    bytes are read back via :func:`gdal.VSIFOpenL` /
+    :func:`gdal.VSIFReadL` and parsed from an in-memory
+    :class:`io.BytesIO` via :func:`geopandas.read_file` (pyogrio
+    accepts buffer inputs). Cleanup of the ``/vsimem/`` path is gated
+    on the write having actually succeeded, so a failed
+    ``VectorTranslate`` raises :class:`VectorDriverError` cleanly
+    without ``gdal.Unlink`` masking the original error.
+
     Args:
         ds (ogr.DataSource | gdal.Dataset):
             The source DataSource to materialize. Not consumed; the
@@ -251,8 +261,11 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
         ``FeatureCollection(datasource_to_gdf(ds))``.
 
     Raises:
-        RuntimeError: If :func:`gdal.VectorTranslate` fails to write the
-            intermediate GeoJSON.
+        VectorDriverError: If :func:`gdal.VectorTranslate` fails to
+            write the intermediate GeoJSON, or if the subsequent
+            :func:`gdal.VSIFOpenL` cannot open the ``/vsimem/`` path.
+            Multi-inherits from ``RuntimeError`` so existing
+            ``except RuntimeError`` handlers keep working.
 
     Examples:
         - Round-trip a GeoDataFrame through the OGR bridge: first open

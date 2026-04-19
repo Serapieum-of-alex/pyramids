@@ -709,8 +709,16 @@ class Dataset(  # type: ignore[misc]
             coercion. Float-typed burn columns keep NaN as before.
 
         Raises:
-            ValueError: If neither ``cell_size`` nor ``template`` is
-                given.
+            ValueError: Raised up front (before the raster is
+                allocated) in any of:
+
+                * neither ``cell_size`` nor ``template`` was given,
+                * ``cell_size`` is ``<= 0`` (D-M2),
+                * ``column_name`` is an empty list (D-M2),
+                * ``column_name`` names a column that isn't in
+                  ``features.columns`` — either as a string or inside
+                  a list (D-M2). The message lists the available
+                  columns to ease the fix.
             TypeError: If ``template`` is not a pyramids ``Dataset``.
             CRSError: If ``features.epsg`` is ``None`` (the vector
                 has no CRS), or if ``template`` is supplied and
