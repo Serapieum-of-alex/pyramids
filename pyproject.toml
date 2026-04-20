@@ -104,7 +104,12 @@ where = ["src"]
 include = ["pyramids", "pyramids.*"]
 
 [tool.setuptools.package-data]
-pyramids = ["base/data/*.yaml"]
+pyramids = [
+    "**/*.yaml",
+    "_vendor/osgeo/**/*",
+    "_data/gdal_data/*",
+    "_data/proj_data/*",
+]
 
 [tool.flake8]
 ignore = ["E203", "E266", "E501", "W503", "E722", "C901", "E741", "E731"]
@@ -239,3 +244,33 @@ scipy = ">=1.17.1,<2"
 gdal = ">=3.10.0,<4"
 libgdal-netcdf = ">=3.10.0,<4"
 libgdal-hdf4 = ">=3.10.0,<4"
+
+
+# ---------------------------------------------------------------------------
+# cibuildwheel: platform wheel builds with bundled GDAL
+# ---------------------------------------------------------------------------
+[tool.cibuildwheel]
+skip = ["*pp* *musllinux*"]
+archs = ["auto64"]
+build-verbosity = 3
+test-command = "python -c \"from osgeo import gdal; print(f'GDAL {gdal.__version__} OK')\""
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux2014"
+before-all = [
+    "yum install -y wget cmake3 perl-core automake libtool",
+    "ln -sf /usr/bin/cmake3 /usr/bin/cmake || true",
+    "bash ./ci/build-gdal-linux.sh",
+]
+before-build = "PACKAGE_DATA=1 python ./ci/vendor-osgeo.py"
+repair-wheel-command = [
+    "LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 auditwheel repair -w {dest_dir} {wheel}",
+]
+
+[tool.cibuildwheel.linux.environment]
+GDAL_VERSION = "3.12.1"
+BUILD_PREFIX = "/usr/local"
+GDAL_DATA = "/usr/local/share/gdal"
+PROJ_DATA = "/usr/local/share/proj"
+PACKAGE_DATA = "1"
+LD_LIBRARY_PATH = "/usr/local/lib:/usr/local/lib64"

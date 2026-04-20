@@ -1,0 +1,132 @@
+name: Build Platform Wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload-to-pypi:
+        description: "Upload to PyPI"
+        type: boolean
+        default: false
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+
+env:
+  GDAL_VERSION: "3.12.1"
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Build source distribution (always pure Python, no vendored GDAL)
+  # -------------------------------------------------------------------------
+  build-sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist
+        run: |
+          pip install build
+          python -m build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  # -------------------------------------------------------------------------
+  # Build Linux platform wheels with bundled GDAL
+  # -------------------------------------------------------------------------
+  build-linux-wheels:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22
+        env:
+          CIBW_BUILD: "cp311-manylinux* cp312-manylinux* cp313-manylinux*"
+          CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+
+  # -------------------------------------------------------------------------
+  # Test the built wheels in a clean environment
+  # -------------------------------------------------------------------------
+  test-linux-wheels:
+    needs: build-linux-wheels
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-linux-x86_64
+          path: dist/
+
+      - name: Install wheel (no conda, no system GDAL)
+        run: |
+          pip install dist/pyramids_gis-*-cp${{ matrix.python-version && '3' || '' }}*manylinux*.whl || \
+            pip install dist/*.whl
+          pip install pytest
+
+      - name: Verify GDAL import
+        run: |
+          python -c "
+          import pyramids
+          from osgeo import gdal
+          print(f'pyramids {pyramids.__version__}')
+          print(f'GDAL {gdal.__version__}')
+          "
+
+      - name: Run tests
+        run: pytest -vvv -sv -m "not plot" tests/
+
+  # -------------------------------------------------------------------------
+  # Publish to PyPI
+  # -------------------------------------------------------------------------
+#   publish:
+#     needs: [build-sdist, build-linux-wheels, test-linux-wheels]
+#     if: >-
+#       github.event_name == 'release' ||
+#       (github.event_name == 'workflow_dispatch' && inputs.upload-to-pypi)
+#     runs-on: ubuntu-latest
+#     permissions:
+#       id-token: write
+#
+#     steps:
+#       - uses: actions/download-artifact@v4
+#         with:
+#           pattern: "*"
+#           merge-multiple: true
+#           path: dist/
+#
+#       - name: Publish to PyPI
+#         uses: pypa/gh-action-pypi-publish@release/v1
