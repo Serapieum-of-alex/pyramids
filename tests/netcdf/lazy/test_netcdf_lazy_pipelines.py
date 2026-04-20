@@ -1,7 +1,10 @@
-"""Phase 2 end-to-end: cross-task pipelines for NetCDF lazy path.
+"""End-to-end tests for NetCDF lazy pipelines (DASK-11..14 seams).
 
-DASK-11..14 each have their own per-task suite. This file covers the
-cross-task seams where one task's output is consumed by another:
+The four NetCDF lazy-path tasks (DASK-11 chunked read, DASK-12
+open_mfdataset, DASK-13 xarray backend, DASK-14 kerchunk) each have
+their own per-task suite. This file covers the cross-task seams where
+one task's output is consumed by another — the places where silent
+breakage is most likely under future refactors:
 
 1. ``NetCDF.read_array(chunks=)`` → reduction chained through xarray's
    backend (engine=`pyramids`, chunks={}) — both paths should agree.
@@ -65,7 +68,7 @@ def _compute_variable_sum(payload: bytes) -> float:
     return float(np.asarray(arr).sum())
 
 
-class TestPhase2Pipelines:
+class TestNetCDFLazyPipelines:
     """Cross-task pipelines for Phase 2."""
 
     @requires_dask
