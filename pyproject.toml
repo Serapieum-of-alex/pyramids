@@ -194,14 +194,14 @@ markers = [
     "vfs: mark a test as a virtual file system (deselect with '-m \"not vfs\"')",
     "slow: mark test as slow (deselect with '-m \"not slow\"')",
     "fast: mark test as fast (deselect with '-m \"not fast\"')",
-    "plot: test plotting function optional package (deselect with '-m \"not plot\"')",
-    # One marker per [project.optional-dependencies] group. Each marker
-    # auto-skips when the extra's headline dep is not importable (see
-    # ``tests/_marks.py`` + ``pytest_collection_modifyitems`` in
-    # ``tests/conftest.py``) so test authors declare intent once via
-    # ``@pytest.mark.<extra>`` rather than repeating
-    # ``try/except ImportError`` boilerplate.
-    "viz: tests requiring the [viz] extra (cleopatra)",
+    "plot: tests requiring the [viz] extra (cleopatra) — plotting tests (deselect with '-m \"not plot\"')",
+    # One marker per remaining [project.optional-dependencies] group.
+    # Each marker auto-skips when the extra's headline dep is not
+    # importable (see ``tests/_marks.py`` + ``pytest_collection_modifyitems``
+    # in ``tests/conftest.py``) so test authors declare intent once via
+    # ``@pytest.mark.<extra>`` rather than repeating ``try/except
+    # ImportError`` boilerplate. The [viz] extra is already covered by
+    # the ``plot`` marker above — don't register a duplicate ``viz`` one.
     "lazy: tests requiring the [lazy] extra (dask, distributed, zarr, fsspec)",
     "xarray: tests requiring the [xarray] extra (xarray, netCDF4, h5netcdf, cftime)",
     "netcdf_lazy: tests requiring the [netcdf-lazy] extra (kerchunk, h5py, + xarray, + lazy)",

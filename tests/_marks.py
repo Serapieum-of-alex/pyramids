@@ -74,7 +74,7 @@ _HAS_STAC = HAS_PYSTAC and HAS_ODC_GEO
 _HAS_ZONAL = HAS_EXACTEXTRACT
 
 
-requires_viz = pytest.mark.skipif(
+requires_plot = pytest.mark.skipif(
     not _HAS_VIZ, reason="pyramids-gis[viz] not installed"
 )
 requires_lazy = pytest.mark.skipif(
@@ -114,7 +114,9 @@ requires_pyarrow = requires_parquet
 # in ``tests/conftest.py``. A test annotated with ``@pytest.mark.<name>``
 # auto-gains the matching skip when its extra is not installed.
 EXTRA_MARKERS: dict[str, pytest.MarkDecorator] = {
-    "viz": requires_viz,
+    # ``plot`` is the canonical gate for the [viz] extra; no separate
+    # ``viz`` marker is registered to avoid duplicate surface.
+    "plot": requires_plot,
     "lazy": requires_lazy,
     "xarray": requires_xarray,
     "netcdf_lazy": requires_netcdf_lazy,
