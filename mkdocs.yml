@@ -176,6 +176,7 @@ nav:
       - Docker & GHCR: how-to/docker.md
       - Recipes: how-to/recipes.md
       - Lazy vector reads: how-to/lazy-vector.md
+      - Testing & CI: how-to/testing.md
       - FAQ & Troubleshooting: how-to/faq.md
   - About:
     - Change-log: change-log.md
