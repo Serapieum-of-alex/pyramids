@@ -44,3 +44,42 @@ jobs:
 
       - name: test Jupyter notebooks
         run: pixi run -e ${{ matrix.environment }} notebooks
+
+  extras-package:
+    # One job per [project.optional-dependencies] group that ships native
+    # deps (conda-forge backed). Each job installs the matching
+    # ``dev-<extra>`` pixi env and runs only the tests tagged with the
+    # extra's pytest marker. Tests auto-skip on missing deps via the
+    # ``pytest_collection_modifyitems`` hook in tests/conftest.py, so
+    # this job is the only place the extra-gated suite actually runs.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        target:
+          - { marker: netcdf_lazy,  env: netcdf-lazy }
+          - { marker: parquet_lazy, env: parquet-lazy }
+          - { marker: stac,         env: stac }
+          - { marker: zonal,        env: zonal }
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: serapeum-org/github-actions/actions/python-setup/pixi@pixi/v1
+        with:
+          environments: ${{ matrix.target.env }}
+          activate-environment: ${{ matrix.target.env }}
+          cache: true
+
+      - name: Run ${{ matrix.target.marker }} tests
+        run: >-
+          pixi run -e ${{ matrix.target.env }}
+          pytest -vvv -m ${{ matrix.target.marker }}
+          --cov=src/pyramids --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage reports to Codecov with GitHub Action
+        uses: codecov/codecov-action@v5

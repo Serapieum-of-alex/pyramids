@@ -236,11 +236,11 @@ mypy = { cmd = "mypy", description = "Run mypy type checking" }
 [tool.pixi.environments]
 default = {features = ["viz"], solve-group = "default" }
 dev = { features = ["viz", "dev", "xarray", "lazy"], solve-group = "default" }
-dev-netcdf-lazy = { features = ["viz", "dev", "xarray", "lazy", "netcdf-lazy"], solve-group = "default" }
-dev-parquet = { features = ["viz", "dev", "xarray", "lazy", "parquet"], solve-group = "default" }
-dev-parquet-lazy = { features = ["viz", "dev", "xarray", "lazy", "parquet", "parquet-lazy"], solve-group = "default" }
-dev-stac = { features = ["viz", "dev", "xarray", "lazy", "stac"], solve-group = "default" }
-dev-zonal = { features = ["viz", "dev", "xarray", "lazy", "zonal"], solve-group = "default" }
+netcdf-lazy = { features = ["viz", "dev", "xarray", "lazy", "netcdf-lazy"], solve-group = "default" }
+parquet = { features = ["viz", "dev", "xarray", "lazy", "parquet"], solve-group = "default" }
+parquet-lazy = { features = ["viz", "dev", "xarray", "lazy", "parquet", "parquet-lazy"], solve-group = "default" }
+stac = { features = ["viz", "dev", "xarray", "lazy", "stac"], solve-group = "default" }
+zonal = { features = ["viz", "dev", "xarray", "lazy", "zonal"], solve-group = "default" }
 notebook = { features = ["viz", "notebook"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "docs" }
 py311 = { features = ["py311", "viz", "dev", "xarray", "lazy"], solve-group = "py311" }
