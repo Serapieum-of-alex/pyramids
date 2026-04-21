@@ -58,10 +58,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         target:
-          - { marker: netcdf_lazy,  env: netcdf-lazy }
-          - { marker: parquet_lazy, env: parquet-lazy }
-          - { marker: stac,         env: stac }
-          - { marker: zonal,        env: zonal }
+          # ``dir`` is the subdirectory that exercises the extra's code
+          # paths. Keeping CI subdir-scoped avoids re-running the full
+          # suite in every extras env while still covering the code
+          # that each extra activates.
+          - { name: netcdf_lazy,  env: netcdf-lazy,  dir: tests/netcdf/lazy }
+          - { name: parquet_lazy, env: parquet-lazy, dir: tests/feature/lazy }
+          - { name: stac,         env: stac,         dir: tests/dataset/test_stac.py }
+          - { name: zonal,        env: zonal,        dir: tests/dataset/ops/test_zonal_stats.py }
 
     steps:
       - uses: actions/checkout@v5
@@ -75,11 +79,16 @@ jobs:
           activate-environment: ${{ matrix.target.env }}
           cache: true
 
-      - name: Run ${{ matrix.target.marker }} tests
+      - name: Run ${{ matrix.target.name }} tests
+        # ``--cov-fail-under=0`` overrides the 90% gate from
+        # ``[tool.coverage.report]``; extras jobs are intentionally
+        # narrow-scope and their coverage is aggregated with the main
+        # job at Codecov.
         run: >-
           pixi run -e ${{ matrix.target.env }}
-          pytest -vvv -m ${{ matrix.target.marker }}
+          pytest -vvv ${{ matrix.target.dir }}
           --cov=src/pyramids --cov-report=xml --cov-report=term-missing
+          --cov-fail-under=0
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v5
