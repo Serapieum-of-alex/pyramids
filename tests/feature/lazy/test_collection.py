@@ -8,7 +8,7 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import Point
 
-from pyramids.base.protocols import SpatialObject, is_lazy
+from pyramids.base.protocols import LazySpatialObject, SpatialObject, is_lazy
 from pyramids.feature import FeatureCollection
 
 
@@ -54,8 +54,18 @@ class TestLazyFeatureCollection:
     def test_is_not_feature_collection(self, lfc):
         assert not isinstance(lfc, FeatureCollection)
 
-    def test_satisfies_spatial_object_protocol(self, lfc):
-        assert isinstance(lfc, SpatialObject)
+    def test_satisfies_lazy_spatial_object_protocol(self, lfc):
+        """ARC-V4: lazy FCs implement :class:`LazySpatialObject`, not
+        :class:`SpatialObject` — the eager-looking ``top_left_corner``
+        property was intentionally removed because it silently triggers
+        an O(partitions) dask reduction. Consumers that accept either
+        backend type-check against the union of both protocols.
+        """
+        assert isinstance(lfc, LazySpatialObject)
+        assert not isinstance(lfc, SpatialObject), (
+            "LazyFC must NOT satisfy the eager SpatialObject protocol "
+            "(would hide a lazy reduction behind a property access)"
+        )
 
     def test_is_lazy_protocol_helper(self, lfc):
         assert is_lazy(lfc) is True

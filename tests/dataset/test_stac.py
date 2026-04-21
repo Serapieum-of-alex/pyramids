@@ -80,8 +80,20 @@ class TestFromStac:
 
     @requires_pystac
     def test_files_match_asset_hrefs(self, stac_items, three_tifs):
+        """Asset hrefs should round-trip to the same on-disk files.
+
+        STAC hrefs are URL-shaped (forward slashes) on every platform,
+        but tmp_path fixtures yield native-separator paths on Windows.
+        Compare normalised forms so the test passes regardless.
+        """
+        from pathlib import Path
+
         collection = DatasetCollection.from_stac(stac_items, asset="data")
-        assert collection.files == three_tifs
+        left = [Path(p).resolve() for p in collection.files]
+        right = [Path(p).resolve() for p in three_tifs]
+        assert left == right, (
+            f"files mismatch (normalised): got {left}, expected {right}"
+        )
 
     @requires_pystac
     def test_lazy_data_computes(self, stac_items):

@@ -24,6 +24,28 @@ if TYPE_CHECKING:
     from pyramids.feature.collection import FeatureCollection
 
 
+def _rebuild_lazy_fc(parent_reduce: tuple) -> "LazyFeatureCollection":
+    """Reconstruct a :class:`LazyFeatureCollection` from the parent reduce tuple.
+
+    Runs the reconstructor returned by
+    :meth:`dask_geopandas.GeoDataFrame.__reduce__`, re-applies any pickled
+    state, then re-binds ``__class__`` so the restored object is a
+    LazyFeatureCollection rather than a plain dask_geopandas frame.
+    """
+    reconstructor = parent_reduce[0]
+    args = parent_reduce[1]
+    instance = reconstructor(*args)
+    if len(parent_reduce) > 2 and parent_reduce[2] is not None:
+        state = parent_reduce[2]
+        setter = getattr(instance, "__setstate__", None)
+        if setter is not None:
+            setter(state)
+        else:
+            instance.__dict__.update(state)
+    instance.__class__ = LazyFeatureCollection
+    return instance
+
+
 class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
     """Lazy vector collection backed by a dask_geopandas graph.
 
@@ -105,6 +127,17 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
     # (readers inside collection.py, tests) can transition at their own
     # pace; remove the alias in a follow-up commit.
     _from_dask_gdf = from_dask_gdf
+
+    def __reduce__(self):
+        """Preserve the LazyFeatureCollection class across pickle round-trips.
+
+        ``from_dask_gdf`` uses ``result.__class__ = cls`` to rebind the
+        concrete class. The parent's default ``__reduce__`` reconstructs
+        with the base :class:`dask_geopandas.GeoDataFrame`, silently
+        dropping the subclass on unpickle. Wrapping super's reduce tuple
+        in a module-level trampoline re-applies the class swap.
+        """
+        return (_rebuild_lazy_fc, (super().__reduce__(),))
 
     @classmethod
     def read_file(

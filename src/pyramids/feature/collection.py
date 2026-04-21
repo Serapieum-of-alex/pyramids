@@ -1572,11 +1572,13 @@ class FeatureCollection(GeoDataFrame):
                 f"backend must be 'pandas' or 'dask', got {backend!r}"
             )
         _require_pyarrow()
-        # D-N3: pin the engine to pyarrow so a future geopandas that
-        # adds a fastparquet path doesn't silently change our
-        # behaviour. Callers who want fastparquet can override by
-        # passing ``engine="fastparquet"`` as a kwarg.
-        passthrough: dict[str, Any] = {"engine": "pyarrow"}
+        # geopandas 1.x forwards **kwargs straight into
+        # ``pyarrow.parquet.read_table``, which has never accepted the
+        # pandas-style ``engine=`` kwarg. ``_require_pyarrow()`` above
+        # already hard-guarantees the pyarrow backend, so no injection
+        # is needed here. If geopandas ever reintroduces a fastparquet
+        # path it will be opt-in via a new kwarg, not a silent switch.
+        passthrough: dict[str, Any] = {}
         passthrough.update(kwargs)
         if columns is not None:
             passthrough["columns"] = columns

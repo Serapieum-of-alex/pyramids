@@ -59,7 +59,7 @@ class TestPhase5Pipelines:
         lazy = FeatureCollection.read_file(
             str(p), backend="dask", npartitions=4,
         )
-        shuffled = FeatureCollection.spatial_shuffle(lazy, by="hilbert")
+        shuffled = lazy.spatial_shuffle(by="hilbert")
         materialised = shuffled.compute()
         assert len(materialised) == 20
 
@@ -80,7 +80,7 @@ class TestPhase5Pipelines:
         lazy = FeatureCollection.read_parquet(
             str(p), backend="dask", filters=[("class", "=", "water")],
         )
-        shuffled = FeatureCollection.spatial_shuffle(lazy, by="morton")
+        shuffled = lazy.spatial_shuffle(by="morton")
         materialised = shuffled.compute()
         assert len(materialised) == 10
         assert set(materialised["class"].unique()) == {"water"}

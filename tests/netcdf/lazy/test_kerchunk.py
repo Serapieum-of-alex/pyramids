@@ -67,7 +67,7 @@ class TestCombineKerchunk:
         out = tmp_path / "combined.json"
         NetCDF.combine_kerchunk(
             [FIXTURE, FIXTURE, FIXTURE], out,
-            concat_dims=("time",), identical_dims=(),
+            concat_dims=("bands",), identical_dims=(),
         )
         assert out.exists()
         combined = json.loads(out.read_text())

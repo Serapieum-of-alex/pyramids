@@ -34,7 +34,6 @@ except ImportError:  # pragma: no cover - minimal install path
     _HAS_DASK_GEOPANDAS = False
 else:
     _HAS_DASK_GEOPANDAS = True
-    from pyramids.feature._lazy_collection import LazyFeatureCollection  # noqa: F401
 
 
 _LAZY_FC_INSTALL_HINT = (
