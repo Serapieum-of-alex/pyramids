@@ -121,10 +121,6 @@
          <lastmod>2026-04-22</lastmod>
     </url>
     <url>
-         <loc>https://serapeum-org.github.io/pyramids/develop/how-to/lazy-vector/</loc>
-         <lastmod>2026-04-22</lastmod>
-    </url>
-    <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/how-to/recipes/</loc>
          <lastmod>2026-04-22</lastmod>
     </url>
@@ -274,6 +270,10 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/raster-basics/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/lazy/lazy-vector/</loc>
          <lastmod>2026-04-22</lastmod>
     </url>
 </urlset>
