@@ -1,19 +1,18 @@
-"""End-to-end tests for NetCDF lazy pipelines (DASK-11..14 seams).
+"""End-to-end tests for NetCDF lazy pipelines (DASK-11, 12, 14 seams).
 
-The four NetCDF lazy-path tasks (DASK-11 chunked read, DASK-12
-open_mfdataset, DASK-13 xarray backend, DASK-14 kerchunk) each have
-their own per-task suite. This file covers the cross-task seams where
-one task's output is consumed by another — the places where silent
-breakage is most likely under future refactors:
+The three NetCDF lazy-path tasks (DASK-11 chunked read, DASK-12
+open_mfdataset, DASK-14 kerchunk) each have their own per-task suite.
+This file covers the cross-task seams where one task's output is
+consumed by another — the places where silent breakage is most
+likely under future refactors:
 
-1. ``NetCDF.read_array(chunks=)`` → reduction chained through xarray's
-   backend (engine=`pyramids`, chunks={}) — both paths should agree.
-2. ``open_mfdataset`` result computed equals a direct ``read_file`` +
+1. ``open_mfdataset`` result computed equals a direct ``read_file`` +
    ``read_array`` for the same single file (sanity of the stacking).
-3. Pickle a lazy NetCDF variable subset across a spawn subprocess + do
+2. Pickle a lazy NetCDF variable subset across a spawn subprocess + do
    the compute on the worker (dask.distributed shape).
-4. ``to_kerchunk`` manifest consumed via xarray ``engine="kerchunk"``
-   (skipped when kerchunk is missing).
+3. ``to_kerchunk`` manifest consumed via xarray ``engine="kerchunk"``
+   — gated on the ``[xarray]`` extra since xarray is the canonical
+   downstream kerchunk consumer, not a pyramids dependency.
 """
 
 from __future__ import annotations
@@ -72,16 +71,6 @@ class TestNetCDFLazyPipelines:
     """Cross-task pipelines for Phase 2."""
 
     @requires_dask
-    @requires_xarray
-    def test_lazy_read_matches_xarray_engine(self):
-        """Direct lazy read and xarray engine="pyramids" agree on values."""
-        nc = NetCDF.read_file(FIXTURE, open_as_multi_dimensional=True)
-        direct = nc.get_variable("values").read_array(chunks="auto").compute()
-        ds = xr.open_dataset(FIXTURE, engine="pyramids", chunks={})
-        via_xr = ds["values"].compute().values
-        np.testing.assert_array_equal(direct, via_xr)
-
-    @requires_dask
     def test_mfdataset_single_file_equals_direct_read(self):
         """Stacking one file equals a direct variable read (modulo leading axis)."""
         stack = NetCDF.open_mfdataset([FIXTURE], variable="values").compute()
@@ -102,10 +91,19 @@ class TestNetCDFLazyPipelines:
             got = pool.apply(_compute_variable_sum, (payload,))
         assert got == pytest.approx(expected)
 
+    @pytest.mark.xarray
     @requires_kerchunk
     @requires_xarray
     def test_kerchunk_roundtrip_via_xarray(self, tmp_path):
-        """to_kerchunk manifest opens with xarray engine="kerchunk"."""
+        """to_kerchunk manifest opens with xarray engine="kerchunk".
+
+        xarray is the canonical downstream consumer for kerchunk
+        manifests; this test validates that pyramids-emitted manifests
+        conform to that consumer's contract. Gated ``@pytest.mark.xarray``
+        so the default ``main`` pixi task (``-m "not xarray"``) skips
+        it; the ``xarray-tests`` task runs it in the env where xarray
+        is installed.
+        """
         manifest = tmp_path / "refs.json"
         nc = NetCDF.read_file(FIXTURE, open_as_multi_dimensional=False)
         nc.to_kerchunk(manifest)

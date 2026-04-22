@@ -112,6 +112,48 @@ class TestLazyFeatureCollection:
         # Fixture builds Points at (i, i) for i in 0..9 → bbox [0, 0, 9, 9].
         assert bounds.tolist() == [0.0, 0.0, 9.0, 9.0]
 
+    def test_inherited_ops_preserve_pyramids_subclass(self, lfc):
+        """Inherited dask-geopandas ops must return LazyFeatureCollection.
+
+        Test scenario:
+            dask-geopandas / dask-expr do not honour pandas' classic
+            ``_constructor`` hook. Without the ``__getattribute__``
+            rebrand, methods like ``to_crs`` / ``clip`` / ``copy`` /
+            ``drop_duplicates`` drop the :class:`LazyFeatureCollection`
+            subclass and return a plain
+            :class:`dask_geopandas.GeoDataFrame`, silently removing
+            ``compute_total_bounds`` / ``epsg`` / ``is_lazy_fc`` from
+            the result. Pin every common frame-returning inherited op.
+        """
+        from pyramids.feature import LazyFeatureCollection, is_lazy_fc
+
+        assert isinstance(lfc.to_crs(3857), LazyFeatureCollection)
+        assert isinstance(lfc.copy(), LazyFeatureCollection)
+        assert isinstance(lfc.drop_duplicates(), LazyFeatureCollection)
+        assert isinstance(
+            lfc.repartition(npartitions=1), LazyFeatureCollection,
+        )
+        # pyramids-specific helpers survive the rebrand.
+        reproj = lfc.to_crs(3857)
+        assert is_lazy_fc(reproj)
+        assert reproj.epsg == 3857
+        bounds = reproj.compute_total_bounds()
+        assert bounds.shape == (4,)
+
+    def test_head_returns_eager_feature_collection(self, lfc):
+        """``head(N)`` auto-computes to an eager geopandas frame.
+
+        Test scenario:
+            :meth:`dask_geopandas.GeoDataFrame.head` materialises the
+            first N rows eagerly. The rebrand hook recognises the
+            geopandas :class:`GeoDataFrame` return type and swaps it to
+            :class:`FeatureCollection` so the pyramids type invariant
+            holds on both sides of the lazy/eager boundary.
+        """
+        result = lfc.head(3)
+        assert isinstance(result, FeatureCollection)
+        assert len(result) == 3
+
     def test_repr_is_pyramids_branded(self, lfc):
         text = repr(lfc)
         assert text.startswith("LazyFeatureCollection(")

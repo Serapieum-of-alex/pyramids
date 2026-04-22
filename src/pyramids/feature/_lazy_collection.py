@@ -14,9 +14,11 @@ branch, so minimal installs never evaluate this file.
 
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING, Any
 
 import dask_geopandas
+import geopandas
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -70,6 +72,43 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         Consumer code using ``isinstance`` must guard explicitly:
         ``if LazyFeatureCollection is not None and isinstance(x, LazyFeatureCollection): ...``.
     """
+
+    def __getattribute__(self, name: str) -> Any:
+        """Return a class-swapped view of every inherited method's result.
+
+        dask-geopandas inherits from dask-expr and does not honour pandas'
+        classic ``_constructor`` hook. Methods like ``to_crs``, ``clip``,
+        ``sjoin``, ``copy``, ``drop_duplicates`` go through
+        ``map_partitions`` with meta inference and produce a plain
+        :class:`dask_geopandas.GeoDataFrame`, silently dropping the
+        :class:`LazyFeatureCollection` subclass. This hook wraps every
+        public callable so that a :class:`dask_geopandas.GeoDataFrame`
+        result is rebranded back to the subclass before it reaches the
+        caller. Private names (``_``-prefixed) are passed through
+        unchanged to keep dask-expr internals — meta inference, name
+        caches, partition probing — on the hot path they expect.
+        """
+        attr = object.__getattribute__(self, name)
+        if name.startswith("_") or not callable(attr):
+            return attr
+        cls = type(self)
+
+        @functools.wraps(attr)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            result = attr(*args, **kwargs)
+            if isinstance(result, dask_geopandas.GeoDataFrame) and not isinstance(
+                result, cls,
+            ):
+                result = cls.from_dask_gdf(result)
+            elif isinstance(result, geopandas.GeoDataFrame) and not isinstance(
+                result, geopandas.GeoSeries,
+            ):
+                from pyramids.feature.collection import FeatureCollection
+
+                result = FeatureCollection(result)
+            return result
+
+        return wrapper
 
     @classmethod
     def from_dask_gdf(cls, dask_gdf: Any) -> LazyFeatureCollection:

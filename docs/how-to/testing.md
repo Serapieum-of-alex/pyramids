@@ -36,8 +36,8 @@ pyramids ships a minimal core plus eight opt-in extras declared in
 | --- | --- | --- |
 | `viz` | `cleopatra` | Plotting helpers, basemaps |
 | `lazy` | `dask`, `distributed`, `zarr`, `fsspec` | Dask-backed lazy array paths |
-| `xarray` | `xarray`, `netCDF4`, `h5netcdf`, `cftime` | `xarray` interop, eager NetCDF |
-| `netcdf-lazy` | `kerchunk`, `h5py` + `xarray` + `lazy` | Lazy NetCDF, kerchunk manifests |
+| `xarray` | `xarray` | `NetCDF.to_xarray()` / `.from_xarray()` round-trip |
+| `netcdf-lazy` | `kerchunk`, `h5py` + `lazy` | Lazy NetCDF, kerchunk manifests |
 | `parquet` | `pyarrow` | Eager GeoParquet read / write |
 | `parquet-lazy` | `dask-geopandas` + `parquet` + `lazy` | Lazy `LazyFeatureCollection` |
 | `stac` | `pystac`, `odc-geo` | `DatasetCollection.from_stac` |

@@ -84,6 +84,25 @@ The rule: if dask-geopandas has a lazy implementation, so does
 method that walks geometries one by one — raises `AttributeError` on a
 lazy FC; call `.compute()` first.
 
+## Subclass preservation — every return is a pyramids type
+
+Every inherited `dask_geopandas.GeoDataFrame` method is intercepted so
+the return value is always a pyramids type, never the backend class:
+
+| Return class after...                                        | You get                  |
+|--------------------------------------------------------------|--------------------------|
+| `lfc.to_crs(4326)`, `.clip(...)`, `.sjoin(...)`              | `LazyFeatureCollection`  |
+| `lfc.copy()`, `.drop_duplicates()`, `.repartition(...)`      | `LazyFeatureCollection`  |
+| `lfc.spatial_shuffle(...)`, `.persist()`                     | `LazyFeatureCollection`  |
+| `lfc.head(N)`, `.tail(N)`, `.compute()`                      | `FeatureCollection`      |
+
+This means `compute_total_bounds()`, `epsg`, and `is_lazy_fc(x)` stay
+available after a reproject or clip — you never have to re-wrap the
+result. The eager twin after `.compute()` / `.head()` is a
+`FeatureCollection`, so pyramids-specific eager methods
+(`rasterize_with_col`, `extract_vertices`, etc.) are available on
+that side too.
+
 ## `spatial_shuffle` → `sjoin` pruning workflow
 
 The biggest speedup from going lazy comes from partition-pruned

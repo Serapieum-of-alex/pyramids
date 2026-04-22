@@ -136,10 +136,18 @@ class TestCollectionIOE2E:
         assert data.shape == (1, 3, 4)
         assert np.allclose(data, 1.0)
 
+    @pytest.mark.xarray
     @requires_kerchunk
     @requires_xarray
     def test_to_kerchunk_consumer_via_xarray(self, tmp_path):
-        """``collection.to_kerchunk`` → ``xr.open_dataset(engine="kerchunk")``."""
+        """``collection.to_kerchunk`` → ``xr.open_dataset(engine="kerchunk")``.
+
+        xarray is the canonical downstream consumer for kerchunk
+        manifests; this test pins that pyramids-emitted cube manifests
+        conform to that contract. Gated ``@pytest.mark.xarray`` so the
+        default ``main`` pixi task skips it; the ``xarray-tests`` task
+        runs it in the env where xarray is installed.
+        """
         collection = DatasetCollection.from_files([NC_FIXTURE, NC_FIXTURE])
         manifest = tmp_path / "cube_refs.json"
         collection.to_kerchunk(manifest)

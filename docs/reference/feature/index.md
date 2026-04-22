@@ -97,6 +97,35 @@ classDiagram
 | Build raw geometries | `pyramids.feature.geometry.create_polygon` / `create_points` |
 | Reproject coordinate arrays | `pyramids.feature.crs.reproject_coordinates` |
 
+## Lazy / Dask reads
+
+For files too large to load eagerly — multi-GB GeoParquet, cloud-hosted
+vector tables, planet-scale datasets like Overture Maps — pyramids
+offers a dask-backed path:
+
+```python
+from pyramids.feature import FeatureCollection
+
+lfc = FeatureCollection.read_parquet(
+    "s3://overturemaps-us-west-2/release/2024-07-22.0/theme=places/type=place",
+    backend="dask",
+    columns=["id", "names", "geometry"],
+    bbox=(2.0, 48.8, 2.5, 49.0),
+)
+lfc.spatial_shuffle().sjoin(zones).compute()
+```
+
+The `backend="dask"` branch returns a `LazyFeatureCollection`
+(a subclass of `dask_geopandas.GeoDataFrame`) whose partition-aware
+ops (`to_crs`, `clip`, `sjoin`, `spatial_shuffle`) run lazily.
+
+See [Lazy vector reads](../../tutorials/lazy/lazy-vector.md) for the full
+guide: `spatial_shuffle` → `sjoin` pruning workflow, `compute` vs
+`persist`, `to_parquet`, `compute_total_bounds`, and how to wire a
+distributed scheduler with `pyramids.configure_lazy_vector`.
+
+Install: `pip install 'pyramids-gis[parquet-lazy]'`.
+
 ## FeatureCollection Class
 
 ::: pyramids.feature.FeatureCollection
