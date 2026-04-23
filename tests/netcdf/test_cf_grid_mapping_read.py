@@ -10,6 +10,8 @@ from osgeo import osr
 
 from pyramids.netcdf.cf import grid_mapping_to_srs, srs_to_grid_mapping
 
+pytestmark = pytest.mark.core
+
 
 class TestGridMappingToSrs:
     """Tests for cf.grid_mapping_to_srs."""

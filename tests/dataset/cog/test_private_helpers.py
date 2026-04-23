@@ -13,6 +13,8 @@ import pytest
 
 from pyramids.dataset.cog.options import _parse_list_extra, _stringify
 
+pytestmark = pytest.mark.core
+
 
 class TestStringify:
     """Direct tests for the ``_stringify`` private helper."""

@@ -19,6 +19,8 @@ import pytest
 
 from pyramids.base._locks import DummyLock, SerializableLock, default_lock
 
+pytestmark = pytest.mark.core
+
 
 class TestSerializableLock:
     """Pickleable lock that shares underlying threading.Lock across pickle."""

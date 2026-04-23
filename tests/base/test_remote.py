@@ -285,6 +285,8 @@ class TestS3UrlRewriteNoNetwork:
 # Need numpy import for the HTTP tests
 import numpy as np  # noqa: E402
 
+pytestmark = pytest.mark.core
+
 
 class TestToVsiArchiveChaining:
     """Tests for ``_to_vsi``'s archive-chaining behavior.

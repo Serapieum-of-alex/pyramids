@@ -9,6 +9,8 @@ import pytest
 
 from pyramids.netcdf.netcdf import NetCDF
 
+pytestmark = pytest.mark.core
+
 
 def _make_nc():
     """Create an in-memory NetCDF container."""

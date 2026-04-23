@@ -11,6 +11,8 @@ import pytest
 
 from pyramids.netcdf import NetCDF
 
+pytestmark = pytest.mark.netcdf_lazy
+
 try:
     import dask.array  # noqa: F401
 

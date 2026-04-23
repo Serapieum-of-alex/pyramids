@@ -22,6 +22,8 @@ from pyramids.base._errors import (
     _PyramidsError,
 )
 
+pytestmark = pytest.mark.core
+
 ALL_ERRORS = [
     ReadOnlyError,
     DatasetNotFoundError,

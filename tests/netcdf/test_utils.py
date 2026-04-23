@@ -36,6 +36,8 @@ from pyramids.netcdf.utils import (
     create_time_conversion_func,
 )
 
+pytestmark = pytest.mark.core
+
 
 def _make_group(
     full_name: str | None = None,

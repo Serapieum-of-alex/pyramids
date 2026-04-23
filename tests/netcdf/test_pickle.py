@@ -30,6 +30,8 @@ import pytest
 from pyramids.netcdf import NetCDF
 from pyramids.netcdf.netcdf import _reconstruct_netcdf
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def noah_path() -> str:

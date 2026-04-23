@@ -16,6 +16,8 @@ from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def grid_mesh():

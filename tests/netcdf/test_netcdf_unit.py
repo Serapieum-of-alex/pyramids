@@ -23,6 +23,8 @@ from pyramids.netcdf.models import NetCDFMetadata
 from pyramids.netcdf.netcdf import NetCDF
 from tests.netcdf.conftest import make_3d_nc
 
+pytestmark = pytest.mark.core
+
 
 def _make_3d_nc(
     rows=10,

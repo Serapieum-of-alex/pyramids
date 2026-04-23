@@ -13,6 +13,8 @@ import pytest
 
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable, UgridMetadata
 
+pytestmark = pytest.mark.core
+
 
 class TestMeshTopologyInfo:
     """Tests for the MeshTopologyInfo frozen dataclass."""

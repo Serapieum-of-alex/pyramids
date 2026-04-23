@@ -12,6 +12,8 @@ from shapely.geometry import box
 
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 
+pytestmark = pytest.mark.core
+
 
 class TestFullLifecycle:
     """Test complete create -> write -> read -> clip -> interpolate chain."""

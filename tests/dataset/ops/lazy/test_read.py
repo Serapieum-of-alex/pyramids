@@ -51,6 +51,8 @@ from pyramids.dataset import Dataset
 from pyramids.dataset.ops import io as io_module
 from pyramids.dataset.ops.io import _read_chunk
 
+pytestmark = pytest.mark.lazy
+
 try:
     import dask.array as dask_array
 

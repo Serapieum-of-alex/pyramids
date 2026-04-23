@@ -24,6 +24,8 @@ from shapely.geometry import box
 from pyramids.dataset import Dataset, DatasetCollection
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 def _make_dataset(
     rows: int = 10,

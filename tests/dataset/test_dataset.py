@@ -16,6 +16,8 @@ from shapely.geometry import Polygon
 from pyramids.base._errors import NoDataValueError, OutOfBoundsError, ReadOnlyError
 from pyramids.dataset import Dataset
 
+pytestmark = pytest.mark.core
+
 
 class TestCreateRasterObject:
     def test_create_from_array(

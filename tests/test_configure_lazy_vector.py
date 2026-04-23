@@ -22,6 +22,8 @@ import pytest
 from pyramids import configure_lazy_vector
 from pyramids.feature import collection as _fc_mod
 
+pytestmark = pytest.mark.lazy
+
 
 @pytest.fixture
 def restore_lazy_target():

@@ -8,6 +8,8 @@ from pandas import DataFrame
 
 from pyramids.dataset import Dataset, DatasetCollection
 
+pytestmark = pytest.mark.plot
+
 _cleo_array = pytest.importorskip(
     "cleopatra.array_glyph", reason="cleopatra not installed"
 )

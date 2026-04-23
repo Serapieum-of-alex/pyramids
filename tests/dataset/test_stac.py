@@ -17,6 +17,8 @@ import pytest
 
 from pyramids.dataset import Dataset, DatasetCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def three_tifs(tmp_path):

@@ -14,6 +14,8 @@ from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshVariable
 
+pytestmark = pytest.mark.core
+
 
 class TestCrsHandling:
     """Tests for CRS handling and reprojection (UGRID-18)."""

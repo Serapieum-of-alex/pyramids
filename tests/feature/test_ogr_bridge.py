@@ -38,6 +38,8 @@ from pyramids.feature._ogr import (
     datasource_to_gdf,
 )
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def point_gdf() -> GeoDataFrame:

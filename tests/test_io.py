@@ -167,6 +167,8 @@ from pyramids._io import (
     to_ascii,
 )
 
+pytestmark = pytest.mark.core
+
 
 class TestExtractFromGzDelete:
     """Tests for extract_from_gz with delete=True."""

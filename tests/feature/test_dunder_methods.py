@@ -21,6 +21,8 @@ from shapely.geometry import Point, Polygon
 
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def point_fc():

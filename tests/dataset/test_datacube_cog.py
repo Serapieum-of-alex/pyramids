@@ -9,6 +9,8 @@ from osgeo import gdal
 
 from pyramids.dataset import Dataset, DatasetCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture(scope="module")
 def small_collection(rasters_folder_path: str) -> DatasetCollection:

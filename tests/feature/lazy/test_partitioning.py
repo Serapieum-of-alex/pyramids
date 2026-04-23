@@ -26,6 +26,8 @@ from pyramids.feature.collection import (
     _resolve_lazy_partitioning,
 )
 
+pytestmark = pytest.mark.parquet_lazy
+
 
 class TestUserSuppliedWins:
     """User-supplied ``npartitions`` / ``chunksize`` short-circuit the heuristic."""

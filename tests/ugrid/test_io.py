@@ -21,6 +21,8 @@ from pyramids.netcdf.ugrid.io import (
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.utils import _read_attributes
 
+pytestmark = pytest.mark.core
+
 
 class TestParseUgridTopology:
     """Tests for parse_ugrid_topology() function."""

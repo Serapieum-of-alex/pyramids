@@ -20,6 +20,8 @@ from pyramids.base.remote import CloudConfig
 from pyramids.dataset import Dataset
 from pyramids.dataset.cog.validate import _fallback_validate
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def small_float_dataset() -> Dataset:

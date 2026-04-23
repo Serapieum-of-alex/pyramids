@@ -13,6 +13,8 @@ from shapely.geometry import box
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
 
+pytestmark = pytest.mark.core
+
 
 def _make_nc(rows=20, cols=30, bands=5):
     """Create an in-memory NetCDF with a regular geographic grid."""

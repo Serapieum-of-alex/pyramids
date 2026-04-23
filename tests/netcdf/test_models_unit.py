@@ -22,6 +22,8 @@ from pyramids.netcdf.models import (
     VariableInfo,
 )
 
+pytestmark = pytest.mark.core
+
 
 def _mock_group(
     name: str = "root",

@@ -20,6 +20,8 @@ import pytest
 from pyramids.base._raster_meta import RasterMeta
 from pyramids.dataset import Dataset, DatasetCollection
 
+pytestmark = pytest.mark.lazy
+
 
 @pytest.fixture
 def template_file(tmp_path):

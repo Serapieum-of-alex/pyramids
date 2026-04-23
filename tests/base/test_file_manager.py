@@ -42,6 +42,8 @@ from pyramids.base._file_manager import (
     ogr_open,
 )
 
+pytestmark = pytest.mark.core
+
 
 class _FakeHandle:
     """Test double: records open and close calls."""

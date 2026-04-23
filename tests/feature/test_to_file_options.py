@@ -16,6 +16,8 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def fc_rivers() -> FeatureCollection:

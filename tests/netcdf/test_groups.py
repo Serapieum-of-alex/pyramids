@@ -12,6 +12,8 @@ from osgeo import gdal
 from pyramids.base._utils import numpy_to_gdal_dtype
 from pyramids.netcdf.netcdf import NetCDF
 
+pytestmark = pytest.mark.core
+
 
 def _make_grouped_nc():
     """Create an in-memory NetCDF with root + 2 sub-groups.

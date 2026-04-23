@@ -20,6 +20,8 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def points_gdf() -> gpd.GeoDataFrame:

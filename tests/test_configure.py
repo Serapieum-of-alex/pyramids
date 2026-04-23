@@ -14,6 +14,8 @@ from osgeo import gdal
 from pyramids import configure
 from pyramids._configure import GDAL_CLOUD_DEFAULTS, _expand_credentials
 
+pytestmark = pytest.mark.core
+
 
 class TestConfigureReturnValue:
     """`configure` returns the effective env dict that was applied."""

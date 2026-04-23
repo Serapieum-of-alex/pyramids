@@ -30,6 +30,8 @@ from osgeo import gdal, osr
 
 from pyramids.dataset import Dataset
 
+pytestmark = pytest.mark.lazy
+
 try:
     import dask.array  # noqa: F401
     import dask.delayed  # noqa: F401

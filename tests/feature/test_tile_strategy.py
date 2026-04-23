@@ -24,6 +24,8 @@ from shapely.geometry import Point, box
 
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def gpkg_with_rtree(tmp_path: Path) -> Path:

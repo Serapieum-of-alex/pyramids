@@ -17,6 +17,8 @@ from pyramids.base.protocols import LazySpatialObject, SpatialObject
 from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def fc() -> FeatureCollection:

@@ -20,6 +20,8 @@ from pyramids.netcdf.ugrid.spatial import (
     subset_by_bounds,
 )
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def unit_square_mesh():

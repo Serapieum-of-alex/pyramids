@@ -42,6 +42,8 @@ from shapely.geometry.collection import GeometryCollection
 from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture()
 def simple_polygon_gdf() -> GeoDataFrame:

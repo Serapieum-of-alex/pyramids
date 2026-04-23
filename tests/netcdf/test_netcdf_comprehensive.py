@@ -18,6 +18,8 @@ from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
 from tests.netcdf.conftest import make_3d_nc
 
+pytestmark = pytest.mark.core
+
 
 def _make_3d_nc(rows=10, cols=12, bands=3, epsg=4326, variable_name="temperature"):
     """Create a 3D in-memory NetCDF for testing.

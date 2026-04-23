@@ -19,6 +19,8 @@ from pyramids.dataset.ops.reproject import (
     ReprojectPlan,
 )
 
+pytestmark = pytest.mark.core
+
 try:
     from dask.delayed import Delayed
 

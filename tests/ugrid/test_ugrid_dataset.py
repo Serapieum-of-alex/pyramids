@@ -16,6 +16,8 @@ from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable, UgridMetadata
 
+pytestmark = pytest.mark.core
+
 
 class TestUgridDatasetReadFile:
     """Tests for UgridDataset.read_file() class method."""

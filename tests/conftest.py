@@ -19,34 +19,19 @@ from tests.feature.conftest import *
 
 
 def pytest_collection_modifyitems(config, items):
-    """Auto-apply extras skipif + auto-tag extras-free tests as ``core``.
+    """Auto-apply the matching skipif for any ``@pytest.mark.<extra>`` tag.
 
-    Two passes, one per responsibility:
-
-    1. A test annotated with ``@pytest.mark.netcdf_lazy`` (or any other
-       extras marker registered in :mod:`tests._marks`) picks up the
-       corresponding ``requires_<extra>`` skip condition during
-       collection, so test authors don't have to repeat the
-       ``try/except ImportError`` + ``pytest.mark.skipif`` boilerplate.
-       Hand-applied skip decorators on the same test are preserved —
-       this hook only *adds*, never removes.
-
-    2. A test that carries **no** extras marker is tagged
-       ``@pytest.mark.core``. The wheel-test-core CI job runs
-       ``pytest -m core`` against a bare-wheel install, so any test
-       that works without optional extras is automatically included,
-       without a brittle ``not plot and not lazy and not parquet ...``
-       negation list that has to be updated whenever a new extra
-       lands.
+    A test annotated with ``@pytest.mark.netcdf_lazy`` (or any other
+    extras marker registered in :mod:`tests._marks`) picks up the
+    corresponding ``requires_<extra>`` skip condition during collection,
+    so test authors don't have to repeat the ``try/except ImportError``
+    + ``pytest.mark.skipif`` boilerplate. Hand-applied skip decorators on
+    the same test are preserved — this hook only *adds*, never removes.
     """
-    extras_marker_names = set(EXTRA_MARKERS)
     for item in items:
         for marker_name, skip_marker in EXTRA_MARKERS.items():
             if marker_name in item.keywords:
                 item.add_marker(skip_marker)
-        item_markers = {m.name for m in item.iter_markers()}
-        if not (item_markers & extras_marker_names):
-            item.add_marker(pytest.mark.core)
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -34,6 +34,8 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 class TestHttpRewrite:
     """Assert that ``http://`` URLs reach ``gpd.read_file`` as ``/vsicurl/...``.
