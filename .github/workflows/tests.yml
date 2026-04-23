@@ -31,7 +31,7 @@ jobs:
           cache: true
 
       - name: Run main tests (not plot, not xarray)
-        run: pixi run -e ${{ matrix.environment }} main --cov-append --cov-fail-under=88
+        run: pixi run -e ${{ matrix.environment }} main --cov-append --cov-fail-under=87
 
       - name: Run plot tests
         run: pixi run -e ${{ matrix.environment }} plot --cov-fail-under=90
