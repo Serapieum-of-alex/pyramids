@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from pyramids.base.config import Config
-from pyramids._configure import configure, configure_lazy_vector
-
-
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _get_version
+
+from pyramids._configure import configure, configure_lazy_vector
+from pyramids.base.config import Config
 
 try:
     __version__ = _get_version(__name__)

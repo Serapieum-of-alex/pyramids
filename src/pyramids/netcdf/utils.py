@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta
 from collections.abc import Callable
+from datetime import datetime, timedelta
 from typing import Any, TypeAlias, cast
 
 from osgeo import gdal, osr
+
 from pyramids.base._utils import gdal_to_numpy_dtype
 
 # Keep simple, JSON-serializable attribute values only
@@ -510,9 +511,7 @@ def create_time_conversion_func(
     """
     converter = None
 
-    if calendar.lower() not in (
-        "standard", "proleptic_gregorian", "gregorian"
-    ):
+    if calendar.lower() not in ("standard", "proleptic_gregorian", "gregorian"):
         try:
             import cftime  # noqa: F811 - optional dep, inline import required
         except ImportError:

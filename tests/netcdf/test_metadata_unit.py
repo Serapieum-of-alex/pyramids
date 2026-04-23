@@ -25,11 +25,11 @@ from pyramids.netcdf.metadata import (
     to_json,
 )
 from pyramids.netcdf.models import (
-    VariableInfo,
     DimensionInfo,
     GroupInfo,
     NetCDFMetadata,
     StructuralInfo,
+    VariableInfo,
 )
 
 

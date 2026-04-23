@@ -99,9 +99,7 @@ class TestMetadataDedup:
     """
 
     def test_metadata_has_no_duplicates(self):
-        assert len(FeatureCollection._metadata) == len(
-            set(FeatureCollection._metadata)
-        )
+        assert len(FeatureCollection._metadata) == len(set(FeatureCollection._metadata))
 
     def test_metadata_preserves_parent_ordering(self):
         from geopandas import GeoDataFrame as _GDF
@@ -128,10 +126,12 @@ class TestMetadataDedup:
 
         class ChildFC(FeatureCollection):
             _metadata = list(
-                dict.fromkeys([
-                    *FeatureCollection._metadata,
-                    "_epsg_cache_crs",  # intentionally re-listed
-                ])
+                dict.fromkeys(
+                    [
+                        *FeatureCollection._metadata,
+                        "_epsg_cache_crs",  # intentionally re-listed
+                    ]
+                )
             )
 
         assert len(ChildFC._metadata) == len(set(ChildFC._metadata))
@@ -139,12 +139,8 @@ class TestMetadataDedup:
     def test_metadata_survives_copy(self, fc: FeatureCollection):
         """C3: ``.copy()`` preserves the de-duped ``_metadata`` list."""
         duplicate = fc.copy()
-        assert list(type(duplicate)._metadata) == list(
-            FeatureCollection._metadata
-        )
-        assert len(type(duplicate)._metadata) == len(
-            set(type(duplicate)._metadata)
-        )
+        assert list(type(duplicate)._metadata) == list(FeatureCollection._metadata)
+        assert len(type(duplicate)._metadata) == len(set(type(duplicate)._metadata))
 
 
 @pytest.mark.skipif(
@@ -179,9 +175,7 @@ class TestNoOgrStateLeak:
         """Dataset.from_features opens an internal DataSource; FC still pickles."""
         # Side-effect-only call that exercises _ogr.as_datasource
         # under the hood.
-        _ = Dataset.from_features(
-            polygon_fc, cell_size=1.0, column_name="class_id"
-        )
+        _ = Dataset.from_features(polygon_fc, cell_size=1.0, column_name="class_id")
 
         # polygon_fc must still be pickle-safe after the above.
         restored = pickle.loads(pickle.dumps(polygon_fc))
@@ -189,15 +183,11 @@ class TestNoOgrStateLeak:
         assert len(restored) == 1
         assert restored.epsg == 32636
 
-    def test_no_gdal_or_ogr_in_instance_dict(
-        self, polygon_fc: FeatureCollection
-    ):
+    def test_no_gdal_or_ogr_in_instance_dict(self, polygon_fc: FeatureCollection):
         """Reflectively verify no OGR/GDAL handle lives on ``self``."""
         from osgeo import gdal, ogr
 
-        _ = Dataset.from_features(
-            polygon_fc, cell_size=1.0, column_name="class_id"
-        )
+        _ = Dataset.from_features(polygon_fc, cell_size=1.0, column_name="class_id")
         for name, value in polygon_fc.__dict__.items():
             assert not isinstance(value, (ogr.DataSource, gdal.Dataset)), (
                 f"instance attribute {name!r} holds an OGR/GDAL "

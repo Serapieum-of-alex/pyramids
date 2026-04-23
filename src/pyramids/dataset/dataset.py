@@ -10,31 +10,28 @@ from __future__ import annotations
 import logging
 from numbers import Number
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from osgeo import gdal, osr
 from osgeo.osr import SpatialReference
 
 from pyramids import _io
-from pyramids.dataset.abstract_dataset import (
-    DEFAULT_NO_DATA_VALUE,
-    AbstractDataset,
-)
 from pyramids.base._errors import CRSError
 from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     numpy_to_gdal_dtype,
 )
-from pyramids.feature import FeatureCollection
-from pyramids.feature import _ogr as _feature_ogr
-
+from pyramids.dataset.abstract_dataset import (
+    DEFAULT_NO_DATA_VALUE,
+    AbstractDataset,
+)
 from pyramids.dataset.ops import (
+    IO,
     Analysis,
     BandMetadata,
-    COGMixin,
     Cell,
-    IO,
+    COGMixin,
     Spatial,
     Vectorize,
 )
@@ -51,6 +48,8 @@ from pyramids.dataset.ops._zarr import (
     write_dataset_to_zarr,
 )
 from pyramids.dataset.ops._zonal import zonal_stats as _zonal_stats
+from pyramids.feature import FeatureCollection
+from pyramids.feature import _ogr as _feature_ogr
 
 if TYPE_CHECKING:
     from geopandas import GeoDataFrame
@@ -126,7 +125,11 @@ class Dataset(  # type: ignore[misc]
     ):
         """Thin forwarder to :func:`pyramids.dataset.ops._focal.hillshade`."""
         return hillshade(
-            self, azimuth=azimuth, altitude=altitude, chunks=chunks, band=band,
+            self,
+            azimuth=azimuth,
+            altitude=altitude,
+            chunks=chunks,
+            band=band,
         )
 
     def zonal_stats(
@@ -187,8 +190,11 @@ class Dataset(  # type: ignore[misc]
         """
         resolved_chunks = chunks if chunks is not None else "auto"
         return write_dataset_to_zarr(
-            self, store,
-            compute=compute, mode=mode, chunks=resolved_chunks,
+            self,
+            store,
+            compute=compute,
+            mode=mode,
+            chunks=resolved_chunks,
             storage_options=storage_options,
         )
 
@@ -199,7 +205,7 @@ class Dataset(  # type: ignore[misc]
         *,
         chunks=None,
         storage_options: dict | None = None,
-    ) -> "Dataset":
+    ) -> Dataset:
         """Load a pyramids-written Zarr store into a new :class:`Dataset`.
 
         Thin forwarder to
@@ -213,7 +219,9 @@ class Dataset(  # type: ignore[misc]
             storage_options: fsspec options for cloud stores.
         """
         return read_dataset_from_zarr(
-            store, chunks=chunks, storage_options=storage_options,
+            store,
+            chunks=chunks,
+            storage_options=storage_options,
         )
 
     def __str__(self) -> str:
@@ -865,15 +873,11 @@ class Dataset(  # type: ignore[misc]
                 raster is allocated so callers fail fast.
         """
         if cell_size is None and template is None:
-            raise ValueError(
-                "You have to enter either cell size or Dataset object."
-            )
+            raise ValueError("You have to enter either cell size or Dataset object.")
         # D-M2: validate cell_size up front (non-positive breaks the
         # non-template branch with divide-by-zero / negative shapes).
         if cell_size is not None and cell_size <= 0:
-            raise ValueError(
-                f"cell_size must be positive; got {cell_size!r}."
-            )
+            raise ValueError(f"cell_size must be positive; got {cell_size!r}.")
         # M4: type-check ``column_name`` up front so a caller passing
         # an ``int`` (or any other non-str, non-list value) sees a
         # typed TypeError instead of "column_name 123 is not in the
@@ -966,7 +970,6 @@ class Dataset(  # type: ignore[misc]
             except (TypeError, ValueError):
                 pass
 
-
         dtype = str(numpy_dtype)
         attribute = column_name
         top_left_corner = (xmin, ymax)
@@ -991,15 +994,11 @@ class Dataset(  # type: ignore[misc]
                     bands=[band],
                     burnValues=None,
                     attribute=(
-                        attribute[ind]
-                        if isinstance(attribute, list)
-                        else attribute
+                        attribute[ind] if isinstance(attribute, list) else attribute
                     ),
                     allTouched=True,
                 )
-                gdal.Rasterize(
-                    dataset_n.raster, vector_ds, options=rasterize_opts
-                )
+                gdal.Rasterize(dataset_n.raster, vector_ds, options=rasterize_opts)
 
         return dataset_n
 
@@ -1153,8 +1152,14 @@ class Dataset(  # type: ignore[misc]
         dtype = numpy_to_gdal_dtype(array)
 
         dst_obj = cls._build_dataset(
-            src.columns, src.rows, bands, dtype, src.geotransform, src.crs,
-            src.no_data_value[0], path=path,
+            src.columns,
+            src.rows,
+            bands,
+            dtype,
+            src.geotransform,
+            src.crs,
+            src.no_data_value[0],
+            path=path,
         )
 
         if bands == 1:

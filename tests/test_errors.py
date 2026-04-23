@@ -66,9 +66,9 @@ class TestPyramidsErrorBase:
         """
         with caplog.at_level(logging.DEBUG):
             _PyramidsError("base debug test")
-        assert "_PyramidsError: base debug test" in caplog.text, (
-            f"Expected '_PyramidsError: base debug test' in log, got: {caplog.text}"
-        )
+        assert (
+            "_PyramidsError: base debug test" in caplog.text
+        ), f"Expected '_PyramidsError: base debug test' in log, got: {caplog.text}"
 
     def test_inherits_from_exception(self):
         """_PyramidsError should inherit from Exception.
@@ -76,9 +76,9 @@ class TestPyramidsErrorBase:
         Test scenario:
             The base class itself must be a subclass of Exception.
         """
-        assert issubclass(_PyramidsError, Exception), (
-            "_PyramidsError should inherit from Exception"
-        )
+        assert issubclass(
+            _PyramidsError, Exception
+        ), "_PyramidsError should inherit from Exception"
 
 
 class TestExceptionHierarchy:
@@ -94,9 +94,9 @@ class TestExceptionHierarchy:
         """
         msg = f"test message for {exc_class.__name__}"
         exc = exc_class(msg)
-        assert str(exc) == msg, (
-            f"str({exc_class.__name__}) should return the message, got '{str(exc)}'"
-        )
+        assert (
+            str(exc) == msg
+        ), f"str({exc_class.__name__}) should return the message, got '{str(exc)}'"
 
     @pytest.mark.parametrize("exc_class", ALL_ERRORS, ids=lambda c: c.__name__)
     def test_inherits_from_pyramids_error(self, exc_class):
@@ -106,9 +106,9 @@ class TestExceptionHierarchy:
             Every concrete exception must be a subclass of the base class,
             enabling catch-all with `except _PyramidsError`.
         """
-        assert issubclass(exc_class, _PyramidsError), (
-            f"{exc_class.__name__} should inherit from _PyramidsError"
-        )
+        assert issubclass(
+            exc_class, _PyramidsError
+        ), f"{exc_class.__name__} should inherit from _PyramidsError"
 
     @pytest.mark.parametrize("exc_class", ALL_ERRORS, ids=lambda c: c.__name__)
     def test_inherits_from_exception(self, exc_class):
@@ -118,9 +118,9 @@ class TestExceptionHierarchy:
             Verify the class is a subclass of Exception so it can be
             caught with `except Exception`.
         """
-        assert issubclass(exc_class, Exception), (
-            f"{exc_class.__name__} should inherit from Exception"
-        )
+        assert issubclass(
+            exc_class, Exception
+        ), f"{exc_class.__name__} should inherit from Exception"
 
     @pytest.mark.parametrize("exc_class", ALL_ERRORS, ids=lambda c: c.__name__)
     def test_raise_and_catch(self, exc_class):
@@ -158,12 +158,12 @@ class TestExceptionHierarchy:
             exc_class("trace this message")
         debug_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
         error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
-        assert len(debug_records) >= 1, (
-            f"{exc_class.__name__} should log at DEBUG on construction"
-        )
-        assert "trace this message" in caplog.text, (
-            "DEBUG log should contain the exception message"
-        )
+        assert (
+            len(debug_records) >= 1
+        ), f"{exc_class.__name__} should log at DEBUG on construction"
+        assert (
+            "trace this message" in caplog.text
+        ), "DEBUG log should contain the exception message"
         assert len(error_records) == 0, (
             f"{exc_class.__name__} should NOT log at ERROR on construction, "
             f"but found {len(error_records)} ERROR records"
@@ -179,9 +179,9 @@ class TestExceptionHierarchy:
         with caplog.at_level(logging.DEBUG):
             exc_class("class name test")
         expected = f"{exc_class.__name__}: class name test"
-        assert expected in caplog.text, (
-            f"Expected '{expected}' in log, got: {caplog.text}"
-        )
+        assert (
+            expected in caplog.text
+        ), f"Expected '{expected}' in log, got: {caplog.text}"
 
     @pytest.mark.parametrize("exc_class", ALL_ERRORS, ids=lambda c: c.__name__)
     def test_caught_exception_still_logs_debug(self, exc_class, caplog):
@@ -197,9 +197,9 @@ class TestExceptionHierarchy:
                 raise exc_class("caught but logged")
             except exc_class:
                 pass
-        assert "caught but logged" in caplog.text, (
-            f"Caught {exc_class.__name__} should still produce DEBUG log"
-        )
+        assert (
+            "caught but logged" in caplog.text
+        ), f"Caught {exc_class.__name__} should still produce DEBUG log"
 
     @pytest.mark.parametrize("exc_class", ALL_ERRORS, ids=lambda c: c.__name__)
     def test_args_tuple_contains_message(self, exc_class):
@@ -211,9 +211,7 @@ class TestExceptionHierarchy:
         """
         msg = f"args test for {exc_class.__name__}"
         exc = exc_class(msg)
-        assert exc.args == (msg,), (
-            f"Expected args=({msg!r},), got {exc.args}"
-        )
+        assert exc.args == (msg,), f"Expected args=({msg!r},), got {exc.args}"
 
 
 class TestErrorsReExport:
@@ -245,9 +243,9 @@ class TestErrorsReExport:
         """
         import pyramids.errors as errs
 
-        assert errs.PyramidsError is _PyramidsError, (
-            "pyramids.errors.PyramidsError must alias the private base"
-        )
+        assert (
+            errs.PyramidsError is _PyramidsError
+        ), "pyramids.errors.PyramidsError must alias the private base"
 
     def test_all_entries_are_importable_attributes(self):
         """Every name in ``__all__`` resolves to a module attribute.
@@ -261,9 +259,7 @@ class TestErrorsReExport:
         missing = [n for n in errs.__all__ if not hasattr(errs, n)]
         assert not missing, f"Names in __all__ with no attribute: {missing}"
 
-    @pytest.mark.parametrize(
-        "exc_class", ALL_ERRORS, ids=lambda c: c.__name__
-    )
+    @pytest.mark.parametrize("exc_class", ALL_ERRORS, ids=lambda c: c.__name__)
     def test_each_concrete_class_reexported(self, exc_class):
         """Every private concrete exception is also re-exported publicly.
 
@@ -278,6 +274,6 @@ class TestErrorsReExport:
         """
         import pyramids.errors as errs
 
-        assert getattr(errs, exc_class.__name__, None) is exc_class, (
-            f"{exc_class.__name__} must be re-exported from pyramids.errors"
-        )
+        assert (
+            getattr(errs, exc_class.__name__, None) is exc_class
+        ), f"{exc_class.__name__} must be re-exported from pyramids.errors"

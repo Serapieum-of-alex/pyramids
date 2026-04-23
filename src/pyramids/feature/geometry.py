@@ -216,9 +216,7 @@ def get_poly_coords(geometry: Polygon, coord_type: str) -> list:
     return get_xy_coords(geometry.exterior, coord_type)
 
 
-def explode_gdf(
-    gdf: GeoDataFrame, geometry: str = "multipolygon"
-) -> GeoDataFrame:
+def explode_gdf(gdf: GeoDataFrame, geometry: str = "multipolygon") -> GeoDataFrame:
     """Explode multi-geometries into per-row single geometries.
 
     Rows whose geometry type matches ``geometry`` are expanded so that
@@ -674,9 +672,7 @@ def create_points(coords: Iterable[tuple[float, ...]]) -> list[Point]:
     return list(map(Point, coords))
 
 
-def point_collection(
-    coords: Iterable[tuple[float, ...]], crs: Any
-) -> GeoDataFrame:
+def point_collection(coords: Iterable[tuple[float, ...]], crs: Any) -> GeoDataFrame:
     """Build a :class:`GeoDataFrame` of points with a given CRS (ARC-15).
 
     Args:
@@ -715,5 +711,3 @@ def point_collection(
     """
     pts = create_points(coords)
     return gpd.GeoDataFrame(columns=["geometry"], data=pts, crs=crs)
-
-

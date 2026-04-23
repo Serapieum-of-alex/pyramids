@@ -11,9 +11,9 @@ from shapely.geometry import Point
 from pyramids.base.protocols import LazySpatialObject, SpatialObject, is_lazy
 from pyramids.feature import FeatureCollection
 
-
 try:
     import dask_geopandas  # noqa: F401
+
     HAS_DASK_GP = True
 except ImportError:  # pragma: no cover
     HAS_DASK_GP = False
@@ -46,6 +46,7 @@ def lfc(small_gdf):
 class TestLazyFeatureCollection:
     def test_is_dask_gdf_subclass(self, lfc):
         import dask_geopandas as dg
+
         from pyramids.feature import LazyFeatureCollection
 
         assert isinstance(lfc, dg.GeoDataFrame)
@@ -131,7 +132,8 @@ class TestLazyFeatureCollection:
         assert isinstance(lfc.copy(), LazyFeatureCollection)
         assert isinstance(lfc.drop_duplicates(), LazyFeatureCollection)
         assert isinstance(
-            lfc.repartition(npartitions=1), LazyFeatureCollection,
+            lfc.repartition(npartitions=1),
+            LazyFeatureCollection,
         )
         # pyramids-specific helpers survive the rebrand.
         reproj = lfc.to_crs(3857)
@@ -207,9 +209,9 @@ class TestLazyFeatureCollection:
         pre = {k for k in vars(ddf).keys() if not k.startswith("__")}
         lfc = LazyFeatureCollection.from_dask_gdf(ddf)
         post = {k for k in vars(lfc).keys() if not k.startswith("__")}
-        assert pre == post, (
-            f"class-swap leaked state: added={post - pre}, dropped={pre - post}"
-        )
+        assert (
+            pre == post
+        ), f"class-swap leaked state: added={post - pre}, dropped={pre - post}"
 
     def test_no_extra_slots(self):
         """ARC-V2: pin that LazyFeatureCollection declares no ``__slots__``.

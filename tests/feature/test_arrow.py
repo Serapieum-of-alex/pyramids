@@ -13,7 +13,6 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
-
 try:
     import pyogrio  # noqa: F401
     from pyogrio.raw import open_arrow  # noqa: F401

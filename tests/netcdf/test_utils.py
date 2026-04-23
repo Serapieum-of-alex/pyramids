@@ -750,9 +750,7 @@ class TestDtypeToStr:
         dt = MagicMock()
         dt.GetName.return_value = "Float64"
         result = _dtype_to_str(dt)
-        assert result == "float64", (
-            f"Should return lowercased name, got {result}"
-        )
+        assert result == "float64", f"Should return lowercased name, got {result}"
 
     def test_falls_back_to_numeric_dtype(self):
         """GetName fails; falls back to GetNumericDataType."""
@@ -760,9 +758,7 @@ class TestDtypeToStr:
         dt.GetName.side_effect = AttributeError("no GetName")
         dt.GetNumericDataType.return_value = 3  # GDT_Int16
         result = _dtype_to_str(dt)
-        assert result == "int16", (
-            f"Should fall back to numeric dtype, got {result}"
-        )
+        assert result == "int16", f"Should fall back to numeric dtype, got {result}"
 
     def test_returns_unknown_when_all_fail(self):
         """Both GetName and str() fail."""
@@ -778,9 +774,9 @@ class TestDtypeToStr:
         dt.GetName.return_value = ""
         dt.GetNumericDataType.return_value = 6  # GDT_Float32
         result = _dtype_to_str(dt)
-        assert result == "float32", (
-            f"Empty name should fall through to numeric, got {result}"
-        )
+        assert (
+            result == "float32"
+        ), f"Empty name should fall through to numeric, got {result}"
 
     def test_no_numeric_returns_unknown(self):
         """GetName empty and GetNumericDataType fails; returns 'unknown'."""
@@ -788,9 +784,9 @@ class TestDtypeToStr:
         dt.GetName.return_value = None
         dt.GetNumericDataType.side_effect = Exception("no numeric")
         result = _dtype_to_str(dt)
-        assert result == "unknown", (
-            f"Should return 'unknown' when all paths fail, got {result}"
-        )
+        assert (
+            result == "unknown"
+        ), f"Should return 'unknown' when all paths fail, got {result}"
 
 
 class TestToPyScalar:

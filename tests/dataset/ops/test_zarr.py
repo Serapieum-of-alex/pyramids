@@ -12,7 +12,6 @@ import pytest
 
 from pyramids.dataset import Dataset
 
-
 try:
     import dask.array  # noqa: F401
     import zarr  # noqa: F401
@@ -22,9 +21,7 @@ except ImportError:  # pragma: no cover
     HAS_ZARR = False
 
 
-requires_zarr = pytest.mark.skipif(
-    not HAS_ZARR, reason="dask + zarr not installed"
-)
+requires_zarr = pytest.mark.skipif(not HAS_ZARR, reason="dask + zarr not installed")
 
 
 @pytest.fixture
@@ -36,7 +33,10 @@ def small_dataset(tmp_path):
     """
     arr = np.arange(30, dtype=np.float32).reshape(5, 6)
     ds = Dataset.create_from_array(
-        arr, top_left_corner=(0.0, 5.0), cell_size=1.0, epsg=4326,
+        arr,
+        top_left_corner=(0.0, 5.0),
+        cell_size=1.0,
+        epsg=4326,
     )
     src_path = str(tmp_path / "src.tif")
     ds.to_file(src_path)

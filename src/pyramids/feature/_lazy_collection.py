@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from pyramids.feature.collection import FeatureCollection
 
 
-def _rebuild_lazy_fc(parent_reduce: tuple) -> "LazyFeatureCollection":
+def _rebuild_lazy_fc(parent_reduce: tuple) -> LazyFeatureCollection:
     """Reconstruct a :class:`LazyFeatureCollection` from the parent reduce tuple.
 
     Runs the reconstructor returned by
@@ -97,11 +97,13 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = attr(*args, **kwargs)
             if isinstance(result, dask_geopandas.GeoDataFrame) and not isinstance(
-                result, cls,
+                result,
+                cls,
             ):
                 result = cls.from_dask_gdf(result)
             elif isinstance(result, geopandas.GeoDataFrame) and not isinstance(
-                result, geopandas.GeoSeries,
+                result,
+                geopandas.GeoSeries,
             ):
                 from pyramids.feature.collection import FeatureCollection
 
@@ -281,7 +283,7 @@ class LazyFeatureCollection(dask_geopandas.GeoDataFrame):
         result = None if crs is None else crs.to_epsg()
         return result
 
-    def compute_total_bounds(self) -> "Any":
+    def compute_total_bounds(self) -> Any:
         """Materialise :attr:`total_bounds` via an explicit ``.compute()`` call.
 
         ARC-V4: :attr:`total_bounds` on a

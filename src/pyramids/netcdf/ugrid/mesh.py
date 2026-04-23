@@ -108,7 +108,11 @@ class Mesh2d:
     @property
     def n_edge(self) -> int:
         """Number of edges in the mesh. Returns 0 if edge connectivity is not available."""
-        result = self._edge_node_connectivity.n_elements if self._edge_node_connectivity is not None else 0
+        result = (
+            self._edge_node_connectivity.n_elements
+            if self._edge_node_connectivity is not None
+            else 0
+        )
         return result
 
     @property
@@ -259,9 +263,7 @@ class Mesh2d:
                 if n < 3:
                     continue
                 for j in range(1, n - 1):
-                    triangles.append(
-                        [int(nodes[0]), int(nodes[j]), int(nodes[j + 1])]
-                    )
+                    triangles.append([int(nodes[0]), int(nodes[j]), int(nodes[j + 1])])
 
             if not triangles:
                 raise ValueError(

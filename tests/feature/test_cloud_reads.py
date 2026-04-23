@@ -58,9 +58,7 @@ class TestHttpRewrite:
             captured["kwargs"] = kwargs
             return self._fake_gdf()
 
-        monkeypatch.setattr(
-            "pyramids.feature.collection.gpd.read_file", fake_read_file
-        )
+        monkeypatch.setattr("pyramids.feature.collection.gpd.read_file", fake_read_file)
 
         url = "http://example.invalid/points.geojson"
         fc = FeatureCollection.read_file(url)
@@ -77,9 +75,7 @@ class TestHttpRewrite:
             captured["path"] = path
             return self._fake_gdf()
 
-        monkeypatch.setattr(
-            "pyramids.feature.collection.gpd.read_file", fake_read_file
-        )
+        monkeypatch.setattr("pyramids.feature.collection.gpd.read_file", fake_read_file)
 
         url = "https://example.invalid/points.geojson"
         FeatureCollection.read_file(url)
@@ -92,9 +88,7 @@ class TestHttpRewrite:
         def fake_read_file(path, **kwargs):
             return self._fake_gdf()
 
-        monkeypatch.setattr(
-            "pyramids.feature.collection.gpd.read_file", fake_read_file
-        )
+        monkeypatch.setattr("pyramids.feature.collection.gpd.read_file", fake_read_file)
 
         url = "http://example.invalid/points.geojson"
         with caplog.at_level(logging.DEBUG, logger="pyramids.base.remote"):
@@ -110,9 +104,7 @@ class TestFileUrlRead:
     """``file://`` URLs are rewritten to plain local paths (no network)."""
 
     def test_read_file_url(self, tmp_path: Path):
-        gdf = gpd.GeoDataFrame(
-            {"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326"
-        )
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326")
         p = tmp_path / "one.geojson"
         gdf.to_file(p, driver="GeoJSON")
 

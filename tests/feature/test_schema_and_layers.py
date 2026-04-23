@@ -75,9 +75,7 @@ class TestSchema:
 
     def test_empty_schema(self):
         """Empty FC reports 'Unknown' geom but still exposes properties."""
-        empty = FeatureCollection(
-            gpd.GeoDataFrame({"x": []}, geometry=[])
-        )
+        empty = FeatureCollection(gpd.GeoDataFrame({"x": []}, geometry=[]))
         s = empty.schema
         assert s["geometry"] == "Unknown"
         # The dtype inferred by pandas for an empty float column is
@@ -101,17 +99,13 @@ class TestListLayers:
 
     def test_single_layer_geojson(self, tmp_path: Path):
         """A GeoJSON is single-layer; list_layers returns one name."""
-        gdf = gpd.GeoDataFrame(
-            {"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326"
-        )
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326")
         p = tmp_path / "solo.geojson"
         gdf.to_file(p, driver="GeoJSON")
         layers = FeatureCollection.list_layers(p)
         assert len(layers) == 1
 
-    def test_list_layers_is_cheap(
-        self, two_layer_gpkg: Path, monkeypatch
-    ):
+    def test_list_layers_is_cheap(self, two_layer_gpkg: Path, monkeypatch):
         """``list_layers`` must NOT load the whole dataset.
 
         Introspection only — intercept ``gpd.read_file`` and assert it
@@ -141,9 +135,7 @@ class TestListLayersCache:
     evicts the cache so out-of-band writes become visible.
     """
 
-    def test_repeated_calls_hit_the_cache(
-        self, two_layer_gpkg: Path, monkeypatch
-    ):
+    def test_repeated_calls_hit_the_cache(self, two_layer_gpkg: Path, monkeypatch):
         import pyogrio
 
         FeatureCollection.list_layers_cache_clear()
@@ -159,13 +151,11 @@ class TestListLayersCache:
         FeatureCollection.list_layers(two_layer_gpkg)
         FeatureCollection.list_layers(two_layer_gpkg)
         FeatureCollection.list_layers(two_layer_gpkg)
-        assert call_count[0] == 1, (
-            f"expected exactly one pyogrio call, got {call_count[0]}"
-        )
+        assert (
+            call_count[0] == 1
+        ), f"expected exactly one pyogrio call, got {call_count[0]}"
 
-    def test_cache_clear_invalidates_entries(
-        self, two_layer_gpkg: Path, monkeypatch
-    ):
+    def test_cache_clear_invalidates_entries(self, two_layer_gpkg: Path, monkeypatch):
         import pyogrio
 
         FeatureCollection.list_layers_cache_clear()
@@ -189,9 +179,7 @@ class TestListLayersCache:
         """Two distinct paths must not collide in the cache."""
         FeatureCollection.list_layers_cache_clear()
 
-        gdf = gpd.GeoDataFrame(
-            {"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326"
-        )
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326")
         solo = tmp_path / "solo.geojson"
         gdf.to_file(solo, driver="GeoJSON")
 
@@ -203,9 +191,7 @@ class TestListLayersCache:
         again = FeatureCollection.list_layers(two_layer_gpkg)
         assert set(again) == {"rivers", "lakes"}
 
-    def test_cache_returns_fresh_list_not_shared_instance(
-        self, two_layer_gpkg: Path
-    ):
+    def test_cache_returns_fresh_list_not_shared_instance(self, two_layer_gpkg: Path):
         """C15: the public method returns a fresh list each call.
 
         Test scenario:
@@ -219,9 +205,9 @@ class TestListLayersCache:
         first = FeatureCollection.list_layers(two_layer_gpkg)
         first.append("mutated")
         second = FeatureCollection.list_layers(two_layer_gpkg)
-        assert "mutated" not in second, (
-            "mutation of returned list leaked into cached value"
-        )
+        assert (
+            "mutated" not in second
+        ), "mutation of returned list leaked into cached value"
         assert set(second) == {"rivers", "lakes"}
 
 

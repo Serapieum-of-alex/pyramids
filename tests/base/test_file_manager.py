@@ -34,8 +34,8 @@ from pyramids.base._file_manager import (
     ThreadLocalFileManager,
     _HashedSequence,
     _LRUCache,
-    _NullLock,
     _make_cache_key,
+    _NullLock,
     _resolve_access,
     gdal_mdarray_open,
     gdal_raster_open,
@@ -134,13 +134,11 @@ class TestLRUCache:
             limit is wider.
         """
         cache = _LRUCache(maxsize=7)
-        assert cache.maxsize == 7, (
-            f"Expected maxsize=7, got {cache.maxsize}"
-        )
+        assert cache.maxsize == 7, f"Expected maxsize=7, got {cache.maxsize}"
         cache.maxsize = 9
-        assert cache.maxsize == 9, (
-            f"Expected maxsize=9 after widening, got {cache.maxsize}"
-        )
+        assert (
+            cache.maxsize == 9
+        ), f"Expected maxsize=9 after widening, got {cache.maxsize}"
 
     def test_maxsize_setter_rejects_zero(self):
         """Setting ``cache.maxsize`` below 1 raises ``ValueError``.
@@ -168,12 +166,8 @@ class TestLRUCache:
         cache["a"] = 1
         cache["b"] = 2
         cache["a"] = 99
-        assert cache["a"] == 99, (
-            f"Expected updated value 99, got {cache['a']}"
-        )
-        assert evicted == [], (
-            f"No eviction expected on in-place update, got {evicted}"
-        )
+        assert cache["a"] == 99, f"Expected updated value 99, got {cache['a']}"
+        assert evicted == [], f"No eviction expected on in-place update, got {evicted}"
 
     def test_iter_yields_keys_in_lru_order(self):
         """Iterating the cache returns keys snapshot-safely.
@@ -188,9 +182,11 @@ class TestLRUCache:
         cache["y"] = 2
         cache["z"] = 3
         keys = list(cache)
-        assert keys == ["x", "y", "z"], (
-            f"Expected iteration order ['x','y','z'], got {keys}"
-        )
+        assert keys == [
+            "x",
+            "y",
+            "z",
+        ], f"Expected iteration order ['x','y','z'], got {keys}"
 
 
 class TestHashedSequence:
@@ -396,13 +392,13 @@ class TestThreadLocalFileManager:
         """
         fm = ThreadLocalFileManager(_fake_opener, "t.tif", "read_only")
         with fm.acquire_context() as handle:
-            assert isinstance(handle, _FakeHandle), (
-                f"Expected _FakeHandle, got {type(handle)}"
-            )
+            assert isinstance(
+                handle, _FakeHandle
+            ), f"Expected _FakeHandle, got {type(handle)}"
         with fm.acquire_context() as handle2:
-            assert handle is handle2, (
-                "Context manager must reuse the thread-local handle"
-            )
+            assert (
+                handle is handle2
+            ), "Context manager must reuse the thread-local handle"
 
 
 class TestNullLock:
@@ -418,12 +414,10 @@ class TestNullLock:
             proceeds as if it took the lock.
         """
         lock = _NullLock()
-        assert lock.acquire() is True, (
-            "_NullLock.acquire() must always return True"
-        )
-        assert lock.acquire(blocking=False, timeout=5.0) is True, (
-            "_NullLock.acquire() must ignore blocking/timeout"
-        )
+        assert lock.acquire() is True, "_NullLock.acquire() must always return True"
+        assert (
+            lock.acquire(blocking=False, timeout=5.0) is True
+        ), "_NullLock.acquire() must ignore blocking/timeout"
 
     def test_release_is_noop(self):
         """``release()`` returns ``None`` without raising.
@@ -434,9 +428,7 @@ class TestNullLock:
             code can treat it interchangeably.
         """
         lock = _NullLock()
-        assert lock.release() is None, (
-            "_NullLock.release() must return None"
-        )
+        assert lock.release() is None, "_NullLock.release() must return None"
 
 
 class TestOpeners:
@@ -492,9 +484,7 @@ class TestOpenersE2E:
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)
         ds.SetProjection(srs.ExportToWkt())
-        ds.GetRasterBand(1).WriteArray(
-            __import__("numpy").zeros((3, 3), dtype="uint8")
-        )
+        ds.GetRasterBand(1).WriteArray(__import__("numpy").zeros((3, 3), dtype="uint8"))
         ds.FlushCache()
         ds = None
         return path
@@ -554,9 +544,9 @@ class TestOpenersE2E:
         try:
             assert ds is not None, "ogr_open must return a datasource"
             layer = ds.GetLayer(0)
-            assert layer.GetFeatureCount() == 1, (
-                f"Expected 1 feature, got {layer.GetFeatureCount()}"
-            )
+            assert (
+                layer.GetFeatureCount() == 1
+            ), f"Expected 1 feature, got {layer.GetFeatureCount()}"
         finally:
             ds = None
 
@@ -570,8 +560,6 @@ class TestOpenersE2E:
         """
         ds = ogr_open(geojson_path, access="w")
         try:
-            assert ds is not None, (
-                "ogr_open with access='w' must return a datasource"
-            )
+            assert ds is not None, "ogr_open with access='w' must return a datasource"
         finally:
             ds = None

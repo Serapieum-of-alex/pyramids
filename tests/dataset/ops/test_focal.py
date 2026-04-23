@@ -7,7 +7,6 @@ import pytest
 
 from pyramids.dataset import Dataset
 
-
 try:
     import dask.array  # noqa: F401
 
@@ -24,7 +23,10 @@ def constant_raster(tmp_path):
     """5×5 raster of constant value — focal_mean must equal that value."""
     arr = np.full((5, 5), 7.0, dtype=np.float32)
     ds = Dataset.create_from_array(
-        arr, top_left_corner=(0.0, 5.0), cell_size=1.0, epsg=4326,
+        arr,
+        top_left_corner=(0.0, 5.0),
+        cell_size=1.0,
+        epsg=4326,
     )
     path = str(tmp_path / "const.tif")
     ds.to_file(path)
@@ -36,7 +38,10 @@ def ramp_raster(tmp_path):
     """5×5 ramp along the x-axis so slope is non-zero."""
     arr = np.tile(np.arange(5, dtype=np.float32), (5, 1))
     ds = Dataset.create_from_array(
-        arr, top_left_corner=(0.0, 5.0), cell_size=1.0, epsg=4326,
+        arr,
+        top_left_corner=(0.0, 5.0),
+        cell_size=1.0,
+        epsg=4326,
     )
     path = str(tmp_path / "ramp.tif")
     ds.to_file(path)

@@ -69,7 +69,9 @@ class TestCreateCube:
     def test_returns_dataset_collection(self, base_dataset: Dataset):
         """create_cube should return a DatasetCollection instance."""
         md = DatasetCollection.create_cube(base_dataset, dataset_length=4)
-        assert isinstance(md, DatasetCollection), f"Expected DatasetCollection, got {type(md)}"
+        assert isinstance(
+            md, DatasetCollection
+        ), f"Expected DatasetCollection, got {type(md)}"
 
     def test_time_length_matches(self, base_dataset: Dataset):
         """The time_length should match the given dataset_length."""
@@ -281,7 +283,9 @@ class TestToFile:
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    def test_to_file_wrong_list_length_raises(self, cube_with_values: DatasetCollection):
+    def test_to_file_wrong_list_length_raises(
+        self, cube_with_values: DatasetCollection
+    ):
         """to_file with a list whose length != time_length should raise ValueError."""
         with pytest.raises(ValueError, match="does not equal"):
             cube_with_values.to_file(["a.tif", "b.tif"])
@@ -460,7 +464,9 @@ class TestIlocWithoutValues:
 class TestAlignErrors:
     """Tests for align method error path."""
 
-    def test_non_dataset_alignment_src_raises(self, cube_with_values: DatasetCollection):
+    def test_non_dataset_alignment_src_raises(
+        self, cube_with_values: DatasetCollection
+    ):
         """Passing a non-Dataset as alignment_src should raise TypeError."""
         with pytest.raises(TypeError, match="Dataset object"):
             cube_with_values.align("not_a_dataset")

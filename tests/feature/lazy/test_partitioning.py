@@ -49,7 +49,8 @@ class TestUserSuppliedWins:
         assert result == {"chunksize": 10_000}
 
     def test_npartitions_wins_over_chunksize_when_both_supplied(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ):
         """If both are set, ``npartitions`` takes precedence (dask-geopandas
         rejects both being set — pyramids normalises to npartitions)."""
@@ -122,6 +123,7 @@ class TestMissingLocalFile:
     def test_missing_file_does_not_raise(self, tmp_path: Path):
         result = _resolve_lazy_partitioning(
             str(tmp_path / "does_not_exist.geojson"),
-            None, None,
+            None,
+            None,
         )
         assert result == {"npartitions": 1}

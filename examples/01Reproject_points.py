@@ -33,5 +33,9 @@ x_out, y_out = FeatureCollection.reproject_coordinates(
     x, y, from_crs=4326, to_crs=4647, precision=4
 )
 
-assert y_out[0] == 4390682.5383 and y_out[1] == 9629641.4604, "Error ReprojectPoints error 2y"
-assert x_out[0] == 28494364.9445 and x_out[1] == 33190988.6123, "Error ReprojectPoints error 2x"
+assert (
+    y_out[0] == 4390682.5383 and y_out[1] == 9629641.4604
+), "Error ReprojectPoints error 2y"
+assert (
+    x_out[0] == 28494364.9445 and x_out[1] == 33190988.6123
+), "Error ReprojectPoints error 2x"

@@ -78,7 +78,7 @@ def open_mfdataset(
     *,
     chunks: dict | str | None = None,
     parallel: bool = False,
-    preprocess: Callable[["NetCDF"], "NetCDF"] | None = None,
+    preprocess: Callable[[NetCDF], NetCDF] | None = None,
 ) -> Any:
     """Open many NetCDFs; stack ``variable`` into one lazy dask array.
 
@@ -138,13 +138,9 @@ def open_mfdataset(
         first_probe = _open_and_extract(resolved[0], variable, preprocess, chunks)
         shape = first_probe.shape
         dtype = first_probe.dtype
-        arrays = [
-            da.from_delayed(d, shape=shape, dtype=dtype) for d in delayed
-        ]
+        arrays = [da.from_delayed(d, shape=shape, dtype=dtype) for d in delayed]
     else:
-        arrays = [
-            _open_and_extract(p, variable, preprocess, chunks) for p in resolved
-        ]
+        arrays = [_open_and_extract(p, variable, preprocess, chunks) for p in resolved]
         arrays = [
             a if hasattr(a, "dask") else da.from_array(np.asarray(a), chunks="auto")
             for a in arrays

@@ -16,7 +16,6 @@ from osgeo import gdal
 
 from pyramids.dataset import Dataset
 from pyramids.netcdf.netcdf import NetCDF
-
 from tests.netcdf.conftest import make_3d_nc
 
 
@@ -26,9 +25,13 @@ def _make_3d_nc(rows=10, cols=12, bands=3, epsg=4326, variable_name="temperature
     Delegates to the shared ``make_3d_nc`` helper in conftest.
     """
     return make_3d_nc(
-        rows=rows, cols=cols, bands=bands, epsg=epsg,
+        rows=rows,
+        cols=cols,
+        bands=bands,
+        epsg=epsg,
         variable_name=variable_name,
-        arr_type="random", seed=42,
+        arr_type="random",
+        seed=42,
     )
 
 
@@ -751,9 +754,7 @@ class TestLazyVariableDict:
         nc = _make_3d_nc()
         v = nc.variables
         loaded = len(dict.keys(v))
-        assert loaded == 0, (
-            f"Expected 0 loaded initially, got {loaded}"
-        )
+        assert loaded == 0, f"Expected 0 loaded initially, got {loaded}"
 
     def test_loading_one_does_not_load_all(self):
         """Accessing one key should load only that variable.
@@ -765,9 +766,7 @@ class TestLazyVariableDict:
         v = nc.variables
         _ = v["temperature"]
         loaded = len(dict.keys(v))
-        assert loaded == 1, (
-            f"Expected 1 loaded, got {loaded}"
-        )
+        assert loaded == 1, f"Expected 1 loaded, got {loaded}"
 
     def test_get_existing_key(self):
         """v.get('temperature') should return the variable, not None.
@@ -779,9 +778,7 @@ class TestLazyVariableDict:
         nc = _make_3d_nc()
         v = nc.variables
         result = v.get("temperature")
-        assert result is not None, (
-            "get() returned None — lazy loading bypassed"
-        )
+        assert result is not None, "get() returned None — lazy loading bypassed"
 
     def test_get_nonexistent_returns_none(self):
         """v.get('nope') should return None.
@@ -821,9 +818,7 @@ class TestLazyVariableDict:
             1 variable exists regardless of loading state.
         """
         nc = _make_3d_nc()
-        assert len(nc.variables) == 1, (
-            f"Expected 1, got {len(nc.variables)}"
-        )
+        assert len(nc.variables) == 1, f"Expected 1, got {len(nc.variables)}"
 
     def test_keys_values_items(self):
         """keys/values/items should cover all variables.
@@ -833,9 +828,9 @@ class TestLazyVariableDict:
         """
         nc = _make_3d_nc()
         v = nc.variables
-        assert list(v.keys()) == ["temperature"], (
-            f"Expected ['temperature'], got {list(v.keys())}"
-        )
+        assert list(v.keys()) == [
+            "temperature"
+        ], f"Expected ['temperature'], got {list(v.keys())}"
         assert len(v.values()) == 1, "Expected 1 value"
         assert len(v.items()) == 1, "Expected 1 item"
 

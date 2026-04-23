@@ -143,9 +143,13 @@ def plot_mesh_data(
     plot_kwargs.update(kwargs)
 
     glyph.plot(
-        data, location=location, ax=ax,
-        edgecolor=edgecolor, colorbar=colorbar,
-        title=title, **plot_kwargs,
+        data,
+        location=location,
+        ax=ax,
+        edgecolor=edgecolor,
+        colorbar=colorbar,
+        title=title,
+        **plot_kwargs,
     )
     return glyph
 
@@ -186,6 +190,9 @@ def plot_mesh_outline(
     """
     glyph = _mesh_to_glyph(mesh)
     glyph.plot_outline(
-        ax=ax, color=color, linewidth=linewidth, **kwargs,
+        ax=ax,
+        color=color,
+        linewidth=linewidth,
+        **kwargs,
     )
     return glyph

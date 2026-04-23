@@ -42,9 +42,7 @@ def ds() -> Dataset:
         epsg=32636,
         no_data_value=-9999.0,
     )
-    src.raster.GetRasterBand(1).WriteArray(
-        np.ones((10, 10), dtype=np.float32)
-    )
+    src.raster.GetRasterBand(1).WriteArray(np.ones((10, 10), dtype=np.float32))
     return src
 
 
@@ -71,26 +69,18 @@ class TestSpatialObjectProtocol:
         assert fc_bounds.shape == (4,)
         assert ds_bounds.shape == (4,)
         # FC bounds match the box we built.
-        assert np.allclose(
-            fc_bounds, [500000.0, 3400000.0, 510000.0, 3410000.0]
-        )
+        assert np.allclose(fc_bounds, [500000.0, 3400000.0, 510000.0, 3410000.0])
         # Dataset bbox reflects its geotransform (10 cols × 10 rows × 1000m).
-        assert np.allclose(
-            ds_bounds, [500000.0, 3400000.0, 510000.0, 3410000.0]
-        )
+        assert np.allclose(ds_bounds, [500000.0, 3400000.0, 510000.0, 3410000.0])
 
-    def test_both_expose_top_left_corner(
-        self, fc: FeatureCollection, ds: Dataset
-    ):
+    def test_both_expose_top_left_corner(self, fc: FeatureCollection, ds: Dataset):
         """Both types expose ``top_left_corner`` as [minx, maxy]."""
         fc_tl = list(fc.top_left_corner)
         ds_tl = list(ds.top_left_corner)
         assert fc_tl == [500000.0, 3410000.0]
         assert ds_tl == [500000.0, 3410000.0]
 
-    def test_generic_consumer_accepts_both(
-        self, fc: FeatureCollection, ds: Dataset
-    ):
+    def test_generic_consumer_accepts_both(self, fc: FeatureCollection, ds: Dataset):
         """A function typed against SpatialObject accepts both classes.
 
         This is the real value of the protocol — users can write
@@ -129,6 +119,7 @@ class TestSpatialObjectNegative:
 
 try:
     import dask_geopandas  # noqa: F401
+
     HAS_DASK_GP = True
 except ImportError:  # pragma: no cover
     HAS_DASK_GP = False
@@ -201,7 +192,7 @@ class TestLazySpatialObject:
         ddf = dg.from_geopandas(gdf, npartitions=1)
         lfc = LazyFeatureCollection.from_dask_gdf(ddf)
 
-        def epsg_of(obj: "SpatialObject | LazySpatialObject") -> int | None:
+        def epsg_of(obj: SpatialObject | LazySpatialObject) -> int | None:
             return obj.epsg
 
         assert epsg_of(lfc) == 32636

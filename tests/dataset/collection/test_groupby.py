@@ -13,7 +13,6 @@ import pytest
 
 from pyramids.dataset import Dataset, DatasetCollection
 
-
 try:
     import dask.array  # noqa: F401
 
@@ -32,7 +31,10 @@ def four_files(tmp_path):
     for i in range(4):
         arr = np.full((3, 4), float(i + 1), dtype=np.float32)
         ds = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 3.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         p = str(tmp_path / f"f{i}.tif")
         ds.to_file(p)
@@ -98,7 +100,10 @@ class TestGroupbyErrors:
     def test_groupby_without_files_chain_raises(self):
         arr = np.zeros((3, 4), dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 3.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         collection = DatasetCollection(src, time_length=1)
         grouped = collection.groupby(["A"])

@@ -83,9 +83,7 @@ class TestNetCDFContainerPickle:
         payload = pickle.dumps(nc)
         ctx = multiprocessing.get_context("spawn")
         with ctx.Pool(1) as pool:
-            name, md, subset = pool.apply(
-                _read_container_on_subprocess, (payload,)
-            )
+            name, md, subset = pool.apply(_read_container_on_subprocess, (payload,))
         assert name == "NetCDF"
         assert md is True
         assert subset is False
@@ -120,9 +118,7 @@ class TestNetCDFSubsetPickle:
         payload = pickle.dumps(subset)
         ctx = multiprocessing.get_context("spawn")
         with ctx.Pool(1) as pool:
-            name, size = pool.apply(
-                _read_subset_on_subprocess, (payload,)
-            )
+            name, size = pool.apply(_read_subset_on_subprocess, (payload,))
         assert name == var_name
         assert size > 0
 
@@ -132,8 +128,11 @@ class TestReconstructNetCDF:
 
     def test_rebuilds_container(self, three_d_path):
         nc = _reconstruct_netcdf(
-            three_d_path, "read_only",
-            is_md_array=True, is_subset=False, source_var_name=None,
+            three_d_path,
+            "read_only",
+            is_md_array=True,
+            is_subset=False,
+            source_var_name=None,
         )
         assert isinstance(nc, NetCDF)
         assert nc.is_md_array is True
@@ -143,8 +142,11 @@ class TestReconstructNetCDF:
         nc_container = NetCDF.read_file(three_d_path, open_as_multi_dimensional=True)
         var_name = nc_container.get_variable_names()[0]
         nc = _reconstruct_netcdf(
-            three_d_path, "read_only",
-            is_md_array=True, is_subset=True, source_var_name=var_name,
+            three_d_path,
+            "read_only",
+            is_md_array=True,
+            is_subset=True,
+            source_var_name=var_name,
         )
         assert nc.is_subset is True
         assert nc._source_var_name == var_name

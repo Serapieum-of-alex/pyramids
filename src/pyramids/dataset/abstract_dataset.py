@@ -40,7 +40,7 @@ RESAMPLING_METHODS = [
 ]
 
 
-def _reconstruct_dataset(cls: type, path: str, access: str) -> "AbstractDataset":
+def _reconstruct_dataset(cls: type, path: str, access: str) -> AbstractDataset:
     """Re-open a dataset from its pickle recipe tuple.
 
     Called by :meth:`AbstractDataset.__reduce__` on unpickle. Routes
@@ -578,9 +578,7 @@ class AbstractDataset(ABC):
                 # ARC-7: get_epsg_from_prj now raises on empty input;
                 # preserve the historical 4326 fallback explicitly so
                 # datasets with a missing projection still get tagged.
-                self._epsg = (
-                    FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
-                )
+                self._epsg = FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
             elif epsg is not None:
                 sr = AbstractDataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())

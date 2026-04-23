@@ -12,12 +12,12 @@ import numpy as np
 import pandas as pd
 from osgeo import gdal
 
-from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.base._errors import DatasetNotFoundError
 from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._raster_meta import RasterMeta
 from pyramids.base._utils import import_cleopatra
 from pyramids.dataset._stac import from_stac as _from_stac
+from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.dataset.dataset import Dataset
 from pyramids.dataset.ops._zarr import _resolve_store
 
@@ -69,11 +69,19 @@ class _GroupedCollection:
         ordered_labels = sorted(set(self._labels))
         try:
             result = _flox_groupby_reduce(
-                data, label_array, ordered_labels, op_name, skipna,
+                data,
+                label_array,
+                ordered_labels,
+                op_name,
+                skipna,
             )
         except _FloxUnavailable:
             result = _fallback_groupby_reduce(
-                data, label_array, ordered_labels, op_name, skipna,
+                data,
+                label_array,
+                ordered_labels,
+                op_name,
+                skipna,
             )
         return result
 
@@ -101,8 +109,11 @@ class _FloxUnavailable(RuntimeError):
 
 
 def _flox_groupby_reduce(
-    data, label_array: np.ndarray,
-    ordered_labels: list, op_name: str, skipna: bool,
+    data,
+    label_array: np.ndarray,
+    ordered_labels: list,
+    op_name: str,
+    skipna: bool,
 ) -> dict:
     """Single-pass grouped reduction via :func:`flox.groupby_reduce`.
 
@@ -115,7 +126,10 @@ def _flox_groupby_reduce(
         raise _FloxUnavailable from exc
     func_name = f"nan{op_name}" if skipna else op_name
     grouped_result, groups = groupby_reduce(
-        data, label_array, func=func_name, expected_groups=ordered_labels,
+        data,
+        label_array,
+        func=func_name,
+        expected_groups=ordered_labels,
     )
     materialised = np.asarray(grouped_result)
     index_by_label = {label: idx for idx, label in enumerate(groups)}
@@ -127,8 +141,11 @@ def _flox_groupby_reduce(
 
 
 def _fallback_groupby_reduce(
-    data, label_array: np.ndarray,
-    ordered_labels: list, op_name: str, skipna: bool,
+    data,
+    label_array: np.ndarray,
+    ordered_labels: list,
+    op_name: str,
+    skipna: bool,
 ) -> dict:
     """Per-label reduction path when flox is unavailable.
 
@@ -160,19 +177,23 @@ def _finalize_collection_metadata(resolved_store, meta, files: list) -> None:
     import zarr
 
     root = zarr.open_group(resolved_store, mode="a")
-    root.attrs.update({
-        "pyramids_zarr_version": "1",
-        "time_length": int(len(files)),
-        "pyramids_file_list": list(files),
-    })
-    root["data"].attrs.update({
-        "epsg": int(meta.epsg) if meta.epsg else None,
-        "GeoTransform": " ".join(str(v) for v in meta.geotransform),
-        "crs_wkt": meta.crs.to_wkt(),
-        "nodata": [None if v is None else float(v) for v in meta.nodata],
-        "band_names": list(meta.band_names) if meta.band_names else [],
-        "dtype": str(meta.dtype),
-    })
+    root.attrs.update(
+        {
+            "pyramids_zarr_version": "1",
+            "time_length": int(len(files)),
+            "pyramids_file_list": list(files),
+        }
+    )
+    root["data"].attrs.update(
+        {
+            "epsg": int(meta.epsg) if meta.epsg else None,
+            "GeoTransform": " ".join(str(v) for v in meta.geotransform),
+            "crs_wkt": meta.crs.to_wkt(),
+            "nodata": [None if v is None else float(v) for v in meta.nodata],
+            "band_names": list(meta.band_names) if meta.band_names else [],
+            "dtype": str(meta.dtype),
+        }
+    )
     zarr.consolidate_metadata(resolved_store)
 
 
@@ -218,7 +239,10 @@ def _read_time_step(path: str) -> np.ndarray:
     manager = _READ_TIME_STEP_MANAGERS.get(path)
     if manager is None:
         manager = CachingFileManager(
-            gdal_raster_open, path, "read_only", lock=False,
+            gdal_raster_open,
+            path,
+            "read_only",
+            lock=False,
         )
         _READ_TIME_STEP_MANAGERS[path] = manager
     handle = manager.acquire()
@@ -335,7 +359,7 @@ class DatasetCollection:
         """
         return cls(src, dataset_length)
 
-    def groupby(self, time_labels) -> "_GroupedCollection":
+    def groupby(self, time_labels) -> _GroupedCollection:
         """Group time steps by per-timestep label.
 
         Returns a view exposing the same reduction surface as
@@ -445,12 +469,8 @@ class DatasetCollection:
         meta = self._meta
         shape = meta.shape
         dtype = np.dtype(meta.dtype)
-        delayed_reads = [
-            dask.delayed(_read_time_step)(path) for path in self._files
-        ]
-        arrays = [
-            da.from_delayed(d, shape=shape, dtype=dtype) for d in delayed_reads
-        ]
+        delayed_reads = [dask.delayed(_read_time_step)(path) for path in self._files]
+        arrays = [da.from_delayed(d, shape=shape, dtype=dtype) for d in delayed_reads]
         return da.stack(arrays, axis=0)
 
     @property
@@ -507,7 +527,8 @@ class DatasetCollection:
         # than letting kerchunk.hdf produce a confusing failure mode.
         geotiff_exts = {".tif", ".tiff", ".cog"}
         geotiff_files = [
-            p for p in self._files
+            p
+            for p in self._files
             if any(str(p).lower().endswith(ext) for ext in geotiff_exts)
         ]
         if geotiff_files:
@@ -521,8 +542,10 @@ class DatasetCollection:
         from pyramids.netcdf._kerchunk import combine_kerchunk
 
         return combine_kerchunk(
-            self._files, output_path,
-            concat_dims=(concat_dim,), identical_dims=(),
+            self._files,
+            output_path,
+            concat_dims=(concat_dim,),
+            identical_dims=(),
         )
 
     def to_zarr(
@@ -575,8 +598,10 @@ class DatasetCollection:
         data = self.data
         resolved_store = _resolve_store(store, storage_options)
         write_result = data.to_zarr(
-            resolved_store, component="data",
-            overwrite=(mode == "w"), compute=compute,
+            resolved_store,
+            component="data",
+            overwrite=(mode == "w"),
+            compute=compute,
         )
         if compute:
             _finalize_collection_metadata(resolved_store, self._meta, self._files)
@@ -585,7 +610,10 @@ class DatasetCollection:
             import dask
 
             result = dask.delayed(_finalize_after_write)(
-                write_result, resolved_store, self._meta, self._files,
+                write_result,
+                resolved_store,
+                self._meta,
+                self._files,
             )
         return result
 
@@ -622,8 +650,11 @@ class DatasetCollection:
             DatasetCollection: File-backed collection.
         """
         return _from_stac(
-            items, asset,
-            patch_url=patch_url, bbox=bbox, max_items=max_items,
+            items,
+            asset,
+            patch_url=patch_url,
+            bbox=bbox,
+            max_items=max_items,
         )
 
     @classmethod

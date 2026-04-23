@@ -15,10 +15,9 @@ import pytest
 from pyramids.dataset import Dataset
 from pyramids.dataset.ops.reproject import (
     Aligner,
-    ReprojectPlan,
     Reprojector,
+    ReprojectPlan,
 )
-
 
 try:
     from dask.delayed import Delayed
@@ -36,7 +35,10 @@ requires_dask = pytest.mark.skipif(not HAS_DASK, reason="dask not installed")
 def wgs84_dataset(tmp_path):
     arr = np.zeros((4, 4), dtype=np.float32)
     ds = Dataset.create_from_array(
-        arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+        arr,
+        top_left_corner=(0.0, 4.0),
+        cell_size=1.0,
+        epsg=4326,
     )
     return ds
 
@@ -45,7 +47,10 @@ def wgs84_dataset(tmp_path):
 def wgs84_dataset_fine(tmp_path):
     arr = np.zeros((8, 8), dtype=np.float32)
     ds = Dataset.create_from_array(
-        arr, top_left_corner=(0.0, 4.0), cell_size=0.5, epsg=4326,
+        arr,
+        top_left_corner=(0.0, 4.0),
+        cell_size=0.5,
+        epsg=4326,
     )
     return ds
 

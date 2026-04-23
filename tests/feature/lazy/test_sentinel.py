@@ -24,9 +24,9 @@ from __future__ import annotations
 
 import pytest
 
-
 try:
     import dask_geopandas  # noqa: F401
+
     HAS_DASK_GP = True
 except ImportError:  # pragma: no cover
     HAS_DASK_GP = False

@@ -20,7 +20,6 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
-
 try:
     import dask_geopandas  # noqa: F401
 

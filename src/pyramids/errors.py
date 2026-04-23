@@ -36,8 +36,8 @@ from pyramids.base._errors import (
     OutOfBoundsError,
     ReadOnlyError,
     VectorDriverError,
-    _PyramidsError as PyramidsError,
 )
+from pyramids.base._errors import _PyramidsError as PyramidsError
 
 __all__ = [
     "PyramidsError",

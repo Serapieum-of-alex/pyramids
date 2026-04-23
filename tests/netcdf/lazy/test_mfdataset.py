@@ -11,7 +11,6 @@ import pytest
 
 from pyramids.netcdf import NetCDF
 
-
 try:
     import dask.array  # noqa: F401
 
@@ -46,14 +45,16 @@ class TestMultiFile:
     @requires_dask
     def test_three_copies_shape(self):
         stack = NetCDF.open_mfdataset(
-            [FIXTURE, FIXTURE, FIXTURE], variable="values",
+            [FIXTURE, FIXTURE, FIXTURE],
+            variable="values",
         )
         assert stack.shape[0] == 3
 
     @requires_dask
     def test_three_copies_compute_equal(self):
         stack = NetCDF.open_mfdataset(
-            [FIXTURE, FIXTURE], variable="values",
+            [FIXTURE, FIXTURE],
+            variable="values",
         )
         materialized = stack.compute()
         assert materialized.shape[0] == 2
@@ -66,10 +67,14 @@ class TestParallelMode:
     @requires_dask
     def test_parallel_equivalent_to_sequential(self):
         seq = NetCDF.open_mfdataset(
-            [FIXTURE, FIXTURE], variable="values", parallel=False,
+            [FIXTURE, FIXTURE],
+            variable="values",
+            parallel=False,
         ).compute()
         par = NetCDF.open_mfdataset(
-            [FIXTURE, FIXTURE], variable="values", parallel=True,
+            [FIXTURE, FIXTURE],
+            variable="values",
+            parallel=True,
         ).compute()
         assert seq.shape == par.shape
 
@@ -86,7 +91,8 @@ class TestPreprocessHook:
             return nc
 
         NetCDF.open_mfdataset(
-            [FIXTURE, FIXTURE], variable="values",
+            [FIXTURE, FIXTURE],
+            variable="values",
             preprocess=pre,
         ).compute()
         assert calls["n"] == 2

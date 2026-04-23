@@ -13,9 +13,7 @@ from pyramids.dataset import Dataset, DatasetCollection
 @pytest.fixture(scope="module")
 def small_collection(rasters_folder_path: str) -> DatasetCollection:
     """A 6-slice DatasetCollection read from the existing test fixture dir."""
-    dc = DatasetCollection.read_multiple_files(
-        rasters_folder_path, with_order=False
-    )
+    dc = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
     dc.open_multi_dataset(band=0)
     return dc
 
@@ -107,9 +105,7 @@ class TestToCogStackKwargs:
 class TestToCogStackPrecondition:
     """M1: to_cog_stack must fail loudly if open_multi_dataset wasn't called."""
 
-    def test_raises_when_values_not_loaded(
-        self, rasters_folder_path: str, tmp_path
-    ):
+    def test_raises_when_values_not_loaded(self, rasters_folder_path: str, tmp_path):
         """Calling to_cog_stack without open_multi_dataset raises DatasetNotFoundError.
 
         Test scenario:
@@ -123,11 +119,13 @@ class TestToCogStackPrecondition:
             rasters_folder_path, with_order=False
         )
         # Deliberately skip open_multi_dataset
-        with pytest.raises(DatasetNotFoundError, match="open_multi_dataset") as exc_info:
+        with pytest.raises(
+            DatasetNotFoundError, match="open_multi_dataset"
+        ) as exc_info:
             dc.to_cog_stack(tmp_path / "out")
-        assert "open_multi_dataset" in str(exc_info.value), (
-            f"Error message must name the missing method; got: {exc_info.value}"
-        )
+        assert "open_multi_dataset" in str(
+            exc_info.value
+        ), f"Error message must name the missing method; got: {exc_info.value}"
 
     def test_succeeds_after_open_multi_dataset(
         self, rasters_folder_path: str, tmp_path
@@ -143,9 +141,9 @@ class TestToCogStackPrecondition:
         )
         dc.open_multi_dataset(band=0)
         paths = dc.to_cog_stack(tmp_path / "out")
-        assert len(paths) == dc.time_length, (
-            f"Expected {dc.time_length} outputs, got {len(paths)}"
-        )
+        assert (
+            len(paths) == dc.time_length
+        ), f"Expected {dc.time_length} outputs, got {len(paths)}"
 
 
 class TestToCogStackPreconditionDirectSetter:
@@ -173,9 +171,9 @@ class TestToCogStackPreconditionDirectSetter:
         synthetic = np.zeros(dc.values.shape, dtype=dc.values.dtype)
         dc.values = synthetic
         paths = dc.to_cog_stack(tmp_path / "out")
-        assert len(paths) == dc.time_length, (
-            f"Expected {dc.time_length} outputs, got {len(paths)}"
-        )
+        assert (
+            len(paths) == dc.time_length
+        ), f"Expected {dc.time_length} outputs, got {len(paths)}"
 
     def test_error_message_mentions_direct_assignment(
         self, rasters_folder_path: str, tmp_path
@@ -196,9 +194,7 @@ class TestToCogStackPreconditionDirectSetter:
         with pytest.raises(DatasetNotFoundError) as exc_info:
             dc.to_cog_stack(tmp_path / "out")
         msg = str(exc_info.value)
-        assert "open_multi_dataset" in msg, (
-            f"Error must mention open_multi_dataset: {msg}"
-        )
-        assert ".values" in msg, (
-            f"Error must mention .values setter path: {msg}"
-        )
+        assert (
+            "open_multi_dataset" in msg
+        ), f"Error must mention open_multi_dataset: {msg}"
+        assert ".values" in msg, f"Error must mention .values setter path: {msg}"

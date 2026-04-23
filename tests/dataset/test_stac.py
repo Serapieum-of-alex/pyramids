@@ -25,7 +25,10 @@ def three_tifs(tmp_path):
     for i in range(3):
         arr = np.full((3, 4), float(i + 1), dtype=np.float32)
         ds = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 3.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         p = str(tmp_path / f"tile_{i}.tif")
         ds.to_file(p)
@@ -70,9 +73,9 @@ class TestFromStac:
         collection = DatasetCollection.from_stac(stac_items, asset="data")
         left = [Path(p).resolve() for p in collection.files]
         right = [Path(p).resolve() for p in three_tifs]
-        assert left == right, (
-            f"files mismatch (normalised): got {left}, expected {right}"
-        )
+        assert (
+            left == right
+        ), f"files mismatch (normalised): got {left}, expected {right}"
 
     def test_lazy_data_computes(self, stac_items):
         try:
@@ -105,7 +108,9 @@ class TestBboxAndMaxItems:
 
     def test_bbox_filters_items(self, stac_items):
         collection = DatasetCollection.from_stac(
-            stac_items, asset="data", bbox=(0.0, 0.0, 0.5, 0.5),
+            stac_items,
+            asset="data",
+            bbox=(0.0, 0.0, 0.5, 0.5),
         )
         # Every fixture item claims bbox [0,0,1,1] so they all intersect.
         assert collection.time_length == 3
@@ -113,13 +118,16 @@ class TestBboxAndMaxItems:
     def test_bbox_excludes_non_intersecting(self, stac_items):
         with pytest.raises(ValueError, match="at least one path"):
             DatasetCollection.from_stac(
-                stac_items, asset="data",
+                stac_items,
+                asset="data",
                 bbox=(100.0, 100.0, 200.0, 200.0),
             )
 
     def test_max_items_caps(self, stac_items):
         collection = DatasetCollection.from_stac(
-            stac_items, asset="data", max_items=2,
+            stac_items,
+            asset="data",
+            max_items=2,
         )
         assert collection.time_length == 2
 
@@ -140,8 +148,7 @@ class TestAssetShapes:
         from types import SimpleNamespace
 
         items = [
-            {"assets": {"data": SimpleNamespace(href=path)}}
-            for path in three_tifs
+            {"assets": {"data": SimpleNamespace(href=path)}} for path in three_tifs
         ]
         collection = DatasetCollection.from_stac(items, asset="data")
         assert collection.time_length == 3

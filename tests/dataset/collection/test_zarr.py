@@ -16,7 +16,6 @@ import pytest
 
 from pyramids.dataset import Dataset, DatasetCollection
 
-
 try:
     import dask.array  # noqa: F401
     import zarr
@@ -26,9 +25,7 @@ except ImportError:  # pragma: no cover
     HAS_ZARR = False
 
 
-requires_zarr = pytest.mark.skipif(
-    not HAS_ZARR, reason="zarr + dask not installed"
-)
+requires_zarr = pytest.mark.skipif(not HAS_ZARR, reason="zarr + dask not installed")
 
 
 @pytest.fixture
@@ -37,7 +34,10 @@ def three_files(tmp_path):
     for i in range(3):
         arr = np.full((3, 4), float(i + 1), dtype=np.float32)
         ds = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 3.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         p = str(tmp_path / f"f{i}.tif")
         ds.to_file(p)
@@ -124,7 +124,10 @@ class TestErrors:
     def test_no_files_raises(self):
         arr = np.zeros((3, 4), dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 3.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         collection = DatasetCollection(src, time_length=1)
         with pytest.raises(RuntimeError, match="file-backed"):

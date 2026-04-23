@@ -45,9 +45,7 @@ Ported from odc-loader's ``GDAL_CLOUD_DEFAULTS`` with two additions
 """
 
 
-def _expand_credentials(
-    prefix: str, creds: dict[str, Any] | None
-) -> dict[str, str]:
+def _expand_credentials(prefix: str, creds: dict[str, Any] | None) -> dict[str, str]:
     """Expand a credentials dict into ``PREFIX_KEY=value`` entries.
 
     For example ``_expand_credentials("AWS", {"aws_unsigned": True})``
@@ -230,14 +228,11 @@ def configure_lazy_vector(
     if target_bytes_per_partition is not None:
         from pyramids.feature import collection as _fc_mod
 
-        _fc_mod._LAZY_TARGET_BYTES_PER_PARTITION = int(
-            target_bytes_per_partition
-        )
-        applied["target_bytes_per_partition"] = int(
-            target_bytes_per_partition
-        )
+        _fc_mod._LAZY_TARGET_BYTES_PER_PARTITION = int(target_bytes_per_partition)
+        applied["target_bytes_per_partition"] = int(target_bytes_per_partition)
     logger.debug(
-        "configure_lazy_vector applied %d setting(s)", len(applied),
+        "configure_lazy_vector applied %d setting(s)",
+        len(applied),
     )
     if client is not None:
         _register_lazy_vector_worker_plugin(client, applied)
@@ -245,7 +240,8 @@ def configure_lazy_vector(
 
 
 def _register_lazy_vector_worker_plugin(
-    client: Any, settings: dict[str, Any],
+    client: Any,
+    settings: dict[str, Any],
 ) -> None:
     """Replay :func:`configure_lazy_vector` settings on every dask worker."""
     from dask.distributed import WorkerPlugin
@@ -275,5 +271,6 @@ def _register_lazy_vector_worker_plugin(
         client.register_plugin(plugin, name="pyramids-configure-lazy-vector")
     except AttributeError:  # pragma: no cover - old dask API
         client.register_worker_plugin(
-            plugin, name="pyramids-configure-lazy-vector",
+            plugin,
+            name="pyramids-configure-lazy-vector",
         )

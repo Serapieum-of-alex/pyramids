@@ -27,7 +27,7 @@ then reduce.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 import pandas as pd
@@ -49,7 +49,7 @@ _STAT_FUNCS = {
 }
 
 
-def _rasterize_labels(ds: "Dataset", fc: "FeatureCollection") -> np.ndarray:
+def _rasterize_labels(ds: Dataset, fc: FeatureCollection) -> np.ndarray:
     """Rasterize ``fc`` into an integer label array shaped like ``ds``.
 
     Label values are 0-based feature-index integers. Pixels not
@@ -96,7 +96,9 @@ def _rasterize_labels(ds: "Dataset", fc: "FeatureCollection") -> np.ndarray:
     label_ds.SetProjection(ds.raster.GetProjection())
     label_ds.GetRasterBand(1).Fill(-1)
     gdal.RasterizeLayer(
-        label_ds, [1], layer,
+        label_ds,
+        [1],
+        layer,
         options=["ATTRIBUTE=pid", "ALL_TOUCHED=FALSE"],
     )
     labels = label_ds.GetRasterBand(1).ReadAsArray()
@@ -109,8 +111,8 @@ _BINCOUNT_STATS = {"mean", "sum", "count"}
 
 
 def _rasterize_zonal_stats(
-    ds: "Dataset",
-    fc: "FeatureCollection",
+    ds: Dataset,
+    fc: FeatureCollection,
     stats: Sequence[str],
     band: int,
     no_data: float | None,
@@ -133,9 +135,7 @@ def _rasterize_zonal_stats(
 
     columns: dict[str, np.ndarray] = {}
     if stats_bincount:
-        columns.update(
-            _bincount_stats(raster, labels, n_features, stats_bincount)
-        )
+        columns.update(_bincount_stats(raster, labels, n_features, stats_bincount))
     if stats_loop:
         loop_cols: dict[str, list[float]] = {s: [] for s in stats_loop}
         for pid in range(n_features):
@@ -171,8 +171,11 @@ def _bincount_stats(
         minlength=minlength,
     )[1:]
     counts = np.bincount(
-        flat_labels[valid_mask], minlength=minlength,
-    )[1:].astype(np.float64)
+        flat_labels[valid_mask],
+        minlength=minlength,
+    )[
+        1:
+    ].astype(np.float64)
     out: dict[str, np.ndarray] = {}
     if "sum" in stats:
         out["sum"] = sums
@@ -205,8 +208,8 @@ def _apply_stat(stat: str, vals: np.ndarray) -> float:
 
 
 def zonal_stats(
-    ds: "Dataset",
-    fc: "FeatureCollection",
+    ds: Dataset,
+    fc: FeatureCollection,
     *,
     stats: Sequence[str] = ("mean",),
     method: str = "rasterize",
@@ -264,9 +267,7 @@ def zonal_stats(
         no_data = no_data_list[band] if no_data_list else None
         result = _rasterize_zonal_stats(ds, fc, stats, band, no_data)
     else:
-        raise ValueError(
-            f"method must be 'rasterize', got {method!r}"
-        )
+        raise ValueError(f"method must be 'rasterize', got {method!r}")
     return result
 
 

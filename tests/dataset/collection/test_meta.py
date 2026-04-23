@@ -25,7 +25,10 @@ from pyramids.dataset import Dataset, DatasetCollection
 def template_file(tmp_path):
     arr = np.arange(20, dtype=np.float32).reshape(4, 5)
     ds = Dataset.create_from_array(
-        arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+        arr,
+        top_left_corner=(0.0, 4.0),
+        cell_size=1.0,
+        epsg=4326,
     )
     path = str(tmp_path / "tpl.tif")
     ds.to_file(path)
@@ -38,7 +41,10 @@ def three_files(tmp_path):
     for i in range(3):
         arr = np.full((4, 5), i, dtype=np.float32)
         ds = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 4.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         p = str(tmp_path / f"f{i}.tif")
         ds.to_file(p)

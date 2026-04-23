@@ -59,17 +59,15 @@ class TestFallbackValidateGdalOpenRaises:
         monkeypatch.setattr(gdal_mod, "Open", boom)
         with pytest.raises(RuntimeError, match="cannot read") as exc_info:
             _fallback_validate(str(p))
-        assert "cannot read" in str(exc_info.value), (
-            f"Expected 'cannot read' in exception, got: {exc_info.value}"
-        )
+        assert "cannot read" in str(
+            exc_info.value
+        ), f"Expected 'cannot read' in exception, got: {exc_info.value}"
 
 
 class TestToCogOverviewCountBoundary:
     """Gap: ``to_cog(overview_count=0)`` — no overviews requested."""
 
-    def test_zero_overviews_produces_valid_cog(
-        self, small_float_dataset, tmp_path
-    ):
+    def test_zero_overviews_produces_valid_cog(self, small_float_dataset, tmp_path):
         """Test to_cog with overview_count=0 writes a COG with no overviews.
 
         Test scenario:
@@ -77,16 +75,12 @@ class TestToCogOverviewCountBoundary:
             small rasters where overviews would be wasted bytes). The
             output should still be a valid COG.
         """
-        out = small_float_dataset.to_cog(
-            tmp_path / "no_ovr.tif", overview_count=0
-        )
+        out = small_float_dataset.to_cog(tmp_path / "no_ovr.tif", overview_count=0)
         assert out.exists(), f"Output file must exist: {out}"
         reopened = gdal.Open(str(out))
         try:
             ovr_count = reopened.GetRasterBand(1).GetOverviewCount()
-            assert ovr_count == 0, (
-                f"Expected 0 overviews, got {ovr_count}"
-            )
+            assert ovr_count == 0, f"Expected 0 overviews, got {ovr_count}"
         finally:
             reopened = None
 
@@ -105,16 +99,14 @@ class TestToCogBlocksizeBoundaries:
         reopened = gdal.Open(str(out))
         try:
             bx, by = reopened.GetRasterBand(1).GetBlockSize()
-            assert bx == 64 and by == 64, (
-                f"Expected blocksize (64, 64), got ({bx}, {by})"
-            )
+            assert (
+                bx == 64 and by == 64
+            ), f"Expected blocksize (64, 64), got ({bx}, {by})"
         finally:
             reopened = None
 
     @pytest.mark.parametrize("bad", [32, 63, 65, 500, 8192])
-    def test_invalid_blocksize_rejected(
-        self, small_float_dataset, tmp_path, bad
-    ):
+    def test_invalid_blocksize_rejected(self, small_float_dataset, tmp_path, bad):
         """Test invalid blocksizes raise ValueError before I/O.
 
         Args:
@@ -128,20 +120,18 @@ class TestToCogBlocksizeBoundaries:
         target = tmp_path / f"bad_{bad}.tif"
         with pytest.raises(ValueError, match=r"power of 2") as exc_info:
             small_float_dataset.to_cog(target, blocksize=bad)
-        assert not target.exists(), (
-            f"No file should be created on validation failure: {target}"
-        )
-        assert "power of 2" in str(exc_info.value), (
-            f"Error message must mention 'power of 2'; got: {exc_info.value}"
-        )
+        assert (
+            not target.exists()
+        ), f"No file should be created on validation failure: {target}"
+        assert "power of 2" in str(
+            exc_info.value
+        ), f"Error message must mention 'power of 2'; got: {exc_info.value}"
 
 
 class TestToCogOptionInteractions:
     """Gap: ``to_cog`` boolean option interactions (add_mask + sparse_ok)."""
 
-    def test_add_mask_and_sparse_ok_both_true(
-        self, small_float_dataset, tmp_path
-    ):
+    def test_add_mask_and_sparse_ok_both_true(self, small_float_dataset, tmp_path):
         """Test add_mask=True and sparse_ok=True combine without error.
 
         Test scenario:
@@ -163,18 +153,14 @@ class TestToCogOptionInteractions:
         finally:
             reopened = None
 
-    def test_statistics_false_skips_stats(
-        self, small_float_dataset, tmp_path
-    ):
+    def test_statistics_false_skips_stats(self, small_float_dataset, tmp_path):
         """Test statistics=False produces a file without embedded band stats.
 
         Test scenario:
             When ``statistics=False``, the COG driver should not compute
             or embed ``STATISTICS_*`` metadata — the user opted out.
         """
-        out = small_float_dataset.to_cog(
-            tmp_path / "no_stats.tif", statistics=False
-        )
+        out = small_float_dataset.to_cog(tmp_path / "no_stats.tif", statistics=False)
         reopened = gdal.Open(str(out))
         try:
             band_meta = reopened.GetRasterBand(1).GetMetadata()
@@ -202,9 +188,9 @@ class TestCloudConfigExitContract:
         cfg = CloudConfig(aws_region="eu-west-1")
         cfg.__enter__()
         result = cfg.__exit__(None, None, None)
-        assert not result, (
-            f"__exit__ must return a falsy value on normal exit; got {result!r}"
-        )
+        assert (
+            not result
+        ), f"__exit__ must return a falsy value on normal exit; got {result!r}"
 
     def test_exit_does_not_swallow_exception(self):
         """Test exceptions inside the with block are re-raised.
@@ -222,9 +208,7 @@ class TestCloudConfigExitContract:
 class TestToCogPathHandling:
     """Gap: Dataset.to_cog path handling — literal filenames with no templating."""
 
-    def test_literal_filename_passes_through(
-        self, small_float_dataset, tmp_path
-    ):
+    def test_literal_filename_passes_through(self, small_float_dataset, tmp_path):
         """to_cog accepts a fully-literal path with no placeholders.
 
         Test scenario:
@@ -234,6 +218,6 @@ class TestToCogPathHandling:
             verbatim.
         """
         out = small_float_dataset.to_cog(tmp_path / "fixed_name.tif")
-        assert out.name == "fixed_name.tif", (
-            f"Path passed through unchanged; got {out.name!r}"
-        )
+        assert (
+            out.name == "fixed_name.tif"
+        ), f"Path passed through unchanged; got {out.name!r}"

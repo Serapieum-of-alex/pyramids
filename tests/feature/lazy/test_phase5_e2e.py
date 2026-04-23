@@ -18,7 +18,6 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
-
 try:
     import dask_geopandas  # noqa: F401
 
@@ -38,9 +37,7 @@ except ImportError:  # pragma: no cover
 requires_dask_geopandas = pytest.mark.skipif(
     not HAS_DASK_GP, reason="dask-geopandas not installed"
 )
-requires_pyarrow = pytest.mark.skipif(
-    not HAS_PYARROW, reason="pyarrow not installed"
-)
+requires_pyarrow = pytest.mark.skipif(not HAS_PYARROW, reason="pyarrow not installed")
 
 
 class TestPhase5Pipelines:
@@ -57,7 +54,9 @@ class TestPhase5Pipelines:
         p = tmp_path / "pts.geojson"
         gdf.to_file(p, driver="GeoJSON")
         lazy = FeatureCollection.read_file(
-            str(p), backend="dask", npartitions=4,
+            str(p),
+            backend="dask",
+            npartitions=4,
         )
         shuffled = lazy.spatial_shuffle(by="hilbert")
         materialised = shuffled.compute()
@@ -78,7 +77,9 @@ class TestPhase5Pipelines:
         p = tmp_path / "pts.parquet"
         gdf.to_parquet(p)
         lazy = FeatureCollection.read_parquet(
-            str(p), backend="dask", filters=[("class", "=", "water")],
+            str(p),
+            backend="dask",
+            filters=[("class", "=", "water")],
         )
         shuffled = lazy.spatial_shuffle(by="morton")
         materialised = shuffled.compute()

@@ -30,7 +30,6 @@ from osgeo import gdal, osr
 
 from pyramids.dataset import Dataset
 
-
 try:
     import dask.array  # noqa: F401
     import dask.delayed  # noqa: F401
@@ -92,12 +91,16 @@ class TestDatasetLazyPipelines:
         """
         src = Dataset.read_file(source_tif)
         lazy = src.map_blocks(
-            lambda a: a * 2.0, chunks=(5, 6), band=0,
+            lambda a: a * 2.0,
+            chunks=(5, 6),
+            band=0,
         )
         scratch_path = str(tmp_path / "scratch.tif")
         scratch = Dataset.create_from_array(
-            lazy.compute(), top_left_corner=src.top_left_corner,
-            cell_size=src.cell_size, epsg=src.epsg,
+            lazy.compute(),
+            top_left_corner=src.top_left_corner,
+            cell_size=src.cell_size,
+            epsg=src.epsg,
         )
         scratch.to_file(scratch_path)
 
@@ -123,11 +126,15 @@ class TestDatasetLazyPipelines:
         """Materialise map_blocks then to_zarr preserves element values."""
         src = Dataset.read_file(source_tif)
         doubled_arr = src.map_blocks(
-            lambda a: a * 2.0, chunks=(5, 6), band=0,
+            lambda a: a * 2.0,
+            chunks=(5, 6),
+            band=0,
         ).compute()
         scratch = Dataset.create_from_array(
-            doubled_arr, top_left_corner=src.top_left_corner,
-            cell_size=src.cell_size, epsg=src.epsg,
+            doubled_arr,
+            top_left_corner=src.top_left_corner,
+            cell_size=src.cell_size,
+            epsg=src.epsg,
         )
         # Save to disk so to_zarr's lazy reader has a path.
         tif_path = str(tmp_path / "scratch.tif")
@@ -151,7 +158,8 @@ class TestDatasetLazyPipelines:
         via_zarr.to_raster(out_tif)
         reloaded = Dataset.read_file(out_tif)
         np.testing.assert_array_equal(
-            reloaded.read_array(), src.read_array(),
+            reloaded.read_array(),
+            src.read_array(),
         )
 
     def test_reprojector_pickle_across_subprocess(self, source_tif):
@@ -163,7 +171,8 @@ class TestDatasetLazyPipelines:
         ctx = multiprocessing.get_context("spawn")
         with ctx.Pool(1) as pool:
             epsg, rows, cols = pool.apply(
-                _pickle_reprojector_worker, (payload, source_tif),
+                _pickle_reprojector_worker,
+                (payload, source_tif),
             )
         assert epsg == 3857
         assert rows > 0 and cols > 0

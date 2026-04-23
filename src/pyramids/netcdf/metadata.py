@@ -8,16 +8,16 @@ from typing import Any, cast
 
 from osgeo import gdal
 
+from pyramids.netcdf.cf import classify_variables, parse_conventions
 from pyramids.netcdf.dimensions import MetaData as SharedMetaData
 from pyramids.netcdf.models import (
     CFInfo,
-    VariableInfo,
     DimensionInfo,
     GroupInfo,
     NetCDFMetadata,
     StructuralInfo,
+    VariableInfo,
 )
-from pyramids.netcdf.cf import classify_variables, parse_conventions
 from pyramids.netcdf.utils import (
     _get_driver_name,
     _get_root_group,
@@ -138,9 +138,7 @@ class MetadataBuilder:
             "version": getattr(gdal, "__version__", "unknown"),
         }
 
-        cf_info = self._build_cf_info(
-            variables_map, dimensions_map, global_attrs
-        )
+        cf_info = self._build_cf_info(variables_map, dimensions_map, global_attrs)
 
         return NetCDFMetadata(
             driver=driver_name,
@@ -172,9 +170,7 @@ class MetadataBuilder:
             CFInfo with classifications, grid_mappings, bounds_map.
         """
 
-        conventions = parse_conventions(
-            global_attrs.get("Conventions")
-        )
+        conventions = parse_conventions(global_attrs.get("Conventions"))
         classifications = classify_variables(variables, dimensions)
 
         grid_mappings: dict[str, dict[str, Any]] = {}
@@ -188,10 +184,7 @@ class MetadataBuilder:
             if isinstance(bounds_ref, str):
                 bounds_map[bounds_ref] = var.name
 
-        data_vars = [
-            name for name, role in classifications.items()
-            if role == "data"
-        ]
+        data_vars = [name for name, role in classifications.items() if role == "data"]
 
         return CFInfo(
             cf_version=conventions.get("CF"),
@@ -324,7 +317,9 @@ class GroupTraverser:
             if md_arr is None:
                 continue
 
-            variable_info = VariableInfo.from_md_array(md_arr, md_arr_name, group_full_name)
+            variable_info = VariableInfo.from_md_array(
+                md_arr, md_arr_name, group_full_name
+            )
 
             key = variable_info.full_name.lstrip("/")
             self.variables[key] = variable_info
@@ -670,10 +665,7 @@ def from_json(s: str) -> NetCDFMetadata:
         )
 
     groups = {k: build_group(v) for k, v in d.get("groups", {}).items()}
-    variables = {
-        k: build_array(v)
-        for k, v in d.get("variables", {}).items()
-    }
+    variables = {k: build_array(v) for k, v in d.get("variables", {}).items()}
     dims = {k: build_dim(v) for k, v in d.get("dimensions", {}).items()}
 
     structural = d.get("structural")

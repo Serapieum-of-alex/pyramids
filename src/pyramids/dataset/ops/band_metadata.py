@@ -823,17 +823,11 @@ class BandMetadata:
                 A DataFrame with columns ["band", "values", "red", "green", "blue",
                 "alpha"] describing the color table.
         """
-        df = pd.DataFrame(
-            columns=["band", "values", "red", "green", "blue", "alpha"]
-        )
-        band_iter: Iterable[int] = (
-            range(self.band_count) if band is None else [band]
-        )
+        df = pd.DataFrame(columns=["band", "values", "red", "green", "blue", "alpha"])
+        band_iter: Iterable[int] = range(self.band_count) if band is None else [band]
         row = 0
         for band in band_iter:
-            color_table = self.raster.GetRasterBand(
-                band + 1
-            ).GetRasterColorTable()
+            color_table = self.raster.GetRasterBand(band + 1).GetRasterColorTable()
             for i in range(color_table.GetCount()):
                 df.loc[row, ["red", "green", "blue", "alpha"]] = (
                     color_table.GetColorEntry(i)
@@ -879,7 +873,9 @@ class BandMetadata:
                 no_data_value[i] = self.numpy_dtype[i](DEFAULT_NO_DATA_VALUE)
         return no_data_value
 
-    def _set_no_data_value(self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE) -> None:
+    def _set_no_data_value(
+        self, no_data_value: Any | list = DEFAULT_NO_DATA_VALUE
+    ) -> None:
         """setNoDataValue.
             - Set the no data value in all raster bands.
             - Fill the whole raster with the no_data_value.

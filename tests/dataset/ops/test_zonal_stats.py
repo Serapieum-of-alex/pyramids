@@ -21,7 +21,10 @@ def raster(tmp_path):
     """10x10 raster, value = row * 10 + col (0..99)."""
     arr = np.arange(100, dtype=np.float32).reshape(10, 10)
     ds = Dataset.create_from_array(
-        arr, top_left_corner=(0.0, 10.0), cell_size=1.0, epsg=4326,
+        arr,
+        top_left_corner=(0.0, 10.0),
+        cell_size=1.0,
+        epsg=4326,
     )
     path = str(tmp_path / "grid.tif")
     ds.to_file(path)
@@ -65,7 +68,8 @@ class TestRasterizeMean:
 class TestMultipleStats:
     def test_mean_sum_min_max(self, raster, two_boxes):
         result = raster.zonal_stats(
-            two_boxes, stats=("mean", "sum", "min", "max"),
+            two_boxes,
+            stats=("mean", "sum", "min", "max"),
         )
         first = result.iloc[0]
         vals = [0, 1, 10, 11]
@@ -84,12 +88,13 @@ class TestMultipleStats:
             unreachable from the mean/sum-only paths.
         """
         result = raster.zonal_stats(two_boxes, stats=("count",))
-        assert list(result.columns) == ["count"], (
-            f"Expected a single 'count' column, got {list(result.columns)}"
-        )
-        assert result["count"].tolist() == [4.0, 4.0], (
-            f"Every 2x2 box must cover 4 pixels, got {result['count'].tolist()}"
-        )
+        assert list(result.columns) == [
+            "count"
+        ], f"Expected a single 'count' column, got {list(result.columns)}"
+        assert result["count"].tolist() == [
+            4.0,
+            4.0,
+        ], f"Every 2x2 box must cover 4 pixels, got {result['count'].tolist()}"
 
     def test_std_on_empty_cohort_returns_nan(self, raster, tmp_path):
         """An off-raster polygon yields an empty pixel cohort → NaN.
@@ -107,9 +112,9 @@ class TestMultipleStats:
         )
         fc = FeatureCollection(off_raster)
         result = raster.zonal_stats(fc, stats=("std",))
-        assert np.isnan(result.iloc[0]["std"]), (
-            f"Empty cohort must yield NaN, got {result.iloc[0]['std']}"
-        )
+        assert np.isnan(
+            result.iloc[0]["std"]
+        ), f"Empty cohort must yield NaN, got {result.iloc[0]['std']}"
 
     def test_std_with_all_nan_pixels_returns_nan(self, tmp_path, two_boxes):
         """All-NaN pixel cohort → NaN via the ``valid.size == 0`` branch.
@@ -132,9 +137,9 @@ class TestMultipleStats:
         ds.to_file(path)
         nodata_raster = Dataset.read_file(path)
         result = nodata_raster.zonal_stats(two_boxes, stats=("std",))
-        assert np.isnan(result.iloc[0]["std"]), (
-            f"All-NaN cohort must yield NaN, got {result.iloc[0]['std']}"
-        )
+        assert np.isnan(
+            result.iloc[0]["std"]
+        ), f"All-NaN cohort must yield NaN, got {result.iloc[0]['std']}"
 
 
 class TestStatValidation:

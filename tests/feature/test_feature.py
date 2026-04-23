@@ -57,21 +57,19 @@ class TestToFile:
 class TestCreatePolygon:
     """ARC-15: create_polygon is unconditional-Polygon; polygon_wkt gives WKT."""
 
-    def test_create_polygon_returns_polygon(
-        self, coordinates: List[Tuple[int, int]]
-    ):
+    def test_create_polygon_returns_polygon(self, coordinates: List[Tuple[int, int]]):
         result = FeatureCollection.create_polygon(coordinates)
         assert isinstance(result, Polygon)
 
-    def test_polygon_wkt(self, coordinates: List[Tuple[int, int]], coordinates_wkt: str):
+    def test_polygon_wkt(
+        self, coordinates: List[Tuple[int, int]], coordinates_wkt: str
+    ):
         """``polygon_wkt`` returns the WKT string (no deprecation)."""
         wkt = FeatureCollection.polygon_wkt(coordinates)
         assert isinstance(wkt, str)
         assert wkt == coordinates_wkt
 
-    def test_create_polygon_wkt_kwarg_is_gone(
-        self, coordinates: List[Tuple[int, int]]
-    ):
+    def test_create_polygon_wkt_kwarg_is_gone(self, coordinates: List[Tuple[int, int]]):
         """D-H2: the ARC-15 ``wkt=`` kwarg is deleted outright.
 
         Test scenario:
@@ -111,9 +109,7 @@ class TestCreatePolygon:
             is the minimum-valid input and must construct a Polygon
             successfully.
         """
-        triangle = FeatureCollection.create_polygon(
-            [(0, 0), (1, 0), (0, 1)]
-        )
+        triangle = FeatureCollection.create_polygon([(0, 0), (1, 0), (0, 1)])
         assert isinstance(triangle, Polygon)
         assert not triangle.is_empty
 
@@ -132,9 +128,7 @@ class TestCreatePoint:
         assert len(fc["geometry"]) == len(coordinates)
         assert fc.epsg == 4326
 
-    def test_create_point_method_is_gone(
-        self, coordinates: List[Tuple[int, int]]
-    ):
+    def test_create_point_method_is_gone(self, coordinates: List[Tuple[int, int]]):
         """D-H2: the polymorphic ``create_point`` dispatcher is deleted.
 
         Test scenario:
@@ -181,7 +175,9 @@ class TestToDataset:
             dataset = Dataset.read_file(raster_1band_coello_path)
             polygon_corner_coello_gdf["column_2"] = 2
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = Dataset.from_features(vector, template=dataset, column_name="column_2")
+            src = Dataset.from_features(
+                vector, template=dataset, column_name="column_2"
+            )
             assert src.epsg == polygon_corner_coello_gdf.crs.to_epsg()
 
             arr = src.read_array()
@@ -198,8 +194,8 @@ class TestToDataset:
             polygon_corner_coello_gdf["column_2"] = 2
             polygon_corner_coello_gdf["column_3"] = 3
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = Dataset.from_features(vector, 
-                template=dataset, column_name=["column_2", "column_3"]
+            src = Dataset.from_features(
+                vector, template=dataset, column_name=["column_2", "column_3"]
             )
             arr = src.read_array()
             assert arr.shape == (2, 13, 14)
@@ -230,7 +226,9 @@ class TestToDataset:
             required_cell_size = 8000
 
             vector = FeatureCollection(polygon_corner_coello_gdf)
-            src = Dataset.from_features(vector, cell_size=required_cell_size, column_name=None)
+            src = Dataset.from_features(
+                vector, cell_size=required_cell_size, column_name=None
+            )
             assert src.cell_size == required_cell_size
             arr = src.read_array()
             assert arr.shape == (3, 2, 2)
@@ -246,7 +244,9 @@ class TestToDataset:
         def test_multi_polygon(self, polygons_coello_gdf: GeoDataFrame):
             required_cell_size = 4000
             vector = FeatureCollection(polygons_coello_gdf)
-            src = Dataset.from_features(vector, cell_size=required_cell_size, column_name=None)
+            src = Dataset.from_features(
+                vector, cell_size=required_cell_size, column_name=None
+            )
             arr = src.read_array()
             assert arr.shape == (3, 13, 13)
 
@@ -255,9 +255,7 @@ class TestMultiGeomHandler:
     def test_multi_points_with_multiple_point(
         self, multi_point_geom, point_coords: list
     ):
-        res = FeatureCollection._multi_geom_handler(
-            multi_point_geom, "x", "MultiPoint"
-        )
+        res = FeatureCollection._multi_geom_handler(multi_point_geom, "x", "MultiPoint")
         assert all(np.isclose(res, [point_coords[0], point_coords[0]], rtol=0.00001))
 
     def test_multi_points_with_one_point(
@@ -298,14 +296,10 @@ class TestWithCoordinates:
         feature = FeatureCollection(multi_points_gdf)
         result = feature.with_coordinates()
         assert all(
-            np.isclose(
-                result.loc[0, "y"], multi_points_gdf_y[0][0], rtol=0.000001
-            )
+            np.isclose(result.loc[0, "y"], multi_points_gdf_y[0][0], rtol=0.000001)
         )
         assert all(
-            np.isclose(
-                result.loc[0, "x"], multi_points_gdf_x[0][0], rtol=0.000001
-            )
+            np.isclose(result.loc[0, "x"], multi_points_gdf_x[0][0], rtol=0.000001)
         )
 
     def test_multi_points_2(self, multi_points_gdf_2: GeoDataFrame, point_coords_2):
@@ -415,9 +409,7 @@ class TestConcat:
         """
         from shapely.geometry import Point as _Pt
 
-        fc_a = FeatureCollection(
-            GeoDataFrame({"v": [1]}, geometry=[_Pt(0, 0)])
-        )
+        fc_a = FeatureCollection(GeoDataFrame({"v": [1]}, geometry=[_Pt(0, 0)]))
         fc_b = GeoDataFrame({"v": [2]}, geometry=[_Pt(1, 1)], crs="EPSG:4326")
 
         result = fc_a.concat(fc_b)
@@ -536,12 +528,10 @@ class TestWithCentroidDegenerateGeometries:
         with _w.catch_warnings(record=True) as caught:
             _w.simplefilter("always", GeometryWarning)
             fc.with_centroid()
-        geo_warnings = [
-            w for w in caught if issubclass(w.category, GeometryWarning)
-        ]
-        assert geo_warnings, (
-            f"expected a GeometryWarning; got {[w.category for w in caught]}"
-        )
+        geo_warnings = [w for w in caught if issubclass(w.category, GeometryWarning)]
+        assert (
+            geo_warnings
+        ), f"expected a GeometryWarning; got {[w.category for w in caught]}"
 
     def test_warning_can_be_filtered_by_category(self):
         """L6: ``filterwarnings("ignore", category=GeometryWarning)`` works.
@@ -570,12 +560,10 @@ class TestWithCentroidDegenerateGeometries:
             _w.simplefilter("always")
             _w.filterwarnings("ignore", category=GeometryWarning)
             fc.with_centroid()
-        geo_warnings = [
-            w for w in caught if issubclass(w.category, GeometryWarning)
-        ]
-        assert not geo_warnings, (
-            f"GeometryWarning should have been filtered out; got {geo_warnings}"
-        )
+        geo_warnings = [w for w in caught if issubclass(w.category, GeometryWarning)]
+        assert (
+            not geo_warnings
+        ), f"GeometryWarning should have been filtered out; got {geo_warnings}"
 
     def test_warning_lists_all_bad_row_indices(self):
         """C18: multiple NaN rows are all named in the warning message.
@@ -606,9 +594,9 @@ class TestWithCentroidDegenerateGeometries:
             fc.with_centroid()
         user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
         bodies = " ".join(str(w.message) for w in user_warnings)
-        assert "2 row(s)" in bodies or "[1, 3]" in bodies, (
-            f"warning should summarise the two bad rows; got {bodies}"
-        )
+        assert (
+            "2 row(s)" in bodies or "[1, 3]" in bodies
+        ), f"warning should summarise the two bad rows; got {bodies}"
 
 
 def test_old_names_are_gone():
@@ -643,6 +631,6 @@ def test_no_inplace_kwarg_on_public_methods():
             continue
         if "inplace" in sig.parameters:
             offenders.append(name)
-    assert not offenders, (
-        f"pyramids methods must not have inplace= (ARC-16): {offenders}"
-    )
+    assert (
+        not offenders
+    ), f"pyramids methods must not have inplace= (ARC-16): {offenders}"

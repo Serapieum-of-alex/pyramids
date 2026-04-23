@@ -17,9 +17,9 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import Point
 
-
 try:
     import dask_geopandas  # noqa: F401
+
     HAS_DASK_GP = True
 except ImportError:  # pragma: no cover
     HAS_DASK_GP = False
@@ -27,6 +27,7 @@ except ImportError:  # pragma: no cover
 
 try:
     import pyarrow  # noqa: F401
+
     HAS_PYARROW = True
 except ImportError:  # pragma: no cover
     HAS_PYARROW = False
@@ -35,9 +36,7 @@ except ImportError:  # pragma: no cover
 requires_dask_geopandas = pytest.mark.skipif(
     not HAS_DASK_GP, reason="dask-geopandas not installed"
 )
-requires_pyarrow = pytest.mark.skipif(
-    not HAS_PYARROW, reason="pyarrow not installed"
-)
+requires_pyarrow = pytest.mark.skipif(not HAS_PYARROW, reason="pyarrow not installed")
 
 
 @pytest.fixture

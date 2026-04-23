@@ -42,7 +42,6 @@ from osgeo import gdal, ogr
 
 from pyramids.base.remote import _to_vsi
 
-
 _DEFAULT_MAXSIZE = int(os.environ.get("PYRAMIDS_FILE_CACHE_MAXSIZE", "128"))
 
 
@@ -141,7 +140,7 @@ def gdal_mdarray_open(path: str, access: str = "read_only", **_: Any) -> gdal.Da
     return gdal.OpenEx(_to_vsi(path), flags)
 
 
-def ogr_open(path: str, access: str = "read_only", **_: Any) -> "ogr.DataSource":
+def ogr_open(path: str, access: str = "read_only", **_: Any) -> ogr.DataSource:
     """Open a vector datasource via :func:`ogr.Open`.
 
     Args:
@@ -197,7 +196,9 @@ class _LRUCache(MutableMapping):
             ```
     """
 
-    def __init__(self, maxsize: int, on_evict: Callable[[Hashable, Any], None] | None = None):
+    def __init__(
+        self, maxsize: int, on_evict: Callable[[Hashable, Any], None] | None = None
+    ):
         if maxsize < 1:
             raise ValueError(f"maxsize must be >= 1, got {maxsize}")
         self._cache: OrderedDict[Hashable, Any] = OrderedDict()
@@ -336,8 +337,9 @@ class _HashedSequence(list):
         return self.hashvalue
 
 
-def _make_cache_key(opener: Callable, path: str, access: str,
-                    kwargs: dict, manager_id: Hashable) -> _HashedSequence:
+def _make_cache_key(
+    opener: Callable, path: str, access: str, kwargs: dict, manager_id: Hashable
+) -> _HashedSequence:
     """Build the ``FILE_CACHE`` key for a :class:`CachingFileManager`.
 
     Kwargs are sorted so the same logical configuration always
@@ -363,7 +365,7 @@ class FileManager(ABC):
         """Return an open GDAL/OGR handle. Opens the file on first call."""
 
     @abstractmethod
-    def acquire_context(self) -> "contextmanager[Any]":  # type: ignore[type-arg]
+    def acquire_context(self) -> contextmanager[Any]:  # type: ignore[type-arg]
         """Context manager yielding an open handle; releases on exit."""
 
     @abstractmethod
@@ -421,20 +423,30 @@ class CachingFileManager(FileManager):
             self._lock = lock
         self._cache = cache if cache is not None else FILE_CACHE
         self._manager_id = manager_id if manager_id is not None else str(uuid.uuid4())
-        self._key = _make_cache_key(opener, path, access, self._kwargs, self._manager_id)
+        self._key = _make_cache_key(
+            opener, path, access, self._kwargs, self._manager_id
+        )
 
     def __getstate__(self) -> tuple:
         lock = None if self._use_default_lock else self._lock
         return (
-            self._opener, self._path, self._access, self._kwargs,
-            lock, self._manager_id,
+            self._opener,
+            self._path,
+            self._access,
+            self._kwargs,
+            lock,
+            self._manager_id,
         )
 
     def __setstate__(self, state: tuple) -> None:
         opener, path, access, kwargs, lock, manager_id = state
         self.__init__(
-            opener, path, access, kwargs,
-            lock=lock, manager_id=manager_id,
+            opener,
+            path,
+            access,
+            kwargs,
+            lock=lock,
+            manager_id=manager_id,
         )
 
     def acquire(self) -> Any:
@@ -497,7 +509,7 @@ class _NullLock:
     def release(self) -> None:
         pass
 
-    def __enter__(self) -> "_NullLock":
+    def __enter__(self) -> _NullLock:
         return self
 
     def __exit__(self, *_: Any) -> None:

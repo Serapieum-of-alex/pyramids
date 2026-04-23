@@ -32,8 +32,12 @@ def small_geojson(tmp_path: Path) -> Path:
     gdf = gpd.GeoDataFrame(
         {"id": [1, 2, 3, 4, 5, 6], "score": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]},
         geometry=[
-            Point(0, 0), Point(1, 1), Point(2, 2),
-            Point(3, 3), Point(4, 4), Point(5, 5),
+            Point(0, 0),
+            Point(1, 1),
+            Point(2, 2),
+            Point(3, 3),
+            Point(4, 4),
+            Point(5, 5),
         ],
         crs="EPSG:4326",
     )
@@ -139,9 +143,7 @@ class TestFromFeatures:
         with pytest.raises(ValueError) as exc_info:
             FeatureCollection.from_features([])
         msg = str(exc_info.value)
-        assert "geometry column" in msg, (
-            f"error message should explain why; got: {msg}"
-        )
+        assert "geometry column" in msg, f"error message should explain why; got: {msg}"
 
     def test_columns_order(self):
         feats = [
@@ -187,9 +189,7 @@ class TestFromRecords:
             {"geom": Point(0, 0), "v": 10},
             {"geom": Point(1, 1), "v": 20},
         ]
-        fc = FeatureCollection.from_records(
-            records, geometry="geom", crs=4326
-        )
+        fc = FeatureCollection.from_records(records, geometry="geom", crs=4326)
         assert len(fc) == 2
         # With a non-default geometry column name, that column IS the
         # active geometry column.
@@ -290,26 +290,20 @@ class TestIterFeaturesDictMode:
         assert feats[0]["geometry"]["type"] == "Point"
 
     def test_total_matches_full_read(self, small_geojson: Path):
-        total_streamed = sum(
-            1 for _ in FeatureCollection.iter_features(small_geojson)
-        )
+        total_streamed = sum(1 for _ in FeatureCollection.iter_features(small_geojson))
         total_loaded = len(FeatureCollection.read_file(small_geojson))
         assert total_streamed == total_loaded
 
     def test_bbox_filter_streamed(self, small_geojson: Path):
         feats = list(
-            FeatureCollection.iter_features(
-                small_geojson, bbox=(0.0, 0.0, 2.5, 2.5)
-            )
+            FeatureCollection.iter_features(small_geojson, bbox=(0.0, 0.0, 2.5, 2.5))
         )
         # points at (0,0), (1,1), (2,2) fall inside
         assert len(feats) == 3
 
     def test_where_filter_streamed(self, small_geojson: Path):
         feats = list(
-            FeatureCollection.iter_features(
-                small_geojson, where="score > 0.3"
-            )
+            FeatureCollection.iter_features(small_geojson, where="score > 0.3")
         )
         assert len(feats) == 3  # scores 0.4, 0.5, 0.6
 
@@ -321,9 +315,7 @@ class TestIterFeaturesChunked:
     """``chunksize=N`` yields FeatureCollection batches of up to N rows."""
 
     def test_yields_feature_collections(self, larger_geojson: Path):
-        chunks = list(
-            FeatureCollection.iter_features(larger_geojson, chunksize=10)
-        )
+        chunks = list(FeatureCollection.iter_features(larger_geojson, chunksize=10))
         assert all(isinstance(c, FeatureCollection) for c in chunks)
         # 50 features / 10 per chunk → 5 chunks.
         assert len(chunks) == 5
@@ -331,9 +323,7 @@ class TestIterFeaturesChunked:
 
     def test_last_chunk_can_be_short(self, larger_geojson: Path):
         """50 features at chunksize=15 → 15 + 15 + 15 + 5."""
-        chunks = list(
-            FeatureCollection.iter_features(larger_geojson, chunksize=15)
-        )
+        chunks = list(FeatureCollection.iter_features(larger_geojson, chunksize=15))
         sizes = [len(c) for c in chunks]
         assert sizes == [15, 15, 15, 5]
 
@@ -341,9 +331,7 @@ class TestIterFeaturesChunked:
         """Concatenating every chunk yields the full dataset."""
         import pandas as pd
 
-        chunks = list(
-            FeatureCollection.iter_features(larger_geojson, chunksize=7)
-        )
+        chunks = list(FeatureCollection.iter_features(larger_geojson, chunksize=7))
         combined = pd.concat(chunks)
         assert len(combined) == 50
         # Subclass identity survives pd.concat via _constructor.
@@ -351,11 +339,7 @@ class TestIterFeaturesChunked:
 
     def test_chunksize_less_than_one_raises(self, small_geojson: Path):
         with pytest.raises(ValueError, match="chunksize"):
-            list(
-                FeatureCollection.iter_features(
-                    small_geojson, chunksize=0
-                )
-            )
+            list(FeatureCollection.iter_features(small_geojson, chunksize=0))
 
     def test_chunked_with_filters(self, larger_geojson: Path):
         """bbox / where compose with chunking."""
@@ -383,17 +367,11 @@ class TestIterFeaturesIncludeIndex:
 
     def test_per_feature_include_index_adds_id(self, small_geojson: Path):
         """Unchunked + include_index injects sequential ``id`` keys."""
-        feats = list(
-            FeatureCollection.iter_features(
-                small_geojson, include_index=True
-            )
-        )
+        feats = list(FeatureCollection.iter_features(small_geojson, include_index=True))
         ids = [f["id"] for f in feats]
         assert ids == list(range(len(feats)))
 
-    def test_per_feature_default_id_is_not_row_index(
-        self, small_geojson: Path
-    ):
+    def test_per_feature_default_id_is_not_row_index(self, small_geojson: Path):
         """include_index=False preserves whatever ``id`` geopandas emits.
 
         Test scenario:
@@ -404,18 +382,14 @@ class TestIterFeaturesIncludeIndex:
             off, the key (if present) must NOT already be the
             absolute row index.
         """
-        feats = list(
-            FeatureCollection.iter_features(small_geojson)
-        )
+        feats = list(FeatureCollection.iter_features(small_geojson))
         ids = [f.get("id") for f in feats]
         # Not every geopandas version sets "id" in every feature; the
         # only invariant we care about is that without the flag, we do
         # NOT overwrite the value to the absolute row index.
         assert ids != list(range(len(feats))) or all(i is None for i in ids)
 
-    def test_chunked_include_index_adds_row_index_column(
-        self, larger_geojson: Path
-    ):
+    def test_chunked_include_index_adds_row_index_column(self, larger_geojson: Path):
         """Chunked + include_index adds a ``_row_index`` column per chunk."""
         chunks = list(
             FeatureCollection.iter_features(
@@ -428,9 +402,7 @@ class TestIterFeaturesIncludeIndex:
         second = chunks[1]
         assert list(second["_row_index"]) == list(range(10, 20))
 
-    def test_include_index_survives_python_bbox_filter(
-        self, larger_geojson: Path
-    ):
+    def test_include_index_survives_python_bbox_filter(self, larger_geojson: Path):
         """With tile_strategy='none' the bbox filter drops rows in Python;
         yielded indices must match the surviving source rows.
         """
@@ -446,9 +418,7 @@ class TestIterFeaturesIncludeIndex:
         # Points (0,0)..(4,4) are at indices 0..4 in the file.
         assert ids == [0, 1, 2, 3, 4]
 
-    def test_chunked_include_index_with_python_bbox_filter(
-        self, larger_geojson: Path
-    ):
+    def test_chunked_include_index_with_python_bbox_filter(self, larger_geojson: Path):
         """C14: Python-side bbox filter drops rows; surviving ``_row_index``
         values still match the absolute source positions.
         """
@@ -487,9 +457,7 @@ class TestIterFeaturesEnginePin:
     break pagination.
     """
 
-    def test_read_file_receives_engine_pyogrio(
-        self, larger_geojson: Path, monkeypatch
-    ):
+    def test_read_file_receives_engine_pyogrio(self, larger_geojson: Path, monkeypatch):
         captured: list = []
         import geopandas
 
@@ -500,9 +468,7 @@ class TestIterFeaturesEnginePin:
             return real_read_file(path, **kwargs)
 
         monkeypatch.setattr(geopandas, "read_file", _spy)
-        list(
-            FeatureCollection.iter_features(larger_geojson, chunksize=10)
-        )
+        list(FeatureCollection.iter_features(larger_geojson, chunksize=10))
         assert captured, "gpd.read_file must be invoked at least once"
         assert all(
             k.get("engine") == "pyogrio" for k in captured

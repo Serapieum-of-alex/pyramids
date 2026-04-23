@@ -19,12 +19,11 @@ installed.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from osgeo import gdal, osr
+from osgeo import osr
 
 if TYPE_CHECKING:
     from pyramids.dataset import Dataset
@@ -45,7 +44,7 @@ def _require_zarr() -> Any:
     return zarr
 
 
-def _metadata_dict(ds: "Dataset") -> dict[str, Any]:
+def _metadata_dict(ds: Dataset) -> dict[str, Any]:
     """Return the pyramids-convention attr dict that rioxarray can read."""
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(int(ds.epsg))
@@ -54,16 +53,14 @@ def _metadata_dict(ds: "Dataset") -> dict[str, Any]:
         "spatial_ref": srs.ExportToWkt(),
         "GeoTransform": " ".join(str(v) for v in ds.geotransform),
         "epsg": int(ds.epsg),
-        "no_data_value": [
-            None if v is None else float(v) for v in nodata_tuple
-        ],
+        "no_data_value": [None if v is None else float(v) for v in nodata_tuple],
         "band_names": list(ds.band_names) if ds.band_names else [],
         "dtype": str(np.dtype(ds.numpy_dtype[0])),
         "shape": [int(ds.band_count), int(ds.rows), int(ds.columns)],
     }
 
 
-def _build_dask_array(ds: "Dataset", chunks: Any) -> Any:
+def _build_dask_array(ds: Dataset, chunks: Any) -> Any:
     """Wrap ``ds`` as a 3-D ``dask.array.Array`` ``(bands, rows, cols)``.
 
     Always normalizes to 3-D so the on-disk Zarr layout is uniform and
@@ -79,7 +76,9 @@ def _build_dask_array(ds: "Dataset", chunks: Any) -> Any:
     if chunks in (None, "auto"):
         read_chunks: Any = "auto"
     else:
-        read_chunks = chunks[-2:] if isinstance(chunks, tuple) and len(chunks) == 3 else chunks
+        read_chunks = (
+            chunks[-2:] if isinstance(chunks, tuple) and len(chunks) == 3 else chunks
+        )
 
     arr = ds.read_array(chunks=read_chunks)
     if not hasattr(arr, "dask"):
@@ -92,7 +91,7 @@ def _build_dask_array(ds: "Dataset", chunks: Any) -> Any:
 
 
 def write_dataset_to_zarr(
-    ds: "Dataset",
+    ds: Dataset,
     store: str | Path | Any,
     *,
     compute: bool = True,
@@ -152,8 +151,10 @@ def write_dataset_to_zarr(
     resolved_store = _resolve_store(store, storage_options)
 
     write_result = arr.to_zarr(
-        resolved_store, component="data",
-        overwrite=(mode == "w"), compute=compute,
+        resolved_store,
+        component="data",
+        overwrite=(mode == "w"),
+        compute=compute,
     )
     if compute:
         _finalize_metadata(resolved_store, metadata)
@@ -188,7 +189,7 @@ def read_dataset_from_zarr(
     *,
     chunks: Any = None,
     storage_options: dict[str, Any] | None = None,
-) -> "Dataset":
+) -> Dataset:
     """Open a pyramids-written Zarr store and materialise a :class:`Dataset`.
 
     Args:

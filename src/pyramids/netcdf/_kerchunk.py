@@ -25,7 +25,6 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
-
 _KERCHUNK_IMPORT_ERROR = (
     "kerchunk is required for NetCDF → Zarr reference manifests. "
     "Install it with: pip install 'pyramids-gis[netcdf-lazy]'"
@@ -95,7 +94,8 @@ def to_kerchunk(
     SingleHdf5ToZarr = _require_kerchunk_single()
     src_str = str(src_path)
     refs = SingleHdf5ToZarr(
-        src_str, src_str,
+        src_str,
+        src_str,
         inline_threshold=inline_threshold,
         error="warn",
         vlen_encode=vlen_encode,
@@ -157,7 +157,8 @@ def combine_kerchunk(
     for path in src_paths:
         src_str = str(path)
         refs = SingleHdf5ToZarr(
-            src_str, src_str,
+            src_str,
+            src_str,
             inline_threshold=inline_threshold,
             error="warn",
         ).translate()

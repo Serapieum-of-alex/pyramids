@@ -40,7 +40,7 @@ _LAZY_IMPORT_ERROR = (
 
 def _apply_eager_or_lazy(
     func: Callable,
-    ds: "Dataset",
+    ds: Dataset,
     radius: int,
     chunks: Any,
     band: int,
@@ -64,13 +64,17 @@ def _apply_eager_or_lazy(
             lazy = da.from_array(np.asarray(lazy), chunks="auto")
         lazy = lazy.astype(dtype)
         result = lazy.map_overlap(
-            func, depth=radius, boundary="reflect", trim=True, dtype=dtype,
+            func,
+            depth=radius,
+            boundary="reflect",
+            trim=True,
+            dtype=dtype,
         )
     return result
 
 
 def focal_mean(
-    ds: "Dataset",
+    ds: Dataset,
     radius: int = 1,
     *,
     chunks: Any = None,
@@ -116,7 +120,7 @@ def focal_mean(
 
 
 def focal_std(
-    ds: "Dataset",
+    ds: Dataset,
     radius: int = 1,
     *,
     chunks: Any = None,
@@ -170,7 +174,7 @@ def focal_std(
 
 
 def focal_apply(
-    ds: "Dataset",
+    ds: Dataset,
     func: Callable[[np.ndarray], float],
     radius: int = 1,
     *,
@@ -225,7 +229,7 @@ def _gradient(arr: np.ndarray, cell_size: float) -> tuple[np.ndarray, np.ndarray
 
 
 def slope(
-    ds: "Dataset",
+    ds: Dataset,
     *,
     chunks: Any = None,
     band: int = 0,
@@ -271,7 +275,7 @@ def slope(
 
 
 def aspect(
-    ds: "Dataset",
+    ds: Dataset,
     *,
     chunks: Any = None,
     band: int = 0,
@@ -316,7 +320,7 @@ def aspect(
 
 
 def hillshade(
-    ds: "Dataset",
+    ds: Dataset,
     *,
     azimuth: float = 315.0,
     altitude: float = 45.0,
@@ -362,16 +366,19 @@ def hillshade(
         dz_dx, dz_dy = _gradient(arr, cell_size)
         slope_rad = np.arctan(np.hypot(dz_dx, dz_dy))
         aspect_rad = np.arctan2(dz_dy, -dz_dx)
-        shaded = (
-            np.sin(alt_rad) * np.cos(slope_rad)
-            + np.cos(alt_rad) * np.sin(slope_rad) * np.cos(az_rad - aspect_rad)
-        )
+        shaded = np.sin(alt_rad) * np.cos(slope_rad) + np.cos(alt_rad) * np.sin(
+            slope_rad
+        ) * np.cos(az_rad - aspect_rad)
         return np.clip(shaded * 255.0, 0.0, 255.0)
 
     return _apply_eager_or_lazy(_kernel, ds, 1, chunks, band, np.float64)
 
 
 __all__ = [
-    "focal_mean", "focal_std", "focal_apply",
-    "slope", "aspect", "hillshade",
+    "focal_mean",
+    "focal_std",
+    "focal_apply",
+    "slope",
+    "aspect",
+    "hillshade",
 ]

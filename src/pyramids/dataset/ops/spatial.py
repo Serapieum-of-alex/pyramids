@@ -11,13 +11,7 @@ from osgeo import gdal, osr
 from osgeo.osr import SpatialReference
 
 from pyramids.base._utils import INTERPOLATION_METHODS
-from pyramids.base._errors import AlignmentError, ReadOnlyError
-from pyramids.dataset.abstract_dataset import (
-    AbstractDataset,
-    CATALOG,
-    DEFAULT_NO_DATA_VALUE,
-    RESAMPLING_METHODS,
-)
+from pyramids.dataset.abstract_dataset import AbstractDataset
 from pyramids.feature import FeatureCollection
 from pyramids.feature import _ogr as _feature_ogr
 
@@ -60,9 +54,7 @@ class Spatial:
                 self.raster.SetProjection(crs)
                 # ARC-7: fallback to 4326 when crs is an empty string
                 # (get_epsg_from_prj now raises in that case).
-                self._epsg = (
-                    FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
-                )
+                self._epsg = FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
             elif epsg is not None:
                 sr = type(self)._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
@@ -347,7 +339,12 @@ class Spatial:
         bands = self.band_count
 
         dst_obj = type(self)._build_dataset(
-            cols, rows, bands, dtype, new_geo, sr_src.ExportToWkt(),
+            cols,
+            rows,
+            bands,
+            dtype,
+            new_geo,
+            sr_src.ExportToWkt(),
             self.no_data_value,
         )
         gdal.ReprojectImage(
@@ -442,7 +439,12 @@ class Spatial:
             np.sign(src_gt[-1]) * pixel_spacing,
         )
         dst_obj = type(self)._build_dataset(
-            cols, rows, self.band_count, dtype, new_geo, dst_sr.ExportToWkt(),
+            cols,
+            rows,
+            self.band_count,
+            dtype,
+            new_geo,
+            dst_sr.ExportToWkt(),
             self.no_data_value,
         )
         gdal.ReprojectImage(
@@ -738,8 +740,13 @@ class Spatial:
         if self.epsg != src.epsg:
             reprojected_raster_b = self.to_crs(src.epsg)  # type: ignore[assignment]
         dst_obj = type(self)._build_dataset(
-            src.columns, src.rows, self.band_count, src.gdal_dtype[0],
-            src.geotransform, src.crs, self.no_data_value,
+            src.columns,
+            src.rows,
+            self.band_count,
+            src.gdal_dtype[0],
+            src.geotransform,
+            src.crs,
+            self.no_data_value,
         )
         method = gdal.GRA_NearestNeighbour
         # resample the reprojected_RasterB
@@ -818,7 +825,8 @@ class Spatial:
         # because _correct_wrap_cutline_error calls create_from_array which has different behavior in
         # subclasses.
         base_cls = next(
-            c for c in type(self).__mro__
+            c
+            for c in type(self).__mro__
             if AbstractDataset in getattr(c, "__bases__", ())
         )
 

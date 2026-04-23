@@ -753,13 +753,9 @@ class NetCDFMetadata:
         arr_list = list(self.variables.values())
         for arr in arr_list[:max_display]:
             dtype_str = arr.dtype if len(arr.dtype) < 20 else "unknown"
-            var_lines.append(
-                f"    {arr.name:20s} {dtype_str:10s} {list(arr.shape)}"
-            )
+            var_lines.append(f"    {arr.name:20s} {dtype_str:10s} {list(arr.shape)}")
         if len(arr_list) > max_display:
-            var_lines.append(
-                f"    ... and {len(arr_list) - max_display} more"
-            )
+            var_lines.append(f"    ... and {len(arr_list) - max_display} more")
         vars_str = "\n".join(var_lines) if var_lines else "    (none)"
 
         attr_keys = list(self.global_attributes.keys())

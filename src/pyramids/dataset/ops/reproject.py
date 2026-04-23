@@ -98,7 +98,7 @@ class Reprojector:
         """Return the immutable :class:`ReprojectPlan`."""
         return self._plan
 
-    def __call__(self, ds: "Dataset", *, compute: bool = True) -> Any:
+    def __call__(self, ds: Dataset, *, compute: bool = True) -> Any:
         """Apply the plan to ``ds``.
 
         Args:
@@ -148,7 +148,7 @@ class Aligner(Reprojector):
             ```
     """
 
-    def __init__(self, reference: "Dataset", method: str = "nearest neighbor") -> None:
+    def __init__(self, reference: Dataset, method: str = "nearest neighbor") -> None:
         super().__init__(
             target_epsg=int(reference.epsg),
             method=method,
@@ -156,7 +156,7 @@ class Aligner(Reprojector):
         )
         self._reference = reference
 
-    def __call__(self, ds: "Dataset", *, compute: bool = True) -> Any:
+    def __call__(self, ds: Dataset, *, compute: bool = True) -> Any:
         """Align ``ds`` to the reference geobox.
 
         Args:
@@ -173,7 +173,7 @@ class Aligner(Reprojector):
         return result
 
 
-def _apply_plan(plan: ReprojectPlan, ds: "Dataset") -> "Dataset":
+def _apply_plan(plan: ReprojectPlan, ds: Dataset) -> Dataset:
     """Run a :class:`ReprojectPlan` against a dataset eagerly."""
     return ds.to_crs(
         plan.target_epsg,
@@ -182,7 +182,7 @@ def _apply_plan(plan: ReprojectPlan, ds: "Dataset") -> "Dataset":
     )
 
 
-def _deferred(plan: ReprojectPlan, ds: "Dataset") -> Any:
+def _deferred(plan: ReprojectPlan, ds: Dataset) -> Any:
     """Wrap :func:`_apply_plan` in :func:`dask.delayed`."""
     try:
         import dask
@@ -191,7 +191,7 @@ def _deferred(plan: ReprojectPlan, ds: "Dataset") -> Any:
     return dask.delayed(_apply_plan)(plan, ds)
 
 
-def _deferred_align(reference: "Dataset", method: str, ds: "Dataset") -> Any:
+def _deferred_align(reference: Dataset, method: str, ds: Dataset) -> Any:
     """Wrap :meth:`Dataset.align` in :func:`dask.delayed`."""
     try:
         import dask
@@ -200,7 +200,7 @@ def _deferred_align(reference: "Dataset", method: str, ds: "Dataset") -> Any:
     return dask.delayed(_align_sync)(reference, method, ds)
 
 
-def _align_sync(reference: "Dataset", method: str, ds: "Dataset") -> "Dataset":
+def _align_sync(reference: Dataset, method: str, ds: Dataset) -> Dataset:
     """Synchronous align body — module-level for pickleability.
 
     ``method`` is accepted for API parity with :class:`Reprojector` but

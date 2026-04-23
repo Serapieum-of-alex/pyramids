@@ -18,7 +18,7 @@ raw JSON.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from pyramids.dataset.collection import DatasetCollection
@@ -76,14 +76,13 @@ def _resolve_asset_href(item: Any, asset_key: str) -> str:
         item_id = getattr(item, "id", None)
         if item_id is None and isinstance(item, dict):
             item_id = item.get("id", "?")
-        raise KeyError(
-            f"asset {asset_key!r} on STAC item {item_id} has no 'href'"
-        )
+        raise KeyError(f"asset {asset_key!r} on STAC item {item_id} has no 'href'")
     return str(href)
 
 
 def _item_intersects_bbox(
-    item: Any, bbox: tuple[float, float, float, float],
+    item: Any,
+    bbox: tuple[float, float, float, float],
 ) -> bool:
     """Return True if ``item.bbox`` overlaps ``bbox`` (lon/lat box).
 
@@ -100,9 +99,7 @@ def _item_intersects_bbox(
     else:
         minx, miny, maxx, maxy = bbox
         i_minx, i_miny, i_maxx, i_maxy = item_bbox
-        result = not (
-            i_maxx < minx or i_minx > maxx or i_maxy < miny or i_miny > maxy
-        )
+        result = not (i_maxx < minx or i_minx > maxx or i_maxy < miny or i_miny > maxy)
     return result
 
 
@@ -113,7 +110,7 @@ def from_stac(
     patch_url: Callable[[str], str] | None = None,
     bbox: tuple[float, float, float, float] | None = None,
     max_items: int | None = None,
-) -> "DatasetCollection":
+) -> DatasetCollection:
     """Build a :class:`DatasetCollection` from a STAC ItemCollection.
 
     Extracts one named asset's href from each item, optionally runs

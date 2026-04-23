@@ -76,9 +76,9 @@ class TestChunksNoneEager:
     def test_chunks_none_returns_numpy(self, three_d_var):
         """Default path returns a plain numpy ndarray (regression)."""
         arr = three_d_var.read_array()
-        assert isinstance(arr, np.ndarray), (
-            f"Expected numpy.ndarray, got {type(arr).__name__}"
-        )
+        assert isinstance(
+            arr, np.ndarray
+        ), f"Expected numpy.ndarray, got {type(arr).__name__}"
 
     def test_chunks_none_with_band_kw(self, three_d_var):
         """``band=0`` still works on the eager path."""
@@ -94,9 +94,9 @@ class TestChunksLazy:
     def test_chunks_auto_returns_dask(self, three_d_var):
         """``chunks='auto'`` returns a dask array."""
         arr = three_d_var.read_array(chunks="auto")
-        assert isinstance(arr, dask_array.Array), (
-            f"Expected dask.array.Array, got {type(arr).__name__}"
-        )
+        assert isinstance(
+            arr, dask_array.Array
+        ), f"Expected dask.array.Array, got {type(arr).__name__}"
 
     def test_chunks_int_returns_dask(self, three_d_var):
         """Integer chunks also return a dask array."""
@@ -117,7 +117,8 @@ class TestChunksLazy:
         lazy = three_d_var.read_array(chunks="auto")
         computed = lazy.compute()
         assert_allclose(
-            computed, eager,
+            computed,
+            eager,
             err_msg=".compute() must equal the eager numpy read",
         )
 
@@ -134,7 +135,9 @@ class TestDefaultChunks:
     """``chunks='auto'`` should honor ``VariableInfo.block_size``."""
 
     def test_default_chunks_from_variable_info(
-        self, three_d_path, three_d_var,
+        self,
+        three_d_path,
+        three_d_var,
     ):
         """Default chunks match the MDArray's native ``GetBlockSize``."""
         from pyramids.netcdf._lazy import (
@@ -143,7 +146,8 @@ class TestDefaultChunks:
         )
 
         shape, _, block_size, _flip = _mdarray_shape_and_dtype(
-            three_d_path, three_d_var._source_var_name,
+            three_d_path,
+            three_d_var._source_var_name,
         )
         expected = _default_chunks(shape, block_size)
         lazy = three_d_var.read_array(chunks="auto")
@@ -187,27 +191,28 @@ class TestUnpackLazy:
     def test_unpack_lazy_applies_scale_offset(self, scale_offset_path):
         """CF ``scale`` / ``offset`` applied via dask arithmetic."""
         nc = NetCDF.read_file(
-            scale_offset_path, open_as_multi_dimensional=True,
+            scale_offset_path,
+            open_as_multi_dimensional=True,
         )
         var = nc.get_variable("z")
         lazy = var.read_array(chunks="auto", unpack=True)
-        assert isinstance(lazy, dask_array.Array), (
-            "unpack=True on a lazy backing must stay lazy"
-        )
-        assert lazy.dtype == np.float64, (
-            "Unpacked dask array should be float64"
-        )
+        assert isinstance(
+            lazy, dask_array.Array
+        ), "unpack=True on a lazy backing must stay lazy"
+        assert lazy.dtype == np.float64, "Unpacked dask array should be float64"
         computed = lazy.compute()
         eager = var.read_array(unpack=True)
         assert_allclose(
-            computed, eager,
+            computed,
+            eager,
             err_msg="Lazy unpack must match eager unpack on .compute()",
         )
 
     def test_unpack_lazy_graph_not_forced(self, scale_offset_path):
         """Building the lazy unpack graph must not eagerly materialize."""
         nc = NetCDF.read_file(
-            scale_offset_path, open_as_multi_dimensional=True,
+            scale_offset_path,
+            open_as_multi_dimensional=True,
         )
         var = nc.get_variable("z")
         lazy = var.read_array(chunks="auto", unpack=True)
@@ -238,14 +243,13 @@ class TestLazyPickle:
         ctx = multiprocessing.get_context("spawn")
         with ctx.Pool(1) as pool:
             shape, total = pool.apply(
-                _compute_lazy_in_subprocess, (payload,),
+                _compute_lazy_in_subprocess,
+                (payload,),
             )
-        assert shape == expected.shape, (
-            f"Child shape {shape} != parent {expected.shape}"
-        )
-        expected_sum = float(
-            np.asarray(expected, dtype=np.float64).sum()
-        )
+        assert (
+            shape == expected.shape
+        ), f"Child shape {shape} != parent {expected.shape}"
+        expected_sum = float(np.asarray(expected, dtype=np.float64).sum())
         assert_allclose(total, expected_sum, rtol=1e-6)
 
 

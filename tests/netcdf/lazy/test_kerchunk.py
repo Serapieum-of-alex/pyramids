@@ -14,7 +14,6 @@ import pytest
 
 from pyramids.netcdf import NetCDF
 
-
 try:
     import kerchunk.hdf  # noqa: F401
 
@@ -66,8 +65,10 @@ class TestCombineKerchunk:
     def test_combine_three_copies(self, tmp_path):
         out = tmp_path / "combined.json"
         NetCDF.combine_kerchunk(
-            [FIXTURE, FIXTURE, FIXTURE], out,
-            concat_dims=("bands",), identical_dims=(),
+            [FIXTURE, FIXTURE, FIXTURE],
+            out,
+            concat_dims=("bands",),
+            identical_dims=(),
         )
         assert out.exists()
         combined = json.loads(out.read_text())
@@ -105,5 +106,6 @@ class TestImportError:
         monkeypatch.setattr(builtins, "__import__", fake_import)
         with pytest.raises(ImportError, match="pyramids-gis\\[netcdf-lazy\\]"):
             NetCDF.combine_kerchunk(
-                [FIXTURE], tmp_path / "refs.json",
+                [FIXTURE],
+                tmp_path / "refs.json",
             )

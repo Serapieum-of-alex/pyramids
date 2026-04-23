@@ -140,11 +140,7 @@ class TestStreamAndIntrospect:
 
     def test_stream_chunks_match_full(self, big_points_geojson: Path):
         """Chunked stream concatenated == full read."""
-        chunks = list(
-            FeatureCollection.iter_features(
-                big_points_geojson, chunksize=25
-            )
-        )
+        chunks = list(FeatureCollection.iter_features(big_points_geojson, chunksize=25))
         combined = pd.concat(chunks)
         full = FeatureCollection.read_file(big_points_geojson)
         assert len(combined) == len(full)
@@ -164,9 +160,7 @@ class TestStreamAndIntrospect:
 class TestProtocolPolymorphism:
     """ARC-17: a SpatialObject-typed function accepts both Dataset and FC."""
 
-    def test_cross_type_function(
-        self, polygon_fc: FeatureCollection, tmp_path: Path
-    ):
+    def test_cross_type_function(self, polygon_fc: FeatureCollection, tmp_path: Path):
         # A fresh raster aligned with the FC's CRS.
         raster = Dataset.create(
             cell_size=1.0,
@@ -346,9 +340,9 @@ class TestGeometryHardeningChain:
 
         # D-H1: with_coordinates explodes internally and must NOT mutate ``fc``.
         exploded = fc.with_coordinates()
-        assert [g.geom_type for g in fc.geometry] == original_types, (
-            "input FC's geometries mutated by with_coordinates"
-        )
+        assert [
+            g.geom_type for g in fc.geometry
+        ] == original_types, "input FC's geometries mutated by with_coordinates"
         # Exploded output carries the split child rows (triangle + 2 boxes).
         assert len(exploded) == 3
 
@@ -391,10 +385,8 @@ class TestBatch4Chain:
             {
                 "class_id": [7, 13],
                 "geometry": [
-                    box(x0, y0 - 2 * cell_size,
-                        x0 + 2 * cell_size, y0),
-                    box(x0 + 3 * cell_size, y0 - 2 * cell_size,
-                        x0 + 5 * cell_size, y0),
+                    box(x0, y0 - 2 * cell_size, x0 + 2 * cell_size, y0),
+                    box(x0 + 3 * cell_size, y0 - 2 * cell_size, x0 + 5 * cell_size, y0),
                 ],
             },
             orient="list",
@@ -402,9 +394,7 @@ class TestBatch4Chain:
         )
         assert len(fc) == 2
 
-        raster = _Ds.from_features(
-            fc, cell_size=cell_size, column_name="class_id"
-        )
+        raster = _Ds.from_features(fc, cell_size=cell_size, column_name="class_id")
         arr = raster.read_array()
         assert int(arr.max()) == 13, f"expected 13 in burned raster; got {arr.max()}"
-        assert 7 in set(int(v) for v in arr.flatten() if v != raster.no_data_value[0])
+        assert 7 in {int(v) for v in arr.flatten() if v != raster.no_data_value[0]}

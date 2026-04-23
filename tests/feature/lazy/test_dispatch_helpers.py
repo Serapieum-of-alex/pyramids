@@ -24,9 +24,9 @@ from pyramids.feature import (
     is_lazy_fc,
 )
 
-
 try:
     import dask_geopandas  # noqa: F401
+
     HAS_DASK_GP = True
 except ImportError:  # pragma: no cover
     HAS_DASK_GP = False
@@ -40,11 +40,13 @@ requires_dask_geopandas = pytest.mark.skipif(
 @pytest.fixture
 def eager_fc() -> FeatureCollection:
     """Simple eager FeatureCollection for negative-case tests."""
-    return FeatureCollection(gpd.GeoDataFrame(
-        {"v": [1]},
-        geometry=[Point(0, 0)],
-        crs="EPSG:4326",
-    ))
+    return FeatureCollection(
+        gpd.GeoDataFrame(
+            {"v": [1]},
+            geometry=[Point(0, 0)],
+            crs="EPSG:4326",
+        )
+    )
 
 
 class TestHasLazyBackend:

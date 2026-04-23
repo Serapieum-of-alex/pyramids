@@ -14,7 +14,6 @@ from osgeo import gdal, osr
 
 from pyramids.dataset import Dataset
 
-
 try:
     import dask.array as dask_array
 
@@ -63,17 +62,23 @@ class TestLazyDispatch:
     @requires_dask
     def test_chunks_auto_returns_dask(self, square_dataset):
         result = square_dataset.map_blocks(
-            lambda a: a * 2, chunks="auto", band=0,
+            lambda a: a * 2,
+            chunks="auto",
+            band=0,
         )
         assert hasattr(result, "dask")
 
     @requires_dask
     def test_lazy_compute_matches_eager(self, square_dataset):
         lazy = square_dataset.map_blocks(
-            lambda a: a * 2, chunks=(5, 5), band=0,
+            lambda a: a * 2,
+            chunks=(5, 5),
+            band=0,
         )
         eager = square_dataset.map_blocks(
-            lambda a: a * 2, tile_size=5, band=0,
+            lambda a: a * 2,
+            tile_size=5,
+            band=0,
         )
         np.testing.assert_array_equal(lazy.compute(), eager.read_array())
 
@@ -81,7 +86,9 @@ class TestLazyDispatch:
     def test_lazy_dtype_kwarg_propagates(self, square_dataset):
         result = square_dataset.map_blocks(
             lambda a: a.astype(np.int32),
-            chunks=(5, 5), band=0, dtype=np.int32,
+            chunks=(5, 5),
+            band=0,
+            dtype=np.int32,
         )
         assert result.dtype == np.int32
 
@@ -90,9 +97,11 @@ class TestLazyDispatch:
         step1 = square_dataset.map_blocks(lambda a: a + 1, chunks=(5, 5), band=0)
         step2 = step1.map_blocks(lambda a: a * 2)  # dask.array.map_blocks
         result = step2.compute()
-        expected = (square_dataset.read_array()[0] + 1) * 2 if (
-            square_dataset.band_count > 1
-        ) else (square_dataset.read_array() + 1) * 2
+        expected = (
+            (square_dataset.read_array()[0] + 1) * 2
+            if (square_dataset.band_count > 1)
+            else (square_dataset.read_array() + 1) * 2
+        )
         np.testing.assert_array_equal(result, expected)
 
     @requires_dask
@@ -107,16 +116,20 @@ class TestLazyDispatch:
         """
         result = square_dataset.map_blocks(
             lambda a: a.sum(axis=0),
-            chunks=(10, 10), band=0, drop_axis=0, dtype=np.float32,
+            chunks=(10, 10),
+            band=0,
+            drop_axis=0,
+            dtype=np.float32,
         )
-        assert hasattr(result, "dask"), (
-            "Expected a dask.array.Array when chunks= is provided"
-        )
-        assert result.ndim == 1, (
-            f"drop_axis=0 must reduce rank by 1; got ndim={result.ndim}"
-        )
+        assert hasattr(
+            result, "dask"
+        ), "Expected a dask.array.Array when chunks= is provided"
+        assert (
+            result.ndim == 1
+        ), f"drop_axis=0 must reduce rank by 1; got ndim={result.ndim}"
         np.testing.assert_array_equal(
-            result.compute(), square_dataset.read_array().sum(axis=0),
+            result.compute(),
+            square_dataset.read_array().sum(axis=0),
         )
 
     @requires_dask
@@ -132,14 +145,17 @@ class TestLazyDispatch:
         """
         result = square_dataset.map_blocks(
             lambda a: np.expand_dims(a, axis=0),
-            chunks=(10, 10), band=0, new_axis=0, dtype=np.float32,
+            chunks=(10, 10),
+            band=0,
+            new_axis=0,
+            dtype=np.float32,
         )
-        assert hasattr(result, "dask"), (
-            "Expected a dask.array.Array when chunks= is provided"
-        )
-        assert result.ndim == 3, (
-            f"new_axis=0 must increase rank by 1; got ndim={result.ndim}"
-        )
+        assert hasattr(
+            result, "dask"
+        ), "Expected a dask.array.Array when chunks= is provided"
+        assert (
+            result.ndim == 3
+        ), f"new_axis=0 must increase rank by 1; got ndim={result.ndim}"
 
 
 class TestImportErrorWithoutDask:
@@ -158,5 +174,7 @@ class TestImportErrorWithoutDask:
         monkeypatch.setattr(builtins, "__import__", fake_import)
         with pytest.raises(ImportError, match="pyramids-gis\\[lazy\\]"):
             square_dataset.map_blocks(
-                lambda a: a, chunks="auto", band=0,
+                lambda a: a,
+                chunks="auto",
+                band=0,
             )

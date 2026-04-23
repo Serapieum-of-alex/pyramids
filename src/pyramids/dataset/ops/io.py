@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import logging
 import pickle
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generator
 
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, ogr
+from osgeo import gdal
 from osgeo_utils import gdal2xyz
 from pandas import DataFrame
 
@@ -23,13 +23,12 @@ from pyramids.base._errors import (
 )
 from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._locks import DummyLock, default_lock
-from pyramids.base._utils import (
-    DTYPE_CONVERSION_DF,
-    gdal_to_numpy_dtype,
-    numpy_to_gdal_dtype,
-)
 from pyramids.base.protocols import ArrayLike
-from pyramids.dataset.abstract_dataset import CATALOG, OVERVIEW_LEVELS, RESAMPLING_METHODS
+from pyramids.dataset.abstract_dataset import (
+    CATALOG,
+    OVERVIEW_LEVELS,
+    RESAMPLING_METHODS,
+)
 from pyramids.feature import FeatureCollection
 
 if TYPE_CHECKING:
@@ -101,19 +100,21 @@ def _read_chunk(
         with lock:
             handle = manager.acquire()
             block = np.empty(
-                (b_stop - b_start, ysize, xsize), dtype=out_dtype,
+                (b_stop - b_start, ysize, xsize),
+                dtype=out_dtype,
             )
             for offset, band_idx in enumerate(range(b_start, b_stop)):
                 gdal_band = handle.GetRasterBand(band_idx + 1)
                 block[offset] = np.asarray(
-                    gdal_band.ReadAsArray(xoff, yoff, xsize, ysize), dtype=out_dtype,
+                    gdal_band.ReadAsArray(xoff, yoff, xsize, ysize),
+                    dtype=out_dtype,
                 )
         result = block
     return result
 
 
 def _write_to_file_sync(
-    ds: "Dataset",
+    ds: Dataset,
     path: str | Path,
     band: int,
     tile_length: int | None,
@@ -446,7 +447,8 @@ class IO:
             shape: tuple[int, ...] = (self.rows, self.columns)
             block_w, block_h = self._block_size[effective_band]
             previous_chunks: tuple[tuple[int, ...], ...] | tuple[int, ...] = (
-                block_h, block_w,
+                block_h,
+                block_w,
             )
         else:
             effective_band = None
@@ -460,7 +462,10 @@ class IO:
         else:
             effective_lock = lock
         normalized = normalize_chunks(
-            chunks, shape=shape, dtype=dtype, previous_chunks=previous_chunks,
+            chunks,
+            shape=shape,
+            dtype=dtype,
+            previous_chunks=previous_chunks,
         )
         # The FileManager's own lock must be independent of the IO lock
         # handed to the chunk reader: the reader acquires the IO lock
@@ -469,13 +474,22 @@ class IO:
         # deadlock. Using lock=False here delegates concurrency control
         # to the outer ``with effective_lock`` in _read_chunk.
         manager = CachingFileManager(
-            gdal_raster_open, self._file_name, "read_only", lock=False,
+            gdal_raster_open,
+            self._file_name,
+            "read_only",
+            lock=False,
         )
         meta = np.empty((0,) * len(shape), dtype=dtype)
         arr = da.map_blocks(
-            _read_chunk, chunks=normalized, dtype=dtype, meta=meta,
-            manager=manager, lock=effective_lock, band=effective_band,
-            out_dtype=dtype, single_band=single_band,
+            _read_chunk,
+            chunks=normalized,
+            dtype=dtype,
+            meta=meta,
+            manager=manager,
+            lock=effective_lock,
+            band=effective_band,
+            out_dtype=dtype,
+            single_band=single_band,
         )
         return arr
 
@@ -535,7 +549,9 @@ class IO:
         y_size = arr_indeces[1, 1] - arr_indeces[0, 1]
         return [xoff, yoff, x_size, y_size]
 
-    def write_array(self: Dataset, array: np.ndarray, top_left_corner: list[int]) -> None:
+    def write_array(
+        self: Dataset, array: np.ndarray, top_left_corner: list[int]
+    ) -> None:
         """Write an array to the dataset at the given xoff, yoff position.
 
         Args:
@@ -738,7 +754,12 @@ class IO:
         """
         if compute:
             _write_to_file_sync(
-                self, path, band, tile_length, creation_options, driver,
+                self,
+                path,
+                band,
+                tile_length,
+                creation_options,
+                driver,
             )
             result: Any = None
         else:
@@ -768,7 +789,12 @@ class IO:
             except ImportError as exc:
                 raise ImportError(_LAZY_IMPORT_ERROR) from exc
             result = dask.delayed(_write_to_file_sync)(
-                self, path, band, tile_length, creation_options, driver,
+                self,
+                path,
+                band,
+                tile_length,
+                creation_options,
+                driver,
             )
         return result
 
@@ -789,9 +815,13 @@ class IO:
         documentation for the full contract.
         """
         return self.to_file(
-            path, band=band, tile_length=tile_length,
-            creation_options=creation_options, driver=driver,
-            compute=compute, lock=lock,
+            path,
+            band=band,
+            tile_length=tile_length,
+            creation_options=creation_options,
+            driver=driver,
+            compute=compute,
+            lock=lock,
         )
 
     def _tile_offsets(self: Dataset, size: int = 256) -> Generator:
@@ -1004,8 +1034,13 @@ class IO:
                 no_data = self.no_data_value
 
             dst_obj = type(self)._build_dataset(
-                self.columns, self.rows, bands, gdal_dtype,
-                self.geotransform, self.crs, no_data,
+                self.columns,
+                self.rows,
+                bands,
+                gdal_dtype,
+                self.geotransform,
+                self.crs,
+                no_data,
             )
 
             for xoff, yoff, xsize, ysize in self._tile_offsets(size=tile_size):
@@ -1109,6 +1144,7 @@ class IO:
         else:
             result = None
         return result
+
     @property
     def overview_count(self: Dataset) -> list[int]:
         """Number of the overviews for each band."""
@@ -1116,6 +1152,7 @@ class IO:
         for i in range(self.band_count):
             overview_number.append(self._iloc(i).GetOverviewCount())
         return overview_number
+
     def create_overviews(
         self: Dataset,
         resampling_method: str = "nearest",
@@ -1195,6 +1232,7 @@ class IO:
         # Build overviews using nearest neighbor resampling
         # NEAREST is the resampling method used. Other methods include AVERAGE, GAUSS, etc.
         self.raster.BuildOverviews(resampling_method, overview_levels)
+
     def recreate_overviews(self: Dataset, resampling_method: str = "nearest") -> None:
         """Recreate overviews for the dataset.
         Args:
@@ -1232,7 +1270,10 @@ class IO:
             raise ReadOnlyError(
                 "The Dataset is opened with a read only. Please read the dataset using read_only=False"
             )
-    def get_overview(self: Dataset, band: int = 0, overview_index: int = 0) -> gdal.Band:
+
+    def get_overview(
+        self: Dataset, band: int = 0, overview_index: int = 0
+    ) -> gdal.Band:
         """Get an overview of a band.
         Args:
             band (int):
@@ -1307,6 +1348,7 @@ class IO:
         # TODO:find away to create a Dataset object from the overview band and to return the Dataset object instead
         #  of the gdal band.
         return band_obj.GetOverview(overview_index)
+
     def read_overview_array(
         self: Dataset, band: int | None = None, overview_index: int = 0
     ) -> np.ndarray:

@@ -20,7 +20,10 @@ from pyramids.dataset import Dataset
 @pytest.fixture
 def basic_meta() -> RasterMeta:
     return RasterMeta(
-        rows=10, columns=12, band_count=1, dtype="float32",
+        rows=10,
+        columns=12,
+        band_count=1,
+        dtype="float32",
         transform=(0.0, 1.0, 0.0, 10.0, 0.0, -1.0),
         crs=CRS.from_epsg(4326),
         nodata=(-9999.0,),
@@ -35,7 +38,10 @@ class TestShape:
 
     def test_shape_multi_band(self):
         meta = RasterMeta(
-            rows=4, columns=5, band_count=3, dtype="int16",
+            rows=4,
+            columns=5,
+            band_count=3,
+            dtype="int16",
             transform=(0.0, 1.0, 0.0, 4.0, 0.0, -1.0),
             crs=CRS.from_epsg(4326),
         )
@@ -48,7 +54,10 @@ class TestEpsg:
 
     def test_epsg_none_for_unspecified_crs(self):
         meta = RasterMeta(
-            rows=1, columns=1, band_count=1, dtype="float32",
+            rows=1,
+            columns=1,
+            band_count=1,
+            dtype="float32",
             transform=(0.0, 1.0, 0.0, 1.0, 0.0, -1.0),
             crs=CRS.from_wkt('LOCAL_CS["nowhere"]'),
         )
@@ -61,7 +70,10 @@ class TestCellSize:
 
     def test_negative_x_sign_ignored(self):
         meta = RasterMeta(
-            rows=1, columns=1, band_count=1, dtype="float32",
+            rows=1,
+            columns=1,
+            band_count=1,
+            dtype="float32",
             transform=(0.0, -2.0, 0.0, 0.0, 0.0, -2.0),
             crs=CRS.from_epsg(4326),
         )
@@ -78,7 +90,10 @@ class TestFromDataset:
     def test_snapshot_from_in_memory_dataset(self):
         arr = np.arange(20, dtype=np.float32).reshape(4, 5)
         ds = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 4.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         meta = RasterMeta.from_dataset(ds)
         assert meta.rows == 4
@@ -88,7 +103,8 @@ class TestFromDataset:
         assert meta.cell_size == 1.0
 
     def test_dtype_derived_from_gdal_band_when_numpy_dtype_empty(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ):
         """L3 fallback: empty ``numpy_dtype`` derives dtype from GDAL band.
 
@@ -101,13 +117,15 @@ class TestFromDataset:
         """
         arr = np.arange(20, dtype=np.int16).reshape(4, 5)
         ds = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 4.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         monkeypatch.setattr(type(ds), "numpy_dtype", property(lambda self: []))
         meta = RasterMeta.from_dataset(ds)
         assert meta.dtype == "int16", (
-            f"Expected dtype 'int16' from GDAL band fallback, got "
-            f"{meta.dtype!r}"
+            f"Expected dtype 'int16' from GDAL band fallback, got " f"{meta.dtype!r}"
         )
 
 

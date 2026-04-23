@@ -15,7 +15,7 @@ comes free via geopandas. No new optional dependency is introduced.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pyproj import CRS
@@ -110,7 +110,7 @@ class RasterMeta:
         return self.transform
 
     @classmethod
-    def from_dataset(cls, ds: "Dataset") -> "RasterMeta":
+    def from_dataset(cls, ds: Dataset) -> RasterMeta:
         """Snapshot metadata from a live :class:`Dataset`.
 
         Args:

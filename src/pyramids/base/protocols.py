@@ -85,7 +85,7 @@ class SpatialObject(Protocol):
     top_left_corner: Any
 
     @classmethod
-    def read_file(cls, path: str | Path, *args: Any, **kwargs: Any) -> "SpatialObject":
+    def read_file(cls, path: str | Path, *args: Any, **kwargs: Any) -> SpatialObject:
         """Read an on-disk representation into an instance.
 
         Protocol stub — see :meth:`pyramids.dataset.Dataset.read_file` and
@@ -157,7 +157,7 @@ class LazySpatialObject(Protocol):
     total_bounds: Any
     npartitions: int
 
-    def compute(self, *args: Any, **kwargs: Any) -> "SpatialObject":
+    def compute(self, *args: Any, **kwargs: Any) -> SpatialObject:
         """Materialise this lazy object into its eager twin (protocol stub).
 
         See :meth:`pyramids.feature.LazyFeatureCollection.compute` for
@@ -165,7 +165,7 @@ class LazySpatialObject(Protocol):
         """
         ...
 
-    def persist(self, *args: Any, **kwargs: Any) -> "LazySpatialObject":
+    def persist(self, *args: Any, **kwargs: Any) -> LazySpatialObject:
         """Force the graph into worker memory; keep laziness (protocol stub)."""
         ...
 
@@ -210,11 +210,15 @@ class _ArrayLikeProto(Protocol):
     ndim: int
     dtype: Any
 
-    def __array__(self, dtype: Any = None) -> np.ndarray:  # pragma: no cover - protocol stub
+    def __array__(
+        self, dtype: Any = None
+    ) -> np.ndarray:  # pragma: no cover - protocol stub
         """Return a numpy representation of the array."""
         ...
 
-    def __getitem__(self, key: Any) -> "_ArrayLikeProto":  # pragma: no cover - protocol stub
+    def __getitem__(
+        self, key: Any
+    ) -> _ArrayLikeProto:  # pragma: no cover - protocol stub
         """Return a sliced view or copy."""
         ...
 

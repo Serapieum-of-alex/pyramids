@@ -31,8 +31,7 @@ import uuid
 import weakref
 from typing import Any
 
-
-_LOCKS: "weakref.WeakValueDictionary[str, threading.Lock]" = weakref.WeakValueDictionary()
+_LOCKS: weakref.WeakValueDictionary[str, threading.Lock] = weakref.WeakValueDictionary()
 
 
 class SerializableLock:
@@ -91,7 +90,7 @@ class SerializableLock:
     def release(self) -> None:
         self.lock.release()
 
-    def __enter__(self) -> "SerializableLock":
+    def __enter__(self) -> SerializableLock:
         self.lock.acquire()
         return self
 
@@ -138,7 +137,7 @@ class DummyLock:
     def release(self) -> None:
         pass
 
-    def __enter__(self) -> "DummyLock":
+    def __enter__(self) -> DummyLock:
         return self
 
     def __exit__(self, *_: Any) -> None:
@@ -175,7 +174,8 @@ def default_lock() -> Any:
             ```
     """
     try:
-        from dask.distributed import get_client, Lock as _DistributedLock
+        from dask.distributed import Lock as _DistributedLock
+        from dask.distributed import get_client
 
         client = get_client()
     except (ImportError, ValueError):

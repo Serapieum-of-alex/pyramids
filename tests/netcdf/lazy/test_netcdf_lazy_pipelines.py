@@ -25,7 +25,6 @@ import pytest
 
 from pyramids.netcdf import NetCDF
 
-
 try:
     import dask.array  # noqa: F401
 

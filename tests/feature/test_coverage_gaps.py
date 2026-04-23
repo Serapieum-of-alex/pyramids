@@ -37,9 +37,7 @@ class TestPlotCrsError:
     def test_no_crs_with_basemap_raises(self):
         """ARC-18 error path — CRSError fires before matplotlib runs."""
         poly = Point(0, 0)
-        fc = FeatureCollection(
-            gpd.GeoDataFrame({"v": [1]}, geometry=[poly])  # no crs=
-        )
+        fc = FeatureCollection(gpd.GeoDataFrame({"v": [1]}, geometry=[poly]))  # no crs=
         with pytest.raises(CRSError, match="CRS"):
             fc.plot(basemap=True)
 
@@ -79,9 +77,7 @@ class TestTopLeftCornerEdges:
 
     def test_single_point(self):
         fc = FeatureCollection(
-            gpd.GeoDataFrame(
-                {"v": [1]}, geometry=[Point(3.0, 7.0)], crs="EPSG:4326"
-            )
+            gpd.GeoDataFrame({"v": [1]}, geometry=[Point(3.0, 7.0)], crs="EPSG:4326")
         )
         # For a single point both corners collapse to the point.
         assert fc.top_left_corner == [3.0, 7.0]

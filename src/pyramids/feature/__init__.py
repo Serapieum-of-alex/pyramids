@@ -51,6 +51,7 @@ def __getattr__(name: str) -> object:
     if name == "LazyFeatureCollection":
         if _HAS_DASK_GEOPANDAS:
             from pyramids.feature._lazy_collection import LazyFeatureCollection
+
             return LazyFeatureCollection
         raise ImportError(_LAZY_FC_INSTALL_HINT)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
@@ -123,6 +124,7 @@ def is_lazy_fc(obj: object) -> bool:
     if not _HAS_DASK_GEOPANDAS:
         return False
     from pyramids.feature._lazy_collection import LazyFeatureCollection
+
     return isinstance(obj, LazyFeatureCollection)
 
 

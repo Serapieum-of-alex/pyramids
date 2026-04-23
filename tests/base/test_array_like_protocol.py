@@ -25,7 +25,6 @@ import pytest
 
 from pyramids.base.protocols import ArrayLike, _ArrayLikeProto, as_numpy, is_lazy
 
-
 try:
     import dask.array as dask_array
 

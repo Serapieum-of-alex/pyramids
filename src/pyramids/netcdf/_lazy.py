@@ -36,11 +36,9 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-from osgeo import gdal
 
 from pyramids.base._file_manager import CachingFileManager, gdal_mdarray_open
 from pyramids.base._locks import DummyLock, default_lock
-
 
 _DASK_MISSING_MESSAGE = (
     "dask is required for lazy NetCDF reads; install pyramids-gis[lazy]"
@@ -91,7 +89,8 @@ def _resolve_lock(lock: Any) -> Any:
 
 
 def _mdarray_shape_and_dtype(
-    path: str, variable_name: str,
+    path: str,
+    variable_name: str,
 ) -> tuple[tuple[int, ...], np.dtype, list[int] | None, bool]:
     """Return ``(shape, numpy_dtype, block_size, needs_y_flip)`` for an MDArray.
 
@@ -134,8 +133,7 @@ def _mdarray_shape_and_dtype(
         md_arr = rg.OpenMDArray(variable_name)
         if md_arr is None:
             raise ValueError(
-                f"Variable {variable_name!r} not found in root group "
-                f"of {path!r}."
+                f"Variable {variable_name!r} not found in root group " f"of {path!r}."
             )
         shape = tuple(int(d.GetSize()) for d in md_arr.GetDimensions())
         probe = md_arr.ReadAsArray(
@@ -151,7 +149,9 @@ def _mdarray_shape_and_dtype(
         if len(shape) >= 2:
             try:
                 classic = md_arr.AsClassicDataset(
-                    len(shape) - 1, len(shape) - 2, rg,
+                    len(shape) - 1,
+                    len(shape) - 2,
+                    rg,
                 )
                 needs_flip = classic.GetGeoTransform()[5] > 0
             except Exception:  # pragma: no cover - driver-specific
@@ -162,7 +162,8 @@ def _mdarray_shape_and_dtype(
 
 
 def _default_chunks(
-    shape: tuple[int, ...], block_size: list[int] | None,
+    shape: tuple[int, ...],
+    block_size: list[int] | None,
 ) -> tuple[int, ...]:
     """Return a conservative default chunk shape for an MDArray.
 
@@ -198,7 +199,9 @@ def _default_chunks(
 
 
 def _normalize_chunks(
-    chunks: Any, shape: tuple[int, ...], block_size: list[int] | None,
+    chunks: Any,
+    shape: tuple[int, ...],
+    block_size: list[int] | None,
 ) -> tuple[int, ...]:
     """Normalize a user-supplied ``chunks`` argument.
 
@@ -231,20 +234,13 @@ def _normalize_chunks(
     """
     default = _default_chunks(shape, block_size)
     if chunks is None:
-        raise ValueError(
-            "_normalize_chunks should not be called with chunks=None"
-        )
+        raise ValueError("_normalize_chunks should not be called with chunks=None")
     if isinstance(chunks, str):
         if chunks != "auto":
-            raise ValueError(
-                f"Unknown chunks string {chunks!r}; expected 'auto'."
-            )
+            raise ValueError(f"Unknown chunks string {chunks!r}; expected 'auto'.")
         result = default
     elif isinstance(chunks, int):
-        result = tuple(
-            int(chunks) if chunks > 0 else int(axis)
-            for axis in shape
-        )
+        result = tuple(int(chunks) if chunks > 0 else int(axis) for axis in shape)
     elif isinstance(chunks, (tuple, list)):
         if len(chunks) != len(shape):
             raise ValueError(
@@ -333,7 +329,9 @@ def _read_mdarray_chunk(
 
 
 def _apply_unpack(
-    arr: Any, scale: float | None, offset: float | None,
+    arr: Any,
+    scale: float | None,
+    offset: float | None,
 ) -> Any:
     """Apply CF ``scale_factor`` / ``add_offset`` to a lazy or eager array.
 
@@ -363,7 +361,8 @@ def _apply_unpack(
 
 
 def _expand_chunks(
-    shape: tuple[int, ...], chunk_shape: tuple[int, ...],
+    shape: tuple[int, ...],
+    chunk_shape: tuple[int, ...],
 ) -> tuple[tuple[int, ...], ...]:
     """Expand a flat chunk tuple into dask's per-axis size tuples.
 
@@ -406,7 +405,11 @@ class _MDArrayChunkReader:
     """
 
     __slots__ = (
-        "manager", "variable_name", "expected_dtype", "starts", "counts",
+        "manager",
+        "variable_name",
+        "expected_dtype",
+        "starts",
+        "counts",
     )
 
     def __init__(
@@ -500,7 +503,8 @@ def build_lazy_array(
     """
     da = _require_dask()
     shape, dtype, block_size, needs_y_flip = _mdarray_shape_and_dtype(
-        path, variable_name,
+        path,
+        variable_name,
     )
     chunk_shape = _normalize_chunks(chunks, shape, block_size)
     resolved_lock = _resolve_lock(lock)
@@ -519,14 +523,14 @@ def build_lazy_array(
     graph: dict[tuple, Any] = {}
     grid_shape = tuple(len(sizes) for sizes in chunks_per_axis)
     for index in np.ndindex(*grid_shape):
-        counts = tuple(
-            chunks_per_axis[axis][i] for axis, i in enumerate(index)
-        )
-        starts = tuple(
-            starts_per_axis[axis][i] for axis, i in enumerate(index)
-        )
+        counts = tuple(chunks_per_axis[axis][i] for axis, i in enumerate(index))
+        starts = tuple(starts_per_axis[axis][i] for axis, i in enumerate(index))
         reader = _MDArrayChunkReader(
-            manager, variable_name, dtype, starts, counts,
+            manager,
+            variable_name,
+            dtype,
+            starts,
+            counts,
         )
         graph[(name,) + index] = (reader,)
     lazy = da.Array(graph, name, chunks_per_axis, dtype=dtype)

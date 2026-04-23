@@ -16,9 +16,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
-
 import dask
+import pytest
 
 from pyramids import configure_lazy_vector
 from pyramids.feature import collection as _fc_mod
@@ -55,7 +54,8 @@ class TestSchedulerApply:
         assert dask.config.get("scheduler") == "synchronous"
 
     def test_none_scheduler_leaves_config_alone(
-        self, restore_dask_scheduler,
+        self,
+        restore_dask_scheduler,
     ):
         """``scheduler=None`` must not touch dask.config."""
         dask.config.set(scheduler="synchronous")
@@ -83,13 +83,17 @@ class TestTargetBytes:
 
 class TestReturnValue:
     def test_empty_call_returns_empty_dict(
-        self, restore_lazy_target, restore_dask_scheduler,
+        self,
+        restore_lazy_target,
+        restore_dask_scheduler,
     ):
         """No kwargs → no settings applied → empty return."""
         assert configure_lazy_vector() == {}
 
     def test_returns_applied_settings(
-        self, restore_lazy_target, restore_dask_scheduler,
+        self,
+        restore_lazy_target,
+        restore_dask_scheduler,
     ):
         """The return dict reports exactly what was applied."""
         result = configure_lazy_vector(
@@ -104,7 +108,9 @@ class TestReturnValue:
 
 class TestWorkerPlugin:
     def test_client_triggers_plugin_registration(
-        self, restore_lazy_target, restore_dask_scheduler,
+        self,
+        restore_lazy_target,
+        restore_dask_scheduler,
     ):
         """Passing ``client`` calls ``client.register_plugin``."""
         fake_client = MagicMock()
@@ -118,7 +124,9 @@ class TestWorkerPlugin:
         assert call.kwargs.get("name") == "pyramids-configure-lazy-vector"
 
     def test_client_fallback_to_register_worker_plugin(
-        self, restore_lazy_target, restore_dask_scheduler,
+        self,
+        restore_lazy_target,
+        restore_dask_scheduler,
     ):
         """Old dask API (no ``register_plugin``) falls back cleanly."""
         fake_client = MagicMock()

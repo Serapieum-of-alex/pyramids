@@ -17,7 +17,6 @@ import pytest
 
 from pyramids.dataset import Dataset, DatasetCollection
 
-
 try:
     import dask.array  # noqa: F401
 
@@ -35,7 +34,10 @@ def three_files(tmp_path):
     for i in range(3):
         arr = np.full((4, 5), i, dtype=np.float32)
         ds = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 4.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         p = str(tmp_path / f"f{i}.tif")
         ds.to_file(p)
@@ -114,9 +116,9 @@ class TestManagerCaching:
         first_snapshot = set(_READ_TIME_STEP_MANAGERS.keys())
         collection.data.compute()
         second_snapshot = set(_READ_TIME_STEP_MANAGERS.keys())
-        assert first_snapshot == second_snapshot, (
-            "Repeated compute should not register new managers"
-        )
+        assert (
+            first_snapshot == second_snapshot
+        ), "Repeated compute should not register new managers"
         assert len(first_snapshot) == len(three_files)
 
 
@@ -124,7 +126,10 @@ class TestErrors:
     def test_no_files_raises(self):
         arr = np.zeros((4, 5), dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 4.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         collection = DatasetCollection(src, time_length=1)
         with pytest.raises(RuntimeError, match="file-backed"):

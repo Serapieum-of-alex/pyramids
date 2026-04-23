@@ -63,8 +63,9 @@ except ImportError:  # pragma: no cover
 requires_dask = pytest.mark.skipif(not HAS_DASK, reason="dask not installed")
 
 
-def _make_tiled_tif(path: Path, rows: int = 64, cols: int = 64,
-                    bands: int = 2, block: int = 16) -> Path:
+def _make_tiled_tif(
+    path: Path, rows: int = 64, cols: int = 64, bands: int = 2, block: int = 16
+) -> Path:
     """Write a multi-band tiled GeoTIFF fixture with deterministic values.
 
     Each pixel is filled with ``band*1000 + row*cols + col`` so tests can
@@ -72,7 +73,11 @@ def _make_tiled_tif(path: Path, rows: int = 64, cols: int = 64,
     """
     drv = gdal.GetDriverByName("GTiff")
     ds = drv.Create(
-        str(path), cols, rows, bands, gdal.GDT_Float32,
+        str(path),
+        cols,
+        rows,
+        bands,
+        gdal.GDT_Float32,
         options=["TILED=YES", f"BLOCKXSIZE={block}", f"BLOCKYSIZE={block}"],
     )
     ds.SetGeoTransform((0.0, 1.0, 0.0, rows * 1.0, 0.0, -1.0))
@@ -255,7 +260,12 @@ class TestLockConvention:
         def spy(block_info, manager, lock, band, out_dtype, single_band):
             captured["lock"] = lock
             return original(
-                block_info, manager, lock, band, out_dtype, single_band,
+                block_info,
+                manager,
+                lock,
+                band,
+                out_dtype,
+                single_band,
             )
 
         monkeypatch.setattr(io_module, "_read_chunk", spy)
@@ -264,14 +274,21 @@ class TestLockConvention:
         arr.compute(scheduler="synchronous")
         assert isinstance(captured["lock"], DummyLock)
 
-    def test_lock_none_defaults_to_serializable(self, tiled_tif_path: Path, monkeypatch):
+    def test_lock_none_defaults_to_serializable(
+        self, tiled_tif_path: Path, monkeypatch
+    ):
         captured: dict = {}
         original = io_module._read_chunk
 
         def spy(block_info, manager, lock, band, out_dtype, single_band):
             captured["lock"] = lock
             return original(
-                block_info, manager, lock, band, out_dtype, single_band,
+                block_info,
+                manager,
+                lock,
+                band,
+                out_dtype,
+                single_band,
             )
 
         monkeypatch.setattr(io_module, "_read_chunk", spy)
@@ -287,7 +304,12 @@ class TestLockConvention:
         def spy(block_info, manager, lock, band, out_dtype, single_band):
             captured["lock"] = lock
             return original(
-                block_info, manager, lock, band, out_dtype, single_band,
+                block_info,
+                manager,
+                lock,
+                band,
+                out_dtype,
+                single_band,
             )
 
         monkeypatch.setattr(io_module, "_read_chunk", spy)
@@ -324,14 +346,21 @@ class TestChunkReaderPickle:
 
     def test_manager_pickle_roundtrip(self, tiled_tif_path: Path):
         manager = CachingFileManager(
-            gdal_raster_open, str(tiled_tif_path), "read_only", lock=False,
+            gdal_raster_open,
+            str(tiled_tif_path),
+            "read_only",
+            lock=False,
         )
         data = pickle.dumps(manager)
         manager2 = pickle.loads(data)
         block_info = {None: {"array-location": [(0, 4), (0, 4)]}}
         out = _read_chunk(
-            block_info=block_info, manager=manager2, lock=DummyLock(),
-            band=0, out_dtype=np.dtype("float32"), single_band=True,
+            block_info=block_info,
+            manager=manager2,
+            lock=DummyLock(),
+            band=0,
+            out_dtype=np.dtype("float32"),
+            single_band=True,
         )
         assert out.shape == (4, 4)
         # First four pixels: 0, 1, 2, 3 for row 0.
@@ -343,12 +372,12 @@ class TestChunkReaderPickle:
         data = pickle.dumps(arr)
         arr2 = pickle.loads(data)
         np.testing.assert_array_equal(
-            arr2.compute(scheduler="synchronous"), ds.read_array(),
+            arr2.compute(scheduler="synchronous"),
+            ds.read_array(),
         )
 
 
-_CROSS_PROCESS_SCRIPT = textwrap.dedent(
-    """
+_CROSS_PROCESS_SCRIPT = textwrap.dedent("""
     import os
     os.environ.setdefault('MPLBACKEND', 'Agg')
     import pickle, sys
@@ -357,8 +386,7 @@ _CROSS_PROCESS_SCRIPT = textwrap.dedent(
         arr = pickle.load(fh)
     out = arr.compute(scheduler='synchronous')
     np.save(sys.argv[2], out)
-    """
-)
+    """)
 
 
 @requires_dask
@@ -366,7 +394,9 @@ class TestCrossProcessCompute:
     """Pickle a lazy read, then compute it in a fresh ``spawn`` subprocess."""
 
     def test_pickle_then_compute_across_process(
-        self, tiled_tif_path: Path, tmp_path: Path,
+        self,
+        tiled_tif_path: Path,
+        tmp_path: Path,
     ):
         ds = Dataset.read_file(str(tiled_tif_path))
         eager = ds.read_array()
@@ -381,7 +411,10 @@ class TestCrossProcessCompute:
         env.setdefault("MPLBACKEND", "Agg")
         proc = subprocess.run(
             [sys.executable, str(script_path), str(pickle_path), str(out_path)],
-            capture_output=True, text=True, timeout=120, env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            env=env,
         )
         assert proc.returncode == 0, proc.stderr
         reloaded = np.load(str(out_path))

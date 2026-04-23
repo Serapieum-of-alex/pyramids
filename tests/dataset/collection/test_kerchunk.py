@@ -15,7 +15,6 @@ import pytest
 
 from pyramids.dataset import Dataset, DatasetCollection
 
-
 try:
     import kerchunk.hdf  # noqa: F401
 
@@ -63,7 +62,10 @@ class TestGeoTiffGuard:
     def test_geotiff_collection_raises(self, tmp_path):
         arr = np.zeros((3, 4), dtype=np.float32)
         ds = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 3.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         tif = str(tmp_path / "x.tif")
         ds.to_file(tif)
@@ -76,7 +78,10 @@ class TestErrors:
     def test_no_files_raises(self):
         arr = np.zeros((3, 4), dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326,
+            arr,
+            top_left_corner=(0.0, 3.0),
+            cell_size=1.0,
+            epsg=4326,
         )
         collection = DatasetCollection(src, time_length=1)
         with pytest.raises(RuntimeError, match="file-backed"):

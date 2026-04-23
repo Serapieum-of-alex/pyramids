@@ -16,7 +16,6 @@ from osgeo import gdal, ogr, osr
 from pandas import DataFrame
 
 from pyramids.base._utils import gdal_to_ogr_dtype
-from pyramids.feature import FeatureCollection
 from pyramids.feature import _ogr as _feature_ogr
 
 if TYPE_CHECKING:
@@ -267,9 +266,7 @@ class Vectorize:
         return df
 
     @staticmethod
-    def _attach_geometry(
-        src, df: pd.DataFrame, geometry_type: str
-    ) -> gpd.GeoDataFrame:
+    def _attach_geometry(src, df: pd.DataFrame, geometry_type: str) -> gpd.GeoDataFrame:
         """Attach point or polygon geometry to a DataFrame.
 
         Args:

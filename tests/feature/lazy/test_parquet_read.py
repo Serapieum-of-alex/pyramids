@@ -15,7 +15,6 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
-
 try:
     import dask_geopandas  # noqa: F401
 
@@ -35,9 +34,7 @@ except ImportError:  # pragma: no cover
 requires_dask_geopandas = pytest.mark.skipif(
     not HAS_DASK_GP, reason="dask-geopandas not installed"
 )
-requires_pyarrow = pytest.mark.skipif(
-    not HAS_PYARROW, reason="pyarrow not installed"
-)
+requires_pyarrow = pytest.mark.skipif(not HAS_PYARROW, reason="pyarrow not installed")
 
 
 @pytest.fixture
@@ -79,7 +76,8 @@ class TestDaskBackend:
 
     def test_filters_pushed_down(self, small_parquet):
         lfc = FeatureCollection.read_parquet(
-            small_parquet, backend="dask",
+            small_parquet,
+            backend="dask",
             filters=[("class", "=", "water")],
         )
         eager = lfc.compute()
@@ -88,7 +86,9 @@ class TestDaskBackend:
 
     def test_columns_projection(self, small_parquet):
         lfc = FeatureCollection.read_parquet(
-            small_parquet, backend="dask", columns=["id", "geometry"],
+            small_parquet,
+            backend="dask",
+            columns=["id", "geometry"],
         )
         eager = lfc.compute()
         assert list(eager.columns) == ["id", "geometry"]
@@ -151,9 +151,7 @@ class TestValidation:
         monkeypatch.setattr(builtins, "__import__", fake_import)
         # Drop any already-cached pyarrow module so the fake_import
         # fires on the next ``import pyarrow`` inside _require_pyarrow.
-        monkeypatch.delitem(
-            __import__("sys").modules, "pyarrow", raising=False
-        )
+        monkeypatch.delitem(__import__("sys").modules, "pyarrow", raising=False)
         dummy = str(tmp_path / "ignored.parquet")
         with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
             FeatureCollection.read_parquet(dummy, backend="dask")

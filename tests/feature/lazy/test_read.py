@@ -19,7 +19,6 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
-
 try:
     import dask_geopandas  # noqa: F401
 
@@ -70,14 +69,18 @@ class TestDaskBackend:
     @requires_dask_geopandas
     def test_npartitions_respected(self, small_geojson):
         lfc = FeatureCollection.read_file(
-            small_geojson, backend="dask", npartitions=2,
+            small_geojson,
+            backend="dask",
+            npartitions=2,
         )
         assert lfc.npartitions == 2
 
     @requires_dask_geopandas
     def test_compute_recovers_features(self, small_geojson):
         lfc = FeatureCollection.read_file(
-            small_geojson, backend="dask", npartitions=2,
+            small_geojson,
+            backend="dask",
+            npartitions=2,
         )
         eager = lfc.compute()
         assert isinstance(eager, FeatureCollection)
@@ -88,7 +91,9 @@ class TestDaskBackend:
         from pyramids.feature import LazyFeatureCollection
 
         lfc = FeatureCollection.read_file(
-            small_geojson, backend="dask", chunksize=3,
+            small_geojson,
+            backend="dask",
+            chunksize=3,
         )
         assert isinstance(lfc, LazyFeatureCollection)
 
@@ -99,13 +104,17 @@ class TestFilterKwargsRejected:
     def test_bbox_with_dask_backend_raises(self, small_geojson):
         with pytest.raises(ValueError, match="filter kwargs"):
             FeatureCollection.read_file(
-                small_geojson, backend="dask", bbox=(0, 0, 1, 1),
+                small_geojson,
+                backend="dask",
+                bbox=(0, 0, 1, 1),
             )
 
     def test_where_with_dask_backend_raises(self, small_geojson):
         with pytest.raises(ValueError, match="filter kwargs"):
             FeatureCollection.read_file(
-                small_geojson, backend="dask", where="id > 0",
+                small_geojson,
+                backend="dask",
+                where="id > 0",
             )
 
 

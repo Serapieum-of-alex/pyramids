@@ -117,7 +117,8 @@ def _resolve_lazy_partitioning(
             kwargs["npartitions"] = 1
         else:
             kwargs["npartitions"] = max(
-                1, math.ceil(size / _LAZY_TARGET_BYTES_PER_PARTITION),
+                1,
+                math.ceil(size / _LAZY_TARGET_BYTES_PER_PARTITION),
             )
     return kwargs
 
@@ -181,11 +182,15 @@ class FeatureCollection(GeoDataFrame):
     # the pyramids subclass does not carry a duplicate entry. Python
     # preserves insertion order in dicts since 3.7, so the parent's
     # ordering is preserved.
-    _metadata: list[str] = list(dict.fromkeys([
-        *GeoDataFrame._metadata,
-        "_epsg_cache_crs",
-        "_epsg_cache_value",
-    ]))
+    _metadata: list[str] = list(
+        dict.fromkeys(
+            [
+                *GeoDataFrame._metadata,
+                "_epsg_cache_crs",
+                "_epsg_cache_value",
+            ]
+        )
+    )
     """Instance attributes pandas must preserve across copy/slice/pickle.
 
     Holds:
@@ -429,9 +434,7 @@ class FeatureCollection(GeoDataFrame):
                 "iterable would produce a GeoDataFrame with no geometry "
                 "column, which breaks downstream pyramids methods."
             )
-        gdf = gpd.GeoDataFrame.from_features(
-            features_list, crs=crs, columns=columns
-        )
+        gdf = gpd.GeoDataFrame.from_features(features_list, crs=crs, columns=columns)
         return cls(gdf)
 
     @classmethod
@@ -533,10 +536,8 @@ class FeatureCollection(GeoDataFrame):
         # ``GeoDataFrame(..., geometry=…)`` sets it as the active
         # geometry column and the returned FC has
         # ``geometry.name == geometry``.
-        def _empty_fc() -> "FeatureCollection":
-            return cls(
-                gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
-            )
+        def _empty_fc() -> FeatureCollection:
+            return cls(gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs))
 
         if orient == "records":
             records_list = list(records)
@@ -557,9 +558,7 @@ class FeatureCollection(GeoDataFrame):
             if len(df) == 0:
                 return _empty_fc()
         else:
-            raise ValueError(
-                f"orient must be 'records' or 'list'; got {orient!r}."
-            )
+            raise ValueError(f"orient must be 'records' or 'list'; got {orient!r}.")
         if geometry not in df.columns:
             raise FeatureError(
                 f"records missing required geometry column {geometry!r}; "
@@ -708,9 +707,7 @@ class FeatureCollection(GeoDataFrame):
                 ```
         """
         if chunksize is not None and chunksize < 1:
-            raise ValueError(
-                f"chunksize must be >= 1 when supplied; got {chunksize}."
-            )
+            raise ValueError(f"chunksize must be >= 1 when supplied; got {chunksize}.")
         if tile_strategy not in cls._VALID_TILE_STRATEGIES:
             raise ValueError(
                 f"tile_strategy must be one of "
@@ -770,13 +767,9 @@ class FeatureCollection(GeoDataFrame):
                 row_indices = list(range(start, start + len(gdf_chunk)))
             if python_bbox is not None and len(gdf_chunk) > 0:
                 xmin, ymin, xmax, ymax = python_bbox
-                mask = gdf_chunk.intersects(
-                    box(xmin, ymin, xmax, ymax)
-                )
+                mask = gdf_chunk.intersects(box(xmin, ymin, xmax, ymax))
                 if include_index:
-                    row_indices = [
-                        ri for ri, keep in zip(row_indices, mask) if keep
-                    ]
+                    row_indices = [ri for ri, keep in zip(row_indices, mask) if keep]
                 gdf_chunk = gdf_chunk[mask]
             if chunksize is None:
                 iterator = gdf_chunk.iterfeatures(na="null")
@@ -808,7 +801,7 @@ class FeatureCollection(GeoDataFrame):
         npartitions: int | None = None,
         chunksize: int | None = None,
         **kwargs: Any,
-    ) -> "FeatureCollection | LazyFeatureCollection":
+    ) -> FeatureCollection | LazyFeatureCollection:
         """Read a vector file into a FeatureCollection.
 
         ARC-23: path is first routed through
@@ -894,8 +887,12 @@ class FeatureCollection(GeoDataFrame):
             # ValueError instead so users know to either pre-filter
             # or call .compute() and filter eagerly.
             unsupported = {
-                "bbox": bbox, "mask": mask, "rows": rows,
-                "columns": columns, "where": where, "layer": layer,
+                "bbox": bbox,
+                "mask": mask,
+                "rows": rows,
+                "columns": columns,
+                "where": where,
+                "layer": layer,
             }
             supplied = [k for k, v in unsupported.items() if v is not None]
             if supplied:
@@ -918,7 +915,9 @@ class FeatureCollection(GeoDataFrame):
             # kwarg was supplied; one-partition fallback defeats the
             # point of going lazy.
             partition_kwargs = _resolve_lazy_partitioning(
-                resolved, npartitions, chunksize,
+                resolved,
+                npartitions,
+                chunksize,
             )
             # DASK-22F: wrap the lazy return as a LazyFeatureCollection so the
             # dask branch stays inside the pyramids type system.
@@ -927,9 +926,7 @@ class FeatureCollection(GeoDataFrame):
             dask_gdf = dask_geopandas.read_file(resolved, **partition_kwargs)
             return LazyFeatureCollection.from_dask_gdf(dask_gdf)
         if backend != "pandas":
-            raise ValueError(
-                f"backend must be 'pandas' or 'dask', got {backend!r}"
-            )
+            raise ValueError(f"backend must be 'pandas' or 'dask', got {backend!r}")
         # Only pass kwargs that were actually supplied — passing the
         # defaults (None) is fine for some geopandas engines but
         # confuses others. Build a clean kwargs dict.
@@ -1140,10 +1137,7 @@ class FeatureCollection(GeoDataFrame):
         n = len(self)
         cols = self.columns.tolist()
         epsg = self.epsg
-        return (
-            f"FeatureCollection({n} features, "
-            f"columns={cols}, epsg={epsg})"
-        )
+        return f"FeatureCollection({n} features, " f"columns={cols}, epsg={epsg})"
 
     def __repr__(self) -> str:
         """Return a pyramids-branded repr."""
@@ -1228,19 +1222,13 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        geom_types = {
-            g.geom_type
-            for g in self.geometry
-            if g is not None
-        }
+        geom_types = {g.geom_type for g in self.geometry if g is not None}
         if len(geom_types) == 1:
             (geom_type,) = geom_types
         else:
             geom_type = "Unknown"
         properties = {
-            col: str(dt)
-            for col, dt in self.dtypes.items()
-            if col != "geometry"
+            col: str(dt) for col, dt in self.dtypes.items() if col != "geometry"
         }
         return {
             "geometry": geom_type,
@@ -1320,9 +1308,7 @@ class FeatureCollection(GeoDataFrame):
         if not is_remote(path_str):
             local = Path(path_str)
             if not local.exists():
-                raise FileNotFoundError(
-                    f"list_layers: no file at {path_str!r}."
-                )
+                raise FileNotFoundError(f"list_layers: no file at {path_str!r}.")
 
         resolved = str(_pyramids_io._parse_path(path))
         return list(_list_layers_cached(resolved))
@@ -1443,7 +1429,7 @@ class FeatureCollection(GeoDataFrame):
         blocksize: int | str | None = None,
         storage_options: dict | None = None,
         **kwargs: Any,
-    ) -> "FeatureCollection | LazyFeatureCollection":
+    ) -> FeatureCollection | LazyFeatureCollection:
         """Read a GeoParquet file into a FeatureCollection (ARC-32).
 
         GeoParquet is a cloud-native columnar vector format (OGC-
@@ -1568,9 +1554,7 @@ class FeatureCollection(GeoDataFrame):
             dask_gdf = dask_geopandas.read_parquet(resolved, **dask_kwargs)
             return LazyFeatureCollection.from_dask_gdf(dask_gdf)
         if backend != "pandas":
-            raise ValueError(
-                f"backend must be 'pandas' or 'dask', got {backend!r}"
-            )
+            raise ValueError(f"backend must be 'pandas' or 'dask', got {backend!r}")
         _require_pyarrow()
         # geopandas 1.x forwards **kwargs straight into
         # ``pyarrow.parquet.read_table``, which has never accepted the
@@ -1668,9 +1652,7 @@ class FeatureCollection(GeoDataFrame):
                 ```
         """
         _require_pyarrow()
-        super().to_parquet(
-            path, compression=compression, index=index, **kwargs
-        )
+        super().to_parquet(path, compression=compression, index=index, **kwargs)
 
     def to_file(
         self,
@@ -1793,9 +1775,7 @@ class FeatureCollection(GeoDataFrame):
                 ```
         """
         if mode not in ("w", "a"):
-            raise ValueError(
-                f"mode must be 'w' (write) or 'a' (append); got {mode!r}."
-            )
+            raise ValueError(f"mode must be 'w' (write) or 'a' (append); got {mode!r}.")
         try:
             resolved = CATALOG.get_gdal_name(driver) or driver
         except AttributeError:
@@ -1974,9 +1954,7 @@ class FeatureCollection(GeoDataFrame):
         return _geom.get_poly_coords(geometry, coord_type)
 
     @staticmethod
-    def _explode_gdf(
-        gdf: GeoDataFrame, geometry: str = "multipolygon"
-    ) -> GeoDataFrame:
+    def _explode_gdf(gdf: GeoDataFrame, geometry: str = "multipolygon") -> GeoDataFrame:
         """Delegate to :func:`pyramids.feature.geometry.explode_gdf`."""
         return _geom.explode_gdf(gdf, geometry)
 
@@ -2483,9 +2461,7 @@ class FeatureCollection(GeoDataFrame):
         # directly.
         cleaned: list[Any] = [
             Point() if bad else Point(ax, ay)
-            for ax, ay, bad in zip(
-                avg_x.tolist(), avg_y.tolist(), bad_mask.tolist()
-            )
+            for ax, ay, bad in zip(avg_x.tolist(), avg_y.tolist(), bad_mask.tolist())
         ]
         fc["center_point"] = cleaned
         return fc

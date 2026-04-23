@@ -21,9 +21,8 @@ import pytest
 from osgeo import gdal
 from shapely.geometry import box
 
-from pyramids.dataset import Dataset
+from pyramids.dataset import Dataset, DatasetCollection
 from pyramids.feature import FeatureCollection
-from pyramids.dataset import DatasetCollection
 
 
 def _make_dataset(
@@ -252,18 +251,27 @@ class TestRasterizeRoundTrip:
         cell_size = 1000.0
         top_left = (500000.0, 3400000.0)
         template = Dataset.create(
-            cell_size=cell_size, rows=5, columns=5, dtype="int32",
-            bands=1, top_left_corner=top_left, epsg=epsg,
+            cell_size=cell_size,
+            rows=5,
+            columns=5,
+            dtype="int32",
+            bands=1,
+            top_left_corner=top_left,
+            epsg=epsg,
             no_data_value=-1,
         )
         gdf = gpd.GeoDataFrame(
-            {"v": [1]}, geometry=[box(0.0, 0.0, 1.0, 1.0)],
+            {"v": [1]},
+            geometry=[box(0.0, 0.0, 1.0, 1.0)],
             crs=f"EPSG:{epsg}",
         )
         fc = FeatureCollection(gdf)
         with pytest.raises(ValueError, match="cell_size must be positive"):
             Dataset.from_features(
-                fc, cell_size=-1.0, template=template, column_name="v",
+                fc,
+                cell_size=-1.0,
+                template=template,
+                column_name="v",
             )
 
     def test_from_features_raises_on_crs_less_features(self):
@@ -323,15 +331,13 @@ class TestRasterizeRoundTrip:
         )
         fc = FeatureCollection(gdf)
 
-        raster = Dataset.from_features(
-            fc, template=template, column_name="class_id"
-        )
+        raster = Dataset.from_features(fc, template=template, column_name="class_id")
 
         nodata = raster.no_data_value[0]
         assert nodata is not None, "integer raster must have a non-None no-data"
-        assert not (isinstance(nodata, float) and np.isnan(nodata)), (
-            "integer raster's no-data must not be NaN (C2)"
-        )
+        assert not (
+            isinstance(nodata, float) and np.isnan(nodata)
+        ), "integer raster's no-data must not be NaN (C2)"
         assert nodata == Dataset.default_no_data_value
 
     @pytest.mark.parametrize(
@@ -421,9 +427,9 @@ class TestRasterizeRoundTrip:
         nodata = raster.no_data_value[0]
         # NaN on float is valid and preserved.
         assert nodata is not None, "float raster should still have a no-data"
-        assert isinstance(nodata, float) and np.isnan(nodata), (
-            f"float raster should keep NaN no-data; got {nodata!r}"
-        )
+        assert isinstance(nodata, float) and np.isnan(
+            nodata
+        ), f"float raster should keep NaN no-data; got {nodata!r}"
 
     def test_rasterize_integer_dtype_keeps_explicit_template_nodata(self):
         """C2 negative: an explicit integer no-data on the template is preserved.
@@ -459,9 +465,9 @@ class TestRasterizeRoundTrip:
         fc = FeatureCollection(gdf)
 
         raster = Dataset.from_features(fc, template=template, column_name="v")
-        assert raster.no_data_value[0] == -1, (
-            "explicit template no-data must not be overwritten"
-        )
+        assert (
+            raster.no_data_value[0] == -1
+        ), "explicit template no-data must not be overwritten"
 
     def test_rasterize_then_pickle_roundtrip_chain(self):
         """C2 + C3 chained: rasterize → pickle FC → unpickle → rasterize again.
@@ -494,14 +500,17 @@ class TestRasterizeRoundTrip:
         assert "geometry" in restored.columns
 
         template = Dataset.create(
-            cell_size=cell_size, rows=5, columns=5, dtype="int32",
-            bands=1, top_left_corner=top_left, epsg=epsg,
+            cell_size=cell_size,
+            rows=5,
+            columns=5,
+            dtype="int32",
+            bands=1,
+            top_left_corner=top_left,
+            epsg=epsg,
             no_data_value=None,
         )
         r1 = Dataset.from_features(fc, template=template, column_name="class_id")
-        r2 = Dataset.from_features(
-            restored, template=template, column_name="class_id"
-        )
+        r2 = Dataset.from_features(restored, template=template, column_name="class_id")
         assert r1.no_data_value[0] == r2.no_data_value[0]
         assert r1.no_data_value[0] == Dataset.default_no_data_value
 
@@ -729,9 +738,7 @@ class TestClusterE2E:
 
         cluster_array, count, position, values = cropped.cluster(5, 10)
 
-        assert count == 2, (
-            f"Expected 1 cluster in cropped region, got {count - 1}"
-        )
+        assert count == 2, f"Expected 1 cluster in cropped region, got {count - 1}"
         for v in values:
             assert 5 <= v <= 10, f"Clustered value {v} outside bounds [5, 10]"
 
@@ -792,9 +799,9 @@ class TestClusterE2E:
         )
         gdf = cluster_ds.cluster2()
 
-        assert isinstance(gdf, gpd.GeoDataFrame), (
-            f"Expected GeoDataFrame, got {type(gdf)}"
-        )
+        assert isinstance(
+            gdf, gpd.GeoDataFrame
+        ), f"Expected GeoDataFrame, got {type(gdf)}"
         assert len(gdf) > 0, "Should produce at least one polygon"
         assert all(
             geom.is_valid for geom in gdf.geometry
@@ -816,9 +823,7 @@ class TestClusterE2E:
         cluster_array, count, position, values = src.cluster(1, 10)
 
         assert count == 2, f"Expected 1 cluster, got {count - 1}"
-        assert len(position) == 90000, (
-            f"Expected 90000 cells, got {len(position)}"
-        )
+        assert len(position) == 90000, f"Expected 90000 cells, got {len(position)}"
         assert np.all(cluster_array == 1), "All cells should be cluster 1"
 
 
@@ -834,7 +839,11 @@ class TestApplyE2E:
         """
         arr = np.array([[2.0, 3.0], [4.0, 5.0]], dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         result = src.apply(np.square)
         expected = np.array([[4.0, 9.0], [16.0, 25.0]], dtype=np.float32)
@@ -847,8 +856,10 @@ class TestApplyE2E:
 
             reloaded = Dataset.read_file(path)
             np.testing.assert_array_almost_equal(
-                reloaded.read_array(), expected, decimal=2,
-                err_msg="Squared values should survive disk round-trip"
+                reloaded.read_array(),
+                expected,
+                decimal=2,
+                err_msg="Squared values should survive disk round-trip",
             )
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -862,7 +873,11 @@ class TestApplyE2E:
         """
         arr = np.arange(1, 101, dtype=np.float32).reshape(10, 10)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         doubled = src.apply(lambda x: x * 2)
 
@@ -874,9 +889,9 @@ class TestApplyE2E:
         nodata = cropped.no_data_value[0]
         domain_vals = cropped_arr[~np.isclose(cropped_arr, nodata, rtol=0.001)]
         assert len(domain_vals) > 0, "Cropped result should have domain cells"
-        assert np.all(domain_vals % 2 == 0), (
-            "All cropped domain values should be even (doubled from integers)"
-        )
+        assert np.all(
+            domain_vals % 2 == 0
+        ), "All cropped domain values should be even (doubled from integers)"
 
     def test_apply_chained(self):
         """Chain multiple apply calls -> verify cumulative transformation.
@@ -887,14 +902,18 @@ class TestApplyE2E:
         """
         arr = np.full((3, 3), 2.0, dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         step1 = src.apply(lambda x: x + 3)
         step2 = step1.apply(lambda x: x * 10)
         result_arr = step2.read_array()
-        assert np.allclose(result_arr, 50.0), (
-            f"Expected all cells to be 50.0 after chaining, got {result_arr}"
-        )
+        assert np.allclose(
+            result_arr, 50.0
+        ), f"Expected all cells to be 50.0 after chaining, got {result_arr}"
 
     def test_apply_scalar_function_e2e(self):
         """Apply a scalar if/elif classification function end-to-end.
@@ -904,6 +923,7 @@ class TestApplyE2E:
             bins, apply a scalar function that uses if/elif, and verify
             each cell gets the correct class.
         """
+
         def classify(val):
             if val < 5:
                 return 1.0
@@ -917,7 +937,11 @@ class TestApplyE2E:
             dtype=np.float32,
         )
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         result = src.apply(classify)
         result_arr = result.read_array()
@@ -926,8 +950,9 @@ class TestApplyE2E:
             dtype=np.float32,
         )
         np.testing.assert_array_equal(
-            result_arr, expected,
-            err_msg="Scalar classify should produce correct classification"
+            result_arr,
+            expected,
+            err_msg="Scalar classify should produce correct classification",
         )
 
     def test_apply_with_nodata_save_reload(self):
@@ -939,7 +964,11 @@ class TestApplyE2E:
         """
         arr = np.array([[10.0, -9999.0], [-9999.0, 20.0]], dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         result = src.apply(lambda x: x + 5)
 
@@ -949,19 +978,19 @@ class TestApplyE2E:
             result.to_file(path)
             reloaded = Dataset.read_file(path)
             reloaded_arr = reloaded.read_array()
-            assert np.isclose(reloaded_arr[0, 0], 15.0), (
-                f"Domain cell should be 15.0, got {reloaded_arr[0, 0]}"
-            )
-            assert np.isclose(reloaded_arr[1, 1], 25.0), (
-                f"Domain cell should be 25.0, got {reloaded_arr[1, 1]}"
-            )
+            assert np.isclose(
+                reloaded_arr[0, 0], 15.0
+            ), f"Domain cell should be 15.0, got {reloaded_arr[0, 0]}"
+            assert np.isclose(
+                reloaded_arr[1, 1], 25.0
+            ), f"Domain cell should be 25.0, got {reloaded_arr[1, 1]}"
             nodata = reloaded.no_data_value[0]
-            assert np.isclose(reloaded_arr[0, 1], nodata, rtol=0.001), (
-                f"No-data cell should remain {nodata}, got {reloaded_arr[0, 1]}"
-            )
-            assert np.isclose(reloaded_arr[1, 0], nodata, rtol=0.001), (
-                f"No-data cell should remain {nodata}, got {reloaded_arr[1, 0]}"
-            )
+            assert np.isclose(
+                reloaded_arr[0, 1], nodata, rtol=0.001
+            ), f"No-data cell should remain {nodata}, got {reloaded_arr[0, 1]}"
+            assert np.isclose(
+                reloaded_arr[1, 0], nodata, rtol=0.001
+            ), f"No-data cell should remain {nodata}, got {reloaded_arr[1, 0]}"
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -974,7 +1003,11 @@ class TestApplyE2E:
         """
         arr = np.array([[3.0, 6.0], [9.0, 12.0]], dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         src.apply(lambda x: x / 3, inplace=True)
 
@@ -985,8 +1018,10 @@ class TestApplyE2E:
             reloaded = Dataset.read_file(path)
             expected = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
             np.testing.assert_array_almost_equal(
-                reloaded.read_array(), expected, decimal=2,
-                err_msg="Inplace apply should be reflected after save/reload"
+                reloaded.read_array(),
+                expected,
+                decimal=2,
+                err_msg="Inplace apply should be reflected after save/reload",
             )
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -1005,7 +1040,11 @@ class TestToFeatureCollectionE2E:
         """
         arr = np.array([[10.0, 20.0], [30.0, 40.0]], dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         gdf = src.to_feature_collection(add_geometry="point")
 
@@ -1018,9 +1057,9 @@ class TestToFeatureCollectionE2E:
             reloaded = gpd.read_file(path)
             assert len(reloaded) == 4, f"Expected 4 rows, got {len(reloaded)}"
             assert "geometry" in reloaded.columns, "Should have geometry column"
-            assert all(g.geom_type == "Point" for g in reloaded.geometry), (
-                "All geometries should be Points after reload"
-            )
+            assert all(
+                g.geom_type == "Point" for g in reloaded.geometry
+            ), "All geometries should be Points after reload"
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -1034,7 +1073,11 @@ class TestToFeatureCollectionE2E:
         """
         arr = np.arange(1, 101, dtype=np.float32).reshape(10, 10)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         poly = box(1.5, -3.5, 4.5, -0.5)
         mask = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
@@ -1042,7 +1085,9 @@ class TestToFeatureCollectionE2E:
         df = cropped.to_feature_collection()
 
         assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
-        assert len(df) < 100, f"Cropped result should have fewer than 100 rows, got {len(df)}"
+        assert (
+            len(df) < 100
+        ), f"Cropped result should have fewer than 100 rows, got {len(df)}"
         assert len(df) > 0, "Should have some domain cells"
 
     def test_apply_then_to_feature_collection(self):
@@ -1054,15 +1099,19 @@ class TestToFeatureCollectionE2E:
         """
         arr = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         transformed = src.apply(lambda x: x * 10)
         df = transformed.to_feature_collection()
 
         assert len(df) == 6, f"Expected 6 rows, got {len(df)}"
-        assert all(v % 10 == 0 for v in df.iloc[:, 0]), (
-            "All values should be multiples of 10"
-        )
+        assert all(
+            v % 10 == 0 for v in df.iloc[:, 0]
+        ), "All values should be multiples of 10"
 
     def test_multiband_to_feature_collection_polygon_geometry(self):
         """Create multi-band dataset -> to_feature_collection with polygon -> verify.
@@ -1073,16 +1122,22 @@ class TestToFeatureCollectionE2E:
         """
         arr = np.random.default_rng(42).random((2, 4, 4)).astype(np.float32)
         src = Dataset.create_from_array(
-            arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326, no_data_value=-9999.0
+            arr,
+            top_left_corner=(0.0, 0.0),
+            cell_size=1.0,
+            epsg=4326,
+            no_data_value=-9999.0,
         )
         gdf = src.to_feature_collection(add_geometry="polygon")
 
-        assert isinstance(gdf, gpd.GeoDataFrame), f"Expected GeoDataFrame, got {type(gdf)}"
+        assert isinstance(
+            gdf, gpd.GeoDataFrame
+        ), f"Expected GeoDataFrame, got {type(gdf)}"
         value_cols = [c for c in gdf.columns if c != "geometry"]
         assert len(value_cols) == 2, f"Expected 2 value columns, got {len(value_cols)}"
-        assert all(g.geom_type == "Polygon" for g in gdf.geometry), (
-            "All geometries should be Polygons"
-        )
+        assert all(
+            g.geom_type == "Polygon" for g in gdf.geometry
+        ), "All geometries should be Polygons"
         assert len(gdf) == 16, f"Expected 16 rows (4x4), got {len(gdf)}"
 
 
@@ -1101,7 +1156,10 @@ class TestContextManagerE2E:
         path = tmp_dir / "ctx_test.tif"
         try:
             ds = Dataset.create_from_array(
-                arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326,
+                arr,
+                top_left_corner=(0.0, 0.0),
+                cell_size=1.0,
+                epsg=4326,
                 no_data_value=-9999.0,
             )
             with ds:
@@ -1110,8 +1168,10 @@ class TestContextManagerE2E:
 
             reloaded = Dataset.read_file(path)
             np.testing.assert_array_almost_equal(
-                reloaded.read_array(), arr, decimal=2,
-                err_msg="Reloaded values should match original"
+                reloaded.read_array(),
+                arr,
+                decimal=2,
+                err_msg="Reloaded values should match original",
             )
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -1128,7 +1188,10 @@ class TestContextManagerE2E:
         path = tmp_dir / "ctx_apply.tif"
         try:
             ds = Dataset.create_from_array(
-                arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326,
+                arr,
+                top_left_corner=(0.0, 0.0),
+                cell_size=1.0,
+                epsg=4326,
                 no_data_value=-9999.0,
             )
             with ds:
@@ -1138,8 +1201,10 @@ class TestContextManagerE2E:
             reloaded = Dataset.read_file(path)
             expected = np.array([[4.0, 8.0], [12.0, 16.0]], dtype=np.float32)
             np.testing.assert_array_almost_equal(
-                reloaded.read_array(), expected, decimal=2,
-                err_msg="Applied values should be doubled"
+                reloaded.read_array(),
+                expected,
+                decimal=2,
+                err_msg="Applied values should be doubled",
             )
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -1156,14 +1221,20 @@ class TestContextManagerE2E:
         path = tmp_dir / "ctx_exception.tif"
         try:
             ds = Dataset.create_from_array(
-                arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326,
+                arr,
+                top_left_corner=(0.0, 0.0),
+                cell_size=1.0,
+                epsg=4326,
             )
             with pytest.raises(ValueError):
                 with ds:
                     raise ValueError("intentional error")
 
             ds2 = Dataset.create_from_array(
-                arr, top_left_corner=(0.0, 0.0), cell_size=1.0, epsg=4326,
+                arr,
+                top_left_corner=(0.0, 0.0),
+                cell_size=1.0,
+                epsg=4326,
             )
             ds2.to_file(path)
             assert path.exists(), "Should be able to write after exception cleanup"
