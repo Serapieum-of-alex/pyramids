@@ -101,8 +101,16 @@ class TestWorkerPlugin:
     options on every worker via a :class:`WorkerPlugin` so distributed
     reads see the same config as the driver. These tests cover the
     client-broadcast branch of :func:`configure`.
+
+    Both client-broadcast tests import :mod:`dask.distributed`
+    internally through the ``configure`` code path, so they carry the
+    ``lazy`` marker to route the test into the ``[lazy]`` extras env.
+    The module-level ``pytestmark = pytest.mark.core`` still applies to
+    every other test in this file because ``configure`` without a
+    client is pure GDAL.
     """
 
+    @pytest.mark.lazy
     def test_client_triggers_plugin_registration(self):
         """Passing ``client`` calls ``client.register_plugin`` once.
 
@@ -121,6 +129,7 @@ class TestWorkerPlugin:
             f"{call.kwargs.get('name')!r}"
         )
 
+    @pytest.mark.lazy
     def test_client_fallback_to_register_worker_plugin(self):
         """Old dask API (no ``register_plugin``) falls back cleanly.
 
