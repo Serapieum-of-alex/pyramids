@@ -39,7 +39,7 @@ dependencies = [
 
 [project.optional-dependencies]
 viz = ["cleopatra>=0.7.1", "mercantile>=1.2.0", "xyzservices>=2024.4.0", "Pillow>=9.0.0"]
-lazy = ["dask[array]>=2024.1.0", "distributed>=2024.1.0", "zarr>=2.17.0,<3", "fsspec>=2024.1.0"]
+lazy = ["dask>=2024.1.0", "distributed>=2024.1.0", "zarr>=2.17.0,<3", "fsspec>=2024.1.0"]
 xarray = ["xarray>=2023.1.0"]
 netcdf-lazy = ["pyramids-gis[lazy]", "kerchunk>=0.2.6", "h5py>=3.8.0"]
 parquet = ["pyarrow>=10.0.0"]
