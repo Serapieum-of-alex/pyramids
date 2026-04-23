@@ -120,9 +120,7 @@ class TestEpsgCaching:
         # Cached state is set after first access.
         assert fc._epsg_cache_value == 4326
 
-    def test_epsg_invalidates_when_crs_changes(
-        self, simple_polygon_gdf: GeoDataFrame
-    ):
+    def test_epsg_invalidates_when_crs_changes(self, simple_polygon_gdf: GeoDataFrame):
         """Changing CRS via to_crs() must refresh the cached EPSG."""
         fc = FeatureCollection(simple_polygon_gdf)
         assert fc.epsg == 4326
@@ -252,9 +250,7 @@ class TestContextManager:
     def test_read_file_usable_with_context(self, tmp_path):
         """``with FeatureCollection.read_file(path) as fc:`` is the idiom."""
         poly = box(0.0, 0.0, 1.0, 1.0)
-        gdf = gpd.GeoDataFrame(
-            {"v": [1]}, geometry=[poly], crs="EPSG:4326"
-        )
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[poly], crs="EPSG:4326")
         p = tmp_path / "x.geojson"
         gdf.to_file(p, driver="GeoJSON")
         with FeatureCollection.read_file(p) as fc:
@@ -381,12 +377,12 @@ class TestExplodeGdf:
         FeatureCollection._explode_gdf(gdf, geometry="multipolygon")
 
         # Input row count + geometries are unchanged.
-        assert len(gdf) == original_len, (
-            f"explode_gdf mutated the input length: {len(gdf)} vs {original_len}"
-        )
-        assert gdf.geometry.iloc[0].geom_type == original_first_type, (
-            "explode_gdf mutated the first row's geometry in place"
-        )
+        assert (
+            len(gdf) == original_len
+        ), f"explode_gdf mutated the input length: {len(gdf)} vs {original_len}"
+        assert (
+            gdf.geometry.iloc[0].geom_type == original_first_type
+        ), "explode_gdf mutated the first row's geometry in place"
 
     def test_returns_expanded_row_count(self):
         """D-H1: the returned frame carries the exploded children.
@@ -551,7 +547,8 @@ class TestReprojectCoordinates:
 
         with pytest.raises(CRSError, match="reproject_coordinates"):
             FeatureCollection.reproject_coordinates(
-                [31.0], [30.0],
+                [31.0],
+                [30.0],
                 from_crs="not a valid wkt string",
                 to_crs=3857,
             )
@@ -568,7 +565,8 @@ class TestReprojectCoordinates:
 
         with pytest.raises(CRSError, match=r"to_crs="):
             FeatureCollection.reproject_coordinates(
-                [31.0], [30.0],
+                [31.0],
+                [30.0],
                 from_crs=4326,
                 to_crs="not a valid wkt string",
             )
@@ -619,9 +617,7 @@ class TestReprojectCoordinates:
         import pyproj
 
         def _raise_attr_error(*args, **kwargs):
-            raise AttributeError(
-                "simulated unrelated AttributeError from pyproj"
-            )
+            raise AttributeError("simulated unrelated AttributeError from pyproj")
 
         monkeypatch.setattr(pyproj.Transformer, "from_crs", _raise_attr_error)
 
@@ -685,9 +681,7 @@ class TestReadParquetBboxKwarg:
     installed in the test environment.
     """
 
-    def test_bbox_kwarg_reaches_gpd_read_parquet(
-        self, tmp_path: Path, monkeypatch
-    ):
+    def test_bbox_kwarg_reaches_gpd_read_parquet(self, tmp_path: Path, monkeypatch):
         import geopandas
 
         captured: list = []
@@ -696,9 +690,7 @@ class TestReadParquetBboxKwarg:
             captured.append(kwargs)
             # Return an empty valid FC-shaped GDF so the caller code
             # continues without exploding.
-            return gpd.GeoDataFrame(
-                {"v": []}, geometry=[], crs="EPSG:4326"
-            )
+            return gpd.GeoDataFrame({"v": []}, geometry=[], crs="EPSG:4326")
 
         def _fake_require():
             return None  # pretend pyarrow is available
@@ -714,9 +706,12 @@ class TestReadParquetBboxKwarg:
             bbox=(0.0, 0.0, 1.0, 1.0),
         )
         assert captured, "read_parquet must forward to gpd.read_parquet"
-        assert captured[0].get("bbox") == (0.0, 0.0, 1.0, 1.0), (
-            f"expected bbox tuple; got {captured[0]}"
-        )
+        assert captured[0].get("bbox") == (
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+        ), f"expected bbox tuple; got {captured[0]}"
 
     def test_bbox_none_not_forwarded(self, tmp_path: Path, monkeypatch):
         """bbox=None (default) must not leak as a literal kwarg."""
@@ -726,9 +721,7 @@ class TestReadParquetBboxKwarg:
 
         def _spy(path, **kwargs):
             captured.append(kwargs)
-            return gpd.GeoDataFrame(
-                {"v": []}, geometry=[], crs="EPSG:4326"
-            )
+            return gpd.GeoDataFrame({"v": []}, geometry=[], crs="EPSG:4326")
 
         monkeypatch.setattr(
             "pyramids.feature.collection._require_pyarrow",
@@ -737,9 +730,9 @@ class TestReadParquetBboxKwarg:
         monkeypatch.setattr(geopandas, "read_parquet", _spy)
 
         FeatureCollection.read_parquet(tmp_path / "x.parquet")
-        assert "bbox" not in captured[0], (
-            f"bbox=None should not appear as a literal kwarg; got {captured[0]}"
-        )
+        assert (
+            "bbox" not in captured[0]
+        ), f"bbox=None should not appear as a literal kwarg; got {captured[0]}"
 
     def test_no_future_warning(self):
         """Must not emit pyproj FutureWarning (ARC-2 regression).
@@ -846,9 +839,7 @@ class TestGetCoords:
         The explode-first design keeps it.
         """
         poly = box(-9999.0, -9999.0, -9998.0, -9998.0)
-        gdf = gpd.GeoDataFrame(
-            {"v": [1]}, geometry=[poly], crs="EPSG:32636"
-        )
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[poly], crs="EPSG:32636")
         fc = FeatureCollection(gdf)
         result = fc.with_coordinates()
         assert len(result) == 1

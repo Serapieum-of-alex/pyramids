@@ -78,9 +78,7 @@ class TestModeAppend:
         # Wrote 2 rows twice -> 4 rows total.
         assert len(reloaded) == 4
 
-    def test_invalid_mode_raises(
-        self, tmp_path: Path, fc_rivers: FeatureCollection
-    ):
+    def test_invalid_mode_raises(self, tmp_path: Path, fc_rivers: FeatureCollection):
         with pytest.raises(ValueError, match="'w' .* 'a'"):
             fc_rivers.to_file(tmp_path / "x.geojson", mode="x")
 
@@ -88,14 +86,10 @@ class TestModeAppend:
 class TestCreationOptions:
     """Driver creation options are forwarded through **kwargs."""
 
-    def test_gpkg_spatial_index(
-        self, tmp_path: Path, fc_rivers: FeatureCollection
-    ):
+    def test_gpkg_spatial_index(self, tmp_path: Path, fc_rivers: FeatureCollection):
         """SPATIAL_INDEX='YES' should produce an rtree_<layer>_geom table."""
         p = tmp_path / "indexed.gpkg"
-        fc_rivers.to_file(
-            p, driver="gpkg", layer="rivers", SPATIAL_INDEX="YES"
-        )
+        fc_rivers.to_file(p, driver="gpkg", layer="rivers", SPATIAL_INDEX="YES")
         # Peek into the GPKG via sqlite3: rtree companion table is
         # named 'rtree_<layer>_<geom-column>'. Default geom-column
         # is 'geom' for GPKG, so we expect 'rtree_rivers_geom'.
@@ -109,9 +103,7 @@ class TestCreationOptions:
             n.startswith("rtree_rivers") for n in names
         ), f"expected an rtree_rivers_* table; found {names}"
 
-    def test_geojson_rfc7946(
-        self, tmp_path: Path, fc_rivers: FeatureCollection
-    ):
+    def test_geojson_rfc7946(self, tmp_path: Path, fc_rivers: FeatureCollection):
         """GeoJSON RFC7946=YES writes RFC 7946-compliant output.
 
         RFC 7946 mandates CRS84 (= EPSG:4326 with axis order lon/lat).
@@ -152,21 +144,13 @@ class TestCreationOptionValidation:
     ):
         """Nonsense option raises ``ValueError`` naming the option + driver."""
         p = tmp_path / "warn.gpkg"
-        with pytest.raises(
-            ValueError, match="NOT_A_REAL_OPTION.*GPKG"
-        ):
-            fc_rivers.to_file(
-                p, driver="gpkg", NOT_A_REAL_OPTION="YES"
-            )
+        with pytest.raises(ValueError, match="NOT_A_REAL_OPTION.*GPKG"):
+            fc_rivers.to_file(p, driver="gpkg", NOT_A_REAL_OPTION="YES")
 
-    def test_known_option_accepted(
-        self, tmp_path: Path, fc_rivers: FeatureCollection
-    ):
+    def test_known_option_accepted(self, tmp_path: Path, fc_rivers: FeatureCollection):
         """A legitimate option completes the write successfully."""
         p = tmp_path / "ok.gpkg"
-        fc_rivers.to_file(
-            p, driver="gpkg", SPATIAL_INDEX="YES"
-        )
+        fc_rivers.to_file(p, driver="gpkg", SPATIAL_INDEX="YES")
         assert p.exists()
 
     def test_mix_of_known_and_unknown_options_still_raises(
@@ -230,6 +214,6 @@ class TestEnginePin:
         monkeypatch.setattr(_GDF, "to_file", _spy)
         fc_rivers.to_file(tmp_path / "pin.geojson")
         assert captured, "to_file must be invoked at least once"
-        assert captured[0].get("engine") == "pyogrio", (
-            f"expected engine='pyogrio', got {captured[0]}"
-        )
+        assert (
+            captured[0].get("engine") == "pyogrio"
+        ), f"expected engine='pyogrio', got {captured[0]}"

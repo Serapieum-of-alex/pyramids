@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-
 CreationOptions = Mapping[str, Any]
 """Alias for a mapping of GDAL creation-option names to Python values.
 
@@ -250,9 +249,7 @@ def merge_options(
     elif isinstance(extra, list):
         merged.update(_parse_list_extra(extra))
     else:
-        merged.update(
-            {str(k).upper(): v for k, v in extra.items() if v is not None}
-        )
+        merged.update({str(k).upper(): v for k, v in extra.items() if v is not None})
     return merged
 
 

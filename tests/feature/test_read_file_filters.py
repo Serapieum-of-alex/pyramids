@@ -76,16 +76,12 @@ class TestBbox:
     """bbox= pushes a bounding-box filter down to the driver."""
 
     def test_bbox_filters_to_subset(self, points_path: Path):
-        fc = FeatureCollection.read_file(
-            points_path, bbox=(0.0, 0.0, 3.0, 3.0)
-        )
+        fc = FeatureCollection.read_file(points_path, bbox=(0.0, 0.0, 3.0, 3.0))
         # Points at (0.5,0.5), (1.5,1.5), (2.5,2.5) fall inside.
         assert len(fc) == 3
 
     def test_bbox_empty_intersection(self, points_path: Path):
-        fc = FeatureCollection.read_file(
-            points_path, bbox=(100.0, 100.0, 101.0, 101.0)
-        )
+        fc = FeatureCollection.read_file(points_path, bbox=(100.0, 100.0, 101.0, 101.0))
         assert len(fc) == 0
 
 

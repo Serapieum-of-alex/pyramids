@@ -222,7 +222,12 @@ def _to_vsi(path: str) -> str:
         new_path = _chain_archive_vsi(new_path)
 
         if new_path != path:
-            logger.info("cloud path rewritten: %r -> %r", path, new_path)
+            # N2: downgraded from info to debug — a DatasetCollection
+            # of thousands of files fires this once per chunk read and
+            # floods the stream. Users can re-enable with
+            # ``logging.getLogger("pyramids.base.remote").setLevel(
+            # logging.DEBUG)``.
+            logger.debug("cloud path rewritten: %r -> %r", path, new_path)
     return new_path
 
 
@@ -248,16 +253,16 @@ def _extract_archive_search_region(path: str) -> str | None:
     """
     result: str | None
     if path.startswith("/vsicurl/"):
-        url = path[len("/vsicurl/"):]
+        url = path[len("/vsicurl/") :]
         parsed = urlparse(url)
         # Only the path component — excludes scheme, hostname, and query.
         result = parsed.path if parsed.scheme in {"http", "https"} else url
     elif path.startswith("/vsis3/"):
-        result = path[len("/vsis3/"):]
+        result = path[len("/vsis3/") :]
     elif path.startswith("/vsigs/"):
-        result = path[len("/vsigs/"):]
+        result = path[len("/vsigs/") :]
     elif path.startswith("/vsiaz/"):
-        result = path[len("/vsiaz/"):]
+        result = path[len("/vsiaz/") :]
     else:
         result = None
     return result
@@ -435,7 +440,7 @@ class CloudConfig:
         out.update({k: str(v) for k, v in self.extra.items()})
         return out
 
-    def __enter__(self) -> "CloudConfig":
+    def __enter__(self) -> CloudConfig:
         """Enter the context and apply the GDAL config options."""
         cfg = self.as_gdal_config()
         self._ctx = gdal.config_options(cfg)

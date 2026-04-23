@@ -10,32 +10,46 @@ from __future__ import annotations
 import logging
 from numbers import Number
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from osgeo import gdal, osr
 from osgeo.osr import SpatialReference
 
 from pyramids import _io
-from pyramids.dataset.abstract_dataset import (
-    DEFAULT_NO_DATA_VALUE,
-    AbstractDataset,
-)
+from pyramids.base._errors import CRSError
 from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     numpy_to_gdal_dtype,
 )
-from pyramids.feature import FeatureCollection
-
+from pyramids.dataset.abstract_dataset import (
+    DEFAULT_NO_DATA_VALUE,
+    AbstractDataset,
+)
 from pyramids.dataset.ops import (
+    IO,
     Analysis,
     BandMetadata,
-    COGMixin,
     Cell,
-    IO,
+    COGMixin,
     Spatial,
     Vectorize,
 )
+from pyramids.dataset.ops._focal import (
+    aspect,
+    focal_apply,
+    focal_mean,
+    focal_std,
+    hillshade,
+    slope,
+)
+from pyramids.dataset.ops._zarr import (
+    read_dataset_from_zarr,
+    write_dataset_to_zarr,
+)
+from pyramids.dataset.ops._zonal import zonal_stats as _zonal_stats
+from pyramids.feature import FeatureCollection
+from pyramids.feature import _ogr as _feature_ogr
 
 if TYPE_CHECKING:
     from geopandas import GeoDataFrame
@@ -80,6 +94,135 @@ class Dataset(  # type: ignore[misc]
         """
         new = Dataset(src, access=access or self._access)
         self.__dict__.update(new.__dict__)
+
+    def focal_mean(self, radius: int = 1, *, chunks=None, band: int = 0):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_mean`."""
+        return focal_mean(self, radius=radius, chunks=chunks, band=band)
+
+    def focal_std(self, radius: int = 1, *, chunks=None, band: int = 0):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_std`."""
+        return focal_std(self, radius=radius, chunks=chunks, band=band)
+
+    def focal_apply(self, func, radius: int = 1, *, chunks=None, band: int = 0):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_apply`."""
+        return focal_apply(self, func, radius=radius, chunks=chunks, band=band)
+
+    def slope(self, *, chunks=None, band: int = 0, units: str = "degrees"):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.slope`."""
+        return slope(self, chunks=chunks, band=band, units=units)
+
+    def aspect(self, *, chunks=None, band: int = 0):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.aspect`."""
+        return aspect(self, chunks=chunks, band=band)
+
+    def hillshade(
+        self,
+        *,
+        azimuth: float = 315.0,
+        altitude: float = 45.0,
+        chunks=None,
+        band: int = 0,
+    ):
+        """Thin forwarder to :func:`pyramids.dataset.ops._focal.hillshade`."""
+        return hillshade(
+            self,
+            azimuth=azimuth,
+            altitude=altitude,
+            chunks=chunks,
+            band=band,
+        )
+
+    def zonal_stats(
+        self,
+        fc,
+        *,
+        stats=("mean",),
+        method: str = "rasterize",
+        band: int = 0,
+    ):
+        """Compute zonal statistics of this dataset over a polygon FeatureCollection.
+
+        Thin forwarder to
+        :func:`pyramids.dataset.ops._zonal.zonal_stats`; see that
+        function for the full argument contract.
+
+        Args:
+            fc: A :class:`pyramids.feature.FeatureCollection` of
+                polygons sharing this dataset's CRS.
+            stats: Sequence of stat names (``"mean"``, ``"sum"``,
+                ``"min"``, ``"max"``, ``"std"``, ``"var"``,
+                ``"count"``).
+            method: ``"rasterize"`` is the only supported value today;
+                an area-weighted ``"fractional"`` method is planned.
+            band: Zero-based band index.
+
+        Returns:
+            pandas.DataFrame: Indexed by ``fc.index``; one column per stat.
+        """
+        return _zonal_stats(self, fc, stats=stats, method=method, band=band)
+
+    def to_zarr(
+        self,
+        store,
+        *,
+        compute: bool = True,
+        mode: str = "w",
+        chunks=None,
+        storage_options: dict | None = None,
+    ):
+        """Serialise this Dataset to a Zarr store (parallel writes per chunk).
+
+        Thin forwarder to
+        :func:`pyramids.dataset.ops._zarr.write_dataset_to_zarr`; see
+        that function for the full argument contract. Zarr is the
+        only raster output format where pyramids can write in true
+        parallel — each dask chunk becomes an independent Zarr chunk
+        file. Requires the ``[lazy]`` optional extra.
+
+        Args:
+            store: Target store (path / fsspec URL / zarr.Store).
+            compute: ``True`` writes immediately; ``False`` returns a
+                :class:`dask.delayed.Delayed`.
+            mode: Zarr open mode, usually ``"w"`` or ``"a"``.
+            chunks: Chunk spec forwarded to :meth:`read_array`.
+                ``None`` defaults to ``"auto"`` via the zarr helper.
+            storage_options: fsspec options for cloud stores.
+        """
+        resolved_chunks = chunks if chunks is not None else "auto"
+        return write_dataset_to_zarr(
+            self,
+            store,
+            compute=compute,
+            mode=mode,
+            chunks=resolved_chunks,
+            storage_options=storage_options,
+        )
+
+    @classmethod
+    def from_zarr(
+        cls,
+        store,
+        *,
+        chunks=None,
+        storage_options: dict | None = None,
+    ) -> Dataset:
+        """Load a pyramids-written Zarr store into a new :class:`Dataset`.
+
+        Thin forwarder to
+        :func:`pyramids.dataset.ops._zarr.read_dataset_from_zarr`.
+
+        Args:
+            store: Input store (path / fsspec URL / zarr.Store).
+            chunks: If non-None, the loaded Dataset is flagged as
+                dask-backed so downstream ``read_array`` calls return
+                lazy arrays.
+            storage_options: fsspec options for cloud stores.
+        """
+        return read_dataset_from_zarr(
+            store,
+            chunks=chunks,
+            storage_options=storage_options,
+        )
 
     def __str__(self) -> str:
         """__str__."""
@@ -729,22 +872,12 @@ class Dataset(  # type: ignore[misc]
                 ``template.epsg != features.epsg``. Raised before any
                 raster is allocated so callers fail fast.
         """
-        # Avoid circular import at module-top by importing the OGR
-        # bridge here. This function belongs to dataset/, and the
-        # bridge lives under feature/, so this is a sibling-module
-        # import (cycle-free) not a self-reference.
-        from pyramids.feature import _ogr as _feature_ogr
-
         if cell_size is None and template is None:
-            raise ValueError(
-                "You have to enter either cell size or Dataset object."
-            )
+            raise ValueError("You have to enter either cell size or Dataset object.")
         # D-M2: validate cell_size up front (non-positive breaks the
         # non-template branch with divide-by-zero / negative shapes).
         if cell_size is not None and cell_size <= 0:
-            raise ValueError(
-                f"cell_size must be positive; got {cell_size!r}."
-            )
+            raise ValueError(f"cell_size must be positive; got {cell_size!r}.")
         # M4: type-check ``column_name`` up front so a caller passing
         # an ``int`` (or any other non-str, non-list value) sees a
         # typed TypeError instead of "column_name 123 is not in the
@@ -763,8 +896,6 @@ class Dataset(  # type: ignore[misc]
         # projection, which fails downstream in reproject / crop / overlay
         # with cryptic GDAL errors. Fail fast with a typed CRSError.
         if ds_epsg is None:
-            from pyramids.base._errors import CRSError
-
             raise CRSError(
                 "FeatureCollection must have a CRS before rasterisation. "
                 "Set one via ``fc.set_crs('EPSG:...')`` or construct the FC "
@@ -777,8 +908,6 @@ class Dataset(  # type: ignore[misc]
                     "(see pyramids.dataset.Dataset.read_file)."
                 )
             if template.epsg != ds_epsg:
-                from pyramids.base._errors import CRSError
-
                 raise CRSError(
                     f"Dataset and vector are not the same EPSG. "
                     f"{template.epsg} != {ds_epsg}"
@@ -865,15 +994,11 @@ class Dataset(  # type: ignore[misc]
                     bands=[band],
                     burnValues=None,
                     attribute=(
-                        attribute[ind]
-                        if isinstance(attribute, list)
-                        else attribute
+                        attribute[ind] if isinstance(attribute, list) else attribute
                     ),
                     allTouched=True,
                 )
-                gdal.Rasterize(
-                    dataset_n.raster, vector_ds, options=rasterize_opts
-                )
+                gdal.Rasterize(dataset_n.raster, vector_ds, options=rasterize_opts)
 
         return dataset_n
 
@@ -1027,8 +1152,14 @@ class Dataset(  # type: ignore[misc]
         dtype = numpy_to_gdal_dtype(array)
 
         dst_obj = cls._build_dataset(
-            src.columns, src.rows, bands, dtype, src.geotransform, src.crs,
-            src.no_data_value[0], path=path,
+            src.columns,
+            src.rows,
+            bands,
+            dtype,
+            src.geotransform,
+            src.crs,
+            src.no_data_value[0],
+            path=path,
         )
 
         if bands == 1:

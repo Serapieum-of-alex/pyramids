@@ -218,7 +218,9 @@ class Cell:
         gdf["id"] = gdf.index
         return gdf
 
-    def get_cell_points(self, location: str = "center", domain_only: bool = False) -> GeoDataFrame:
+    def get_cell_points(
+        self, location: str = "center", domain_only: bool = False
+    ) -> GeoDataFrame:
         """Get a point shapely geometry for the raster cells center point.
 
         Args:

@@ -18,6 +18,7 @@ from pyramids.feature import FeatureCollection
 
 if TYPE_CHECKING:
     from cleopatra.array_glyph import ArrayGlyph
+
     from pyramids.dataset.dataset import Dataset
 
 
@@ -231,7 +232,9 @@ class Analysis:
         src_array = self.read_array(band)
         dtype = self.gdal_dtype[band]
 
-        new_array = np.full((self.rows, self.columns), no_data_value, dtype=src_array.dtype)
+        new_array = np.full(
+            (self.rows, self.columns), no_data_value, dtype=src_array.dtype
+        )
         domain_mask = ~np.isclose(src_array, no_data_value, rtol=0.001)
         domain_values = src_array[domain_mask]
         try:
@@ -240,7 +243,13 @@ class Analysis:
             new_array[domain_mask] = np.vectorize(func)(domain_values)
 
         dst_obj = type(self)._build_dataset(
-            self.columns, self.rows, 1, dtype, self.geotransform, self.crs, no_data_value
+            self.columns,
+            self.rows,
+            1,
+            dtype,
+            self.geotransform,
+            self.crs,
+            no_data_value,
         )
         dst_obj.raster.GetRasterBand(1).WriteArray(new_array)
 
@@ -797,6 +806,7 @@ class Analysis:
             approx_ok=approx_ok,
         )
         return hist, ranges
+
     def plot(
         self,
         band: int | None = None,
@@ -907,6 +917,7 @@ class Analysis:
             "check https://github.com/serapeum-org/cleopatra"
         )
         from cleopatra.array_glyph import ArrayGlyph
+
         no_data_value = [np.nan if i is None else i for i in self.no_data_value]
         if overview:
             arr = self.read_overview_array(
@@ -958,9 +969,7 @@ class Analysis:
 
         if basemap:
             if self.epsg is None:
-                raise ValueError(
-                    "Dataset must have a CRS (epsg) to use basemap."
-                )
+                raise ValueError("Dataset must have a CRS (epsg) to use basemap.")
             from pyramids.basemap.basemap import add_basemap
 
             source = basemap if isinstance(basemap, str) else None
@@ -975,6 +984,7 @@ class Analysis:
             " check https://github.com/serapeum-org/cleopatra"
         )
         from cleopatra.colors import Colors
+
         # if the color_table does not contain the red, green, and blue columns, assume it has one column with
         # the color as hex and then, convert the color to rgb.
         if all(elem in color_table.columns for elem in ["red", "green", "blue"]):

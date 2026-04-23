@@ -57,9 +57,7 @@ def empty_fc():
 @pytest.fixture
 def single_fc():
     """FeatureCollection with exactly 1 Point feature."""
-    gdf = gpd.GeoDataFrame(
-        {"label": ["only"]}, geometry=[Point(5, 5)], crs="EPSG:4326"
-    )
+    gdf = gpd.GeoDataFrame({"label": ["only"]}, geometry=[Point(5, 5)], crs="EPSG:4326")
     return FeatureCollection(gdf)
 
 

@@ -61,9 +61,7 @@ def polygon_gdf() -> GeoDataFrame:
         GeoDataFrame: One unit square with EPSG:4326 and a ``value`` column.
     """
     poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
-    return gpd.GeoDataFrame(
-        {"value": [42]}, geometry=[poly], crs="EPSG:4326"
-    )
+    return gpd.GeoDataFrame({"value": [42]}, geometry=[poly], crs="EPSG:4326")
 
 
 @pytest.fixture
@@ -109,9 +107,9 @@ class TestNewVsimemPath:
             guarantee of the bridge.
         """
         path = _new_vsimem_path()
-        assert path.startswith("/vsimem/"), (
-            f"Path must start with /vsimem/, got {path!r}"
-        )
+        assert path.startswith(
+            "/vsimem/"
+        ), f"Path must start with /vsimem/, got {path!r}"
 
     def test_ends_with_geojson_extension(self):
         """The path must end with ``.geojson`` so GDAL picks the GeoJSON driver.
@@ -121,9 +119,7 @@ class TestNewVsimemPath:
             explicitly specified.
         """
         path = _new_vsimem_path()
-        assert path.endswith(".geojson"), (
-            f"Path must end with .geojson, got {path!r}"
-        )
+        assert path.endswith(".geojson"), f"Path must end with .geojson, got {path!r}"
 
     def test_stem_format(self):
         """The stem is ``<time_ns>_<rand>`` (C35 — UUID4 replaced).
@@ -133,7 +129,7 @@ class TestNewVsimemPath:
             nanosecond timestamp + 20-bit random tie-break.
         """
         path = _new_vsimem_path()
-        stem = path[len("/vsimem/"): -len(".geojson")]
+        stem = path[len("/vsimem/") : -len(".geojson")]
         stem_re = re.compile(r"^\d+_\d+$")
         assert stem_re.match(stem), f"unexpected stem format: {stem!r}"
 
@@ -145,9 +141,7 @@ class TestNewVsimemPath:
             clobbering each other's backing files.
         """
         paths = {_new_vsimem_path() for _ in range(50)}
-        assert len(paths) == 50, (
-            f"Expected 50 unique paths, got {len(paths)}"
-        )
+        assert len(paths) == 50, f"Expected 50 unique paths, got {len(paths)}"
 
 
 class TestAsDatasource:
@@ -161,9 +155,9 @@ class TestAsDatasource:
             callers (``gdal.Warp`` cutline, OGR SQL) expect it.
         """
         with as_datasource(point_gdf) as ds:
-            assert isinstance(ds, ogr.DataSource), (
-                f"Expected ogr.DataSource, got {type(ds).__name__}"
-            )
+            assert isinstance(
+                ds, ogr.DataSource
+            ), f"Expected ogr.DataSource, got {type(ds).__name__}"
 
     def test_yields_gdal_dataset_when_requested(self, point_gdf):
         """``gdal_dataset=True`` must yield a ``gdal.Dataset``.
@@ -173,9 +167,9 @@ class TestAsDatasource:
             vector argument is a Python GDAL object rather than a path.
         """
         with as_datasource(point_gdf, gdal_dataset=True) as ds:
-            assert isinstance(ds, gdal.Dataset), (
-                f"Expected gdal.Dataset, got {type(ds).__name__}"
-            )
+            assert isinstance(
+                ds, gdal.Dataset
+            ), f"Expected gdal.Dataset, got {type(ds).__name__}"
 
     def test_preserves_feature_count(self, point_gdf):
         """The yielded DataSource must expose every input feature.
@@ -197,9 +191,11 @@ class TestAsDatasource:
         with as_datasource(point_gdf) as ds:
             layer = ds.GetLayer(0)
             scores = [feat.GetField("score") for feat in layer]
-        assert sorted(scores) == [10, 20, 30], (
-            f"Attribute round-trip changed values: {scores}"
-        )
+        assert sorted(scores) == [
+            10,
+            20,
+            30,
+        ], f"Attribute round-trip changed values: {scores}"
 
     def test_accepts_featurecollection_subclass(self, point_gdf):
         """A ``FeatureCollection`` (GDF subclass) must work unchanged.
@@ -229,18 +225,16 @@ class TestAsDatasource:
             captured.append(path)
             return path
 
-        monkeypatch.setattr(
-            "pyramids.feature._ogr._new_vsimem_path", _capture
-        )
+        monkeypatch.setattr("pyramids.feature._ogr._new_vsimem_path", _capture)
 
         with as_datasource(point_gdf):
             pass
 
         assert len(captured) == 1, "Expected exactly one path generation"
         # After unlink, VSIStatL returns None.
-        assert gdal.VSIStatL(captured[0]) is None, (
-            f"/vsimem/ path was not unlinked: {captured[0]}"
-        )
+        assert (
+            gdal.VSIStatL(captured[0]) is None
+        ), f"/vsimem/ path was not unlinked: {captured[0]}"
 
     def test_vsimem_path_unlinked_on_exception(self, point_gdf, monkeypatch):
         """The ``/vsimem/`` file is unlinked even if the body raises.
@@ -257,18 +251,16 @@ class TestAsDatasource:
             captured.append(path)
             return path
 
-        monkeypatch.setattr(
-            "pyramids.feature._ogr._new_vsimem_path", _capture
-        )
+        monkeypatch.setattr("pyramids.feature._ogr._new_vsimem_path", _capture)
 
         with pytest.raises(RuntimeError, match="boom"):
             with as_datasource(point_gdf):
                 raise RuntimeError("boom")
 
         assert len(captured) == 1
-        assert gdal.VSIStatL(captured[0]) is None, (
-            f"/vsimem/ path leaked after exception: {captured[0]}"
-        )
+        assert (
+            gdal.VSIStatL(captured[0]) is None
+        ), f"/vsimem/ path leaked after exception: {captured[0]}"
 
     def test_preserves_crs(self, point_gdf):
         """CRS of the yielded OGR layer must match the input GeoDataFrame.
@@ -296,9 +288,7 @@ class TestAsDatasourceExceptionSafety:
     spurious Unlink on a non-existent path.
     """
 
-    def test_none_open_becomes_vector_driver_error(
-        self, point_gdf, monkeypatch
-    ):
+    def test_none_open_becomes_vector_driver_error(self, point_gdf, monkeypatch):
         """If ``ogr.Open`` returns ``None``, raise ``VectorDriverError``.
 
         Test scenario:
@@ -375,9 +365,9 @@ class TestAsDatasourceExceptionSafety:
             with as_datasource(point_gdf):
                 pass  # pragma: no cover
         msg = str(exc_info.value)
-        assert "/vsimem/" in msg, (
-            f"VectorDriverError message must name the vsimem path; got: {msg}"
-        )
+        assert (
+            "/vsimem/" in msg
+        ), f"VectorDriverError message must name the vsimem path; got: {msg}"
         assert ".geojson" in msg, f"expected .geojson in message; got: {msg}"
 
     def test_gdal_dataset_none_open_also_becomes_vector_driver_error(
@@ -400,9 +390,7 @@ class TestAsDatasourceExceptionSafety:
             with as_datasource(point_gdf, gdal_dataset=True):
                 pass  # pragma: no cover
 
-    def test_unlinks_on_exception_inside_with_body(
-        self, point_gdf, monkeypatch
-    ):
+    def test_unlinks_on_exception_inside_with_body(self, point_gdf, monkeypatch):
         """C4: the vsimem file is unlinked even when user code raises.
 
         Test scenario:
@@ -424,9 +412,7 @@ class TestAsDatasourceExceptionSafety:
             with as_datasource(point_gdf):
                 raise ValueError("user-code failure")
 
-        assert len(calls) == 1, (
-            f"expected exactly one Unlink call; got {calls}"
-        )
+        assert len(calls) == 1, f"expected exactly one Unlink call; got {calls}"
         assert calls[0].startswith("/vsimem/"), calls[0]
 
 
@@ -441,12 +427,10 @@ class TestAsVsimemPath:
             like ``cutlineDSName`` which expect a path string.
         """
         with as_vsimem_path(polygon_gdf) as path:
-            assert isinstance(path, str), (
-                f"Expected str, got {type(path).__name__}"
-            )
-            assert path.startswith("/vsimem/"), (
-                f"Path must start with /vsimem/, got {path!r}"
-            )
+            assert isinstance(path, str), f"Expected str, got {type(path).__name__}"
+            assert path.startswith(
+                "/vsimem/"
+            ), f"Path must start with /vsimem/, got {path!r}"
 
     def test_path_is_openable_by_osgeo(self, polygon_gdf):
         """Inside the ``with`` block, ``osgeo.ogr.Open`` must succeed.
@@ -474,9 +458,9 @@ class TestAsVsimemPath:
         with as_vsimem_path(polygon_gdf) as path:
             captured = path
         assert captured is not None
-        assert gdal.VSIStatL(captured) is None, (
-            f"/vsimem/ path was not unlinked: {captured}"
-        )
+        assert (
+            gdal.VSIStatL(captured) is None
+        ), f"/vsimem/ path was not unlinked: {captured}"
 
     def test_path_unlinked_on_exception(self, polygon_gdf):
         """The ``/vsimem/`` path is unlinked even when the body raises.
@@ -490,9 +474,9 @@ class TestAsVsimemPath:
                 captured.append(path)
                 raise ValueError("bad")
         assert len(captured) == 1
-        assert gdal.VSIStatL(captured[0]) is None, (
-            f"/vsimem/ path leaked after exception: {captured[0]}"
-        )
+        assert (
+            gdal.VSIStatL(captured[0]) is None
+        ), f"/vsimem/ path leaked after exception: {captured[0]}"
 
     def test_accepts_featurecollection_subclass(self, polygon_gdf):
         """A ``FeatureCollection`` is accepted transparently.
@@ -521,9 +505,9 @@ class TestDatasourceToGdf:
         """
         with as_datasource(point_gdf) as ds:
             result = datasource_to_gdf(ds)
-        assert isinstance(result, GeoDataFrame), (
-            f"Expected GeoDataFrame, got {type(result).__name__}"
-        )
+        assert isinstance(
+            result, GeoDataFrame
+        ), f"Expected GeoDataFrame, got {type(result).__name__}"
 
     def test_preserves_row_count_round_trip(self, point_gdf):
         """Row count survives a GeoDataFrame → DataSource → GeoDataFrame trip.
@@ -533,9 +517,7 @@ class TestDatasourceToGdf:
         """
         with as_datasource(point_gdf) as ds:
             result = datasource_to_gdf(ds)
-        assert len(result) == 3, (
-            f"Row count changed: {len(result)} != 3"
-        )
+        assert len(result) == 3, f"Row count changed: {len(result)} != 3"
 
     def test_preserves_attributes_round_trip(self, point_gdf):
         """Attribute column values survive the OGR round-trip.
@@ -545,9 +527,11 @@ class TestDatasourceToGdf:
         """
         with as_datasource(point_gdf) as ds:
             result = datasource_to_gdf(ds)
-        assert sorted(result["score"].tolist()) == [10, 20, 30], (
-            f"Attribute values changed: {result['score'].tolist()}"
-        )
+        assert sorted(result["score"].tolist()) == [
+            10,
+            20,
+            30,
+        ], f"Attribute values changed: {result['score'].tolist()}"
 
     def test_preserves_crs_round_trip(self, point_gdf):
         """CRS (EPSG:4326) survives the OGR round-trip.
@@ -558,9 +542,7 @@ class TestDatasourceToGdf:
         """
         with as_datasource(point_gdf) as ds:
             result = datasource_to_gdf(ds)
-        assert result.crs.to_epsg() == 4326, (
-            f"CRS changed: {result.crs.to_epsg()}"
-        )
+        assert result.crs.to_epsg() == 4326, f"CRS changed: {result.crs.to_epsg()}"
 
     def test_polygonize_style_source(self, polygonize_datasource):
         """Materialize a Polygonize-style OGR DataSource.
@@ -571,16 +553,17 @@ class TestDatasourceToGdf:
             a 2-row GeoDataFrame with a ``value`` integer column.
         """
         result = datasource_to_gdf(polygonize_datasource)
-        assert isinstance(result, GeoDataFrame), (
-            f"Expected GeoDataFrame, got {type(result).__name__}"
-        )
+        assert isinstance(
+            result, GeoDataFrame
+        ), f"Expected GeoDataFrame, got {type(result).__name__}"
         assert len(result) == 2, f"Expected 2 polygons, got {len(result)}"
-        assert "value" in result.columns, (
-            f"value column missing from materialized GDF: {result.columns.tolist()}"
-        )
-        assert sorted(result["value"].tolist()) == [1, 2], (
-            f"Polygon values changed: {result['value'].tolist()}"
-        )
+        assert (
+            "value" in result.columns
+        ), f"value column missing from materialized GDF: {result.columns.tolist()}"
+        assert sorted(result["value"].tolist()) == [
+            1,
+            2,
+        ], f"Polygon values changed: {result['value'].tolist()}"
 
     def test_not_a_featurecollection(self, point_gdf):
         """The helper must NOT return a ``FeatureCollection``.
@@ -597,9 +580,7 @@ class TestDatasourceToGdf:
             f"got {type(result).__name__}"
         )
 
-    def test_vector_translate_failure_raises(
-        self, point_gdf, monkeypatch
-    ):
+    def test_vector_translate_failure_raises(self, point_gdf, monkeypatch):
         """A ``None`` return from ``gdal.VectorTranslate`` raises RuntimeError.
 
         Test scenario:
@@ -615,9 +596,7 @@ class TestDatasourceToGdf:
             with pytest.raises(RuntimeError, match="VectorTranslate failed"):
                 datasource_to_gdf(ds)
 
-    def test_no_filesystem_tempfile_on_success(
-        self, point_gdf, monkeypatch
-    ):
+    def test_no_filesystem_tempfile_on_success(self, point_gdf, monkeypatch):
         """D-M4: the /vsimem/ path replaces the old filesystem temp file.
 
         Test scenario:

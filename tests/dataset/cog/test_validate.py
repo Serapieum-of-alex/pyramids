@@ -13,7 +13,6 @@ from pyramids.dataset.cog.validate import (
 )
 from pyramids.dataset.cog.write import translate_to_cog
 
-
 # --- helper: write a plain stripped GTiff that's large enough to fail COG check ---
 
 
@@ -46,7 +45,7 @@ class TestValidationReport:
     def test_frozen(self):
         r = ValidationReport(is_valid=True)
         with pytest.raises(Exception):  # dataclass(frozen=True) -> FrozenInstanceError
-            r.is_valid = False   # type: ignore[misc]
+            r.is_valid = False  # type: ignore[misc]
 
 
 class TestValidate:
@@ -94,8 +93,7 @@ class TestValidate:
         # Either passes with a warning, or is invalid because of overviews.
         # At minimum: non-empty warnings OR a soft error mentioning overviews.
         has_ovr_msg = any(
-            "overview" in m.lower()
-            for m in (report.warnings + report.errors)
+            "overview" in m.lower() for m in (report.warnings + report.errors)
         )
         assert has_ovr_msg
 
@@ -149,13 +147,15 @@ class TestValidate:
 
         # Force VSIStatL to report "missing" without any network I/O.
         from osgeo import gdal as gdal_mod
+
         monkeypatch.setattr(gdal_mod, "VSIStatL", lambda p: None)
 
         with pytest.raises(FileNotFoundError):
             validate("/vsicurl/https://127.0.0.1:1/nope.tif")
 
         vsi_calls = [
-            p for p in path_exists_calls
+            p
+            for p in path_exists_calls
             if p.startswith("/vsi") or p.startswith("\\vsi")
         ]
         assert vsi_calls == [], (
@@ -196,9 +196,9 @@ class TestOsgeoValidate:
         missing = tmp_path / "nonexistent_file_xyz_12345.tif"
         with pytest.raises(FileNotFoundError) as exc_info:
             _osgeo_validate(str(missing))
-        assert str(missing) in str(exc_info.value), (
-            f"FileNotFoundError must name the missing path; got: {exc_info.value}"
-        )
+        assert str(missing) in str(
+            exc_info.value
+        ), f"FileNotFoundError must name the missing path; got: {exc_info.value}"
 
 
 class TestRaiseIfMissing:
@@ -237,6 +237,7 @@ class TestRaiseIfMissing:
             the VSIStatL path accepts it.
         """
         from osgeo import gdal
+
         from pyramids.dataset.cog.validate import _raise_if_missing
 
         p = "/vsimem/raise_if_missing_test.bin"
@@ -318,11 +319,10 @@ class TestValidateCoverageFill:
         assert report.is_valid is False
         assert any("some other error" in e for e in report.errors)
 
-    def test_fallback_validate_gdal_open_returns_none(
-        self, monkeypatch, tmp_path
-    ):
+    def test_fallback_validate_gdal_open_returns_none(self, monkeypatch, tmp_path):
         """_fallback_validate reports "cannot open" when gdal.Open returns None."""
         import osgeo.gdal as gdal_mod
+
         from pyramids.dataset.cog.validate import _fallback_validate
 
         # Create a placeholder file so the validate() pre-check passes

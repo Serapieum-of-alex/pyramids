@@ -20,6 +20,8 @@ from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
+from pyramids.base._errors import InvalidGeometryError
+
 
 def get_xy_coords(geometry: Any, coord_type: str) -> list:
     """Return x or y coords from a LineString / Polygon boundary.
@@ -214,9 +216,7 @@ def get_poly_coords(geometry: Polygon, coord_type: str) -> list:
     return get_xy_coords(geometry.exterior, coord_type)
 
 
-def explode_gdf(
-    gdf: GeoDataFrame, geometry: str = "multipolygon"
-) -> GeoDataFrame:
+def explode_gdf(gdf: GeoDataFrame, geometry: str = "multipolygon") -> GeoDataFrame:
     """Explode multi-geometries into per-row single geometries.
 
     Rows whose geometry type matches ``geometry`` are expanded so that
@@ -518,8 +518,6 @@ def get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
     # opaque GEOSException. Raise a typed error so callers know to
     # drop empty rows before calling this helper.
     if geom.is_empty:
-        from pyramids.base._errors import InvalidGeometryError
-
         raise InvalidGeometryError(
             "get_coords received an empty geometry. Empty geometries "
             "have no coordinates; filter them out of the GeoDataFrame "
@@ -534,8 +532,6 @@ def get_coords(row: Any, geom_col: str, coord_type: str) -> Any:
     if gtype == "polygon":
         return list(get_poly_coords(geom, coord_type))
     if gtype == "multipolygon":
-        from pyramids.base._errors import InvalidGeometryError
-
         raise InvalidGeometryError(
             "get_coords does not accept MultiPolygon rows — explode the "
             "GeoDataFrame with explode_gdf(gdf, 'multipolygon') first "
@@ -598,8 +594,6 @@ def create_polygon(coords: list[tuple[float, float]]) -> Polygon:
             ```
     """
     if len(coords) < 3:
-        from pyramids.base._errors import InvalidGeometryError
-
         raise InvalidGeometryError(
             f"create_polygon requires at least 3 vertices; got "
             f"{len(coords)}. A valid polygon ring needs three distinct "
@@ -678,9 +672,7 @@ def create_points(coords: Iterable[tuple[float, ...]]) -> list[Point]:
     return list(map(Point, coords))
 
 
-def point_collection(
-    coords: Iterable[tuple[float, ...]], crs: Any
-) -> GeoDataFrame:
+def point_collection(coords: Iterable[tuple[float, ...]], crs: Any) -> GeoDataFrame:
     """Build a :class:`GeoDataFrame` of points with a given CRS (ARC-15).
 
     Args:
@@ -719,5 +711,3 @@ def point_collection(
     """
     pts = create_points(coords)
     return gpd.GeoDataFrame(columns=["geometry"], data=pts, crs=crs)
-
-

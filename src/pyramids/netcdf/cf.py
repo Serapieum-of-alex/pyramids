@@ -5,6 +5,7 @@ CF convention attributes on NetCDF files. Used by both the
 structured-grid NetCDF class and the unstructured-grid
 UgridDataset class.
 """
+
 from __future__ import annotations
 
 import logging
@@ -37,7 +38,8 @@ def _write_attrs(target: Any, attrs: dict[str, Any]) -> None:
         try:
             if isinstance(value, bool):
                 attr = target.CreateAttribute(
-                    key, [],
+                    key,
+                    [],
                     gdal.ExtendedDataType.Create(gdal.GDT_Int32),
                 )
                 value = int(value)
@@ -47,12 +49,14 @@ def _write_attrs(target: Any, attrs: dict[str, Any]) -> None:
                 )
             elif isinstance(value, float):
                 attr = target.CreateAttribute(
-                    key, [],
+                    key,
+                    [],
                     gdal.ExtendedDataType.Create(gdal.GDT_Float64),
                 )
             elif isinstance(value, int):
                 attr = target.CreateAttribute(
-                    key, [],
+                    key,
+                    [],
                     gdal.ExtendedDataType.Create(gdal.GDT_Int32),
                 )
             elif isinstance(value, list) and len(value) > 0:
@@ -64,7 +68,8 @@ def _write_attrs(target: Any, attrs: dict[str, Any]) -> None:
                     )
                 else:
                     attr = target.CreateAttribute(
-                        key, [],
+                        key,
+                        [],
                         gdal.ExtendedDataType.CreateString(),
                     )
                     value = str(value)
@@ -224,9 +229,7 @@ def srs_to_grid_mapping(
     return grid_mapping_name, params
 
 
-def _extract_proj_params(
-    srs: osr.SpatialReference, proj_name: str
-) -> dict[str, Any]:
+def _extract_proj_params(srs: osr.SpatialReference, proj_name: str) -> dict[str, Any]:
     """Extract CF projection parameters from an OGR SpatialReference.
 
     Args:
@@ -339,9 +342,7 @@ def _extract_proj_params(
         p["longitude_of_projection_origin"] = srs.GetProjParm(
             osr.SRS_PP_CENTRAL_MERIDIAN, 0.0
         )
-        p["perspective_point_height"] = srs.GetProjParm(
-            "satellite_height", 35785831.0
-        )
+        p["perspective_point_height"] = srs.GetProjParm("satellite_height", 35785831.0)
         p["sweep_angle_axis"] = "y"
 
     return p
@@ -423,7 +424,8 @@ def _build_srs_from_cf_params(
         if isinstance(sp, (int, float)):
             sp = [sp, sp]
         srs.SetLCC(
-            sp[0], sp[1] if len(sp) > 1 else sp[0],
+            sp[0],
+            sp[1] if len(sp) > 1 else sp[0],
             params.get("latitude_of_projection_origin", 0.0),
             params.get("longitude_of_central_meridian", 0.0),
             params.get("false_easting", 0.0),
@@ -453,7 +455,8 @@ def _build_srs_from_cf_params(
         if isinstance(sp, (int, float)):
             sp = [sp, sp]
         srs.SetACEA(
-            sp[0], sp[1] if len(sp) > 1 else sp[0],
+            sp[0],
+            sp[1] if len(sp) > 1 else sp[0],
             params.get("latitude_of_projection_origin", 0.0),
             params.get("longitude_of_central_meridian", 0.0),
             params.get("false_easting", 0.0),
@@ -523,11 +526,18 @@ _STDNAME_TO_AXIS: dict[str, str] = {
 }
 
 _NAME_PATTERNS: dict[str, str] = {
-    "lat": "Y", "latitude": "Y", "y": "Y",
-    "lon": "X", "longitude": "X", "x": "X",
+    "lat": "Y",
+    "latitude": "Y",
+    "y": "Y",
+    "lon": "X",
+    "longitude": "X",
+    "x": "X",
     "time": "T",
-    "lev": "Z", "level": "Z", "depth": "Z",
-    "height": "Z", "z": "Z",
+    "lev": "Z",
+    "level": "Z",
+    "depth": "Z",
+    "height": "Z",
+    "z": "Z",
 }
 
 
@@ -567,11 +577,17 @@ def detect_axis(
             if isinstance(unit_str, str):
                 unit_lower = unit_str.lower().strip()
                 if unit_lower in (
-                    "degrees_north", "degree_north", "degree_n", "degrees_n"
+                    "degrees_north",
+                    "degree_north",
+                    "degree_n",
+                    "degrees_n",
                 ):
                     result = "Y"
                 elif unit_lower in (
-                    "degrees_east", "degree_east", "degree_e", "degrees_e"
+                    "degrees_east",
+                    "degree_east",
+                    "degree_e",
+                    "degrees_e",
                 ):
                     result = "X"
                 elif "since" in unit_lower:
@@ -586,6 +602,7 @@ def detect_axis(
 # ------------------------------------------------------------------ #
 #  Variable classification                                             #
 # ------------------------------------------------------------------ #
+
 
 def classify_variables(
     variables: dict[str, Any],
@@ -720,6 +737,7 @@ def parse_conventions(conventions_str: str | None) -> dict[str, str]:
 #  Cell methods parsing                                                #
 # ------------------------------------------------------------------ #
 
+
 def parse_cell_methods(cell_methods_str: str) -> list[dict[str, str]]:
     """Parse a CF ``cell_methods`` attribute string.
 
@@ -732,11 +750,7 @@ def parse_cell_methods(cell_methods_str: str) -> list[dict[str, str]]:
         and optionally ``"where"`` and ``"over"``.
     """
     results: list[dict[str, str]] = []
-    pattern = (
-        r'(\w[\w\s]*?):\s+(\w+)'
-        r'(?:\s+where\s+(\w+))?'
-        r'(?:\s+over\s+(\w+))?'
-    )
+    pattern = r'(\w[\w\s]*?):\s+(\w+)' r'(?:\s+where\s+(\w+))?' r'(?:\s+over\s+(\w+))?'
     for match in re.finditer(pattern, cell_methods_str):
         entry: dict[str, str] = {
             "dimensions": match.group(1).strip(),
@@ -753,6 +767,7 @@ def parse_cell_methods(cell_methods_str: str) -> list[dict[str, str]]:
 # ------------------------------------------------------------------ #
 #  Valid range masking                                                 #
 # ------------------------------------------------------------------ #
+
 
 def apply_valid_range_mask(
     arr: Any,
@@ -791,6 +806,7 @@ def apply_valid_range_mask(
 #  Flag decoding                                                       #
 # ------------------------------------------------------------------ #
 
+
 def decode_flags(
     value: int,
     flag_values: list | None = None,
@@ -826,7 +842,8 @@ def decode_flags(
         matched = [
             flag_meanings[i]
             for i in range(len(flag_meanings))
-            if i < len(flag_masks) and i < len(flag_values)
+            if i < len(flag_masks)
+            and i < len(flag_values)
             and (value & flag_masks[i]) == flag_values[i]
         ]
         if matched:
@@ -851,6 +868,7 @@ def decode_flags(
 # ------------------------------------------------------------------ #
 #  CF compliance validation                                            #
 # ------------------------------------------------------------------ #
+
 
 def validate_cf(
     global_attrs: dict[str, Any],
@@ -886,8 +904,7 @@ def validate_cf(
     conv = global_attrs.get("Conventions", "")
     if not isinstance(conv, str) or "CF-" not in conv:
         issues.append(
-            "Missing or invalid 'Conventions' attribute. "
-            "Should contain 'CF-1.X'."
+            "Missing or invalid 'Conventions' attribute. " "Should contain 'CF-1.X'."
         )
 
     dim_names = {d.name for d in dimensions.values()}

@@ -20,6 +20,7 @@ from osgeo.osr import SpatialReference
 from pyramids.base._utils import (
     Catalog,
 )
+from pyramids.base.protocols import ArrayLike
 from pyramids.feature import FeatureCollection
 
 DEFAULT_NO_DATA_VALUE = -9999
@@ -37,6 +38,29 @@ RESAMPLING_METHODS = [
     "RMS",
     "BILINEAR",
 ]
+
+
+def _reconstruct_dataset(cls: type, path: str, access: str) -> AbstractDataset:
+    """Re-open a dataset from its pickle recipe tuple.
+
+    Called by :meth:`AbstractDataset.__reduce__` on unpickle. Routes
+    through the target class's ``read_file`` classmethod so subclass
+    behavior (NetCDF mode flags, COG mixins) is preserved — subclasses
+    that need to carry extra state (for example
+    :class:`~pyramids.netcdf.NetCDF`) override ``__reduce__`` directly.
+
+    Args:
+        cls: The concrete :class:`AbstractDataset` subclass to
+            reconstruct (``Dataset``, ``NetCDF``, etc.).
+        path: The on-disk path or VSI URL to re-open.
+        access: Access mode string; ``"read_only"`` opens read-only,
+            any other value opens for update.
+
+    Returns:
+        AbstractDataset: A freshly opened instance of ``cls``.
+    """
+    read_only = access == "read_only"
+    return cls.read_file(path, read_only=read_only)
 
 
 class AbstractDataset(ABC):
@@ -69,6 +93,33 @@ class AbstractDataset(ABC):
         self._block_size = [
             src.GetRasterBand(i).GetBlockSize() for i in range(1, self._band_count + 1)
         ]
+
+    def __reduce__(self):
+        """Return a recipe tuple that re-opens the dataset on unpickle.
+
+        Serialising a live ``gdal.Dataset`` pointer is not possible
+        (native C++ handle, no copy semantics). Instead we emit the
+        minimal recipe ``(class, file_name, access)`` and reconstruct
+        on unpickle by calling ``cls.read_file(path, read_only=...)``.
+
+        The GDAL handle is therefore opened **on the receiving process
+        / thread**, which is the invariant dask.distributed needs.
+
+        Raises:
+            TypeError: The dataset has no on-disk path (empty
+                ``_file_name`` or a ``/vsimem/`` path). In-memory
+                datasets are not reconstructible from the recipe;
+                call :meth:`to_file` first to anchor them to disk.
+        """
+        path = self._file_name
+        if not path or path.startswith("/vsimem/"):
+            raise TypeError(
+                f"{type(self).__name__} has no on-disk path "
+                f"(file_name={path!r}); pickling an in-memory "
+                "dataset is not supported. Call .to_file(path) "
+                "first to anchor it to disk."
+            )
+        return (_reconstruct_dataset, (type(self), path, self._access))
 
     def __enter__(self):
         """Enter the context manager."""
@@ -298,7 +349,7 @@ class AbstractDataset(ABC):
     @abstractmethod
     def read_array(
         self, band: int | None = None, window: list[int] | None = None
-    ) -> np.ndarray:
+    ) -> ArrayLike:
         """Read Array.
 
             - read the values stored in a given band.
@@ -527,9 +578,7 @@ class AbstractDataset(ABC):
                 # ARC-7: get_epsg_from_prj now raises on empty input;
                 # preserve the historical 4326 fallback explicitly so
                 # datasets with a missing projection still get tagged.
-                self._epsg = (
-                    FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
-                )
+                self._epsg = FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
             elif epsg is not None:
                 sr = AbstractDataset._create_sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())

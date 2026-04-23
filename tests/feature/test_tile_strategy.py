@@ -34,9 +34,7 @@ def gpkg_with_rtree(tmp_path: Path) -> Path:
         crs="EPSG:4326",
     )
     p = tmp_path / "indexed.gpkg"
-    gdf.to_file(
-        p, driver="GPKG", layer="pts", SPATIAL_INDEX="YES"
-    )
+    gdf.to_file(p, driver="GPKG", layer="pts", SPATIAL_INDEX="YES")
     return p
 
 
@@ -91,8 +89,7 @@ class TestCorrectnessAcrossStrategies:
             )
         )
         assert len(feats) == 10, (
-            f"strategy={strategy} returned {len(feats)} features; "
-            f"expected 10"
+            f"strategy={strategy} returned {len(feats)} features; " f"expected 10"
         )
 
     @pytest.mark.parametrize("strategy", ["auto", "rtree", "none"])
@@ -119,9 +116,7 @@ class TestCorrectnessAcrossStrategies:
 class TestAutoFallsBackOnFormatsWithoutIndex:
     """On GeoJSON (no rtree) ``auto`` still works — pyogrio full-scans."""
 
-    def test_auto_on_geojson(
-        self, geojson_no_index: Path, query_bbox
-    ):
+    def test_auto_on_geojson(self, geojson_no_index: Path, query_bbox):
         feats = list(
             FeatureCollection.iter_features(
                 geojson_no_index, bbox=query_bbox, tile_strategy="auto"
@@ -129,9 +124,7 @@ class TestAutoFallsBackOnFormatsWithoutIndex:
         )
         assert len(feats) == 10
 
-    def test_none_on_geojson(
-        self, geojson_no_index: Path, query_bbox
-    ):
+    def test_none_on_geojson(self, geojson_no_index: Path, query_bbox):
         """'none' path exercises the Python-side filter."""
         feats = list(
             FeatureCollection.iter_features(

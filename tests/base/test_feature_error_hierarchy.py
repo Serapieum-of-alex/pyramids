@@ -140,9 +140,7 @@ class TestVectorDriverError:
             lambda *a, **kw: None,
         )
         # Construct a real (tiny) OGR DS to feed in.
-        gdf = gpd.GeoDataFrame(
-            {"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326"
-        )
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326")
         with _ogr.as_datasource(gdf) as ds:
             with pytest.raises(VectorDriverError, match="VectorTranslate"):
                 _ogr.datasource_to_gdf(ds)
@@ -155,9 +153,7 @@ class TestVectorDriverError:
             "pyramids.feature._ogr.gdal.VectorTranslate",
             lambda *a, **kw: None,
         )
-        gdf = gpd.GeoDataFrame(
-            {"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326"
-        )
+        gdf = gpd.GeoDataFrame({"v": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326")
         with _ogr.as_datasource(gdf) as ds:
             with pytest.raises(RuntimeError):
                 _ogr.datasource_to_gdf(ds)

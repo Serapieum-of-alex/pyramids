@@ -139,9 +139,7 @@ class TestReturnValue:
 
 
 class TestFailedToSave:
-    def test_createcopy_returns_none_raises(
-        self, mem_dataset, tmp_path, monkeypatch
-    ):
+    def test_createcopy_returns_none_raises(self, mem_dataset, tmp_path, monkeypatch):
         """If CreateCopy returns None we surface FailedToSaveError."""
         original_driver = gdal.GetDriverByName("COG")
 
@@ -173,5 +171,6 @@ class TestCreateCopyRuntimeError:
 
         monkeypatch.setattr(gdal, "GetDriverByName", fake_get)
         from pyramids.base._errors import FailedToSaveError
+
         with pytest.raises(FailedToSaveError, match="simulated write failure"):
             translate_to_cog(mem_dataset, tmp_path / "x.tif", {})

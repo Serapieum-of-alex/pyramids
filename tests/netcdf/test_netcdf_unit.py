@@ -21,7 +21,6 @@ from osgeo import gdal
 from pyramids.dataset import Dataset
 from pyramids.netcdf.models import NetCDFMetadata
 from pyramids.netcdf.netcdf import NetCDF
-
 from tests.netcdf.conftest import make_3d_nc
 
 
@@ -38,9 +37,14 @@ def _make_3d_nc(
     Delegates to the shared ``make_3d_nc`` helper in conftest.
     """
     return make_3d_nc(
-        rows=rows, cols=cols, bands=bands, epsg=epsg,
-        variable_name=variable_name, no_data_value=no_data_value,
-        arr_type="random", seed=42,
+        rows=rows,
+        cols=cols,
+        bands=bands,
+        epsg=epsg,
+        variable_name=variable_name,
+        no_data_value=no_data_value,
+        arr_type="random",
+        seed=42,
     )
 
 
@@ -400,9 +404,7 @@ class TestNeedsYFlip:
         rg = nc._raster.GetRootGroup()
         md_arr = rg.OpenMDArray("x")
         result = nc._needs_y_flip(rg, md_arr)
-        assert result is False, (
-            f"Expected False for 1-D array, got {result}"
-        )
+        assert result is False, f"Expected False for 1-D array, got {result}"
 
     def test_returns_bool_for_2d_array(self):
         """Verify _needs_y_flip returns a bool for 2D arrays.
@@ -417,9 +419,7 @@ class TestNeedsYFlip:
         rg = nc._raster.GetRootGroup()
         md_arr = rg.OpenMDArray("elevation")
         result = nc._needs_y_flip(rg, md_arr)
-        assert isinstance(result, bool), (
-            f"Expected bool, got {type(result)}"
-        )
+        assert isinstance(result, bool), f"Expected bool, got {type(result)}"
 
 
 class TestGetVariableEdgeCases:
@@ -702,22 +702,16 @@ class TestAddMdArrayToGroupFallback:
         dtype = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
         for d in src_arr.GetDimensions():
             iv = d.GetIndexingVariable()
-            NetCDF.create_main_dimension(
-                dst_rg, d.GetName(), dtype, iv.ReadAsArray()
-            )
+            NetCDF.create_main_dimension(dst_rg, d.GetName(), dtype, iv.ReadAsArray())
 
         # Patch GetNoDataValue to return None (no nodata on source)
-        with patch.object(
-            type(src_arr), "GetNoDataValue", return_value=None
-        ):
+        with patch.object(type(src_arr), "GetNoDataValue", return_value=None):
             NetCDF._add_md_array_to_group(dst_rg, "copied_var", src_arr)
 
         copied = dst_rg.OpenMDArray("copied_var")
         assert copied is not None, "Copied variable should exist"
         ndv = copied.GetNoDataValue()
-        assert ndv is None, (
-            f"Expected no nodata (None), got {ndv}"
-        )
+        assert ndv is None, f"Expected no nodata (None), got {ndv}"
 
 
 class TestSetVariableAttributes:

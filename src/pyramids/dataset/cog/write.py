@@ -98,9 +98,7 @@ def translate_to_cog(
 
     path = Path(path)
     if not path.parent.exists():
-        raise FileNotFoundError(
-            f"Parent directory does not exist: {path.parent}"
-        )
+        raise FileNotFoundError(f"Parent directory does not exist: {path.parent}")
 
     validate_option_keys(options)
     gdal_opts = to_gdal_options(options)
@@ -117,7 +115,5 @@ def translate_to_cog(
         ) from exc
 
     if dst is None:
-        raise FailedToSaveError(
-            f"GDAL COG CreateCopy returned None for {path}"
-        )
+        raise FailedToSaveError(f"GDAL COG CreateCopy returned None for {path}")
     return dst

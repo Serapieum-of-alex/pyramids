@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING, Any, Mapping
 from osgeo import gdal
 
 from pyramids.dataset.cog import (
-    CreationOptions,
     ValidationReport,
     merge_options,
     translate_to_cog,
@@ -64,7 +63,7 @@ class COGMixin:
     """Cloud Optimized GeoTIFF read/write/validate operations for :class:`Dataset`."""
 
     def to_cog(
-        self: "Dataset",
+        self: Dataset,
         path: str | Path,
         *,
         compress: str = "DEFLATE",
@@ -215,9 +214,7 @@ class COGMixin:
             "ZOOM_LEVEL": zoom_level,
             "ZOOM_LEVEL_STRATEGY": zoom_level_strategy,
             "ALIGNED_LEVELS": aligned_levels,
-            "WARP_RESAMPLING": (
-                resampling if (tiling_scheme or target_srs) else None
-            ),
+            "WARP_RESAMPLING": (resampling if (tiling_scheme or target_srs) else None),
             "ADD_ALPHA": True if add_mask else None,
             "SPARSE_OK": True if sparse_ok else None,
             "STATISTICS": "YES" if statistics else None,
@@ -239,7 +236,7 @@ class COGMixin:
         return Path(path)
 
     @property
-    def is_cog(self: "Dataset") -> bool:
+    def is_cog(self: Dataset) -> bool:
         """``True`` iff the backing file on disk is a valid COG.
 
         ``False`` for MEM datasets, ``/vsimem/`` paths, and unsaved
@@ -279,7 +276,7 @@ class COGMixin:
                 result = False
         return result
 
-    def validate_cog(self: "Dataset", strict: bool = False) -> ValidationReport:
+    def validate_cog(self: Dataset, strict: bool = False) -> ValidationReport:
         """Validate the backing file as a COG.
 
         Args:
@@ -327,7 +324,7 @@ class COGMixin:
     # ---- private helpers ----
 
     def _warn_if_categorical_with_averaging(
-        self: "Dataset", overview_resampling: str
+        self: Dataset, overview_resampling: str
     ) -> None:
         """Emit a ``UserWarning`` if an averaging resampler is used on categorical data.
 

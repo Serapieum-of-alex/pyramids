@@ -59,9 +59,7 @@ def polygon_fc() -> FeatureCollection:
 class TestRoundTrip:
     """to_parquet → read_parquet preserves the contents."""
 
-    def test_point_round_trip(
-        self, tmp_path: Path, small_fc: FeatureCollection
-    ):
+    def test_point_round_trip(self, tmp_path: Path, small_fc: FeatureCollection):
         p = tmp_path / "points.parquet"
         small_fc.to_parquet(p)
         rt = FeatureCollection.read_parquet(p)
@@ -71,9 +69,7 @@ class TestRoundTrip:
         assert list(rt["name"]) == list(small_fc["name"])
         assert list(rt["id"]) == list(small_fc["id"])
 
-    def test_polygon_round_trip(
-        self, tmp_path: Path, polygon_fc: FeatureCollection
-    ):
+    def test_polygon_round_trip(self, tmp_path: Path, polygon_fc: FeatureCollection):
         p = tmp_path / "polys.parquet"
         polygon_fc.to_parquet(p)
         rt = FeatureCollection.read_parquet(p)
@@ -84,9 +80,7 @@ class TestRoundTrip:
         for orig, got in zip(polygon_fc.geometry, rt.geometry):
             assert orig.equals(got)
 
-    def test_subclass_preserved(
-        self, tmp_path: Path, small_fc: FeatureCollection
-    ):
+    def test_subclass_preserved(self, tmp_path: Path, small_fc: FeatureCollection):
         """read_parquet returns a FeatureCollection, not a bare GDF."""
         p = tmp_path / "sub.parquet"
         small_fc.to_parquet(p)
@@ -97,9 +91,7 @@ class TestRoundTrip:
 class TestColumnsProjection:
     """columns= reduces the columns loaded — Parquet columnar wins."""
 
-    def test_projects_to_subset(
-        self, tmp_path: Path, small_fc: FeatureCollection
-    ):
+    def test_projects_to_subset(self, tmp_path: Path, small_fc: FeatureCollection):
         p = tmp_path / "proj.parquet"
         small_fc.to_parquet(p)
         rt = FeatureCollection.read_parquet(p, columns=["name", "geometry"])
@@ -109,9 +101,7 @@ class TestColumnsProjection:
         assert "id" not in rt.columns
         assert "score" not in rt.columns
 
-    def test_columns_none_loads_all(
-        self, tmp_path: Path, small_fc: FeatureCollection
-    ):
+    def test_columns_none_loads_all(self, tmp_path: Path, small_fc: FeatureCollection):
         p = tmp_path / "all.parquet"
         small_fc.to_parquet(p)
         rt = FeatureCollection.read_parquet(p)
@@ -121,16 +111,12 @@ class TestColumnsProjection:
 class TestCompression:
     """Compression codec is passed through; file differs by size."""
 
-    def test_snappy_default(
-        self, tmp_path: Path, small_fc: FeatureCollection
-    ):
+    def test_snappy_default(self, tmp_path: Path, small_fc: FeatureCollection):
         p = tmp_path / "snappy.parquet"
         small_fc.to_parquet(p)
         assert p.stat().st_size > 0
 
-    def test_gzip_option(
-        self, tmp_path: Path, small_fc: FeatureCollection
-    ):
+    def test_gzip_option(self, tmp_path: Path, small_fc: FeatureCollection):
         p = tmp_path / "gzip.parquet"
         small_fc.to_parquet(p, compression="gzip")
         rt = FeatureCollection.read_parquet(p)

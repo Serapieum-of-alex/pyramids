@@ -33,7 +33,10 @@ import functools
 import warnings
 from numbers import Number
 from pathlib import Path
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
+
+if TYPE_CHECKING:
+    from pyramids.feature._lazy_collection import LazyFeatureCollection
 
 import geopandas as gpd
 import numpy as np
@@ -44,6 +47,7 @@ from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
+from pyramids import _io as _pyramids_io
 from pyramids.base._errors import GeometryWarning
 from pyramids.base._utils import Catalog
 from pyramids.feature import crs as _crs
@@ -57,6 +61,66 @@ gdal.UseExceptions()
 # ``read_dataframe`` default for row-group streaming, so the fast
 # path (GeoParquet + row_group tile strategy) does not re-chunk.
 _DEFAULT_ITER_BATCH_SIZE: int = 1000
+
+
+# ARC-V6: target bytes per partition when read_file(backend="dask") is
+# called with neither npartitions nor chunksize. 128 MiB is
+# dask-geopandas' own read_parquet default and a reasonable size for
+# shapely-heavy geometry ops on modern cores. Small enough that even a
+# 1 GiB shapefile gets 8 partitions; large enough to avoid one-partition-
+# per-10-rows pathologies on huge feature counts.
+_LAZY_TARGET_BYTES_PER_PARTITION: int = 128 * 1024 * 1024
+
+
+def _resolve_lazy_partitioning(
+    path: str,
+    npartitions: int | None,
+    chunksize: int | None,
+) -> dict[str, Any]:
+    """ARC-V6: default ``npartitions`` from file size when not given.
+
+    Called by ``read_file(backend="dask")``. If the caller supplies
+    either ``npartitions`` or ``chunksize`` we honor it verbatim. If
+    they supply neither, we stat the resolved path and pick
+    ``npartitions = max(1, ceil(size / 128 MiB))``.
+
+    On cloud / virtual-FS paths (``/vsi*``, ``http(s)://``, ``s3://``,
+    etc.) ``os.stat`` can't size the file cheaply — there we fall
+    back to ``npartitions=1`` rather than emit a pre-flight HEAD
+    request with ambiguous semantics. Users who want more partitions
+    on cloud-hosted files should pass ``npartitions=`` explicitly.
+
+    Args:
+        path: The already-``_to_vsi``-resolved path string.
+        npartitions: User-supplied partition count, if any.
+        chunksize: User-supplied rows-per-partition, if any.
+
+    Returns:
+        dict: kwargs to forward to :func:`dask_geopandas.read_file`.
+        Exactly one of ``npartitions`` / ``chunksize`` is populated.
+    """
+    import math
+    import os
+
+    kwargs: dict[str, Any] = {}
+    if npartitions is not None:
+        kwargs["npartitions"] = npartitions
+    elif chunksize is not None:
+        kwargs["chunksize"] = chunksize
+    elif path.startswith(("/vsi", "http://", "https://", "s3://", "gs://", "az://")):
+        # Remote / VFS path — no cheap size probe. Fall back to 1.
+        kwargs["npartitions"] = 1
+    else:
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            kwargs["npartitions"] = 1
+        else:
+            kwargs["npartitions"] = max(
+                1,
+                math.ceil(size / _LAZY_TARGET_BYTES_PER_PARTITION),
+            )
+    return kwargs
 
 
 def _require_pyarrow() -> None:
@@ -118,11 +182,15 @@ class FeatureCollection(GeoDataFrame):
     # the pyramids subclass does not carry a duplicate entry. Python
     # preserves insertion order in dicts since 3.7, so the parent's
     # ordering is preserved.
-    _metadata: list[str] = list(dict.fromkeys([
-        *GeoDataFrame._metadata,
-        "_epsg_cache_crs",
-        "_epsg_cache_value",
-    ]))
+    _metadata: list[str] = list(
+        dict.fromkeys(
+            [
+                *GeoDataFrame._metadata,
+                "_epsg_cache_crs",
+                "_epsg_cache_value",
+            ]
+        )
+    )
     """Instance attributes pandas must preserve across copy/slice/pickle.
 
     Holds:
@@ -366,9 +434,7 @@ class FeatureCollection(GeoDataFrame):
                 "iterable would produce a GeoDataFrame with no geometry "
                 "column, which breaks downstream pyramids methods."
             )
-        gdf = gpd.GeoDataFrame.from_features(
-            features_list, crs=crs, columns=columns
-        )
+        gdf = gpd.GeoDataFrame.from_features(features_list, crs=crs, columns=columns)
         return cls(gdf)
 
     @classmethod
@@ -470,10 +536,8 @@ class FeatureCollection(GeoDataFrame):
         # ``GeoDataFrame(..., geometry=…)`` sets it as the active
         # geometry column and the returned FC has
         # ``geometry.name == geometry``.
-        def _empty_fc() -> "FeatureCollection":
-            return cls(
-                gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs)
-            )
+        def _empty_fc() -> FeatureCollection:
+            return cls(gpd.GeoDataFrame({geometry: []}, geometry=geometry, crs=crs))
 
         if orient == "records":
             records_list = list(records)
@@ -494,9 +558,7 @@ class FeatureCollection(GeoDataFrame):
             if len(df) == 0:
                 return _empty_fc()
         else:
-            raise ValueError(
-                f"orient must be 'records' or 'list'; got {orient!r}."
-            )
+            raise ValueError(f"orient must be 'records' or 'list'; got {orient!r}.")
         if geometry not in df.columns:
             raise FeatureError(
                 f"records missing required geometry column {geometry!r}; "
@@ -645,9 +707,7 @@ class FeatureCollection(GeoDataFrame):
                 ```
         """
         if chunksize is not None and chunksize < 1:
-            raise ValueError(
-                f"chunksize must be >= 1 when supplied; got {chunksize}."
-            )
+            raise ValueError(f"chunksize must be >= 1 when supplied; got {chunksize}.")
         if tile_strategy not in cls._VALID_TILE_STRATEGIES:
             raise ValueError(
                 f"tile_strategy must be one of "
@@ -655,8 +715,6 @@ class FeatureCollection(GeoDataFrame):
             )
 
         import pyogrio
-
-        from pyramids import _io as _pyramids_io
 
         resolved = str(_pyramids_io._parse_path(path))
 
@@ -709,13 +767,9 @@ class FeatureCollection(GeoDataFrame):
                 row_indices = list(range(start, start + len(gdf_chunk)))
             if python_bbox is not None and len(gdf_chunk) > 0:
                 xmin, ymin, xmax, ymax = python_bbox
-                mask = gdf_chunk.intersects(
-                    box(xmin, ymin, xmax, ymax)
-                )
+                mask = gdf_chunk.intersects(box(xmin, ymin, xmax, ymax))
                 if include_index:
-                    row_indices = [
-                        ri for ri, keep in zip(row_indices, mask) if keep
-                    ]
+                    row_indices = [ri for ri, keep in zip(row_indices, mask) if keep]
                 gdf_chunk = gdf_chunk[mask]
             if chunksize is None:
                 iterator = gdf_chunk.iterfeatures(na="null")
@@ -743,8 +797,11 @@ class FeatureCollection(GeoDataFrame):
         rows: slice | int | None = None,
         columns: list[str] | None = None,
         where: str | None = None,
+        backend: str = "pandas",
+        npartitions: int | None = None,
+        chunksize: int | None = None,
         **kwargs: Any,
-    ) -> FeatureCollection:
+    ) -> FeatureCollection | LazyFeatureCollection:
         """Read a vector file into a FeatureCollection.
 
         ARC-23: path is first routed through
@@ -822,9 +879,54 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        from pyramids import _io as _pyramids_io
-
         resolved = _pyramids_io._parse_path(path)
+        if backend == "dask":
+            # M7: dask_geopandas.read_file does NOT forward pyogrio
+            # filter kwargs (bbox / mask / rows / columns / where) —
+            # silently dropping them was the bug. Raise a clear
+            # ValueError instead so users know to either pre-filter
+            # or call .compute() and filter eagerly.
+            unsupported = {
+                "bbox": bbox,
+                "mask": mask,
+                "rows": rows,
+                "columns": columns,
+                "where": where,
+                "layer": layer,
+            }
+            supplied = [k for k, v in unsupported.items() if v is not None]
+            if supplied:
+                raise ValueError(
+                    f"backend='dask' does not support filter kwargs "
+                    f"{supplied}. dask_geopandas.read_file has no "
+                    "pushdown story for these. Either omit them and "
+                    "filter post-load via .clip / .loc / .compute, or "
+                    "switch to read_parquet(backend='dask', filters=...)"
+                )
+            try:
+                import dask_geopandas
+            except ImportError as exc:
+                raise ImportError(
+                    "backend='dask' requires the optional "
+                    "'dask-geopandas' dependency. Install with: "
+                    "pip install 'pyramids-gis[parquet-lazy]'"
+                ) from exc
+            # ARC-V6: default npartitions from file size when neither
+            # kwarg was supplied; one-partition fallback defeats the
+            # point of going lazy.
+            partition_kwargs = _resolve_lazy_partitioning(
+                resolved,
+                npartitions,
+                chunksize,
+            )
+            # DASK-22F: wrap the lazy return as a LazyFeatureCollection so the
+            # dask branch stays inside the pyramids type system.
+            from pyramids.feature._lazy_collection import LazyFeatureCollection
+
+            dask_gdf = dask_geopandas.read_file(resolved, **partition_kwargs)
+            return LazyFeatureCollection.from_dask_gdf(dask_gdf)
+        if backend != "pandas":
+            raise ValueError(f"backend must be 'pandas' or 'dask', got {backend!r}")
         # Only pass kwargs that were actually supplied — passing the
         # defaults (None) is fine for some geopandas engines but
         # confuses others. Build a clean kwargs dict.
@@ -1035,10 +1137,7 @@ class FeatureCollection(GeoDataFrame):
         n = len(self)
         cols = self.columns.tolist()
         epsg = self.epsg
-        return (
-            f"FeatureCollection({n} features, "
-            f"columns={cols}, epsg={epsg})"
-        )
+        return f"FeatureCollection({n} features, " f"columns={cols}, epsg={epsg})"
 
     def __repr__(self) -> str:
         """Return a pyramids-branded repr."""
@@ -1123,19 +1222,13 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        geom_types = {
-            g.geom_type
-            for g in self.geometry
-            if g is not None
-        }
+        geom_types = {g.geom_type for g in self.geometry if g is not None}
         if len(geom_types) == 1:
             (geom_type,) = geom_types
         else:
             geom_type = "Unknown"
         properties = {
-            col: str(dt)
-            for col, dt in self.dtypes.items()
-            if col != "geometry"
+            col: str(dt) for col, dt in self.dtypes.items() if col != "geometry"
         }
         return {
             "geometry": geom_type,
@@ -1203,7 +1296,6 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        from pyramids import _io as _pyramids_io
         from pyramids.base.remote import is_remote
 
         # C29 / L3: pre-check local-path existence so the caller sees
@@ -1216,9 +1308,7 @@ class FeatureCollection(GeoDataFrame):
         if not is_remote(path_str):
             local = Path(path_str)
             if not local.exists():
-                raise FileNotFoundError(
-                    f"list_layers: no file at {path_str!r}."
-                )
+                raise FileNotFoundError(f"list_layers: no file at {path_str!r}.")
 
         resolved = str(_pyramids_io._parse_path(path))
         return list(_list_layers_cached(resolved))
@@ -1266,14 +1356,80 @@ class FeatureCollection(GeoDataFrame):
         _list_layers_cached.cache_clear()
 
     @classmethod
+    def open_arrow(
+        cls,
+        path: str | Path,
+        *,
+        layer: str | int | None = None,
+        columns: list[str] | None = None,
+        bbox: tuple[float, float, float, float] | None = None,
+        where: str | None = None,
+        batch_size: int | None = None,
+    ) -> Any:
+        """Open a vector file as a streaming :class:`pyarrow.RecordBatchReader`.
+
+        Thin wrapper over :func:`pyogrio.raw.open_arrow` that surfaces
+        the underlying Arrow RecordBatch iterator. Rows are yielded in
+        batches, so callers can iterate through multi-GB datasets
+        without materializing the whole table in memory — useful for
+        building custom dask partitioners.
+
+        Args:
+            path: Vector file path (Shapefile, GPKG, FlatGeobuf,
+                GeoJSON, GeoParquet, ...). Routed through
+                :func:`pyramids._io._parse_path` so cloud URLs work.
+            layer: Layer name or index for multi-layer formats.
+            columns: Attribute columns to load (``geometry`` is
+                always included).
+            bbox: ``(minx, miny, maxx, maxy)`` filter.
+            where: OGR SQL ``WHERE`` predicate pushed down to the
+                driver.
+            batch_size: Requested RecordBatch size in rows. ``None``
+                uses the driver default.
+
+        Returns:
+            pyarrow.RecordBatchReader: A streaming reader. Call
+            ``.read_all()`` to materialise, or iterate for row-batch
+            consumption.
+
+        Raises:
+            ImportError: If :mod:`pyogrio` is not installed.
+        """
+        try:
+            from pyogrio.raw import open_arrow
+        except ImportError as exc:
+            raise ImportError(
+                "open_arrow requires the optional 'pyogrio' dependency. "
+                "Install with: pip install pyogrio"
+            ) from exc
+        resolved = _pyramids_io._parse_path(path)
+        kwargs: dict[str, Any] = {}
+        if layer is not None:
+            kwargs["layer"] = layer
+        if columns is not None:
+            kwargs["columns"] = columns
+        if bbox is not None:
+            kwargs["bbox"] = bbox
+        if where is not None:
+            kwargs["where"] = where
+        if batch_size is not None:
+            kwargs["batch_size"] = batch_size
+        return open_arrow(resolved, **kwargs)
+
+    @classmethod
     def read_parquet(
         cls,
         path: str | Path,
         *,
         columns: list[str] | None = None,
         bbox: tuple[float, float, float, float] | None = None,
+        backend: str = "pandas",
+        split_row_groups: bool | None = None,
+        filters: list | None = None,
+        blocksize: int | str | None = None,
+        storage_options: dict | None = None,
         **kwargs: Any,
-    ) -> FeatureCollection:
+    ) -> FeatureCollection | LazyFeatureCollection:
         """Read a GeoParquet file into a FeatureCollection (ARC-32).
 
         GeoParquet is a cloud-native columnar vector format (OGC-
@@ -1359,20 +1515,61 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        from pyramids import _io as _pyramids_io
-
-        _require_pyarrow()
         resolved = _pyramids_io._parse_path(path)
-        # D-N3: pin the engine to pyarrow so a future geopandas that
-        # adds a fastparquet path doesn't silently change our
-        # behaviour. Callers who want fastparquet can override by
-        # passing ``engine="fastparquet"`` as a kwarg.
-        passthrough: dict[str, Any] = {"engine": "pyarrow"}
+        if backend == "dask":
+            # M3: check deps in order of specificity — the backend
+            # request is the more specific signal, so the
+            # dask-geopandas hint beats the generic pyarrow one.
+            # When both are missing, the dask-geopandas error names
+            # the extra that installs both ([parquet-lazy]).
+            try:
+                import dask_geopandas
+            except ImportError as exc:
+                raise ImportError(
+                    "backend='dask' requires the optional "
+                    "'dask-geopandas' dependency. Install with: "
+                    "pip install 'pyramids-gis[parquet-lazy]'"
+                ) from exc
+            dask_kwargs: dict[str, Any] = {}
+            if columns is not None:
+                dask_kwargs["columns"] = columns
+            if split_row_groups is not None:
+                dask_kwargs["split_row_groups"] = split_row_groups
+            if filters is not None:
+                dask_kwargs["filters"] = filters
+            if blocksize is not None:
+                dask_kwargs["blocksize"] = blocksize
+            if storage_options is not None:
+                dask_kwargs["storage_options"] = storage_options
+            dask_kwargs.update(kwargs)
+            # M3: dask_geopandas is installed → assert pyarrow too, so
+            # the user gets the pyramids-branded hint (not the
+            # upstream message dask_geopandas would emit when it tries
+            # to read). ``[parquet-lazy]`` pulls both.
+            _require_pyarrow()
+            # DASK-23F: wrap the lazy return as a LazyFeatureCollection so the
+            # dask branch stays inside the pyramids type system.
+            from pyramids.feature._lazy_collection import LazyFeatureCollection
+
+            dask_gdf = dask_geopandas.read_parquet(resolved, **dask_kwargs)
+            return LazyFeatureCollection.from_dask_gdf(dask_gdf)
+        if backend != "pandas":
+            raise ValueError(f"backend must be 'pandas' or 'dask', got {backend!r}")
+        _require_pyarrow()
+        # geopandas 1.x forwards **kwargs straight into
+        # ``pyarrow.parquet.read_table``, which has never accepted the
+        # pandas-style ``engine=`` kwarg. ``_require_pyarrow()`` above
+        # already hard-guarantees the pyarrow backend, so no injection
+        # is needed here. If geopandas ever reintroduces a fastparquet
+        # path it will be opt-in via a new kwarg, not a silent switch.
+        passthrough: dict[str, Any] = {}
         passthrough.update(kwargs)
         if columns is not None:
             passthrough["columns"] = columns
         if bbox is not None:
             passthrough["bbox"] = bbox
+        if storage_options is not None:
+            passthrough["storage_options"] = storage_options
         gdf = gpd.read_parquet(resolved, **passthrough)
         return cls(gdf)
 
@@ -1455,9 +1652,7 @@ class FeatureCollection(GeoDataFrame):
                 ```
         """
         _require_pyarrow()
-        super().to_parquet(
-            path, compression=compression, index=index, **kwargs
-        )
+        super().to_parquet(path, compression=compression, index=index, **kwargs)
 
     def to_file(
         self,
@@ -1580,9 +1775,7 @@ class FeatureCollection(GeoDataFrame):
                 ```
         """
         if mode not in ("w", "a"):
-            raise ValueError(
-                f"mode must be 'w' (write) or 'a' (append); got {mode!r}."
-            )
+            raise ValueError(f"mode must be 'w' (write) or 'a' (append); got {mode!r}.")
         try:
             resolved = CATALOG.get_gdal_name(driver) or driver
         except AttributeError:
@@ -1761,9 +1954,7 @@ class FeatureCollection(GeoDataFrame):
         return _geom.get_poly_coords(geometry, coord_type)
 
     @staticmethod
-    def _explode_gdf(
-        gdf: GeoDataFrame, geometry: str = "multipolygon"
-    ) -> GeoDataFrame:
+    def _explode_gdf(gdf: GeoDataFrame, geometry: str = "multipolygon") -> GeoDataFrame:
         """Delegate to :func:`pyramids.feature.geometry.explode_gdf`."""
         return _geom.explode_gdf(gdf, geometry)
 
@@ -2270,9 +2461,7 @@ class FeatureCollection(GeoDataFrame):
         # directly.
         cleaned: list[Any] = [
             Point() if bad else Point(ax, ay)
-            for ax, ay, bad in zip(
-                avg_x.tolist(), avg_y.tolist(), bad_mask.tolist()
-            )
+            for ax, ay, bad in zip(avg_x.tolist(), avg_y.tolist(), bad_mask.tolist())
         ]
         fc["center_point"] = cleaned
         return fc

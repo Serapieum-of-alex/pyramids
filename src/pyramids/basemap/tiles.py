@@ -119,7 +119,9 @@ def fetch_single_tile(
             response = urllib.request.urlopen(request, timeout=timeout)
             data = response.read()
             if not data or data[:4] not in (
-                b"\x89PNG", b"\xff\xd8\xff\xe0", b"\xff\xd8\xff\xe1"
+                b"\x89PNG",
+                b"\xff\xd8\xff\xe0",
+                b"\xff\xd8\xff\xe1",
             ):
                 raise OSError(
                     f"Tile response is not a valid image "
@@ -269,8 +271,7 @@ def stitch_tiles(
             img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
         except Exception as e:
             raise ValueError(
-                f"Failed to decode tile z={tile.z}/x={tile.x}/"
-                f"y={tile.y}: {e}"
+                f"Failed to decode tile z={tile.z}/x={tile.x}/" f"y={tile.y}: {e}"
             ) from e
         x_offset = (tile.x - x_indices[0]) * tile_size
         y_offset = (tile.y - y_indices[0]) * tile_size

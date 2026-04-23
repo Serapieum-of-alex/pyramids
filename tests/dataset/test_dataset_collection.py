@@ -225,7 +225,9 @@ class TestSaveDatasetCollection:
         if path.exists():
             shutil.rmtree(path)
 
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         cube.to_file(path)
         files = list(path.iterdir())
@@ -242,7 +244,9 @@ class TestSaveDatasetCollection:
         if rpath.exists():
             shutil.rmtree(rpath)
 
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         file_paths = [f"{rpath}/{i}.tif" for i in range(cube.time_length)]
         cube.to_file(file_paths)
@@ -260,7 +264,9 @@ class TestSaveDatasetCollection:
         if path.exists():
             shutil.rmtree(path)
 
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         cube.to_file(path, driver="ascii", band=0)
         files = list(path.iterdir())
@@ -282,7 +288,9 @@ class TestCrop:
         #     os.mkdir(crop_aligned_folder_saveto)
 
         mask = Dataset(raster_mask)
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         cube.crop(mask, inplace=True)
         # cube.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
@@ -305,7 +313,9 @@ class TestCrop:
         #     os.mkdir(crop_aligned_folder_saveto)
 
         mask = Dataset(raster_mask)
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         cropped_dataset = cube.crop(mask, inplace=False)
         # cube.to_geotiff(crop_aligned_folder_saveto)_crop_with_polygon
@@ -327,7 +337,9 @@ class TestCrop:
         # else:
         #     os.mkdir(crop_aligned_folder_saveto)
 
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         cube.crop(polygon_mask, inplace=True, touch=False)
         # cube.to_file(crop_aligned_folder_saveto)
@@ -353,7 +365,9 @@ class TestApply:
         self,
         rasters_folder_path: str,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         func = np.abs
         cube.apply(func)
@@ -379,7 +393,9 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_dim: tuple,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         arr = cube[2]
         assert arr.shape == (
@@ -391,7 +407,9 @@ class TestProperties:
         self,
         rasters_folder_path: str,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         no_data_value = cube.base.no_data_value[0]
         arr = cube[2]
@@ -407,7 +425,9 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_rasters_number: int,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         assert len(cube) == rasters_folder_rasters_number
 
@@ -416,7 +436,9 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_rasters_number: int,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         assert len(list(cube)) == rasters_folder_rasters_number
 
@@ -424,7 +446,9 @@ class TestProperties:
         self,
         rasters_folder_path: str,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         head = cube.head()
         tail = cube.tail()
@@ -436,7 +460,9 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_dim: tuple,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         first = cube.first()
         last = cube.last()
@@ -449,7 +475,9 @@ class TestProperties:
         rasters_folder_dim: tuple,
         rasters_folder_rasters_number: int,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
 
         assert cube.rows == rasters_folder_dim[0]
@@ -465,7 +493,9 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_dim: tuple,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         arr = cube.values
         assert isinstance(arr, np.ndarray)
@@ -476,7 +506,9 @@ class TestProperties:
         rasters_folder_path: str,
         rasters_folder_dim: tuple,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
 
         cube.open_multi_dataset()
         arr = cube.values
@@ -490,7 +522,9 @@ class TestProperties:
         rasters_folder_rasters_number: int,
         rasters_folder_dim: tuple,
     ):
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         # access the data attribute
         arr = cube.values

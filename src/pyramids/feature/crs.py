@@ -24,6 +24,8 @@ import numpy as np
 from osgeo import osr
 from pyproj import Transformer
 
+from pyramids.base._errors import CRSError
+
 
 def create_sr_from_proj(
     prj: str, string_type: str | None = None
@@ -137,8 +139,6 @@ def get_epsg_from_prj(prj: str) -> int:
             ```
     """
     if prj == "":
-        from pyramids.base._errors import CRSError
-
         raise CRSError(
             "get_epsg_from_prj received an empty projection string. "
             "An empty projection is ambiguous and is no longer "
@@ -249,12 +249,10 @@ def reproject_coordinates(
     # which would mask real bugs in our own code.
     import pyproj.exceptions
 
-    from pyramids.base._errors import CRSError as _CRSError
-
     try:
         transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
     except (pyproj.exceptions.CRSError, TypeError, ValueError) as exc:
-        raise _CRSError(
+        raise CRSError(
             f"reproject_coordinates failed to parse CRS "
             f"(from_crs={from_crs!r}, to_crs={to_crs!r}): {exc}"
         ) from exc

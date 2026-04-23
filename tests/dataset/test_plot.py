@@ -6,10 +6,11 @@ import pytest
 from osgeo import gdal
 from pandas import DataFrame
 
-from pyramids.dataset import Dataset
-from pyramids.dataset import DatasetCollection
+from pyramids.dataset import Dataset, DatasetCollection
 
-_cleo_array = pytest.importorskip("cleopatra.array_glyph", reason="cleopatra not installed")
+_cleo_array = pytest.importorskip(
+    "cleopatra.array_glyph", reason="cleopatra not installed"
+)
 ArrayGlyph = _cleo_array.ArrayGlyph
 _cleo_config = pytest.importorskip("cleopatra.config", reason="cleopatra not installed")
 Config = _cleo_config.Config
@@ -90,7 +91,9 @@ class TestPlotDatasetCollection:
     ):
         from cleopatra.array_glyph import ArrayGlyph
 
-        cube = DatasetCollection.read_multiple_files(rasters_folder_path, with_order=False)
+        cube = DatasetCollection.read_multiple_files(
+            rasters_folder_path, with_order=False
+        )
         cube.open_multi_dataset()
         cleo = cube.plot()
         assert isinstance(cleo, ArrayGlyph)

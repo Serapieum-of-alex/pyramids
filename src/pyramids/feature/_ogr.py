@@ -24,6 +24,8 @@ import geopandas as gpd
 from geopandas import GeoDataFrame
 from osgeo import gdal, ogr
 
+from pyramids.base._errors import VectorDriverError
+
 
 def _new_vsimem_path() -> str:
     """Return a fresh unique ``/vsimem/`` path for a GeoJSON serialization.
@@ -142,8 +144,6 @@ def as_datasource(
 
             ```
     """
-    from pyramids.base._errors import VectorDriverError
-
     mem_path = _new_vsimem_path()
     # We must write into osgeo.gdal's own /vsimem/ — geopandas' default
     # pyogrio engine uses its own bundled GDAL with a separate VFS, so a
@@ -303,8 +303,6 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
     # APIs, and hand a ``BytesIO`` to ``geopandas.read_file`` — which
     # pyogrio accepts and parses from memory.
     import io
-
-    from pyramids.base._errors import VectorDriverError
 
     mem_path = _new_vsimem_path()
     file_written = False
