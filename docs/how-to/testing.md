@@ -11,12 +11,12 @@ dependencies each slice exercises, and how to reproduce any CI job locally.
               ├──────────────────────┬─────────────────────────────┤
               │   main-package       │   extras-package            │
               │                      │                             │
-              │   9 matrix cells     │   9 matrix cells            │
+              │   9 matrix cells     │   6 matrix cells            │
               │   (OS × py-version)  │   (OS × extra)              │
               │                      │                             │
               │   env: py311/12/13   │   env: netcdf-lazy /        │
-              │                      │        parquet-lazy /       │
-              │   suite: full repo   │        stac                 │
+              │                      │        parquet-lazy         │
+              │   suite: full repo   │                             │
               │                      │                             │
               │   gate: cov ≥ 88%    │   suite: one sub-dir        │
               │                      │   gate: cov ≥ 0 %           │
@@ -40,7 +40,6 @@ pyramids ships a minimal core plus eight opt-in extras declared in
 | `netcdf-lazy` | `kerchunk`, `h5py` + `lazy` | Lazy NetCDF, kerchunk manifests |
 | `parquet` | `pyarrow` | Eager GeoParquet read / write |
 | `parquet-lazy` | `dask-geopandas` + `parquet` + `lazy` | Lazy `LazyFeatureCollection` |
-| `stac` | `pystac`, `odc-geo` | `DatasetCollection.from_stac` |
 
 End-users install exactly what they need:
 
@@ -61,7 +60,6 @@ so incremental solves stay cheap (~8–15 s when adding one extra on top of `dev
 | `netcdf-lazy` | `dev` + HDF5-linking stack from conda-forge (kerchunk, h5py, netcdf4 — pinned to py313 / hdf5 1.14). |
 | `parquet` | `dev` + `pyarrow` (conda-forge). |
 | `parquet-lazy` | `dev` + `parquet` + `dask-geopandas` (conda-forge). |
-| `stac` | `dev` + `pystac`, `odc-geo` (conda-forge). |
 | `py311` / `py312` / `py313` / `py314` | Same as `dev`, pinned Python. What `main-package` CI uses. |
 | `docs` | Everything needed to build the MkDocs site. |
 | `notebook` | Jupyter + viz only. Used to validate the example notebooks. |
@@ -86,9 +84,9 @@ specific `netcdf4` build string so the HDF5 shared library matches
 | `tests/dataset/cog/` | core | ✅ | — | `dev` |
 | `tests/dataset/ops/` (excl. lazy sub-dir) | core + parts of `lazy` | ✅ | — | `dev` |
 | `tests/dataset/ops/lazy/` | `lazy` | ✅ | — | `dev` |
-| `tests/dataset/collection/` | `lazy` (+ stac/kerchunk seams, auto-skip) | ✅ | `stac` (partial) | `dev` or `stac` |
+| `tests/dataset/collection/` | `lazy` (+ kerchunk seam, auto-skip) | ✅ | — | `dev` |
 | `tests/dataset/ops/test_zonal_stats.py` | core | ✅ | — | `dev` |
-| `tests/dataset/test_stac.py` | `stac` | ✅ (skips) | ✅ `stac` | `stac` |
+| `tests/dataset/test_stac.py` | core (duck-typed, no pystac dep) | ✅ | — | `dev` |
 | `tests/feature/` (excl. `lazy/`) | core + `parquet` (some) | ✅ | — | `dev` |
 | `tests/feature/lazy/` | `parquet-lazy` | ✅ (skips) | ✅ `parquet-lazy` | `parquet-lazy` |
 | `tests/netcdf/` (excl. `lazy/`) | `xarray` | ✅ (xarray-tests step) | — | `dev` |
@@ -115,10 +113,9 @@ pixi run -e dev test-all             # everything in one go
 ```bash
 pixi run -e netcdf-lazy  pytest -vvv tests/netcdf/lazy
 pixi run -e parquet-lazy pytest -vvv tests/feature/lazy
-pixi run -e stac         pytest -vvv tests/dataset/test_stac.py
 ```
 
-These three commands mirror the three extras-package matrix entries. If they pass
+These two commands mirror the two extras-package matrix entries. If they pass
 locally and `dev` passes too, CI should be green.
 
 ### First-time install
@@ -128,7 +125,6 @@ pixi install -e dev
 # Opt in to the extras you need to hack on:
 pixi install -e netcdf-lazy
 pixi install -e parquet-lazy
-pixi install -e stac
 ```
 
 Each extras env reuses the `default` solve group, so adding one on top of an
@@ -148,7 +144,6 @@ identifiers):
 | `@pytest.mark.netcdf_lazy` | `netcdf-lazy` |
 | `@pytest.mark.parquet` | `parquet` |
 | `@pytest.mark.parquet_lazy` | `parquet-lazy` |
-| `@pytest.mark.stac` | `stac` |
 
 `tests/conftest.py` runs a `pytest_collection_modifyitems` hook that, for each
 test tagged with one of these markers, auto-applies the matching
@@ -173,7 +168,7 @@ test methods when a full class-level marker is overkill.
 ```bash
 pytest -m netcdf_lazy                           # only netcdf-lazy-tagged tests
 pytest -m "not (viz or lazy or xarray or ...)"  # drop every extras-gated test
-pytest -m "stac and not slow"                   # compose with other markers
+pytest -m "parquet_lazy and not slow"           # compose with other markers
 ```
 
 ## Coverage

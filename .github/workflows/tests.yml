@@ -64,7 +64,6 @@ jobs:
           # that each extra activates.
           - { name: netcdf_lazy,  env: netcdf-lazy,  dir: tests/netcdf/lazy }
           - { name: parquet_lazy, env: parquet-lazy, dir: tests/feature/lazy }
-          - { name: stac,         env: stac,         dir: tests/dataset/test_stac.py }
 
     steps:
       - uses: actions/checkout@v5

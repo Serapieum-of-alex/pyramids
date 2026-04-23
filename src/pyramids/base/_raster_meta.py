@@ -9,8 +9,7 @@ needs the metadata at construction time.
 
 We deliberately avoid :class:`odc.geo.GeoBox` + :class:`affine.Affine`
 here — the geotransform is stored as a plain tuple, and :class:`pyproj.CRS`
-comes free via geopandas. Swapping to GeoBox later is a local change
-if/when ``odc-geo`` becomes part of the ``[stac]`` install footprint.
+comes free via geopandas. No new optional dependency is introduced.
 """
 
 from __future__ import annotations

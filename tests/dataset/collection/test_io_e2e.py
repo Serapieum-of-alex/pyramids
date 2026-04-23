@@ -42,14 +42,6 @@ except ImportError:  # pragma: no cover
 
 
 try:
-    import pystac
-
-    HAS_PYSTAC = True
-except ImportError:  # pragma: no cover
-    HAS_PYSTAC = False
-
-
-try:
     import kerchunk.hdf  # noqa: F401
 
     HAS_KERCHUNK = True
@@ -59,7 +51,6 @@ except ImportError:  # pragma: no cover
 
 requires_zarr = pytest.mark.skipif(not HAS_ZARR, reason="dask + zarr needed")
 requires_xarray = pytest.mark.skipif(not HAS_XARRAY, reason="xarray needed")
-requires_pystac = pytest.mark.skipif(not HAS_PYSTAC, reason="pystac needed")
 requires_kerchunk = pytest.mark.skipif(
     not HAS_KERCHUNK, reason="kerchunk needed"
 )
@@ -93,24 +84,22 @@ def _worker_write_zarr(payload: bytes, store: str) -> tuple[int, int, int, int]:
 class TestCollectionIOE2E:
     """Cross-task pipelines for the Phase 4 cube IO path."""
 
-    @requires_pystac
     @requires_zarr
     def test_from_stac_then_to_zarr(self, three_files, tmp_path):
-        """STAC items → DatasetCollection → Zarr round-trip with geobox metadata."""
-        items = []
-        for i, path in enumerate(three_files):
-            item = pystac.Item(
-                id=f"item-{i}",
-                geometry={"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]},
-                bbox=[0.0, 0.0, 1.0, 1.0],
-                datetime=None,
-                properties={
-                    "start_datetime": "2024-01-01T00:00:00Z",
-                    "end_datetime": "2024-01-02T00:00:00Z",
-                },
-            )
-            item.add_asset("data", pystac.Asset(href=path, media_type=pystac.MediaType.GEOTIFF))
-            items.append(item)
+        """Raw-JSON STAC items → DatasetCollection → Zarr round-trip.
+
+        Uses plain dicts rather than :class:`pystac.Item` objects —
+        pyramids' ``from_stac`` is duck-typed and does not import
+        pystac.
+        """
+        items = [
+            {
+                "id": f"item-{i}",
+                "bbox": [0.0, 0.0, 1.0, 1.0],
+                "assets": {"data": {"href": path}},
+            }
+            for i, path in enumerate(three_files)
+        ]
         collection = DatasetCollection.from_stac(items, asset="data")
         store = str(tmp_path / "stac_cube.zarr")
         collection.to_zarr(store)

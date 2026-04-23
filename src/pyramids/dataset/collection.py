@@ -599,14 +599,16 @@ class DatasetCollection:
         bbox: tuple | None = None,
         max_items: int | None = None,
     ) -> DatasetCollection:
-        """Build a collection from a STAC :class:`ItemCollection`.
+        """Build a collection from a STAC ItemCollection.
 
         Thin forwarder to :func:`pyramids.dataset._stac.from_stac`.
-        Requires the ``[stac]`` optional extra.
+        Duck-typed — accepts :class:`pystac.Item` objects, raw JSON
+        dicts, or any iterable of items with ``.assets`` + ``.bbox``
+        semantics. pyramids does not depend on pystac.
 
         Args:
-            items: Iterable of :class:`pystac.Item` or an
-                :class:`pystac.ItemCollection`.
+            items: Iterable of STAC Items (pystac objects, raw JSON
+                dicts, or any duck-typed equivalent).
             asset: Asset key to extract from each item.
             patch_url: Optional callable rewriting each href (useful
                 for signing Planetary Computer URLs).

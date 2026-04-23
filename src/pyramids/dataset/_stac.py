@@ -1,17 +1,19 @@
 """STAC ItemCollection → :class:`DatasetCollection`.
 
-DASK-19 first cut: given a sequence of :class:`pystac.Item`
-objects (or anything that iterates as such), extract the chosen
-asset's ``href`` from each item and delegate to
-:meth:`DatasetCollection.from_files`. Full odc-stac-style features
-(geobox-tiled graph, bbox filtering, auto-geobox derivation,
-``fuse_func``, ``errors_as_nodata``) are deliberately out of
-scope — those users are better served by the odc-stac or
-stackstac packages directly.
+DASK-19 first cut: given a sequence of STAC Items — :class:`pystac.Item`
+objects, raw JSON dicts, or anything else with ``.assets`` and
+``.bbox`` semantics — extract the chosen asset's ``href`` from each
+item and delegate to :meth:`DatasetCollection.from_files`. Full
+odc-stac-style features (geobox-tiled graph, auto-geobox derivation,
+``fuse_func``, ``errors_as_nodata``) are deliberately out of scope —
+those users are better served by the odc-stac or stackstac packages
+directly.
 
-pystac is an optional dependency behind the ``[stac]`` extra. This
-module imports :mod:`pystac` lazily inside the entry function so
-importing pyramids does not pull in pystac.
+The implementation is fully duck-typed. pyramids does **not** import
+or depend on pystac; the STAC Item / Asset contract is interpreted
+via :func:`getattr` + dict lookup. Users typically build Items via
+:mod:`pystac-client` (which carries pystac transitively) or from
+raw JSON.
 """
 
 from __future__ import annotations
@@ -20,21 +22,6 @@ from typing import TYPE_CHECKING, Any, Callable, Sequence
 
 if TYPE_CHECKING:
     from pyramids.dataset.collection import DatasetCollection
-
-
-_STAC_IMPORT_ERROR = (
-    "from_stac requires the optional 'pystac' dependency. "
-    "Install it with: pip install 'pyramids-gis[stac]'"
-)
-
-
-def _require_pystac() -> Any:
-    """Lazy-import :mod:`pystac` with a pyramids-friendly error."""
-    try:
-        import pystac
-    except ImportError as exc:
-        raise ImportError(_STAC_IMPORT_ERROR) from exc
-    return pystac
 
 
 def _iter_items(items: Any) -> list[Any]:
@@ -51,34 +38,63 @@ def _iter_items(items: Any) -> list[Any]:
 
 
 def _resolve_asset_href(item: Any, asset_key: str) -> str:
-    """Return the href of a named asset on a STAC item.
+    """Return the href of a named asset on a STAC Item.
+
+    Supports both :class:`pystac.Asset` (``.href`` attribute) and
+    raw-dict STAC assets (``{"href": "..."}``) so callers can pass
+    either a :class:`pystac.Item` or a plain JSON dict.
 
     Args:
-        item: A :class:`pystac.Item`.
+        item: Any object with an ``assets`` dict mapping asset keys
+            to objects / dicts bearing an ``href``.
         asset_key: Asset name (``"B04"``, ``"visual"``, ...).
 
     Returns:
         str: The asset's href.
 
     Raises:
-        KeyError: When ``asset_key`` is not present on the item.
+        KeyError: When ``asset_key`` is not present on the item, or
+            when the asset exists but has no ``href``.
     """
     assets = getattr(item, "assets", None)
+    if assets is None and isinstance(item, dict):
+        assets = item.get("assets")
     if assets is None or asset_key not in assets:
         available = list(assets or [])
+        item_id = getattr(item, "id", None)
+        if item_id is None and isinstance(item, dict):
+            item_id = item.get("id", "?")
         raise KeyError(
             f"asset {asset_key!r} not found on STAC item "
-            f"{getattr(item, 'id', '?')}; available: {available}"
+            f"{item_id}; available: {available}"
         )
     asset = assets[asset_key]
-    return str(asset.href)
+    href = getattr(asset, "href", None)
+    if href is None and isinstance(asset, dict):
+        href = asset.get("href")
+    if href is None:
+        item_id = getattr(item, "id", None)
+        if item_id is None and isinstance(item, dict):
+            item_id = item.get("id", "?")
+        raise KeyError(
+            f"asset {asset_key!r} on STAC item {item_id} has no 'href'"
+        )
+    return str(href)
 
 
 def _item_intersects_bbox(
     item: Any, bbox: tuple[float, float, float, float],
 ) -> bool:
-    """Return True if ``item.bbox`` overlaps ``bbox`` (lon/lat box)."""
+    """Return True if ``item.bbox`` overlaps ``bbox`` (lon/lat box).
+
+    Reads ``item.bbox`` as either an attribute (pystac.Item) or a
+    dict key (raw JSON). Items without a bbox are treated as
+    intersecting (permissive default — the caller opted in to the
+    bbox filter, not the item).
+    """
     item_bbox = getattr(item, "bbox", None)
+    if item_bbox is None and isinstance(item, dict):
+        item_bbox = item.get("bbox")
     if item_bbox is None:
         result = True
     else:
@@ -104,15 +120,30 @@ def from_stac(
     ``patch_url`` on each href (typical use: sign a Planetary Computer
     URL), and forwards to :meth:`DatasetCollection.from_files`.
 
+    The item interface is fully duck-typed. Any of these shapes work:
+
+    * :class:`pystac.Item` objects (``item.assets["B04"].href``).
+    * Raw STAC JSON dicts (``item["assets"]["B04"]["href"]``).
+    * Any object exposing a dict-like ``.assets`` attribute whose
+      values bear a ``.href`` attribute or ``"href"`` key.
+
+    pyramids does not import pystac; users who construct Items via
+    :mod:`pystac_client` / :mod:`pystac` pick that dependency up
+    through those libraries directly.
+
     Args:
-        items: Iterable of :class:`pystac.Item`, or a
-            :class:`pystac.ItemCollection`.
+        items: Iterable of STAC Items (see duck-typed shapes above).
         asset: Asset key (e.g. ``"B04"``, ``"visual"``) whose
             ``href`` on each item becomes a timestep in the
             resulting collection.
         patch_url: Optional callable applied to each href — use for
             signing requester-pays URLs
             (``planetary_computer.sign``, etc.).
+        bbox: Optional ``(minx, miny, maxx, maxy)`` lon/lat filter;
+            items whose ``bbox`` doesn't intersect are dropped
+            before hrefs are resolved.
+        max_items: Optional cap on the number of items consumed
+            (after bbox filtering).
 
     Returns:
         DatasetCollection: A file-backed collection whose
@@ -120,24 +151,24 @@ def from_stac(
         backing file is the resolved asset URL.
 
     Raises:
-        ImportError: When pystac is not installed.
         KeyError: When any item is missing the requested asset.
-        ValueError: When ``items`` is empty.
+        ValueError: When ``items`` yields zero items after filtering.
 
     Examples:
-        - Build a DatasetCollection from a hand-rolled pystac Item
-          list (requires the ``[stac]`` extra):
+        - Build a DatasetCollection from raw STAC JSON dicts (no
+          pystac required):
             ```python
-            >>> import pystac  # doctest: +SKIP
+            >>> raw_items = [  # doctest: +SKIP
+            ...     {"assets": {"B04": {"href": "s3://.../scene1_B04.tif"}}},
+            ...     {"assets": {"B04": {"href": "s3://.../scene2_B04.tif"}}},
+            ... ]
             >>> from pyramids.dataset._stac import from_stac  # doctest: +SKIP
-            >>> items = [pystac.Item.from_file(p) for p in (...)]  # doctest: +SKIP
-            >>> collection = from_stac(items, asset="B04")  # doctest: +SKIP
-            >>> collection.time_length == len(items)  # doctest: +SKIP
-            True
+            >>> collection = from_stac(raw_items, asset="B04")  # doctest: +SKIP
+            >>> collection.time_length  # doctest: +SKIP
+            2
 
             ```
     """
-    _require_pystac()
     item_list = _iter_items(items)
     if bbox is not None:
         item_list = [i for i in item_list if _item_intersects_bbox(i, bbox)]
