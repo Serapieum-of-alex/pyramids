@@ -189,11 +189,6 @@ markers = [
     "vfs: mark a test as a virtual file system (deselect with '-m \"not vfs\"')",
     "slow: mark test as slow (deselect with '-m \"not slow\"')",
     "fast: mark test as fast (deselect with '-m \"not fast\"')",
-    # ``core`` is auto-applied by ``tests/conftest.py::pytest_collection_modifyitems``
-    # to every test that does NOT carry an extras marker (plot / lazy /
-    # xarray / netcdf_lazy / parquet / parquet_lazy). The wheel-test-core
-    # CI job runs ``pytest -m core`` against a bare-wheel install so it
-    # auto-covers every extras-free test without a brittle negation list.
     "core: extras-free test (auto-applied when no extras marker is present)",
     "plot: tests requiring the [viz] extra (cleopatra) — plotting tests (deselect with '-m \"not plot\"')",
     # One marker per remaining [project.optional-dependencies] group.
