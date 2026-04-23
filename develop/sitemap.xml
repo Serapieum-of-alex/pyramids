@@ -81,6 +81,14 @@
          <lastmod>2026-04-23</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/lazy-collection-complete/</loc>
+         <lastmod>2026-04-23</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/lazy-dataset-complete/</loc>
+         <lastmod>2026-04-23</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/examples/dataset/south-america/</loc>
          <lastmod>2026-04-23</lastmod>
     </url>
@@ -93,7 +101,15 @@
          <lastmod>2026-04-23</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/feature/lazy-feature-complete/</loc>
+         <lastmod>2026-04-23</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/examples/netcdf/dask-lazy-netcdf/</loc>
+         <lastmod>2026-04-23</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/netcdf/lazy-netcdf-complete/</loc>
          <lastmod>2026-04-23</lastmod>
     </url>
     <url>
@@ -270,6 +286,22 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/raster-basics/</loc>
+         <lastmod>2026-04-23</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/lazy/lazy-collection/</loc>
+         <lastmod>2026-04-23</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/lazy/lazy-compute/</loc>
+         <lastmod>2026-04-23</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/lazy/lazy-netcdf/</loc>
+         <lastmod>2026-04-23</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/tutorials/lazy/lazy-raster/</loc>
          <lastmod>2026-04-23</lastmod>
     </url>
     <url>

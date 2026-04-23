@@ -361,7 +361,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../tutorials/lazy/lazy-compute.md" class="md-tabs__link">
+        <a href="../../../tutorials/lazy/lazy-compute/" class="md-tabs__link">
           
   
   
@@ -2102,7 +2102,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/lazy/lazy-compute.md" class="md-nav__link">
+      <a href="../../../tutorials/lazy/lazy-compute/" class="md-nav__link">
         
   
   
@@ -2130,7 +2130,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/lazy/lazy-raster.md" class="md-nav__link">
+      <a href="../../../tutorials/lazy/lazy-raster/" class="md-nav__link">
         
   
   
@@ -2158,7 +2158,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/lazy/lazy-netcdf.md" class="md-nav__link">
+      <a href="../../../tutorials/lazy/lazy-netcdf/" class="md-nav__link">
         
   
   
@@ -2186,7 +2186,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tutorials/lazy/lazy-collection.md" class="md-nav__link">
+      <a href="../../../tutorials/lazy/lazy-collection/" class="md-nav__link">
         
   
   
@@ -2608,14 +2608,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../examples/dataset/lazy-dataset-complete.ipynb" class="md-nav__link">
+      <a href="../../../examples/dataset/lazy-dataset-complete/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Dask — Dataset (local data)
+    Lazy — complete cookbook
   
 
     
@@ -2636,14 +2636,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../examples/dataset/lazy-collection-complete.ipynb" class="md-nav__link">
+      <a href="../../../examples/dataset/lazy-collection-complete/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Dask — DatasetCollection (local data)
+    Lazy — complete cookbook
   
 
     
@@ -2778,14 +2778,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../examples/feature/lazy-feature-complete.ipynb" class="md-nav__link">
+      <a href="../../../examples/feature/lazy-feature-complete/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Dask — LazyFeatureCollection (local data)
+    Lazy — complete cookbook
   
 
     
@@ -2978,14 +2978,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../examples/netcdf/lazy-netcdf-complete.ipynb" class="md-nav__link">
+      <a href="../../../examples/netcdf/lazy-netcdf-complete/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Dask — NetCDF (local data)
+    Lazy — complete cookbook
   
 
     
@@ -4026,7 +4026,7 @@ numpy path and does not import dask.</p>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">lazy</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">chunks</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1024</span><span class="p">,</span> <span class="mi">1024</span><span class="p">))</span>   <span class="c1"># dask.array.Array</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">lazy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
 </code></pre></div>
-<p>See <a href="../../tutorials/lazy/lazy-raster.md">Lazy rasters</a> for chunk-size rules,
+<p>See <a href="../../../tutorials/lazy/lazy-raster/">Lazy rasters</a> for chunk-size rules,
 locks, <code>Dataset.to_zarr</code> / <code>from_zarr</code>, and parallel Zarr writes.</p>
 <p>Install: <code>pip install 'pyramids-gis[lazy]'</code>.</p>
 
