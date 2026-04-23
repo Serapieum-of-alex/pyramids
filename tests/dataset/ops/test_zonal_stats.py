@@ -1,7 +1,7 @@
 """Tests for :meth:`Dataset.zonal_stats`.
 
 DASK-25: single-pass rasterize + numpy groupby zonal statistics over
-a polygon FeatureCollection. Optional ``method="exactextract"``.
+a polygon FeatureCollection.
 """
 
 from __future__ import annotations
@@ -161,17 +161,10 @@ class TestCrsEnforcement:
             raster.zonal_stats(fc, stats=("mean",))
 
 
-class TestExactExtractImport:
-    def test_exactextract_import_error(self, raster, two_boxes, monkeypatch):
-        import builtins
-
-        real_import = builtins.__import__
-
-        def fake_import(name, *args, **kwargs):
-            if name == "exactextract":
-                raise ImportError("no exactextract")
-            return real_import(name, *args, **kwargs)
-
-        monkeypatch.setattr(builtins, "__import__", fake_import)
-        with pytest.raises(ImportError, match="pyramids-gis\\[zonal\\]"):
+class TestUnknownMethod:
+    def test_unknown_method_raises_value_error(self, raster, two_boxes):
+        """Unknown method names raise ``ValueError`` with a helpful message."""
+        with pytest.raises(ValueError, match="method must be 'rasterize'"):
             raster.zonal_stats(two_boxes, method="exactextract")
+        with pytest.raises(ValueError, match="method must be 'rasterize'"):
+            raster.zonal_stats(two_boxes, method="typo")

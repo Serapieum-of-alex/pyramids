@@ -4,8 +4,7 @@
 DASK-25 first cut: single-pass rasterize of every polygon into an
 integer label grid, then numpy-based per-label reductions. Follows
 xvec's ``method="rasterize"`` pattern (single rasterize, then
-groupby). Optional ``method="exactextract"`` path delegates to the
-``exactextract`` pybind11 library when installed.
+groupby).
 
 Scope kept narrow:
 
@@ -16,6 +15,14 @@ Scope kept narrow:
   not. (A later enhancement can auto-align.)
 * Output is a ``pandas.DataFrame`` indexed by the FeatureCollection
   row index, with one column per stat.
+
+Area-weighted zonal statistics (where a cell's contribution is
+scaled by the fraction of its area inside the polygon) are planned
+as a ``method="fractional"`` follow-up — see
+``planning/dask/zonal_stats/`` for the full implementation plan.
+Until that lands, callers who need area-weighted semantics must
+either upsample the raster or rasterize the polygons finely and
+then reduce.
 """
 
 from __future__ import annotations
@@ -40,12 +47,6 @@ _STAT_FUNCS = {
     "var": np.nanvar,
     "count": lambda vals: float(np.sum(~np.isnan(vals))),
 }
-
-
-_EXACTEXTRACT_IMPORT_ERROR = (
-    "method='exactextract' requires the optional 'exactextract' "
-    "dependency. Install with: pip install 'pyramids-gis[zonal]'"
-)
 
 
 def _rasterize_labels(ds: "Dataset", fc: "FeatureCollection") -> np.ndarray:
@@ -203,22 +204,6 @@ def _apply_stat(stat: str, vals: np.ndarray) -> float:
     return result
 
 
-def _exactextract_zonal_stats(
-    ds: "Dataset",
-    fc: "FeatureCollection",
-    stats: Sequence[str],
-) -> pd.DataFrame:
-    """Delegate to :mod:`exactextract` for area-weighted zonal stats."""
-    try:
-        from exactextract import exact_extract
-    except ImportError as exc:
-        raise ImportError(_EXACTEXTRACT_IMPORT_ERROR) from exc
-    result = exact_extract(
-        rast=ds.raster, vec=fc, ops=list(stats), output="pandas",
-    )
-    return result
-
-
 def zonal_stats(
     ds: "Dataset",
     fc: "FeatureCollection",
@@ -236,12 +221,12 @@ def zonal_stats(
         stats: Statistics to compute per polygon. One or more of
             ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"std"``,
             ``"var"``, ``"count"``.
-        method: ``"rasterize"`` (default) uses a single-pass GDAL
-            rasterize then numpy groupby per label — fast and
-            accurate down to one-pixel polygons. ``"exactextract"``
-            delegates to the :mod:`exactextract` library for
-            area-weighted stats useful when polygons are smaller
-            than a pixel.
+        method: ``"rasterize"`` is the only supported value today.
+            Uses a single-pass GDAL rasterize then numpy groupby per
+            label — fast and accurate when polygons are comparable to
+            or larger than the raster pixel. An area-weighted
+            ``"fractional"`` method is planned; see
+            ``planning/dask/zonal_stats/``.
         band: Zero-based band index on ``ds``. Default 0.
 
     Returns:
@@ -250,8 +235,6 @@ def zonal_stats(
 
     Raises:
         ValueError: Unknown ``stat`` name or unknown ``method``.
-        ImportError: ``method="exactextract"`` without exactextract
-            installed.
 
     Examples:
         - Compute the mean value of a constant-valued raster over one
@@ -276,15 +259,13 @@ def zonal_stats(
 
             ```
     """
-    if method == "exactextract":
-        result = _exactextract_zonal_stats(ds, fc, stats)
-    elif method == "rasterize":
+    if method == "rasterize":
         no_data_list = ds.no_data_value
         no_data = no_data_list[band] if no_data_list else None
         result = _rasterize_zonal_stats(ds, fc, stats, band, no_data)
     else:
         raise ValueError(
-            f"method must be 'rasterize' or 'exactextract', got {method!r}"
+            f"method must be 'rasterize', got {method!r}"
         )
     return result
 

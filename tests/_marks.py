@@ -56,7 +56,6 @@ HAS_H5PY = _has("h5py")
 HAS_PYARROW = _has("pyarrow")
 HAS_PYSTAC = _has("pystac")
 HAS_ODC_GEO = _has("odc.geo")
-HAS_EXACTEXTRACT = _has("exactextract")
 HAS_CLEOPATRA = _has("cleopatra")
 
 
@@ -71,7 +70,6 @@ _HAS_NETCDF_LAZY = _HAS_LAZY and HAS_KERCHUNK and HAS_H5PY
 _HAS_PARQUET = HAS_PYARROW
 _HAS_PARQUET_LAZY = _HAS_LAZY and _HAS_PARQUET and HAS_DASK_GEOPANDAS
 _HAS_STAC = HAS_PYSTAC and HAS_ODC_GEO
-_HAS_ZONAL = HAS_EXACTEXTRACT
 
 
 requires_plot = pytest.mark.skipif(
@@ -94,9 +92,6 @@ requires_parquet_lazy = pytest.mark.skipif(
 )
 requires_stac = pytest.mark.skipif(
     not _HAS_STAC, reason="pyramids-gis[stac] not installed"
-)
-requires_zonal = pytest.mark.skipif(
-    not _HAS_ZONAL, reason="pyramids-gis[zonal] not installed"
 )
 
 
@@ -123,5 +118,4 @@ EXTRA_MARKERS: dict[str, pytest.MarkDecorator] = {
     "parquet": requires_parquet,
     "parquet_lazy": requires_parquet_lazy,
     "stac": requires_stac,
-    "zonal": requires_zonal,
 }

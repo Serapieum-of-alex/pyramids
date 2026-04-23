@@ -11,12 +11,12 @@ dependencies each slice exercises, and how to reproduce any CI job locally.
               ├──────────────────────┬─────────────────────────────┤
               │   main-package       │   extras-package            │
               │                      │                             │
-              │   9 matrix cells     │   12 matrix cells           │
+              │   9 matrix cells     │   9 matrix cells            │
               │   (OS × py-version)  │   (OS × extra)              │
               │                      │                             │
               │   env: py311/12/13   │   env: netcdf-lazy /        │
               │                      │        parquet-lazy /       │
-              │   suite: full repo   │        stac / zonal         │
+              │   suite: full repo   │        stac                 │
               │                      │                             │
               │   gate: cov ≥ 88%    │   suite: one sub-dir        │
               │                      │   gate: cov ≥ 0 %           │
@@ -41,7 +41,6 @@ pyramids ships a minimal core plus eight opt-in extras declared in
 | `parquet` | `pyarrow` | Eager GeoParquet read / write |
 | `parquet-lazy` | `dask-geopandas` + `parquet` + `lazy` | Lazy `LazyFeatureCollection` |
 | `stac` | `pystac`, `odc-geo` | `DatasetCollection.from_stac` |
-| `zonal` | `exactextract` | Area-weighted zonal stats |
 
 End-users install exactly what they need:
 
@@ -63,7 +62,6 @@ so incremental solves stay cheap (~8–15 s when adding one extra on top of `dev
 | `parquet` | `dev` + `pyarrow` (conda-forge). |
 | `parquet-lazy` | `dev` + `parquet` + `dask-geopandas` (conda-forge). |
 | `stac` | `dev` + `pystac`, `odc-geo` (conda-forge). |
-| `zonal` | `dev` + `exactextract` (conda-forge). |
 | `py311` / `py312` / `py313` / `py314` | Same as `dev`, pinned Python. What `main-package` CI uses. |
 | `docs` | Everything needed to build the MkDocs site. |
 | `notebook` | Jupyter + viz only. Used to validate the example notebooks. |
@@ -89,7 +87,7 @@ specific `netcdf4` build string so the HDF5 shared library matches
 | `tests/dataset/ops/` (excl. lazy sub-dir) | core + parts of `lazy` | ✅ | — | `dev` |
 | `tests/dataset/ops/lazy/` | `lazy` | ✅ | — | `dev` |
 | `tests/dataset/collection/` | `lazy` (+ stac/kerchunk seams, auto-skip) | ✅ | `stac` (partial) | `dev` or `stac` |
-| `tests/dataset/ops/test_zonal_stats.py` | `zonal` (some tests) | ✅ (non-exactextract only) | ✅ `zonal` | `zonal` |
+| `tests/dataset/ops/test_zonal_stats.py` | core | ✅ | — | `dev` |
 | `tests/dataset/test_stac.py` | `stac` | ✅ (skips) | ✅ `stac` | `stac` |
 | `tests/feature/` (excl. `lazy/`) | core + `parquet` (some) | ✅ | — | `dev` |
 | `tests/feature/lazy/` | `parquet-lazy` | ✅ (skips) | ✅ `parquet-lazy` | `parquet-lazy` |
@@ -118,10 +116,9 @@ pixi run -e dev test-all             # everything in one go
 pixi run -e netcdf-lazy  pytest -vvv tests/netcdf/lazy
 pixi run -e parquet-lazy pytest -vvv tests/feature/lazy
 pixi run -e stac         pytest -vvv tests/dataset/test_stac.py
-pixi run -e zonal        pytest -vvv tests/dataset/ops/test_zonal_stats.py
 ```
 
-These four commands mirror the four extras-package matrix entries. If they pass
+These three commands mirror the three extras-package matrix entries. If they pass
 locally and `dev` passes too, CI should be green.
 
 ### First-time install
@@ -132,7 +129,6 @@ pixi install -e dev
 pixi install -e netcdf-lazy
 pixi install -e parquet-lazy
 pixi install -e stac
-pixi install -e zonal
 ```
 
 Each extras env reuses the `default` solve group, so adding one on top of an
@@ -153,7 +149,6 @@ identifiers):
 | `@pytest.mark.parquet` | `parquet` |
 | `@pytest.mark.parquet_lazy` | `parquet-lazy` |
 | `@pytest.mark.stac` | `stac` |
-| `@pytest.mark.zonal` | `zonal` |
 
 `tests/conftest.py` runs a `pytest_collection_modifyitems` hook that, for each
 test tagged with one of these markers, auto-applies the matching

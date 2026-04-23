@@ -149,7 +149,8 @@ class Dataset(  # type: ignore[misc]
             stats: Sequence of stat names (``"mean"``, ``"sum"``,
                 ``"min"``, ``"max"``, ``"std"``, ``"var"``,
                 ``"count"``).
-            method: ``"rasterize"`` (default) or ``"exactextract"``.
+            method: ``"rasterize"`` is the only supported value today;
+                an area-weighted ``"fractional"`` method is planned.
             band: Zero-based band index.
 
         Returns:

@@ -45,7 +45,6 @@ netcdf-lazy = ["pyramids-gis[lazy]", "kerchunk>=0.2.6", "h5py>=3.8.0"]
 parquet = ["pyarrow>=10.0.0"]
 parquet-lazy = ["pyramids-gis[lazy,parquet]", "dask-geopandas>=0.5.0"]
 stac = ["pystac>=1.10", "odc-geo>=0.5.1"]
-zonal = ["exactextract>=0.2.1"]
 
 [dependency-groups]
 dev = [
@@ -205,7 +204,6 @@ markers = [
     "parquet: tests requiring the [parquet] extra (pyarrow)",
     "parquet_lazy: tests requiring the [parquet-lazy] extra (dask-geopandas, + parquet, + lazy)",
     "stac: tests requiring the [stac] extra (pystac, odc-geo)",
-    "zonal: tests requiring the [zonal] extra (exactextract)",
 ]
 
 
@@ -237,7 +235,6 @@ netcdf-lazy = { features = ["viz", "dev", "lazy", "netcdf-lazy"], solve-group = 
 parquet = { features = ["viz", "dev", "xarray", "lazy", "parquet"], solve-group = "default" }
 parquet-lazy = { features = ["viz", "dev", "xarray", "lazy", "parquet", "parquet-lazy"], solve-group = "default" }
 stac = { features = ["viz", "dev", "xarray", "lazy", "stac"], solve-group = "default" }
-zonal = { features = ["viz", "dev", "xarray", "lazy", "zonal"], solve-group = "default" }
 notebook = { features = ["viz", "notebook"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "docs" }
 py311 = { features = ["py311", "viz", "dev", "xarray", "lazy"], solve-group = "py311" }
@@ -308,9 +305,6 @@ dask-geopandas = ">=0.5.0"
 [tool.pixi.feature.stac.dependencies]
 pystac = ">=1.10"
 odc-geo = ">=0.5.1"
-
-[tool.pixi.feature.zonal.dependencies]
-exactextract = ">=0.2.1"
 
 [tool.pixi.dependencies]
 gdal = ">=3.10.0,<4"
