@@ -4073,12 +4073,12 @@ dependencies each slice exercises, and how to reproduce any CI job locally.</p>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>              ├──────────────────────┬─────────────────────────────┤
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>              │   main-package       │   extras-package            │
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>              │                      │                             │
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>              │   9 matrix cells     │   9 matrix cells            │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>              │   9 matrix cells     │   6 matrix cells            │
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>              │   (OS × py-version)  │   (OS × extra)              │
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>              │                      │                             │
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>              │   env: py311/12/13   │   env: netcdf-lazy /        │
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>              │                      │        parquet-lazy /       │
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>              │   suite: full repo   │        stac                 │
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>              │                      │        parquet-lazy         │
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>              │   suite: full repo   │                             │
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>              │                      │                             │
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>              │   gate: cov ≥ 88%    │   suite: one sub-dir        │
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>              │                      │   gate: cov ≥ 0 %           │
@@ -4129,11 +4129,6 @@ SHA and shows the combined coverage on the dashboard.</p>
 <td><code>dask-geopandas</code> + <code>parquet</code> + <code>lazy</code></td>
 <td>Lazy <code>LazyFeatureCollection</code></td>
 </tr>
-<tr>
-<td><code>stac</code></td>
-<td><code>pystac</code>, <code>odc-geo</code></td>
-<td><code>DatasetCollection.from_stac</code></td>
-</tr>
 </tbody>
 </table>
 <p>End-users install exactly what they need:</p>
@@ -4167,10 +4162,6 @@ so incremental solves stay cheap (~8–15 s when adding one extra on top of <cod
 <tr>
 <td><code>parquet-lazy</code></td>
 <td><code>dev</code> + <code>parquet</code> + <code>dask-geopandas</code> (conda-forge).</td>
-</tr>
-<tr>
-<td><code>stac</code></td>
-<td><code>dev</code> + <code>pystac</code>, <code>odc-geo</code> (conda-forge).</td>
 </tr>
 <tr>
 <td><code>py311</code> / <code>py312</code> / <code>py313</code> / <code>py314</code></td>
@@ -4251,10 +4242,10 @@ specific <code>netcdf4</code> build string so the HDF5 shared library matches
 </tr>
 <tr>
 <td><code>tests/dataset/collection/</code></td>
-<td><code>lazy</code> (+ stac/kerchunk seams, auto-skip)</td>
+<td><code>lazy</code> (+ kerchunk seam, auto-skip)</td>
 <td>✅</td>
-<td><code>stac</code> (partial)</td>
-<td><code>dev</code> or <code>stac</code></td>
+<td>—</td>
+<td><code>dev</code></td>
 </tr>
 <tr>
 <td><code>tests/dataset/ops/test_zonal_stats.py</code></td>
@@ -4265,10 +4256,10 @@ specific <code>netcdf4</code> build string so the HDF5 shared library matches
 </tr>
 <tr>
 <td><code>tests/dataset/test_stac.py</code></td>
-<td><code>stac</code></td>
-<td>✅ (skips)</td>
-<td>✅ <code>stac</code></td>
-<td><code>stac</code></td>
+<td>core (duck-typed, no pystac dep)</td>
+<td>✅</td>
+<td>—</td>
+<td><code>dev</code></td>
 </tr>
 <tr>
 <td><code>tests/feature/</code> (excl. <code>lazy/</code>)</td>
@@ -4320,16 +4311,14 @@ they self-skip when the extra's headline dep is missing. They <em>run</em> fully
 <h3 id="each-extras-env-scoped-to-the-directory-ci-runs-there"><a class="toclink" href="#each-extras-env-scoped-to-the-directory-ci-runs-there">Each extras env, scoped to the directory CI runs there</a><a class="headerlink" href="#each-extras-env-scoped-to-the-directory-ci-runs-there" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pixi<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span>netcdf-lazy<span class="w">  </span>pytest<span class="w"> </span>-vvv<span class="w"> </span>tests/netcdf/lazy
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>pixi<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span>parquet-lazy<span class="w"> </span>pytest<span class="w"> </span>-vvv<span class="w"> </span>tests/feature/lazy
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>pixi<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span>stac<span class="w">         </span>pytest<span class="w"> </span>-vvv<span class="w"> </span>tests/dataset/test_stac.py
 </code></pre></div>
-<p>These three commands mirror the three extras-package matrix entries. If they pass
+<p>These two commands mirror the two extras-package matrix entries. If they pass
 locally and <code>dev</code> passes too, CI should be green.</p>
 <h3 id="first-time-install"><a class="toclink" href="#first-time-install">First-time install</a><a class="headerlink" href="#first-time-install" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pixi<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>dev
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># Opt in to the extras you need to hack on:</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>pixi<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>netcdf-lazy
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>pixi<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>parquet-lazy
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>pixi<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>stac
 </code></pre></div>
 <p>Each extras env reuses the <code>default</code> solve group, so adding one on top of an
 existing <code>dev</code> install is 8–15 s per env (not a full re-solve).</p>
@@ -4369,10 +4358,6 @@ identifiers):</p>
 <td><code>@pytest.mark.parquet_lazy</code></td>
 <td><code>parquet-lazy</code></td>
 </tr>
-<tr>
-<td><code>@pytest.mark.stac</code></td>
-<td><code>stac</code></td>
-</tr>
 </tbody>
 </table>
 <p><code>tests/conftest.py</code> runs a <code>pytest_collection_modifyitems</code> hook that, for each
@@ -4391,7 +4376,7 @@ test methods when a full class-level marker is overkill.</p>
 <h3 id="filtering"><a class="toclink" href="#filtering">Filtering</a><a class="headerlink" href="#filtering" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pytest<span class="w"> </span>-m<span class="w"> </span>netcdf_lazy<span class="w">                           </span><span class="c1"># only netcdf-lazy-tagged tests</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;not (viz or lazy or xarray or ...)&quot;</span><span class="w">  </span><span class="c1"># drop every extras-gated test</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;stac and not slow&quot;</span><span class="w">                   </span><span class="c1"># compose with other markers</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;parquet_lazy and not slow&quot;</span><span class="w">           </span><span class="c1"># compose with other markers</span>
 </code></pre></div>
 <h2 id="coverage"><a class="toclink" href="#coverage">Coverage</a><a class="headerlink" href="#coverage" title="Permanent link">#</a></h2>
 <p>The <code>main-package</code> job enforces a <strong>88 % line + branch gate</strong> (<code>--cov-fail-under=88</code>
