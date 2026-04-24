@@ -31,6 +31,8 @@ from osgeo import gdal, osr
 from pyramids.dataset import Dataset
 from pyramids.dataset.abstract_dataset import _reconstruct_dataset
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def tiny_tif(tmp_path) -> str:

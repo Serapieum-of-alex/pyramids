@@ -39,7 +39,7 @@ dependencies = [
 
 [project.optional-dependencies]
 viz = ["cleopatra>=0.7.1", "mercantile>=1.2.0", "xyzservices>=2024.4.0", "Pillow>=9.0.0"]
-lazy = ["dask[array]>=2024.1.0", "distributed>=2024.1.0", "zarr>=2.17.0,<3", "fsspec>=2024.1.0"]
+lazy = ["dask>=2024.1.0", "distributed>=2024.1.0", "zarr>=2.17.0,<3", "fsspec>=2024.1.0"]
 xarray = ["xarray>=2023.1.0"]
 netcdf-lazy = ["pyramids-gis[lazy]", "kerchunk>=0.2.6", "h5py>=3.8.0"]
 parquet = ["pyarrow>=10.0.0"]
@@ -189,6 +189,7 @@ markers = [
     "vfs: mark a test as a virtual file system (deselect with '-m \"not vfs\"')",
     "slow: mark test as slow (deselect with '-m \"not slow\"')",
     "fast: mark test as fast (deselect with '-m \"not fast\"')",
+    "core: extras-free test (auto-applied when no extras marker is present)",
     "plot: tests requiring the [viz] extra (cleopatra) — plotting tests (deselect with '-m \"not plot\"')",
     # One marker per remaining [project.optional-dependencies] group.
     # Each marker auto-skips when the extra's headline dep is not
@@ -197,9 +198,9 @@ markers = [
     # ``@pytest.mark.<extra>`` rather than repeating ``try/except
     # ImportError`` boilerplate. The [viz] extra is already covered by
     # the ``plot`` marker above — don't register a duplicate ``viz`` one.
-    "lazy: tests requiring the [lazy] extra (dask, distributed, zarr, fsspec)",
-    "xarray: tests requiring the [xarray] extra (xarray, netCDF4, h5netcdf, cftime)",
-    "netcdf_lazy: tests requiring the [netcdf-lazy] extra (kerchunk, h5py, + xarray, + lazy)",
+    "lazy: tests requiring the [lazy] extra (dask, distributed, zarr, fsspec, flox)",
+    "xarray: tests requiring the [xarray] extra (xarray)",
+    "netcdf_lazy: tests requiring the [netcdf-lazy] extra (kerchunk, h5py, + lazy)",
     "parquet: tests requiring the [parquet] extra (pyarrow)",
     "parquet_lazy: tests requiring the [parquet-lazy] extra (dask-geopandas, + parquet, + lazy)",
 ]

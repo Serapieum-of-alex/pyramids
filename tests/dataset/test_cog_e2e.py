@@ -19,6 +19,8 @@ from osgeo import gdal
 
 from pyramids.dataset import Dataset
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def float_dataset_128() -> Dataset:

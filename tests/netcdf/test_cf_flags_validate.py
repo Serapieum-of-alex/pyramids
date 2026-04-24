@@ -8,6 +8,8 @@ import pytest
 from pyramids.netcdf.cf import decode_flags, validate_cf
 from pyramids.netcdf.netcdf import NetCDF
 
+pytestmark = pytest.mark.core
+
 GEO = (30.0, 0.5, 0, 35.0, 0, -0.5)
 SEED = 42
 

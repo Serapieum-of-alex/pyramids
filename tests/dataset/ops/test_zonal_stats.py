@@ -15,6 +15,8 @@ from shapely.geometry import box
 from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def raster(tmp_path):

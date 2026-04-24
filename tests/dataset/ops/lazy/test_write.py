@@ -12,6 +12,8 @@ from osgeo import gdal, osr
 
 from pyramids.dataset import Dataset
 
+pytestmark = pytest.mark.lazy
+
 try:
     import dask
     import dask.delayed

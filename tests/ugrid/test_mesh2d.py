@@ -12,6 +12,8 @@ import pytest
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 
+pytestmark = pytest.mark.core
+
 
 class TestMesh2dProperties:
     """Tests for Mesh2d basic properties."""

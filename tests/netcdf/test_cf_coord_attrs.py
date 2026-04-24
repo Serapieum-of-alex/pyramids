@@ -11,6 +11,8 @@ from osgeo import gdal
 from pyramids.netcdf.cf import build_coordinate_attrs
 from pyramids.netcdf.netcdf import NetCDF
 
+pytestmark = pytest.mark.core
+
 GEO = (30.0, 0.5, 0, 35.0, 0, -0.5)
 SEED = 42
 

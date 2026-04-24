@@ -13,6 +13,8 @@ import pytest
 
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def triangle_conn():

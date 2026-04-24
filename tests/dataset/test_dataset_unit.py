@@ -21,6 +21,8 @@ from pyramids.base._errors import (
 from pyramids.dataset import Dataset
 from pyramids.dataset.abstract_dataset import AbstractDataset
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture()
 def single_band_dataset():

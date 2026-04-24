@@ -10,6 +10,8 @@ from numpy.testing import assert_allclose
 
 from pyramids.netcdf.netcdf import NetCDF
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture(scope="module")
 def scale_offset_nc():

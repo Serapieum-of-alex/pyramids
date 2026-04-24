@@ -14,6 +14,8 @@ import pytest
 
 from pyramids.netcdf import NetCDF
 
+pytestmark = pytest.mark.netcdf_lazy
+
 try:
     import kerchunk.hdf  # noqa: F401
 

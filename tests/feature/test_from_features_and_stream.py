@@ -25,6 +25,8 @@ from shapely.geometry import Point
 from pyramids.base._errors import FeatureError
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def small_geojson(tmp_path: Path) -> Path:

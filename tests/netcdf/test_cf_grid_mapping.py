@@ -11,6 +11,8 @@ from osgeo import osr
 from pyramids.netcdf.cf import srs_to_grid_mapping
 from pyramids.netcdf.netcdf import NetCDF
 
+pytestmark = pytest.mark.core
+
 GEO_GEO = (30.0, 0.5, 0, 35.0, 0, -0.5)
 GEO_UTM = (500000.0, 100.0, 0, 3000000.0, 0, -100.0)
 SEED = 42

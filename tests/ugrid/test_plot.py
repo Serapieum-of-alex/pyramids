@@ -16,6 +16,8 @@ MeshGlyph = mesh_glyph.MeshGlyph
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.plot import plot_mesh_data, plot_mesh_outline
 
+pytestmark = pytest.mark.plot
+
 
 @pytest.mark.plot
 class TestPlotMeshData:

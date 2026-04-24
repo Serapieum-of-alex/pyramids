@@ -32,6 +32,8 @@ from pyramids.netcdf.models import (
     VariableInfo,
 )
 
+pytestmark = pytest.mark.core
+
 
 def _mock_attribute(name: str, value):
     """Create a mock gdal.Attribute.

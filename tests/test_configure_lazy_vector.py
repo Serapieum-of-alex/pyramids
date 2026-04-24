@@ -16,11 +16,20 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import dask
 import pytest
 
 from pyramids import configure_lazy_vector
 from pyramids.feature import collection as _fc_mod
+
+# The whole module exercises dask internals. The ``lazy`` marker gates
+# the tests to the env where dask is installed; we therefore cannot
+# ``import dask`` at module scope because pytest collects every test
+# file in every env (core, xarray, parquet, ...) before it evaluates
+# markers, and a missing-dask ImportError at that point fails
+# collection outright. Every function / fixture that touches dask
+# imports it locally — no skip, no global import, just deferred
+# lookup until the lazy env actually runs the test body.
+pytestmark = pytest.mark.lazy
 
 
 @pytest.fixture
@@ -34,6 +43,8 @@ def restore_lazy_target():
 @pytest.fixture
 def restore_dask_scheduler():
     """Snapshot + restore the dask scheduler global config."""
+    import dask
+
     saved = dask.config.get("scheduler", default=None)
     yield
     if saved is None:
@@ -45,11 +56,15 @@ def restore_dask_scheduler():
 class TestSchedulerApply:
     def test_scheduler_applied_to_dask_config(self, restore_dask_scheduler):
         """Passing ``scheduler='processes'`` updates ``dask.config``."""
+        import dask
+
         configure_lazy_vector(scheduler="processes")
         assert dask.config.get("scheduler") == "processes"
 
     def test_scheduler_synchronous_applied(self, restore_dask_scheduler):
         """``scheduler='synchronous'`` is accepted and applied."""
+        import dask
+
         configure_lazy_vector(scheduler="synchronous")
         assert dask.config.get("scheduler") == "synchronous"
 
@@ -58,6 +73,8 @@ class TestSchedulerApply:
         restore_dask_scheduler,
     ):
         """``scheduler=None`` must not touch dask.config."""
+        import dask
+
         dask.config.set(scheduler="synchronous")
         configure_lazy_vector(scheduler=None)
         assert dask.config.get("scheduler") == "synchronous"

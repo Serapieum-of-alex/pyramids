@@ -12,6 +12,8 @@ import pytest
 
 from pyramids.dataset import Dataset
 
+pytestmark = pytest.mark.core
+
 try:
     import dask.array  # noqa: F401
     import zarr  # noqa: F401

@@ -17,11 +17,14 @@ from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
+import pytest
 from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry.polygon import Polygon
 
 from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
+
+pytestmark = pytest.mark.core
 
 
 class TestAttributes:

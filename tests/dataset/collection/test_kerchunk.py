@@ -15,6 +15,8 @@ import pytest
 
 from pyramids.dataset import Dataset, DatasetCollection
 
+pytestmark = pytest.mark.lazy
+
 try:
     import kerchunk.hdf  # noqa: F401
 

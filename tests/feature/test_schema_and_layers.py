@@ -15,6 +15,8 @@ from shapely.geometry import LineString, Point, Polygon, box
 
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def points_fc() -> FeatureCollection:

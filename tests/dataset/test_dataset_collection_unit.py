@@ -327,6 +327,8 @@ import re
 
 from pyramids.base._errors import DatasetNotFoundError
 
+pytestmark = pytest.mark.core
+
 
 class TestReadMultipleFilesErrors:
     """Tests for error paths in ``read_multiple_files``."""

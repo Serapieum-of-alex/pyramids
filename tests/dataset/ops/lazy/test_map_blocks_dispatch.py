@@ -14,6 +14,8 @@ from osgeo import gdal, osr
 
 from pyramids.dataset import Dataset
 
+pytestmark = pytest.mark.lazy
+
 try:
     import dask.array as dask_array
 

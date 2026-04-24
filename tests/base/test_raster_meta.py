@@ -16,6 +16,8 @@ from pyproj import CRS
 from pyramids.base._raster_meta import RasterMeta
 from pyramids.dataset import Dataset
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def basic_meta() -> RasterMeta:

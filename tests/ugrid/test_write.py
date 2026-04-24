@@ -14,6 +14,8 @@ from pyramids.feature import FeatureCollection
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable
 
+pytestmark = pytest.mark.core
+
 
 class TestWriteUgrid:
     """Tests for UgridDataset.to_file() (UGRID-15)."""

@@ -10,6 +10,8 @@ from numpy.testing import assert_array_equal
 
 from pyramids.netcdf.netcdf import NetCDF
 
+pytestmark = pytest.mark.core
+
 
 def _make_nc():
     """Create a 3D NetCDF with known time coordinates [0, 6, 12, 18, 24]."""

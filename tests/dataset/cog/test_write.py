@@ -11,6 +11,8 @@ from osgeo import gdal
 from pyramids.base._errors import DriverNotExistError, FailedToSaveError
 from pyramids.dataset.cog.write import translate_to_cog
 
+pytestmark = pytest.mark.core
+
 
 class TestRoundtrip:
     def test_defaults_write_and_reopen(self, mem_dataset, tmp_path):

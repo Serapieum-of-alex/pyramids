@@ -36,6 +36,8 @@ from pyramids.base.protocols import SpatialObject
 from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def big_points_geojson(tmp_path: Path) -> Path:

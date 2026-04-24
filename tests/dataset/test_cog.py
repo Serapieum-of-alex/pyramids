@@ -12,6 +12,8 @@ from osgeo import gdal
 from pyramids.dataset import Dataset
 from pyramids.dataset.cog.validate import ValidationReport
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def small_float_dataset() -> Dataset:

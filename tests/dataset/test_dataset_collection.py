@@ -6,9 +6,12 @@ from typing import List
 
 import geopandas as gpd
 import numpy as np
+import pytest
 from osgeo import gdal
 
 from pyramids.dataset import Dataset, DatasetCollection
+
+pytestmark = pytest.mark.core
 
 
 class TestCreateDatasetCollection:

@@ -29,6 +29,8 @@ from shapely.geometry import LineString, Point, Polygon, box
 from pyramids.base._errors import CRSError
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.mark.plot
 class TestPlotCrsError:

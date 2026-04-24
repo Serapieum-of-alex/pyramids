@@ -13,6 +13,8 @@ from pyramids.dataset.cog.validate import (
 )
 from pyramids.dataset.cog.write import translate_to_cog
 
+pytestmark = pytest.mark.core
+
 # --- helper: write a plain stripped GTiff that's large enough to fail COG check ---
 
 

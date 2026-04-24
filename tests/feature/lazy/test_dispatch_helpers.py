@@ -24,6 +24,8 @@ from pyramids.feature import (
     is_lazy_fc,
 )
 
+pytestmark = pytest.mark.parquet_lazy
+
 try:
     import dask_geopandas  # noqa: F401
 

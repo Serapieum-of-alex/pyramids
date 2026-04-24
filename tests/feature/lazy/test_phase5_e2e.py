@@ -18,6 +18,8 @@ from shapely.geometry import Point
 
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.parquet_lazy
+
 try:
     import dask_geopandas  # noqa: F401
 

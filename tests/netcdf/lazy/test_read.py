@@ -34,6 +34,8 @@ from numpy.testing import assert_allclose
 
 from pyramids.netcdf.netcdf import NetCDF
 
+pytestmark = pytest.mark.netcdf_lazy
+
 try:
     import dask.array as dask_array
 

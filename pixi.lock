@@ -21689,7 +21689,7 @@ packages:
 - pypi: ./
   name: pyramids-gis
   version: 0.14.0
-  sha256: 02841b05f8ef74ff8f7350f07993ad692df6b571f4eec27cff6991dced303023
+  sha256: df72153818768bcc8ab0d0464183af37b588f43f1b792d98308bcd8910722434
   requires_dist:
   - gdal>=3.10.0,<4
   - geopandas>=1.0.0
@@ -21704,7 +21704,7 @@ packages:
   - mercantile>=1.2.0 ; extra == 'viz'
   - xyzservices>=2024.4.0 ; extra == 'viz'
   - pillow>=9.0.0 ; extra == 'viz'
-  - dask[array]>=2024.1.0 ; extra == 'lazy'
+  - dask>=2024.1.0 ; extra == 'lazy'
   - distributed>=2024.1.0 ; extra == 'lazy'
   - zarr>=2.17.0,<3 ; extra == 'lazy'
   - fsspec>=2024.1.0 ; extra == 'lazy'

@@ -17,6 +17,8 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import Point
 
+pytestmark = pytest.mark.parquet_lazy
+
 try:
     import dask_geopandas  # noqa: F401
 

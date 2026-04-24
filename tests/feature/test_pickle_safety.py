@@ -33,6 +33,8 @@ from shapely.geometry import Point, Polygon, box
 from pyramids.dataset import Dataset
 from pyramids.feature import FeatureCollection
 
+pytestmark = pytest.mark.core
+
 
 @pytest.fixture
 def fc() -> FeatureCollection:
