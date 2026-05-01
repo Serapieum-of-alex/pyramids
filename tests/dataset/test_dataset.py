@@ -14,6 +14,7 @@ from pandas import DataFrame
 from shapely.geometry import Polygon
 
 from pyramids.base._errors import NoDataValueError, OutOfBoundsError, ReadOnlyError
+from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
 
 pytestmark = pytest.mark.core
@@ -497,7 +498,7 @@ class TestSpatialProperties:
         assert np.array_equal(multi_band.ReadAsArray()[:, :5, :5], arr)
 
     def test_create_sr_from_epsg(self):
-        sr = Dataset._create_sr_from_epsg(4326)
+        sr = sr_from_epsg(4326)
         assert sr.GetAuthorityCode(None) == f"{4326}"
 
 

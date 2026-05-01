@@ -18,6 +18,7 @@ from pyramids.base._errors import (
     OutOfBoundsError,
     ReadOnlyError,
 )
+from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
 from pyramids.dataset.abstract_dataset import AbstractDataset
 
@@ -1121,11 +1122,11 @@ class TestCopy:
 
 
 class TestCreateSrFromEpsg:
-    """Tests for _create_sr_from_epsg static method."""
+    """Tests for the ``pyramids.base.crs.sr_from_epsg`` helper."""
 
     def test_valid_epsg(self):
         """Creating SR from a valid EPSG should return a SpatialReference."""
-        sr = Dataset._create_sr_from_epsg(4326)
+        sr = sr_from_epsg(4326)
         assert isinstance(sr, osr.SpatialReference), "Should return SpatialReference"
         wkt = sr.ExportToWkt()
         assert (

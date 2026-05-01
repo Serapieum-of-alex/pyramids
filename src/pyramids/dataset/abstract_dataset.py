@@ -14,12 +14,12 @@ from typing import Any
 
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, osr
-from osgeo.osr import SpatialReference
+from osgeo import gdal
 
 from pyramids.base._utils import (
     Catalog,
 )
+from pyramids.base.crs import sr_from_epsg
 from pyramids.base.protocols import ArrayLike
 from pyramids.feature import FeatureCollection
 
@@ -580,7 +580,7 @@ class AbstractDataset(ABC):
                 # datasets with a missing projection still get tagged.
                 self._epsg = FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
             elif epsg is not None:
-                sr = AbstractDataset._create_sr_from_epsg(epsg)
+                sr = sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
                 self._epsg = epsg
             else:
@@ -634,23 +634,6 @@ class AbstractDataset(ABC):
             int: EPSG number.
         """
         pass
-
-    @staticmethod
-    @abstractmethod
-    def _create_sr_from_epsg(epsg: int) -> SpatialReference:
-        """Create a spatial reference object from epsg number.
-
-        https://gdal.org/tutorials/osr_api_tut.html
-
-        Args:
-            epsg (int): EPSG number.
-
-        Returns:
-            SpatialReference: SpatialReference object.
-        """
-        sr = osr.SpatialReference()
-        sr.ImportFromEPSG(int(epsg))
-        return sr
 
     @abstractmethod
     def _check_no_data_value(self, no_data_value: list):

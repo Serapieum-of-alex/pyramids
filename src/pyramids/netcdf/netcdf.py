@@ -19,6 +19,7 @@ from osgeo import gdal
 from pyramids import _io
 from pyramids.base._errors import OptionalPackageDoesNotExist
 from pyramids.base._utils import numpy_to_gdal_dtype
+from pyramids.base.crs import sr_from_epsg
 from pyramids.base.protocols import ArrayLike
 from pyramids.dataset import DEFAULT_NO_DATA_VALUE, Dataset
 from pyramids.netcdf._kerchunk import combine_kerchunk, to_kerchunk
@@ -1960,7 +1961,7 @@ class NetCDF(Dataset):
         # Determine if CRS is geographic (lon/lat) or projected (m)
         is_geographic = True
         if epsg is not None:
-            srs_check = Dataset._create_sr_from_epsg(int(epsg))
+            srs_check = sr_from_epsg(int(epsg))
             is_geographic = srs_check.IsGeographic() == 1
 
         dim_x = NetCDF._create_dimension(
@@ -2010,7 +2011,7 @@ class NetCDF(Dataset):
         md_arr.SetNoDataValueDouble(no_data_value)
         if epsg is None:
             raise ValueError("epsg cannot be None")
-        srse = Dataset._create_sr_from_epsg(epsg=int(epsg))
+        srse = sr_from_epsg(int(epsg))
         md_arr.SetSpatialRef(srse)
         md_arr.Write(arr)
 
@@ -2265,7 +2266,7 @@ class NetCDF(Dataset):
 
         # Set spatial reference (RT-7: attribute copying)
         if dataset.epsg:
-            srs = Dataset._create_sr_from_epsg(dataset.epsg)
+            srs = sr_from_epsg(dataset.epsg)
             md_arr.SetSpatialRef(srs)
 
         # Set no-data value

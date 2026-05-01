@@ -13,8 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from osgeo import gdal, osr
-from osgeo.osr import SpatialReference
+from osgeo import gdal
 
 from pyramids import _io
 from pyramids.base._errors import CRSError
@@ -22,6 +21,7 @@ from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     numpy_to_gdal_dtype,
 )
+from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset.abstract_dataset import (
     DEFAULT_NO_DATA_VALUE,
     AbstractDataset,
@@ -304,7 +304,7 @@ class Dataset(  # type: ignore[misc]
     @epsg.setter
     def epsg(self, value: int):
         """EPSG number."""
-        sr = Dataset._create_sr_from_epsg(value)
+        sr = sr_from_epsg(value)
         self.raster.SetProjection(sr.ExportToWkt())
         self._update_inplace(self._raster)
 
@@ -786,7 +786,7 @@ class Dataset(  # type: ignore[misc]
         # Create the driver.
         gdal_dtype = numpy_to_gdal_dtype(dtype)
         dst = Dataset._create_dataset(columns, rows, bands, gdal_dtype, path=path)
-        sr = Dataset._create_sr_from_epsg(epsg)
+        sr = sr_from_epsg(epsg)
         geotransform = (
             top_left_corner[0],
             cell_size,
@@ -1097,7 +1097,7 @@ class Dataset(  # type: ignore[misc]
         if epsg is None:
             raise ValueError("epsg must be provided")
 
-        srse = Dataset._create_sr_from_epsg(epsg=int(epsg))
+        srse = sr_from_epsg(int(epsg))
         dst_ds.SetProjection(srse.ExportToWkt())
         dst_ds.SetGeoTransform(geo)
 
@@ -1172,21 +1172,3 @@ class Dataset(  # type: ignore[misc]
             dst_obj.raster.FlushCache()
 
         return dst_obj
-
-    @staticmethod
-    def _create_sr_from_epsg(epsg: int) -> SpatialReference:
-        """Create a spatial reference object from EPSG number.
-
-        https://gdal.org/tutorials/osr_api_tut.html
-
-        Args:
-            epsg (int):
-                EPSG number.
-
-        Returns:
-            SpatialReference:
-                SpatialReference object.
-        """
-        sr = osr.SpatialReference()
-        sr.ImportFromEPSG(int(epsg))
-        return sr

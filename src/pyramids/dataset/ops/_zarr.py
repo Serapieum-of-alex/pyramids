@@ -23,7 +23,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from osgeo import osr
+
+from pyramids.base.crs import sr_from_epsg
 
 if TYPE_CHECKING:
     from pyramids.dataset import Dataset
@@ -46,8 +47,7 @@ def _require_zarr() -> Any:
 
 def _metadata_dict(ds: Dataset) -> dict[str, Any]:
     """Return the pyramids-convention attr dict that rioxarray can read."""
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(int(ds.epsg))
+    srs = sr_from_epsg(int(ds.epsg))
     nodata_tuple = ds.no_data_value
     return {
         "spatial_ref": srs.ExportToWkt(),

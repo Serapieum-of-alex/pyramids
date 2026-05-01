@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr
-from osgeo.osr import SpatialReference
 
 from pyramids.base._utils import INTERPOLATION_METHODS
+from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset.abstract_dataset import AbstractDataset
 from pyramids.feature import FeatureCollection
 from pyramids.feature import _ogr as _feature_ogr
@@ -56,7 +56,7 @@ class Spatial:
                 # (get_epsg_from_prj now raises in that case).
                 self._epsg = FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
             elif epsg is not None:
-                sr = type(self)._create_sr_from_epsg(epsg)
+                sr = sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
                 self._epsg = epsg
             else:
@@ -170,24 +170,6 @@ class Spatial:
         epsg = FeatureCollection.get_epsg_from_prj(prj) if prj else 4326
 
         return epsg
-
-    @staticmethod
-    def _create_sr_from_epsg(epsg: int) -> SpatialReference:
-        """Create a spatial reference object from EPSG number.
-
-        https://gdal.org/tutorials/osr_api_tut.html
-
-        Args:
-            epsg (int):
-                EPSG number.
-
-        Returns:
-            SpatialReference:
-                SpatialReference object.
-        """
-        sr = osr.SpatialReference()
-        sr.ImportFromEPSG(int(epsg))
-        return sr
 
     def convert_longitude(self) -> Dataset:
         """Convert Longitude.
@@ -367,7 +349,7 @@ class Spatial:
         src_sr = osr.SpatialReference(wkt=self.crs)
         src_epsg = self.epsg
 
-        dst_sr = self._create_sr_from_epsg(to_epsg)
+        dst_sr = sr_from_epsg(to_epsg)
 
         # in case the source crs is GCS and longitude is in the west hemisphere, gdal
         # reads longitude from 0 to 360 and a transformation factor wont work with values

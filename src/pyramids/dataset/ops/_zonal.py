@@ -33,6 +33,8 @@ import numpy as np
 import pandas as pd
 from osgeo import gdal, ogr, osr
 
+from pyramids.base.crs import sr_from_epsg
+
 if TYPE_CHECKING:
     from pyramids.dataset import Dataset
     from pyramids.feature import FeatureCollection
@@ -72,11 +74,13 @@ def _rasterize_labels(ds: Dataset, fc: FeatureCollection) -> np.ndarray:
                 "FeatureCollection via fc.to_crs(ds.epsg) first."
             )
 
-    srs = osr.SpatialReference()
     if fc_crs is not None:
+        srs = osr.SpatialReference()
         srs.ImportFromWkt(fc_crs.to_wkt())
     elif ds_epsg is not None:
-        srs.ImportFromEPSG(ds_epsg)
+        srs = sr_from_epsg(ds_epsg)
+    else:
+        srs = osr.SpatialReference()
     mem_driver = ogr.GetDriverByName("Memory")
     ds_vec = mem_driver.CreateDataSource("zonal_mem")
     layer = ds_vec.CreateLayer("features", srs=srs, geom_type=ogr.wkbPolygon)
