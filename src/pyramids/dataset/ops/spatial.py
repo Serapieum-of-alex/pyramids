@@ -10,7 +10,7 @@ from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr
 
 from pyramids.base._utils import INTERPOLATION_METHODS
-from pyramids.base.crs import sr_from_epsg
+from pyramids.base.crs import epsg_from_wkt, sr_from_epsg
 from pyramids.dataset.abstract_dataset import AbstractDataset
 from pyramids.feature import FeatureCollection
 from pyramids.feature import _ogr as _feature_ogr
@@ -53,8 +53,9 @@ class Spatial:
             if crs is not None:
                 self.raster.SetProjection(crs)
                 # ARC-7: fallback to 4326 when crs is an empty string
-                # (get_epsg_from_prj now raises in that case).
-                self._epsg = FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
+                # (get_epsg_from_prj raises in that case); epsg_from_wkt
+                # absorbs the fallback in one place.
+                self._epsg = epsg_from_wkt(crs)
             elif epsg is not None:
                 sr = sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())
@@ -165,9 +166,10 @@ class Spatial:
             int: EPSG number.
         """
         prj = self._get_crs()
-        # ARC-7: get_epsg_from_prj now raises on empty input; keep the
-        # historical 4326 fallback for datasets without a projection.
-        epsg = FeatureCollection.get_epsg_from_prj(prj) if prj else 4326
+        # ARC-7: get_epsg_from_prj raises on empty input; epsg_from_wkt
+        # absorbs the historical 4326 fallback for datasets without a
+        # projection.
+        epsg = epsg_from_wkt(prj)
 
         return epsg
 

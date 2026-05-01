@@ -14,6 +14,15 @@ and returning ``(x, y)``) into a single canonical function
 old functions were deleted outright — no deprecation shims — per the
 branch's refactor policy (the inconsistent axis order was a latent
 foot-gun and keeping shims perpetuated the confusion).
+
+D-2 / L-1 progress: :func:`create_sr_from_proj` and
+:func:`get_epsg_from_prj` were moved to
+:mod:`pyramids.base.crs` so that ``base.crs`` can host the new
+:func:`pyramids.base.crs.epsg_from_wkt` wrapper without inverting
+the layering. Both names are re-exported here verbatim so all
+existing imports — including
+:meth:`pyramids.feature.FeatureCollection.get_epsg_from_prj` —
+keep working.
 """
 
 from __future__ import annotations
@@ -22,142 +31,10 @@ from typing import Any
 
 import numpy as np
 import pyproj.exceptions
-from osgeo import osr
 from pyproj import Transformer
 
 from pyramids.base._errors import CRSError
-
-
-def create_sr_from_proj(
-    prj: str, string_type: str | None = None
-) -> osr.SpatialReference:
-    """Create an :class:`osr.SpatialReference` from a projection string.
-
-    Args:
-        prj (str):
-            The projection string (WKT, ESRI WKT, or Proj4).
-        string_type (str | None):
-            One of ``"WKT"``, ``"ESRI wkt"``, ``"PROj4"``, or ``None``
-            for auto-detect (default). Auto-detect uses WKT import and
-            falls back to ESRI WKT or Proj4 based on the prefix.
-
-    Returns:
-        osr.SpatialReference: The constructed spatial reference.
-
-    Examples:
-        - Parse a standard EPSG:4326 WKT string and inspect the result:
-            ```python
-            >>> from osgeo import osr
-            >>> ref = osr.SpatialReference()
-            >>> _ = ref.ImportFromEPSG(4326)
-            >>> wkt = ref.ExportToWkt()
-            >>> srs = create_sr_from_proj(wkt)
-            >>> srs.IsGeographic()
-            1
-            >>> srs.GetName()
-            'WGS 84'
-
-            ```
-        - Parse a Proj4 string by passing ``string_type="PROJ4"``:
-            ```python
-            >>> srs = create_sr_from_proj(
-            ...     "+proj=longlat +datum=WGS84 +no_defs", string_type="PROJ4"
-            ... )
-            >>> srs.IsGeographic()
-            1
-            >>> srs.IsProjected()
-            0
-
-            ```
-        - Parse an EPSG:3857 WKT and confirm the axis order is projected:
-            ```python
-            >>> from osgeo import osr
-            >>> ref = osr.SpatialReference()
-            >>> _ = ref.ImportFromEPSG(3857)
-            >>> srs = create_sr_from_proj(ref.ExportToWkt())
-            >>> srs.IsProjected()
-            1
-            >>> srs.GetName()
-            'WGS 84 / Pseudo-Mercator'
-
-            ```
-    """
-    srs = osr.SpatialReference()
-    if string_type is None:
-        srs.ImportFromWkt(prj)
-    elif prj.startswith("PROJCS") or prj.startswith("GEOGCS"):
-        srs.ImportFromESRI([prj])
-    else:
-        srs.ImportFromProj4(prj)
-    return srs
-
-
-def get_epsg_from_prj(prj: str) -> int:
-    """Return the EPSG code identified by a projection string.
-
-    Auto-identifies the EPSG from a WKT / ESRI WKT / Proj4 string.
-
-    ARC-7: an empty input string is no longer silently mapped to
-    ``4326``. That legacy default masked real configuration errors.
-    Callers that genuinely want a fallback should handle the
-    ``ValueError`` themselves.
-
-    Args:
-        prj (str): Projection string.
-
-    Returns:
-        int: The resolved EPSG code.
-
-    Raises:
-        ValueError: If ``prj`` is an empty string.
-
-    Examples:
-        - Resolve EPSG:4326 from its standard WKT representation:
-            ```python
-            >>> from osgeo import osr
-            >>> ref = osr.SpatialReference()
-            >>> _ = ref.ImportFromEPSG(4326)
-            >>> get_epsg_from_prj(ref.ExportToWkt())
-            4326
-
-            ```
-        - Resolve EPSG:3857 (Web Mercator) from its WKT representation:
-            ```python
-            >>> from osgeo import osr
-            >>> ref = osr.SpatialReference()
-            >>> _ = ref.ImportFromEPSG(3857)
-            >>> get_epsg_from_prj(ref.ExportToWkt())
-            3857
-
-            ```
-        - An empty projection string raises ``CRSError`` (a ``ValueError`` subclass):
-            ```python
-            >>> get_epsg_from_prj("")
-            Traceback (most recent call last):
-                ...
-            pyramids.base._errors.CRSError: get_epsg_from_prj received an empty projection string. ...
-
-            ```
-    """
-    if prj == "":
-        raise CRSError(
-            "get_epsg_from_prj received an empty projection string. "
-            "An empty projection is ambiguous and is no longer "
-            "silently defaulted to EPSG:4326 (ARC-7). If you want "
-            "a fallback EPSG, catch CRSError (also a ValueError) "
-            "and supply it at the call site."
-        )
-    srs = create_sr_from_proj(prj)
-    try:
-        response = srs.AutoIdentifyEPSG()
-    except RuntimeError:
-        response = 6
-
-    if response == 0:
-        epsg = int(srs.GetAuthorityCode(None))
-    else:
-        epsg = int(srs.GetAttrValue("AUTHORITY", 1))
-    return epsg
+from pyramids.base.crs import create_sr_from_proj, get_epsg_from_prj
 
 
 def reproject_coordinates(
@@ -265,3 +142,10 @@ def reproject_coordinates(
         xs[i] = nx
         ys[i] = ny
     return xs.tolist(), ys.tolist()
+
+
+__all__ = [
+    "create_sr_from_proj",
+    "get_epsg_from_prj",
+    "reproject_coordinates",
+]

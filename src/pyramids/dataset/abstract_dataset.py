@@ -19,7 +19,7 @@ from osgeo import gdal
 from pyramids.base._utils import (
     Catalog,
 )
-from pyramids.base.crs import sr_from_epsg
+from pyramids.base.crs import epsg_from_wkt, sr_from_epsg
 from pyramids.base.protocols import ArrayLike
 from pyramids.feature import FeatureCollection
 
@@ -575,10 +575,10 @@ class AbstractDataset(ABC):
         else:
             if crs is not None:
                 self.raster.SetProjection(crs)
-                # ARC-7: get_epsg_from_prj now raises on empty input;
-                # preserve the historical 4326 fallback explicitly so
+                # ARC-7: get_epsg_from_prj raises on empty input;
+                # epsg_from_wkt absorbs the historical 4326 fallback so
                 # datasets with a missing projection still get tagged.
-                self._epsg = FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
+                self._epsg = epsg_from_wkt(crs)
             elif epsg is not None:
                 sr = sr_from_epsg(epsg)
                 self.raster.SetProjection(sr.ExportToWkt())

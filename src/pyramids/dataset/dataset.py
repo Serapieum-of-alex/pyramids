@@ -21,7 +21,7 @@ from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     numpy_to_gdal_dtype,
 )
-from pyramids.base.crs import sr_from_epsg
+from pyramids.base.crs import epsg_from_wkt, sr_from_epsg
 from pyramids.dataset.abstract_dataset import (
     DEFAULT_NO_DATA_VALUE,
     AbstractDataset,
@@ -295,11 +295,11 @@ class Dataset(  # type: ignore[misc]
     def epsg(self) -> int:
         """EPSG number."""
         crs = self.raster.GetProjection()
-        # ARC-7: get_epsg_from_prj now raises on empty input; preserve
-        # the historical 4326 fallback here so rasters with an empty
+        # ARC-7: get_epsg_from_prj raises on empty input; epsg_from_wkt
+        # absorbs the historical 4326 fallback so rasters with an empty
         # projection (common for in-memory NetCDF slices) still report
         # a stable EPSG.
-        return FeatureCollection.get_epsg_from_prj(crs) if crs else 4326
+        return epsg_from_wkt(crs)
 
     @epsg.setter
     def epsg(self, value: int):
