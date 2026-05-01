@@ -10,7 +10,12 @@ from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr
 
 from pyramids.base._utils import INTERPOLATION_METHODS
-from pyramids.base.crs import epsg_from_wkt, sr_from_epsg
+from pyramids.base.crs import (
+    epsg_from_wkt,
+    reproject_coordinates,
+    sr_from_epsg,
+    sr_from_wkt,
+)
 from pyramids.dataset.abstract_dataset import AbstractDataset
 from pyramids.feature import FeatureCollection
 from pyramids.feature import _ogr as _feature_ogr
@@ -299,7 +304,7 @@ class Spatial:
 
         resampling_method: Any = INTERPOLATION_METHODS.get(method)
 
-        sr_src = osr.SpatialReference(wkt=self.crs)
+        sr_src = sr_from_wkt(self.crs)
 
         ulx = self.geotransform[0]
         uly = self.geotransform[3]
@@ -348,7 +353,7 @@ class Spatial:
         src_x = self.columns
         src_y = self.rows
 
-        src_sr = osr.SpatialReference(wkt=self.crs)
+        src_sr = sr_from_wkt(self.crs)
         src_epsg = self.epsg
 
         dst_sr = sr_from_epsg(to_epsg)
@@ -372,7 +377,7 @@ class Spatial:
                 ys = [src_gt[3], src_gt[3] + src_gt[5] * src_y]
 
                 # ARC-14: reproject_coordinates takes (x, y) and returns (x, y).
-                [ulx, lrx], [uly, lry] = FeatureCollection.reproject_coordinates(
+                [ulx, lrx], [uly, lry] = reproject_coordinates(
                     xs, ys, from_crs=src_epsg, to_crs=to_epsg
                 )
                 # old transform
@@ -398,7 +403,7 @@ class Spatial:
         if src_epsg != to_epsg:
             # transform the two-point coordinates to the new crs to calculate the new cell size
             # ARC-14: reproject_coordinates takes (x, y) and returns (x, y).
-            new_xs, new_ys = FeatureCollection.reproject_coordinates(
+            new_xs, new_ys = reproject_coordinates(
                 xs, ys, from_crs=src_epsg, to_crs=to_epsg, precision=6
             )
         else:
@@ -543,7 +548,7 @@ class Spatial:
             )
 
         band_count = self.band_count
-        src_sref = osr.SpatialReference(wkt=self.crs)
+        src_sref = sr_from_wkt(self.crs)
         src_array = self.read_array()
 
         if not row == self.rows or not col == self.columns:

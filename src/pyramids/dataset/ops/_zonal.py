@@ -33,7 +33,7 @@ import numpy as np
 import pandas as pd
 from osgeo import gdal, ogr, osr
 
-from pyramids.base.crs import sr_from_epsg
+from pyramids.base.crs import sr_from_epsg, sr_from_wkt
 
 if TYPE_CHECKING:
     from pyramids.dataset import Dataset
@@ -75,8 +75,7 @@ def _rasterize_labels(ds: Dataset, fc: FeatureCollection) -> np.ndarray:
             )
 
     if fc_crs is not None:
-        srs = osr.SpatialReference()
-        srs.ImportFromWkt(fc_crs.to_wkt())
+        srs = sr_from_wkt(fc_crs.to_wkt())
     elif ds_epsg is not None:
         srs = sr_from_epsg(ds_epsg)
     else:

@@ -1,13 +1,14 @@
 """Feature subpackage.
 
-ARC-10 split the former single ``feature.py`` into a subpackage:
+Submodules:
 
 - :mod:`pyramids.feature.collection` — the :class:`FeatureCollection`
   class (a :class:`geopandas.GeoDataFrame` subclass).
 - :mod:`pyramids.feature.geometry` — shape factories and coordinate
   extractors.
-- :mod:`pyramids.feature.crs` — CRS / EPSG / reprojection helpers.
 - :mod:`pyramids.feature._ogr` — private OGR bridge (internal only).
+
+CRS / EPSG / reprojection helpers live in :mod:`pyramids.base.crs`.
 """
 
 from pyramids.feature.collection import FeatureCollection

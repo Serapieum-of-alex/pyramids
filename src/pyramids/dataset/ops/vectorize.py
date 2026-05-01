@@ -12,10 +12,11 @@ import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
 from hpc.indexing import get_pixels
-from osgeo import gdal, ogr, osr
+from osgeo import gdal, ogr
 from pandas import DataFrame
 
 from pyramids.base._utils import gdal_to_ogr_dtype
+from pyramids.base.crs import sr_from_wkt
 from pyramids.feature import _ogr as _feature_ogr
 
 if TYPE_CHECKING:
@@ -30,7 +31,7 @@ class Vectorize:
 
     def _band_to_polygon(self, band: int, col_name: str) -> GeoDataFrame:
         gdal_band = self.raster.GetRasterBand(band + 1)
-        srs = osr.SpatialReference(wkt=self.crs)
+        srs = sr_from_wkt(self.crs)
 
         # Build the OGR DataSource directly — FeatureCollection.create_ds
         # was deleted because it exposed ogr.DataSource on the public API.

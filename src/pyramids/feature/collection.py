@@ -7,10 +7,13 @@ ARC-10 split the original ``feature.py`` into a subpackage:
 - :mod:`pyramids.feature.geometry` — shape factories and coordinate
   extractors (``create_polygon``, ``create_point``, ``get_coords``,
   ``explode_gdf``, ``multi_geom_handler``, …).
-- :mod:`pyramids.feature.crs` — CRS/EPSG/reprojection helpers
-  (``get_epsg_from_prj``, ``reproject_coordinates``,
-  ``create_sr_from_proj``).
 - :mod:`pyramids.feature._ogr` — private OGR bridge.
+
+CRS / EPSG / reprojection helpers (``get_epsg_from_prj``,
+``reproject_coordinates``, ``create_sr_from_proj``) live in
+:mod:`pyramids.base.crs`. The :class:`FeatureCollection` class
+exposes the most-commonly-used ones as static-method delegates for
+ergonomic continuity.
 
 ``FeatureCollection`` is a direct subclass of
 :class:`geopandas.GeoDataFrame` (ARC-1a). Every GeoDataFrame method
@@ -52,10 +55,10 @@ from shapely.geometry.multipolygon import MultiPolygon
 
 from pyramids import _io as _pyramids_io
 from pyramids.base._errors import CRSError, FeatureError, GeometryWarning
+from pyramids.base import crs as _crs
 from pyramids.base._utils import Catalog
 from pyramids.base.remote import is_remote
 from pyramids.basemap.basemap import add_basemap
-from pyramids.feature import crs as _crs
 from pyramids.feature import geometry as _geom
 
 CATALOG = Catalog(raster_driver=False)
@@ -1809,14 +1812,14 @@ class FeatureCollection(GeoDataFrame):
     def _create_sr_from_proj(
         prj: str, string_type: str | None = None
     ) -> osr.SpatialReference:
-        """Delegate to :func:`pyramids.feature.crs.create_sr_from_proj`."""
+        """Delegate to :func:`pyramids.base.crs.create_sr_from_proj`."""
         return _crs.create_sr_from_proj(prj, string_type)
 
     @staticmethod
     def get_epsg_from_prj(prj: str) -> int:
         """Return the EPSG code identified by a projection string.
 
-        Thin delegate to :func:`pyramids.feature.crs.get_epsg_from_prj` so callers
+        Thin delegate to :func:`pyramids.base.crs.get_epsg_from_prj` so callers
         that already hold a :class:`FeatureCollection` do not need to import the
         helper module.
 
@@ -1862,7 +1865,7 @@ class FeatureCollection(GeoDataFrame):
         to_crs: Any = 3857,
         precision: int | None = 6,
     ) -> tuple[list[float], list[float]]:
-        """Delegate to :func:`pyramids.feature.crs.reproject_coordinates`.
+        """Delegate to :func:`pyramids.base.crs.reproject_coordinates`.
 
         ARC-14: canonical replacement for the deleted
         ``reproject_points`` / ``reproject_points2`` pair. Argument and

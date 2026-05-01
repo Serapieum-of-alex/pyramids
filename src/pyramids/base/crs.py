@@ -1,28 +1,31 @@
 """CRS construction helpers shared across the pyramids package.
 
-Single source of truth for ``osr.SpatialReference`` construction and
-for WKT/Proj4 → EPSG resolution so raster, vector, and NetCDF code
-paths cannot drift on the EPSG-import recipe.
+Single source of truth for ``osr.SpatialReference`` construction,
+WKT / Proj4 → EPSG resolution, and coordinate reprojection.
 
-Replaces three identical ``_create_sr_from_epsg`` definitions that
-previously lived on :class:`AbstractDataset`,
-:class:`~pyramids.dataset.Dataset`, and the ``Spatial`` mixin, plus
-the hand-rolled ``osr.SpatialReference() + ImportFromEPSG`` call-sites
-sprinkled across ``basemap``, ``ugrid``, and ``dataset.ops``.
+Public surface:
 
-Also hosts :func:`epsg_from_wkt`, the wrapper that absorbs the
-``get_epsg_from_prj(wkt) if wkt else 4326`` idiom previously
-duplicated in four places across the dataset stack. The underlying
-``get_epsg_from_prj`` / ``create_sr_from_proj`` helpers were moved
-here from :mod:`pyramids.feature.crs` so the dataset code path no
-longer reaches up into ``feature/`` for a primitive that has nothing
-vector-specific about it. ``pyramids.feature.crs`` re-exports both
-names verbatim for backwards compatibility.
+* :func:`sr_from_epsg` — build an ``osr.SpatialReference`` from an
+  EPSG code.
+* :func:`sr_from_wkt` — build one from a WKT string.
+* :func:`create_sr_from_proj` — build one from a WKT / ESRI WKT /
+  Proj4 string with auto-detect.
+* :func:`get_epsg_from_prj` — resolve the EPSG code identified by a
+  projection string. Raises :class:`CRSError` on empty input.
+* :func:`epsg_from_wkt` — same, but with a configurable default
+  for the empty-input case.
+* :func:`reproject_coordinates` — reproject parallel ``x`` / ``y``
+  lists between CRSes via :class:`pyproj.Transformer`.
 """
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy as np
+import pyproj.exceptions
 from osgeo import osr
+from pyproj import Transformer
 
 from pyramids.base._errors import CRSError
 
@@ -51,6 +54,37 @@ def sr_from_epsg(epsg: int) -> osr.SpatialReference:
             f"Failed to create SRS from EPSG:{epsg} (osr returned error {err})."
         )
     return sr
+
+
+def sr_from_wkt(wkt: str) -> osr.SpatialReference:
+    """Build an :class:`osr.SpatialReference` from a WKT string.
+
+    Thin wrapper around ``osr.SpatialReference(wkt=wkt)`` that gives
+    the WKT path a consistent name alongside :func:`sr_from_epsg` and
+    :func:`create_sr_from_proj`. Use this when you have a WKT (the
+    most common case in the dataset stack — ``dataset.crs`` returns
+    WKT) and want a typed SRS without re-typing the constructor's
+    keyword argument every call site.
+
+    Args:
+        wkt: Well-Known Text representation of the spatial reference.
+
+    Returns:
+        osr.SpatialReference: The constructed SRS.
+
+    Examples:
+        - Round-trip an EPSG code through WKT:
+            ```python
+            >>> from osgeo import osr
+            >>> from pyramids.base.crs import sr_from_epsg, sr_from_wkt
+            >>> wkt = sr_from_epsg(4326).ExportToWkt()
+            >>> sr = sr_from_wkt(wkt)
+            >>> sr.IsGeographic()
+            1
+
+            ```
+    """
+    return osr.SpatialReference(wkt=wkt)
 
 
 def create_sr_from_proj(
@@ -239,9 +273,98 @@ def epsg_from_wkt(wkt: str, default: int = 4326) -> int:
     return get_epsg_from_prj(wkt)
 
 
+def reproject_coordinates(
+    x: list[float],
+    y: list[float],
+    *,
+    from_crs: Any = 4326,
+    to_crs: Any = 3857,
+    precision: int | None = 6,
+) -> tuple[list[float], list[float]]:
+    """Reproject parallel x / y coordinate lists between CRSes.
+
+    Argument and return order is ``(x, y)`` throughout; accepts any
+    CRS form :meth:`pyproj.Transformer.from_crs` understands (EPSG
+    int, EPSG string, WKT, Proj4, :class:`pyproj.CRS`).
+
+    Args:
+        x (list[float]):
+            X-coordinates in the source CRS (longitudes when
+            ``from_crs`` is geographic).
+        y (list[float]):
+            Y-coordinates in the source CRS (latitudes when
+            ``from_crs`` is geographic).
+        from_crs:
+            Source CRS. Accepts anything
+            :meth:`pyproj.Transformer.from_crs` accepts: EPSG integer
+            (``4326``), authority string (``"EPSG:4326"``), WKT, Proj4,
+            or a :class:`pyproj.CRS` instance. Default ``4326``.
+        to_crs:
+            Target CRS, same forms as ``from_crs``. Default ``3857``.
+        precision (int | None):
+            Decimal places to round each returned coordinate to. Pass
+            ``None`` to disable rounding. Default ``6``.
+
+    Returns:
+        tuple[list[float], list[float]]: ``(x, y)`` in the target CRS.
+
+    Raises:
+        ValueError: If ``len(x) != len(y)``.
+        CRSError: If :meth:`pyproj.Transformer.from_crs` raises one
+            of ``pyproj.exceptions.CRSError`` (malformed WKT / proj
+            string), ``TypeError`` (input is not CRS-like — e.g. a
+            bare ``object()``), or ``ValueError`` (out-of-range EPSG
+            integer). The wrapper converts each into pyramids'
+            :class:`pyramids.base._errors.CRSError` so callers do not
+            need to import pyproj to catch bad-CRS failures, and the
+            message names both CRSes plus the underlying explanation.
+            Other exception types (``AttributeError``, ``ImportError``,
+            …) propagate unchanged — they signal a real bug, not a bad
+            user input.
+
+    Examples:
+        - Reproject a WGS84 point into Web Mercator:
+            ```python
+            >>> from pyramids.base.crs import reproject_coordinates
+            >>> x, y = reproject_coordinates(
+            ...     [31.0], [30.0], from_crs=4326, to_crs=3857
+            ... )
+            >>> round(x[0])
+            3450904
+            >>> round(y[0])
+            3503550
+
+            ```
+    """
+    if len(x) != len(y):
+        raise ValueError(
+            f"x and y must have equal length; got len(x)={len(x)} "
+            f"vs. len(y)={len(y)}."
+        )
+    try:
+        transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+    except (pyproj.exceptions.CRSError, TypeError, ValueError) as exc:
+        raise CRSError(
+            f"reproject_coordinates failed to parse CRS "
+            f"(from_crs={from_crs!r}, to_crs={to_crs!r}): {exc}"
+        ) from exc
+    xs = np.full(len(x), np.nan)
+    ys = np.full(len(x), np.nan)
+    for i in range(len(x)):
+        nx, ny = transformer.transform(x[i], y[i])
+        if precision is not None:
+            nx = round(nx, precision)
+            ny = round(ny, precision)
+        xs[i] = nx
+        ys[i] = ny
+    return xs.tolist(), ys.tolist()
+
+
 __all__ = [
     "create_sr_from_proj",
     "epsg_from_wkt",
     "get_epsg_from_prj",
+    "reproject_coordinates",
     "sr_from_epsg",
+    "sr_from_wkt",
 ]

@@ -27,8 +27,8 @@ from pyramids.base._errors import (
     VectorDriverError,
     _PyramidsError,
 )
+from pyramids.base.crs import get_epsg_from_prj
 from pyramids.feature import FeatureCollection
-from pyramids.feature.crs import get_epsg_from_prj
 from pyramids.feature.geometry import get_coords
 
 pytestmark = pytest.mark.core

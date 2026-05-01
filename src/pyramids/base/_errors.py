@@ -82,8 +82,8 @@ class InvalidGeometryError(FeatureError, ValueError):
 class CRSError(FeatureError, ValueError):
     """CRS is missing, ambiguous, or cannot be resolved.
 
-    Raised e.g. when :func:`pyramids.feature.crs.get_epsg_from_prj`
-    receives an empty projection string (ARC-7), or when a rasterize
+    Raised e.g. when :func:`pyramids.base.crs.get_epsg_from_prj`
+    receives an empty projection string, or when a rasterize
     template's CRS disagrees with the vector's.
 
     Multi-inherits from :class:`ValueError` so ``except ValueError:``

@@ -14,6 +14,8 @@ from typing import Any
 
 from osgeo import gdal, osr
 
+from pyramids.base.crs import sr_from_wkt
+
 logger = logging.getLogger(__name__)
 
 
@@ -368,11 +370,9 @@ def grid_mapping_to_srs(
         ValueError: If the grid_mapping_name is not supported and
             no ``crs_wkt`` is available.
     """
-    srs = osr.SpatialReference()
-
     crs_wkt = params.get("crs_wkt")
     if crs_wkt:
-        srs.ImportFromWkt(crs_wkt)
+        srs = sr_from_wkt(crs_wkt)
     else:
         srs = _build_srs_from_cf_params(grid_mapping_name, params)
 
