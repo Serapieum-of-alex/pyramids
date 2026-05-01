@@ -21,6 +21,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pyproj.exceptions
 from osgeo import osr
 from pyproj import Transformer
 
@@ -247,8 +248,6 @@ def reproject_coordinates(
     # can catch pyramids' own typed exception without importing pyproj
     # — but do NOT swallow ``AttributeError`` / ``ImportError`` / etc.
     # which would mask real bugs in our own code.
-    import pyproj.exceptions
-
     try:
         transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
     except (pyproj.exceptions.CRSError, TypeError, ValueError) as exc:

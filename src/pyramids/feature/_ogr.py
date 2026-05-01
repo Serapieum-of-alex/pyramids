@@ -15,6 +15,7 @@ Do not import this module from user code; its signatures are unstable.
 
 from __future__ import annotations
 
+import io
 import random
 import time
 from contextlib import contextmanager
@@ -302,8 +303,6 @@ def datasource_to_gdf(ds: ogr.DataSource | gdal.Dataset) -> GeoDataFrame:
     # osgeo /vsimem/, read the bytes back out via GDAL's own VSIFile*
     # APIs, and hand a ``BytesIO`` to ``geopandas.read_file`` — which
     # pyogrio accepts and parses from memory.
-    import io
-
     mem_path = _new_vsimem_path()
     file_written = False
     try:

@@ -30,6 +30,8 @@ internal only (ARC-1b); see :mod:`pyramids.feature._ogr`.
 from __future__ import annotations
 
 import functools
+import math
+import os
 import warnings
 from numbers import Number
 from pathlib import Path
@@ -40,6 +42,7 @@ if TYPE_CHECKING:
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 from geopandas import GeoDataFrame
 from osgeo import gdal, ogr, osr
 from shapely.geometry import LineString, Point, Polygon, box
@@ -48,8 +51,10 @@ from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
 from pyramids import _io as _pyramids_io
-from pyramids.base._errors import GeometryWarning
+from pyramids.base._errors import CRSError, FeatureError, GeometryWarning
 from pyramids.base._utils import Catalog
+from pyramids.base.remote import is_remote
+from pyramids.basemap.basemap import add_basemap
 from pyramids.feature import crs as _crs
 from pyramids.feature import geometry as _geom
 
@@ -99,9 +104,6 @@ def _resolve_lazy_partitioning(
         dict: kwargs to forward to :func:`dask_geopandas.read_file`.
         Exactly one of ``npartitions`` / ``chunksize`` is populated.
     """
-    import math
-    import os
-
     kwargs: dict[str, Any] = {}
     if npartitions is not None:
         kwargs["npartitions"] = npartitions
@@ -527,10 +529,6 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        import pandas as pd
-
-        from pyramids.base._errors import FeatureError
-
         # D-N4: empty-input branches both build a single-column frame
         # whose column name matches the ``geometry=`` kwarg, so
         # ``GeoDataFrame(..., geometry=…)`` sets it as the active
@@ -1296,8 +1294,6 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        from pyramids.base.remote import is_remote
-
         # C29 / L3: pre-check local-path existence so the caller sees
         # a ``FileNotFoundError`` naming the path instead of a generic
         # driver-open failure. Defer to ``base.remote.is_remote`` as
@@ -2244,13 +2240,9 @@ class FeatureCollection(GeoDataFrame):
 
         if basemap:
             if self.epsg is None:
-                from pyramids.base._errors import CRSError
-
                 raise CRSError(
                     "FeatureCollection must have a CRS (epsg) to use basemap."
                 )
-            from pyramids.basemap.basemap import add_basemap
-
             source = basemap if isinstance(basemap, str) else None
             add_basemap(ax, crs=self.epsg, source=source)
 
@@ -2341,13 +2333,9 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
-        import pandas as pd
-
         # C32: validate CRS agreement up front.
         if self.crs is not None and other.crs is not None:
             if self.crs != other.crs:
-                from pyramids.base._errors import CRSError
-
                 raise CRSError(
                     f"concat: CRS mismatch — self.crs = {self.crs!r}, "
                     f"other.crs = {other.crs!r}. Reproject one side "
