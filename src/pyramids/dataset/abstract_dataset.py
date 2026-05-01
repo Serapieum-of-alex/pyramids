@@ -79,10 +79,7 @@ class AbstractDataset(ABC):
         self._raster = src
         self._geotransform = src.GetGeoTransform()
         self._cell_size = self._geotransform[1]
-        # replace with a loop over the GetMetadata for each separate band
-        self._meta_data = src.GetMetadata()
         self._file_name = src.GetDescription()
-        # projection data
         # the epsg property returns the value of the _epsg attribute, so if the projection changes in any function, the
         # function should also change the value of the _epsg attribute.
         self._epsg = self._get_epsg()
@@ -150,13 +147,11 @@ class AbstractDataset(ABC):
         pass
 
     @property
-    @abstractmethod
     def access(self):
         """Access mode (read_only/write)."""
         return self._access
 
     @property
-    @abstractmethod
     def raster(self) -> gdal.Dataset:
         """The base GDAL Dataset (read-only)."""
         return self._raster
@@ -180,13 +175,11 @@ class AbstractDataset(ABC):
         pass
 
     @property
-    @abstractmethod
     def geotransform(self):
         """WKT projection.(x, cell_size, 0, y, 0, -cell_size)."""
         return self._geotransform
 
     @property
-    @abstractmethod
     def top_left_corner(self):
         """Top left corner coordinates."""
         xmin, _, _, ymax, _, _ = self._geotransform
@@ -238,7 +231,6 @@ class AbstractDataset(ABC):
         pass
 
     @property
-    @abstractmethod
     def meta_data(self):
         """Meta data."""
         return self._raster.GetMetadata()
@@ -317,13 +309,11 @@ class AbstractDataset(ABC):
         self._block_size = value
 
     @property
-    @abstractmethod
     def file_name(self):
         """File name."""
         return self._file_name
 
     @property
-    @abstractmethod
     def driver_type(self):
         """Driver Type."""
         drv = self.raster.GetDriver()
@@ -549,7 +539,6 @@ class AbstractDataset(ABC):
         """Get coordinate reference system."""
         pass
 
-    @abstractmethod
     def set_crs(self, crs: str | None = None, epsg: int | None = None):
         """Set Coordinates reference system.
 

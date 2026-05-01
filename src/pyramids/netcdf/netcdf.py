@@ -222,6 +222,44 @@ class NetCDF(Dataset):
         self._scale: float | None = None
         self._offset: float | None = None
 
+    def _update_inplace(  # type: ignore[override]
+        self, src: gdal.Dataset, access: str | None = None
+    ) -> None:
+        """Swap internal state, preserving NetCDF-specific attributes.
+
+        The base ``Dataset._update_inplace`` rebuilds via
+        ``type(self)(src, access)`` and overwrites ``self.__dict__``.
+        For a NetCDF that runs ``NetCDF.__init__`` with a default
+        ``open_as_multi_dimensional=True``, which would reset
+        ``_is_md_array`` to True and clear every variable-subset
+        attribute. This override snapshots the subset state, runs the
+        base swap with the current MDIM mode, then restores the
+        snapshot — so a variable subset stays a subset across
+        ``set_crs``, ``apply(inplace=True)``, ``change_no_data_value``,
+        and the ``epsg`` setter.
+        """
+        preserved = {
+            "_is_md_array": self._is_md_array,
+            "_is_subset": self._is_subset,
+            "_parent_nc": self._parent_nc,
+            "_source_var_name": self._source_var_name,
+            "_gdal_md_arr_ref": self._gdal_md_arr_ref,
+            "_gdal_rg_ref": self._gdal_rg_ref,
+            "_md_array_dims": self._md_array_dims,
+            "_band_dim_name": self._band_dim_name,
+            "_band_dim_values": self._band_dim_values,
+            "_variable_attrs": self._variable_attrs,
+            "_scale": self._scale,
+            "_offset": self._offset,
+        }
+        new = NetCDF(
+            src,
+            access=access or self._access,
+            open_as_multi_dimensional=self._is_md_array,
+        )
+        self.__dict__.update(new.__dict__)
+        self.__dict__.update(preserved)
+
     def __str__(self):
         """Return a human-readable summary of the NetCDF dataset."""
         message = f"""
@@ -1534,7 +1572,6 @@ class NetCDF(Dataset):
         self._raster = new_raster
         self._geotransform = new_raster.GetGeoTransform()
         self._cell_size = self._geotransform[1]
-        self._meta_data = new_raster.GetMetadata()
         self._file_name = new_raster.GetDescription()
         self._epsg = self._get_epsg()
         self._rows = new_raster.RasterYSize

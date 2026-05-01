@@ -21,7 +21,7 @@ from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     numpy_to_gdal_dtype,
 )
-from pyramids.base.crs import epsg_from_wkt, sr_from_epsg
+from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset.abstract_dataset import (
     DEFAULT_NO_DATA_VALUE,
     AbstractDataset,
@@ -89,10 +89,15 @@ class Dataset(  # type: ignore[misc]
     def _update_inplace(self, src: gdal.Dataset, access: str | None = None) -> None:
         """Swap internal state from a new GDAL dataset.
 
-        Creates a fresh Dataset and copies its internal data
-        into this instance, similar to pandas' _update_inplace.
+        Creates a fresh instance of ``type(self)`` and copies its
+        internal state into ``self``. Using ``type(self)`` rather
+        than the literal ``Dataset`` is what keeps a NetCDF instance
+        a NetCDF after any in-place op (set_crs, change_no_data_value,
+        apply(inplace=True), to_file). Subclasses that carry extra
+        state across the swap (e.g. NetCDF's variable-subset
+        attributes) override this method.
         """
-        new = Dataset(src, access=access or self._access)
+        new = type(self)(src, access=access or self._access)
         self.__dict__.update(new.__dict__)
 
     def focal_mean(self, radius: int = 1, *, chunks=None, band: int = 0):
@@ -294,12 +299,7 @@ class Dataset(  # type: ignore[misc]
     @property
     def epsg(self) -> int:
         """EPSG number."""
-        crs = self.raster.GetProjection()
-        # ARC-7: get_epsg_from_prj raises on empty input; epsg_from_wkt
-        # absorbs the historical 4326 fallback so rasters with an empty
-        # projection (common for in-memory NetCDF slices) still report
-        # a stable EPSG.
-        return epsg_from_wkt(crs)
+        return self._epsg
 
     @epsg.setter
     def epsg(self, value: int):
