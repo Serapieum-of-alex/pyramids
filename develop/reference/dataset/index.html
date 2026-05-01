@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6250,25 +6250,7 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <span class="normal"><a href="#__codelineno-0-1171">1171</a></span>
 <span class="normal"><a href="#__codelineno-0-1172">1172</a></span>
 <span class="normal"><a href="#__codelineno-0-1173">1173</a></span>
-<span class="normal"><a href="#__codelineno-0-1174">1174</a></span>
-<span class="normal"><a href="#__codelineno-0-1175">1175</a></span>
-<span class="normal"><a href="#__codelineno-0-1176">1176</a></span>
-<span class="normal"><a href="#__codelineno-0-1177">1177</a></span>
-<span class="normal"><a href="#__codelineno-0-1178">1178</a></span>
-<span class="normal"><a href="#__codelineno-0-1179">1179</a></span>
-<span class="normal"><a href="#__codelineno-0-1180">1180</a></span>
-<span class="normal"><a href="#__codelineno-0-1181">1181</a></span>
-<span class="normal"><a href="#__codelineno-0-1182">1182</a></span>
-<span class="normal"><a href="#__codelineno-0-1183">1183</a></span>
-<span class="normal"><a href="#__codelineno-0-1184">1184</a></span>
-<span class="normal"><a href="#__codelineno-0-1185">1185</a></span>
-<span class="normal"><a href="#__codelineno-0-1186">1186</a></span>
-<span class="normal"><a href="#__codelineno-0-1187">1187</a></span>
-<span class="normal"><a href="#__codelineno-0-1188">1188</a></span>
-<span class="normal"><a href="#__codelineno-0-1189">1189</a></span>
-<span class="normal"><a href="#__codelineno-0-1190">1190</a></span>
-<span class="normal"><a href="#__codelineno-0-1191">1191</a></span>
-<span class="normal"><a href="#__codelineno-0-1192">1192</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span>  <span class="c1"># type: ignore[misc]</span>
+<span class="normal"><a href="#__codelineno-0-1174">1174</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span>  <span class="c1"># type: ignore[misc]</span>
 <a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="n">BandMetadata</span><span class="p">,</span>
 <a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="n">IO</span><span class="p">,</span>
 <a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="n">COGMixin</span><span class="p">,</span>
@@ -6517,7 +6499,7 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <a id="__codelineno-0-304" name="__codelineno-0-304"></a>    <span class="nd">@epsg</span><span class="o">.</span><span class="n">setter</span>
 <a id="__codelineno-0-305" name="__codelineno-0-305"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">epsg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
 <a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;EPSG number.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="n">sr</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">_create_sr_from_epsg</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="n">sr</span> <span class="o">=</span> <span class="n">sr_from_epsg</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 <a id="__codelineno-0-308" name="__codelineno-0-308"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">SetProjection</span><span class="p">(</span><span class="n">sr</span><span class="o">.</span><span class="n">ExportToWkt</span><span class="p">())</span>
 <a id="__codelineno-0-309" name="__codelineno-0-309"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_inplace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_raster</span><span class="p">)</span>
 <a id="__codelineno-0-310" name="__codelineno-0-310"></a>
@@ -6999,7 +6981,7 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <a id="__codelineno-0-786" name="__codelineno-0-786"></a>        <span class="c1"># Create the driver.</span>
 <a id="__codelineno-0-787" name="__codelineno-0-787"></a>        <span class="n">gdal_dtype</span> <span class="o">=</span> <span class="n">numpy_to_gdal_dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
 <a id="__codelineno-0-788" name="__codelineno-0-788"></a>        <span class="n">dst</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">_create_dataset</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">bands</span><span class="p">,</span> <span class="n">gdal_dtype</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-789" name="__codelineno-0-789"></a>        <span class="n">sr</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">_create_sr_from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="p">)</span>
+<a id="__codelineno-0-789" name="__codelineno-0-789"></a>        <span class="n">sr</span> <span class="o">=</span> <span class="n">sr_from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="p">)</span>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a>        <span class="n">geotransform</span> <span class="o">=</span> <span class="p">(</span>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a>            <span class="n">top_left_corner</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
 <a id="__codelineno-0-792" name="__codelineno-0-792"></a>            <span class="n">cell_size</span><span class="p">,</span>
@@ -7310,7 +7292,7 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <a id="__codelineno-0-1097" name="__codelineno-0-1097"></a>        <span class="k">if</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-1098" name="__codelineno-0-1098"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;epsg must be provided&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-1099" name="__codelineno-0-1099"></a>
-<a id="__codelineno-0-1100" name="__codelineno-0-1100"></a>        <span class="n">srse</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">_create_sr_from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">epsg</span><span class="p">))</span>
+<a id="__codelineno-0-1100" name="__codelineno-0-1100"></a>        <span class="n">srse</span> <span class="o">=</span> <span class="n">sr_from_epsg</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">epsg</span><span class="p">))</span>
 <a id="__codelineno-0-1101" name="__codelineno-0-1101"></a>        <span class="n">dst_ds</span><span class="o">.</span><span class="n">SetProjection</span><span class="p">(</span><span class="n">srse</span><span class="o">.</span><span class="n">ExportToWkt</span><span class="p">())</span>
 <a id="__codelineno-0-1102" name="__codelineno-0-1102"></a>        <span class="n">dst_ds</span><span class="o">.</span><span class="n">SetGeoTransform</span><span class="p">(</span><span class="n">geo</span><span class="p">)</span>
 <a id="__codelineno-0-1103" name="__codelineno-0-1103"></a>
@@ -7385,24 +7367,6 @@ rasters use :class:<code>~pyramids.dataset.DatasetCollection</code>.</p>
 <a id="__codelineno-0-1172" name="__codelineno-0-1172"></a>            <span class="n">dst_obj</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">FlushCache</span><span class="p">()</span>
 <a id="__codelineno-0-1173" name="__codelineno-0-1173"></a>
 <a id="__codelineno-0-1174" name="__codelineno-0-1174"></a>        <span class="k">return</span> <span class="n">dst_obj</span>
-<a id="__codelineno-0-1175" name="__codelineno-0-1175"></a>
-<a id="__codelineno-0-1176" name="__codelineno-0-1176"></a>    <span class="nd">@staticmethod</span>
-<a id="__codelineno-0-1177" name="__codelineno-0-1177"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_create_sr_from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SpatialReference</span><span class="p">:</span>
-<a id="__codelineno-0-1178" name="__codelineno-0-1178"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a spatial reference object from EPSG number.</span>
-<a id="__codelineno-0-1179" name="__codelineno-0-1179"></a>
-<a id="__codelineno-0-1180" name="__codelineno-0-1180"></a><span class="sd">        https://gdal.org/tutorials/osr_api_tut.html</span>
-<a id="__codelineno-0-1181" name="__codelineno-0-1181"></a>
-<a id="__codelineno-0-1182" name="__codelineno-0-1182"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-1183" name="__codelineno-0-1183"></a><span class="sd">            epsg (int):</span>
-<a id="__codelineno-0-1184" name="__codelineno-0-1184"></a><span class="sd">                EPSG number.</span>
-<a id="__codelineno-0-1185" name="__codelineno-0-1185"></a>
-<a id="__codelineno-0-1186" name="__codelineno-0-1186"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-1187" name="__codelineno-0-1187"></a><span class="sd">            SpatialReference:</span>
-<a id="__codelineno-0-1188" name="__codelineno-0-1188"></a><span class="sd">                SpatialReference object.</span>
-<a id="__codelineno-0-1189" name="__codelineno-0-1189"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-1190" name="__codelineno-0-1190"></a>        <span class="n">sr</span> <span class="o">=</span> <span class="n">osr</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">()</span>
-<a id="__codelineno-0-1191" name="__codelineno-0-1191"></a>        <span class="n">sr</span><span class="o">.</span><span class="n">ImportFromEPSG</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">epsg</span><span class="p">))</span>
-<a id="__codelineno-0-1192" name="__codelineno-0-1192"></a>        <span class="k">return</span> <span class="n">sr</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -9662,7 +9626,7 @@ will be created in memory.</p>
 <a id="__codelineno-0-786" name="__codelineno-0-786"></a>    <span class="c1"># Create the driver.</span>
 <a id="__codelineno-0-787" name="__codelineno-0-787"></a>    <span class="n">gdal_dtype</span> <span class="o">=</span> <span class="n">numpy_to_gdal_dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
 <a id="__codelineno-0-788" name="__codelineno-0-788"></a>    <span class="n">dst</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">_create_dataset</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">bands</span><span class="p">,</span> <span class="n">gdal_dtype</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-789" name="__codelineno-0-789"></a>    <span class="n">sr</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">_create_sr_from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="p">)</span>
+<a id="__codelineno-0-789" name="__codelineno-0-789"></a>    <span class="n">sr</span> <span class="o">=</span> <span class="n">sr_from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="p">)</span>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a>    <span class="n">geotransform</span> <span class="o">=</span> <span class="p">(</span>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a>        <span class="n">top_left_corner</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
 <a id="__codelineno-0-792" name="__codelineno-0-792"></a>        <span class="n">cell_size</span><span class="p">,</span>

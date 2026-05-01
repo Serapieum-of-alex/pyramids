@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3920,9 +3920,7 @@ INFO - hello
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids/base/config.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-54"> 54</a></span>
-<span class="normal"><a href="#__codelineno-0-55"> 55</a></span>
-<span class="normal"><a href="#__codelineno-0-56"> 56</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-56"> 56</a></span>
 <span class="normal"><a href="#__codelineno-0-57"> 57</a></span>
 <span class="normal"><a href="#__codelineno-0-58"> 58</a></span>
 <span class="normal"><a href="#__codelineno-0-59"> 59</a></span>
@@ -3991,74 +3989,72 @@ INFO - hello
 <span class="normal"><a href="#__codelineno-0-122">122</a></span>
 <span class="normal"><a href="#__codelineno-0-123">123</a></span>
 <span class="normal"><a href="#__codelineno-0-124">124</a></span>
-<span class="normal"><a href="#__codelineno-0-125">125</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="k">class</span><span class="w"> </span><span class="nc">ColorFormatter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">):</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Formatter that adds ANSI colors to the log level name for console output.</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    This formatter wraps the levelname (e.g., INFO, WARNING) with an ANSI color</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">    escape sequence appropriate for the record&#39;s level. It is intended for</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    console handlers and leaves the message text untouched.</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">    - Demonstrate how the formatter colors the levelname</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">        ```python</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">        &gt;&gt;&gt; import logging</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="sd">        &gt;&gt;&gt; from pyramids.base.config import ColorFormatter  # doctest: +SKIP</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">        &gt;&gt;&gt; logger = logging.getLogger(&quot;example.color&quot;)</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">        &gt;&gt;&gt; handler = logging.StreamHandler()</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">        &gt;&gt;&gt; handler.setFormatter(ColorFormatter(&quot;%(levelname)s - %(message)s&quot;))</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        &gt;&gt;&gt; logger.addHandler(handler)</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">        &gt;&gt;&gt; logger.setLevel(logging.INFO)</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">        &gt;&gt;&gt; logger.info(&quot;hello&quot;)  # doctest: +SKIP</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">        INFO - hello</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">        ```</span>
+<span class="normal"><a href="#__codelineno-0-125">125</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="k">class</span><span class="w"> </span><span class="nc">ColorFormatter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">):</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Formatter that adds ANSI colors to the log level name for console output.</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    This formatter wraps the levelname (e.g., INFO, WARNING) with an ANSI color</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">    escape sequence appropriate for the record&#39;s level. It is intended for</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">    console handlers and leaves the message text untouched.</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">    - Demonstrate how the formatter colors the levelname</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="sd">        ```python</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">        &gt;&gt;&gt; import logging</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">        &gt;&gt;&gt; from pyramids.base.config import ColorFormatter  # doctest: +SKIP</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">        &gt;&gt;&gt; logger = logging.getLogger(&quot;example.color&quot;)</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        &gt;&gt;&gt; handler = logging.StreamHandler()</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">        &gt;&gt;&gt; handler.setFormatter(ColorFormatter(&quot;%(levelname)s - %(message)s&quot;))</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">        &gt;&gt;&gt; logger.addHandler(handler)</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">        &gt;&gt;&gt; logger.setLevel(logging.INFO)</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">        &gt;&gt;&gt; logger.info(&quot;hello&quot;)  # doctest: +SKIP</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">        INFO - hello</span>
 <a id="__codelineno-0-76" name="__codelineno-0-76"></a>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">    See Also:</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">        - Config.setup_logging: Uses this formatter for console logging.</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a>    <span class="n">RESET</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[0m&quot;</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a>    <span class="n">LEVEL_COLORS</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[36m&quot;</span><span class="p">,</span>  <span class="c1"># Cyan</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[32m&quot;</span><span class="p">,</span>  <span class="c1"># Green</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[33m&quot;</span><span class="p">,</span>  <span class="c1"># Yellow</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[31m&quot;</span><span class="p">,</span>  <span class="c1"># Red</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[35m&quot;</span><span class="p">,</span>  <span class="c1"># Magenta</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>    <span class="p">}</span>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">LogRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Format a log record by applying a color to its level name.</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">            record (logging.LogRecord): The log record to format.</span>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">            str: The formatted message where the levelname is wrapped in an ANSI</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">                color escape sequence suitable for consoles.</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">            None: This method does not raise exceptions on its own.</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">        Examples:</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="sd">        - Use the formatter with a logger to colorize level names</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">        ```</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">    See Also:</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">        - Config.setup_logging: Uses this formatter for console logging.</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>    <span class="n">RESET</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[0m&quot;</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>    <span class="n">LEVEL_COLORS</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[36m&quot;</span><span class="p">,</span>  <span class="c1"># Cyan</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[32m&quot;</span><span class="p">,</span>  <span class="c1"># Green</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[33m&quot;</span><span class="p">,</span>  <span class="c1"># Yellow</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[31m&quot;</span><span class="p">,</span>  <span class="c1"># Red</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[35m&quot;</span><span class="p">,</span>  <span class="c1"># Magenta</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a>    <span class="p">}</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">LogRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Format a log record by applying a color to its level name.</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">            record (logging.LogRecord): The log record to format.</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">            str: The formatted message where the levelname is wrapped in an ANSI</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">                color escape sequence suitable for consoles.</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">            None: This method does not raise exceptions on its own.</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">        Examples:</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">        - Use the formatter with a logger to colorize level names</span>
 <a id="__codelineno-0-107" name="__codelineno-0-107"></a>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">            &gt;&gt;&gt; import logging</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">            &gt;&gt;&gt; from pyramids.base.config import ColorFormatter</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">            &gt;&gt;&gt; handler = logging.StreamHandler()</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">            &gt;&gt;&gt; handler.setFormatter(ColorFormatter(&#39;%(levelname)s - %(message)s&#39;))</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">            &gt;&gt;&gt; logger = logging.getLogger(&#39;example.color.format&#39;)</span>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">            &gt;&gt;&gt; _ = [logger.removeHandler(h) for h in list(logger.handlers)]</span>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">            &gt;&gt;&gt; logger.addHandler(handler)</span>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">            &gt;&gt;&gt; logger.setLevel(logging.WARNING)</span>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">            &gt;&gt;&gt; logger.warning(&#39;warn&#39;)  # doctest: +SKIP</span>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_copy</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">            &gt;&gt;&gt; import logging</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">            &gt;&gt;&gt; from pyramids.base.config import ColorFormatter</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">            &gt;&gt;&gt; handler = logging.StreamHandler()</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">            &gt;&gt;&gt; handler.setFormatter(ColorFormatter(&#39;%(levelname)s - %(message)s&#39;))</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">            &gt;&gt;&gt; logger = logging.getLogger(&#39;example.color.format&#39;)</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">            &gt;&gt;&gt; _ = [logger.removeHandler(h) for h in list(logger.handlers)]</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">            &gt;&gt;&gt; logger.addHandler(handler)</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">            &gt;&gt;&gt; logger.setLevel(logging.WARNING)</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">            &gt;&gt;&gt; logger.warning(&#39;warn&#39;)  # doctest: +SKIP</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-122" name="__codelineno-0-122"></a>        <span class="n">colored</span> <span class="o">=</span> <span class="n">_copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
 <a id="__codelineno-0-123" name="__codelineno-0-123"></a>        <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LEVEL_COLORS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">levelno</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-124" name="__codelineno-0-124"></a>        <span class="n">colored</span><span class="o">.</span><span class="n">levelname</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">color</span><span class="si">}{</span><span class="n">record</span><span class="o">.</span><span class="n">levelname</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">RESET</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -4189,9 +4185,7 @@ color escape sequence suitable for consoles.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/base/config.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-90"> 90</a></span>
-<span class="normal"><a href="#__codelineno-0-91"> 91</a></span>
-<span class="normal"><a href="#__codelineno-0-92"> 92</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-92"> 92</a></span>
 <span class="normal"><a href="#__codelineno-0-93"> 93</a></span>
 <span class="normal"><a href="#__codelineno-0-94"> 94</a></span>
 <span class="normal"><a href="#__codelineno-0-95"> 95</a></span>
@@ -4224,38 +4218,36 @@ color escape sequence suitable for consoles.</p>
 <span class="normal"><a href="#__codelineno-0-122">122</a></span>
 <span class="normal"><a href="#__codelineno-0-123">123</a></span>
 <span class="normal"><a href="#__codelineno-0-124">124</a></span>
-<span class="normal"><a href="#__codelineno-0-125">125</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="k">def</span><span class="w"> </span><span class="nf">format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">LogRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Format a log record by applying a color to its level name.</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">        record (logging.LogRecord): The log record to format.</span>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">        str: The formatted message where the levelname is wrapped in an ANSI</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">            color escape sequence suitable for consoles.</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">        None: This method does not raise exceptions on its own.</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="sd">    - Use the formatter with a logger to colorize level names</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">        ```python</span>
+<span class="normal"><a href="#__codelineno-0-125">125</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="k">def</span><span class="w"> </span><span class="nf">format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">LogRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Format a log record by applying a color to its level name.</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">        record (logging.LogRecord): The log record to format.</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">        str: The formatted message where the levelname is wrapped in an ANSI</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">            color escape sequence suitable for consoles.</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">        None: This method does not raise exceptions on its own.</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">    - Use the formatter with a logger to colorize level names</span>
 <a id="__codelineno-0-107" name="__codelineno-0-107"></a>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">        &gt;&gt;&gt; import logging</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">        &gt;&gt;&gt; from pyramids.base.config import ColorFormatter</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        &gt;&gt;&gt; handler = logging.StreamHandler()</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">        &gt;&gt;&gt; handler.setFormatter(ColorFormatter(&#39;%(levelname)s - %(message)s&#39;))</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        &gt;&gt;&gt; logger = logging.getLogger(&#39;example.color.format&#39;)</span>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        &gt;&gt;&gt; _ = [logger.removeHandler(h) for h in list(logger.handlers)]</span>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">        &gt;&gt;&gt; logger.addHandler(handler)</span>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        &gt;&gt;&gt; logger.setLevel(logging.WARNING)</span>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">        &gt;&gt;&gt; logger.warning(&#39;warn&#39;)  # doctest: +SKIP</span>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">        ```</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_copy</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">        ```python</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        &gt;&gt;&gt; import logging</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">        &gt;&gt;&gt; from pyramids.base.config import ColorFormatter</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        &gt;&gt;&gt; handler = logging.StreamHandler()</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        &gt;&gt;&gt; handler.setFormatter(ColorFormatter(&#39;%(levelname)s - %(message)s&#39;))</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">        &gt;&gt;&gt; logger = logging.getLogger(&#39;example.color.format&#39;)</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        &gt;&gt;&gt; _ = [logger.removeHandler(h) for h in list(logger.handlers)]</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">        &gt;&gt;&gt; logger.addHandler(handler)</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">        &gt;&gt;&gt; logger.setLevel(logging.WARNING)</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">        &gt;&gt;&gt; logger.warning(&#39;warn&#39;)  # doctest: +SKIP</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        ```</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-122" name="__codelineno-0-122"></a>    <span class="n">colored</span> <span class="o">=</span> <span class="n">_copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
 <a id="__codelineno-0-123" name="__codelineno-0-123"></a>    <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LEVEL_COLORS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">levelno</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-124" name="__codelineno-0-124"></a>    <span class="n">colored</span><span class="o">.</span><span class="n">levelname</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">color</span><span class="si">}{</span><span class="n">record</span><span class="o">.</span><span class="n">levelname</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">RESET</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -6554,9 +6546,7 @@ Defaults to "config.yaml".</p>
 <span class="normal"><a href="#__codelineno-0-826">826</a></span>
 <span class="normal"><a href="#__codelineno-0-827">827</a></span>
 <span class="normal"><a href="#__codelineno-0-828">828</a></span>
-<span class="normal"><a href="#__codelineno-0-829">829</a></span>
-<span class="normal"><a href="#__codelineno-0-830">830</a></span>
-<span class="normal"><a href="#__codelineno-0-831">831</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-538" name="__codelineno-0-538"></a><span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-829">829</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-538" name="__codelineno-0-538"></a><span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
 <a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;High-level configuration entry point for logging and GDAL environment.</span>
 <a id="__codelineno-0-540" name="__codelineno-0-540"></a>
 <a id="__codelineno-0-541" name="__codelineno-0-541"></a><span class="sd">    This class orchestrates:</span>
@@ -6810,46 +6800,44 @@ Defaults to "config.yaml".</p>
 <a id="__codelineno-0-789" name="__codelineno-0-789"></a>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a>            <span class="c1"># For Windows, check Python site-packages</span>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a>            <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;win32&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-792" name="__codelineno-0-792"></a>                <span class="kn">import</span><span class="w"> </span><span class="nn">site</span>
-<a id="__codelineno-0-793" name="__codelineno-0-793"></a>
-<a id="__codelineno-0-794" name="__codelineno-0-794"></a>                <span class="k">for</span> <span class="n">site_path</span> <span class="ow">in</span> <span class="n">site</span><span class="o">.</span><span class="n">getsitepackages</span><span class="p">():</span>
-<a id="__codelineno-0-795" name="__codelineno-0-795"></a>                    <span class="n">plugins</span> <span class="o">=</span> <span class="n">Plugins</span><span class="p">(</span><span class="n">site_packages_path</span><span class="o">=</span><span class="n">site_path</span><span class="p">)</span>
-<a id="__codelineno-0-796" name="__codelineno-0-796"></a>                    <span class="n">path</span> <span class="o">=</span> <span class="n">plugins</span><span class="o">.</span><span class="n">check_path</span><span class="p">()</span>
-<a id="__codelineno-0-797" name="__codelineno-0-797"></a>                    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
-<a id="__codelineno-0-798" name="__codelineno-0-798"></a>                        <span class="n">gdal_plugins_path</span> <span class="o">=</span> <span class="n">path</span>
-<a id="__codelineno-0-799" name="__codelineno-0-799"></a>            <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-800" name="__codelineno-0-800"></a>
-<a id="__codelineno-0-801" name="__codelineno-0-801"></a>                <span class="c1"># Check typical system locations (Linux/MacOS)</span>
-<a id="__codelineno-0-802" name="__codelineno-0-802"></a>                <span class="n">system_paths</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-803" name="__codelineno-0-803"></a>                    <span class="s2">&quot;/usr/local/lib/gdalplugins&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-804" name="__codelineno-0-804"></a>                    <span class="s2">&quot;/usr/lib/gdalplugins&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-805" name="__codelineno-0-805"></a>                <span class="p">]</span>
-<a id="__codelineno-0-806" name="__codelineno-0-806"></a>                <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">system_paths</span><span class="p">:</span>
-<a id="__codelineno-0-807" name="__codelineno-0-807"></a>                    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-808" name="__codelineno-0-808"></a>                    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-<a id="__codelineno-0-809" name="__codelineno-0-809"></a>                        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;GDAL_DRIVER_PATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-810" name="__codelineno-0-810"></a>                        <span class="n">gdal_plugins_path</span> <span class="o">=</span> <span class="n">path</span>
-<a id="__codelineno-0-811" name="__codelineno-0-811"></a>                        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GDAL_DRIVER_PATH set to: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-812" name="__codelineno-0-812"></a>
-<a id="__codelineno-0-813" name="__codelineno-0-813"></a>                <span class="c1"># If the path is not found</span>
-<a id="__codelineno-0-814" name="__codelineno-0-814"></a>                <span class="c1"># print(&quot;GDAL plugins path could not be found. Please check your GDAL installation.&quot;)</span>
-<a id="__codelineno-0-815" name="__codelineno-0-815"></a>        <span class="k">return</span> <span class="n">gdal_plugins_path</span>
-<a id="__codelineno-0-816" name="__codelineno-0-816"></a>
-<a id="__codelineno-0-817" name="__codelineno-0-817"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">setup_logging</span><span class="p">(</span>
-<a id="__codelineno-0-818" name="__codelineno-0-818"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-819" name="__codelineno-0-819"></a>        <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
-<a id="__codelineno-0-820" name="__codelineno-0-820"></a>        <span class="n">log_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-821" name="__codelineno-0-821"></a>    <span class="p">):</span>
-<a id="__codelineno-0-822" name="__codelineno-0-822"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-823" name="__codelineno-0-823"></a><span class="sd">        Configure application-wide logging for Pyramids by delegating to LoggerManager.</span>
-<a id="__codelineno-0-824" name="__codelineno-0-824"></a>
-<a id="__codelineno-0-825" name="__codelineno-0-825"></a><span class="sd">        This method preserves the public API while separating responsibilities. It delegates</span>
-<a id="__codelineno-0-826" name="__codelineno-0-826"></a><span class="sd">        the actual logging configuration to the LoggerManager constructor and then sets</span>
-<a id="__codelineno-0-827" name="__codelineno-0-827"></a><span class="sd">        self.logger and self._logging_configured for convenience/compatibility.</span>
-<a id="__codelineno-0-828" name="__codelineno-0-828"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-829" name="__codelineno-0-829"></a>        <span class="n">LoggerManager</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="n">log_file</span><span class="p">)</span>
-<a id="__codelineno-0-830" name="__codelineno-0-830"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_logging_configured</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-831" name="__codelineno-0-831"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<a id="__codelineno-0-792" name="__codelineno-0-792"></a>                <span class="k">for</span> <span class="n">site_path</span> <span class="ow">in</span> <span class="n">site</span><span class="o">.</span><span class="n">getsitepackages</span><span class="p">():</span>
+<a id="__codelineno-0-793" name="__codelineno-0-793"></a>                    <span class="n">plugins</span> <span class="o">=</span> <span class="n">Plugins</span><span class="p">(</span><span class="n">site_packages_path</span><span class="o">=</span><span class="n">site_path</span><span class="p">)</span>
+<a id="__codelineno-0-794" name="__codelineno-0-794"></a>                    <span class="n">path</span> <span class="o">=</span> <span class="n">plugins</span><span class="o">.</span><span class="n">check_path</span><span class="p">()</span>
+<a id="__codelineno-0-795" name="__codelineno-0-795"></a>                    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+<a id="__codelineno-0-796" name="__codelineno-0-796"></a>                        <span class="n">gdal_plugins_path</span> <span class="o">=</span> <span class="n">path</span>
+<a id="__codelineno-0-797" name="__codelineno-0-797"></a>            <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-798" name="__codelineno-0-798"></a>
+<a id="__codelineno-0-799" name="__codelineno-0-799"></a>                <span class="c1"># Check typical system locations (Linux/MacOS)</span>
+<a id="__codelineno-0-800" name="__codelineno-0-800"></a>                <span class="n">system_paths</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-801" name="__codelineno-0-801"></a>                    <span class="s2">&quot;/usr/local/lib/gdalplugins&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-802" name="__codelineno-0-802"></a>                    <span class="s2">&quot;/usr/lib/gdalplugins&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-803" name="__codelineno-0-803"></a>                <span class="p">]</span>
+<a id="__codelineno-0-804" name="__codelineno-0-804"></a>                <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">system_paths</span><span class="p">:</span>
+<a id="__codelineno-0-805" name="__codelineno-0-805"></a>                    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-806" name="__codelineno-0-806"></a>                    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+<a id="__codelineno-0-807" name="__codelineno-0-807"></a>                        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;GDAL_DRIVER_PATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-808" name="__codelineno-0-808"></a>                        <span class="n">gdal_plugins_path</span> <span class="o">=</span> <span class="n">path</span>
+<a id="__codelineno-0-809" name="__codelineno-0-809"></a>                        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GDAL_DRIVER_PATH set to: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-810" name="__codelineno-0-810"></a>
+<a id="__codelineno-0-811" name="__codelineno-0-811"></a>                <span class="c1"># If the path is not found</span>
+<a id="__codelineno-0-812" name="__codelineno-0-812"></a>                <span class="c1"># print(&quot;GDAL plugins path could not be found. Please check your GDAL installation.&quot;)</span>
+<a id="__codelineno-0-813" name="__codelineno-0-813"></a>        <span class="k">return</span> <span class="n">gdal_plugins_path</span>
+<a id="__codelineno-0-814" name="__codelineno-0-814"></a>
+<a id="__codelineno-0-815" name="__codelineno-0-815"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">setup_logging</span><span class="p">(</span>
+<a id="__codelineno-0-816" name="__codelineno-0-816"></a>        <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-817" name="__codelineno-0-817"></a>        <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+<a id="__codelineno-0-818" name="__codelineno-0-818"></a>        <span class="n">log_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-819" name="__codelineno-0-819"></a>    <span class="p">):</span>
+<a id="__codelineno-0-820" name="__codelineno-0-820"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-821" name="__codelineno-0-821"></a><span class="sd">        Configure application-wide logging for Pyramids by delegating to LoggerManager.</span>
+<a id="__codelineno-0-822" name="__codelineno-0-822"></a>
+<a id="__codelineno-0-823" name="__codelineno-0-823"></a><span class="sd">        This method preserves the public API while separating responsibilities. It delegates</span>
+<a id="__codelineno-0-824" name="__codelineno-0-824"></a><span class="sd">        the actual logging configuration to the LoggerManager constructor and then sets</span>
+<a id="__codelineno-0-825" name="__codelineno-0-825"></a><span class="sd">        self.logger and self._logging_configured for convenience/compatibility.</span>
+<a id="__codelineno-0-826" name="__codelineno-0-826"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-827" name="__codelineno-0-827"></a>        <span class="n">LoggerManager</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="n">log_file</span><span class="p">)</span>
+<a id="__codelineno-0-828" name="__codelineno-0-828"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_logging_configured</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-829" name="__codelineno-0-829"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -7689,9 +7677,7 @@ configures:
 <span class="normal"><a href="#__codelineno-0-810">810</a></span>
 <span class="normal"><a href="#__codelineno-0-811">811</a></span>
 <span class="normal"><a href="#__codelineno-0-812">812</a></span>
-<span class="normal"><a href="#__codelineno-0-813">813</a></span>
-<span class="normal"><a href="#__codelineno-0-814">814</a></span>
-<span class="normal"><a href="#__codelineno-0-815">815</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-761" name="__codelineno-0-761"></a><span class="k">def</span><span class="w"> </span><span class="nf">dynamic_env_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-813">813</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-761" name="__codelineno-0-761"></a><span class="k">def</span><span class="w"> </span><span class="nf">dynamic_env_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-762" name="__codelineno-0-762"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Locate GDAL plugin directories and export GDAL_DRIVER_PATH.</span>
 <a id="__codelineno-0-763" name="__codelineno-0-763"></a>
 <a id="__codelineno-0-764" name="__codelineno-0-764"></a><span class="sd">    The search proceeds in this order:</span>
@@ -7722,30 +7708,28 @@ configures:
 <a id="__codelineno-0-789" name="__codelineno-0-789"></a>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a>        <span class="c1"># For Windows, check Python site-packages</span>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a>        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;win32&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-792" name="__codelineno-0-792"></a>            <span class="kn">import</span><span class="w"> </span><span class="nn">site</span>
-<a id="__codelineno-0-793" name="__codelineno-0-793"></a>
-<a id="__codelineno-0-794" name="__codelineno-0-794"></a>            <span class="k">for</span> <span class="n">site_path</span> <span class="ow">in</span> <span class="n">site</span><span class="o">.</span><span class="n">getsitepackages</span><span class="p">():</span>
-<a id="__codelineno-0-795" name="__codelineno-0-795"></a>                <span class="n">plugins</span> <span class="o">=</span> <span class="n">Plugins</span><span class="p">(</span><span class="n">site_packages_path</span><span class="o">=</span><span class="n">site_path</span><span class="p">)</span>
-<a id="__codelineno-0-796" name="__codelineno-0-796"></a>                <span class="n">path</span> <span class="o">=</span> <span class="n">plugins</span><span class="o">.</span><span class="n">check_path</span><span class="p">()</span>
-<a id="__codelineno-0-797" name="__codelineno-0-797"></a>                <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
-<a id="__codelineno-0-798" name="__codelineno-0-798"></a>                    <span class="n">gdal_plugins_path</span> <span class="o">=</span> <span class="n">path</span>
-<a id="__codelineno-0-799" name="__codelineno-0-799"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-800" name="__codelineno-0-800"></a>
-<a id="__codelineno-0-801" name="__codelineno-0-801"></a>            <span class="c1"># Check typical system locations (Linux/MacOS)</span>
-<a id="__codelineno-0-802" name="__codelineno-0-802"></a>            <span class="n">system_paths</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-803" name="__codelineno-0-803"></a>                <span class="s2">&quot;/usr/local/lib/gdalplugins&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-804" name="__codelineno-0-804"></a>                <span class="s2">&quot;/usr/lib/gdalplugins&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-805" name="__codelineno-0-805"></a>            <span class="p">]</span>
-<a id="__codelineno-0-806" name="__codelineno-0-806"></a>            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">system_paths</span><span class="p">:</span>
-<a id="__codelineno-0-807" name="__codelineno-0-807"></a>                <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-808" name="__codelineno-0-808"></a>                <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-<a id="__codelineno-0-809" name="__codelineno-0-809"></a>                    <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;GDAL_DRIVER_PATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-810" name="__codelineno-0-810"></a>                    <span class="n">gdal_plugins_path</span> <span class="o">=</span> <span class="n">path</span>
-<a id="__codelineno-0-811" name="__codelineno-0-811"></a>                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GDAL_DRIVER_PATH set to: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-812" name="__codelineno-0-812"></a>
-<a id="__codelineno-0-813" name="__codelineno-0-813"></a>            <span class="c1"># If the path is not found</span>
-<a id="__codelineno-0-814" name="__codelineno-0-814"></a>            <span class="c1"># print(&quot;GDAL plugins path could not be found. Please check your GDAL installation.&quot;)</span>
-<a id="__codelineno-0-815" name="__codelineno-0-815"></a>    <span class="k">return</span> <span class="n">gdal_plugins_path</span>
+<a id="__codelineno-0-792" name="__codelineno-0-792"></a>            <span class="k">for</span> <span class="n">site_path</span> <span class="ow">in</span> <span class="n">site</span><span class="o">.</span><span class="n">getsitepackages</span><span class="p">():</span>
+<a id="__codelineno-0-793" name="__codelineno-0-793"></a>                <span class="n">plugins</span> <span class="o">=</span> <span class="n">Plugins</span><span class="p">(</span><span class="n">site_packages_path</span><span class="o">=</span><span class="n">site_path</span><span class="p">)</span>
+<a id="__codelineno-0-794" name="__codelineno-0-794"></a>                <span class="n">path</span> <span class="o">=</span> <span class="n">plugins</span><span class="o">.</span><span class="n">check_path</span><span class="p">()</span>
+<a id="__codelineno-0-795" name="__codelineno-0-795"></a>                <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+<a id="__codelineno-0-796" name="__codelineno-0-796"></a>                    <span class="n">gdal_plugins_path</span> <span class="o">=</span> <span class="n">path</span>
+<a id="__codelineno-0-797" name="__codelineno-0-797"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-798" name="__codelineno-0-798"></a>
+<a id="__codelineno-0-799" name="__codelineno-0-799"></a>            <span class="c1"># Check typical system locations (Linux/MacOS)</span>
+<a id="__codelineno-0-800" name="__codelineno-0-800"></a>            <span class="n">system_paths</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-801" name="__codelineno-0-801"></a>                <span class="s2">&quot;/usr/local/lib/gdalplugins&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-802" name="__codelineno-0-802"></a>                <span class="s2">&quot;/usr/lib/gdalplugins&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-803" name="__codelineno-0-803"></a>            <span class="p">]</span>
+<a id="__codelineno-0-804" name="__codelineno-0-804"></a>            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">system_paths</span><span class="p">:</span>
+<a id="__codelineno-0-805" name="__codelineno-0-805"></a>                <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-806" name="__codelineno-0-806"></a>                <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+<a id="__codelineno-0-807" name="__codelineno-0-807"></a>                    <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;GDAL_DRIVER_PATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-808" name="__codelineno-0-808"></a>                    <span class="n">gdal_plugins_path</span> <span class="o">=</span> <span class="n">path</span>
+<a id="__codelineno-0-809" name="__codelineno-0-809"></a>                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GDAL_DRIVER_PATH set to: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-810" name="__codelineno-0-810"></a>
+<a id="__codelineno-0-811" name="__codelineno-0-811"></a>            <span class="c1"># If the path is not found</span>
+<a id="__codelineno-0-812" name="__codelineno-0-812"></a>            <span class="c1"># print(&quot;GDAL plugins path could not be found. Please check your GDAL installation.&quot;)</span>
+<a id="__codelineno-0-813" name="__codelineno-0-813"></a>    <span class="k">return</span> <span class="n">gdal_plugins_path</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7771,7 +7755,9 @@ self.logger and self._logging_configured for convenience/compatibility.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/base/config.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-817">817</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-815">815</a></span>
+<span class="normal"><a href="#__codelineno-0-816">816</a></span>
+<span class="normal"><a href="#__codelineno-0-817">817</a></span>
 <span class="normal"><a href="#__codelineno-0-818">818</a></span>
 <span class="normal"><a href="#__codelineno-0-819">819</a></span>
 <span class="normal"><a href="#__codelineno-0-820">820</a></span>
@@ -7783,23 +7769,21 @@ self.logger and self._logging_configured for convenience/compatibility.</p>
 <span class="normal"><a href="#__codelineno-0-826">826</a></span>
 <span class="normal"><a href="#__codelineno-0-827">827</a></span>
 <span class="normal"><a href="#__codelineno-0-828">828</a></span>
-<span class="normal"><a href="#__codelineno-0-829">829</a></span>
-<span class="normal"><a href="#__codelineno-0-830">830</a></span>
-<span class="normal"><a href="#__codelineno-0-831">831</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-817" name="__codelineno-0-817"></a><span class="k">def</span><span class="w"> </span><span class="nf">setup_logging</span><span class="p">(</span>
-<a id="__codelineno-0-818" name="__codelineno-0-818"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-819" name="__codelineno-0-819"></a>    <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
-<a id="__codelineno-0-820" name="__codelineno-0-820"></a>    <span class="n">log_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-821" name="__codelineno-0-821"></a><span class="p">):</span>
-<a id="__codelineno-0-822" name="__codelineno-0-822"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-823" name="__codelineno-0-823"></a><span class="sd">    Configure application-wide logging for Pyramids by delegating to LoggerManager.</span>
-<a id="__codelineno-0-824" name="__codelineno-0-824"></a>
-<a id="__codelineno-0-825" name="__codelineno-0-825"></a><span class="sd">    This method preserves the public API while separating responsibilities. It delegates</span>
-<a id="__codelineno-0-826" name="__codelineno-0-826"></a><span class="sd">    the actual logging configuration to the LoggerManager constructor and then sets</span>
-<a id="__codelineno-0-827" name="__codelineno-0-827"></a><span class="sd">    self.logger and self._logging_configured for convenience/compatibility.</span>
-<a id="__codelineno-0-828" name="__codelineno-0-828"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-829" name="__codelineno-0-829"></a>    <span class="n">LoggerManager</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="n">log_file</span><span class="p">)</span>
-<a id="__codelineno-0-830" name="__codelineno-0-830"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_logging_configured</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-831" name="__codelineno-0-831"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-829">829</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-815" name="__codelineno-0-815"></a><span class="k">def</span><span class="w"> </span><span class="nf">setup_logging</span><span class="p">(</span>
+<a id="__codelineno-0-816" name="__codelineno-0-816"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-817" name="__codelineno-0-817"></a>    <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+<a id="__codelineno-0-818" name="__codelineno-0-818"></a>    <span class="n">log_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-819" name="__codelineno-0-819"></a><span class="p">):</span>
+<a id="__codelineno-0-820" name="__codelineno-0-820"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-821" name="__codelineno-0-821"></a><span class="sd">    Configure application-wide logging for Pyramids by delegating to LoggerManager.</span>
+<a id="__codelineno-0-822" name="__codelineno-0-822"></a>
+<a id="__codelineno-0-823" name="__codelineno-0-823"></a><span class="sd">    This method preserves the public API while separating responsibilities. It delegates</span>
+<a id="__codelineno-0-824" name="__codelineno-0-824"></a><span class="sd">    the actual logging configuration to the LoggerManager constructor and then sets</span>
+<a id="__codelineno-0-825" name="__codelineno-0-825"></a><span class="sd">    self.logger and self._logging_configured for convenience/compatibility.</span>
+<a id="__codelineno-0-826" name="__codelineno-0-826"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-827" name="__codelineno-0-827"></a>    <span class="n">LoggerManager</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="n">log_file</span><span class="p">)</span>
+<a id="__codelineno-0-828" name="__codelineno-0-828"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_logging_configured</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-829" name="__codelineno-0-829"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
