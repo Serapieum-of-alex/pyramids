@@ -654,33 +654,17 @@ class NetCDF(Dataset):
         """
         if not self.variable_names:
             raise ValueError(
-                "Cannot apply operation to an empty container " "(no data variables)."
+                "Cannot apply operation to an empty container (no data variables)."
             )
-        first_name = self.variable_names[0]
-        first_var = self.get_variable(first_name)
-        first_result = getattr(first_var, operation)(**op_kwargs)
 
-        # to_crs returns a VRT -- materialize to avoid dangling refs
-        first_arr = first_result.read_array()
-        # Preserve the extra dimension for single-band 3D variables
-        # (read_array squeezes to 2D, but the time/level dim should survive)
-        if first_arr.ndim == 2 and first_var._band_dim_name is not None:
-            first_arr = np.expand_dims(first_arr, axis=0)
-        ndv = first_result.no_data_value
-        ndv_scalar = ndv[0] if isinstance(ndv, list) and ndv else ndv
-        result = NetCDF.create_from_array(
-            arr=first_arr,
-            geo=first_result.geotransform,
-            epsg=first_result.epsg,
-            no_data_value=ndv_scalar,
-            variable_name=first_name,
-            extra_dim_name=first_var._band_dim_name or "time",
-            extra_dim_values=first_var._band_dim_values,
-        )
-
-        for var_name in self.variable_names[1:]:
+        result = None
+        for var_name in self.variable_names:
             var = self.get_variable(var_name)
             var_result = getattr(var, operation)(**op_kwargs)
+            # to_crs returns a VRT — materialize before the source goes
+            # out of scope. read_array also squeezes singleton-band 3-D
+            # variables to 2-D, so re-expand when the variable carried a
+            # band/time/level dim originally.
             var_arr = var_result.read_array()
             if var_arr.ndim == 2 and var._band_dim_name is not None:
                 var_arr = np.expand_dims(var_arr, axis=0)
@@ -688,15 +672,29 @@ class NetCDF(Dataset):
             var_ndv_scalar = (
                 var_ndv[0] if isinstance(var_ndv, list) and var_ndv else var_ndv
             )
-            ds = Dataset.create_from_array(
-                var_arr,
-                geo=var_result.geotransform,
-                epsg=var_result.epsg,
-                no_data_value=var_ndv_scalar,
-            )
-            ds._band_dim_name = var._band_dim_name
-            ds._band_dim_values = var._band_dim_values
-            result.set_variable(var_name, ds)
+
+            if result is None:
+                # First variable: build the container.
+                result = NetCDF.create_from_array(
+                    arr=var_arr,
+                    geo=var_result.geotransform,
+                    epsg=var_result.epsg,
+                    no_data_value=var_ndv_scalar,
+                    variable_name=var_name,
+                    extra_dim_name=var._band_dim_name or "time",
+                    extra_dim_values=var._band_dim_values,
+                )
+            else:
+                # Subsequent variables: drop into the existing container.
+                ds = Dataset.create_from_array(
+                    var_arr,
+                    geo=var_result.geotransform,
+                    epsg=var_result.epsg,
+                    no_data_value=var_ndv_scalar,
+                )
+                ds._band_dim_name = var._band_dim_name
+                ds._band_dim_values = var._band_dim_values
+                result.set_variable(var_name, ds)
 
         return result
 
