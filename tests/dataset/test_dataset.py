@@ -481,7 +481,7 @@ class TestSpatialProperties:
         gdf = gpd.GeoDataFrame(
             columns=["id"], geometry=[Polygon(coords)], crs=32632, data=[[0]]
         )
-        window = dataset._convert_polygon_to_window(gdf)
+        window = dataset.io._convert_polygon_to_window(gdf)
         assert window == [5, 2, 1, 1]
         arr = dataset.read_array(band=0, window=window)
         assert arr[0] == 1
@@ -1645,7 +1645,7 @@ class TestNCtoGeoTIFF:
 class TestTiling:
     def test_window(self, raster_1band_coello_path):
         dataset = Dataset.read_file(raster_1band_coello_path)
-        tiles_details = dataset._tile_offsets(size=6)
+        tiles_details = dataset.io._tile_offsets(size=6)
         assert isinstance(tiles_details, GeneratorType)
         tiles_details_l = list(tiles_details)
         assert tiles_details_l == [

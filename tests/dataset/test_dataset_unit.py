@@ -3437,7 +3437,7 @@ class TestWindow:
             epsg=4326,
             no_data_value=-9999.0,
         )
-        windows = list(ds._tile_offsets(size=5))
+        windows = list(ds.io._tile_offsets(size=5))
         assert len(windows) > 0, "Should yield at least 1 window"
         for w in windows:
             assert len(w) == 4, "Each window is (xoff, yoff, w, h)"
@@ -3452,7 +3452,7 @@ class TestWindow:
             epsg=4326,
             no_data_value=-9999.0,
         )
-        windows = list(ds._tile_offsets(size=3))
+        windows = list(ds.io._tile_offsets(size=3))
         assert len(windows) >= 4, f"Should yield at least 4 windows for 7x7 with size 3"
 
 

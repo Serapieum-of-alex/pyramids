@@ -37,7 +37,6 @@ from pyramids.dataset._collaborators import (
 )
 from pyramids.dataset.ops import (
     BandMetadata as _BandMetadataMixin,
-    IO as _IOMixin,
 )
 from pyramids.dataset.ops._focal import (
     aspect,
@@ -67,7 +66,6 @@ if TYPE_CHECKING:
 
 class Dataset(  # type: ignore[misc]
     _BandMetadataMixin,
-    _IOMixin,
     AbstractDataset,
 ):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
@@ -306,6 +304,63 @@ class Dataset(  # type: ignore[misc]
     def fill_gaps(self, *args, **kwargs):
         """Facade — delegates to :meth:`Spatial.fill_gaps <pyramids.dataset._collaborators.Spatial.fill_gaps>`."""
         return self.spatial.fill_gaps(*args, **kwargs)
+
+    def read_array(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.read_array <pyramids.dataset._collaborators.IO.read_array>`."""
+        return self.io.read_array(*args, **kwargs)
+
+    def write_array(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.write_array <pyramids.dataset._collaborators.IO.write_array>`."""
+        return self.io.write_array(*args, **kwargs)
+
+    def to_file(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.to_file <pyramids.dataset._collaborators.IO.to_file>`."""
+        return self.io.to_file(*args, **kwargs)
+
+    def to_raster(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.to_raster <pyramids.dataset._collaborators.IO.to_raster>`."""
+        return self.io.to_raster(*args, **kwargs)
+
+    def get_block_arrangement(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.get_block_arrangement <pyramids.dataset._collaborators.IO.get_block_arrangement>`."""
+        return self.io.get_block_arrangement(*args, **kwargs)
+
+    def get_tile(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.get_tile <pyramids.dataset._collaborators.IO.get_tile>`."""
+        return self.io.get_tile(*args, **kwargs)
+
+    def map_blocks(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.map_blocks <pyramids.dataset._collaborators.IO.map_blocks>`."""
+        return self.io.map_blocks(*args, **kwargs)
+
+    def to_xyz(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.to_xyz <pyramids.dataset._collaborators.IO.to_xyz>`."""
+        return self.io.to_xyz(*args, **kwargs)
+
+    @property
+    def overview_count(self):
+        """Facade — delegates to :attr:`IO.overview_count <pyramids.dataset._collaborators.IO.overview_count>`."""
+        return self.io.overview_count
+
+    def create_overviews(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.create_overviews <pyramids.dataset._collaborators.IO.create_overviews>`."""
+        return self.io.create_overviews(*args, **kwargs)
+
+    def recreate_overviews(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.recreate_overviews <pyramids.dataset._collaborators.IO.recreate_overviews>`."""
+        return self.io.recreate_overviews(*args, **kwargs)
+
+    def get_overview(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.get_overview <pyramids.dataset._collaborators.IO.get_overview>`."""
+        return self.io.get_overview(*args, **kwargs)
+
+    def read_overview_array(self, *args, **kwargs):
+        """Facade — delegates to :meth:`IO.read_overview_array <pyramids.dataset._collaborators.IO.read_overview_array>`."""
+        return self.io.read_overview_array(*args, **kwargs)
+
+    def _read_block(self, *args, **kwargs):
+        """Facade — concrete override of the abstract :meth:`AbstractDataset._read_block`."""
+        return self.io._read_block(*args, **kwargs)
 
     def _get_crs(self) -> str:
         """Concrete override of :meth:`AbstractDataset._get_crs`.

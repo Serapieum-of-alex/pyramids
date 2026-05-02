@@ -234,6 +234,17 @@ class TestCollaboratorAttachment:
 # migrated method bodies into the collaborator and inverted the
 # direction — those methods are tested in TestFacadeDelegation below.
 FORWARDING_METHODS = [
+    ("bands", "get_attribute_table"),
+    ("bands", "set_attribute_table"),
+    ("bands", "add_band"),
+    ("bands", "get_band_by_color"),
+    ("bands", "change_no_data_value"),
+]
+
+# Stage 2 facades: Dataset method delegates to the collaborator method
+# (the mixin has been removed from Dataset's MRO). PR 2.1 — cell, PR 2.2 —
+# cog, PR 2.3 — vectorize, PR 2.4 — analysis, PR 2.5 — spatial.
+FACADE_METHODS = [
     ("io", "read_array"),
     ("io", "write_array"),
     ("io", "to_file"),
@@ -246,17 +257,6 @@ FORWARDING_METHODS = [
     ("io", "recreate_overviews"),
     ("io", "get_overview"),
     ("io", "read_overview_array"),
-    ("bands", "get_attribute_table"),
-    ("bands", "set_attribute_table"),
-    ("bands", "add_band"),
-    ("bands", "get_band_by_color"),
-    ("bands", "change_no_data_value"),
-]
-
-# Stage 2 facades: Dataset method delegates to the collaborator method
-# (the mixin has been removed from Dataset's MRO). PR 2.1 — cell, PR 2.2 —
-# cog, PR 2.3 — vectorize, PR 2.4 — analysis, PR 2.5 — spatial.
-FACADE_METHODS = [
     ("spatial", "crop"),
     ("spatial", "to_crs"),
     ("spatial", "set_crs"),
@@ -357,9 +357,7 @@ class TestFacadeDelegation:
         mock.assert_called_once_with(1, 2, foo="bar")
 
 
-READONLY_PROPERTIES = [
-    ("io", "overview_count"),
-]
+READONLY_PROPERTIES = []
 
 READWRITE_PROPERTIES = [
     ("bands", "band_color"),
@@ -367,9 +365,10 @@ READWRITE_PROPERTIES = [
 ]
 
 # Stage 2 facade properties: Dataset property delegates to a same-named
-# property on the collaborator. PR 2.2 — cog.is_cog.
+# property on the collaborator. PR 2.2 — cog.is_cog. PR 2.6 — io.overview_count.
 FACADE_PROPERTIES = [
     ("cog", "is_cog"),
+    ("io", "overview_count"),
 ]
 
 
