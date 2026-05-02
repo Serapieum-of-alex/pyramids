@@ -275,6 +275,42 @@ class AbstractDataset(ABC):
         )
         return y_coords
 
+    def _iloc(self, i: int) -> gdal.Band:
+        """Access a GDAL Band by 0-based index.
+
+        Hosted on ``RasterBase`` so every collaborator can resolve
+        ``self._ds._iloc(i)`` without depending on ``BandMetadata`` being
+        in the MRO. The duplicate body on ``BandMetadata`` is kept during
+        Stage 1 of the L-2 migration (both bodies are identical) and is
+        removed in Stage 2 PR2.7 when the bands collaborator lands.
+
+        The returned band object is only valid while the parent dataset
+        is open. Do not store the band reference — use it immediately
+        and discard it.
+
+        Args:
+            i: Band index (0-based).
+
+        Returns:
+            gdal.Band: GDAL band object.
+
+        Raises:
+            IndexError: If the index is negative or out of bounds.
+            RuntimeError: If the dataset has been closed.
+        """
+        if self._raster is None:
+            raise RuntimeError(
+                "Cannot access band on a closed dataset. "
+                "The dataset has been closed via close() or a context manager."
+            )
+        if i < 0:
+            raise IndexError("negative index not supported")
+        if i > self.band_count - 1:
+            raise IndexError(
+                f"index {i} is out of bounds for axis 0 with size {self.band_count}"
+            )
+        return self.raster.GetRasterBand(i + 1)
+
     @property
     def block_size(self) -> list[tuple[int, int]]:
         """Block Size.
