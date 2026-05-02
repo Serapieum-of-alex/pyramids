@@ -272,18 +272,18 @@ FORWARDING_METHODS = [
     ("vectorize", "translate"),
     ("vectorize", "cluster"),
     ("vectorize", "cluster2"),
-    ("cog", "to_cog"),
-    ("cog", "validate_cog"),
 ]
 
 # Stage 2 facades: Dataset method delegates to the collaborator method
-# (the mixin has been removed from Dataset's MRO). PR 2.1 — cell.
+# (the mixin has been removed from Dataset's MRO). PR 2.1 — cell, PR 2.2 — cog.
 FACADE_METHODS = [
     ("cell", "get_cell_coords"),
     ("cell", "get_cell_polygons"),
     ("cell", "get_cell_points"),
     ("cell", "map_to_array_coordinates"),
     ("cell", "array_to_map_coordinates"),
+    ("cog", "to_cog"),
+    ("cog", "validate_cog"),
 ]
 
 
@@ -358,12 +358,17 @@ class TestFacadeDelegation:
 
 READONLY_PROPERTIES = [
     ("io", "overview_count"),
-    ("cog", "is_cog"),
 ]
 
 READWRITE_PROPERTIES = [
     ("bands", "band_color"),
     ("bands", "color_table"),
+]
+
+# Stage 2 facade properties: Dataset property delegates to a same-named
+# property on the collaborator. PR 2.2 — cog.is_cog.
+FACADE_PROPERTIES = [
+    ("cog", "is_cog"),
 ]
 
 
@@ -396,6 +401,36 @@ class TestPropertyForwarding:
         result = getattr(collab, prop_name)
         assert result is sentinel, (
             f"{collab_attr}.{prop_name} getter did not forward to Dataset.{prop_name}"
+        )
+
+    @pytest.mark.parametrize("collab_attr, prop_name", FACADE_PROPERTIES)
+    def test_facade_property_reads_from_collaborator(
+        self, in_memory_dataset, mocker, collab_attr, prop_name,
+    ):
+        """``ds.<prop>`` should read from ``ds.<collab>.<prop>``.
+
+        Args:
+            collab_attr: Collaborator attribute name (e.g. ``"cog"``).
+            prop_name: Property migrated onto that collaborator.
+
+        Test scenario:
+            For Stage 2 properties, the Dataset property is now a thin
+            facade reading from the collaborator. Patch the collaborator
+            class property with a sentinel value; reading ``ds.<prop>``
+            should produce that sentinel.
+        """
+        sentinel = object()
+        collab = getattr(in_memory_dataset, collab_attr)
+        mocker.patch.object(
+            type(collab),
+            prop_name,
+            new_callable=mocker.PropertyMock,
+            return_value=sentinel,
+        )
+        result = getattr(in_memory_dataset, prop_name)
+        assert result is sentinel, (
+            f"Dataset.{prop_name} facade did not read from {collab_attr}.{prop_name} "
+            f"(got {result!r})"
         )
 
     @pytest.mark.parametrize("collab_attr, prop_name", READWRITE_PROPERTIES)

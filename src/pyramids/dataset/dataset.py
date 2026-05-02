@@ -38,7 +38,6 @@ from pyramids.dataset._collaborators import (
 from pyramids.dataset.ops import (
     Analysis as _AnalysisMixin,
     BandMetadata as _BandMetadataMixin,
-    COGMixin as _COGMixin,
     IO as _IOMixin,
     Spatial as _SpatialMixin,
     Vectorize as _VectorizeMixin,
@@ -72,7 +71,6 @@ if TYPE_CHECKING:
 class Dataset(  # type: ignore[misc]
     _BandMetadataMixin,
     _IOMixin,
-    _COGMixin,
     _SpatialMixin,
     _AnalysisMixin,
     _VectorizeMixin,
@@ -205,6 +203,19 @@ class Dataset(  # type: ignore[misc]
     def array_to_map_coordinates(self, *args, **kwargs):
         """Facade — delegates to :meth:`Cell.array_to_map_coordinates <pyramids.dataset._collaborators.Cell.array_to_map_coordinates>`."""
         return self.cell.array_to_map_coordinates(*args, **kwargs)
+
+    def to_cog(self, *args, **kwargs):
+        """Facade — delegates to :meth:`COG.to_cog <pyramids.dataset._collaborators.COG.to_cog>`."""
+        return self.cog.to_cog(*args, **kwargs)
+
+    @property
+    def is_cog(self) -> bool:
+        """Facade — delegates to :attr:`COG.is_cog <pyramids.dataset._collaborators.COG.is_cog>`."""
+        return self.cog.is_cog
+
+    def validate_cog(self, *args, **kwargs):
+        """Facade — delegates to :meth:`COG.validate_cog <pyramids.dataset._collaborators.COG.validate_cog>`."""
+        return self.cog.validate_cog(*args, **kwargs)
 
     def zonal_stats(
         self,
