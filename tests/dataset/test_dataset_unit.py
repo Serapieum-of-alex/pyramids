@@ -581,16 +581,14 @@ class TestChangeNoDataValueAttr:
         ), "no_data_value scalar setter failed"
 
 
-class TestCreateGtiffFromArray:
-    """Tests for the _create_gtiff_from_array static method."""
+class TestCreateFromArray:
+    """Tests for ``Dataset.create_from_array`` (the public form)."""
 
     def test_single_band(self):
         """Create a single-band dataset from a 2D array."""
         arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         geo = (0.0, 0.5, 0.0, 10.0, 0.0, -0.5)
-        result = Dataset._create_gtiff_from_array(
-            arr, cols=2, rows=2, bands=1, geo=geo, epsg=4326
-        )
+        result = Dataset.create_from_array(arr, geo=geo, epsg=4326)
         assert isinstance(result, Dataset), "Should return a Dataset"
         read_arr = result.read_array()
         np.testing.assert_array_equal(read_arr, arr, err_msg="Array values mismatch")
@@ -599,9 +597,7 @@ class TestCreateGtiffFromArray:
         """Create a multi-band dataset from a 3D array."""
         arr = np.ones((3, 4, 5), dtype=np.float64)
         geo = (0.0, 1.0, 0.0, 0.0, 0.0, -1.0)
-        result = Dataset._create_gtiff_from_array(
-            arr, cols=5, rows=4, bands=3, geo=geo, epsg=4326
-        )
+        result = Dataset.create_from_array(arr, geo=geo, epsg=4326)
         assert result.band_count == 3, "Expected 3 bands"
 
 

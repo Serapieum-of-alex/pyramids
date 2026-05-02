@@ -16,7 +16,6 @@ import numpy as np
 from osgeo import gdal
 
 from pyramids import _io
-from pyramids.base._errors import CRSError
 from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     numpy_to_gdal_dtype,
@@ -48,8 +47,8 @@ from pyramids.dataset.ops._zarr import (
     write_dataset_to_zarr,
 )
 from pyramids.dataset.ops._zonal import zonal_stats as _zonal_stats
+from pyramids.dataset.ops.vectorize import rasterize_features
 from pyramids.feature import FeatureCollection
-from pyramids.feature import _ogr as _feature_ogr
 
 if TYPE_CHECKING:
     from geopandas import GeoDataFrame
@@ -709,29 +708,48 @@ class Dataset(  # type: ignore[misc]
         dtype: int,
         geo: tuple,
         crs: str,
-        no_data_value,
+        no_data_value: Any | None = DEFAULT_NO_DATA_VALUE,
         driver: str = "MEM",
         path: str | Path | None = None,
         access: str = "write",
+        array: np.ndarray | None = None,
     ) -> Dataset:
-        """Create a GDAL dataset, set its spatial metadata, and wrap it as a Dataset.
+        """Build a Dataset: allocate, set geo/CRS, optionally fill no-data, optionally write.
 
-        Consolidates the repeated pattern of _create_dataset + SetGeoTransform +
-        SetProjection + wrap + _set_no_data_value into a single helper.
+        Single canonical factory for raster construction. Consolidates the
+        ``_create_dataset + SetGeoTransform + SetProjection + wrap +
+        _set_no_data_value (+ WriteArray)`` pattern that ``create``,
+        ``create_from_array``, ``dataset_like``, and the per-op factories
+        across ``Spatial`` / ``Analysis`` all need.
 
         Args:
-            cols (int): Number of columns.
-            rows (int): Number of rows.
-            bands (int): Number of bands.
-            dtype (int): GDAL data type.
-            geo (tuple): Geotransform tuple.
-            crs (str): Projection as WKT string.
-            no_data_value: No-data value. Scalar (broadcast to all bands) or list (one per band).
-            driver (str): Driver type. Default is "MEM".
-            path (str | Path | None): Path for disk-based drivers.
-            access (str): Access mode for the Dataset wrapper. Default is "write".
-                Note: MEM driver datasets can be written to regardless of access mode since
-                the access flag is enforced at the pyramids level, not by GDAL.
+            cols: Number of columns.
+            rows: Number of rows.
+            bands: Number of bands.
+            dtype: GDAL data type code.
+            geo: Geotransform tuple
+                ``(top_left_x, pixel_w, row_skew, top_left_y, col_skew,
+                pixel_h)``.
+            crs: Projection as WKT string.
+            no_data_value: No-data value. Scalar (broadcast to all bands)
+                or list (one per band). Pass ``None`` to skip the
+                ``_set_no_data_value`` call so bands have no no-data
+                sentinel — the same behaviour the public ``create``
+                factory exposes.
+            driver: GDAL driver type. Default ``"MEM"``.
+            path: Path for disk-based drivers. ``None`` keeps the
+                dataset in memory.
+            access: Access mode for the Dataset wrapper. Default ``"write"``.
+                Note: MEM driver datasets can be written to regardless
+                of access mode since the access flag is enforced at the
+                pyramids level, not by GDAL.
+            array: Optional numpy array to write into the bands after
+                construction. When the array is 2-D it goes to band 1;
+                when 3-D, ``array[i, :, :]`` goes to band ``i+1``. The
+                caller is responsible for matching ``array.shape`` to
+                ``bands x rows x cols`` (or ``rows x cols`` for a
+                single-band array). Default ``None`` (allocate but
+                don't write).
 
         Returns:
             Dataset: A fully configured Dataset object.
@@ -740,7 +758,15 @@ class Dataset(  # type: ignore[misc]
         dst.SetGeoTransform(geo)
         dst.SetProjection(crs)
         dst_obj = cls(dst, access=access)
-        dst_obj._set_no_data_value(no_data_value=no_data_value)
+        if no_data_value is not None:
+            dst_obj._set_no_data_value(no_data_value=no_data_value)
+        if array is not None:
+            if array.ndim == 2:
+                dst_obj.raster.GetRasterBand(1).WriteArray(array)
+            else:
+                for i in range(bands):
+                    dst_obj.raster.GetRasterBand(i + 1).WriteArray(array[i, :, :])
+            dst_obj._raster.FlushCache()
         return dst_obj
 
     @classmethod
@@ -783,10 +809,8 @@ class Dataset(  # type: ignore[misc]
         Returns:
             Dataset: A new dataset
         """
-        # Create the driver.
         gdal_dtype = numpy_to_gdal_dtype(dtype)
-        dst = Dataset._create_dataset(columns, rows, bands, gdal_dtype, path=path)
-        sr = sr_from_epsg(epsg)
+        crs_wkt = sr_from_epsg(epsg).ExportToWkt()
         geotransform = (
             top_left_corner[0],
             cell_size,
@@ -795,15 +819,16 @@ class Dataset(  # type: ignore[misc]
             0,
             -1 * cell_size,
         )
-        dst.SetGeoTransform(geotransform)
-        # Set the projection.
-        dst.SetProjection(sr.ExportToWkt())
-
-        dst = cls(dst, access="write")
-        if no_data_value is not None:
-            dst._set_no_data_value(no_data_value=no_data_value)
-
-        return dst
+        return cls._build_dataset(
+            columns,
+            rows,
+            bands,
+            gdal_dtype,
+            geotransform,
+            crs_wkt,
+            no_data_value,
+            path=path,
+        )
 
     @classmethod
     def from_features(
@@ -815,13 +840,6 @@ class Dataset(  # type: ignore[misc]
         column_name: str | list[str] | None = None,
     ) -> Dataset:
         """Rasterize a :class:`FeatureCollection` into a new :class:`Dataset`.
-
-        ARC-4: this classmethod replaces ``FeatureCollection.to_dataset``.
-        Moving the method here breaks the circular import that forced
-        the old code to do ``from pyramids.dataset import Dataset``
-        inside the method body (a CLAUDE.md violation).
-        ``pyramids.dataset`` already imports :class:`FeatureCollection`
-        at module level, so this direction is cycle-free.
 
         Burns the values from ``column_name`` (or every attribute
         column if ``None``) into a single-band or multi-band raster.
@@ -842,165 +860,28 @@ class Dataset(  # type: ignore[misc]
             column_name (str | list[str] | None):
                 Attribute column(s) to burn as band values. ``None``
                 burns every non-geometry column as a separate band.
+                Mixed-dtype column lists are promoted to the smallest
+                numpy dtype that holds every selected column without
+                lossy cast (numpy result-type rules).
 
         Returns:
-            Dataset: The burned raster. When the burn column is an
-            integer dtype and the template's no-data is ``None``, the
-            output raster's no-data is the class default sentinel
-            (``cls.default_no_data_value``) rather than ``NaN`` — NaN
-            cannot be stored in integer rasters without silent
-            coercion. Float-typed burn columns keep NaN as before.
+            Dataset: The burned raster.
 
         Raises:
-            ValueError: Raised up front (before the raster is
-                allocated) in any of:
-
-                * neither ``cell_size`` nor ``template`` was given,
-                * ``cell_size`` is ``<= 0`` (D-M2),
-                * ``column_name`` is an empty list (D-M2),
-                * ``column_name`` names a column that isn't in
-                  ``features.columns`` — either as a string or inside
-                  a list (D-M2). The message lists the available
-                  columns to ease the fix.
-            TypeError: If ``template`` is not a pyramids ``Dataset``,
-                or if ``column_name`` is neither ``str``, ``list``,
-                nor ``None`` (M4 — a common slip is passing an int
-                by mistake; the typed error points at the input
-                type rather than the column-not-found path).
-            CRSError: If ``features.epsg`` is ``None`` (the vector
-                has no CRS), or if ``template`` is supplied and
-                ``template.epsg != features.epsg``. Raised before any
-                raster is allocated so callers fail fast.
+            ValueError: ``cell_size`` missing or non-positive,
+                ``column_name`` empty or referencing missing columns.
+            TypeError: ``template`` is not a Dataset, or
+                ``column_name`` is not ``str`` / ``list`` / ``None``.
+            CRSError: ``features.epsg`` is ``None``, or
+                ``template.epsg != features.epsg``.
         """
-        if cell_size is None and template is None:
-            raise ValueError("You have to enter either cell size or Dataset object.")
-        # D-M2: validate cell_size up front (non-positive breaks the
-        # non-template branch with divide-by-zero / negative shapes).
-        if cell_size is not None and cell_size <= 0:
-            raise ValueError(f"cell_size must be positive; got {cell_size!r}.")
-        # M4: type-check ``column_name`` up front so a caller passing
-        # an ``int`` (or any other non-str, non-list value) sees a
-        # typed TypeError instead of "column_name 123 is not in the
-        # FeatureCollection" which would misdirect them toward
-        # renaming a column.
-        if column_name is not None and not isinstance(column_name, (str, list)):
-            raise TypeError(
-                f"column_name must be str, list[str], or None; "
-                f"got {type(column_name).__name__}."
-            )
-
-        ds_epsg = features.epsg
-        # C5: both branches below feed ``ds_epsg`` into ``cls.create`` (via
-        # either the template path or the cell_size path). A CRS-less
-        # FeatureCollection would produce a raster with an undefined
-        # projection, which fails downstream in reproject / crop / overlay
-        # with cryptic GDAL errors. Fail fast with a typed CRSError.
-        if ds_epsg is None:
-            raise CRSError(
-                "FeatureCollection must have a CRS before rasterisation. "
-                "Set one via ``fc.set_crs('EPSG:...')`` or construct the FC "
-                "with ``crs='EPSG:...'``."
-            )
-        if template is not None:
-            if not isinstance(template, Dataset):
-                raise TypeError(
-                    "The template parameter must be a pyramids Dataset "
-                    "(see pyramids.dataset.Dataset.read_file)."
-                )
-            if template.epsg != ds_epsg:
-                raise CRSError(
-                    f"Dataset and vector are not the same EPSG. "
-                    f"{template.epsg} != {ds_epsg}"
-                )
-            xmin, ymax = template.top_left_corner
-            no_data_value = (
-                template.no_data_value[0]
-                if template.no_data_value[0] is not None
-                else np.nan
-            )
-            rows = template.rows
-            columns = template.columns
-            cell_size = template.cell_size
-        else:
-            xmin, ymin, xmax, ymax = features.total_bounds
-            no_data_value = cls.default_no_data_value
-            columns = int(np.ceil((xmax - xmin) / cell_size))
-            rows = int(np.ceil((ymax - ymin) / cell_size))
-
-        if column_name is None:
-            column_name = [c for c in features.columns if c != "geometry"]
-
-        # D-M2: validate column_name shape / membership before
-        # dereferencing into features.dtypes. An empty list used to
-        # IndexError inside the dtype lookup; an unknown name used to
-        # raise an opaque KeyError deep in pandas.
-        if isinstance(column_name, list):
-            if not column_name:
-                raise ValueError(
-                    "column_name list must be non-empty. Pass None to "
-                    "burn every non-geometry column, or name at least "
-                    "one column."
-                )
-            missing = [c for c in column_name if c not in features.columns]
-            if missing:
-                raise ValueError(
-                    f"column_name references columns not in the "
-                    f"FeatureCollection: {missing}. Available columns: "
-                    f"{list(features.columns)}."
-                )
-            numpy_dtype = features.dtypes[column_name[0]]
-        else:
-            if column_name not in features.columns:
-                raise ValueError(
-                    f"column_name {column_name!r} is not in the "
-                    f"FeatureCollection. Available columns: "
-                    f"{list(features.columns)}."
-                )
-            numpy_dtype = features.dtypes[column_name]
-
-        # C2: integer raster dtypes cannot represent NaN. If the template
-        # supplied None as no_data_value (defaulted to NaN above) and the
-        # burn column's dtype is integer, fall back to the class default
-        # sentinel so GDAL does not silently coerce NaN into an arbitrary
-        # integer value.
-        if np.issubdtype(numpy_dtype, np.integer):
-            try:
-                if np.isnan(no_data_value):
-                    no_data_value = cls.default_no_data_value
-            except (TypeError, ValueError):
-                pass
-
-        dtype = str(numpy_dtype)
-        attribute = column_name
-        top_left_corner = (xmin, ymax)
-        bands_count = 1 if not isinstance(attribute, list) else len(attribute)
-        cell_size_val: int | float = float(cell_size)
-
-        dataset_n = cls.create(
-            cell_size_val,
-            rows,
-            columns,
-            dtype,
-            bands_count,
-            top_left_corner,
-            ds_epsg,
-            no_data_value,
+        return rasterize_features(
+            features,
+            cls,
+            cell_size=cell_size,
+            template=template,
+            column_name=column_name,
         )
-
-        with _feature_ogr.as_datasource(features, gdal_dataset=True) as vector_ds:
-            bands = list(range(1, bands_count + 1))
-            for ind, band in enumerate(bands):
-                rasterize_opts = gdal.RasterizeOptions(
-                    bands=[band],
-                    burnValues=None,
-                    attribute=(
-                        attribute[ind] if isinstance(attribute, list) else attribute
-                    ),
-                    allTouched=True,
-                )
-                gdal.Rasterize(dataset_n.raster, vector_ds, options=rasterize_opts)
-
-        return dataset_n
 
     @classmethod
     def create_from_array(  # type: ignore[override]
@@ -1063,56 +944,18 @@ class Dataset(  # type: ignore[misc]
             rows = int(arr.shape[1])
             cols = int(arr.shape[2])
 
-        dst_obj = cls._create_gtiff_from_array(
-            arr,
+        return cls._build_dataset(
             cols,
             rows,
             bands,
+            numpy_to_gdal_dtype(arr),
             geo,
-            epsg,
+            sr_from_epsg(int(epsg)).ExportToWkt(),
             no_data_value,
-            driver_type=driver_type,
+            driver=driver_type,
             path=path,
+            array=arr,
         )
-
-        return dst_obj
-
-    @staticmethod
-    def _create_gtiff_from_array(
-        arr: np.ndarray,
-        cols: int,
-        rows: int,
-        bands: int = 1,
-        geo: tuple[float, float, float, float, float, float] | None = None,
-        epsg: str | int | None = None,
-        no_data_value: Any | list = DEFAULT_NO_DATA_VALUE,
-        driver_type: str = "MEM",
-        path: str | Path | None = None,
-    ) -> Dataset:
-        dtype = numpy_to_gdal_dtype(arr)
-        dst_ds = Dataset._create_dataset(
-            cols, rows, bands, dtype, driver=driver_type, path=path
-        )
-
-        if epsg is None:
-            raise ValueError("epsg must be provided")
-
-        srse = sr_from_epsg(int(epsg))
-        dst_ds.SetProjection(srse.ExportToWkt())
-        dst_ds.SetGeoTransform(geo)
-
-        dst_obj = Dataset(dst_ds, access="write")
-        dst_obj._set_no_data_value(no_data_value=no_data_value)
-        dst_obj._raster.FlushCache()
-
-        if bands == 1:
-            dst_obj.raster.GetRasterBand(1).WriteArray(arr)
-        else:
-            for i in range(bands):
-                dst_obj.raster.GetRasterBand(i + 1).WriteArray(arr[i, :, :])
-
-        dst_obj._raster.FlushCache()
-        return dst_obj
 
     @classmethod
     def dataset_like(
@@ -1144,31 +987,15 @@ class Dataset(  # type: ignore[misc]
         if not isinstance(array, np.ndarray):
             raise TypeError("array should be of type numpy array")
 
-        if array.ndim == 2:
-            bands = 1
-        else:
-            bands = array.shape[0]
-
-        dtype = numpy_to_gdal_dtype(array)
-
-        dst_obj = cls._build_dataset(
+        bands = 1 if array.ndim == 2 else array.shape[0]
+        return cls._build_dataset(
             src.columns,
             src.rows,
             bands,
-            dtype,
+            numpy_to_gdal_dtype(array),
             src.geotransform,
             src.crs,
             src.no_data_value[0],
             path=path,
+            array=array,
         )
-
-        if bands == 1:
-            dst_obj.raster.GetRasterBand(1).WriteArray(array)
-        else:
-            for band_i in range(bands):
-                dst_obj.raster.GetRasterBand(band_i + 1).WriteArray(array[band_i, :, :])
-
-        if path is not None:
-            dst_obj.raster.FlushCache()
-
-        return dst_obj
