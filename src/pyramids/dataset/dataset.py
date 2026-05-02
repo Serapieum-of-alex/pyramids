@@ -39,7 +39,6 @@ from pyramids.dataset.ops import (
     Analysis as _AnalysisMixin,
     BandMetadata as _BandMetadataMixin,
     COGMixin as _COGMixin,
-    Cell as _CellMixin,
     IO as _IOMixin,
     Spatial as _SpatialMixin,
     Vectorize as _VectorizeMixin,
@@ -77,7 +76,6 @@ class Dataset(  # type: ignore[misc]
     _SpatialMixin,
     _AnalysisMixin,
     _VectorizeMixin,
-    _CellMixin,
     AbstractDataset,
 ):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
@@ -187,6 +185,26 @@ class Dataset(  # type: ignore[misc]
             chunks=chunks,
             band=band,
         )
+
+    def get_cell_coords(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Cell.get_cell_coords <pyramids.dataset._collaborators.Cell.get_cell_coords>`."""
+        return self.cell.get_cell_coords(*args, **kwargs)
+
+    def get_cell_polygons(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Cell.get_cell_polygons <pyramids.dataset._collaborators.Cell.get_cell_polygons>`."""
+        return self.cell.get_cell_polygons(*args, **kwargs)
+
+    def get_cell_points(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Cell.get_cell_points <pyramids.dataset._collaborators.Cell.get_cell_points>`."""
+        return self.cell.get_cell_points(*args, **kwargs)
+
+    def map_to_array_coordinates(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Cell.map_to_array_coordinates <pyramids.dataset._collaborators.Cell.map_to_array_coordinates>`."""
+        return self.cell.map_to_array_coordinates(*args, **kwargs)
+
+    def array_to_map_coordinates(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Cell.array_to_map_coordinates <pyramids.dataset._collaborators.Cell.array_to_map_coordinates>`."""
+        return self.cell.array_to_map_coordinates(*args, **kwargs)
 
     def zonal_stats(
         self,

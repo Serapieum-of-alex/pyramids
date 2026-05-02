@@ -229,6 +229,10 @@ class TestCollaboratorAttachment:
         )
 
 
+# Stage 1 forwarders: collaborator method delegates to the same-named
+# Dataset method (the mixin is still in Dataset's MRO). PR 2.1 (cell)
+# migrated method bodies into the collaborator and inverted the
+# direction — those methods are tested in TestFacadeDelegation below.
 FORWARDING_METHODS = [
     ("io", "read_array"),
     ("io", "write_array"),
@@ -264,11 +268,6 @@ FORWARDING_METHODS = [
     ("analysis", "footprint"),
     ("analysis", "get_histogram"),
     ("analysis", "plot"),
-    ("cell", "get_cell_coords"),
-    ("cell", "get_cell_polygons"),
-    ("cell", "get_cell_points"),
-    ("cell", "map_to_array_coordinates"),
-    ("cell", "array_to_map_coordinates"),
     ("vectorize", "to_feature_collection"),
     ("vectorize", "translate"),
     ("vectorize", "cluster"),
@@ -277,9 +276,19 @@ FORWARDING_METHODS = [
     ("cog", "validate_cog"),
 ]
 
+# Stage 2 facades: Dataset method delegates to the collaborator method
+# (the mixin has been removed from Dataset's MRO). PR 2.1 — cell.
+FACADE_METHODS = [
+    ("cell", "get_cell_coords"),
+    ("cell", "get_cell_polygons"),
+    ("cell", "get_cell_points"),
+    ("cell", "map_to_array_coordinates"),
+    ("cell", "array_to_map_coordinates"),
+]
+
 
 class TestForwardingParity:
-    """Each public collaborator method forwards to the same-named Dataset method."""
+    """Each public collaborator forwarder method delegates to the same-named Dataset method."""
 
     @pytest.mark.parametrize("collab_attr, method_name", FORWARDING_METHODS)
     def test_method_forwards_args_and_return(
@@ -290,7 +299,7 @@ class TestForwardingParity:
         Args:
             collab_attr: Collaborator attribute name on the Dataset
                 (one of ``io``, ``spatial``, ``bands``, ``analysis``,
-                ``cell``, ``vectorize``, ``cog``).
+                ``vectorize``, ``cog``).
             method_name: Public method to test on that collaborator.
 
         Test scenario:
@@ -309,6 +318,40 @@ class TestForwardingParity:
         assert result is sentinel, (
             f"{collab_attr}.{method_name} did not return the underlying "
             f"call's value (got {result!r})"
+        )
+        mock.assert_called_once_with(1, 2, foo="bar")
+
+
+class TestFacadeDelegation:
+    """Each migrated Dataset facade method delegates to the collaborator method."""
+
+    @pytest.mark.parametrize("collab_attr, method_name", FACADE_METHODS)
+    def test_facade_calls_collaborator(
+        self, in_memory_dataset, mocker, collab_attr, method_name,
+    ):
+        """``ds.<method>(...)`` should invoke ``ds.<collab>.<method>(...)``.
+
+        Args:
+            collab_attr: Collaborator attribute name on the Dataset.
+            method_name: Public method that has been migrated onto that
+                collaborator.
+
+        Test scenario:
+            For methods migrated to a collaborator (Stage 2), the
+            Dataset method is now a thin facade. Patch the collaborator
+            method to return a sentinel; calling ``ds.<method>(...)``
+            should invoke the patched collaborator method with the same
+            args and return the sentinel.
+        """
+        sentinel = object()
+        collab = getattr(in_memory_dataset, collab_attr)
+        mock = mocker.patch.object(collab, method_name, return_value=sentinel)
+
+        facade = getattr(in_memory_dataset, method_name)
+        result = facade(1, 2, foo="bar")
+
+        assert result is sentinel, (
+            f"Dataset.{method_name} facade did not return the collaborator's value"
         )
         mock.assert_called_once_with(1, 2, foo="bar")
 
