@@ -66,18 +66,17 @@ class Dataset(AbstractDataset):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
 
     Wraps a GDAL dataset with spatial operations (crop, reproject, align,
-    mosaic), band-level I/O, and no-data handling.  For NetCDF files use
+    mosaic), band-level I/O, and no-data handling. For NetCDF files use
     the :class:`~pyramids.netcdf.NetCDF` subclass; for temporal stacks of
     rasters use :class:`~pyramids.dataset.DatasetCollection`.
 
-    L-2 Stage 1 (in progress): the seven mixins are renamed to
-    ``_<X>Mixin`` aliases so the collaborator classes (``IO``,
-    ``Spatial``, ``Bands``, ``Analysis``, ``Cell``, ``Vectorize``,
-    ``COG``) can carry the unprefixed names. ``__init__`` now
-    instantiates one collaborator per family. Both API surfaces work:
-    ``ds.crop(mask)`` (mixin) and ``ds.spatial.crop(mask)``
-    (collaborator) produce identical results until Stage 2 deletes the
-    mixin classes one at a time.
+    The seven public-API families are exposed as collaborator instances
+    (``ds.io``, ``ds.spatial``, ``ds.bands``, ``ds.analysis``,
+    ``ds.cell``, ``ds.vectorize``, ``ds.cog``) and via thin facade
+    methods on the Dataset itself, so ``ds.crop(mask)`` and
+    ``ds.spatial.crop(mask)`` are equivalent. Each collaborator holds a
+    weakref proxy back to the Dataset; the proxy keeps GDAL handle
+    release deterministic on Windows.
     """
 
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
@@ -93,12 +92,12 @@ class Dataset(AbstractDataset):
             src.GetRasterBand(i).GetUnitType() for i in range(1, self.band_count + 1)
         ]
 
-        # L-2 Stage 1: collaborator wiring. Each collaborator holds a
-        # back-reference to ``self`` and forwards every public op back
-        # to ``self.<op>(...)`` (which currently resolves to the mixin
-        # via the unchanged MRO). Stage 2 PRs migrate method bodies
-        # into the collaborators and remove the corresponding mixin
-        # from this class's base list.
+        # Each collaborator owns the bodies of one public-API family
+        # (io, spatial, bands, analysis, cell, vectorize, cog) and
+        # holds a ``weakref.proxy(self)`` back-reference. Dataset
+        # exposes facade methods that delegate to the collaborator,
+        # so both ``ds.crop(mask)`` and ``ds.spatial.crop(mask)`` are
+        # equivalent.
         self.io = IO(self)
         self.spatial = Spatial(self)
         self.bands = Bands(self)
