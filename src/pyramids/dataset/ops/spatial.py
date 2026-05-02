@@ -9,6 +9,7 @@ import numpy as np
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr
 
+from pyramids.base._domain import inside_domain, is_no_data
 from pyramids.base._utils import INTERPOLATION_METHODS
 from pyramids.base.crs import (
     epsg_from_wkt,
@@ -469,38 +470,20 @@ class Spatial:
         mask_noval = mask.no_data_value[0]
 
         if isinstance(mask, AbstractDataset) and isinstance(self, AbstractDataset):
-            # there might be cells that are out of domain in the src but not out of domain in the mask
-            # so change all the src_noval to mask_noval in the src_array
-            # src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)] = mask_noval
-            # then count them (out of domain cells) in the src_array
-            elem_src = src_array.size - np.count_nonzero(
-                src_array[np.isclose(src_array, self.no_data_value[0], rtol=0.001)]
-            )
-            # count the out of domain cells in the mask
-            elem_mask = mask_array.size - np.count_nonzero(
-                mask_array[np.isclose(mask_array, mask_noval, rtol=0.001)]
-            )
+            src_no_data = is_no_data(src_array, self.no_data_value[0])
+            mask_no_data = is_no_data(mask_array, mask_noval)
+            elem_src = src_array.size - np.count_nonzero(src_array[src_no_data])
+            elem_mask = mask_array.size - np.count_nonzero(mask_array[mask_no_data])
 
-            # if not equal, then store indices of those cells that don't match
+            # Cells that are out-of-domain in src but in-domain in mask
+            # need to be interpolated from neighbors.
             if elem_mask > elem_src:
-                rows = [
-                    i
-                    for i in range(row)
-                    for j in range(col)
-                    if np.isclose(src_array[i, j], self.no_data_value[0], rtol=0.001)
-                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
-                ]
-                cols = [
-                    j
-                    for i in range(row)
-                    for j in range(col)
-                    if np.isclose(src_array[i, j], self.no_data_value[0], rtol=0.001)
-                    and not np.isclose(mask_array[i, j], mask_noval, rtol=0.001)
-                ]
-            # interpolate those missing cells by the nearest neighbor
-            if elem_mask > elem_src:
+                gap_rows, gap_cols = np.where(src_no_data & ~mask_no_data)
                 src_array = type(self)._nearest_neighbour(
-                    src_array, self.no_data_value[0], rows, cols
+                    src_array,
+                    self.no_data_value[0],
+                    gap_rows.tolist(),
+                    gap_cols.tolist(),
                 )
         return src_array
 
@@ -572,26 +555,16 @@ class Spatial:
                     "the other raster coordinate system"
                 )
 
+        mask_no_data = is_no_data(mask_array, mask_noval)
         if band_count > 1:
             # check if the no data value for the src complies with the dtype of the src as sometimes the band is full
             # of values and the no_data_value is not used at all in the band, and when we try to replace any value in
             # the array with the no_data_value it will raise an error.
             no_data_value = self._check_no_data_value(self.no_data_value)
-
             for band in range(self.band_count):
-                if mask_noval is None:
-                    src_array[band, np.isnan(mask_array)] = self.no_data_value[band]
-                else:
-                    src_array[band, np.isclose(mask_array, mask_noval, rtol=0.001)] = (
-                        no_data_value[band]
-                    )
+                src_array[band, mask_no_data] = no_data_value[band]
         else:
-            if mask_noval is None:
-                src_array[np.isnan(mask_array)] = self.no_data_value[0]
-            else:
-                src_array[np.isclose(mask_array, mask_noval, rtol=0.001)] = (
-                    self.no_data_value[0]
-                )
+            src_array[mask_no_data] = self.no_data_value[0]
 
         if fill_gaps:
             src_array = self.fill_gaps(mask, src_array)

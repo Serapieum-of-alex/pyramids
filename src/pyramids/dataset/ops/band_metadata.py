@@ -13,6 +13,7 @@ from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
 from pandas import DataFrame
 
+from pyramids.base._domain import is_no_data
 from pyramids.base._errors import NoDataValueError, ReadOnlyError
 from pyramids.base._utils import (
     color_name_to_gdal_constant,
@@ -1060,10 +1061,7 @@ class BandMetadata:
         for band in range(self.band_count):
             arr = self.read_array(band)
             try:
-                if old_value is not None:
-                    arr[np.isclose(arr, old_value, rtol=0.001)] = new_value[band]
-                else:
-                    arr[np.isnan(arr)] = new_value[band]
+                arr[is_no_data(arr, old_value)] = new_value[band]
             except TypeError:
                 raise NoDataValueError(
                     f"The dtype of the given no_data_value: {new_value[band]} differs from the dtype of the "

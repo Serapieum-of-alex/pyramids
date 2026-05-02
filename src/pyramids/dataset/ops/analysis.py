@@ -12,6 +12,7 @@ from geopandas.geodataframe import GeoDataFrame
 from hpc.indexing import get_indices2, get_pixels2
 from pandas import DataFrame
 
+from pyramids.base._domain import inside_domain, is_no_data
 from pyramids.base._errors import AlignmentError
 from pyramids.base._utils import import_cleopatra
 from pyramids.feature import FeatureCollection
@@ -171,7 +172,7 @@ class Analysis:
         """
         arr = self.read_array(band=band)
         domain_count = np.size(arr[:, :]) - np.count_nonzero(
-            arr[np.isclose(arr, self.no_data_value[band], rtol=0.001)]
+            arr[is_no_data(arr, self.no_data_value[band])]
         )
         return int(domain_count)
 
@@ -235,7 +236,7 @@ class Analysis:
         new_array = np.full(
             (self.rows, self.columns), no_data_value, dtype=src_array.dtype
         )
-        domain_mask = ~np.isclose(src_array, no_data_value, rtol=0.001)
+        domain_mask = inside_domain(src_array, no_data_value)
         domain_values = src_array[domain_mask]
         try:
             new_array[domain_mask] = func(domain_values)
@@ -305,13 +306,11 @@ class Analysis:
         no_data_value = self.no_data_value[0]
         src_array = self.raster.ReadAsArray()
 
-        if no_data_value is None:
-            no_data_value = np.nan
-
-        if not np.isnan(no_data_value):
-            src_array[~np.isclose(src_array, no_data_value, rtol=0.000001)] = value
-        else:
-            src_array[~np.isnan(src_array)] = value
+        # rtol=1e-6 is intentionally tighter than the package default
+        # (1e-3): ``fill`` writes user-supplied values into every domain
+        # cell, so a too-loose match would clobber legitimate cells that
+        # happen to lie within ~0.1% of the no-data sentinel.
+        src_array[inside_domain(src_array, no_data_value, rtol=0.000001)] = value
 
         dst = type(self).dataset_like(self, src_array, path=path)
         if inplace:

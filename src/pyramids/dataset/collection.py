@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from osgeo import gdal
 
+from pyramids.base._domain import inside_domain
 from pyramids.base._errors import DatasetNotFoundError
 from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._raster_meta import RasterMeta
@@ -1448,10 +1449,8 @@ class DatasetCollection:
             raise TypeError("The Second argument should be a function")
         arr = self.values
         no_data_value = self.base.no_data_value[0]
-        # execute the function on each raster
-        arr[~np.isclose(arr, no_data_value, rtol=0.001)] = ufunc(
-            arr[~np.isclose(arr, no_data_value, rtol=0.001)]
-        )
+        domain = inside_domain(arr, no_data_value)
+        arr[domain] = ufunc(arr[domain])
 
     def overlay(
         self,
