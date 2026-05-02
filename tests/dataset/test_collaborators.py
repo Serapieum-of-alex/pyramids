@@ -268,14 +268,11 @@ FORWARDING_METHODS = [
     ("analysis", "footprint"),
     ("analysis", "get_histogram"),
     ("analysis", "plot"),
-    ("vectorize", "to_feature_collection"),
-    ("vectorize", "translate"),
-    ("vectorize", "cluster"),
-    ("vectorize", "cluster2"),
 ]
 
 # Stage 2 facades: Dataset method delegates to the collaborator method
-# (the mixin has been removed from Dataset's MRO). PR 2.1 — cell, PR 2.2 — cog.
+# (the mixin has been removed from Dataset's MRO). PR 2.1 — cell, PR 2.2 —
+# cog, PR 2.3 — vectorize.
 FACADE_METHODS = [
     ("cell", "get_cell_coords"),
     ("cell", "get_cell_polygons"),
@@ -284,6 +281,10 @@ FACADE_METHODS = [
     ("cell", "array_to_map_coordinates"),
     ("cog", "to_cog"),
     ("cog", "validate_cog"),
+    ("vectorize", "to_feature_collection"),
+    ("vectorize", "translate"),
+    ("vectorize", "cluster"),
+    ("vectorize", "cluster2"),
 ]
 
 

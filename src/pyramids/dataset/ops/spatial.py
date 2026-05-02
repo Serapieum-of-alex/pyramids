@@ -17,6 +17,7 @@ from pyramids.base.crs import (
     sr_from_epsg,
     sr_from_wkt,
 )
+from pyramids.dataset._collaborators import Vectorize as _Vectorize
 from pyramids.dataset.abstract_dataset import AbstractDataset
 from pyramids.feature import FeatureCollection
 from pyramids.feature import _ogr as _feature_ogr
@@ -479,7 +480,7 @@ class Spatial:
             # need to be interpolated from neighbors.
             if elem_mask > elem_src:
                 gap_rows, gap_cols = np.where(src_no_data & ~mask_no_data)
-                src_array = type(self)._nearest_neighbour(
+                src_array = _Vectorize._nearest_neighbour(
                     src_array,
                     self.no_data_value[0],
                     gap_rows.tolist(),

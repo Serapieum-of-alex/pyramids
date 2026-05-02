@@ -40,7 +40,6 @@ from pyramids.dataset.ops import (
     BandMetadata as _BandMetadataMixin,
     IO as _IOMixin,
     Spatial as _SpatialMixin,
-    Vectorize as _VectorizeMixin,
 )
 from pyramids.dataset.ops._focal import (
     aspect,
@@ -73,7 +72,6 @@ class Dataset(  # type: ignore[misc]
     _IOMixin,
     _SpatialMixin,
     _AnalysisMixin,
-    _VectorizeMixin,
     AbstractDataset,
 ):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
@@ -216,6 +214,22 @@ class Dataset(  # type: ignore[misc]
     def validate_cog(self, *args, **kwargs):
         """Facade — delegates to :meth:`COG.validate_cog <pyramids.dataset._collaborators.COG.validate_cog>`."""
         return self.cog.validate_cog(*args, **kwargs)
+
+    def to_feature_collection(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Vectorize.to_feature_collection <pyramids.dataset._collaborators.Vectorize.to_feature_collection>`."""
+        return self.vectorize.to_feature_collection(*args, **kwargs)
+
+    def translate(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Vectorize.translate <pyramids.dataset._collaborators.Vectorize.translate>`."""
+        return self.vectorize.translate(*args, **kwargs)
+
+    def cluster(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Vectorize.cluster <pyramids.dataset._collaborators.Vectorize.cluster>`."""
+        return self.vectorize.cluster(*args, **kwargs)
+
+    def cluster2(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Vectorize.cluster2 <pyramids.dataset._collaborators.Vectorize.cluster2>`."""
+        return self.vectorize.cluster2(*args, **kwargs)
 
     def zonal_stats(
         self,

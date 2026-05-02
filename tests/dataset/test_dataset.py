@@ -16,6 +16,7 @@ from shapely.geometry import Polygon
 from pyramids.base._errors import NoDataValueError, OutOfBoundsError, ReadOnlyError
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
+from pyramids.dataset._collaborators import Vectorize
 
 pytestmark = pytest.mark.core
 
@@ -1804,7 +1805,7 @@ def test_nearest_neigbors():
     req_rows = [1, 3]
     req_cols = [2, 4]
     no_data_value = dataset.no_data_value[0]
-    new_array = Dataset._nearest_neighbour(arr, no_data_value, req_rows, req_cols)
+    new_array = Vectorize._nearest_neighbour(arr, no_data_value, req_rows, req_cols)
 
 
 def test_to_xyz():

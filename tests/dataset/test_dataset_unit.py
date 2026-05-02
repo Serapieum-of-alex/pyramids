@@ -20,6 +20,7 @@ from pyramids.base._errors import (
 )
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
+from pyramids.dataset._collaborators import Vectorize
 from pyramids.dataset.abstract_dataset import AbstractDataset
 
 pytestmark = pytest.mark.core
@@ -2195,19 +2196,19 @@ class TestNearestNeighbour:
     def test_invalid_array_type_raises(self):
         """Non-array input should raise TypeError."""
         with pytest.raises(TypeError, match="gdal"):
-            Dataset._nearest_neighbour("not_array", -9999, [0], [0])
+            Vectorize._nearest_neighbour("not_array", -9999, [0], [0])
 
     def test_invalid_rows_type_raises(self):
         """Non-list rows should raise TypeError."""
         arr = np.ones((3, 3), dtype=np.float32)
         with pytest.raises(TypeError, match="rows"):
-            Dataset._nearest_neighbour(arr, -9999, 0, [0])
+            Vectorize._nearest_neighbour(arr, -9999, 0, [0])
 
     def test_invalid_cols_type_raises(self):
         """Non-list cols should raise TypeError."""
         arr = np.ones((3, 3), dtype=np.float32)
         with pytest.raises(TypeError, match="cols"):
-            Dataset._nearest_neighbour(arr, -9999, [0], 0)
+            Vectorize._nearest_neighbour(arr, -9999, [0], 0)
 
     def test_nearest_neighbour_fills_from_right(self):
         """_nearest_neighbour should fill from right neighbor."""
@@ -2220,7 +2221,7 @@ class TestNearestNeighbour:
             ],
             dtype=np.float32,
         )
-        result = Dataset._nearest_neighbour(arr.copy(), nd, [1], [0])
+        result = Vectorize._nearest_neighbour(arr.copy(), nd, [1], [0])
         assert result[1, 0] != nd, "Cell (1,0) should be filled by right neighbor"
 
     def test_nearest_neighbour_from_left(self):
@@ -2234,7 +2235,7 @@ class TestNearestNeighbour:
             ],
             dtype=np.float32,
         )
-        result = Dataset._nearest_neighbour(arr.copy(), nd, [1], [2])
+        result = Vectorize._nearest_neighbour(arr.copy(), nd, [1], [2])
         assert result[1, 2] != nd, "Cell at last col should be filled from left"
 
     def test_nearest_neighbour_left_neighbor(self):
@@ -2250,7 +2251,7 @@ class TestNearestNeighbour:
         )
         # Cell (1,2) is last col, so right check skipped.
         # Left (1,1) = 5.0 != nd -> filled
-        result = Dataset._nearest_neighbour(arr.copy(), nd, [1], [2])
+        result = Vectorize._nearest_neighbour(arr.copy(), nd, [1], [2])
         assert result[1, 2] == 5.0, "Cell at last col should fill from left"
 
     def test_nearest_neighbour_above_neighbor(self):
@@ -2285,7 +2286,7 @@ class TestNearestNeighbour:
             dtype=np.float32,
         )
         # Cell (1,2) at last col. Left (1,1)=5.0, cols[i]-1=1 > 0
-        result = Dataset._nearest_neighbour(arr2.copy(), nd, [1], [2])
+        result = Vectorize._nearest_neighbour(arr2.copy(), nd, [1], [2])
         assert result[1, 2] == 5.0, "Cell should be filled from left neighbor"
 
 
@@ -3160,7 +3161,7 @@ class TestBandToPolygon:
             epsg=4326,
             no_data_value=-9999,
         )
-        gdf = ds._band_to_polygon(0, "class")
+        gdf = ds.vectorize._band_to_polygon(0, "class")
         assert gdf is not None, "_band_to_polygon should return GeoDataFrame"
         assert len(gdf) > 0, "Should have polygon features"
 
