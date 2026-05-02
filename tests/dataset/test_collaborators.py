@@ -258,21 +258,11 @@ FORWARDING_METHODS = [
     ("bands", "add_band"),
     ("bands", "get_band_by_color"),
     ("bands", "change_no_data_value"),
-    ("analysis", "stats"),
-    ("analysis", "count_domain_cells"),
-    ("analysis", "apply"),
-    ("analysis", "fill"),
-    ("analysis", "extract"),
-    ("analysis", "overlay"),
-    ("analysis", "get_mask"),
-    ("analysis", "footprint"),
-    ("analysis", "get_histogram"),
-    ("analysis", "plot"),
 ]
 
 # Stage 2 facades: Dataset method delegates to the collaborator method
 # (the mixin has been removed from Dataset's MRO). PR 2.1 — cell, PR 2.2 —
-# cog, PR 2.3 — vectorize.
+# cog, PR 2.3 — vectorize, PR 2.4 — analysis.
 FACADE_METHODS = [
     ("cell", "get_cell_coords"),
     ("cell", "get_cell_polygons"),
@@ -285,6 +275,16 @@ FACADE_METHODS = [
     ("vectorize", "translate"),
     ("vectorize", "cluster"),
     ("vectorize", "cluster2"),
+    ("analysis", "stats"),
+    ("analysis", "count_domain_cells"),
+    ("analysis", "apply"),
+    ("analysis", "fill"),
+    ("analysis", "extract"),
+    ("analysis", "overlay"),
+    ("analysis", "get_mask"),
+    ("analysis", "footprint"),
+    ("analysis", "get_histogram"),
+    ("analysis", "plot"),
 ]
 
 

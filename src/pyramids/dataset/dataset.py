@@ -36,7 +36,6 @@ from pyramids.dataset._collaborators import (
     Vectorize,
 )
 from pyramids.dataset.ops import (
-    Analysis as _AnalysisMixin,
     BandMetadata as _BandMetadataMixin,
     IO as _IOMixin,
     Spatial as _SpatialMixin,
@@ -71,7 +70,6 @@ class Dataset(  # type: ignore[misc]
     _BandMetadataMixin,
     _IOMixin,
     _SpatialMixin,
-    _AnalysisMixin,
     AbstractDataset,
 ):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
@@ -230,6 +228,58 @@ class Dataset(  # type: ignore[misc]
     def cluster2(self, *args, **kwargs):
         """Facade — delegates to :meth:`Vectorize.cluster2 <pyramids.dataset._collaborators.Vectorize.cluster2>`."""
         return self.vectorize.cluster2(*args, **kwargs)
+
+    def stats(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.stats <pyramids.dataset._collaborators.Analysis.stats>`."""
+        return self.analysis.stats(*args, **kwargs)
+
+    def count_domain_cells(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.count_domain_cells <pyramids.dataset._collaborators.Analysis.count_domain_cells>`."""
+        return self.analysis.count_domain_cells(*args, **kwargs)
+
+    def apply(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.apply <pyramids.dataset._collaborators.Analysis.apply>`.
+
+        The collaborator returns ``None`` for ``inplace=True`` so the facade
+        can substitute the actual ``self`` (preserving identity); the proxy
+        used by the collaborator's back-reference would otherwise fail
+        ``result is ds`` checks.
+        """
+        result = self.analysis.apply(*args, **kwargs)
+        return self if result is None else result
+
+    def fill(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.fill <pyramids.dataset._collaborators.Analysis.fill>`.
+
+        The collaborator returns ``None`` for ``inplace=True``; see
+        :meth:`apply` for the rationale.
+        """
+        result = self.analysis.fill(*args, **kwargs)
+        return self if result is None else result
+
+    def extract(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.extract <pyramids.dataset._collaborators.Analysis.extract>`."""
+        return self.analysis.extract(*args, **kwargs)
+
+    def overlay(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.overlay <pyramids.dataset._collaborators.Analysis.overlay>`."""
+        return self.analysis.overlay(*args, **kwargs)
+
+    def get_mask(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.get_mask <pyramids.dataset._collaborators.Analysis.get_mask>`."""
+        return self.analysis.get_mask(*args, **kwargs)
+
+    def footprint(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.footprint <pyramids.dataset._collaborators.Analysis.footprint>`."""
+        return self.analysis.footprint(*args, **kwargs)
+
+    def get_histogram(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.get_histogram <pyramids.dataset._collaborators.Analysis.get_histogram>`."""
+        return self.analysis.get_histogram(*args, **kwargs)
+
+    def plot(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.plot <pyramids.dataset._collaborators.Analysis.plot>`."""
+        return self.analysis.plot(*args, **kwargs)
 
     def zonal_stats(
         self,

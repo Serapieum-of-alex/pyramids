@@ -20,7 +20,7 @@ from pyramids.base._errors import (
 )
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
-from pyramids.dataset._collaborators import Vectorize
+from pyramids.dataset._collaborators import Analysis, Vectorize
 from pyramids.dataset.abstract_dataset import AbstractDataset
 
 pytestmark = pytest.mark.core
@@ -1634,7 +1634,7 @@ class TestStatsEdgeCases:
 
     def test_get_stats_returns_list(self, single_band_dataset):
         """_get_stats should return a list of 4 floats."""
-        vals = single_band_dataset._get_stats(band=0)
+        vals = single_band_dataset.analysis._get_stats(band=0)
         assert isinstance(vals, list), "_get_stats should return a list"
         assert len(vals) == 4, f"Expected 4 stats values, got {len(vals)}"
 
@@ -1652,7 +1652,7 @@ class TestStatsEdgeCases:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            vals = ds._get_stats(band=0)
+            vals = ds.analysis._get_stats(band=0)
         assert isinstance(vals, list), "_get_stats should still return a list"
 
 
@@ -2359,7 +2359,7 @@ class TestNormalizeRescale:
     def test_normalize(self):
         """normalize should scale array to [0, 1] range."""
         arr = np.array([0.0, 50.0, 100.0])
-        result = Dataset.normalize(arr)
+        result = Analysis.normalize(arr)
         assert abs(result[0] - 0.0) < 1e-6, "Min should be normalized to 0.0"
         assert abs(result[2] - 1.0) < 1e-6, "Max should be normalized to 1.0"
         assert abs(result[1] - 0.5) < 1e-6, "Middle should be 0.5"
@@ -2367,7 +2367,7 @@ class TestNormalizeRescale:
     def test_rescale(self):
         """_rescale should linearly rescale with given min/max."""
         arr = np.array([10.0, 20.0, 30.0])
-        result = Dataset._rescale(arr, 10.0, 30.0)
+        result = Analysis._rescale(arr, 10.0, 30.0)
         assert abs(result[0] - 0.0) < 1e-6, "Min should rescale to 0.0"
         assert abs(result[2] - 1.0) < 1e-6, "Max should rescale to 1.0"
 
@@ -3145,7 +3145,7 @@ class TestGetStatsRuntimeError:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             with pytest.raises(RuntimeError):
-                ds._get_stats(band=0)
+                ds.analysis._get_stats(band=0)
 
 
 class TestBandToPolygon:
