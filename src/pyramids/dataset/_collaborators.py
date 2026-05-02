@@ -34,6 +34,7 @@ Three design notes:
 
 from __future__ import annotations
 
+import weakref
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -59,15 +60,27 @@ def _recreate_placeholder() -> _Placeholder:
 class _Collaborator:
     """Base class for every Dataset collaborator.
 
-    Holds a back-reference to the parent ``Dataset`` and overrides
-    ``__reduce__`` so direct collaborator pickling produces a
-    placeholder rather than a circular pickle through ``_ds``.
+    Holds a **weak** back-reference to the parent ``Dataset``. The
+    weakref is essential: a strong ``_ds`` reference creates a cycle
+    (``ds -> ds.spatial -> ds``) that the cycle collector eventually
+    breaks but that delays GDAL handle release long enough to fail
+    Windows file-unlink in tests (and to leak file descriptors in
+    long-running processes). xarray uses the same pattern for
+    accessors. ``weakref.proxy`` is transparent — ``self._ds.crs``
+    works as if ``_ds`` were a real reference — so collaborator
+    method bodies don't need to know the back-reference is weak.
+
+    Also overrides ``__reduce__`` so direct collaborator pickling
+    (``pickle.dumps(ds.io)``) produces a placeholder rather than a
+    circular pickle through ``_ds``.
     """
 
     __slots__ = ("_ds",)
 
     def __init__(self, ds: Dataset) -> None:
-        self._ds = ds
+        # ``weakref.proxy`` so the back-reference does not create a
+        # strong cycle with the parent Dataset. See class docstring.
+        self._ds = weakref.proxy(ds)
 
     def __reduce__(self) -> tuple[Any, tuple]:
         return (_recreate_placeholder, ())

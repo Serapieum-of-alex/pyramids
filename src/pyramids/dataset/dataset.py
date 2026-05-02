@@ -8,6 +8,7 @@ algebraic operation on cell's values.
 from __future__ import annotations
 
 import logging
+import weakref
 from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -25,14 +26,23 @@ from pyramids.dataset.abstract_dataset import (
     DEFAULT_NO_DATA_VALUE,
     AbstractDataset,
 )
-from pyramids.dataset.ops import (
+from pyramids.dataset._collaborators import (
+    COG,
     IO,
     Analysis,
-    BandMetadata,
+    Bands,
     Cell,
-    COGMixin,
     Spatial,
     Vectorize,
+)
+from pyramids.dataset.ops import (
+    Analysis as _AnalysisMixin,
+    BandMetadata as _BandMetadataMixin,
+    COGMixin as _COGMixin,
+    Cell as _CellMixin,
+    IO as _IOMixin,
+    Spatial as _SpatialMixin,
+    Vectorize as _VectorizeMixin,
 )
 from pyramids.dataset.ops._focal import (
     aspect,
@@ -50,18 +60,24 @@ from pyramids.dataset.ops._zonal import zonal_stats as _zonal_stats
 from pyramids.dataset.ops.vectorize import rasterize_features
 from pyramids.feature import FeatureCollection
 
+# L-2 Stage 1: tuple of collaborator attribute names. Used by
+# ``Dataset.__init__`` to wire the seven collaborators and by
+# ``_update_inplace`` to re-bind their ``_ds`` back-references after
+# ``__dict__.update`` (see audit §3.3).
+_COLLABORATOR_ATTRS = ("io", "spatial", "bands", "analysis", "cell", "vectorize", "cog")
+
 if TYPE_CHECKING:
     from geopandas import GeoDataFrame
 
 
 class Dataset(  # type: ignore[misc]
-    BandMetadata,
-    IO,
-    COGMixin,
-    Spatial,
-    Analysis,
-    Vectorize,
-    Cell,
+    _BandMetadataMixin,
+    _IOMixin,
+    _COGMixin,
+    _SpatialMixin,
+    _AnalysisMixin,
+    _VectorizeMixin,
+    _CellMixin,
     AbstractDataset,
 ):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
@@ -70,6 +86,15 @@ class Dataset(  # type: ignore[misc]
     mosaic), band-level I/O, and no-data handling.  For NetCDF files use
     the :class:`~pyramids.netcdf.NetCDF` subclass; for temporal stacks of
     rasters use :class:`~pyramids.dataset.DatasetCollection`.
+
+    L-2 Stage 1 (in progress): the seven mixins are renamed to
+    ``_<X>Mixin`` aliases so the collaborator classes (``IO``,
+    ``Spatial``, ``Bands``, ``Analysis``, ``Cell``, ``Vectorize``,
+    ``COG``) can carry the unprefixed names. ``__init__`` now
+    instantiates one collaborator per family. Both API surfaces work:
+    ``ds.crop(mask)`` (mixin) and ``ds.spatial.crop(mask)``
+    (collaborator) produce identical results until Stage 2 deletes the
+    mixin classes one at a time.
     """
 
     def __init__(self, src: gdal.Dataset, access: str = "read_only"):
@@ -85,6 +110,20 @@ class Dataset(  # type: ignore[misc]
             src.GetRasterBand(i).GetUnitType() for i in range(1, self.band_count + 1)
         ]
 
+        # L-2 Stage 1: collaborator wiring. Each collaborator holds a
+        # back-reference to ``self`` and forwards every public op back
+        # to ``self.<op>(...)`` (which currently resolves to the mixin
+        # via the unchanged MRO). Stage 2 PRs migrate method bodies
+        # into the collaborators and remove the corresponding mixin
+        # from this class's base list.
+        self.io = IO(self)
+        self.spatial = Spatial(self)
+        self.bands = Bands(self)
+        self.analysis = Analysis(self)
+        self.cell = Cell(self)
+        self.vectorize = Vectorize(self)
+        self.cog = COG(self)
+
     def _update_inplace(self, src: gdal.Dataset, access: str | None = None) -> None:
         """Swap internal state from a new GDAL dataset.
 
@@ -95,9 +134,22 @@ class Dataset(  # type: ignore[misc]
         apply(inplace=True), to_file). Subclasses that carry extra
         state across the swap (e.g. NetCDF's variable-subset
         attributes) override this method.
+
+        L-2 Stage 1: after ``__dict__.update``, the collaborators on
+        ``self`` came from ``new.__dict__`` and point at the temporary
+        ``new`` instance, not at ``self``. Re-bind every collaborator's
+        ``_ds`` to ``self`` so subsequent ``self.spatial.crop(...)``
+        calls reach back into ``self``, not the discarded ``new``.
         """
         new = type(self)(src, access=access or self._access)
         self.__dict__.update(new.__dict__)
+        # Re-bind via ``weakref.proxy`` so the back-reference stays
+        # weak after the dict swap (matches ``_Collaborator.__init__``).
+        self_proxy = weakref.proxy(self)
+        for attr in _COLLABORATOR_ATTRS:
+            collab = self.__dict__.get(attr)
+            if collab is not None:
+                collab._ds = self_proxy
 
     def focal_mean(self, radius: int = 1, *, chunks=None, band: int = 0):
         """Thin forwarder to :func:`pyramids.dataset.ops._focal.focal_mean`."""

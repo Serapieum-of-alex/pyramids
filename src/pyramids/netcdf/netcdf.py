@@ -259,6 +259,15 @@ class NetCDF(Dataset):
         )
         self.__dict__.update(new.__dict__)
         self.__dict__.update(preserved)
+        # L-2 Stage 1: collaborators in ``new.__dict__`` point at
+        # ``new`` via ``weakref.proxy``; re-bind to a proxy of ``self``
+        # so callers using ``self.spatial.crop(...)`` after this update
+        # reach the surviving instance instead of the discarded ``new``.
+        self_proxy = weakref.proxy(self)
+        for attr in ("io", "spatial", "bands", "analysis", "cell", "vectorize", "cog"):
+            collab = self.__dict__.get(attr)
+            if collab is not None:
+                collab._ds = self_proxy
 
     def __str__(self):
         """Return a human-readable summary of the NetCDF dataset."""
