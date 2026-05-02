@@ -16,7 +16,7 @@ from shapely.geometry import Polygon
 from pyramids.base._errors import NoDataValueError, OutOfBoundsError, ReadOnlyError
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
-from pyramids.dataset._collaborators import Vectorize
+from pyramids.dataset._collaborators import Bands, Vectorize
 
 pytestmark = pytest.mark.core
 
@@ -102,7 +102,7 @@ class TestCreateRasterObject:
         # "OverflowError: Python int too large to convert to C long"
         # then the default_no_data_value (-9999) will be converted to int32 and used as the no_data_value
 
-        # Dataset._change_no_data_value_attr(band=0, no_data_value=-9999.0)
+        # Bands._change_no_data_value_attr(band=0, no_data_value=-9999.0)
         # the _change_no_data_value_attr method will try to change the no_data_value to -9999.0 (int32)
         # but the self.raster.GetRasterBand(band + 1).SetNoDataValue(no_data_value) will raise an error
         # "TypeError: in method 'Band_SetNoDataValue', argument 2 of type 'double'" , so the no_data_value will be
@@ -210,13 +210,13 @@ class TestAttributesTable:
 
     def test_convert_df_to_attribute_table(self):
         df = pd.DataFrame(self.data)
-        rat = Dataset._df_to_attribute_table(df)
+        rat = Bands._df_to_attribute_table(df)
         assert isinstance(rat, gdal.RasterAttributeTable)
 
     def test_convert_attribute_table_to_df(self):
         df = pd.DataFrame(self.data)
-        rat = Dataset._df_to_attribute_table(df)
-        df2 = Dataset._attribute_table_to_df(rat)
+        rat = Bands._df_to_attribute_table(df)
+        df2 = Bands._attribute_table_to_df(rat)
         assert isinstance(df2, pd.DataFrame)
         assert df.equals(df2)
 
@@ -349,12 +349,12 @@ class TestProperties:
     def test_set_band_names(self, src: gdal.Dataset):
         src = Dataset(src)
         name_list = ["new_name"]
-        src._set_band_names(name_list)
+        src.bands._set_band_names(name_list)
         # check that the name is changed in the dataset object
         assert src.band_names == name_list
         assert src.raster.GetRasterBand(1).GetDescription() == name_list[0]
         # return back the old name so that the test_get_band_names pass the test.
-        src._set_band_names(["Band_1"])
+        src.bands._set_band_names(["Band_1"])
 
     def test_band_names(self, src: gdal.Dataset):
         name_list = ["new_name"]
@@ -519,7 +519,7 @@ class TestNoDataValue:
     ):
         src = Dataset(src_set_no_data_value)
         try:
-            src._set_no_data_value(-99999.0)
+            src.bands._set_no_data_value(-99999.0)
         except ReadOnlyError:
             pass
 
@@ -529,7 +529,7 @@ class TestNoDataValue:
         src_no_data_value: float,
     ):
         src = Dataset(src_update)
-        src._set_no_data_value(5.0)
+        src.bands._set_no_data_value(5.0)
         # check if the no_data_value in the Dataset object is set
         assert src.raster.GetRasterBand(1).GetNoDataValue() == 5
         # check if the no_data_value of the Dataset object is set5

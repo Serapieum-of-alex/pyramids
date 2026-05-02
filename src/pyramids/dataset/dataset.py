@@ -13,6 +13,7 @@ from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import geopandas as gpd
 import numpy as np
 from osgeo import gdal
 
@@ -34,9 +35,6 @@ from pyramids.dataset._collaborators import (
     Cell,
     Spatial,
     Vectorize,
-)
-from pyramids.dataset.ops import (
-    BandMetadata as _BandMetadataMixin,
 )
 from pyramids.dataset.ops._focal import (
     aspect,
@@ -64,10 +62,7 @@ if TYPE_CHECKING:
     from geopandas import GeoDataFrame
 
 
-class Dataset(  # type: ignore[misc]
-    _BandMetadataMixin,
-    AbstractDataset,
-):
+class Dataset(AbstractDataset):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
 
     Wraps a GDAL dataset with spatial operations (crop, reproject, align,
@@ -362,6 +357,101 @@ class Dataset(  # type: ignore[misc]
         """Facade — concrete override of the abstract :meth:`AbstractDataset._read_block`."""
         return self.io._read_block(*args, **kwargs)
 
+    def get_attribute_table(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Bands.get_attribute_table <pyramids.dataset._collaborators.Bands.get_attribute_table>`."""
+        return self.bands.get_attribute_table(*args, **kwargs)
+
+    def set_attribute_table(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Bands.set_attribute_table <pyramids.dataset._collaborators.Bands.set_attribute_table>`."""
+        return self.bands.set_attribute_table(*args, **kwargs)
+
+    def add_band(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Bands.add_band <pyramids.dataset._collaborators.Bands.add_band>`."""
+        return self.bands.add_band(*args, **kwargs)
+
+    def get_band_by_color(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Bands.get_band_by_color <pyramids.dataset._collaborators.Bands.get_band_by_color>`."""
+        return self.bands.get_band_by_color(*args, **kwargs)
+
+    def change_no_data_value(self, *args, **kwargs):
+        """Facade — concrete override of the abstract :meth:`AbstractDataset.change_no_data_value`.
+
+        The collaborator returns ``None`` for the ``inplace=True`` path; the
+        facade substitutes ``self`` for identity preservation, matching
+        :meth:`apply` and :meth:`fill`.
+        """
+        result = self.bands.change_no_data_value(*args, **kwargs)
+        return self if result is None else result
+
+    @property
+    def band_color(self):
+        """Facade — delegates to :attr:`Bands.band_color <pyramids.dataset._collaborators.Bands.band_color>`."""
+        return self.bands.band_color
+
+    @band_color.setter
+    def band_color(self, values):
+        self.bands.band_color = values
+
+    @property
+    def color_table(self):
+        """Facade — delegates to :attr:`Bands.color_table <pyramids.dataset._collaborators.Bands.color_table>`."""
+        return self.bands.color_table
+
+    @color_table.setter
+    def color_table(self, df):
+        self.bands.color_table = df
+
+    def _check_no_data_value(self, *args, **kwargs):
+        """Facade — concrete override of the abstract :meth:`AbstractDataset._check_no_data_value`."""
+        return self.bands._check_no_data_value(*args, **kwargs)
+
+    def _set_no_data_value(self, *args, **kwargs):
+        """Facade — concrete override of the abstract :meth:`AbstractDataset._set_no_data_value`."""
+        return self.bands._set_no_data_value(*args, **kwargs)
+
+    def _calculate_bbox(self) -> list:
+        """Concrete override of :meth:`AbstractDataset._calculate_bbox`.
+
+        Direct on Dataset (not via the Bands collaborator) because the
+        ``bbox`` / ``bounds`` properties are reachable before the
+        collaborator is wired during ``Dataset.__init__``.
+        """
+        x_min, y_max = self.top_left_corner
+        y_min = y_max - self.rows * self.cell_size
+        x_max = x_min + self.columns * self.cell_size
+        return [x_min, y_min, x_max, y_max]
+
+    def _calculate_bounds(self):
+        """Concrete override of :meth:`AbstractDataset._calculate_bounds`."""
+        x_min, y_min, x_max, y_max = self._calculate_bbox()
+        coords = [(x_min, y_max), (x_min, y_min), (x_max, y_min), (x_max, y_max)]
+        poly = FeatureCollection.create_polygon(coords)
+        gdf = gpd.GeoDataFrame(geometry=[poly])
+        gdf.set_crs(epsg=self.epsg, inplace=True)
+        return gdf
+
+    def _get_band_names(self):
+        """Concrete override of :meth:`AbstractDataset._get_band_names`.
+
+        Defined directly on Dataset (not via the bands collaborator)
+        because ``Dataset.__init__`` calls ``self._get_band_names()``
+        before the ``Bands`` collaborator is wired up. Mirrors
+        :meth:`Bands._get_band_names`.
+        """
+        names = []
+        for i in range(1, self.band_count + 1):
+            band = self.raster.GetRasterBand(i)
+            if band.GetDescription():
+                names.append(band.GetDescription())
+            else:
+                band_name = f"Band_{band.GetBand()}"
+                metadata = band.GetDataset().GetMetadata_Dict()
+                if band_name in metadata and metadata[band_name]:
+                    names.append(metadata[band_name])
+                else:
+                    names.append(band_name)
+        return names
+
     def _get_crs(self) -> str:
         """Concrete override of :meth:`AbstractDataset._get_crs`.
 
@@ -600,7 +690,7 @@ class Dataset(  # type: ignore[misc]
     @band_names.setter
     def band_names(self, name_list: list):
         """Band names."""
-        self._set_band_names(name_list)
+        self.bands._set_band_names(name_list)
 
     @property
     def band_units(self) -> list[str]:
@@ -636,9 +726,9 @@ class Dataset(  # type: ignore[misc]
         """
         if isinstance(value, list):
             for i, val in enumerate(value):
-                self._change_no_data_value_attr(i, val)
+                self.bands._change_no_data_value_attr(i, val)
         else:
-            self._change_no_data_value_attr(0, value)
+            self.bands._change_no_data_value_attr(0, value)
 
     @property
     def meta_data(self):

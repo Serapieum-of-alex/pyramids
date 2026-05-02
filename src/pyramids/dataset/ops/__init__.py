@@ -1,7 +1,9 @@
-"""Dataset operation mixins."""
+"""Dataset operation mixins.
 
-from pyramids.dataset.ops.band_metadata import BandMetadata
+After L-2 Stage 2 (PRs 2.1–2.7) every public mixin has been migrated
+into a collaborator on :class:`pyramids.dataset.dataset.Dataset`. This
+package retains module-level helpers used by other modules, but no
+mixin classes remain in the public ``__all__``.
+"""
 
-__all__ = [
-    "BandMetadata",
-]
+__all__: list[str] = []

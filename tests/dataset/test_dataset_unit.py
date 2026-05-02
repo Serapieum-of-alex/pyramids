@@ -20,7 +20,7 @@ from pyramids.base._errors import (
 )
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
-from pyramids.dataset._collaborators import Analysis, Spatial, Vectorize
+from pyramids.dataset._collaborators import Analysis, Bands, Spatial, Vectorize
 from pyramids.dataset.abstract_dataset import AbstractDataset
 
 pytestmark = pytest.mark.core
@@ -552,7 +552,7 @@ class TestSetNoDataValueErrors:
         )
         ro_ds = Dataset.read_file(path, read_only=True)
         with pytest.raises(ReadOnlyError):
-            ro_ds._set_no_data_value(-1234.0)
+            ro_ds.bands._set_no_data_value(-1234.0)
 
 
 class TestChangeNoDataValueAttr:
@@ -560,7 +560,7 @@ class TestChangeNoDataValueAttr:
 
     def test_change_nodata_attr_updates_internal(self, single_band_dataset):
         """_change_no_data_value_attr should update the internal list."""
-        single_band_dataset._change_no_data_value_attr(0, -1111.0)
+        single_band_dataset.bands._change_no_data_value_attr(0, -1111.0)
         assert (
             single_band_dataset.no_data_value[0] == -1111.0
         ), "no_data_value attribute not updated"
@@ -1576,7 +1576,7 @@ class TestGetAttributeTable:
                 "value": [1.1, 2.2, 3.3],
             }
         )
-        rat = Dataset._df_to_attribute_table(df)
+        rat = Bands._df_to_attribute_table(df)
         assert rat.GetColumnCount() == 1, "RAT should have 1 column"
         assert rat.GetRowCount() == 3, "RAT should have 3 rows"
         val = rat.GetValueAsDouble(0, 0)
@@ -1591,8 +1591,8 @@ class TestGetAttributeTable:
                 "str_col": ["a", "b"],
             }
         )
-        rat = Dataset._df_to_attribute_table(df)
-        result = Dataset._attribute_table_to_df(rat)
+        rat = Bands._df_to_attribute_table(df)
+        result = Bands._attribute_table_to_df(rat)
         assert len(result) == 2, "Should have 2 rows"
         assert "float_col" in result.columns, "Should contain float_col"
         assert (
@@ -1719,7 +1719,7 @@ class TestSetNoDataValueEdge:
             epsg=4326,
             no_data_value=-9999.0,
         )
-        ds._set_no_data_value([-1234.0])
+        ds.bands._set_no_data_value([-1234.0])
         assert ds.no_data_value[0] == -1234.0, "No data value should be updated"
 
 
@@ -1741,7 +1741,7 @@ class TestSetNoDataValueBackend:
         )
         ro_ds = Dataset.read_file(path, read_only=True)
         with pytest.raises(ReadOnlyError):
-            ro_ds._set_no_data_value_backend(0, -1234.0)
+            ro_ds.bands._set_no_data_value_backend(0, -1234.0)
 
     def test_change_nodata_attr_updates_value(self):
         """_change_no_data_value_attr should update internal no_data_value."""
@@ -1753,7 +1753,7 @@ class TestSetNoDataValueBackend:
             epsg=4326,
             no_data_value=-9999.0,
         )
-        ds._change_no_data_value_attr(0, -1234.0)
+        ds.bands._change_no_data_value_attr(0, -1234.0)
         assert (
             ds.no_data_value[0] == -1234.0
         ), "no_data_value should be updated to -1234.0"
@@ -3040,7 +3040,7 @@ class TestSetNoDataValueRecovery:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            ds._set_no_data_value([-9999])
+            ds.bands._set_no_data_value([-9999])
         assert ds.no_data_value[0] is not None, "No data value should be set"
 
 
@@ -3057,7 +3057,7 @@ class TestSetNoDataValueBackendErrors:
             epsg=4326,
             no_data_value=-9999.0,
         )
-        ds._set_no_data_value_backend(0, -1234.0)
+        ds.bands._set_no_data_value_backend(0, -1234.0)
         assert (
             ds.no_data_value[0] == -1234.0
         ), "No data value should be updated by backend"
@@ -3703,11 +3703,10 @@ class TestSetNoDataValueMocked:
             no_data_value=-9999.0,
         )
         err_msg = "Attempt to write to read only dataset " "in GDALRasterBand::Fill()."
-        with patch.object(
-            ds, "_set_no_data_value_backend", side_effect=RuntimeError(err_msg)
+        with patch.object(ds.bands, "_set_no_data_value_backend", side_effect=RuntimeError(err_msg)
         ):
             with pytest.raises(ReadOnlyError):
-                ds._set_no_data_value([-1234.0])
+                ds.bands._set_no_data_value([-1234.0])
 
     def test_set_nodata_double_conversion_via_mock(self):
         """_set_no_data_value retries with float64 on type error."""
@@ -3721,7 +3720,7 @@ class TestSetNoDataValueMocked:
         )
         err_msg = "in method 'Band_SetNoDataValue', " "argument 2 of type 'double'"
         call_count = [0]
-        original = ds._set_no_data_value_backend
+        original = ds.bands._set_no_data_value_backend
 
         def side_effect(band, val):
             """Raise on first call, succeed on retry."""
@@ -3730,12 +3729,10 @@ class TestSetNoDataValueMocked:
                 raise TypeError(err_msg)
             original(band, val)
 
-        with patch.object(
-            ds,
-            "_set_no_data_value_backend",
+        with patch.object(ds.bands, "_set_no_data_value_backend",
             side_effect=side_effect,
         ):
-            ds._set_no_data_value([-1234.0])
+            ds.bands._set_no_data_value([-1234.0])
         assert call_count[0] >= 2, "Should have retried after TypeError"
 
     def test_set_nodata_fallback_to_default_via_mock(self):
@@ -3749,7 +3746,7 @@ class TestSetNoDataValueMocked:
             no_data_value=-9999.0,
         )
         call_count = [0]
-        original = ds._set_no_data_value_backend
+        original = ds.bands._set_no_data_value_backend
 
         def side_effect(band, val):
             """Raise on first call, succeed on retry."""
@@ -3758,12 +3755,10 @@ class TestSetNoDataValueMocked:
                 raise Exception("some unknown error")
             original(band, val)
 
-        with patch.object(
-            ds,
-            "_set_no_data_value_backend",
+        with patch.object(ds.bands, "_set_no_data_value_backend",
             side_effect=side_effect,
         ):
-            ds._set_no_data_value([-1234.0])
+            ds.bands._set_no_data_value([-1234.0])
         assert call_count[0] >= 2, "Should have retried with default value"
 
 
@@ -3800,7 +3795,7 @@ class TestSetNoDataValueBackendMocked:
             return real_band
 
         with patch.object(ds.raster, "GetRasterBand", mock_get_band):
-            ds._set_no_data_value_backend(0, -1234.0)
+            ds.bands._set_no_data_value_backend(0, -1234.0)
 
     def test_backend_generic_error_raises(self):
         """_set_no_data_value_backend raises ValueError on unknown error."""
@@ -3826,7 +3821,7 @@ class TestSetNoDataValueBackendMocked:
 
         with patch.object(ds.raster, "GetRasterBand", mock_get_band):
             with pytest.raises(ValueError, match="Failed to fill"):
-                ds._set_no_data_value_backend(0, -1234.0)
+                ds.bands._set_no_data_value_backend(0, -1234.0)
 
 
 class TestChangeNoDataValueTypeError:
@@ -3914,7 +3909,7 @@ class TestChangeNoDataAttrConversion:
             return real_band
 
         with patch.object(ds.raster, "GetRasterBand", mock_get_band):
-            ds._change_no_data_value_attr(0, -1234.0)
+            ds.bands._change_no_data_value_attr(0, -1234.0)
         assert (
             ds.no_data_value[0] == -1234.0
         ), "nodata should be updated after type conversion"
@@ -3940,7 +3935,7 @@ class TestChangeNoDataAttrConversion:
 
         with patch.object(ds.raster, "GetRasterBand", mock_get_band):
             with pytest.raises(ReadOnlyError):
-                ds._change_no_data_value_attr(0, -1234.0)
+                ds.bands._change_no_data_value_attr(0, -1234.0)
 
 
 class TestToFileBlockSize:
