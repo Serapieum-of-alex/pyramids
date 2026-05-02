@@ -859,3 +859,12 @@ class AbstractDataset(ABC):
                 Array with all the values in the raster.
         """
         pass
+
+
+# ``RasterBase`` is the L-2 composition target: the concrete state-holding
+# base class that ``Dataset`` and any future Dataset variant (LazyDataset,
+# COGDataset, …) inherit. Aliased to ``AbstractDataset`` during Stage 1
+# of the L-2 migration so new code can import the target name; the alias
+# is dropped in Stage 3 cleanup when ``AbstractDataset`` is renamed
+# outright.
+RasterBase = AbstractDataset
