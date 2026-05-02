@@ -21,7 +21,7 @@ from pyramids.base._utils import (
     DTYPE_CONVERSION_DF,
     numpy_to_gdal_dtype,
 )
-from pyramids.base.crs import sr_from_epsg
+from pyramids.base.crs import epsg_from_wkt, sr_from_epsg
 from pyramids.dataset.abstract_dataset import (
     DEFAULT_NO_DATA_VALUE,
     AbstractDataset,
@@ -38,7 +38,6 @@ from pyramids.dataset._collaborators import (
 from pyramids.dataset.ops import (
     BandMetadata as _BandMetadataMixin,
     IO as _IOMixin,
-    Spatial as _SpatialMixin,
 )
 from pyramids.dataset.ops._focal import (
     aspect,
@@ -69,7 +68,6 @@ if TYPE_CHECKING:
 class Dataset(  # type: ignore[misc]
     _BandMetadataMixin,
     _IOMixin,
-    _SpatialMixin,
     AbstractDataset,
 ):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
@@ -280,6 +278,53 @@ class Dataset(  # type: ignore[misc]
     def plot(self, *args, **kwargs):
         """Facade — delegates to :meth:`Analysis.plot <pyramids.dataset._collaborators.Analysis.plot>`."""
         return self.analysis.plot(*args, **kwargs)
+
+    def crop(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Spatial.crop <pyramids.dataset._collaborators.Spatial.crop>`."""
+        return self.spatial.crop(*args, **kwargs)
+
+    def to_crs(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Spatial.to_crs <pyramids.dataset._collaborators.Spatial.to_crs>`."""
+        return self.spatial.to_crs(*args, **kwargs)
+
+    def set_crs(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Spatial.set_crs <pyramids.dataset._collaborators.Spatial.set_crs>`."""
+        return self.spatial.set_crs(*args, **kwargs)
+
+    def convert_longitude(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Spatial.convert_longitude <pyramids.dataset._collaborators.Spatial.convert_longitude>`."""
+        return self.spatial.convert_longitude(*args, **kwargs)
+
+    def resample(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Spatial.resample <pyramids.dataset._collaborators.Spatial.resample>`."""
+        return self.spatial.resample(*args, **kwargs)
+
+    def align(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Spatial.align <pyramids.dataset._collaborators.Spatial.align>`."""
+        return self.spatial.align(*args, **kwargs)
+
+    def fill_gaps(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Spatial.fill_gaps <pyramids.dataset._collaborators.Spatial.fill_gaps>`."""
+        return self.spatial.fill_gaps(*args, **kwargs)
+
+    def _get_crs(self) -> str:
+        """Concrete override of :meth:`AbstractDataset._get_crs`.
+
+        Defined directly on Dataset rather than as a facade because
+        ``AbstractDataset.__init__`` calls ``_get_epsg()`` (which calls
+        ``_get_crs()``) before ``Dataset.__init__`` has a chance to wire
+        up the Spatial collaborator. The Spatial collaborator's
+        ``_get_crs`` body is the same one-liner.
+        """
+        return str(self.raster.GetProjection())
+
+    def _get_epsg(self) -> int:
+        """Concrete override of :meth:`AbstractDataset._get_epsg`.
+
+        Defined directly on Dataset for the same reason as
+        :meth:`_get_crs`.
+        """
+        return epsg_from_wkt(self._get_crs())
 
     def zonal_stats(
         self,

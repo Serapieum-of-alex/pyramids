@@ -20,7 +20,7 @@ from pyramids.base._errors import (
 )
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
-from pyramids.dataset._collaborators import Analysis, Vectorize
+from pyramids.dataset._collaborators import Analysis, Spatial, Vectorize
 from pyramids.dataset.abstract_dataset import AbstractDataset
 
 pytestmark = pytest.mark.core
@@ -693,7 +693,7 @@ class TestCorrectWrapCutlineError:
             epsg=4326,
             no_data_value=nd,
         )
-        corrected = Dataset._correct_wrap_cutline_error(ds)
+        corrected = Spatial._correct_wrap_cutline_error(ds)
         assert (
             corrected.rows == 2
         ), f"Expected 2 rows after correction, got {corrected.rows}"
@@ -735,7 +735,7 @@ class TestCorrectWrapCutlineError:
             epsg=4326,
             no_data_value=nd,
         )
-        corrected = Dataset._correct_wrap_cutline_error(ds)
+        corrected = Spatial._correct_wrap_cutline_error(ds)
         assert corrected.rows == 1, "Expected 1 row after 3D correction"
         assert corrected.columns == 1, "Expected 1 col after 3D correction"
 
@@ -1996,7 +1996,7 @@ class TestCropAligned:
             epsg=4326,
             no_data_value=nd,
         )
-        result = src._crop_aligned(mask)
+        result = src.spatial._crop_aligned(mask)
         arr = result.read_array()
         assert np.isclose(arr[1, 1], nd), "Masked cell should be nodata"
 
@@ -2012,7 +2012,7 @@ class TestCropAligned:
         )
         mask = np.ones((3, 3), dtype=np.float32)
         with pytest.raises(ValueError, match="no_val"):
-            src._crop_aligned(mask, mask_noval=None)
+            src.spatial._crop_aligned(mask, mask_noval=None)
 
     def test_crop_aligned_invalid_mask_type_raises(self):
         """_crop_aligned with invalid mask type should raise TypeError."""
@@ -2025,7 +2025,7 @@ class TestCropAligned:
             no_data_value=-9999.0,
         )
         with pytest.raises(TypeError):
-            src._crop_aligned("not_a_mask")
+            src.spatial._crop_aligned("not_a_mask")
 
     def test_crop_aligned_dimension_mismatch_raises(self):
         """_crop_aligned with different dimensions should raise ValueError."""
@@ -2046,7 +2046,7 @@ class TestCropAligned:
             no_data_value=-9999.0,
         )
         with pytest.raises(ValueError, match="different number"):
-            src._crop_aligned(mask)
+            src.spatial._crop_aligned(mask)
 
     def test_crop_aligned_different_location_raises(self):
         """_crop_aligned with different top-left corner raises ValueError."""
@@ -2068,7 +2068,7 @@ class TestCropAligned:
             no_data_value=nd,
         )
         with pytest.raises(ValueError, match="upper left corner"):
-            src._crop_aligned(mask)
+            src.spatial._crop_aligned(mask)
 
     def test_crop_aligned_different_epsg_raises(self):
         """_crop_aligned with different EPSG raises ValueError."""
@@ -2090,7 +2090,7 @@ class TestCropAligned:
             no_data_value=nd,
         )
         with pytest.raises(ValueError, match="coordinate system"):
-            src._crop_aligned(mask)
+            src.spatial._crop_aligned(mask)
 
     def test_crop_aligned_multi_band_nan_mask(self):
         """_crop_aligned with multi-band src and nan mask (line 4183)."""
@@ -2112,7 +2112,7 @@ class TestCropAligned:
             epsg=4326,
             no_data_value=np.nan,
         )
-        result = src._crop_aligned(mask)
+        result = src.spatial._crop_aligned(mask)
         arr = result.read_array()
         assert arr.ndim == 3, "Multi-band result should be 3D"
 
@@ -2136,7 +2136,7 @@ class TestCropAligned:
             epsg=4326,
             no_data_value=np.nan,
         )
-        result = src._crop_aligned(mask)
+        result = src.spatial._crop_aligned(mask)
         assert result is not None, "Should return a cropped dataset"
 
 
@@ -2146,7 +2146,7 @@ class TestCheckAlignment:
     def test_check_alignment_invalid_type_raises(self, single_band_dataset):
         """_check_alignment with non-Dataset should raise TypeError."""
         with pytest.raises(TypeError, match="Dataset"):
-            single_band_dataset._check_alignment("not_a_dataset")
+            single_band_dataset.spatial._check_alignment("not_a_dataset")
 
 
 class TestAlign:
@@ -2169,7 +2169,7 @@ class TestCropWithRaster:
     def test_crop_with_raster_invalid_type_raises(self, single_band_dataset):
         """_crop_with_raster with invalid type should raise TypeError."""
         with pytest.raises(TypeError):
-            single_band_dataset._crop_with_raster(12345)
+            single_band_dataset.spatial._crop_with_raster(12345)
 
 
 class TestCropWithPolygonWarp:
@@ -2178,7 +2178,7 @@ class TestCropWithPolygonWarp:
     def test_crop_with_polygon_invalid_type_raises(self, single_band_dataset):
         """_crop_with_polygon_warp with non-FC/GDF raises TypeError."""
         with pytest.raises(TypeError):
-            single_band_dataset._crop_with_polygon_warp(12345)
+            single_band_dataset.spatial._crop_with_polygon_warp(12345)
 
 
 class TestCropErrors:
@@ -2706,7 +2706,7 @@ class TestCorrectWrapCutlineErrorNdim:
             epsg=4326,
             no_data_value=nd,
         )
-        result = Dataset._correct_wrap_cutline_error(ds_3d)
+        result = Spatial._correct_wrap_cutline_error(ds_3d)
         assert result.rows == 2, "Should trim first row of nodata"
 
 
@@ -2733,7 +2733,7 @@ class TestCropAlignedFillGaps:
             epsg=4326,
             no_data_value=nd,
         )
-        result = src._crop_aligned(mask, fill_gaps=True)
+        result = src.spatial._crop_aligned(mask, fill_gaps=True)
         arr = result.read_array()
         assert arr is not None, "Fill gaps result should have a valid array"
 
@@ -2870,7 +2870,7 @@ class TestCropAlignedNanMask:
         )
         # Set mask nodata to None to trigger nan check path
         mask_ds._no_data_value = [None]
-        result = src._crop_aligned(mask_ds)
+        result = src.spatial._crop_aligned(mask_ds)
         result_arr = result.read_array()
         assert result_arr.ndim == 3, "Multi-band result should be 3D"
 
@@ -2895,7 +2895,7 @@ class TestCropAlignedNanMask:
             no_data_value=-9999.0,
         )
         mask_ds._no_data_value = [None]
-        result = src._crop_aligned(mask_ds)
+        result = src.spatial._crop_aligned(mask_ds)
         result_arr = result.read_array()
         assert result_arr is not None, "Should return a valid array"
 
@@ -2926,7 +2926,7 @@ class TestCropWithRasterString:
             driver_type="GTiff",
             path=mask_path,
         )
-        result = src._crop_with_raster(mask_path)
+        result = src.spatial._crop_with_raster(mask_path)
         assert isinstance(result, Dataset), "Should return a Dataset"
 
 
@@ -3097,7 +3097,7 @@ class TestCropWithPolygonWarpError:
 
         poly = box(0.0, -0.15, 0.15, 0.0)
         gdf = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
-        result = single_band_dataset._crop_with_polygon_warp(gdf)
+        result = single_band_dataset.spatial._crop_with_polygon_warp(gdf)
         assert isinstance(result, Dataset), "Should return a cropped Dataset"
 
 
@@ -3641,7 +3641,7 @@ class TestCropWithPolygonFeatureCollection:
         poly = box(0.0, -0.15, 0.15, 0.0)
         gdf = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
         fc = FeatureCollection(gdf)
-        result = single_band_dataset._crop_with_polygon_warp(fc)
+        result = single_band_dataset.spatial._crop_with_polygon_warp(fc)
         assert isinstance(result, Dataset), "Should return a cropped Dataset"
 
 

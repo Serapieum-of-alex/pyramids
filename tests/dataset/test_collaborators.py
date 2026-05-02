@@ -246,13 +246,6 @@ FORWARDING_METHODS = [
     ("io", "recreate_overviews"),
     ("io", "get_overview"),
     ("io", "read_overview_array"),
-    ("spatial", "crop"),
-    ("spatial", "to_crs"),
-    ("spatial", "set_crs"),
-    ("spatial", "convert_longitude"),
-    ("spatial", "resample"),
-    ("spatial", "align"),
-    ("spatial", "fill_gaps"),
     ("bands", "get_attribute_table"),
     ("bands", "set_attribute_table"),
     ("bands", "add_band"),
@@ -262,8 +255,15 @@ FORWARDING_METHODS = [
 
 # Stage 2 facades: Dataset method delegates to the collaborator method
 # (the mixin has been removed from Dataset's MRO). PR 2.1 — cell, PR 2.2 —
-# cog, PR 2.3 — vectorize, PR 2.4 — analysis.
+# cog, PR 2.3 — vectorize, PR 2.4 — analysis, PR 2.5 — spatial.
 FACADE_METHODS = [
+    ("spatial", "crop"),
+    ("spatial", "to_crs"),
+    ("spatial", "set_crs"),
+    ("spatial", "convert_longitude"),
+    ("spatial", "resample"),
+    ("spatial", "align"),
+    ("spatial", "fill_gaps"),
     ("cell", "get_cell_coords"),
     ("cell", "get_cell_polygons"),
     ("cell", "get_cell_points"),

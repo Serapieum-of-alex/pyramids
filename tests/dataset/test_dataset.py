@@ -935,7 +935,7 @@ class TestCrop:
     ):
         mask_obj = Dataset(src)
         aligned_raster: Dataset = Dataset(aligned_raster)
-        cropped: Dataset = aligned_raster._crop_aligned(mask_obj)
+        cropped: Dataset = aligned_raster.spatial._crop_aligned(mask_obj)
         dst_arr_cropped = cropped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -951,7 +951,7 @@ class TestCrop:
         mask_obj = Dataset(sentinel_crop)
         aligned_raster = Dataset(sentinel_raster)
 
-        cropped: Dataset = aligned_raster._crop_aligned(mask_obj)
+        cropped: Dataset = aligned_raster.spatial._crop_aligned(mask_obj)
         dst_arr_cropped = cropped.raster.ReadAsArray()
         # filter the no_data_value out of the array
         arr = dst_arr_cropped[
@@ -980,7 +980,7 @@ class TestCrop:
         src_no_data_value: float,
     ):
         aligned_raster = Dataset(aligned_raster)
-        cropped = aligned_raster._crop_aligned(src_arr, mask_noval=src_no_data_value)
+        cropped = aligned_raster.spatial._crop_aligned(src_arr, mask_noval=src_no_data_value)
         dst_arr_cropped = cropped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -999,7 +999,7 @@ class TestCrop:
         # Geotransform = (432968.1206170588, 4000.0, 0.0, 520007.787999178, 0.0, -4000.0)
         mask_obj = Dataset(soil_raster)
         aligned_raster = Dataset(aligned_raster)
-        aligned_raster._crop_with_raster(mask_obj)
+        aligned_raster.spatial._crop_with_raster(mask_obj)
 
 
 class TestCropWithPolygon:
@@ -1032,7 +1032,7 @@ class TestCropWithPolygon:
         Check the number of the cropped cells and the no_data_value
         """
         src_obj = Dataset(rhine_raster)
-        cropped_raster = src_obj._crop_with_polygon_warp(polygon_mask, touch=True)
+        cropped_raster = src_obj.spatial._crop_with_polygon_warp(polygon_mask, touch=True)
 
         validation_dataset = Dataset(crop_by_wrap_touch_true_result)
         assert (
@@ -1068,7 +1068,7 @@ class TestCropWithPolygon:
         Check the number of the cropped cells and the no_data_value
         """
         src_obj = Dataset(rhine_raster)
-        cropped_raster = src_obj._crop_with_polygon_warp(polygon_mask, touch=False)
+        cropped_raster = src_obj.spatial._crop_with_polygon_warp(polygon_mask, touch=False)
 
         validation_dataset = Dataset(crop_by_wrap_touch_false_result)
         assert (
@@ -1090,7 +1090,7 @@ class TestCropWithPolygon:
         """
         src_obj = Dataset(era5_image)
 
-        cropped_raster = src_obj._crop_with_polygon_warp(era5_mask, touch=True)
+        cropped_raster = src_obj.spatial._crop_with_polygon_warp(era5_mask, touch=True)
         assert isinstance(cropped_raster.raster, gdal.Dataset)
         assert cropped_raster.no_data_value[0] == src_obj.no_data_value[0]
         assert cropped_raster.band_count == src_obj.band_count
@@ -1125,7 +1125,7 @@ class TestCropWithPolygon:
         """
         dataset = Dataset(raster_1band_coello_gdal_dataset)
         # test with irregular mask polygon
-        cropped = dataset._crop_with_polygon_warp(
+        cropped = dataset.spatial._crop_with_polygon_warp(
             coello_irregular_polygon_gdf, touch=False
         )
 
