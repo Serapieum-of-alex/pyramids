@@ -116,7 +116,9 @@ class TestCreateRasterObject:
         src = Dataset(src)
         dst = src.copy()
         assert isinstance(dst, Dataset)
-        assert dst.access == "write"
+        # In-memory copy preserves the source's access mode. The
+        # default ``Dataset(src)`` constructor uses ``read_only``.
+        assert dst.access == src.access == "read_only"
         assert id(dst) != id(src)
         assert dst.raster.GetGeoTransform() == src.raster.GetGeoTransform()
         assert dst.raster.GetProjection() == src.raster.GetProjection()
@@ -129,9 +131,15 @@ class TestCreateRasterObject:
         np.testing.assert_array_equal(
             src_arr, dst_arr, err_msg="arrays are not equal", strict=True
         )
-        # copy the dataset to disk
+        # An in-memory copy of a write-mode source stays write-mode.
+        src_write = Dataset(src._raster, access="write")
+        assert src_write.copy().access == "write"
+        # An on-disk copy is always returned in write mode (the caller
+        # has just created a new file they presumably want to populate).
         path = Path("tests/data/geotiff/test-copy-dataset-to-disk-delete.tif")
-        src.copy(path=path)
+        on_disk = src.copy(path=path)
+        assert on_disk.access == "write"
+        on_disk.close()
         src.close()
         assert path.exists()
         path.unlink()

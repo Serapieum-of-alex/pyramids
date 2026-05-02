@@ -625,18 +625,32 @@ class Dataset(  # type: ignore[misc]
 
         Args:
             path (str, optional):
-                Destination path to save the copied dataset. If None is passed, the copied dataset
-                will be created in memory.
+                Destination path to save the copied dataset. If None
+                is passed, the copied dataset is created in memory.
+
+        Returns:
+            Dataset: An independent copy. Access mode of the returned
+            Dataset:
+
+            * ``path is None`` (in-memory copy) → access mode of the
+              source is preserved. A ``copy()`` of a read-only source
+              stays read-only at the pyramids level (the underlying
+              MEM driver is always writable; pyramids enforces the
+              flag itself).
+            * ``path is not None`` (on-disk copy) → ``"write"``,
+              because the caller has just created a new file they
+              presumably want to populate.
         """
         if path is None:
             path = ""
             driver = "MEM"
+            new_access = self._access
         else:
             driver = "GTiff"
+            new_access = "write"
 
         src = gdal.GetDriverByName(driver).CreateCopy(str(path), self._raster)
-
-        return Dataset(src, access="write")
+        return Dataset(src, access=new_access)
 
     def close(self) -> None:
         """Close the dataset.
