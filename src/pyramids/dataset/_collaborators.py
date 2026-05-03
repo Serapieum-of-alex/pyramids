@@ -107,6 +107,13 @@ if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
 
 
+# Module-level logger for staticmethods that have no ``self._ds`` to
+# reach the Dataset's logger through (e.g. ``Vectorize._nearest_neighbour``).
+# Instance methods should keep using ``self._ds.logger`` so messages
+# carry the Dataset's logger name.
+logger = logging.getLogger(__name__)
+
+
 _AVERAGING_RESAMPLERS: frozenset[str] = frozenset(
     {"average", "bilinear", "cubic", "cubicspline", "lanczos"}
 )
@@ -115,7 +122,6 @@ _AVERAGING_RESAMPLERS: frozenset[str] = frozenset(
 # Incorrect for categorical rasters (land cover, basin IDs, classification
 # masks). Using any of these on a categorical dataset emits a
 # `UserWarning` from :meth:`COG.to_cog`.
-
 
 
 _INTEGER_DTYPES: frozenset[int] = frozenset(
@@ -1868,8 +1874,6 @@ class Spatial(_Collaborator):
         # compare no of element that is not no_data_value in both rasters to make sure they are matched
         # if both inputs are rasters
         mask_array = mask.read_array()
-        row = mask.rows
-        col = mask.columns
         mask_noval = mask.no_data_value[0]
 
         if isinstance(mask, RasterBase) and isinstance(self._ds, RasterBase):
