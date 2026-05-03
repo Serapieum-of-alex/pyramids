@@ -28,20 +28,20 @@ import numpy as np
 import pytest
 from osgeo import gdal, osr
 
+from pyramids.base._errors import OptionalPackageDoesNotExist
+from pyramids.base._utils import import_dask, import_zarr
 from pyramids.dataset import Dataset
 
 pytestmark = pytest.mark.lazy
 
 try:
-    import dask.array  # noqa: F401
-    import dask.delayed  # noqa: F401
-    import zarr  # noqa: F401
-
-    HAS_FULL_STACK = True
-except ImportError:  # pragma: no cover
+    import_dask("dask not installed")
+    import_zarr("zarr not installed")
+    import zarr
+except OptionalPackageDoesNotExist:  # pragma: no cover
     HAS_FULL_STACK = False
-
-
+else:
+    HAS_FULL_STACK = True
 requires_full_stack = pytest.mark.skipif(
     not HAS_FULL_STACK, reason="dask + zarr required for Phase 1 e2e tests"
 )
