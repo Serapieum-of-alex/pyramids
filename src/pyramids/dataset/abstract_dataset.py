@@ -3,15 +3,15 @@ RasterBase.
 
 State-holding base class that :class:`pyramids.dataset.Dataset` (and any
 future Dataset variant — LazyDataset, COGDataset, …) inherits. Owns the
-``gdal.Dataset`` handle, geotransform, EPSG, dtype, and the abstract
+`gdal.Dataset` handle, geotransform, EPSG, dtype, and the abstract
 contract that subclasses must implement. The L-2 collaborator pattern
 (see :mod:`pyramids.dataset._collaborators`) attaches op families
-(``ds.io``, ``ds.spatial``, etc.) to instances of subclasses; this base
+(`ds.io`, `ds.spatial`, etc.) to instances of subclasses; this base
 class provides the state they read through their weakref proxies.
 
-The module file is still named ``abstract_dataset.py`` for backwards
+The module file is still named `abstract_dataset.py` for backwards
 compatibility with the module path; the class itself was renamed from
-``AbstractDataset`` → ``RasterBase`` in L-2 Stage 3.
+`AbstractDataset` to `RasterBase`.
 """
 
 from __future__ import annotations
@@ -53,20 +53,20 @@ def _reconstruct_dataset(cls: type, path: str, access: str) -> RasterBase:
     """Re-open a dataset from its pickle recipe tuple.
 
     Called by :meth:`RasterBase.__reduce__` on unpickle. Routes
-    through the target class's ``read_file`` classmethod so subclass
+    through the target class's `read_file` classmethod so subclass
     behavior (NetCDF mode flags, COG mixins) is preserved — subclasses
     that need to carry extra state (for example
-    :class:`~pyramids.netcdf.NetCDF`) override ``__reduce__`` directly.
+    :class:`~pyramids.netcdf.NetCDF`) override `__reduce__` directly.
 
     Args:
         cls: The concrete :class:`RasterBase` subclass to
-            reconstruct (``Dataset``, ``NetCDF``, etc.).
+            reconstruct (`Dataset`, `NetCDF`, etc.).
         path: The on-disk path or VSI URL to re-open.
-        access: Access mode string; ``"read_only"`` opens read-only,
+        access: Access mode string; `"read_only"` opens read-only,
             any other value opens for update.
 
     Returns:
-        RasterBase: A freshly opened instance of ``cls``.
+        RasterBase: A freshly opened instance of `cls`.
     """
     read_only = access == "read_only"
     return cls.read_file(path, read_only=read_only)
@@ -103,17 +103,17 @@ class RasterBase(ABC):
     def __reduce__(self):
         """Return a recipe tuple that re-opens the dataset on unpickle.
 
-        Serialising a live ``gdal.Dataset`` pointer is not possible
+        Serialising a live `gdal.Dataset` pointer is not possible
         (native C++ handle, no copy semantics). Instead we emit the
-        minimal recipe ``(class, file_name, access)`` and reconstruct
-        on unpickle by calling ``cls.read_file(path, read_only=...)``.
+        minimal recipe `(class, file_name, access)` and reconstruct
+        on unpickle by calling `cls.read_file(path, read_only=...)`.
 
         The GDAL handle is therefore opened **on the receiving process
         / thread**, which is the invariant dask.distributed needs.
 
         Raises:
             TypeError: The dataset has no on-disk path (empty
-                ``_file_name`` or a ``/vsimem/`` path). In-memory
+                `_file_name` or a `/vsimem/` path). In-memory
                 datasets are not reconstructible from the recipe;
                 call :meth:`to_file` first to anchor them to disk.
         """
@@ -287,9 +287,9 @@ class RasterBase(ABC):
     def _iloc(self, i: int) -> gdal.Band:
         """Access a GDAL Band by 0-based index.
 
-        Hosted on ``RasterBase`` so every collaborator can resolve
-        ``self._ds._iloc(i)`` without depending on ``BandMetadata`` being
-        in the MRO. The duplicate body on ``BandMetadata`` is kept during
+        Hosted on `RasterBase` so every collaborator can resolve
+        `self._ds._iloc(i)` without depending on `BandMetadata` being
+        in the MRO. The duplicate body on `BandMetadata` is kept during
         Stage 1 of the L-2 migration (both bodies are identical) and is
         removed in Stage 2 PR2.7 when the bands collaborator lands.
 

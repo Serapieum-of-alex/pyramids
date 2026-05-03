@@ -1,7 +1,7 @@
 """No-data domain helpers — single source of truth for the
-``np.isclose(arr, no_data_value, rtol=…)`` idiom that previously
-spread across ``dataset.ops.analysis``, ``dataset.ops.spatial``,
-``dataset.ops.band_metadata``, and ``dataset.collection``.
+`np.isclose(arr, no_data_value, rtol=…)` idiom that previously
+spread across `dataset.ops.analysis`, `dataset.ops.spatial`,
+`dataset.ops.band_metadata`, and `dataset.collection`.
 
 Two helpers are exposed:
 
@@ -11,14 +11,14 @@ Two helpers are exposed:
   (i.e. NOT equal to the no-data sentinel). The inverse of
   :func:`is_no_data`.
 
-Both treat ``no_data_value=None`` and ``no_data_value=NaN`` as
+Both treat `no_data_value=None` and `no_data_value=NaN` as
 "look for NaN cells", so individual call-sites no longer need to
-guard with bespoke ``if val is None: np.isnan(...) else: np.isclose(...)``
+guard with bespoke `if val is None: np.isnan(...) else: np.isclose(...)`
 branches.
 
-The default ``rtol=0.001`` matches the tolerance used at the bulk
+The default `rtol=0.001` matches the tolerance used at the bulk
 of the historical call-sites; sites with a tighter tolerance pass
-``rtol=`` explicitly. The choice of tolerance is operational, not
+`rtol=` explicitly. The choice of tolerance is operational, not
 conventional — pass an explicit value when comparing values close
 to zero where the relative tolerance is too loose.
 """
@@ -36,22 +36,22 @@ def is_no_data(
     *,
     rtol: float = DEFAULT_RTOL,
 ) -> np.ndarray | bool:
-    """Boolean mask: True where ``arr`` cells equal ``no_data_value``.
+    """Boolean mask: True where `arr` cells equal `no_data_value`.
 
-    NaN- and None-safe. Works on scalars (returns ``bool``) and
-    arrays (returns ``np.ndarray`` of bool).
+    NaN- and None-safe. Works on scalars (returns `bool`) and
+    arrays (returns `np.ndarray` of bool).
 
     Args:
         arr: Cell value(s) to test. Either a numpy array or a scalar.
-        no_data_value: The sentinel marking out-of-domain cells. ``None``
-            or ``NaN`` triggers ``np.isnan(arr)`` (NaN-safe equality);
-            otherwise ``np.isclose(arr, no_data_value, rtol=rtol)``.
+        no_data_value: The sentinel marking out-of-domain cells. `None`
+            or `NaN` triggers `np.isnan(arr)` (NaN-safe equality);
+            otherwise `np.isclose(arr, no_data_value, rtol=rtol)`.
         rtol: Relative tolerance forwarded to :func:`numpy.isclose`.
-            Default ``0.001``.
+            Default `0.001`.
 
     Returns:
-        Boolean mask shaped like ``arr`` (or ``bool`` when ``arr`` is a
-        scalar). ``True`` where the cell matches ``no_data_value``.
+        Boolean mask shaped like `arr` (or `bool` when `arr` is a
+        scalar). `True` where the cell matches `no_data_value`.
 
     Examples:
         - Scalar no-data sentinel:
@@ -63,7 +63,7 @@ def is_no_data(
             [False, True, False, True]
 
             ```
-        - NaN sentinel (or ``None``) returns NaN-safe mask:
+        - NaN sentinel (or `None`) returns NaN-safe mask:
             ```python
             >>> import numpy as np
             >>> from pyramids.base._domain import is_no_data
@@ -91,7 +91,7 @@ def inside_domain(
     *,
     rtol: float = DEFAULT_RTOL,
 ) -> np.ndarray | bool:
-    """Boolean mask: True where ``arr`` cells are inside the domain.
+    """Boolean mask: True where `arr` cells are inside the domain.
 
     Inverse of :func:`is_no_data`; same NaN/None handling.
 
@@ -101,8 +101,8 @@ def inside_domain(
         rtol: Relative tolerance.
 
     Returns:
-        Boolean mask. ``True`` where the cell does NOT match
-        ``no_data_value`` (i.e. is inside the domain).
+        Boolean mask. `True` where the cell does NOT match
+        `no_data_value` (i.e. is inside the domain).
     """
     return ~is_no_data(arr, no_data_value, rtol=rtol)
 

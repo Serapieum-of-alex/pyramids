@@ -1,39 +1,38 @@
-"""Collaborator objects for Dataset operations (L-2 Stage 1 stubs).
+"""Collaborator objects for Dataset operations.
 
-The L-2 composition refactor (see
-``planning/architecture-review/L-2-dataset-mixin-refactor.md``)
-replaces the seven mixins inherited by ``Dataset`` with seven
-collaborator instances accessible as ``ds.io``, ``ds.spatial``,
-``ds.bands``, ``ds.analysis``, ``ds.cell``, ``ds.vectorize``,
-``ds.cog``. During Stage 1 the collaborators are forwarder stubs
-— each method delegates back to ``self._ds.<method>(...)``, which
-resolves to the existing mixin via the unchanged MRO. Stage 2
-PRs migrate method bodies into the collaborators one at a time
-and remove the corresponding mixin from ``Dataset``'s base list.
+The composition refactor replaces the seven mixins inherited by
+`Dataset` with seven collaborator instances accessible as `ds.io`,
+`ds.spatial`, `ds.bands`, `ds.analysis`, `ds.cell`, `ds.vectorize`,
+`ds.cog`. During the first phase the collaborators are forwarder
+stubs — each method delegates back to `self._ds.<method>(...)`,
+which resolves to the existing mixin via the unchanged MRO. The
+follow-up phase migrates method bodies into the collaborators one
+at a time and removes the corresponding mixin from `Dataset`'s
+base list.
 
 Three design notes:
 
-1.  **Back-reference**. Every collaborator holds ``self._ds``,
+1. **Back-reference**. Every collaborator holds `self._ds`,
     a reference to the parent Dataset. Operations that need
-    state (``self._ds.crs``, ``self._ds._raster``) reach through
+    state (`self._ds.crs`, `self._ds._raster`) reach through
     that handle.
-2.  **Pickle**. Collaborators are NOT pickled as state.
-    ``Dataset.__reduce__`` short-circuits the entire pickle graph
+2. **Pickle**. Collaborators are NOT pickled as state.
+    `Dataset.__reduce__` short-circuits the entire pickle graph
     (verified in the Stage 0 audit, §3) and reconstructs via
-    ``cls.read_file(...)``, which calls ``Dataset.__init__``,
+    `cls.read_file(...)`, which calls `Dataset.__init__`,
     which creates fresh collaborators on the new instance. The
-    defensive ``_Collaborator.__reduce__`` returning a
-    ``_Placeholder`` is only needed if a caller pickles a
-    collaborator *directly* — e.g. ``pickle.dumps(ds.io)``.
-3.  **Naming**. The collaborator class names (``IO``, ``Spatial``,
-    ``Bands``, ``Analysis``, ``Cell``, ``Vectorize``, ``COG``)
+    defensive `_Collaborator.__reduce__` returning a
+    `_Placeholder` is only needed if a caller pickles a
+    collaborator *directly* — e.g. `pickle.dumps(ds.io)`.
+3. **Naming**. The collaborator class names (`IO`, `Spatial`,
+    `Bands`, `Analysis`, `Cell`, `Vectorize`, `COG`)
     intentionally collide with the existing mixin classes for
-    five of the seven. ``dataset.py`` resolves the collision by
-    importing the mixin classes under ``_<X>Mixin`` aliases.
+    five of the seven. `dataset.py` resolves the collision by
+    importing the mixin classes under `_<X>Mixin` aliases.
 
 Method-level docstrings on the forwarders are intentionally
 one-liners that reference the canonical implementation on
-``Dataset``. Duplicating the full Args/Returns/Examples blocks on
+`Dataset`. Duplicating the full Args/Returns/Examples blocks on
 both the mixin method and the forwarder would create two sources
 of truth that drift apart; readers who need the contract should
 follow the cross-reference.
@@ -60,12 +59,9 @@ from osgeo import gdal, ogr, osr
 from osgeo_utils import gdal2xyz
 from pandas import DataFrame
 
-from pyramids import _io
 from pyramids.base._domain import inside_domain, is_no_data
 from pyramids.base._errors import (
     AlignmentError,
-    CRSError,
-    FailedToSaveError,
     NoDataValueError,
     OutOfBoundsError,
     ReadOnlyError,
@@ -89,7 +85,6 @@ from pyramids.base.crs import (
     sr_from_wkt,
 )
 from pyramids.dataset.abstract_dataset import (
-    CATALOG,
     DEFAULT_NO_DATA_VALUE,
     OVERVIEW_LEVELS,
     RESAMPLING_METHODS,
@@ -109,19 +104,18 @@ from pyramids.feature import _ogr as _feature_ogr
 
 if TYPE_CHECKING:
     from cleopatra.array_glyph import ArrayGlyph
-
     from pyramids.dataset.dataset import Dataset
 
 
 _AVERAGING_RESAMPLERS: frozenset[str] = frozenset(
     {"average", "bilinear", "cubic", "cubicspline", "lanczos"}
 )
-"""Overview resampling methods that smooth pixel values.
+# Overview resampling methods that smooth pixel values.
 
-Incorrect for categorical rasters (land cover, basin IDs, classification
-masks). Using any of these on a categorical dataset emits a
-``UserWarning`` from :meth:`COG.to_cog`.
-"""
+# Incorrect for categorical rasters (land cover, basin IDs, classification
+# masks). Using any of these on a categorical dataset emits a
+# `UserWarning` from :meth:`COG.to_cog`.
+
 
 
 _INTEGER_DTYPES: frozenset[int] = frozenset(
@@ -139,13 +133,13 @@ _INTEGER_DTYPES: frozenset[int] = frozenset(
 
 
 class _Placeholder:
-    """Stand-in returned by ``_Collaborator.__reduce__``.
+    """Stand-in returned by `_Collaborator.__reduce__`.
 
     Exists only as the unpickle target for a directly-pickled
-    collaborator. ``Dataset.__init__`` creates fresh collaborators
+    collaborator. `Dataset.__init__` creates fresh collaborators
     on Dataset unpickle, overwriting any placeholder that would
     otherwise be attached. If user code ever observes a
-    ``_Placeholder`` instance, the unpickle sequence has been
+    `_Placeholder` instance, the unpickle sequence has been
     interrupted — open a bug.
     """
 
@@ -157,25 +151,25 @@ def _recreate_placeholder() -> _Placeholder:
 class _Collaborator:
     """Base class for every Dataset collaborator.
 
-    Holds a **weak** back-reference to the parent ``Dataset``. The
-    weakref is essential: a strong ``_ds`` reference creates a cycle
-    (``ds -> ds.spatial -> ds``) that the cycle collector eventually
+    Holds a **weak** back-reference to the parent `Dataset`. The
+    weakref is essential: a strong `_ds` reference creates a cycle
+    (`ds -> ds.spatial -> ds`) that the cycle collector eventually
     breaks but that delays GDAL handle release long enough to fail
     Windows file-unlink in tests (and to leak file descriptors in
     long-running processes). xarray uses the same pattern for
-    accessors. ``weakref.proxy`` is transparent — ``self._ds.crs``
-    works as if ``_ds`` were a real reference — so collaborator
+    accessors. `weakref.proxy` is transparent — `self._ds.crs`
+    works as if `_ds` were a real reference — so collaborator
     method bodies don't need to know the back-reference is weak.
 
-    Also overrides ``__reduce__`` so direct collaborator pickling
-    (``pickle.dumps(ds.io)``) produces a placeholder rather than a
-    circular pickle through ``_ds``.
+    Also overrides `__reduce__` so direct collaborator pickling
+    (`pickle.dumps(ds.io)`) produces a placeholder rather than a
+    circular pickle through `_ds`.
     """
 
     __slots__ = ("_ds",)
 
     def __init__(self, ds: Dataset) -> None:
-        # ``weakref.proxy`` so the back-reference does not create a
+        # `weakref.proxy` so the back-reference does not create a
         # strong cycle with the parent Dataset. See class docstring.
         self._ds = weakref.proxy(ds)
 
@@ -225,57 +219,57 @@ class IO(_Collaborator):
                     GeoDataFrame with a geometry column filled with polygon geometries; the function will get the
                     total_bounds of the GeoDataFrame and use it as a window to read the raster.
             chunks (int | tuple | dict | str | None, keyword-only):
-                Controls the backing array type. ``None`` (the default)
+                Controls the backing array type. `None` (the default)
                 preserves the eager numpy path — no behavior change
-                relative to earlier releases, and ``dask`` is not
+                relative to earlier releases, and `dask` is not
                 imported. Any other value switches to a lazy
                 :class:`dask.array.Array` whose blocks are materialized
                 on demand via a pickle-safe chunk reader:
 
-                - ``"auto"`` lets dask pick chunk shapes that keep each
+                - `"auto"` lets dask pick chunk shapes that keep each
                   block near the default dask chunk-byte target while
                   aligning with the on-disk block layout.
-                - ``-1`` produces a single chunk that covers the whole
+                - `-1` produces a single chunk that covers the whole
                   array — useful to defer the read but materialize in
                   one shot.
-                - An int (e.g. ``512``) applies to every dimension.
-                - A tuple (e.g. ``(1, 512, 512)``) gives per-dimension
+                - An int (e.g. `512`) applies to every dimension.
+                - A tuple (e.g. `(1, 512, 512)`) gives per-dimension
                   sizes.
-                - A dict (e.g. ``{0: 1, 1: 512, 2: 512}``) maps
+                - A dict (e.g. `{0: 1, 1: 512, 2: 512}`) maps
                   dimension index to chunk size.
 
-                When ``chunks`` is non-None and ``dask`` is not
+                When `chunks` is non-None and `dask` is not
                 installed, :class:`ImportError` is raised pointing at
-                the ``[lazy]`` extra. ``window`` is **not** supported
-                together with ``chunks``; raise :class:`ValueError`
+                the `[lazy]` extra. `window` is **not** supported
+                together with `chunks`; raise :class:`ValueError`
                 otherwise.
             lock (optional, keyword-only):
                 Thread / process lock guarding concurrent GDAL reads
                 of the same handle.
 
-                - ``None`` (default) → :func:`pyramids.base._locks.default_lock` —
+                - `None` (default) → :func:`pyramids.base._locks.default_lock` —
                   :class:`SerializableLock` in a single-process context,
-                  ``dask.distributed.Lock`` when a running client is
+                  `dask.distributed.Lock` when a running client is
                   detected.
-                - ``False`` → :class:`~pyramids.base._locks.DummyLock`
+                - `False` → :class:`~pyramids.base._locks.DummyLock`
                   for lock-free reads (per-thread handle; no mutex).
-                - Any other object with ``acquire``/``release`` /
+                - Any other object with `acquire`/`release` /
                   context-manager semantics is used as-is.
 
-                Ignored when ``chunks is None``.
+                Ignored when `chunks is None`.
 
         Returns:
             ArrayLike:
-                :class:`numpy.ndarray` when ``chunks is None``,
+                :class:`numpy.ndarray` when `chunks is None`,
                 :class:`dask.array.Array` otherwise. The instance
-                attribute :attr:`_backend` records ``"numpy"`` or
-                ``"dask"`` after the call.
+                attribute :attr:`_backend` records `"numpy"` or
+                `"dask"` after the call.
 
         Raises:
-            ValueError: If ``band`` is out of range or ``chunks`` is
-                combined with ``window`` (the lazy path reads the
+            ValueError: If `band` is out of range or `chunks` is
+                combined with `window` (the lazy path reads the
                 full array and expects dask to slice it down).
-            ImportError: If ``chunks`` is non-None and ``dask`` is not
+            ImportError: If `chunks` is non-None and `dask` is not
                 installed.
 
         Examples:
@@ -389,13 +383,13 @@ class IO(_Collaborator):
         Delegated helper for :meth:`read_array` so the eager branch
         stays free of dask imports. The built array has:
 
-        - shape ``(rows, cols)`` when ``band`` is an integer or the
-          dataset has a single band, and ``(bands, rows, cols)``
+        - shape `(rows, cols)` when `band` is an integer or the
+          dataset has a single band, and `(bands, rows, cols)`
           otherwise;
         - chunks derived by
           :func:`dask.array.core.normalize_chunks` from
-          ``self._ds._block_size[0]`` (the on-disk ``(block_width,
-          block_height)``) as ``previous_chunks``, so the default
+          `self._ds._block_size[0]` (the on-disk ``(block_width,
+          block_height)`) as `previous_chunks``, so the default
           chunking already aligns with GDAL's internal tiles;
         - a module-level :func:`_io_module._read_chunk` task per block — a
           closure-free callable paired with a pickle-safe
@@ -403,20 +397,20 @@ class IO(_Collaborator):
           serialization to a dask worker.
 
         Args:
-            band: Zero-based band index, or ``None`` for all bands.
+            band: Zero-based band index, or `None` for all bands.
             chunks: Any value accepted by
                 :func:`dask.array.core.normalize_chunks` (an int, a
-                per-axis tuple, a dict, the string ``"auto"``, or
-                ``-1`` for a single chunk).
-            lock: ``None`` → :func:`default_lock`; ``False`` →
+                per-axis tuple, a dict, the string `"auto"`, or
+                `-1` for a single chunk).
+            lock: `None` → :func:`default_lock`; `False` →
                 :class:`DummyLock`; otherwise passed through unchanged.
 
         Returns:
             dask.array.Array: A lazy array wrapping this dataset.
 
         Raises:
-            ImportError: When ``dask`` is not installed.
-            ValueError: If ``band`` is out of range.
+            ImportError: When `dask` is not installed.
+            ValueError: If `band` is out of range.
         """
         try:
             import dask.array as da
@@ -459,7 +453,7 @@ class IO(_Collaborator):
         # first, then calls manager.acquire() which grabs the manager
         # lock. Sharing one non-reentrant lock between the two would
         # deadlock. Using lock=False here delegates concurrency control
-        # to the outer ``with effective_lock`` in _io_module._read_chunk.
+        # to the outer `with effective_lock` in _io_module._read_chunk.
         manager = CachingFileManager(
             gdal_raster_open,
             self._ds._file_name,
@@ -668,7 +662,7 @@ class IO(_Collaborator):
         compute: bool = True,
         lock: Any = None,
     ) -> Any:
-        """Save dataset to tiff file (eager by default; ``compute=False`` defers).
+        """Save dataset to tiff file (eager by default; `compute=False` defers).
 
             `to_file` saves a raster to disk, the type of the driver (georiff/netcdf/ascii) will be implied from the
             extension at the end of the given path.
@@ -685,28 +679,28 @@ class IO(_Collaborator):
                 i.e., ['PREDICTOR=2']
             driver (str, optional):
                 Explicit GDAL driver name to use instead of inferring
-                from the file extension. Use ``driver="COG"`` to write
+                from the file extension. Use `driver="COG"` to write
                 a Cloud Optimized GeoTIFF; the call delegates to
                 :meth:`pyramids.dataset._collaborators.COG.to_cog`:
 
-                - ``creation_options`` (list form) is forwarded as the
-                  ``extra`` argument.
-                - ``tile_length`` is forwarded as the COG
-                  ``blocksize`` parameter.
-                - ``band`` must be ``0`` (COG writes all bands); any
+                - `creation_options` (list form) is forwarded as the
+                  `extra` argument.
+                - `tile_length` is forwarded as the COG
+                  `blocksize` parameter.
+                - `band` must be `0` (COG writes all bands); any
                   other value raises :class:`ValueError`.
 
-                Default ``None`` preserves the existing
+                Default `None` preserves the existing
                 extension-based driver selection.
             compute (bool, keyword-only):
-                ``True`` (default) writes the file synchronously and
-                returns ``None`` — behavior identical to earlier
-                releases. ``False`` returns a
+                `True` (default) writes the file synchronously and
+                returns `None` — behavior identical to earlier
+                releases. `False` returns a
                 :class:`dask.delayed.Delayed` object that defers the
-                write until the caller invokes ``.compute()`` on it.
+                write until the caller invokes `.compute()` on it.
                 Useful for composing a pyramids write into a larger
                 dask task graph (for example, reading with
-                ``read_array(chunks=...)``, transforming lazily, then
+                `read_array(chunks=...)`, transforming lazily, then
                 writing in the same compute).
             lock (Any, keyword-only):
                 Optional lock object reserved for cluster-wide write
@@ -750,7 +744,7 @@ class IO(_Collaborator):
             )
             result: Any = None
         else:
-            # L2: fail early if the Dataset isn't on-disk. The delayed
+            # fail early if the Dataset isn't on-disk. The delayed
             # write goes through self.__reduce__ at compute time, which
             # raises for MEM / /vsimem/ datasets — catching it now
             # surfaces a clear error before the graph materialises.
@@ -761,7 +755,7 @@ class IO(_Collaborator):
                     "— call .to_file(path) first to anchor the MEM "
                     f"dataset, or use compute=True. file_name={file_name!r}"
                 )
-            # L1: GeoTIFF writes are serialised by GDAL's own file lock
+            # GeoTIFF writes are serialised by GDAL's own file lock
             # regardless of dask. compute=False defers the *scheduling*
             # of the write, not per-tile parallelism. Users expecting
             # parallel writes should use to_zarr or a Zarr-backed
@@ -934,20 +928,20 @@ class IO(_Collaborator):
         drop_axis: int | list[int] | None = None,
         new_axis: int | list[int] | None = None,
     ) -> Any:
-        """Apply a function block-by-block — eager by default; lazy via ``chunks=``.
+        """Apply a function block-by-block — eager by default; lazy via `chunks=`.
 
         Two backends:
 
-        - Default / ``chunks=None``: reads the raster tile-by-tile via GDAL,
-          applies ``func`` to each tile, and writes the result into a fresh
+        - Default / `chunks=None`: reads the raster tile-by-tile via GDAL,
+          applies `func` to each tile, and writes the result into a fresh
           in-memory Dataset. Neither input nor output needs to fit in RAM at
           once. Returns a :class:`~pyramids.dataset.Dataset`.
-        - ``chunks=<spec>``: reads lazily via
+        - `chunks=<spec>`: reads lazily via
           :meth:`read_array(chunks=<spec>) <pyramids.dataset._collaborators.IO.read_array>`
           and dispatches to :func:`dask.array.map_blocks`. Returns a
-          :class:`dask.array.Array` that materializes on ``.compute()`` or
-          when wrapped by another lazy pyramids op. ``dtype``, ``drop_axis``,
-          and ``new_axis`` are forwarded to dask.
+          :class:`dask.array.Array` that materializes on `.compute()` or
+          when wrapped by another lazy pyramids op. `dtype`, `drop_axis`,
+          and `new_axis` are forwarded to dask.
 
         Args:
             func (Callable[[np.ndarray], np.ndarray]):
@@ -955,22 +949,22 @@ class IO(_Collaborator):
                 of the same shape. The function should handle no-data values internally
                 if needed.
             tile_size (int):
-                Size of each square tile in pixels when ``chunks=None``. Default is 256.
-                Ignored on the lazy path (use ``chunks=`` instead).
+                Size of each square tile in pixels when `chunks=None`. Default is 256.
+                Ignored on the lazy path (use `chunks=` instead).
             band (int | None):
                 Band index to process. If None, all bands are processed. Default is None.
             chunks (keyword-only):
                 If given, switches to the lazy path and is forwarded to
-                ``read_array(chunks=...)`` — see that method for accepted
-                values. ``None`` (default) keeps the eager block loop.
+                `read_array(chunks=...)` — see that method for accepted
+                values. `None` (default) keeps the eager block loop.
             dtype (np.dtype | None, keyword-only):
                 Output dtype. Defaults to the input array dtype. Matches
-                :func:`dask.array.map_blocks` ``dtype=``. Lazy path only.
+                :func:`dask.array.map_blocks` `dtype=`. Lazy path only.
             drop_axis (keyword-only):
-                Axes dropped by ``func``. Matches dask's ``drop_axis=``.
+                Axes dropped by `func`. Matches dask's `drop_axis=`.
                 Lazy path only.
             new_axis (keyword-only):
-                Axes added by ``func``. Matches dask's ``new_axis=``.
+                Axes added by `func`. Matches dask's `new_axis=`.
                 Lazy path only.
 
         Returns:
@@ -1467,7 +1461,7 @@ class Spatial(_Collaborator):
         else:
             if crs is not None:
                 self._ds.raster.SetProjection(crs)
-                # ARC-7: fallback to 4326 when crs is an empty string
+                # fallback to 4326 when crs is an empty string
                 # (get_epsg_from_prj raises in that case); epsg_from_wkt
                 # absorbs the fallback in one place.
                 self._ds._epsg = epsg_from_wkt(crs)
@@ -1581,7 +1575,7 @@ class Spatial(_Collaborator):
             int: EPSG number.
         """
         prj = self._get_crs()
-        # ARC-7: get_epsg_from_prj raises on empty input; epsg_from_wkt
+        # get_epsg_from_prj raises on empty input; epsg_from_wkt
         # absorbs the historical 4326 fallback for datasets without a
         # projection.
         epsg = epsg_from_wkt(prj)
@@ -1786,7 +1780,7 @@ class Spatial(_Collaborator):
                 xs = [src_gt[0], src_gt[0] + src_gt[1] * src_x]
                 ys = [src_gt[3], src_gt[3] + src_gt[5] * src_y]
 
-                # ARC-14: reproject_coordinates takes (x, y) and returns (x, y).
+                # reproject_coordinates takes (x, y) and returns (x, y).
                 [ulx, lrx], [uly, lry] = reproject_coordinates(
                     xs, ys, from_crs=src_epsg, to_crs=to_epsg
                 )
@@ -1812,7 +1806,7 @@ class Spatial(_Collaborator):
 
         if src_epsg != to_epsg:
             # transform the two-point coordinates to the new crs to calculate the new cell size
-            # ARC-14: reproject_coordinates takes (x, y) and returns (x, y).
+            # reproject_coordinates takes (x, y) and returns (x, y).
             new_xs, new_ys = reproject_coordinates(
                 xs, ys, from_crs=src_epsg, to_crs=to_epsg, precision=6
             )
@@ -3701,7 +3695,7 @@ class Analysis(_Collaborator):
         src_array = self._ds.raster.ReadAsArray()
 
         # rtol=1e-6 is intentionally tighter than the package default
-        # (1e-3): ``fill`` writes user-supplied values into every domain
+        # (1e-3): `fill` writes user-supplied values into every domain
         # cell, so a too-loose match would clobber legitimate cells that
         # happen to lie within ~0.1% of the no-data sentinel.
         src_array[inside_domain(src_array, no_data_value, rtol=0.000001)] = value
@@ -4403,12 +4397,12 @@ class Analysis(_Collaborator):
 class Cell(_Collaborator):
     """Cell-geometry operations on a Dataset.
 
-    Owns the real implementations of ``get_cell_coords``,
-    ``get_cell_polygons``, ``get_cell_points``,
-    ``map_to_array_coordinates``, and ``array_to_map_coordinates`` after
-    L-2 PR 2.1. ``Dataset`` exposes a same-named facade for each method
-    that delegates to this collaborator, so ``ds.get_cell_coords(...)``
-    and ``ds.cell.get_cell_coords(...)`` are equivalent.
+    Owns the real implementations of `get_cell_coords`,
+    `get_cell_polygons`, `get_cell_points`,
+    `map_to_array_coordinates`, and `array_to_map_coordinates` after
+    L-2 PR 2.1. `Dataset` exposes a same-named facade for each method
+    that delegates to this collaborator, so `ds.get_cell_coords(...)`
+    and `ds.cell.get_cell_coords(...)` are equivalent.
     """
 
     def get_cell_coords(
@@ -5683,13 +5677,13 @@ class Vectorize(_Collaborator):
 
 
 class COG(_Collaborator):
-    """Cloud Optimized GeoTIFF read/write/validate operations for ``Dataset``.
+    """Cloud Optimized GeoTIFF read/write/validate operations for `Dataset`.
 
-    Owns the real implementations of ``to_cog``, ``is_cog`` (property),
-    and ``validate_cog`` after L-2 PR 2.2. ``Dataset`` exposes a
-    same-named facade for each so ``ds.to_cog(...)`` and
-    ``ds.cog.to_cog(...)`` are equivalent. The categorical-raster
-    resampling guardrail (``_warn_if_categorical_with_averaging``)
+    Owns the real implementations of `to_cog`, `is_cog` (property),
+    and `validate_cog` after L-2 PR 2.2. `Dataset` exposes a
+    same-named facade for each so `ds.to_cog(...)` and
+    `ds.cog.to_cog(...)` are equivalent. The categorical-raster
+    resampling guardrail (`_warn_if_categorical_with_averaging`)
     lives here too.
     """
 
@@ -5722,10 +5716,10 @@ class COG(_Collaborator):
 
         Args:
             path: Destination path. Parent directory must exist.
-            compress: Compression method. ``DEFLATE``, ``LZW``, and
-                ``NONE`` are guaranteed by every GDAL build. ``JPEG``
-                is almost always available. ``ZSTD``, ``WEBP``,
-                ``LERC``, ``LERC_DEFLATE``, and ``LERC_ZSTD`` require
+            compress: Compression method. `DEFLATE`, `LZW`, and
+                `NONE` are guaranteed by every GDAL build. `JPEG`
+                is almost always available. `ZSTD`, `WEBP`,
+                `LERC`, `LERC_DEFLATE`, and `LERC_ZSTD` require
                 the GDAL build to have been compiled with the
                 corresponding library (libzstd / libwebp / LERC); on
                 a GDAL build lacking them, the COG driver will raise
@@ -5741,28 +5735,28 @@ class COG(_Collaborator):
             level: Compression level (e.g., 1-12 for DEFLATE, 1-22 ZSTD).
             quality: Lossy-compression quality 1-100 (JPEG/WEBP).
             blocksize: Internal tile size; power of 2 in [64, 4096].
-            predictor: ``"YES"``/``"STANDARD"``/``"FLOATING_POINT"`` or 1/2/3.
-            bigtiff: ``"IF_SAFER"`` (default), ``"YES"``, ``"NO"``,
-                ``"IF_NEEDED"``.
-            num_threads: Worker threads; ``"ALL_CPUS"`` or an int.
-            overview_resampling: ``nearest``, ``average``, ``bilinear``,
-                ``cubic``, ``cubicspline``, ``lanczos``, ``mode``,
-                ``rms``, ``gauss``.
+            predictor: `"YES"`/`"STANDARD"`/`"FLOATING_POINT"` or 1/2/3.
+            bigtiff: `"IF_SAFER"` (default), `"YES"`, `"NO"`,
+                `"IF_NEEDED"`.
+            num_threads: Worker threads; `"ALL_CPUS"` or an int.
+            overview_resampling: `nearest`, `average`, `bilinear`,
+                `cubic`, `cubicspline`, `lanczos`, `mode`,
+                `rms`, `gauss`.
             overview_count: Number of overview levels (default: auto).
             overview_compress: Compression for overview IFDs.
-            tiling_scheme: e.g., ``"GoogleMapsCompatible"`` for a
+            tiling_scheme: e.g., `"GoogleMapsCompatible"` for a
                 web-optimized COG (EPSG:3857).
             zoom_level, zoom_level_strategy, aligned_levels: Advanced
                 tiling-scheme knobs.
-            resampling: Warp resampling when ``tiling_scheme`` or
-                ``target_srs`` reprojects.
+            resampling: Warp resampling when `tiling_scheme` or
+                `target_srs` reprojects.
             add_mask: Add an alpha band for transparency.
             sparse_ok: Allow sparse (unfilled) tiles.
             target_srs: Reproject before write. Int for EPSG or a WKT
                 / PROJ string.
             statistics: Compute and embed band statistics.
             extra: Additional GDAL creation options as a mapping or
-                legacy ``['KEY=VALUE', ...]`` list. Overrides
+                legacy `['KEY=VALUE',...]` list. Overrides
                 conflicting kwargs.
 
         Returns:
@@ -5776,13 +5770,13 @@ class COG(_Collaborator):
 
         Warnings:
             UserWarning: When the source looks categorical (integer
-                dtype or has a color table) and ``overview_resampling``
+                dtype or has a color table) and `overview_resampling`
                 is an averaging method.
 
         Note:
-            Setting ``tiling_scheme`` (e.g., ``GoogleMapsCompatible``)
-            implies a specific SRS — ``target_srs`` is ignored in that
-            case. A ``UserWarning`` is emitted if both are provided.
+            Setting `tiling_scheme` (e.g., `GoogleMapsCompatible`)
+            implies a specific SRS — `target_srs` is ignored in that
+            case. A `UserWarning` is emitted if both are provided.
 
         Examples:
             - Write a compressed COG from an in-memory Dataset:
@@ -5868,9 +5862,9 @@ class COG(_Collaborator):
 
     @property
     def is_cog(self) -> bool:
-        """``True`` iff the backing file on disk is a valid COG.
+        """`True` iff the backing file on disk is a valid COG.
 
-        ``False`` for MEM datasets, ``/vsimem/`` paths, and unsaved
+        `False` for MEM datasets, `/vsimem/` paths, and unsaved
         datasets (empty :attr:`file_name`).
 
         Examples:
@@ -5911,14 +5905,14 @@ class COG(_Collaborator):
         """Validate the backing file as a COG.
 
         Args:
-            strict: If ``True``, warnings are treated as errors.
+            strict: If `True`, warnings are treated as errors.
 
         Returns:
             ValidationReport with errors, warnings, and structural details.
 
         Raises:
             FileNotFoundError: Dataset has no on-disk backing file
-                (MEM-only or ``/vsimem/``).
+                (MEM-only or `/vsimem/`).
 
         Examples:
             - Validate and branch on the result:
@@ -5953,22 +5947,22 @@ class COG(_Collaborator):
         return validate(fn, strict=strict)
 
     def _warn_if_categorical_with_averaging(self, overview_resampling: str) -> None:
-        """Emit a ``UserWarning`` if an averaging resampler is used on categorical data.
+        """Emit a `UserWarning` if an averaging resampler is used on categorical data.
 
         Args:
             overview_resampling: The resampling method requested by the
                 caller. Case-insensitive. Only averaging-family methods
-                (``average``, ``bilinear``, ``cubic``, ``cubicspline``,
-                ``lanczos``) trigger the check.
+                (`average`, `bilinear`, `cubic`, `cubicspline`,
+                `lanczos`) trigger the check.
 
         Warns:
-            UserWarning: When ``overview_resampling`` is an averaging
+            UserWarning: When `overview_resampling` is an averaging
                 method and the source has a color table OR integer
                 dtype — both strong signals of categorical data.
 
         Note:
-            Silent when ``overview_resampling`` is ``nearest`` or
-            ``mode`` (both category-safe) or when the source is
+            Silent when `overview_resampling` is `nearest` or
+            `mode` (both category-safe) or when the source is
             floating-point and has no color table (continuous data).
 
         Examples:

@@ -52,10 +52,10 @@ from pyramids.dataset.ops._zonal import zonal_stats as _zonal_stats
 from pyramids.dataset.ops.vectorize import rasterize_features
 from pyramids.feature import FeatureCollection
 
-# L-2 Stage 1: tuple of collaborator attribute names. Used by
-# ``Dataset.__init__`` to wire the seven collaborators and by
-# ``_update_inplace`` to re-bind their ``_ds`` back-references after
-# ``__dict__.update`` (see audit §3.3).
+# tuple of collaborator attribute names. Used by
+# `Dataset.__init__` to wire the seven collaborators and by
+# `_update_inplace` to re-bind their `_ds` back-references after
+# `__dict__.update` (see audit §3.3).
 _COLLABORATOR_ATTRS = ("io", "spatial", "bands", "analysis", "cell", "vectorize", "cog")
 
 if TYPE_CHECKING:
@@ -71,10 +71,10 @@ class Dataset(RasterBase):
     rasters use :class:`~pyramids.dataset.DatasetCollection`.
 
     The seven public-API families are exposed as collaborator instances
-    (``ds.io``, ``ds.spatial``, ``ds.bands``, ``ds.analysis``,
-    ``ds.cell``, ``ds.vectorize``, ``ds.cog``) and via thin facade
-    methods on the Dataset itself, so ``ds.crop(mask)`` and
-    ``ds.spatial.crop(mask)`` are equivalent. Each collaborator holds a
+    (`ds.io`, `ds.spatial`, `ds.bands`, `ds.analysis`,
+    `ds.cell`, `ds.vectorize`, `ds.cog`) and via thin facade
+    methods on the Dataset itself, so `ds.crop(mask)` and
+    `ds.spatial.crop(mask)` are equivalent. Each collaborator holds a
     weakref proxy back to the Dataset; the proxy keeps GDAL handle
     release deterministic on Windows.
     """
@@ -94,9 +94,9 @@ class Dataset(RasterBase):
 
         # Each collaborator owns the bodies of one public-API family
         # (io, spatial, bands, analysis, cell, vectorize, cog) and
-        # holds a ``weakref.proxy(self)`` back-reference. Dataset
+        # holds a `weakref.proxy(self)` back-reference. Dataset
         # exposes facade methods that delegate to the collaborator,
-        # so both ``ds.crop(mask)`` and ``ds.spatial.crop(mask)`` are
+        # so both `ds.crop(mask)` and `ds.spatial.crop(mask)` are
         # equivalent.
         self.io = IO(self)
         self.spatial = Spatial(self)
@@ -109,24 +109,24 @@ class Dataset(RasterBase):
     def _update_inplace(self, src: gdal.Dataset, access: str | None = None) -> None:
         """Swap internal state from a new GDAL dataset.
 
-        Creates a fresh instance of ``type(self)`` and copies its
-        internal state into ``self``. Using ``type(self)`` rather
-        than the literal ``Dataset`` is what keeps a NetCDF instance
+        Creates a fresh instance of `type(self)` and copies its
+        internal state into `self`. Using `type(self)` rather
+        than the literal `Dataset` is what keeps a NetCDF instance
         a NetCDF after any in-place op (set_crs, change_no_data_value,
         apply(inplace=True), to_file). Subclasses that carry extra
         state across the swap (e.g. NetCDF's variable-subset
         attributes) override this method.
 
-        L-2 Stage 1: after ``__dict__.update``, the collaborators on
-        ``self`` came from ``new.__dict__`` and point at the temporary
-        ``new`` instance, not at ``self``. Re-bind every collaborator's
-        ``_ds`` to ``self`` so subsequent ``self.spatial.crop(...)``
-        calls reach back into ``self``, not the discarded ``new``.
+        after `__dict__.update`, the collaborators on
+        `self` came from `new.__dict__` and point at the temporary
+        `new` instance, not at `self`. Re-bind every collaborator's
+        `_ds` to `self` so subsequent `self.spatial.crop(...)`
+        calls reach back into `self`, not the discarded `new`.
         """
         new = type(self)(src, access=access or self._access)
         self.__dict__.update(new.__dict__)
-        # Re-bind via ``weakref.proxy`` so the back-reference stays
-        # weak after the dict swap (matches ``_Collaborator.__init__``).
+        # Re-bind via `weakref.proxy` so the back-reference stays
+        # weak after the dict swap (matches `_Collaborator.__init__`).
         self_proxy = weakref.proxy(self)
         for attr in _COLLABORATOR_ATTRS:
             collab = self.__dict__.get(attr)
@@ -230,10 +230,10 @@ class Dataset(RasterBase):
     def apply(self, *args, **kwargs):
         """Facade — delegates to :meth:`Analysis.apply <pyramids.dataset._collaborators.Analysis.apply>`.
 
-        The collaborator returns ``None`` for ``inplace=True`` so the facade
-        can substitute the actual ``self`` (preserving identity); the proxy
+        The collaborator returns `None` for `inplace=True` so the facade
+        can substitute the actual `self` (preserving identity); the proxy
         used by the collaborator's back-reference would otherwise fail
-        ``result is ds`` checks.
+        `result is ds` checks.
         """
         result = self.analysis.apply(*args, **kwargs)
         return self if result is None else result
@@ -241,7 +241,7 @@ class Dataset(RasterBase):
     def fill(self, *args, **kwargs):
         """Facade — delegates to :meth:`Analysis.fill <pyramids.dataset._collaborators.Analysis.fill>`.
 
-        The collaborator returns ``None`` for ``inplace=True``; see
+        The collaborator returns `None` for `inplace=True`; see
         :meth:`apply` for the rationale.
         """
         result = self.analysis.fill(*args, **kwargs)
@@ -375,8 +375,8 @@ class Dataset(RasterBase):
     def change_no_data_value(self, *args, **kwargs):
         """Facade — concrete override of the abstract :meth:`RasterBase.change_no_data_value`.
 
-        The collaborator returns ``None`` for the ``inplace=True`` path; the
-        facade substitutes ``self`` for identity preservation, matching
+        The collaborator returns `None` for the `inplace=True` path; the
+        facade substitutes `self` for identity preservation, matching
         :meth:`apply` and :meth:`fill`.
         """
         result = self.bands.change_no_data_value(*args, **kwargs)
@@ -412,8 +412,8 @@ class Dataset(RasterBase):
         """Concrete override of :meth:`RasterBase._calculate_bbox`.
 
         Direct on Dataset (not via the Bands collaborator) because the
-        ``bbox`` / ``bounds`` properties are reachable before the
-        collaborator is wired during ``Dataset.__init__``.
+        `bbox` / `bounds` properties are reachable before the
+        collaborator is wired during `Dataset.__init__`.
         """
         x_min, y_max = self.top_left_corner
         y_min = y_max - self.rows * self.cell_size
@@ -433,8 +433,8 @@ class Dataset(RasterBase):
         """Concrete override of :meth:`RasterBase._get_band_names`.
 
         Defined directly on Dataset (not via the bands collaborator)
-        because ``Dataset.__init__`` calls ``self._get_band_names()``
-        before the ``Bands`` collaborator is wired up. Mirrors
+        because `Dataset.__init__` calls `self._get_band_names()`
+        before the `Bands` collaborator is wired up. Mirrors
         :meth:`Bands._get_band_names`.
         """
         names = []
@@ -455,10 +455,10 @@ class Dataset(RasterBase):
         """Concrete override of :meth:`RasterBase._get_crs`.
 
         Defined directly on Dataset rather than as a facade because
-        ``RasterBase.__init__`` calls ``_get_epsg()`` (which calls
-        ``_get_crs()``) before ``Dataset.__init__`` has a chance to wire
+        `RasterBase.__init__` calls `_get_epsg()` (which calls
+        `_get_crs()`) before `Dataset.__init__` has a chance to wire
         up the Spatial collaborator. The Spatial collaborator's
-        ``_get_crs`` body is the same one-liner.
+        `_get_crs` body is the same one-liner.
         """
         return str(self.raster.GetProjection())
 
@@ -487,15 +487,15 @@ class Dataset(RasterBase):
         Args:
             fc: A :class:`pyramids.feature.FeatureCollection` of
                 polygons sharing this dataset's CRS.
-            stats: Sequence of stat names (``"mean"``, ``"sum"``,
-                ``"min"``, ``"max"``, ``"std"``, ``"var"``,
-                ``"count"``).
-            method: ``"rasterize"`` is the only supported value today;
-                an area-weighted ``"fractional"`` method is planned.
+            stats: Sequence of stat names (`"mean"`, `"sum"`,
+                `"min"`, `"max"`, `"std"`, `"var"`,
+                `"count"`).
+            method: `"rasterize"` is the only supported value today;
+                an area-weighted `"fractional"` method is planned.
             band: Zero-based band index.
 
         Returns:
-            pandas.DataFrame: Indexed by ``fc.index``; one column per stat.
+            pandas.DataFrame: Indexed by `fc.index`; one column per stat.
         """
         return _zonal_stats(self, fc, stats=stats, method=method, band=band)
 
@@ -515,15 +515,15 @@ class Dataset(RasterBase):
         that function for the full argument contract. Zarr is the
         only raster output format where pyramids can write in true
         parallel — each dask chunk becomes an independent Zarr chunk
-        file. Requires the ``[lazy]`` optional extra.
+        file. Requires the `[lazy]` optional extra.
 
         Args:
             store: Target store (path / fsspec URL / zarr.Store).
-            compute: ``True`` writes immediately; ``False`` returns a
+            compute: `True` writes immediately; `False` returns a
                 :class:`dask.delayed.Delayed`.
-            mode: Zarr open mode, usually ``"w"`` or ``"a"``.
+            mode: Zarr open mode, usually `"w"` or `"a"`.
             chunks: Chunk spec forwarded to :meth:`read_array`.
-                ``None`` defaults to ``"auto"`` via the zarr helper.
+                `None` defaults to `"auto"` via the zarr helper.
             storage_options: fsspec options for cloud stores.
         """
         resolved_chunks = chunks if chunks is not None else "auto"
@@ -552,7 +552,7 @@ class Dataset(RasterBase):
         Args:
             store: Input store (path / fsspec URL / zarr.Store).
             chunks: If non-None, the loaded Dataset is flagged as
-                dask-backed so downstream ``read_array`` calls return
+                dask-backed so downstream `read_array` calls return
                 lazy arrays.
             storage_options: fsspec options for cloud stores.
         """
@@ -842,11 +842,11 @@ class Dataset(RasterBase):
 
     @property
     def total_bounds(self) -> np.ndarray:
-        """Bounding box ``[minx, miny, maxx, maxy]`` as a NumPy array.
+        """Bounding box `[minx, miny, maxx, maxy]` as a NumPy array.
 
-        ARC-17 introduced this property so that ``Dataset`` and
+        introduced this property so that `Dataset` and
         :class:`pyramids.feature.FeatureCollection` expose the same
-        shape (``GeoDataFrame.total_bounds`` is the geopandas name
+        shape (`GeoDataFrame.total_bounds` is the geopandas name
         for exactly this array), letting both classes satisfy the
         :class:`pyramids.base.protocols.SpatialObject` protocol.
         """
@@ -966,12 +966,12 @@ class Dataset(RasterBase):
             Dataset: An independent copy. Access mode of the returned
             Dataset:
 
-            * ``path is None`` (in-memory copy) → access mode of the
-              source is preserved. A ``copy()`` of a read-only source
+            * `path is None` (in-memory copy) → access mode of the
+              source is preserved. A `copy()` of a read-only source
               stays read-only at the pyramids level (the underlying
               MEM driver is always writable; pyramids enforces the
               flag itself).
-            * ``path is not None`` (on-disk copy) → ``"write"``,
+            * `path is not None` (on-disk copy) → `"write"`,
               because the caller has just created a new file they
               presumably want to populate.
         """
@@ -1066,9 +1066,9 @@ class Dataset(RasterBase):
 
         Single canonical factory for raster construction. Consolidates the
         ``_create_dataset + SetGeoTransform + SetProjection + wrap +
-        _set_no_data_value (+ WriteArray)`` pattern that ``create``,
-        ``create_from_array``, ``dataset_like``, and the per-op factories
-        across ``Spatial`` / ``Analysis`` all need.
+        _set_no_data_value (+ WriteArray)` pattern that `create``,
+        `create_from_array`, `dataset_like`, and the per-op factories
+        across `Spatial` / `Analysis` all need.
 
         Args:
             cols: Number of columns.
@@ -1076,27 +1076,27 @@ class Dataset(RasterBase):
             bands: Number of bands.
             dtype: GDAL data type code.
             geo: Geotransform tuple
-                ``(top_left_x, pixel_w, row_skew, top_left_y, col_skew,
-                pixel_h)``.
+                `(top_left_x, pixel_w, row_skew, top_left_y, col_skew,
+                pixel_h)`.
             crs: Projection as WKT string.
             no_data_value: No-data value. Scalar (broadcast to all bands)
-                or list (one per band). Pass ``None`` to skip the
-                ``_set_no_data_value`` call so bands have no no-data
-                sentinel — the same behaviour the public ``create``
+                or list (one per band). Pass `None` to skip the
+                `_set_no_data_value` call so bands have no no-data
+                sentinel — the same behaviour the public `create`
                 factory exposes.
-            driver: GDAL driver type. Default ``"MEM"``.
-            path: Path for disk-based drivers. ``None`` keeps the
+            driver: GDAL driver type. Default `"MEM"`.
+            path: Path for disk-based drivers. `None` keeps the
                 dataset in memory.
-            access: Access mode for the Dataset wrapper. Default ``"write"``.
+            access: Access mode for the Dataset wrapper. Default `"write"`.
                 Note: MEM driver datasets can be written to regardless
                 of access mode since the access flag is enforced at the
                 pyramids level, not by GDAL.
             array: Optional numpy array to write into the bands after
                 construction. When the array is 2-D it goes to band 1;
-                when 3-D, ``array[i, :, :]`` goes to band ``i+1``. The
-                caller is responsible for matching ``array.shape`` to
-                ``bands x rows x cols`` (or ``rows x cols`` for a
-                single-band array). Default ``None`` (allocate but
+                when 3-D, `array[i, :, :]` goes to band `i+1`. The
+                caller is responsible for matching `array.shape` to
+                `bands x rows x cols` (or `rows x cols` for a
+                single-band array). Default `None` (allocate but
                 don't write).
 
         Returns:
@@ -1189,11 +1189,11 @@ class Dataset(RasterBase):
     ) -> Dataset:
         """Rasterize a :class:`FeatureCollection` into a new :class:`Dataset`.
 
-        Burns the values from ``column_name`` (or every attribute
-        column if ``None``) into a single-band or multi-band raster.
-        When a ``template`` Dataset is given, the output adopts its
+        Burns the values from `column_name` (or every attribute
+        column if `None`) into a single-band or multi-band raster.
+        When a `template` Dataset is given, the output adopts its
         geotransform, cell size, row/column count, and no-data value.
-        Otherwise ``cell_size`` controls the resolution and the extent
+        Otherwise `cell_size` controls the resolution and the extent
         is derived from :attr:`FeatureCollection.total_bounds`.
 
         Args:
@@ -1201,12 +1201,12 @@ class Dataset(RasterBase):
                 The vector to rasterize.
             cell_size (int | float | None):
                 Cell size for the new raster. Required unless
-                ``template`` is given.
+                `template` is given.
             template (Dataset | None):
                 Optional template raster. When supplied, the output
                 inherits its geotransform and no-data value.
             column_name (str | list[str] | None):
-                Attribute column(s) to burn as band values. ``None``
+                Attribute column(s) to burn as band values. `None`
                 burns every non-geometry column as a separate band.
                 Mixed-dtype column lists are promoted to the smallest
                 numpy dtype that holds every selected column without
@@ -1216,12 +1216,12 @@ class Dataset(RasterBase):
             Dataset: The burned raster.
 
         Raises:
-            ValueError: ``cell_size`` missing or non-positive,
-                ``column_name`` empty or referencing missing columns.
-            TypeError: ``template`` is not a Dataset, or
-                ``column_name`` is not ``str`` / ``list`` / ``None``.
-            CRSError: ``features.epsg`` is ``None``, or
-                ``template.epsg != features.epsg``.
+            ValueError: `cell_size` missing or non-positive,
+                `column_name` empty or referencing missing columns.
+            TypeError: `template` is not a Dataset, or
+                `column_name` is not `str` / `list` / `None`.
+            CRSError: `features.epsg` is `None`, or
+                `template.epsg!= features.epsg`.
         """
         return rasterize_features(
             features,

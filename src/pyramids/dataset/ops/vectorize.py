@@ -28,7 +28,7 @@ def rasterize_features(
 ) -> Dataset:
     """Burn a :class:`FeatureCollection` into a new raster.
 
-    Free-function form of :meth:`Dataset.from_features`. ``dataset_cls``
+    Free-function form of :meth:`Dataset.from_features`. `dataset_cls`
     is the class to instantiate (passed in by the classmethod
     forwarder so this module does not need a runtime import of
     :class:`~pyramids.dataset.Dataset`).
@@ -38,26 +38,26 @@ def rasterize_features(
         dataset_cls: The :class:`~pyramids.dataset.Dataset` class (or a
             subclass) used to allocate the output raster.
         cell_size: Cell size for the new raster. Required unless
-            ``template`` is given.
+            `template` is given.
         template: Optional template raster. When supplied, the output
             inherits its geotransform and no-data value.
         column_name: Attribute column(s) to burn as band values.
-            ``None`` burns every non-geometry column as a separate band.
+            `None` burns every non-geometry column as a separate band.
 
     Returns:
         Dataset: The burned raster. When the burn column is integer
-        dtyped and the template's no-data is ``None``, the output
-        raster's no-data is ``dataset_cls.default_no_data_value``
-        rather than ``NaN`` â€” NaN cannot be stored in integer rasters
+        dtyped and the template's no-data is `None`, the output
+        raster's no-data is `dataset_cls.default_no_data_value`
+        rather than `NaN` â€” NaN cannot be stored in integer rasters
         without silent coercion.
 
     Raises:
-        ValueError: If ``cell_size`` is missing or non-positive, or
-            if ``column_name`` is empty / references missing columns.
-        TypeError: If ``template`` is not a Dataset, or
-            ``column_name`` is not ``str`` / ``list`` / ``None``.
+        ValueError: If `cell_size` is missing or non-positive, or
+            if `column_name` is empty / references missing columns.
+        TypeError: If `template` is not a Dataset, or
+            `column_name` is not `str` / `list` / `None`.
         CRSError: If the FeatureCollection has no CRS, or
-            ``template.epsg != features.epsg``.
+            `template.epsg!= features.epsg`.
     """
     if cell_size is None and template is None:
         raise ValueError("You have to enter either cell size or Dataset object.")
@@ -73,8 +73,8 @@ def rasterize_features(
     if ds_epsg is None:
         raise CRSError(
             "FeatureCollection must have a CRS before rasterisation. "
-            "Set one via ``fc.set_crs('EPSG:...')`` or construct the FC "
-            "with ``crs='EPSG:...'``."
+            "Set one via `fc.set_crs('EPSG:...')` or construct the FC "
+            "with `crs='EPSG:...'`."
         )
     if template is not None:
         if not isinstance(template, dataset_cls):

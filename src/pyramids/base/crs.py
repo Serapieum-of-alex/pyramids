@@ -1,11 +1,11 @@
 """CRS construction helpers shared across the pyramids package.
 
-Single source of truth for ``osr.SpatialReference`` construction,
+Single source of truth for `osr.SpatialReference` construction,
 WKT / Proj4 → EPSG resolution, and coordinate reprojection.
 
 Public surface:
 
-* :func:`sr_from_epsg` — build an ``osr.SpatialReference`` from an
+* :func:`sr_from_epsg` — build an `osr.SpatialReference` from an
   EPSG code.
 * :func:`sr_from_wkt` — build one from a WKT string.
 * :func:`create_sr_from_proj` — build one from a WKT / ESRI WKT /
@@ -14,7 +14,7 @@ Public surface:
   projection string. Raises :class:`CRSError` on empty input.
 * :func:`epsg_from_wkt` — same, but with a configurable default
   for the empty-input case.
-* :func:`reproject_coordinates` — reproject parallel ``x`` / ``y``
+* :func:`reproject_coordinates` — reproject parallel `x` / `y`
   lists between CRSes via :class:`pyproj.Transformer`.
 """
 
@@ -34,7 +34,7 @@ def sr_from_epsg(epsg: int) -> osr.SpatialReference:
     """Build an :class:`osr.SpatialReference` from an EPSG code.
 
     Args:
-        epsg: EPSG code; cast to ``int`` before being handed to
+        epsg: EPSG code; cast to `int` before being handed to
             :meth:`osr.SpatialReference.ImportFromEPSG`.
 
     Returns:
@@ -42,9 +42,9 @@ def sr_from_epsg(epsg: int) -> osr.SpatialReference:
 
     Raises:
         ValueError: If GDAL cannot resolve the EPSG code (the
-            non-zero return path from ``ImportFromEPSG`` — usually
+            non-zero return path from `ImportFromEPSG` — usually
             propagates as a GDAL exception when
-            ``gdal.UseExceptions()`` is active, which pyramids
+            `gdal.UseExceptions()` is active, which pyramids
             installs at package import).
     """
     sr = osr.SpatialReference()
@@ -59,10 +59,10 @@ def sr_from_epsg(epsg: int) -> osr.SpatialReference:
 def sr_from_wkt(wkt: str) -> osr.SpatialReference:
     """Build an :class:`osr.SpatialReference` from a WKT string.
 
-    Thin wrapper around ``osr.SpatialReference(wkt=wkt)`` that gives
+    Thin wrapper around `osr.SpatialReference(wkt=wkt)` that gives
     the WKT path a consistent name alongside :func:`sr_from_epsg` and
     :func:`create_sr_from_proj`. Use this when you have a WKT (the
-    most common case in the dataset stack — ``dataset.crs`` returns
+    most common case in the dataset stack — `dataset.crs` returns
     WKT) and want a typed SRS without re-typing the constructor's
     keyword argument every call site.
 
@@ -96,7 +96,7 @@ def create_sr_from_proj(
         prj (str):
             The projection string (WKT, ESRI WKT, or Proj4).
         string_type (str | None):
-            One of ``"WKT"``, ``"ESRI wkt"``, ``"PROj4"``, or ``None``
+            One of `"WKT"`, `"ESRI wkt"`, `"PROj4"`, or `None`
             for auto-detect (default). Auto-detect uses WKT import and
             falls back to ESRI WKT or Proj4 based on the prefix.
 
@@ -117,7 +117,7 @@ def create_sr_from_proj(
             'WGS 84'
 
             ```
-        - Parse a Proj4 string by passing ``string_type="PROJ4"``:
+        - Parse a Proj4 string by passing `string_type="PROJ4"`:
             ```python
             >>> srs = create_sr_from_proj(
             ...     "+proj=longlat +datum=WGS84 +no_defs", string_type="PROJ4"
@@ -156,11 +156,11 @@ def get_epsg_from_prj(prj: str) -> int:
 
     Auto-identifies the EPSG from a WKT / ESRI WKT / Proj4 string.
 
-    ARC-7: an empty input string is no longer silently mapped to
-    ``4326``. That legacy default masked real configuration errors.
+    an empty input string is no longer silently mapped to
+    `4326`. That legacy default masked real configuration errors.
     Callers that genuinely want a fallback should handle the
-    ``CRSError`` themselves, or use :func:`epsg_from_wkt` which
-    accepts an explicit ``default``.
+    `CRSError` themselves, or use :func:`epsg_from_wkt` which
+    accepts an explicit `default`.
 
     Args:
         prj (str): Projection string.
@@ -169,7 +169,7 @@ def get_epsg_from_prj(prj: str) -> int:
         int: The resolved EPSG code.
 
     Raises:
-        CRSError: If ``prj`` is an empty string.
+        CRSError: If `prj` is an empty string.
 
     Examples:
         - Resolve EPSG:4326 from its standard WKT representation:
@@ -190,7 +190,7 @@ def get_epsg_from_prj(prj: str) -> int:
             3857
 
             ```
-        - An empty projection string raises ``CRSError`` (a ``ValueError`` subclass):
+        - An empty projection string raises `CRSError` (a `ValueError` subclass):
             ```python
             >>> get_epsg_from_prj("")
             Traceback (most recent call last):
@@ -203,7 +203,7 @@ def get_epsg_from_prj(prj: str) -> int:
         raise CRSError(
             "get_epsg_from_prj received an empty projection string. "
             "An empty projection is ambiguous and is no longer "
-            "silently defaulted to EPSG:4326 (ARC-7). If you want "
+            "silently defaulted to EPSG:4326. If you want "
             "a fallback EPSG, catch CRSError (also a ValueError) "
             "and supply it at the call site, or call "
             "epsg_from_wkt(prj, default=...)."
@@ -225,27 +225,27 @@ def epsg_from_wkt(wkt: str, default: int = 4326) -> int:
     """Resolve an EPSG code from a WKT / Proj string with a fallback.
 
     Wraps :func:`get_epsg_from_prj` to absorb the
-    ``get_epsg_from_prj(wkt) if wkt else default`` idiom that was
+    `get_epsg_from_prj(wkt) if wkt else default` idiom that was
     previously open-coded in four places across the dataset stack.
-    Returns ``default`` when ``wkt`` is empty (or ``None``); otherwise
+    Returns `default` when `wkt` is empty (or `None`); otherwise
     delegates to :func:`get_epsg_from_prj`.
 
     Use this in places where an empty projection should be treated as
     a soft "unknown CRS, assume WGS84" rather than a hard error — for
-    example the ``Dataset.epsg`` property on a freshly-built
+    example the `Dataset.epsg` property on a freshly-built
     in-memory raster that has no projection metadata yet. Use
     :func:`get_epsg_from_prj` directly when you want the strict
     behaviour where an empty projection raises.
 
     Args:
         wkt: Projection string (WKT, ESRI WKT, or Proj4). An empty
-            string or ``None`` returns ``default``.
-        default: EPSG code to return when ``wkt`` is empty / ``None``.
-            Defaults to ``4326`` (the historical pyramids default).
+            string or `None` returns `default`.
+        default: EPSG code to return when `wkt` is empty / `None`.
+            Defaults to `4326` (the historical pyramids default).
 
     Returns:
-        int: EPSG code resolved from ``wkt``, or ``default`` when
-        ``wkt`` is empty.
+        int: EPSG code resolved from `wkt`, or `default` when
+        `wkt` is empty.
 
     Examples:
         - Empty input falls back to the supplied default:
@@ -283,42 +283,42 @@ def reproject_coordinates(
 ) -> tuple[list[float], list[float]]:
     """Reproject parallel x / y coordinate lists between CRSes.
 
-    Argument and return order is ``(x, y)`` throughout; accepts any
+    Argument and return order is `(x, y)` throughout; accepts any
     CRS form :meth:`pyproj.Transformer.from_crs` understands (EPSG
     int, EPSG string, WKT, Proj4, :class:`pyproj.CRS`).
 
     Args:
         x (list[float]):
             X-coordinates in the source CRS (longitudes when
-            ``from_crs`` is geographic).
+            `from_crs` is geographic).
         y (list[float]):
             Y-coordinates in the source CRS (latitudes when
-            ``from_crs`` is geographic).
+            `from_crs` is geographic).
         from_crs:
             Source CRS. Accepts anything
             :meth:`pyproj.Transformer.from_crs` accepts: EPSG integer
-            (``4326``), authority string (``"EPSG:4326"``), WKT, Proj4,
-            or a :class:`pyproj.CRS` instance. Default ``4326``.
+            (`4326`), authority string (`"EPSG:4326"`), WKT, Proj4,
+            or a :class:`pyproj.CRS` instance. Default `4326`.
         to_crs:
-            Target CRS, same forms as ``from_crs``. Default ``3857``.
+            Target CRS, same forms as `from_crs`. Default `3857`.
         precision (int | None):
             Decimal places to round each returned coordinate to. Pass
-            ``None`` to disable rounding. Default ``6``.
+            `None` to disable rounding. Default `6`.
 
     Returns:
-        tuple[list[float], list[float]]: ``(x, y)`` in the target CRS.
+        tuple[list[float], list[float]]: `(x, y)` in the target CRS.
 
     Raises:
-        ValueError: If ``len(x) != len(y)``.
+        ValueError: If `len(x)!= len(y)`.
         CRSError: If :meth:`pyproj.Transformer.from_crs` raises one
-            of ``pyproj.exceptions.CRSError`` (malformed WKT / proj
-            string), ``TypeError`` (input is not CRS-like — e.g. a
-            bare ``object()``), or ``ValueError`` (out-of-range EPSG
+            of `pyproj.exceptions.CRSError` (malformed WKT / proj
+            string), `TypeError` (input is not CRS-like — e.g. a
+            bare `object()`), or `ValueError` (out-of-range EPSG
             integer). The wrapper converts each into pyramids'
             :class:`pyramids.base._errors.CRSError` so callers do not
             need to import pyproj to catch bad-CRS failures, and the
             message names both CRSes plus the underlying explanation.
-            Other exception types (``AttributeError``, ``ImportError``,
+            Other exception types (`AttributeError`, `ImportError`,
             …) propagate unchanged — they signal a real bug, not a bad
             user input.
 

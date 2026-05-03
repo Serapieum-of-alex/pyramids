@@ -404,6 +404,62 @@ def import_flox(message: str):
         raise OptionalPackageDoesNotExist(message)
 
 
+def import_zarr(message: str):
+    """Import zarr."""
+    try:
+        import zarr  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNotExist(message)
+
+
+def import_dask_geopandas(message: str):
+    """Import dask_geopandas."""
+    try:
+        import dask_geopandas  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNotExist(message)
+
+
+def import_pyarrow(message: str):
+    """Import pyarrow."""
+    try:
+        import pyarrow  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNotExist(message)
+
+
+def import_dask(message: str):
+    """Import dask."""
+    try:
+        import dask  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNotExist(message)
+
+
+def import_cftime(message: str):
+    """Import cftime."""
+    try:
+        import cftime  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNotExist(message)
+
+
+def import_xarray(message: str):
+    """Import xarray."""
+    try:
+        import xarray  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNotExist(message)
+
+
+def import_kerchunk(message: str):
+    """Import kerchunk."""
+    try:
+        import kerchunk  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNotExist(message)
+
+
 def import_basemap(message: str):
     """Import basemap dependencies (mercantile, xyzservices, Pillow)."""
     try:

@@ -57,31 +57,31 @@ def _read_chunk(
     when several chunks dispatch on the same thread-pool.
 
     Args:
-        block_info: ``dask.array`` per-chunk metadata dict. The
-            ``"array-location"`` key supplies ``[(start, stop), ...]``
+        block_info: `dask.array` per-chunk metadata dict. The
+            `"array-location"` key supplies `[(start, stop),...]`
             index ranges for the chunk in the parent array's index
             space. Dask injects this when the function is passed as a
-            ``map_blocks`` callback.
+            `map_blocks` callback.
         manager: File-handle manager wrapping
             :func:`pyramids.base._openers.gdal_raster_open`. A single
             manager is shared by every chunk in the array so GDAL
             opens the file at most once per worker.
-        lock: Any context-manager / ``acquire``-``release`` lock
-            (``SerializableLock``, :class:`DummyLock`, or a
-            ``dask.distributed.Lock``). Held around the
+        lock: Any context-manager / `acquire`-`release` lock
+            (`SerializableLock`, :class:`DummyLock`, or a
+            `dask.distributed.Lock`). Held around the
             :class:`osgeo.gdal.Band.ReadAsArray` call.
         band: Zero-based band index when reading one band, or
-            ``None`` when every band is read into a 3-D array.
+            `None` when every band is read into a 3-D array.
         out_dtype: Output numpy dtype — matches the band dtype so
-            ``map_blocks`` produces a homogeneous array. Named
-            ``out_dtype`` rather than ``dtype`` to avoid collision
-            with :func:`dask.array.map_blocks`'s own ``dtype=`` kwarg.
-        single_band: ``True`` when the output is 2-D (``(rows, cols)``)
-            and ``False`` when it is 3-D (``(bands, rows, cols)``).
+            `map_blocks` produces a homogeneous array. Named
+            `out_dtype` rather than `dtype` to avoid collision
+            with :func:`dask.array.map_blocks`'s own `dtype=` kwarg.
+        single_band: `True` when the output is 2-D (`(rows, cols)`)
+            and `False` when it is 3-D (`(bands, rows, cols)`).
 
     Returns:
         np.ndarray: The fully materialized chunk with shape derived
-        from the ``block_info`` slice, dtype equal to ``dtype``.
+        from the `block_info` slice, dtype equal to `dtype`.
     """
     location = block_info[None]["array-location"]
     if single_band:
@@ -121,14 +121,14 @@ def _write_to_file_sync(
     creation_options: list[str] | None,
     driver: str | None,
 ) -> None:
-    """Synchronous write-to-file body, extracted for use with ``dask.delayed``.
+    """Synchronous write-to-file body, extracted for use with `dask.delayed`.
 
     Originally the body of :meth:`IO.to_file`; factored out at
     module scope so :func:`dask.delayed` can wrap it without pulling
-    the whole ``IO`` mixin into the task graph. Pickles cleanly
-    because ``ds`` goes through
-    :meth:`RasterBase.__reduce__` (DASK-3) and all other args
-    are primitives or ``None``.
+    the whole `IO` mixin into the task graph. Pickles cleanly
+    because `ds` goes through
+    :meth:`RasterBase.__reduce__` and all other args
+    are primitives or `None`.
 
     Args:
         ds: The :class:`~pyramids.dataset.Dataset` to write.
@@ -136,7 +136,7 @@ def _write_to_file_sync(
         band: Band index (ASCII driver only).
         tile_length: Output tile length for GeoTIFF.
         creation_options: Extra GDAL creation options.
-        driver: Explicit GDAL driver name (``"COG"`` delegates to
+        driver: Explicit GDAL driver name (`"COG"` delegates to
             :meth:`pyramids.dataset._collaborators.COG.to_cog`).
     """
     if driver == "COG":

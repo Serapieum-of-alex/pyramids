@@ -201,7 +201,7 @@ class Mesh2d:
         The result is cached after the first access.
 
         Returns:
-            np.ndarray: Integer array of shape ``(n_triangles, 3)``
+            np.ndarray: Integer array of shape `(n_triangles, 3)`
                 where each row contains the three node indices of
                 one triangle.
 

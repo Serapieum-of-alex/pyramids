@@ -25,8 +25,8 @@ def warp_tile_image(
 
     Uses GDAL's MEM driver (entirely in-memory, no filesystem paths)
     to avoid disk I/O. Both RGB (3-band) and RGBA (4-band) tile images
-    are supported. If the source is RGB, ``dstAlpha=True`` is passed to
-    ``gdal.WarpOptions`` so GDAL auto-generates an alpha mask for areas
+    are supported. If the source is RGB, `dstAlpha=True` is passed to
+    `gdal.WarpOptions` so GDAL auto-generates an alpha mask for areas
     outside the source extent, preventing black borders.
 
     Args:

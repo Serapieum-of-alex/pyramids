@@ -16,7 +16,7 @@ from pyramids.base._domain import inside_domain
 from pyramids.base._errors import DatasetNotFoundError, OptionalPackageDoesNotExist
 from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._raster_meta import RasterMeta
-from pyramids.base._utils import import_cleopatra, import_flox
+from pyramids.base._utils import import_cleopatra, import_flox, import_zarr
 from pyramids.dataset._stac import from_stac as _from_stac
 from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.dataset.dataset import Dataset
@@ -30,11 +30,11 @@ class _GroupedCollection:
     """Lightweight view over a :class:`DatasetCollection` grouped by label.
 
     One reduction method per dask op. Each call returns a
-    ``{label: ndarray}`` dict.
+    `{label: ndarray}` dict.
 
     As of M4 the reduction is routed through
     :func:`flox.groupby_reduce` when :mod:`flox` is importable (via
-    the ``[lazy]`` extra) — a single tree-reduction over the full
+    the `[lazy]` extra) — a single tree-reduction over the full
     cube so each source file opens at most once regardless of how
     many groups share it. When flox is unavailable the fallback
     loops over unique labels and issues one :func:`dask.array`
@@ -48,7 +48,7 @@ class _GroupedCollection:
         self._labels = labels
 
     def _reduce_per_label(self, op_name: str, *, skipna: bool) -> dict:
-        """M4: route through flox when installed; fall back to per-label dask.
+        """route through flox when installed; fall back to per-label dask.
 
         flox performs the grouped reduction as a single tree-reduction
         over the full cube, which reads each source file at most once
@@ -139,9 +139,8 @@ def _fallback_groupby_reduce(
 ) -> dict:
     """Per-label reduction path when flox is unavailable.
 
-    Equivalent to the pre-M4 implementation; kept so ``groupby``
-    works in environments that skip the ``[lazy]`` extra's flox
-    optional.
+    Kept so `groupby` works in environments that skip the
+    `[lazy]` extra's flox optional.
     """
     import dask.array as da
 
@@ -160,9 +159,9 @@ def _finalize_collection_metadata(resolved_store, meta, files: list) -> None:
     """Write pyramids + rioxarray-style attrs on a freshly-written cube Zarr.
 
     Module-level so the :func:`dask.delayed` path can pickle it
-    cleanly. Sets ``crs_wkt``, ``GeoTransform``, ``epsg``, ``nodata``,
-    ``band_names``, ``time_length`` + a pyramids version marker on the
-    ``data`` array + root group.
+    cleanly. Sets `crs_wkt`, `GeoTransform`, `epsg`, `nodata`,
+    `band_names`, `time_length` + a pyramids version marker on the
+    `data` array + root group.
     """
     import zarr
 
@@ -199,11 +198,11 @@ def _combine_collection_writes(data_result, metadata_result) -> None:
 
 
 def _finalize_after_write(data_result, resolved_store, meta, files) -> None:
-    """M2: run metadata finalize AFTER data write completes.
+    """run metadata finalize AFTER data write completes.
 
     Wrapping both in one dask.delayed makes the dependency explicit:
-    ``_finalize_collection_metadata`` cannot start until
-    ``data_result`` is materialised, so there is no race between the
+    `_finalize_collection_metadata` cannot start until
+    `data_result` is materialised, so there is no race between the
     data writer and the attribute writer.
     """
     del data_result  # consumed as a dependency only
@@ -214,15 +213,15 @@ _READ_TIME_STEP_MANAGERS: dict[str, Any] = {}
 
 
 def _read_time_step(path: str) -> np.ndarray:
-    """Synchronous per-file reader used by the lazy ``data`` dask graph.
+    """Synchronous per-file reader used by the lazy `data` dask graph.
 
     Module-level (not a closure) so each
-    :func:`dask.delayed` task pickles as ``(_read_time_step, path)``
+    :func:`dask.delayed` task pickles as `(_read_time_step, path)`
     — no live GDAL handle crosses the wire.
 
     H2 fix: route the per-file open through a process-local
     :class:`CachingFileManager` keyed by path so workers reuse one
-    ``gdal.Dataset`` per file rather than reopening on every chunk
+    `gdal.Dataset` per file rather than reopening on every chunk
     read. Avoids FD exhaustion on large
     :class:`DatasetCollection` graphs.
     """
@@ -263,8 +262,8 @@ class DatasetCollection:
             time_length: Number of timesteps in the collection.
             files: Optional list of file paths backing each timestep.
             meta: Optional :class:`RasterMeta` snapshot. When omitted,
-                a snapshot is derived eagerly from ``src`` so downstream
-                lazy paths (DASK-16) can access geo metadata without
+                a snapshot is derived eagerly from `src` so downstream
+                lazy paths can access geo metadata without
                 reopening the template every call.
         """
         self._base = src
@@ -348,24 +347,24 @@ class DatasetCollection:
         """Group time steps by per-timestep label.
 
         Returns a view exposing the same reduction surface as
-        :class:`DatasetCollection` (``mean / sum / min / max / std /
-        var``); each reduction runs once per unique label over the
+        :class:`DatasetCollection` (`mean / sum / min / max / std /
+        var`); each reduction runs once per unique label over the
         subset of timesteps carrying that label.
 
         Args:
-            time_labels: Sequence of length ``self.time_length`` — each
+            time_labels: Sequence of length `self.time_length` — each
                 entry is the group label for the corresponding file
-                (e.g. ``["Jan", "Jan", "Feb", "Feb", ...]`` or integer
+                (e.g. `["Jan", "Jan", "Feb", "Feb",...]` or integer
                 month numbers for monthly groupings).
 
         Returns:
-            _GroupedCollection: Lightweight view with ``.mean()`` etc.
-            Each call returns a dict ``{label: np.ndarray}``.
+            _GroupedCollection: Lightweight view with `.mean()` etc.
+            Each call returns a dict `{label: np.ndarray}`.
 
         Raises:
-            ValueError: When ``len(time_labels) != self.time_length``.
+            ValueError: When `len(time_labels)!= self.time_length`.
         """
-        if len(time_labels) != self._time_length:
+        if len(time_labels)!= self._time_length:
             raise ValueError(
                 f"time_labels length {len(time_labels)} does not match "
                 f"time_length {self._time_length}"
@@ -391,12 +390,12 @@ class DatasetCollection:
         """Element-wise mean across the time axis.
 
         Args:
-            skipna: When True (default) skip ``NaN`` via
+            skipna: When True (default) skip `NaN` via
                 :func:`dask.array.nanmean`; otherwise use
                 :func:`dask.array.mean`.
 
         Returns:
-            np.ndarray: Mean array of shape ``(bands, rows, cols)``.
+            np.ndarray: Mean array of shape `(bands, rows, cols)`.
         """
         return self._reduce("mean", skipna=skipna)
 
@@ -422,21 +421,21 @@ class DatasetCollection:
 
     @property
     def data(self) -> Any:
-        """Return a lazy ``dask.array.Array`` of shape ``(T, B, R, C)``.
+        """Return a lazy `dask.array.Array` of shape `(T, B, R, C)`.
 
         Each per-file read is scheduled as a
         :func:`dask.delayed` task that opens the file via
         :class:`~pyramids.base._file_manager.CachingFileManager`
-        (DASK-2) and reads its full array. Workers therefore never
-        serialise a ``gdal.Dataset`` — only the file path crosses the
+         and reads its full array. Workers therefore never
+        serialise a `gdal.Dataset` — only the file path crosses the
         pickle boundary, matching the pattern xarray / stackstac /
         odc-stac use for dask.distributed safety.
 
         Raises:
-            ImportError: If the optional ``dask`` extra is not
+            ImportError: If the optional `dask` extra is not
                 installed.
             RuntimeError: If the collection was constructed without a
-                ``files`` list (legacy ``create_cube`` path).
+                `files` list (legacy `create_cube` path).
         """
         if self._files is None or len(self._files) == 0:
             raise RuntimeError(
@@ -467,7 +466,7 @@ class DatasetCollection:
         :meth:`__init__`) so downstream lazy paths can read geobox +
         dtype metadata without paying a GDAL-open cost per call, and
         so the whole collection pickles cleanly even if the
-        ``_base`` Dataset handle is closed or points at a /vsimem/
+        `_base` Dataset handle is closed or points at a /vsimem/
         file.
         """
         return self._meta
@@ -487,12 +486,12 @@ class DatasetCollection:
         Currently routes through
         :func:`pyramids.netcdf._kerchunk.combine_kerchunk`, which
         handles NetCDF/HDF5 sources. GeoTIFF backing is a follow-on
-        (kerchunk's tiff support requires ``tifffile``).
+        (kerchunk's tiff support requires `tifffile`).
 
         Args:
             output_path: Path where the manifest JSON is written.
             concat_dim: Dimension along which to concatenate per-file
-                coordinates. Default ``"time"``.
+                coordinates. Default `"time"`.
 
         Returns:
             dict: The combined manifest.
@@ -507,7 +506,7 @@ class DatasetCollection:
                 "collection. Use DatasetCollection.from_files(...) to "
                 "construct one."
             )
-        # M5: current backend only handles HDF5 / NetCDF. Detect
+        # current backend only handles HDF5 / NetCDF. Detect
         # GeoTIFF inputs and raise a clear NotImplementedError rather
         # than letting kerchunk.hdf produce a confusing failure mode.
         geotiff_exts = {".tif", ".tiff", ".cog"}
@@ -541,30 +540,31 @@ class DatasetCollection:
         mode: str = "w",
         storage_options: dict | None = None,
     ):
-        """Serialise the 4-D ``(T, B, R, C)`` cube to a Zarr store.
+        """Serialise the 4-D `(T, B, R, C)` cube to a Zarr store.
 
-        Each dask chunk in ``self.data`` lands in an independent Zarr
+        Each dask chunk in `self.data` lands in an independent Zarr
         chunk file — the only truly parallel raster output path pyramids
         offers. Geobox metadata (epsg, geotransform, nodata, band_names,
         time_length) is written as attributes on the root group + the
-        ``data`` array following the rioxarray attribute convention, so
-        downstream ``xr.open_zarr(store)`` consumers can reconstruct the
+        `data` array following the rioxarray attribute convention, so
+        downstream `xr.open_zarr(store)` consumers can reconstruct the
         geobox without pyramids.
 
         Args:
             store: Target store (path, fsspec URL, or zarr.Store).
-            compute: ``True`` (default) writes immediately; ``False``
+            compute: `True` (default) writes immediately; `False`
                 returns a :class:`dask.delayed.Delayed`.
-            mode: Zarr open mode, typically ``"w"`` (fresh) or ``"a"``.
+            mode: Zarr open mode, typically `"w"` (fresh) or `"a"`.
             storage_options: Optional dict forwarded to
                 :func:`fsspec.get_mapper` for cloud stores.
 
         Returns:
-            ``None`` on ``compute=True``; a :class:`dask.delayed.Delayed`
-            on ``compute=False``.
+            `None` on `compute=True`; a :class:`dask.delayed.Delayed`
+            on `compute=False`.
 
         Raises:
-            ImportError: When the ``[lazy]`` extra is not installed.
+            OptionalPackageDoesNotExist: When the `[lazy]` extra is not
+                installed.
             RuntimeError: When the collection has no files list.
         """
         if self._files is None or len(self._files) == 0:
@@ -573,13 +573,10 @@ class DatasetCollection:
                 "collection. Use DatasetCollection.from_files(...) to "
                 "construct one."
             )
-        try:
-            import zarr  # noqa: F401  - presence check for the optional extra
-        except ImportError as exc:
-            raise ImportError(
-                "DatasetCollection.to_zarr requires the optional 'zarr' "
-                "dependency. Install with: pip install 'pyramids-gis[lazy]'"
-            ) from exc
+        import_zarr(
+            "DatasetCollection.to_zarr requires the optional 'zarr' "
+            "dependency. Install with: pip install 'pyramids-gis[lazy]'"
+        )
         data = self.data
         resolved_store = _resolve_store(store, storage_options)
         write_result = data.to_zarr(
@@ -616,7 +613,7 @@ class DatasetCollection:
 
         Thin forwarder to :func:`pyramids.dataset._stac.from_stac`.
         Duck-typed — accepts :class:`pystac.Item` objects, raw JSON
-        dicts, or any iterable of items with ``.assets`` + ``.bbox``
+        dicts, or any iterable of items with `.assets` + `.bbox`
         semantics. pyramids does not depend on pystac.
 
         Args:
@@ -625,8 +622,8 @@ class DatasetCollection:
             asset: Asset key to extract from each item.
             patch_url: Optional callable rewriting each href (useful
                 for signing Planetary Computer URLs).
-            bbox: M6 — optional ``(minx, miny, maxx, maxy)`` filter in
-                lon/lat; items whose ``bbox`` doesn't intersect are
+            bbox: M6 — optional `(minx, miny, maxx, maxy)` filter in
+                lon/lat; items whose `bbox` doesn't intersect are
                 dropped before hrefs are resolved.
             max_items: M6 — cap the number of items consumed (after
                 bbox filtering). Useful for quick-look workflows.
@@ -653,7 +650,7 @@ class DatasetCollection:
 
         Only the first file is opened eagerly (to derive
         :class:`RasterMeta`). The remaining files are referenced by
-        path only — lazy DASK-16 readers open them on demand through
+        path only — lazy readers open them on demand through
         :class:`~pyramids.base._file_manager.CachingFileManager`.
 
         Args:
@@ -663,11 +660,11 @@ class DatasetCollection:
                 :meth:`RasterMeta.from_dataset`.
 
         Returns:
-            DatasetCollection: A new collection whose ``time_length``
-            matches ``len(files)``.
+            DatasetCollection: A new collection whose `time_length`
+            matches `len(files)`.
 
         Raises:
-            ValueError: When ``files`` is empty.
+            ValueError: When `files` is empty.
         """
         resolved = [str(p) for p in files]
         if not resolved:
@@ -961,7 +958,7 @@ class DatasetCollection:
                 Index of the dataset to access.
 
         Returns:
-            Dataset: The dataset at position ``i``.
+            Dataset: The dataset at position `i`.
         """
         if not hasattr(self, "values"):
             raise DatasetNotFoundError("please read the dataset first")
@@ -1097,14 +1094,14 @@ class DatasetCollection:
             directory: Output directory; created if missing.
             pattern: Filename template. Placeholders:
 
-                - ``{name}`` — the ``name`` argument (default ``'slice'``);
-                - ``{i}``    — zero-padded integer index.
+                - `{name}` — the `name` argument (default `'slice'`);
+                - `{i}` — zero-padded integer index.
 
-                The ``{t}`` placeholder is reserved for a future task
+                The `{t}` placeholder is reserved for a future task
                 that adds a time-coordinate axis; using it now raises
                 :class:`ValueError`.
-            name: Replacement for the ``{name}`` placeholder.
-            overwrite: If ``False``, raise :class:`FileExistsError`
+            name: Replacement for the `{name}` placeholder.
+            overwrite: If `False`, raise :class:`FileExistsError`
                 when a target path already exists.
             **cog_kwargs: Forwarded verbatim to
                 :meth:`pyramids.dataset._collaborators.COG.to_cog`.
@@ -1115,9 +1112,9 @@ class DatasetCollection:
         Raises:
             DatasetNotFoundError: :meth:`open_multi_dataset` has not been
                 called, so per-slice arrays are not loaded.
-            ValueError: ``{t}`` placeholder used but no time coord is
+            ValueError: `{t}` placeholder used but no time coord is
                 available.
-            FileExistsError: ``overwrite=False`` and a target path exists.
+            FileExistsError: `overwrite=False` and a target path exists.
 
         Examples:
             - Default naming — one COG per slice:
@@ -1188,22 +1185,22 @@ class DatasetCollection:
     def _apply_per_timestep(
         self, method_name: str, *args: Any, **kwargs: Any
     ) -> tuple[np.ndarray, Dataset]:
-        """Apply ``Dataset.<method_name>(*args, **kwargs)`` to each timestep.
+        """Apply `Dataset.<method_name>(*args, **kwargs)` to each timestep.
 
-        Iterates over ``self.iloc(i)``, dispatches the named per-timestep
+        Iterates over `self.iloc(i)`, dispatches the named per-timestep
         Dataset method, reads its output array, and assembles the results
-        into a freshly-allocated ``(time, rows, cols)`` array. Returns the
-        assembled array and the last per-timestep ``Dataset`` so callers
-        can reuse it as the new ``_base`` template.
+        into a freshly-allocated `(time, rows, cols)` array. Returns the
+        assembled array and the last per-timestep `Dataset` so callers
+        can reuse it as the new `_base` template.
 
         Args:
             method_name: Name of the method to call on each timestep
-                Dataset (e.g. ``"to_crs"``, ``"crop"``, ``"align"``).
+                Dataset (e.g. `"to_crs"`, `"crop"`, `"align"`).
             *args, **kwargs: Forwarded to the per-timestep call.
 
         Returns:
-            Tuple of ``(array, last_dst)`` where ``array`` has shape
-            ``(self.time_length, rows, cols)`` matching the rows/cols of
+            Tuple of `(array, last_dst)` where `array` has shape
+            `(self.time_length, rows, cols)` matching the rows/cols of
             the last per-timestep result.
         """
         array: np.ndarray | None = None
@@ -1241,11 +1238,11 @@ class DatasetCollection:
                 raster the same after reprojection. Default is False.
             inplace (bool):
                 If True, mutate this collection in place and return None.
-                If False (default), return a new ``DatasetCollection``.
+                If False (default), return a new `DatasetCollection`.
 
         Returns:
             DatasetCollection | None: New collection when
-            ``inplace=False``; ``None`` when ``inplace=True``.
+            `inplace=False`; `None` when `inplace=True`.
 
         Examples:
             - Reproject every timestep to EPSG:3857 and keep the result:
@@ -1272,7 +1269,7 @@ class DatasetCollection:
     def crop(
         self, mask: Dataset | str, inplace: bool = False, touch: bool = True
     ) -> DatasetCollection | None:
-        """Crop every timestep against ``mask``.
+        """Crop every timestep against `mask`.
 
         Args:
             mask (Dataset):
@@ -1281,14 +1278,14 @@ class DatasetCollection:
                 read the mask raster using gdal and use it as the first parameter to the function.
             inplace (bool):
                 If True, mutate this collection in place and return None.
-                If False (default), return a new ``DatasetCollection``.
+                If False (default), return a new `DatasetCollection`.
             touch (bool):
                 Include the cells that touch the polygon, not only those that lie entirely inside the polygon mask.
                 Default is True.
 
         Returns:
             DatasetCollection | None: New collection when
-            ``inplace=False``; ``None`` when ``inplace=True``.
+            `inplace=False`; `None` when `inplace=True`.
 
         Examples:
             - Crop aligned rasters using a DEM mask:
@@ -1307,21 +1304,21 @@ class DatasetCollection:
     def align(
         self, alignment_src: Dataset, inplace: bool = False
     ) -> DatasetCollection | None:
-        """Align every timestep to ``alignment_src``.
+        """Align every timestep to `alignment_src`.
 
         Matches the coordinate system, the number of rows and columns,
-        and the cell size of every timestep raster to ``alignment_src``.
+        and the cell size of every timestep raster to `alignment_src`.
 
         Args:
             alignment_src (Dataset):
                 Dataset to use as the spatial template (CRS, rows, columns).
             inplace (bool):
                 If True, mutate this collection in place and return None.
-                If False (default), return a new ``DatasetCollection``.
+                If False (default), return a new `DatasetCollection`.
 
         Returns:
             DatasetCollection | None: New collection when
-            ``inplace=False``; ``None`` when ``inplace=True``.
+            `inplace=False`; `None` when `inplace=True`.
 
         Examples:
             - Align every timestep to a DEM template:
@@ -1339,7 +1336,7 @@ class DatasetCollection:
     def _finalize_per_timestep_result(
         self, array: np.ndarray, dst: Dataset, *, inplace: bool
     ) -> DatasetCollection | None:
-        """Wire the assembled array into either ``self`` or a new collection.
+        """Wire the assembled array into either `self` or a new collection.
 
         Centralises the inplace / non-inplace contract used by
         :meth:`to_crs`, :meth:`crop`, and :meth:`align` so the three

@@ -53,10 +53,10 @@ class TestFeatureCollectionPlot:
         assert ax is not None, "plot(column=...) should return an Axes"
 
     def test_constructor_rejects_ogr_datasource(self):
-        """The constructor itself rejects ogr.DataSource (ARC-1b).
+        """The constructor itself rejects ogr.DataSource.
 
         Test scenario:
-            After ARC-1b, ogr.DataSource is internal-only. The
+            After, ogr.DataSource is internal-only. The
             FeatureCollection constructor raises TypeError before any
             method (including plot) can ever see an OGR-backed instance,
             so the previous "plot() rejects OGR backend" guard is now
