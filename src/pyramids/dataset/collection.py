@@ -1104,7 +1104,7 @@ class DatasetCollection:
             overwrite: If `False`, raise :class:`FileExistsError`
                 when a target path already exists.
             **cog_kwargs: Forwarded verbatim to
-                :meth:`pyramids.dataset._collaborators.COG.to_cog`.
+                :meth:`pyramids.dataset.engines.COG.to_cog`.
 
         Returns:
             List of written file paths, in temporal (index) order.
@@ -1210,9 +1210,7 @@ class DatasetCollection:
             dst = getattr(src, method_name)(*args, **kwargs)
             arr = dst.read_array()
             if i == 0:
-                array = np.full(
-                    (self.time_length, arr.shape[0], arr.shape[1]), np.nan
-                )
+                array = np.full((self.time_length, arr.shape[0], arr.shape[1]), np.nan)
             array[i, :, :] = arr
         return array, dst  # type: ignore[return-value]
 

@@ -5,7 +5,7 @@ State-holding base class that :class:`pyramids.dataset.Dataset` (and any
 future Dataset variant — LazyDataset, COGDataset, …) inherits. Owns the
 `gdal.Dataset` handle, geotransform, EPSG, dtype, and the abstract
 contract that subclasses must implement. The L-2 collaborator pattern
-(see :mod:`pyramids.dataset._collaborators`) attaches op families
+(see :mod:`pyramids.dataset.engines`) attaches op families
 (`ds.io`, `ds.spatial`, etc.) to instances of subclasses; this base
 class provides the state they read through their weakref proxies.
 

@@ -2,7 +2,7 @@
 
 Crop, align, reproject, resample, CRS handling, and coordinate conversion.
 
-::: pyramids.dataset._collaborators.Spatial
+::: pyramids.dataset.engines.Spatial
     options:
         show_root_heading: true
         show_source: true

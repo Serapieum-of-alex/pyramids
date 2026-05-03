@@ -1,6 +1,7 @@
 """Array I/O and file serialization mixin for Dataset."""
 
 from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -122,7 +123,7 @@ def _write_to_file_sync(
         tile_length: Output tile length for GeoTIFF.
         creation_options: Extra GDAL creation options.
         driver: Explicit GDAL driver name (`"COG"` delegates to
-            :meth:`pyramids.dataset._collaborators.COG.to_cog`).
+            :meth:`pyramids.dataset.engines.COG.to_cog`).
     """
     if driver == "COG":
         if band != 0:

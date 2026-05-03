@@ -23,11 +23,7 @@ from pyramids.base._utils import (
     numpy_to_gdal_dtype,
 )
 from pyramids.base.crs import epsg_from_wkt, sr_from_epsg
-from pyramids.dataset.abstract_dataset import (
-    DEFAULT_NO_DATA_VALUE,
-    RasterBase,
-)
-from pyramids.dataset._collaborators import (
+from pyramids.dataset.engines import (
     COG,
     IO,
     Analysis,
@@ -35,6 +31,10 @@ from pyramids.dataset._collaborators import (
     Cell,
     Spatial,
     Vectorize,
+)
+from pyramids.dataset.abstract_dataset import (
+    DEFAULT_NO_DATA_VALUE,
+    RasterBase,
 )
 from pyramids.dataset.ops._focal import (
     aspect,
@@ -126,7 +126,7 @@ class Dataset(RasterBase):
         new = type(self)(src, access=access or self._access)
         self.__dict__.update(new.__dict__)
         # Re-bind via `weakref.proxy` so the back-reference stays
-        # weak after the dict swap (matches `_Collaborator.__init__`).
+        # weak after the dict swap (matches `_Engine.__init__`).
         self_proxy = weakref.proxy(self)
         for attr in _COLLABORATOR_ATTRS:
             collab = self.__dict__.get(attr)
@@ -171,64 +171,64 @@ class Dataset(RasterBase):
         )
 
     def get_cell_coords(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Cell.get_cell_coords <pyramids.dataset._collaborators.Cell.get_cell_coords>`."""
+        """Facade — delegates to :meth:`Cell.get_cell_coords <pyramids.dataset.engines.Cell.get_cell_coords>`."""
         return self.cell.get_cell_coords(*args, **kwargs)
 
     def get_cell_polygons(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Cell.get_cell_polygons <pyramids.dataset._collaborators.Cell.get_cell_polygons>`."""
+        """Facade — delegates to :meth:`Cell.get_cell_polygons <pyramids.dataset.engines.Cell.get_cell_polygons>`."""
         return self.cell.get_cell_polygons(*args, **kwargs)
 
     def get_cell_points(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Cell.get_cell_points <pyramids.dataset._collaborators.Cell.get_cell_points>`."""
+        """Facade — delegates to :meth:`Cell.get_cell_points <pyramids.dataset.engines.Cell.get_cell_points>`."""
         return self.cell.get_cell_points(*args, **kwargs)
 
     def map_to_array_coordinates(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Cell.map_to_array_coordinates <pyramids.dataset._collaborators.Cell.map_to_array_coordinates>`."""
+        """Facade — delegates to :meth:`Cell.map_to_array_coordinates <pyramids.dataset.engines.Cell.map_to_array_coordinates>`."""
         return self.cell.map_to_array_coordinates(*args, **kwargs)
 
     def array_to_map_coordinates(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Cell.array_to_map_coordinates <pyramids.dataset._collaborators.Cell.array_to_map_coordinates>`."""
+        """Facade — delegates to :meth:`Cell.array_to_map_coordinates <pyramids.dataset.engines.Cell.array_to_map_coordinates>`."""
         return self.cell.array_to_map_coordinates(*args, **kwargs)
 
     def to_cog(self, *args, **kwargs):
-        """Facade — delegates to :meth:`COG.to_cog <pyramids.dataset._collaborators.COG.to_cog>`."""
+        """Facade — delegates to :meth:`COG.to_cog <pyramids.dataset.engines.COG.to_cog>`."""
         return self.cog.to_cog(*args, **kwargs)
 
     @property
     def is_cog(self) -> bool:
-        """Facade — delegates to :attr:`COG.is_cog <pyramids.dataset._collaborators.COG.is_cog>`."""
+        """Facade — delegates to :attr:`COG.is_cog <pyramids.dataset.engines.COG.is_cog>`."""
         return self.cog.is_cog
 
     def validate_cog(self, *args, **kwargs):
-        """Facade — delegates to :meth:`COG.validate_cog <pyramids.dataset._collaborators.COG.validate_cog>`."""
+        """Facade — delegates to :meth:`COG.validate_cog <pyramids.dataset.engines.COG.validate_cog>`."""
         return self.cog.validate_cog(*args, **kwargs)
 
     def to_feature_collection(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Vectorize.to_feature_collection <pyramids.dataset._collaborators.Vectorize.to_feature_collection>`."""
+        """Facade — delegates to :meth:`Vectorize.to_feature_collection <pyramids.dataset.engines.Vectorize.to_feature_collection>`."""
         return self.vectorize.to_feature_collection(*args, **kwargs)
 
     def translate(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Vectorize.translate <pyramids.dataset._collaborators.Vectorize.translate>`."""
+        """Facade — delegates to :meth:`Vectorize.translate <pyramids.dataset.engines.Vectorize.translate>`."""
         return self.vectorize.translate(*args, **kwargs)
 
     def cluster(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Vectorize.cluster <pyramids.dataset._collaborators.Vectorize.cluster>`."""
+        """Facade — delegates to :meth:`Vectorize.cluster <pyramids.dataset.engines.Vectorize.cluster>`."""
         return self.vectorize.cluster(*args, **kwargs)
 
     def cluster2(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Vectorize.cluster2 <pyramids.dataset._collaborators.Vectorize.cluster2>`."""
+        """Facade — delegates to :meth:`Vectorize.cluster2 <pyramids.dataset.engines.Vectorize.cluster2>`."""
         return self.vectorize.cluster2(*args, **kwargs)
 
     def stats(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.stats <pyramids.dataset._collaborators.Analysis.stats>`."""
+        """Facade — delegates to :meth:`Analysis.stats <pyramids.dataset.engines.Analysis.stats>`."""
         return self.analysis.stats(*args, **kwargs)
 
     def count_domain_cells(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.count_domain_cells <pyramids.dataset._collaborators.Analysis.count_domain_cells>`."""
+        """Facade — delegates to :meth:`Analysis.count_domain_cells <pyramids.dataset.engines.Analysis.count_domain_cells>`."""
         return self.analysis.count_domain_cells(*args, **kwargs)
 
     def apply(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.apply <pyramids.dataset._collaborators.Analysis.apply>`.
+        """Facade — delegates to :meth:`Analysis.apply <pyramids.dataset.engines.Analysis.apply>`.
 
         The collaborator returns `None` for `inplace=True` so the facade
         can substitute the actual `self` (preserving identity); the proxy
@@ -239,7 +239,7 @@ class Dataset(RasterBase):
         return self if result is None else result
 
     def fill(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.fill <pyramids.dataset._collaborators.Analysis.fill>`.
+        """Facade — delegates to :meth:`Analysis.fill <pyramids.dataset.engines.Analysis.fill>`.
 
         The collaborator returns `None` for `inplace=True`; see
         :meth:`apply` for the rationale.
@@ -248,108 +248,108 @@ class Dataset(RasterBase):
         return self if result is None else result
 
     def extract(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.extract <pyramids.dataset._collaborators.Analysis.extract>`."""
+        """Facade — delegates to :meth:`Analysis.extract <pyramids.dataset.engines.Analysis.extract>`."""
         return self.analysis.extract(*args, **kwargs)
 
     def overlay(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.overlay <pyramids.dataset._collaborators.Analysis.overlay>`."""
+        """Facade — delegates to :meth:`Analysis.overlay <pyramids.dataset.engines.Analysis.overlay>`."""
         return self.analysis.overlay(*args, **kwargs)
 
     def get_mask(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.get_mask <pyramids.dataset._collaborators.Analysis.get_mask>`."""
+        """Facade — delegates to :meth:`Analysis.get_mask <pyramids.dataset.engines.Analysis.get_mask>`."""
         return self.analysis.get_mask(*args, **kwargs)
 
     def footprint(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.footprint <pyramids.dataset._collaborators.Analysis.footprint>`."""
+        """Facade — delegates to :meth:`Analysis.footprint <pyramids.dataset.engines.Analysis.footprint>`."""
         return self.analysis.footprint(*args, **kwargs)
 
     def get_histogram(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.get_histogram <pyramids.dataset._collaborators.Analysis.get_histogram>`."""
+        """Facade — delegates to :meth:`Analysis.get_histogram <pyramids.dataset.engines.Analysis.get_histogram>`."""
         return self.analysis.get_histogram(*args, **kwargs)
 
     def plot(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Analysis.plot <pyramids.dataset._collaborators.Analysis.plot>`."""
+        """Facade — delegates to :meth:`Analysis.plot <pyramids.dataset.engines.Analysis.plot>`."""
         return self.analysis.plot(*args, **kwargs)
 
     def crop(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Spatial.crop <pyramids.dataset._collaborators.Spatial.crop>`."""
+        """Facade — delegates to :meth:`Spatial.crop <pyramids.dataset.engines.Spatial.crop>`."""
         return self.spatial.crop(*args, **kwargs)
 
     def to_crs(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Spatial.to_crs <pyramids.dataset._collaborators.Spatial.to_crs>`."""
+        """Facade — delegates to :meth:`Spatial.to_crs <pyramids.dataset.engines.Spatial.to_crs>`."""
         return self.spatial.to_crs(*args, **kwargs)
 
     def set_crs(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Spatial.set_crs <pyramids.dataset._collaborators.Spatial.set_crs>`."""
+        """Facade — delegates to :meth:`Spatial.set_crs <pyramids.dataset.engines.Spatial.set_crs>`."""
         return self.spatial.set_crs(*args, **kwargs)
 
     def convert_longitude(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Spatial.convert_longitude <pyramids.dataset._collaborators.Spatial.convert_longitude>`."""
+        """Facade — delegates to :meth:`Spatial.convert_longitude <pyramids.dataset.engines.Spatial.convert_longitude>`."""
         return self.spatial.convert_longitude(*args, **kwargs)
 
     def resample(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Spatial.resample <pyramids.dataset._collaborators.Spatial.resample>`."""
+        """Facade — delegates to :meth:`Spatial.resample <pyramids.dataset.engines.Spatial.resample>`."""
         return self.spatial.resample(*args, **kwargs)
 
     def align(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Spatial.align <pyramids.dataset._collaborators.Spatial.align>`."""
+        """Facade — delegates to :meth:`Spatial.align <pyramids.dataset.engines.Spatial.align>`."""
         return self.spatial.align(*args, **kwargs)
 
     def fill_gaps(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Spatial.fill_gaps <pyramids.dataset._collaborators.Spatial.fill_gaps>`."""
+        """Facade — delegates to :meth:`Spatial.fill_gaps <pyramids.dataset.engines.Spatial.fill_gaps>`."""
         return self.spatial.fill_gaps(*args, **kwargs)
 
     def read_array(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.read_array <pyramids.dataset._collaborators.IO.read_array>`."""
+        """Facade — delegates to :meth:`IO.read_array <pyramids.dataset.engines.IO.read_array>`."""
         return self.io.read_array(*args, **kwargs)
 
     def write_array(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.write_array <pyramids.dataset._collaborators.IO.write_array>`."""
+        """Facade — delegates to :meth:`IO.write_array <pyramids.dataset.engines.IO.write_array>`."""
         return self.io.write_array(*args, **kwargs)
 
     def to_file(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.to_file <pyramids.dataset._collaborators.IO.to_file>`."""
+        """Facade — delegates to :meth:`IO.to_file <pyramids.dataset.engines.IO.to_file>`."""
         return self.io.to_file(*args, **kwargs)
 
     def to_raster(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.to_raster <pyramids.dataset._collaborators.IO.to_raster>`."""
+        """Facade — delegates to :meth:`IO.to_raster <pyramids.dataset.engines.IO.to_raster>`."""
         return self.io.to_raster(*args, **kwargs)
 
     def get_block_arrangement(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.get_block_arrangement <pyramids.dataset._collaborators.IO.get_block_arrangement>`."""
+        """Facade — delegates to :meth:`IO.get_block_arrangement <pyramids.dataset.engines.IO.get_block_arrangement>`."""
         return self.io.get_block_arrangement(*args, **kwargs)
 
     def get_tile(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.get_tile <pyramids.dataset._collaborators.IO.get_tile>`."""
+        """Facade — delegates to :meth:`IO.get_tile <pyramids.dataset.engines.IO.get_tile>`."""
         return self.io.get_tile(*args, **kwargs)
 
     def map_blocks(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.map_blocks <pyramids.dataset._collaborators.IO.map_blocks>`."""
+        """Facade — delegates to :meth:`IO.map_blocks <pyramids.dataset.engines.IO.map_blocks>`."""
         return self.io.map_blocks(*args, **kwargs)
 
     def to_xyz(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.to_xyz <pyramids.dataset._collaborators.IO.to_xyz>`."""
+        """Facade — delegates to :meth:`IO.to_xyz <pyramids.dataset.engines.IO.to_xyz>`."""
         return self.io.to_xyz(*args, **kwargs)
 
     @property
     def overview_count(self):
-        """Facade — delegates to :attr:`IO.overview_count <pyramids.dataset._collaborators.IO.overview_count>`."""
+        """Facade — delegates to :attr:`IO.overview_count <pyramids.dataset.engines.IO.overview_count>`."""
         return self.io.overview_count
 
     def create_overviews(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.create_overviews <pyramids.dataset._collaborators.IO.create_overviews>`."""
+        """Facade — delegates to :meth:`IO.create_overviews <pyramids.dataset.engines.IO.create_overviews>`."""
         return self.io.create_overviews(*args, **kwargs)
 
     def recreate_overviews(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.recreate_overviews <pyramids.dataset._collaborators.IO.recreate_overviews>`."""
+        """Facade — delegates to :meth:`IO.recreate_overviews <pyramids.dataset.engines.IO.recreate_overviews>`."""
         return self.io.recreate_overviews(*args, **kwargs)
 
     def get_overview(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.get_overview <pyramids.dataset._collaborators.IO.get_overview>`."""
+        """Facade — delegates to :meth:`IO.get_overview <pyramids.dataset.engines.IO.get_overview>`."""
         return self.io.get_overview(*args, **kwargs)
 
     def read_overview_array(self, *args, **kwargs):
-        """Facade — delegates to :meth:`IO.read_overview_array <pyramids.dataset._collaborators.IO.read_overview_array>`."""
+        """Facade — delegates to :meth:`IO.read_overview_array <pyramids.dataset.engines.IO.read_overview_array>`."""
         return self.io.read_overview_array(*args, **kwargs)
 
     def _read_block(self, *args, **kwargs):
@@ -357,19 +357,19 @@ class Dataset(RasterBase):
         return self.io._read_block(*args, **kwargs)
 
     def get_attribute_table(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Bands.get_attribute_table <pyramids.dataset._collaborators.Bands.get_attribute_table>`."""
+        """Facade — delegates to :meth:`Bands.get_attribute_table <pyramids.dataset.engines.Bands.get_attribute_table>`."""
         return self.bands.get_attribute_table(*args, **kwargs)
 
     def set_attribute_table(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Bands.set_attribute_table <pyramids.dataset._collaborators.Bands.set_attribute_table>`."""
+        """Facade — delegates to :meth:`Bands.set_attribute_table <pyramids.dataset.engines.Bands.set_attribute_table>`."""
         return self.bands.set_attribute_table(*args, **kwargs)
 
     def add_band(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Bands.add_band <pyramids.dataset._collaborators.Bands.add_band>`."""
+        """Facade — delegates to :meth:`Bands.add_band <pyramids.dataset.engines.Bands.add_band>`."""
         return self.bands.add_band(*args, **kwargs)
 
     def get_band_by_color(self, *args, **kwargs):
-        """Facade — delegates to :meth:`Bands.get_band_by_color <pyramids.dataset._collaborators.Bands.get_band_by_color>`."""
+        """Facade — delegates to :meth:`Bands.get_band_by_color <pyramids.dataset.engines.Bands.get_band_by_color>`."""
         return self.bands.get_band_by_color(*args, **kwargs)
 
     def change_no_data_value(self, *args, **kwargs):
@@ -384,7 +384,7 @@ class Dataset(RasterBase):
 
     @property
     def band_color(self):
-        """Facade — delegates to :attr:`Bands.band_color <pyramids.dataset._collaborators.Bands.band_color>`."""
+        """Facade — delegates to :attr:`Bands.band_color <pyramids.dataset.engines.Bands.band_color>`."""
         return self.bands.band_color
 
     @band_color.setter
@@ -393,7 +393,7 @@ class Dataset(RasterBase):
 
     @property
     def color_table(self):
-        """Facade — delegates to :attr:`Bands.color_table <pyramids.dataset._collaborators.Bands.color_table>`."""
+        """Facade — delegates to :attr:`Bands.color_table <pyramids.dataset.engines.Bands.color_table>`."""
         return self.bands.color_table
 
     @color_table.setter

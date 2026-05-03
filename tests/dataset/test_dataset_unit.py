@@ -20,7 +20,7 @@ from pyramids.base._errors import (
 )
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
-from pyramids.dataset._collaborators import Analysis, Bands, Spatial, Vectorize
+from pyramids.dataset.engines import Analysis, Bands, Spatial, Vectorize
 from pyramids.dataset.abstract_dataset import RasterBase
 
 pytestmark = pytest.mark.core
@@ -3703,7 +3703,8 @@ class TestSetNoDataValueMocked:
             no_data_value=-9999.0,
         )
         err_msg = "Attempt to write to read only dataset " "in GDALRasterBand::Fill()."
-        with patch.object(ds.bands, "_set_no_data_value_backend", side_effect=RuntimeError(err_msg)
+        with patch.object(
+            ds.bands, "_set_no_data_value_backend", side_effect=RuntimeError(err_msg)
         ):
             with pytest.raises(ReadOnlyError):
                 ds.bands._set_no_data_value([-1234.0])
@@ -3729,7 +3730,9 @@ class TestSetNoDataValueMocked:
                 raise TypeError(err_msg)
             original(band, val)
 
-        with patch.object(ds.bands, "_set_no_data_value_backend",
+        with patch.object(
+            ds.bands,
+            "_set_no_data_value_backend",
             side_effect=side_effect,
         ):
             ds.bands._set_no_data_value([-1234.0])
@@ -3755,7 +3758,9 @@ class TestSetNoDataValueMocked:
                 raise Exception("some unknown error")
             original(band, val)
 
-        with patch.object(ds.bands, "_set_no_data_value_backend",
+        with patch.object(
+            ds.bands,
+            "_set_no_data_value_backend",
             side_effect=side_effect,
         ):
             ds.bands._set_no_data_value([-1234.0])

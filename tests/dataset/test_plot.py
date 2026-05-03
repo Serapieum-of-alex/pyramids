@@ -7,7 +7,7 @@ from osgeo import gdal
 from pandas import DataFrame
 
 from pyramids.dataset import Dataset, DatasetCollection
-from pyramids.dataset._collaborators import Analysis, Bands
+from pyramids.dataset.engines import Analysis, Bands
 
 pytestmark = pytest.mark.plot
 

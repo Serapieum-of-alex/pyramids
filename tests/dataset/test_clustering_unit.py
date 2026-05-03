@@ -9,8 +9,8 @@ connections).
 import numpy as np
 import pytest
 
+from pyramids.dataset.engines import Vectorize
 from pyramids.dataset.dataset import Dataset
-from pyramids.dataset._collaborators import Vectorize
 
 pytestmark = pytest.mark.core
 

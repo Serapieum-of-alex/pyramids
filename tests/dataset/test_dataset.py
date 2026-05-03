@@ -16,7 +16,7 @@ from shapely.geometry import Polygon
 from pyramids.base._errors import NoDataValueError, OutOfBoundsError, ReadOnlyError
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
-from pyramids.dataset._collaborators import Bands, Vectorize
+from pyramids.dataset.engines import Bands, Vectorize
 
 pytestmark = pytest.mark.core
 
@@ -980,7 +980,9 @@ class TestCrop:
         src_no_data_value: float,
     ):
         aligned_raster = Dataset(aligned_raster)
-        cropped = aligned_raster.spatial._crop_aligned(src_arr, mask_noval=src_no_data_value)
+        cropped = aligned_raster.spatial._crop_aligned(
+            src_arr, mask_noval=src_no_data_value
+        )
         dst_arr_cropped = cropped.raster.ReadAsArray()
         # check that all the places of the nodatavalue are the same in both arrays
         src_arr[~np.isclose(src_arr, src_no_data_value, rtol=0.001)] = 5
@@ -1032,7 +1034,9 @@ class TestCropWithPolygon:
         Check the number of the cropped cells and the no_data_value
         """
         src_obj = Dataset(rhine_raster)
-        cropped_raster = src_obj.spatial._crop_with_polygon_warp(polygon_mask, touch=True)
+        cropped_raster = src_obj.spatial._crop_with_polygon_warp(
+            polygon_mask, touch=True
+        )
 
         validation_dataset = Dataset(crop_by_wrap_touch_true_result)
         assert (
@@ -1068,7 +1072,9 @@ class TestCropWithPolygon:
         Check the number of the cropped cells and the no_data_value
         """
         src_obj = Dataset(rhine_raster)
-        cropped_raster = src_obj.spatial._crop_with_polygon_warp(polygon_mask, touch=False)
+        cropped_raster = src_obj.spatial._crop_with_polygon_warp(
+            polygon_mask, touch=False
+        )
 
         validation_dataset = Dataset(crop_by_wrap_touch_false_result)
         assert (
