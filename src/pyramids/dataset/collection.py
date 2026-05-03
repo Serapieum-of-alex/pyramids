@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import logging
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
@@ -16,7 +15,7 @@ from pyramids.base._domain import inside_domain
 from pyramids.base._errors import DatasetNotFoundError, OptionalPackageDoesNotExist
 from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._raster_meta import RasterMeta
-from pyramids.base._utils import import_cleopatra, import_flox
+from pyramids.base._utils import import_cleopatra, import_flox, import_gdal_merge
 from pyramids.dataset._stac import from_stac as _from_stac
 from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.dataset.dataset import Dataset
@@ -24,15 +23,6 @@ from pyramids.dataset.ops._zarr import _resolve_store
 
 if TYPE_CHECKING:
     from cleopatra.array_glyph import ArrayGlyph
-
-logger = logging.getLogger(__name__)
-
-try:
-    from osgeo_utils import gdal_merge
-except ModuleNotFoundError:  # pragma: no cover
-    logger.warning(  # pragma: no cover
-        "osgeo_utils module does not exist try install pip install osgeo-utils "
-    )
 
 
 class _GroupedCollection:
@@ -1194,73 +1184,94 @@ class DatasetCollection:
             paths.append(target)
         return paths
 
+    def _apply_per_timestep(
+        self, method_name: str, *args: Any, **kwargs: Any
+    ) -> tuple[np.ndarray, Dataset]:
+        """Apply ``Dataset.<method_name>(*args, **kwargs)`` to each timestep.
+
+        Iterates over ``self.iloc(i)``, dispatches the named per-timestep
+        Dataset method, reads its output array, and assembles the results
+        into a freshly-allocated ``(time, rows, cols)`` array. Returns the
+        assembled array and the last per-timestep ``Dataset`` so callers
+        can reuse it as the new ``_base`` template.
+
+        Args:
+            method_name: Name of the method to call on each timestep
+                Dataset (e.g. ``"to_crs"``, ``"crop"``, ``"align"``).
+            *args, **kwargs: Forwarded to the per-timestep call.
+
+        Returns:
+            Tuple of ``(array, last_dst)`` where ``array`` has shape
+            ``(self.time_length, rows, cols)`` matching the rows/cols of
+            the last per-timestep result.
+        """
+        array: np.ndarray | None = None
+        dst: Dataset | None = None
+        for i in range(self.time_length):
+            src = self.iloc(i)
+            dst = getattr(src, method_name)(*args, **kwargs)
+            arr = dst.read_array()
+            if i == 0:
+                array = np.full(
+                    (self.time_length, arr.shape[0], arr.shape[1]), np.nan
+                )
+            array[i, :, :] = arr
+        return array, dst  # type: ignore[return-value]
+
     def to_crs(
         self,
         to_epsg: int = 3857,
         method: str = "nearest neighbor",
         maintain_alignment: bool = False,
-    ) -> None:
-        """to_epsg.
-
-            - to_epsg reprojects a raster to any projection (default the WGS84 web mercator projection,
-            without resampling) The function returns a GDAL in-memory file object, where you can ReadAsArray etc.
+        inplace: bool = False,
+    ) -> DatasetCollection | None:
+        """Reproject every timestep to a target EPSG.
 
         Args:
             to_epsg (int):
                 Reference number to the new projection (https://epsg.io/)
-                (default 3857 the reference no of WGS84 web mercator).
+                (default 3857, WGS84 web mercator).
             method (str):
-                Resampling technique. Default is "Nearest". See https://gisgeography.com/raster-resampling/.
-                "Nearest" for nearest neighbor, "cubic" for cubic convolution, "bilinear" for bilinear.
+                Resampling technique. Default is "nearest neighbor". See
+                https://gisgeography.com/raster-resampling/. Accepted
+                values are "nearest neighbor", "cubic", "bilinear".
             maintain_alignment (bool):
-                True to maintain the number of rows and columns of the raster the same after reprojection.
-                Default is False.
+                True to maintain the number of rows and columns of the
+                raster the same after reprojection. Default is False.
+            inplace (bool):
+                If True, mutate this collection in place and return None.
+                If False (default), return a new ``DatasetCollection``.
 
         Returns:
-            None: Updates the dataset_collection values and base in place after reprojection.
+            DatasetCollection | None: New collection when
+            ``inplace=False``; ``None`` when ``inplace=True``.
 
         Examples:
-            - Reproject dataset to EPSG:3857:
+            - Reproject every timestep to EPSG:3857 and keep the result:
 
               ```python
-              >>> from pyramids.dataset import Dataset
-              >>> src = Dataset.read_file("path/raster_name.tif")
-              >>> projected_raster = src.to_crs(to_epsg=3857)
+              >>> reprojected = collection.to_crs(to_epsg=3857)  # doctest: +SKIP
+
+              ```
+            - Reproject in place:
+
+              ```python
+              >>> collection.to_crs(to_epsg=3857, inplace=True)  # doctest: +SKIP
 
               ```
         """
-        for i in range(self.time_length):
-            src = self.iloc(i)
-            dst = src.to_crs(
-                to_epsg, method=method, maintain_alignment=maintain_alignment
-            )
-            arr = dst.read_array()
-            if i == 0:
-                # create the array
-                array = (
-                    np.ones(
-                        (
-                            self.time_length,
-                            arr.shape[0],
-                            arr.shape[1],
-                        )
-                    )
-                    * np.nan
-                )
-            array[i, :, :] = arr
-
-        self._values = array
-        # use the last src as
-        self._base = dst
+        array, dst = self._apply_per_timestep(
+            "to_crs",
+            to_epsg,
+            method=method,
+            maintain_alignment=maintain_alignment,
+        )
+        return self._finalize_per_timestep_result(array, dst, inplace=inplace)
 
     def crop(
         self, mask: Dataset | str, inplace: bool = False, touch: bool = True
     ) -> DatasetCollection | None:
-        """crop.
-
-            crop matches the location of nodata value from src raster to dst raster. Mask is where the NoDatavalue will
-            be taken and the location of this value. src_dir is path to the folder where rasters exist where we need to
-            put the NoDataValue of the mask in RasterB at the same locations.
+        """Crop every timestep against ``mask``.
 
         Args:
             mask (Dataset):
@@ -1268,14 +1279,15 @@ class DatasetCollection:
                 array). Mask should include the name of the raster and the extension like "data/dem.tif", or you can
                 read the mask raster using gdal and use it as the first parameter to the function.
             inplace (bool):
-                True to make the changes in place.
+                If True, mutate this collection in place and return None.
+                If False (default), return a new ``DatasetCollection``.
             touch (bool):
                 Include the cells that touch the polygon, not only those that lie entirely inside the polygon mask.
                 Default is True.
 
         Returns:
-            Union[None, "DatasetCollection"]: New rasters have the values from rasters in B_input_path with the NoDataValue in
-            the same locations as raster A.
+            DatasetCollection | None: New collection when
+            ``inplace=False``; ``None`` when ``inplace=True``.
 
         Examples:
             - Crop aligned rasters using a DEM mask:
@@ -1288,79 +1300,57 @@ class DatasetCollection:
 
               ```
         """
-        for i in range(self.time_length):
-            src = self.iloc(i)
-            dst = src.crop(mask, touch=touch)
-            arr = dst.read_array()
-            if i == 0:
-                # create the array
-                array = (
-                    np.ones(
-                        (self.time_length, arr.shape[0], arr.shape[1]),
-                    )
-                    * np.nan
-                )
+        array, dst = self._apply_per_timestep("crop", mask, touch=touch)
+        return self._finalize_per_timestep_result(array, dst, inplace=inplace)
 
-            array[i, :, :] = arr
+    def align(
+        self, alignment_src: Dataset, inplace: bool = False
+    ) -> DatasetCollection | None:
+        """Align every timestep to ``alignment_src``.
 
-        result: DatasetCollection | None = None
-        if inplace:
-            self._values = array
-            # use the last src as
-            self._base = dst
-        else:
-            result = DatasetCollection(dst, time_length=self.time_length)
-            result._values = array
-
-        return result
-
-    def align(self, alignment_src: Dataset) -> None:
-        """matchDataAlignment.
-
-        This function matches the coordinate system and the number of rows and columns between two rasters. Raster A
-        is the source of the coordinate system, number of rows, number of columns, and cell size. The result will be
-        a raster with the same structure as Raster A but with values from Raster B using nearest neighbor interpolation.
+        Matches the coordinate system, the number of rows and columns,
+        and the cell size of every timestep raster to ``alignment_src``.
 
         Args:
             alignment_src (Dataset):
                 Dataset to use as the spatial template (CRS, rows, columns).
+            inplace (bool):
+                If True, mutate this collection in place and return None.
+                If False (default), return a new ``DatasetCollection``.
 
         Returns:
-            None:
-                Updates the dataset_collection values in place to match the alignment of alignment_src.
+            DatasetCollection | None: New collection when
+            ``inplace=False``; ``None`` when ``inplace=True``.
 
         Examples:
-            - Align all rasters in the dataset_collection to a DEM raster:
+            - Align every timestep to a DEM template:
 
               ```python
-              >>> dem_path = "01GIS/inputs/4000/acc4000.tif"
-              >>> prec_in_path = "02Precipitation/CHIRPS/Daily/"
-              >>> prec_out_path = "02Precipitation/4km/"
-              >>> Dataset.align(dem_path, prec_in_path, prec_out_path)
+              >>> aligned = collection.align(dem_dataset)  # doctest: +SKIP
 
               ```
         """
         if not isinstance(alignment_src, Dataset):
             raise TypeError("alignment_src input should be a Dataset object")
+        array, dst = self._apply_per_timestep("align", alignment_src)
+        return self._finalize_per_timestep_result(array, dst, inplace=inplace)
 
-        for i in range(self.time_length):
-            src = self.iloc(i)
-            dst = src.align(alignment_src)
-            arr = dst.read_array()
-            if i == 0:
-                # create the array
-                array = (
-                    np.ones(
-                        (self.time_length, arr.shape[0], arr.shape[1]),
-                    )
-                    * np.nan
-                )
+    def _finalize_per_timestep_result(
+        self, array: np.ndarray, dst: Dataset, *, inplace: bool
+    ) -> DatasetCollection | None:
+        """Wire the assembled array into either ``self`` or a new collection.
 
-            array[i, :, :] = arr
-
-        self._values = array
-        # use the last src as
-        self._base = dst
+        Centralises the inplace / non-inplace contract used by
+        :meth:`to_crs`, :meth:`crop`, and :meth:`align` so the three
+        share a single decision point.
+        """
+        if inplace:
+            self._values = array
+            self._base = dst
+            return None
+        result = DatasetCollection(dst, time_length=self.time_length)
+        result._values = array
+        return result
 
     @staticmethod
     def merge(
@@ -1396,6 +1386,12 @@ class DatasetCollection:
         # subprocess.call(cmd.split() + file_list)
         # vrt = gdal.BuildVRT("merged.vrt", file_list)
         # src = gdal.Translate("merged_image.tif", vrt)
+
+        import_gdal_merge(
+            "osgeo_utils is required for DatasetCollection.merge;"
+            " install it via `pip install osgeo-utils`."
+        )
+        from osgeo_utils import gdal_merge
 
         parameters = (
             ["", "-o", str(dst)]
