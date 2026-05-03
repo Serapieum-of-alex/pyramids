@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generator, Mapping
-from osgeo import gdal, ogr, osr
+from typing import Any, Mapping
+from osgeo import gdal
 from pyramids.dataset.cog import (
     ValidationReport,
     merge_options,

@@ -8,11 +8,11 @@ Owns the Cell family of operations on a Dataset. Accessed as
 from __future__ import annotations
 
 from numbers import Number
-from typing import TYPE_CHECKING, Any, Generator, Mapping
+from typing import Any
 import geopandas as gpd
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
-from hpc.indexing import get_indices2, get_pixels, get_pixels2, locate_values
+from hpc.indexing import get_indices2, locate_values
 from pandas import DataFrame
 from pyramids.feature import FeatureCollection
 from pyramids.dataset.engines._base import _Engine

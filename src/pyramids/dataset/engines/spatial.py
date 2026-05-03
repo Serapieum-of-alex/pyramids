@@ -8,37 +8,22 @@ Owns the Spatial family of operations on a Dataset. Accessed as
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generator, Mapping
+from typing import TYPE_CHECKING, Any
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, ogr, osr
-from pyramids.base._domain import inside_domain, is_no_data
-from pyramids.base._utils import (
-    INTERPOLATION_METHODS,
-    color_name_to_gdal_constant,
-    gdal_constant_to_color_name,
-    gdal_to_numpy_dtype,
-    gdal_to_ogr_dtype,
-    import_cleopatra,
-    numpy_to_gdal_dtype,
-)
+from osgeo import gdal, osr
+from pyramids.base._domain import is_no_data
+from pyramids.base._utils import INTERPOLATION_METHODS
 from pyramids.base.crs import (
     epsg_from_wkt,
     reproject_coordinates,
     sr_from_epsg,
     sr_from_wkt,
 )
-from pyramids.dataset.abstract_dataset import (
-    DEFAULT_NO_DATA_VALUE,
-    OVERVIEW_LEVELS,
-    RESAMPLING_METHODS,
-    RasterBase,
-)
+from pyramids.dataset.abstract_dataset import RasterBase
 from pyramids.feature import FeatureCollection
 from pyramids.feature import _ogr as _feature_ogr
 if TYPE_CHECKING:
-    from cleopatra.array_glyph import ArrayGlyph
-
     from pyramids.dataset.dataset import Dataset
 from pyramids.dataset.engines._base import _Engine
 from pyramids.dataset.engines.vectorize import Vectorize

@@ -9,32 +9,18 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generator, Mapping
+from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
-from hpc.indexing import get_indices2, get_pixels, get_pixels2, locate_values
+from hpc.indexing import get_indices2, get_pixels2
 from pandas import DataFrame
 from pyramids.base._domain import inside_domain, is_no_data
-from pyramids.base._errors import (
-    AlignmentError,
-    NoDataValueError,
-    OutOfBoundsError,
-    ReadOnlyError,
-)
-from pyramids.base._utils import (
-    INTERPOLATION_METHODS,
-    color_name_to_gdal_constant,
-    gdal_constant_to_color_name,
-    gdal_to_numpy_dtype,
-    gdal_to_ogr_dtype,
-    import_cleopatra,
-    numpy_to_gdal_dtype,
-)
+from pyramids.base._errors import AlignmentError
+from pyramids.base._utils import import_cleopatra
 from pyramids.feature import FeatureCollection
 if TYPE_CHECKING:
     from cleopatra.array_glyph import ArrayGlyph
-
     from pyramids.dataset.dataset import Dataset
 from pyramids.dataset.engines._base import _Engine
 

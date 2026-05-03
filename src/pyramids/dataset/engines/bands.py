@@ -8,40 +8,26 @@ Owns the Bands family of operations on a Dataset. Accessed as
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Iterable
-from typing import TYPE_CHECKING, Any, Generator, Mapping
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, ogr, osr
+from osgeo import gdal
 from pandas import DataFrame
-from pyramids.base._domain import inside_domain, is_no_data
-from pyramids.base._errors import (
-    AlignmentError,
-    NoDataValueError,
-    OutOfBoundsError,
-    ReadOnlyError,
-)
+from pyramids.base._domain import is_no_data
+from pyramids.base._errors import NoDataValueError, ReadOnlyError
 from pyramids.base._utils import (
-    INTERPOLATION_METHODS,
     color_name_to_gdal_constant,
     gdal_constant_to_color_name,
     gdal_to_numpy_dtype,
-    gdal_to_ogr_dtype,
     import_cleopatra,
     numpy_to_gdal_dtype,
 )
-from pyramids.dataset.abstract_dataset import (
-    DEFAULT_NO_DATA_VALUE,
-    OVERVIEW_LEVELS,
-    RESAMPLING_METHODS,
-    RasterBase,
-)
+from pyramids.dataset.abstract_dataset import DEFAULT_NO_DATA_VALUE
 from pyramids.feature import FeatureCollection
 if TYPE_CHECKING:
-    from cleopatra.array_glyph import ArrayGlyph
-
     from pyramids.dataset.dataset import Dataset
 from pyramids.dataset.engines._base import _Engine
 

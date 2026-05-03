@@ -9,35 +9,20 @@ from __future__ import annotations
 
 import collections
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generator, Mapping
+from typing import TYPE_CHECKING, Any
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
-from hpc.indexing import get_indices2, get_pixels, get_pixels2, locate_values
-from osgeo import gdal, ogr, osr
+from hpc.indexing import get_pixels
+from osgeo import gdal, ogr
 from pandas import DataFrame
-from pyramids.base._utils import (
-    INTERPOLATION_METHODS,
-    color_name_to_gdal_constant,
-    gdal_constant_to_color_name,
-    gdal_to_numpy_dtype,
-    gdal_to_ogr_dtype,
-    import_cleopatra,
-    numpy_to_gdal_dtype,
-)
-from pyramids.base.crs import (
-    epsg_from_wkt,
-    reproject_coordinates,
-    sr_from_epsg,
-    sr_from_wkt,
-)
+from pyramids.base._utils import gdal_to_ogr_dtype
+from pyramids.base.crs import sr_from_wkt
 from pyramids.feature import _ogr as _feature_ogr
 if TYPE_CHECKING:
-    from cleopatra.array_glyph import ArrayGlyph
-
     from pyramids.dataset.dataset import Dataset
-from pyramids.dataset.engines._base import _Engine
+from pyramids.dataset.engines._base import _Engine, logger
 
 
 class Vectorize(_Engine):

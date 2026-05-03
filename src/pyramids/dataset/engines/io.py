@@ -9,36 +9,24 @@ from __future__ import annotations
 
 import logging
 import pickle
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generator, Mapping
+from typing import TYPE_CHECKING, Any, Generator
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
-from osgeo import gdal, ogr, osr
+from osgeo import gdal
 from osgeo_utils import gdal2xyz
 from pandas import DataFrame
-from pyramids.base._errors import (
-    AlignmentError,
-    NoDataValueError,
-    OutOfBoundsError,
-    ReadOnlyError,
-)
+from pyramids.base._errors import OutOfBoundsError, ReadOnlyError
 from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._locks import DummyLock, default_lock
 from pyramids.base.protocols import ArrayLike
-from pyramids.dataset.abstract_dataset import (
-    DEFAULT_NO_DATA_VALUE,
-    OVERVIEW_LEVELS,
-    RESAMPLING_METHODS,
-    RasterBase,
-)
+from pyramids.dataset.abstract_dataset import OVERVIEW_LEVELS, RESAMPLING_METHODS
 from pyramids.dataset.ops import io as _io_module
 from pyramids.dataset.ops.io import _LAZY_IMPORT_ERROR
 from pyramids.feature import FeatureCollection
 if TYPE_CHECKING:
-    from cleopatra.array_glyph import ArrayGlyph
-
     from pyramids.dataset.dataset import Dataset
 from pyramids.dataset.engines._base import _Engine
 
