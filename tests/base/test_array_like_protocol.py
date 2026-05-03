@@ -23,19 +23,19 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from pyramids.base._errors import OptionalPackageDoesNotExist
+from pyramids.base._utils import import_dask
 from pyramids.base.protocols import ArrayLike, _ArrayLikeProto, as_numpy, is_lazy
 
 pytestmark = pytest.mark.core
 
 try:
+    import_dask("dask not installed")
     import dask.array as dask_array
-
-    HAS_DASK = True
-except ImportError: # pragma: no cover
-    dask_array = None
+except OptionalPackageDoesNotExist:  # pragma: no cover
     HAS_DASK = False
-
-
+else:
+    HAS_DASK = True
 requires_dask = pytest.mark.skipif(not HAS_DASK, reason="dask not installed")
 
 

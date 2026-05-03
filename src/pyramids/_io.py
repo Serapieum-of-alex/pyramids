@@ -79,7 +79,7 @@ def _get_zip_path(path: str, file_i: int = 0):
 def _get_gzip_path(path: str, file_i: int = 0):
     """Get Zip Path.
 
-    - Check if the given path contains a .gz in it.
+    - Check if the given path contains a.gz in it.
     - If the path contains a gz but does not end with gz (xxxx.gz/1.asc), so the path contains the internal path inside the gz file, so just add the prefix.
     - Anything else just add the prefix.
 
@@ -112,8 +112,8 @@ def _get_gzip_path(path: str, file_i: int = 0):
 def _get_tar_path(path: str):
     """Get Zip Path.
 
-    - Check if the given path contains a .tar in it.
-    - If the path contains a .tar but does not end with .tar (xxxx.tar/1.asc), so the path contains the internal path inside the tar file, so just add the prefix.
+    - Check if the given path contains a.tar in it.
+    - If the path contains a.tar but does not end with.tar (xxxx.tar/1.asc), so the path contains the internal path inside the tar file, so just add the prefix.
     - Otherwise, just add the prefix.
 
     Args:
