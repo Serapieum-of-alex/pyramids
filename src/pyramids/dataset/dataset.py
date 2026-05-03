@@ -23,6 +23,10 @@ from pyramids.base._utils import (
     numpy_to_gdal_dtype,
 )
 from pyramids.base.crs import epsg_from_wkt, sr_from_epsg
+from pyramids.dataset.abstract_dataset import (
+    DEFAULT_NO_DATA_VALUE,
+    RasterBase,
+)
 from pyramids.dataset.engines import (
     COG,
     IO,
@@ -31,10 +35,6 @@ from pyramids.dataset.engines import (
     Cell,
     Spatial,
     Vectorize,
-)
-from pyramids.dataset.abstract_dataset import (
-    DEFAULT_NO_DATA_VALUE,
-    RasterBase,
 )
 from pyramids.dataset.ops._focal import (
     aspect,

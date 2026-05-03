@@ -1,4 +1,4 @@
-"""Tests for :mod:`pyramids.dataset._collaborators`.
+"""Tests for :mod:`pyramids.dataset.engines`.
 
 These tests pin down the Stage 1 contract documented in the module's
 docstring and in the L-2 plan:
@@ -36,7 +36,7 @@ import pytest
 from osgeo import gdal, osr
 
 from pyramids.dataset import Dataset
-from pyramids.dataset._collaborators import (
+from pyramids.dataset.engines import (
     COG,
     IO,
     Analysis,
@@ -44,7 +44,9 @@ from pyramids.dataset._collaborators import (
     Cell,
     Spatial,
     Vectorize,
-    _Collaborator,
+)
+from pyramids.dataset.engines._base import (
+    _Engine,
     _Placeholder,
     _recreate_placeholder,
 )
@@ -101,13 +103,13 @@ class TestPlaceholder:
 
         Test scenario:
             ``_recreate_placeholder()`` is the unpickle target referenced
-            from ``_Collaborator.__reduce__``; calling it directly should
+            from ``_Engine.__reduce__``; calling it directly should
             yield a usable placeholder.
         """
         result = _recreate_placeholder()
-        assert isinstance(result, _Placeholder), (
-            f"Expected _Placeholder instance, got {type(result).__name__}"
-        )
+        assert isinstance(
+            result, _Placeholder
+        ), f"Expected _Placeholder instance, got {type(result).__name__}"
 
     def test_each_call_returns_distinct_instance(self):
         """Successive calls must produce distinct objects, not a singleton.
@@ -119,13 +121,13 @@ class TestPlaceholder:
         """
         first = _recreate_placeholder()
         second = _recreate_placeholder()
-        assert first is not second, (
-            "Successive calls to _recreate_placeholder returned the same instance"
-        )
+        assert (
+            first is not second
+        ), "Successive calls to _recreate_placeholder returned the same instance"
 
 
 class TestCollaboratorBase:
-    """Tests for :class:`_Collaborator` (base class shared by all collaborators)."""
+    """Tests for :class:`_Engine` (base class shared by all collaborators)."""
 
     def test_init_stores_weak_proxy_to_dataset(self, in_memory_dataset):
         """Constructor must wrap the Dataset in a ``weakref.proxy``.
@@ -134,13 +136,13 @@ class TestCollaboratorBase:
             After construction, attribute access through ``self._ds`` should
             transparently resolve to the wrapped Dataset's attributes.
         """
-        collab = _Collaborator(in_memory_dataset)
-        assert collab._ds.epsg == in_memory_dataset.epsg, (
-            f"Proxy did not resolve epsg: {collab._ds.epsg} != {in_memory_dataset.epsg}"
-        )
-        assert collab._ds.rows == in_memory_dataset.rows, (
-            "Proxy did not resolve rows attribute"
-        )
+        collab = _Engine(in_memory_dataset)
+        assert (
+            collab._ds.epsg == in_memory_dataset.epsg
+        ), f"Proxy did not resolve epsg: {collab._ds.epsg} != {in_memory_dataset.epsg}"
+        assert (
+            collab._ds.rows == in_memory_dataset.rows
+        ), "Proxy did not resolve rows attribute"
 
     def test_proxy_does_not_keep_dataset_alive(self):
         """Strong-cycle safety: deleting the only Dataset ref must release it.
@@ -159,7 +161,7 @@ class TestCollaboratorBase:
             epsg=4326,
         )
         ref = weakref.ref(ds)
-        collab = _Collaborator(ds)
+        collab = _Engine(ds)
         del ds
         gc.collect()
         assert ref() is None, (
@@ -178,11 +180,12 @@ class TestCollaboratorBase:
             parent Dataset — it should reduce to the placeholder factory
             with no arguments so unpickle yields a ``_Placeholder``.
         """
-        collab = _Collaborator(in_memory_dataset)
+        collab = _Engine(in_memory_dataset)
         recipe = collab.__reduce__()
-        assert recipe == (_recreate_placeholder, ()), (
-            f"Unexpected reduce recipe: {recipe}"
-        )
+        assert recipe == (
+            _recreate_placeholder,
+            (),
+        ), f"Unexpected reduce recipe: {recipe}"
 
     def test_slots_only_contains_ds(self):
         """``__slots__`` must be exactly ``('_ds',)``.
@@ -192,9 +195,9 @@ class TestCollaboratorBase:
             (e.g., a future bug that sets ``self.foo = bar`` on a
             collaborator) and keeps the back-reference the only state.
         """
-        assert _Collaborator.__slots__ == ("_ds",), (
-            f"Expected __slots__ == ('_ds',), got {_Collaborator.__slots__!r}"
-        )
+        assert _Engine.__slots__ == (
+            "_ds",
+        ), f"Expected __slots__ == ('_ds',), got {_Engine.__slots__!r}"
 
 
 class TestCollaboratorAttachment:
@@ -212,7 +215,9 @@ class TestCollaboratorAttachment:
             ("cog", COG),
         ],
     )
-    def test_dataset_exposes_collaborator(self, in_memory_dataset, attr_name, expected_type):
+    def test_dataset_exposes_collaborator(
+        self, in_memory_dataset, attr_name, expected_type
+    ):
         """Each collaborator must be accessible as a Dataset attribute.
 
         Args:
@@ -224,9 +229,9 @@ class TestCollaboratorAttachment:
             wired in and reachable by attribute access.
         """
         collab = getattr(in_memory_dataset, attr_name)
-        assert isinstance(collab, expected_type), (
-            f"ds.{attr_name} should be {expected_type.__name__}, got {type(collab).__name__}"
-        )
+        assert isinstance(
+            collab, expected_type
+        ), f"ds.{attr_name} should be {expected_type.__name__}, got {type(collab).__name__}"
 
 
 # Stage 1 forwarders: collaborator method delegates to the same-named
@@ -292,7 +297,11 @@ class TestForwardingParity:
 
     @pytest.mark.parametrize("collab_attr, method_name", FORWARDING_METHODS)
     def test_method_forwards_args_and_return(
-        self, in_memory_dataset, mocker, collab_attr, method_name,
+        self,
+        in_memory_dataset,
+        mocker,
+        collab_attr,
+        method_name,
     ):
         """Forwarder calls the underlying Dataset method with identical args.
 
@@ -309,7 +318,9 @@ class TestForwardingParity:
             through unchanged and (b) return the same sentinel.
         """
         sentinel = object()
-        mock = mocker.patch.object(in_memory_dataset, method_name, return_value=sentinel)
+        mock = mocker.patch.object(
+            in_memory_dataset, method_name, return_value=sentinel
+        )
         collab = getattr(in_memory_dataset, collab_attr)
         bound = getattr(collab, method_name)
 
@@ -327,7 +338,11 @@ class TestFacadeDelegation:
 
     @pytest.mark.parametrize("collab_attr, method_name", FACADE_METHODS)
     def test_facade_calls_collaborator(
-        self, in_memory_dataset, mocker, collab_attr, method_name,
+        self,
+        in_memory_dataset,
+        mocker,
+        collab_attr,
+        method_name,
     ):
         """``ds.<method>(...)`` should invoke ``ds.<collab>.<method>(...)``.
 
@@ -350,9 +365,9 @@ class TestFacadeDelegation:
         facade = getattr(in_memory_dataset, method_name)
         result = facade(1, 2, foo="bar")
 
-        assert result is sentinel, (
-            f"Dataset.{method_name} facade did not return the collaborator's value"
-        )
+        assert (
+            result is sentinel
+        ), f"Dataset.{method_name} facade did not return the collaborator's value"
         mock.assert_called_once_with(1, 2, foo="bar")
 
 
@@ -375,7 +390,11 @@ class TestPropertyForwarding:
 
     @pytest.mark.parametrize("collab_attr, prop_name", READONLY_PROPERTIES)
     def test_readonly_property_reads_from_dataset(
-        self, in_memory_dataset, mocker, collab_attr, prop_name,
+        self,
+        in_memory_dataset,
+        mocker,
+        collab_attr,
+        prop_name,
     ):
         """Read-only collaborator property delegates to ``Dataset.<prop>``.
 
@@ -397,13 +416,17 @@ class TestPropertyForwarding:
         )
         collab = getattr(in_memory_dataset, collab_attr)
         result = getattr(collab, prop_name)
-        assert result is sentinel, (
-            f"{collab_attr}.{prop_name} getter did not forward to Dataset.{prop_name}"
-        )
+        assert (
+            result is sentinel
+        ), f"{collab_attr}.{prop_name} getter did not forward to Dataset.{prop_name}"
 
     @pytest.mark.parametrize("collab_attr, prop_name", FACADE_PROPERTIES)
     def test_facade_property_reads_from_collaborator(
-        self, in_memory_dataset, mocker, collab_attr, prop_name,
+        self,
+        in_memory_dataset,
+        mocker,
+        collab_attr,
+        prop_name,
     ):
         """``ds.<prop>`` should read from ``ds.<collab>.<prop>``.
 
@@ -433,7 +456,11 @@ class TestPropertyForwarding:
 
     @pytest.mark.parametrize("collab_attr, prop_name", READWRITE_PROPERTIES)
     def test_readwrite_property_get_and_set(
-        self, in_memory_dataset, mocker, collab_attr, prop_name,
+        self,
+        in_memory_dataset,
+        mocker,
+        collab_attr,
+        prop_name,
     ):
         """Read/write collaborator property forwards both getter and setter.
 
@@ -459,9 +486,9 @@ class TestPropertyForwarding:
         collab = getattr(in_memory_dataset, collab_attr)
 
         observed = getattr(collab, prop_name)
-        assert observed is getter_value, (
-            f"{collab_attr}.{prop_name} getter did not forward (got {observed!r})"
-        )
+        assert (
+            observed is getter_value
+        ), f"{collab_attr}.{prop_name} getter did not forward (got {observed!r})"
 
         setattr(collab, prop_name, new_value)
         prop_mock.assert_any_call(new_value)
@@ -518,9 +545,9 @@ class TestAnalysisNormalize:
             Python scalar; the staticmethod always returns ``np.ndarray``.
         """
         out = Analysis.normalize(np.array([1, 2, 3, 4]))
-        assert isinstance(out, np.ndarray), (
-            f"Expected numpy ndarray, got {type(out).__name__}"
-        )
+        assert isinstance(
+            out, np.ndarray
+        ), f"Expected numpy ndarray, got {type(out).__name__}"
 
 
 class TestPickleRoundTrip:
@@ -538,27 +565,27 @@ class TestPickleRoundTrip:
             types — never ``_Placeholder`` instances.
         """
         roundtripped = pickle.loads(pickle.dumps(file_backed_dataset))
-        assert isinstance(roundtripped.io, IO), (
-            f"Roundtripped ds.io is wrong type: {type(roundtripped.io).__name__}"
-        )
-        assert isinstance(roundtripped.spatial, Spatial), (
-            f"Roundtripped ds.spatial is wrong type: {type(roundtripped.spatial).__name__}"
-        )
-        assert isinstance(roundtripped.bands, Bands), (
-            f"Roundtripped ds.bands is wrong type: {type(roundtripped.bands).__name__}"
-        )
-        assert isinstance(roundtripped.analysis, Analysis), (
-            f"Roundtripped ds.analysis is wrong type: {type(roundtripped.analysis).__name__}"
-        )
-        assert isinstance(roundtripped.cell, Cell), (
-            f"Roundtripped ds.cell is wrong type: {type(roundtripped.cell).__name__}"
-        )
-        assert isinstance(roundtripped.vectorize, Vectorize), (
-            f"Roundtripped ds.vectorize is wrong type: {type(roundtripped.vectorize).__name__}"
-        )
-        assert isinstance(roundtripped.cog, COG), (
-            f"Roundtripped ds.cog is wrong type: {type(roundtripped.cog).__name__}"
-        )
+        assert isinstance(
+            roundtripped.io, IO
+        ), f"Roundtripped ds.io is wrong type: {type(roundtripped.io).__name__}"
+        assert isinstance(
+            roundtripped.spatial, Spatial
+        ), f"Roundtripped ds.spatial is wrong type: {type(roundtripped.spatial).__name__}"
+        assert isinstance(
+            roundtripped.bands, Bands
+        ), f"Roundtripped ds.bands is wrong type: {type(roundtripped.bands).__name__}"
+        assert isinstance(
+            roundtripped.analysis, Analysis
+        ), f"Roundtripped ds.analysis is wrong type: {type(roundtripped.analysis).__name__}"
+        assert isinstance(
+            roundtripped.cell, Cell
+        ), f"Roundtripped ds.cell is wrong type: {type(roundtripped.cell).__name__}"
+        assert isinstance(
+            roundtripped.vectorize, Vectorize
+        ), f"Roundtripped ds.vectorize is wrong type: {type(roundtripped.vectorize).__name__}"
+        assert isinstance(
+            roundtripped.cog, COG
+        ), f"Roundtripped ds.cog is wrong type: {type(roundtripped.cog).__name__}"
 
     def test_round_tripped_collaborators_are_functional(self, file_backed_dataset):
         """After round-trip, calling a forwarder still works end-to-end.
@@ -584,7 +611,9 @@ class TestPickleRoundTrip:
         ["io", "spatial", "bands", "analysis", "cell", "vectorize", "cog"],
     )
     def test_directly_pickled_collaborator_yields_placeholder(
-        self, in_memory_dataset, collab_attr,
+        self,
+        in_memory_dataset,
+        collab_attr,
     ):
         """Pickling a collaborator directly produces a ``_Placeholder``.
 
@@ -594,7 +623,7 @@ class TestPickleRoundTrip:
         Test scenario:
             ``pickle.dumps(ds.io)`` must not attempt to pickle the parent
             Dataset (that would either explode the payload size or fail
-            on the GDAL handle). Instead, ``_Collaborator.__reduce__``
+            on the GDAL handle). Instead, ``_Engine.__reduce__``
             short-circuits to ``_recreate_placeholder``, so the unpickled
             object is a ``_Placeholder``.
         """

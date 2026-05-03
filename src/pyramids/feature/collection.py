@@ -46,8 +46,8 @@ from shapely.geometry.multipoint import MultiPoint
 from shapely.geometry.multipolygon import MultiPolygon
 
 from pyramids import _io as _pyramids_io
-from pyramids.base._errors import CRSError, FeatureError, GeometryWarning
 from pyramids.base import crs as _crs
+from pyramids.base._errors import CRSError, FeatureError, GeometryWarning
 from pyramids.base._utils import Catalog, import_pyarrow
 from pyramids.base.remote import is_remote
 from pyramids.basemap.basemap import add_basemap
@@ -520,6 +520,7 @@ class FeatureCollection(GeoDataFrame):
 
                 ```
         """
+
         # empty-input branches both build a single-column frame
         # whose column name matches the `geometry=` kwarg, so
         # `GeoDataFrame(..., geometry=…)` sets it as the active

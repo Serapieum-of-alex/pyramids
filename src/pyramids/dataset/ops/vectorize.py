@@ -125,9 +125,7 @@ def rasterize_features(
         # mixed [int8, int16] â†’ int16, etc. Previously the dtype was
         # taken from column_name[0] only, which silently truncated
         # wider columns.
-        numpy_dtype = np.result_type(
-            *[features.dtypes[c] for c in column_name]
-        )
+        numpy_dtype = np.result_type(*[features.dtypes[c] for c in column_name])
     else:
         if column_name not in features.columns:
             raise ValueError(

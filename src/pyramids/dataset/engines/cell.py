@@ -9,13 +9,15 @@ from __future__ import annotations
 
 from numbers import Number
 from typing import Any
+
 import geopandas as gpd
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
 from hpc.indexing import get_indices2, locate_values
 from pandas import DataFrame
-from pyramids.feature import FeatureCollection
+
 from pyramids.dataset.engines._base import _Engine
+from pyramids.feature import FeatureCollection
 
 
 class Cell(_Engine):

@@ -12,12 +12,14 @@ import pickle
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generator
+
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
 from osgeo_utils import gdal2xyz
 from pandas import DataFrame
+
 from pyramids.base._errors import OutOfBoundsError, ReadOnlyError
 from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._locks import DummyLock, default_lock
@@ -26,8 +28,10 @@ from pyramids.dataset.abstract_dataset import OVERVIEW_LEVELS, RESAMPLING_METHOD
 from pyramids.dataset.ops import io as _io_module
 from pyramids.dataset.ops.io import _LAZY_IMPORT_ERROR
 from pyramids.feature import FeatureCollection
+
 if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
+
 from pyramids.dataset.engines._base import _Engine
 
 

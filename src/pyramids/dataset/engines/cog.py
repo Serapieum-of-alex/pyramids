@@ -10,7 +10,9 @@ from __future__ import annotations
 import warnings
 from pathlib import Path
 from typing import Any, Mapping
+
 from osgeo import gdal
+
 from pyramids.dataset.cog import (
     ValidationReport,
     merge_options,
@@ -19,7 +21,6 @@ from pyramids.dataset.cog import (
     validate_blocksize,
 )
 from pyramids.dataset.engines._base import _Engine
-
 
 _AVERAGING_RESAMPLERS: frozenset[str] = frozenset(
     {"average", "bilinear", "cubic", "cubicspline", "lanczos"}

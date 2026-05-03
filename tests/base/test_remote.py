@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import numpy as np  # noqa: E402
 import pytest
 from osgeo import gdal
-import numpy as np  # noqa: E402
+
 from pyramids.base.remote import CloudConfig, _to_vsi, is_remote
 
 pytestmark = pytest.mark.core

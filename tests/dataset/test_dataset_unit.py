@@ -20,8 +20,8 @@ from pyramids.base._errors import (
 )
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
-from pyramids.dataset.engines import Analysis, Bands, Spatial, Vectorize
 from pyramids.dataset.abstract_dataset import RasterBase
+from pyramids.dataset.engines import Analysis, Bands, Spatial, Vectorize
 
 pytestmark = pytest.mark.core
 

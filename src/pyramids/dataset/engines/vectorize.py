@@ -10,6 +10,7 @@ from __future__ import annotations
 import collections
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -17,11 +18,14 @@ from geopandas.geodataframe import GeoDataFrame
 from hpc.indexing import get_pixels
 from osgeo import gdal, ogr
 from pandas import DataFrame
+
 from pyramids.base._utils import gdal_to_ogr_dtype
 from pyramids.base.crs import sr_from_wkt
 from pyramids.feature import _ogr as _feature_ogr
+
 if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
+
 from pyramids.dataset.engines._base import _Engine, logger
 
 

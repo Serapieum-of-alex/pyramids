@@ -10,12 +10,14 @@ from __future__ import annotations
 import warnings
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
 from pandas import DataFrame
+
 from pyramids.base._domain import is_no_data
 from pyramids.base._errors import NoDataValueError, ReadOnlyError
 from pyramids.base._utils import (
@@ -27,8 +29,10 @@ from pyramids.base._utils import (
 )
 from pyramids.dataset.abstract_dataset import DEFAULT_NO_DATA_VALUE
 from pyramids.feature import FeatureCollection
+
 if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
+
 from pyramids.dataset.engines._base import _Engine
 
 

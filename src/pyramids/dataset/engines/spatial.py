@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
 import numpy as np
 from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal, osr
+
 from pyramids.base._domain import is_no_data
 from pyramids.base._utils import INTERPOLATION_METHODS
 from pyramids.base.crs import (
@@ -23,8 +25,10 @@ from pyramids.base.crs import (
 from pyramids.dataset.abstract_dataset import RasterBase
 from pyramids.feature import FeatureCollection
 from pyramids.feature import _ogr as _feature_ogr
+
 if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset
+
 from pyramids.dataset.engines._base import _Engine
 from pyramids.dataset.engines.vectorize import Vectorize
 

@@ -9,7 +9,6 @@ from typing import Any, cast
 
 from osgeo import gdal
 
-
 from pyramids.netcdf.cf import classify_variables, parse_conventions
 from pyramids.netcdf.dimensions import MetaData as SharedMetaData
 from pyramids.netcdf.models import (
@@ -140,9 +139,7 @@ class MetadataBuilder:
                     str(k): str(v) for k, v in raw.items()  # type: ignore[arg-type]
                 }
             except RuntimeError as exc:
-                logger.debug(
-                    "SharedMetaData.from_metadata fallback failed: %s", exc
-                )
+                logger.debug("SharedMetaData.from_metadata fallback failed: %s", exc)
                 global_attrs = {}
 
         structural_info = StructuralInfo.from_dataset(ds, driver_name)

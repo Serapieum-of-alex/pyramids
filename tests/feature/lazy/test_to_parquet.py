@@ -16,6 +16,7 @@ from __future__ import annotations
 import geopandas as gpd
 import pytest
 from shapely.geometry import Point
+
 from pyramids.base._errors import OptionalPackageDoesNotExist
 from pyramids.base._utils import import_dask_geopandas, import_pyarrow
 
