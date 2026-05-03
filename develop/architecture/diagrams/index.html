@@ -3994,7 +3994,7 @@ Hold "Ctrl" to enable pan &amp; zoom
   io[_io: read_file, to_ascii, path parsing]
   utils[_utils: geometry/index helpers]
   ds[dataset.Dataset]
-  abs[dataset.AbstractDataset]
+  abs[dataset.RasterBase]
   dc[dataset.DatasetCollection]
   fc[feature.FeatureCollection]
 
@@ -4031,7 +4031,7 @@ Hold "Ctrl" to enable pan &amp; zoom
 </button>
     </nav>
     <pre class="mermaid"><code>classDiagram
-  class AbstractDataset {
+  class RasterBase {
     &lt;&lt;abstract&gt;&gt;
     +read_file(path, read_only)
     +to_file(path, band)
@@ -4041,7 +4041,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     +to_file(path, band, tile_length)
     +read()
   }
-  AbstractDataset &lt;|-- Dataset</code></pre> 
+  RasterBase &lt;|-- Dataset</code></pre> 
     
 </div>
 <h2 id="uml-class-vector-core"><a class="toclink" href="#uml-class-vector-core">UML Class: Vector Core</a><a class="headerlink" href="#uml-class-vector-core" title="Permanent link">#</a></h2>
@@ -4312,7 +4312,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     }
 
     %% abstract base class for rasters
-    class abstract_dataset_AbstractDataset {
+    class abstract_dataset_RasterBase {
         +__init__(src, access)
         +values() np.ndarray
         +rows() int
@@ -4400,13 +4400,13 @@ Hold "Ctrl" to enable pan &amp; zoom
     class _errors_OutOfBoundsError
 
     %% inheritance relations
-    abstract_dataset_AbstractDataset &lt;|-- dataset_Dataset
+    abstract_dataset_RasterBase &lt;|-- dataset_Dataset
     dataset_Dataset &lt;|-- netcdf_NetCDF
 
     %% composition/usage relations
     collection_DatasetCollection --&gt; dataset_Dataset : "base raster"
-    abstract_dataset_AbstractDataset ..&gt; _utils_Catalog : "uses Catalog constant"
-    abstract_dataset_AbstractDataset ..&gt; feature_FeatureCollection : "vector ops"
+    abstract_dataset_RasterBase ..&gt; _utils_Catalog : "uses Catalog constant"
+    abstract_dataset_RasterBase ..&gt; feature_FeatureCollection : "vector ops"
     dataset_Dataset ..&gt; feature_FeatureCollection : "vector ops"
     feature_FeatureCollection ..&gt; _utils_Catalog : "uses drivers"
     dataset_Dataset ..&gt; _errors_ReadOnlyError : "raises"
@@ -4460,7 +4460,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     }
 
     %% abstract base class for rasters
-    class abstract_dataset_AbstractDataset {
+    class abstract_dataset_RasterBase {
         +__init__(src, access)
         +__str__()
         +__repr__()
@@ -4672,13 +4672,13 @@ Hold "Ctrl" to enable pan &amp; zoom
     class _errors_OutOfBoundsError
 
     %% inheritance relations
-    abstract_dataset_AbstractDataset &lt;|-- dataset_Dataset
+    abstract_dataset_RasterBase &lt;|-- dataset_Dataset
     dataset_Dataset &lt;|-- netcdf_NetCDF
 
     %% composition/usage relations
     collection_DatasetCollection --&gt; dataset_Dataset : "base raster"
-    abstract_dataset_AbstractDataset ..&gt; _utils_Catalog : "uses Catalog constant"
-    abstract_dataset_AbstractDataset ..&gt; feature_FeatureCollection : "vector ops"
+    abstract_dataset_RasterBase ..&gt; _utils_Catalog : "uses Catalog constant"
+    abstract_dataset_RasterBase ..&gt; feature_FeatureCollection : "vector ops"
     dataset_Dataset ..&gt; feature_FeatureCollection : "vector ops"
     feature_FeatureCollection ..&gt; _utils_Catalog : "uses drivers"
     dataset_Dataset ..&gt; _errors_ReadOnlyError : "raises"

@@ -3242,6 +3242,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unreleased
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0150-2026-04-24" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3276,7 +3304,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#refactor" class="md-nav__link">
+  <a href="#refactor_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Refactor
@@ -3438,7 +3466,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#refactor_1" class="md-nav__link">
+  <a href="#refactor_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Refactor
@@ -3477,7 +3505,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#refactor_2" class="md-nav__link">
+  <a href="#refactor_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         Refactor
@@ -3516,7 +3544,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#refactor_3" class="md-nav__link">
+  <a href="#refactor_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         Refactor
@@ -4484,6 +4512,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unreleased
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0150-2026-04-24" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4518,7 +4574,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#refactor" class="md-nav__link">
+  <a href="#refactor_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Refactor
@@ -4680,7 +4736,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#refactor_1" class="md-nav__link">
+  <a href="#refactor_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Refactor
@@ -4719,7 +4775,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#refactor_2" class="md-nav__link">
+  <a href="#refactor_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         Refactor
@@ -4758,7 +4814,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#refactor_3" class="md-nav__link">
+  <a href="#refactor_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         Refactor
@@ -5379,6 +5435,25 @@
 
 
 <h1 id="change-log"><a class="toclink" href="#change-log">Change log</a><a class="headerlink" href="#change-log" title="Permanent link">#</a></h1>
+<h2 id="unreleased"><a class="toclink" href="#unreleased">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">#</a></h2>
+<h3 id="refactor"><a class="toclink" href="#refactor">Refactor</a><a class="headerlink" href="#refactor" title="Permanent link">#</a></h3>
+<ul>
+<li><strong>dataset</strong>: replace the seven <code>Dataset</code> mixins (<code>BandMetadata</code>, <code>IO</code>,
+  <code>COGMixin</code>, <code>Spatial</code>, <code>Analysis</code>, <code>Vectorize</code>, <code>Cell</code>) with
+  collaborator instances accessible as <code>ds.io</code>, <code>ds.spatial</code>,
+  <code>ds.bands</code>, <code>ds.analysis</code>, <code>ds.cell</code>, <code>ds.vectorize</code>, <code>ds.cog</code>.
+  <code>Dataset</code> is now single-inheritance — <code>class Dataset(RasterBase)</code> —
+  and the public API surface is preserved by thin facade methods, so
+  <code>ds.crop(mask)</code> and <code>ds.spatial.crop(mask)</code> are equivalent. No
+  breaking changes to the public API; <code>Dataset.&lt;op&gt;(...)</code> callsites
+  continue to work unchanged.</li>
+<li><strong>dataset</strong>: rename <code>AbstractDataset</code> → <code>RasterBase</code>. The class is
+  the L-2 composition target — the state-holding base that <code>Dataset</code>
+  (and any future variant such as <code>LazyDataset</code>) inherits from. The
+  module file is still named <code>abstract_dataset.py</code> for backwards
+  compatibility with existing import paths
+  (<code>from pyramids.dataset.abstract_dataset import RasterBase</code>).</li>
+</ul>
 <h2 id="0150-2026-04-24"><a class="toclink" href="#0150-2026-04-24">0.15.0 (2026-04-24)</a><a class="headerlink" href="#0150-2026-04-24" title="Permanent link">#</a></h2>
 <h3 id="feat"><a class="toclink" href="#feat">Feat</a><a class="headerlink" href="#feat" title="Permanent link">#</a></h3>
 <ul>
@@ -5388,7 +5463,7 @@
 <ul>
 <li>wheel-test fails for plot tests (#261)</li>
 </ul>
-<h3 id="refactor"><a class="toclink" href="#refactor">Refactor</a><a class="headerlink" href="#refactor" title="Permanent link">#</a></h3>
+<h3 id="refactor_1"><a class="toclink" href="#refactor_1">Refactor</a><a class="headerlink" href="#refactor_1" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>feature</strong>: modernize feature subpackage and expand I/O surface (#252)</li>
 </ul>
@@ -5424,7 +5499,7 @@
 <li><strong>netcdf</strong>: add variable operations, metadata refinement, and
   rename ArrayInfo to VariableInfo</li>
 </ul>
-<h3 id="refactor_1"><a class="toclink" href="#refactor_1">Refactor</a><a class="headerlink" href="#refactor_1" title="Permanent link">#</a></h3>
+<h3 id="refactor_2"><a class="toclink" href="#refactor_2">Refactor</a><a class="headerlink" href="#refactor_2" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>dataset</strong>: resolve 20 design issues from architectural review (#175)</li>
 <li>restructure package layout and decompose Dataset into mixins (#170)</li>
@@ -5434,7 +5509,7 @@
 <ul>
 <li><strong>packaging</strong>: add GDAL to PyPI deps and fix missing YAML files in wheel (#162)</li>
 </ul>
-<h3 id="refactor_2"><a class="toclink" href="#refactor_2">Refactor</a><a class="headerlink" href="#refactor_2" title="Permanent link">#</a></h3>
+<h3 id="refactor_3"><a class="toclink" href="#refactor_3">Refactor</a><a class="headerlink" href="#refactor_3" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>api</strong>: replace os module with pathlib across all public APIs (#157)</li>
 </ul>
@@ -5444,7 +5519,7 @@
 <li><strong>logging</strong>: Centralized logging via <code>LoggerManager</code> with colored console and optional file logging; reduced third‑party log noise. (#135)</li>
 <li><strong>logging</strong>: Centralized logging via <code>LoggerManager</code> with colored console and optional file logging; reduced third‑party log noise. (#135)</li>
 </ul>
-<h3 id="refactor_3"><a class="toclink" href="#refactor_3">Refactor</a><a class="headerlink" href="#refactor_3" title="Permanent link">#</a></h3>
+<h3 id="refactor_4"><a class="toclink" href="#refactor_4">Refactor</a><a class="headerlink" href="#refactor_4" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>typing</strong>: modernize type annotations and add mypy (#146)</li>
 <li><strong>netcdf</strong>: extract into subpackage with MDIM round-trip support (#91)</li>

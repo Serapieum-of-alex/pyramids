@@ -5881,7 +5881,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     }
 
     %% abstract base class for rasters
-    class AbstractDataset {
+    class RasterBase {
         +__init__(src, access)
         +__str__()
         +__repr__()
@@ -5985,12 +5985,12 @@ Hold "Ctrl" to enable pan &amp; zoom
     class _errors_OutOfBoundsError
 
     %% inheritance relations
-    AbstractDataset &lt;|-- Dataset
+    RasterBase &lt;|-- Dataset
     Dataset &lt;|-- NetCDF
 
     %% composition/usage relations
-    AbstractDataset ..&gt; _utils_Catalog : "uses Catalog constant"
-    AbstractDataset ..&gt; feature_FeatureCollection : "vector ops"
+    RasterBase ..&gt; _utils_Catalog : "uses Catalog constant"
+    RasterBase ..&gt; feature_FeatureCollection : "vector ops"
     Dataset ..&gt; feature_FeatureCollection : "vector ops"
     Dataset ..&gt; _errors_ReadOnlyError : "raises"
     Dataset ..&gt; _errors_AlignmentError : "raises"
@@ -6193,7 +6193,7 @@ Hold "Ctrl" to enable pan &amp; zoom
 
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="pyramids.dataset.abstract_dataset.AbstractDataset">AbstractDataset</span></code></p>
+              Bases: <code><span title="pyramids.dataset.abstract_dataset.RasterBase">RasterBase</span></code></p>
 
 
 
@@ -7503,7 +7503,7 @@ release deterministic on Windows.</p>
 <span class="normal"><a href="#__codelineno-0-1346">1346</a></span>
 <span class="normal"><a href="#__codelineno-0-1347">1347</a></span>
 <span class="normal"><a href="#__codelineno-0-1348">1348</a></span>
-<span class="normal"><a href="#__codelineno-0-1349">1349</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span><span class="n">AbstractDataset</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-1349">1349</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span><span class="n">RasterBase</span><span class="p">):</span>
 <a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Single-band or multi-band raster dataset (GeoTIFF, etc.).</span>
 <a id="__codelineno-0-67" name="__codelineno-0-67"></a>
 <a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">    Wraps a GDAL dataset with spatial operations (crop, reproject, align,</span>
@@ -7794,7 +7794,7 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-353" name="__codelineno-0-353"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_overview_array</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 <a id="__codelineno-0-354" name="__codelineno-0-354"></a>
 <a id="__codelineno-0-355" name="__codelineno-0-355"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_read_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`AbstractDataset._read_block`.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`RasterBase._read_block`.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-357" name="__codelineno-0-357"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">_read_block</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 <a id="__codelineno-0-358" name="__codelineno-0-358"></a>
 <a id="__codelineno-0-359" name="__codelineno-0-359"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_attribute_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -7814,7 +7814,7 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-373" name="__codelineno-0-373"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="o">.</span><span class="n">get_band_by_color</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 <a id="__codelineno-0-374" name="__codelineno-0-374"></a>
 <a id="__codelineno-0-375" name="__codelineno-0-375"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`AbstractDataset.change_no_data_value`.</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`RasterBase.change_no_data_value`.</span>
 <a id="__codelineno-0-377" name="__codelineno-0-377"></a>
 <a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">        The collaborator returns ``None`` for the ``inplace=True`` path; the</span>
 <a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">        facade substitutes ``self`` for identity preservation, matching</span>
@@ -7842,15 +7842,15 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-401" name="__codelineno-0-401"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="o">.</span><span class="n">color_table</span> <span class="o">=</span> <span class="n">df</span>
 <a id="__codelineno-0-402" name="__codelineno-0-402"></a>
 <a id="__codelineno-0-403" name="__codelineno-0-403"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_check_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`AbstractDataset._check_no_data_value`.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`RasterBase._check_no_data_value`.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-405" name="__codelineno-0-405"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="o">.</span><span class="n">_check_no_data_value</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 <a id="__codelineno-0-406" name="__codelineno-0-406"></a>
 <a id="__codelineno-0-407" name="__codelineno-0-407"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_set_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`AbstractDataset._set_no_data_value`.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`RasterBase._set_no_data_value`.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-409" name="__codelineno-0-409"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="o">.</span><span class="n">_set_no_data_value</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 <a id="__codelineno-0-410" name="__codelineno-0-410"></a>
 <a id="__codelineno-0-411" name="__codelineno-0-411"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_bbox</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`AbstractDataset._calculate_bbox`.</span>
+<a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`RasterBase._calculate_bbox`.</span>
 <a id="__codelineno-0-413" name="__codelineno-0-413"></a>
 <a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="sd">        Direct on Dataset (not via the Bands collaborator) because the</span>
 <a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">        ``bbox`` / ``bounds`` properties are reachable before the</span>
@@ -7862,7 +7862,7 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-421" name="__codelineno-0-421"></a>        <span class="k">return</span> <span class="p">[</span><span class="n">x_min</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_max</span><span class="p">]</span>
 <a id="__codelineno-0-422" name="__codelineno-0-422"></a>
 <a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`AbstractDataset._calculate_bounds`.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`RasterBase._calculate_bounds`.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-425" name="__codelineno-0-425"></a>        <span class="n">x_min</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_bbox</span><span class="p">()</span>
 <a id="__codelineno-0-426" name="__codelineno-0-426"></a>        <span class="n">coords</span> <span class="o">=</span> <span class="p">[(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">y_max</span><span class="p">),</span> <span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">y_min</span><span class="p">),</span> <span class="p">(</span><span class="n">x_max</span><span class="p">,</span> <span class="n">y_min</span><span class="p">),</span> <span class="p">(</span><span class="n">x_max</span><span class="p">,</span> <span class="n">y_max</span><span class="p">)]</span>
 <a id="__codelineno-0-427" name="__codelineno-0-427"></a>        <span class="n">poly</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">create_polygon</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
@@ -7871,7 +7871,7 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-430" name="__codelineno-0-430"></a>        <span class="k">return</span> <span class="n">gdf</span>
 <a id="__codelineno-0-431" name="__codelineno-0-431"></a>
 <a id="__codelineno-0-432" name="__codelineno-0-432"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_get_band_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-433" name="__codelineno-0-433"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`AbstractDataset._get_band_names`.</span>
+<a id="__codelineno-0-433" name="__codelineno-0-433"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`RasterBase._get_band_names`.</span>
 <a id="__codelineno-0-434" name="__codelineno-0-434"></a>
 <a id="__codelineno-0-435" name="__codelineno-0-435"></a><span class="sd">        Defined directly on Dataset (not via the bands collaborator)</span>
 <a id="__codelineno-0-436" name="__codelineno-0-436"></a><span class="sd">        because ``Dataset.__init__`` calls ``self._get_band_names()``</span>
@@ -7893,10 +7893,10 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-452" name="__codelineno-0-452"></a>        <span class="k">return</span> <span class="n">names</span>
 <a id="__codelineno-0-453" name="__codelineno-0-453"></a>
 <a id="__codelineno-0-454" name="__codelineno-0-454"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_get_crs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`AbstractDataset._get_crs`.</span>
+<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`RasterBase._get_crs`.</span>
 <a id="__codelineno-0-456" name="__codelineno-0-456"></a>
 <a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">        Defined directly on Dataset rather than as a facade because</span>
-<a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">        ``AbstractDataset.__init__`` calls ``_get_epsg()`` (which calls</span>
+<a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">        ``RasterBase.__init__`` calls ``_get_epsg()`` (which calls</span>
 <a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">        ``_get_crs()``) before ``Dataset.__init__`` has a chance to wire</span>
 <a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">        up the Spatial collaborator. The Spatial collaborator&#39;s</span>
 <a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">        ``_get_crs`` body is the same one-liner.</span>
@@ -7904,7 +7904,7 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-463" name="__codelineno-0-463"></a>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetProjection</span><span class="p">())</span>
 <a id="__codelineno-0-464" name="__codelineno-0-464"></a>
 <a id="__codelineno-0-465" name="__codelineno-0-465"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_get_epsg</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`AbstractDataset._get_epsg`.</span>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`RasterBase._get_epsg`.</span>
 <a id="__codelineno-0-467" name="__codelineno-0-467"></a>
 <a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">        Defined directly on Dataset for the same reason as</span>
 <a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">        :meth:`_get_crs`.</span>
@@ -11189,7 +11189,7 @@ used by the collaborator's back-reference would otherwise fail
 
     <div class="doc doc-contents ">
 
-        <p>Facade — concrete override of the abstract :meth:<code>AbstractDataset.change_no_data_value</code>.</p>
+        <p>Facade — concrete override of the abstract :meth:<code>RasterBase.change_no_data_value</code>.</p>
 <p>The collaborator returns <code>None</code> for the <code>inplace=True</code> path; the
 facade substitutes <code>self</code> for identity preservation, matching
 :meth:<code>apply</code> and :meth:<code>fill</code>.</p>
@@ -11206,7 +11206,7 @@ facade substitutes <code>self</code> for identity preservation, matching
 <span class="normal"><a href="#__codelineno-0-381">381</a></span>
 <span class="normal"><a href="#__codelineno-0-382">382</a></span>
 <span class="normal"><a href="#__codelineno-0-383">383</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`AbstractDataset.change_no_data_value`.</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`RasterBase.change_no_data_value`.</span>
 <a id="__codelineno-0-377" name="__codelineno-0-377"></a>
 <a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">    The collaborator returns ``None`` for the ``inplace=True`` path; the</span>
 <a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">    facade substitutes ``self`` for identity preservation, matching</span>

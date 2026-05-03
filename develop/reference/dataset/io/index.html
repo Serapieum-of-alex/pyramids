@@ -5809,7 +5809,7 @@ locks, <code>Dataset.to_zarr</code> / <code>from_zarr</code>, and parallel Zarr 
 <a id="__codelineno-0-687" name="__codelineno-0-687"></a><span class="sd">                Explicit GDAL driver name to use instead of inferring</span>
 <a id="__codelineno-0-688" name="__codelineno-0-688"></a><span class="sd">                from the file extension. Use ``driver=&quot;COG&quot;`` to write</span>
 <a id="__codelineno-0-689" name="__codelineno-0-689"></a><span class="sd">                a Cloud Optimized GeoTIFF; the call delegates to</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="sd">                :meth:`~pyramids.dataset.ops.cog.COGMixin.to_cog`:</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="sd">                :meth:`pyramids.dataset._collaborators.COG.to_cog`:</span>
 <a id="__codelineno-0-691" name="__codelineno-0-691"></a>
 <a id="__codelineno-0-692" name="__codelineno-0-692"></a><span class="sd">                - ``creation_options`` (list form) is forwarded as the</span>
 <a id="__codelineno-0-693" name="__codelineno-0-693"></a><span class="sd">                  ``extra`` argument.</span>
@@ -6065,7 +6065,7 @@ locks, <code>Dataset.to_zarr</code> / <code>from_zarr</code>, and parallel Zarr 
 <a id="__codelineno-0-943" name="__codelineno-0-943"></a><span class="sd">          in-memory Dataset. Neither input nor output needs to fit in RAM at</span>
 <a id="__codelineno-0-944" name="__codelineno-0-944"></a><span class="sd">          once. Returns a :class:`~pyramids.dataset.Dataset`.</span>
 <a id="__codelineno-0-945" name="__codelineno-0-945"></a><span class="sd">        - ``chunks=&lt;spec&gt;``: reads lazily via</span>
-<a id="__codelineno-0-946" name="__codelineno-0-946"></a><span class="sd">          :meth:`read_array(chunks=&lt;spec&gt;) &lt;pyramids.dataset.ops.io.IO.read_array&gt;`</span>
+<a id="__codelineno-0-946" name="__codelineno-0-946"></a><span class="sd">          :meth:`read_array(chunks=&lt;spec&gt;) &lt;pyramids.dataset._collaborators.IO.read_array&gt;`</span>
 <a id="__codelineno-0-947" name="__codelineno-0-947"></a><span class="sd">          and dispatches to :func:`dask.array.map_blocks`. Returns a</span>
 <a id="__codelineno-0-948" name="__codelineno-0-948"></a><span class="sd">          :class:`dask.array.Array` that materializes on ``.compute()`` or</span>
 <a id="__codelineno-0-949" name="__codelineno-0-949"></a><span class="sd">          when wrapped by another lazy pyramids op. ``dtype``, ``drop_axis``,</span>
@@ -7866,7 +7866,7 @@ i.e., ['PREDICTOR=2']</p>
                 <p>Explicit GDAL driver name to use instead of inferring
 from the file extension. Use <code>driver="COG"</code> to write
 a Cloud Optimized GeoTIFF; the call delegates to
-:meth:<code>~pyramids.dataset.ops.cog.COGMixin.to_cog</code>:</p>
+:meth:<code>pyramids.dataset._collaborators.COG.to_cog</code>:</p>
 <ul>
 <li><code>creation_options</code> (list form) is forwarded as the
   <code>extra</code> argument.</li>
@@ -8111,7 +8111,7 @@ parallel writes.</p>
 <a id="__codelineno-0-687" name="__codelineno-0-687"></a><span class="sd">            Explicit GDAL driver name to use instead of inferring</span>
 <a id="__codelineno-0-688" name="__codelineno-0-688"></a><span class="sd">            from the file extension. Use ``driver=&quot;COG&quot;`` to write</span>
 <a id="__codelineno-0-689" name="__codelineno-0-689"></a><span class="sd">            a Cloud Optimized GeoTIFF; the call delegates to</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="sd">            :meth:`~pyramids.dataset.ops.cog.COGMixin.to_cog`:</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="sd">            :meth:`pyramids.dataset._collaborators.COG.to_cog`:</span>
 <a id="__codelineno-0-691" name="__codelineno-0-691"></a>
 <a id="__codelineno-0-692" name="__codelineno-0-692"></a><span class="sd">            - ``creation_options`` (list form) is forwarded as the</span>
 <a id="__codelineno-0-693" name="__codelineno-0-693"></a><span class="sd">              ``extra`` argument.</span>
@@ -8589,7 +8589,7 @@ Dataset array with a shape <code>[band, y, x]</code>.</p>
   in-memory Dataset. Neither input nor output needs to fit in RAM at
   once. Returns a :class:<code>~pyramids.dataset.Dataset</code>.</li>
 <li><code>chunks=&lt;spec&gt;</code>: reads lazily via
-  :meth:<code>read_array(chunks=&lt;spec&gt;) &lt;pyramids.dataset.ops.io.IO.read_array&gt;</code>
+  :meth:<code>read_array(chunks=&lt;spec&gt;) &lt;pyramids.dataset._collaborators.IO.read_array&gt;</code>
   and dispatches to :func:<code>dask.array.map_blocks</code>. Returns a
   :class:<code>dask.array.Array</code> that materializes on <code>.compute()</code> or
   when wrapped by another lazy pyramids op. <code>dtype</code>, <code>drop_axis</code>,
@@ -8917,7 +8917,7 @@ Lazy path only.</p>
 <a id="__codelineno-0-943" name="__codelineno-0-943"></a><span class="sd">      in-memory Dataset. Neither input nor output needs to fit in RAM at</span>
 <a id="__codelineno-0-944" name="__codelineno-0-944"></a><span class="sd">      once. Returns a :class:`~pyramids.dataset.Dataset`.</span>
 <a id="__codelineno-0-945" name="__codelineno-0-945"></a><span class="sd">    - ``chunks=&lt;spec&gt;``: reads lazily via</span>
-<a id="__codelineno-0-946" name="__codelineno-0-946"></a><span class="sd">      :meth:`read_array(chunks=&lt;spec&gt;) &lt;pyramids.dataset.ops.io.IO.read_array&gt;`</span>
+<a id="__codelineno-0-946" name="__codelineno-0-946"></a><span class="sd">      :meth:`read_array(chunks=&lt;spec&gt;) &lt;pyramids.dataset._collaborators.IO.read_array&gt;`</span>
 <a id="__codelineno-0-947" name="__codelineno-0-947"></a><span class="sd">      and dispatches to :func:`dask.array.map_blocks`. Returns a</span>
 <a id="__codelineno-0-948" name="__codelineno-0-948"></a><span class="sd">      :class:`dask.array.Array` that materializes on ``.compute()`` or</span>
 <a id="__codelineno-0-949" name="__codelineno-0-949"></a><span class="sd">      when wrapped by another lazy pyramids op. ``dtype``, ``drop_axis``,</span>

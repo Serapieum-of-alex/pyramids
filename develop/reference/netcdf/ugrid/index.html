@@ -3732,7 +3732,7 @@ Grid) NetCDF files used in hydrological and coastal modeling (D-Flow FM,
 SCHISM, FVCOM, ADCIRC).</p>
 <h2 id="architecture"><a class="toclink" href="#architecture">Architecture</a><a class="headerlink" href="#architecture" title="Permanent link">#</a></h2>
 <p><code>UgridDataset</code> is a standalone class that does <strong>not</strong> inherit from
-<code>Dataset</code> or <code>AbstractDataset</code>. Unstructured meshes have no
+<code>Dataset</code> or <code>RasterBase</code>. Unstructured meshes have no
 geotransform, rows, or columns. Instead, data is indexed by topology
 elements (nodes, faces, edges).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>UgridDataset (top-level container)

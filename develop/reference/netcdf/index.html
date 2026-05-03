@@ -7556,7 +7556,7 @@ The NetCDF class contains methods to deal with NetCDF files.</p>
 <a id="__codelineno-0-144" name="__codelineno-0-144"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>  <span class="c1"># type: ignore[override]</span>
 <a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Emit the extended recipe tuple carrying NetCDF mode flags.</span>
 <a id="__codelineno-0-146" name="__codelineno-0-146"></a>
-<a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">        Overrides :meth:`AbstractDataset.__reduce__` to include</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">        Overrides :meth:`RasterBase.__reduce__` to include</span>
 <a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        ``_is_md_array``, ``_is_subset``, and ``_source_var_name``,</span>
 <a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        which are required to reconstruct a container vs a</span>
 <a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">        variable-subset with matching identity.</span>
@@ -8987,7 +8987,7 @@ The NetCDF class contains methods to deal with NetCDF files.</p>
 <a id="__codelineno-0-1575" name="__codelineno-0-1575"></a>        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_raster</span>
 <a id="__codelineno-0-1576" name="__codelineno-0-1576"></a>        <span class="k">if</span> <span class="n">old</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">old</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">new_raster</span><span class="p">:</span>
 <a id="__codelineno-0-1577" name="__codelineno-0-1577"></a>            <span class="n">old</span><span class="o">.</span><span class="n">FlushCache</span><span class="p">()</span>
-<a id="__codelineno-0-1578" name="__codelineno-0-1578"></a>        <span class="c1"># AbstractDataset state</span>
+<a id="__codelineno-0-1578" name="__codelineno-0-1578"></a>        <span class="c1"># RasterBase state</span>
 <a id="__codelineno-0-1579" name="__codelineno-0-1579"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_raster</span> <span class="o">=</span> <span class="n">new_raster</span>
 <a id="__codelineno-0-1580" name="__codelineno-0-1580"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_geotransform</span> <span class="o">=</span> <span class="n">new_raster</span><span class="o">.</span><span class="n">GetGeoTransform</span><span class="p">()</span>
 <a id="__codelineno-0-1581" name="__codelineno-0-1581"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_cell_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_geotransform</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
@@ -10923,7 +10923,7 @@ For classic mode, reads from GDAL's <code>GetMetadata()</code>.</p>
     <div class="doc doc-contents ">
 
         <p>Emit the extended recipe tuple carrying NetCDF mode flags.</p>
-<p>Overrides :meth:<code>AbstractDataset.__reduce__</code> to include
+<p>Overrides :meth:<code>RasterBase.__reduce__</code> to include
 <code>_is_md_array</code>, <code>_is_subset</code>, and <code>_source_var_name</code>,
 which are required to reconstruct a container vs a
 variable-subset with matching identity.</p>
@@ -11003,7 +11003,7 @@ in-memory NetCDF is not supported.</p>
 <span class="normal"><a href="#__codelineno-0-183">183</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="k">def</span><span class="w"> </span><span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>  <span class="c1"># type: ignore[override]</span>
 <a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Emit the extended recipe tuple carrying NetCDF mode flags.</span>
 <a id="__codelineno-0-146" name="__codelineno-0-146"></a>
-<a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">    Overrides :meth:`AbstractDataset.__reduce__` to include</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">    Overrides :meth:`RasterBase.__reduce__` to include</span>
 <a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">    ``_is_md_array``, ``_is_subset``, and ``_source_var_name``,</span>
 <a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">    which are required to reconstruct a container vs a</span>
 <a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">    variable-subset with matching identity.</span>

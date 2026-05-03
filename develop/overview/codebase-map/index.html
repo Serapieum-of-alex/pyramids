@@ -3770,7 +3770,7 @@
 <ul>
 <li>pyramids.dataset</li>
 <li>Raster data subpackage: concrete Dataset implementation, DatasetCollection for temporal stacks,
-    and AbstractDataset ABC. Rich I/O, transformations, tiling, pyramid operations, and export utilities.</li>
+    and RasterBase ABC. Rich I/O, transformations, tiling, pyramid operations, and export utilities.</li>
 <li>pyramids.feature</li>
 <li>Vector data abstraction for feature collections built on GeoPandas; read/write, selection, join, spatial ops.</li>
 <li>pyramids._io</li>
@@ -3830,7 +3830,7 @@ Hold "Ctrl" to enable pan &amp; zoom
 </button>
     </nav>
     <pre class="mermaid"><code>classDiagram
-  class AbstractDataset {
+  class RasterBase {
     &lt;&lt;abstract&gt;&gt;
     +read_file(path, read_only)
     +to_file(path, band)
@@ -3856,7 +3856,7 @@ Hold "Ctrl" to enable pan &amp; zoom
     &lt;&lt;module&gt;&gt;
   }
 
-  AbstractDataset &lt;|-- Dataset
+  RasterBase &lt;|-- Dataset
   DatasetCollection ..&gt; Dataset : uses
   FeatureCollection ..&gt; IO : uses
   Dataset ..&gt; IO : uses
